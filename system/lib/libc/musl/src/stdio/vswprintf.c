@@ -1,8 +1,8 @@
 #include "stdio_impl.h"
 #include <limits.h>
-#include <string.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <wchar.h>
 
 struct cookie {
@@ -24,23 +24,30 @@ static size_t sw_write(FILE *f, const unsigned char *s, size_t l)
 		c->ws++;
 	}
 	*c->ws = 0;
-	return i<0 ? i : l0;
+	if (i < 0) {
+		f->wpos = f->wbase = f->wend = 0;
+		f->flags |= F_ERR;
+		return i;
+	}
+	f->wend = f->buf + f->buf_size;
+	f->wpos = f->wbase = f->buf;
+	return l0;
 }
 
 int vswprintf(wchar_t *restrict s, size_t n, const wchar_t *restrict fmt, va_list ap)
 {
 	int r;
-	FILE f;
 	unsigned char buf[256];
 	struct cookie c = { s, n-1 };
+	FILE f = {
+		.lbf = EOF,
+		.write = sw_write,
+		.lock = -1,
+		.buf = buf,
+		.buf_size = sizeof buf,
+		.cookie = &c,
+	};
 
-	memset(&f, 0, sizeof(FILE));
-	f.lbf = EOF;
-	f.write = sw_write;
-	f.buf_size = sizeof buf;
-	f.buf = buf;
-	f.lock = -1;
-	f.cookie = &c;
 	if (!n) {
 		return -1;
 	} else if (n > INT_MAX) {

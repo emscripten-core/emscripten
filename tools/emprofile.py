@@ -5,7 +5,12 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
-import sys, shutil, os, json, tempfile, time
+import json
+import os
+import shutil
+import sys
+import tempfile
+import time
 
 profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
 
@@ -17,12 +22,14 @@ for arg in sys.argv:
   if arg.startswith('--outfile='):
     OUTFILE = arg.split('=', 1)[1].strip().replace('.html', '')
 
+
 # Deletes all previously captured log files to make room for a new clean run.
 def delete_profiler_logs():
   try:
     shutil.rmtree(profiler_logs_path)
-  except:
+  except IOError:
     pass
+
 
 def list_files_in_directory(d):
   files = []
@@ -33,8 +40,9 @@ def list_files_in_directory(d):
       if os.path.isfile(f):
         files += [f]
     return files
-  except:
+  except IOError:
     return []
+
 
 def create_profiling_graph():
   log_files = [f for f in list_files_in_directory(profiler_logs_path) if 'toolchain_profiler.pid_' in f]
@@ -73,6 +81,7 @@ def create_profiling_graph():
   if not DEBUG_EMPROFILE_PY:
     delete_profiler_logs()
 
+
 if len(sys.argv) < 2:
   print('''Usage:
        emprofile.py --reset
@@ -87,6 +96,7 @@ Optional parameters:
           Specifies the name of the results file to generate.
 ''')
   sys.exit(1)
+
 
 if '--reset' in sys.argv:
   delete_profiler_logs()

@@ -1,7 +1,8 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 if (typeof console === 'undefined') {
   // we can't call Module.printErr because that might be circular
@@ -293,6 +294,13 @@ document.getElementById = function(id) {
   throw 'document.getElementById failed on ' + id;
 };
 
+document.querySelector = function(id) {
+  if (id === '#canvas' || id === '#application-canvas' || id === 'canvas' || id === 'application-canvas') {
+    return Module.canvas;
+  }
+  throw 'document.querySelector failed on ' + id;
+};
+
 document.documentElement = {};
 
 document.styleSheets = [{
@@ -500,6 +508,12 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #if USE_PTHREADS
 }
 #endif
+
+// proxyWorker.js has defined 'document' and 'window' objects above, so need to
+// initialize them for library_html5.js explicitly here.
+if (typeof __specialEventTargets !== 'undefined') {
+  __specialEventTargets = [0, document, window];
+}
 
 function postCustomMessage(data) {
   postMessage({ target: 'custom', userData: data });

@@ -1,10 +1,9 @@
 // -*- C++ -*-
 //===-------------------------- exception ---------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -81,8 +80,9 @@ template <class E> void rethrow_if_nested(const E& e);
 #include <cstddef>
 #include <cstdlib>
 #include <type_traits>
+#include <version>
 
-#if defined(_LIBCPP_ABI_MICROSOFT) && !defined(_LIBCPP_NO_VCRUNTIME)
+#if defined(_LIBCPP_ABI_VCRUNTIME)
 #include <vcruntime_exception.h>
 #endif
 
@@ -93,7 +93,7 @@ template <class E> void rethrow_if_nested(const E& e);
 namespace std  // purposefully not using versioning namespace
 {
 
-#if !defined(_LIBCPP_ABI_MICROSOFT) || defined(_LIBCPP_NO_VCRUNTIME)
+#if !defined(_LIBCPP_ABI_VCRUNTIME)
 class _LIBCPP_EXCEPTION_ABI exception
 {
 public:
@@ -110,7 +110,7 @@ public:
     virtual ~bad_exception() _NOEXCEPT;
     virtual const char* what() const _NOEXCEPT;
 };
-#endif // !_LIBCPP_ABI_MICROSOFT || _LIBCPP_NO_VCRUNTIME
+#endif // !_LIBCPP_ABI_VCRUNTIME
 
 #if _LIBCPP_STD_VER <= 14 \
     || defined(_LIBCPP_ENABLE_CXX17_REMOVED_UNEXPECTED_FUNCTIONS) \
@@ -163,7 +163,7 @@ public:
 };
 
 template<class _Ep>
-exception_ptr
+_LIBCPP_INLINE_VISIBILITY exception_ptr
 make_exception_ptr(_Ep __e) _NOEXCEPT
 {
 #ifndef _LIBCPP_NO_EXCEPTIONS
@@ -222,7 +222,7 @@ _LIBCPP_NORETURN _LIBCPP_FUNC_VIS void rethrow_exception(exception_ptr p);
 template <class _E> void *__GetExceptionInfo(_E);
 
 template<class _Ep>
-exception_ptr
+_LIBCPP_INLINE_VISIBILITY exception_ptr
 make_exception_ptr(_Ep __e) _NOEXCEPT
 {
   return __copy_exception_ptr(_VSTD::addressof(__e), __GetExceptionInfo(__e));
@@ -259,12 +259,8 @@ struct __throw_with_nested;
 
 template <class _Tp, class _Up>
 struct __throw_with_nested<_Tp, _Up, true> {
-    _LIBCPP_NORETURN static inline _LIBCPP_ALWAYS_INLINE void
-#ifndef _LIBCPP_CXX03_LANG
+    _LIBCPP_NORETURN static inline _LIBCPP_INLINE_VISIBILITY void
     __do_throw(_Tp&& __t)
-#else
-    __do_throw (_Tp& __t)
-#endif  // _LIBCPP_CXX03_LANG
     {
         throw __nested<_Up>(_VSTD::forward<_Tp>(__t));
     }
@@ -272,7 +268,7 @@ struct __throw_with_nested<_Tp, _Up, true> {
 
 template <class _Tp, class _Up>
 struct __throw_with_nested<_Tp, _Up, false> {
-    _LIBCPP_NORETURN static inline _LIBCPP_ALWAYS_INLINE void
+    _LIBCPP_NORETURN static inline _LIBCPP_INLINE_VISIBILITY void
 #ifndef _LIBCPP_CXX03_LANG
     __do_throw(_Tp&& __t)
 #else
@@ -287,11 +283,7 @@ struct __throw_with_nested<_Tp, _Up, false> {
 template <class _Tp>
 _LIBCPP_NORETURN
 void
-#ifndef _LIBCPP_CXX03_LANG
 throw_with_nested(_Tp&& __t)
-#else
-throw_with_nested (_Tp& __t)
-#endif // _LIBCPP_CXX03_LANG
 {
 #ifndef _LIBCPP_NO_EXCEPTIONS
     typedef typename decay<_Tp>::type _Up;

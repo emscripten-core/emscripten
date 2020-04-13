@@ -24,7 +24,7 @@ This comprehensive documentation set contains everything you need to know to use
 **Contributing:**
 
 - :ref:`contributing-to-emscripten-index` explains how you can contribute to the project.
-- :ref:`installing-from-source` explains how to build Emscripten from sources on Github (this is useful for contributors).
+- :ref:`installing-from-source` explains how to build Emscripten from sources on GitHub (this is useful for contributors).
 - :ref:`about-this-site` describes the documentation tools and writing conventions used to create this site.
 
 **Reference:**
@@ -32,6 +32,7 @@ This comprehensive documentation set contains everything you need to know to use
 - :ref:`api-reference-index` is a reference for the Emscripten toolchain.
 - :ref:`tools-reference` is a reference for the Emscripten integration APIs.
 - :ref:`CyberDWARF` shows how to use the CyberDWARF debugging system
+- :ref:`Sanitizers` shows how to debug with sanitizers
 
 The full hierarchy of articles, opened to the second level, is shown below.
 
@@ -50,4 +51,5 @@ The full hierarchy of articles, opened to the second level, is shown below.
   api_reference/index
   tools_reference/index
   debugging/CyberDWARF
+  debugging/Sanitizers
   site/index

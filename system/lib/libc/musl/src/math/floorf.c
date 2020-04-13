@@ -2,6 +2,11 @@
 
 float floorf(float x)
 {
+// XXX EMSCRIPTEN: on wasm backend, use the wasm instruction via clang builtin
+// See https://github.com/emscripten-core/emscripten/issues/9236
+#ifdef __wasm__
+	return __builtin_floorf(x);
+#else
 	union {float f; uint32_t i;} u = {x};
 	int e = (int)(u.i >> 23 & 0xff) - 0x7f;
 	uint32_t m;
@@ -24,4 +29,5 @@ float floorf(float x)
 			u.f = -1.0;
 	}
 	return u.f;
+#endif
 }

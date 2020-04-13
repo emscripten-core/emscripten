@@ -23,7 +23,7 @@ int main()
 
   int result = 0;
 
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context(0, &attrs);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context);
   EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);

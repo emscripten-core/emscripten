@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2017 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -90,7 +90,7 @@ Examples
 
    for a shell build, or
 
-    emscripten/tools/reproduceriter.py bb bench js/game-setup.js 
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js
 
    for a browser build. Since only a browser build can do recording, you would normally
    make a browser build, record a trace, then make a shell build and copy the trace
@@ -109,7 +109,10 @@ Notes
 '''
 
 from __future__ import print_function
-import os, sys, shutil, re
+import os
+import re
+import sys
+import shutil
 
 assert len(sys.argv) >= 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS [WINDOW_LOCATION]'
 
@@ -145,8 +148,8 @@ for parent, dirs, files in os.walk(out_dir):
       fullname = os.path.join(parent, filename)
       print('   ', fullname)
       js = open(fullname).read()
-      js = re.sub('document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js)
-      js = re.sub('''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')', js)
+      js = re.sub(r'document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js)
+      js = re.sub(r'''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')', js)
       open(fullname, 'w').write(js)
 
 # Add our boilerplate
@@ -162,4 +165,3 @@ open(os.path.join(out_dir, first_js), 'w').write(
 )
 
 print('done!')
-

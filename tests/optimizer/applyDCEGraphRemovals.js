@@ -1,5 +1,5 @@
 var name;
-Module.asmLibraryArg = { 'save1': 1, 'number': 33, 'name': name, 'func': function() {}, 'save2': 2 };
+var asmLibraryArg = { 'save1': 1, 'number': 33, 'name': name, 'func': function() {}, 'save2': 2 };
 
 // exports gotten directly
 var expD1 = Module['expD1'] = asm['expD1'];

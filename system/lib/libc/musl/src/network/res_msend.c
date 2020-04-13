@@ -16,7 +16,11 @@
 
 static void cleanup(void *p)
 {
+#ifdef __EMSCRIPTEN__
+	__wasi_fd_close((intptr_t)p);
+#else
 	__syscall(SYS_close, (intptr_t)p);
+#endif
 }
 
 static unsigned long mtime()

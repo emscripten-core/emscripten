@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <emscripten.h>
 
@@ -13,37 +14,20 @@
 #define RANDOM_ITERS 12345
 #endif
 
-extern void emmalloc_blank_slate_from_orbit();
-
-// Test emmalloc internals, but through the external interface. We expect
-// very specific outputs here based on the internals, this test would not
-// pass in another malloc.
-
-void* check_where_we_would_malloc(size_t size) {
-  void* temp = malloc(size);
-  free(temp);
-  return temp;
-}
-
-void check_where_we_would_malloc(size_t size, void* expected) {
-  void* temp = malloc(size);
-  assert(temp == expected);
-  free(temp);
-}
+extern "C" void emmalloc_blank_slate_from_orbit();
 
 void stage(const char* name) {
   EM_ASM({
-    out('\n>> ' + Pointer_stringify($0) + '\n');
+    out('\n>> ' + UTF8ToString($0) + '\n');
   }, name);
 }
-
-const size_t ALLOCATION_UNIT = 8;
 
 void basics() {
   stage("basics");
   stage("allocate 0");
   void* ptr = malloc(0);
-  assert(ptr == 0);
+  assert(ptr != 0);
+  free(ptr);
   stage("allocate 100");
   void* first = malloc(100);
   stage("free 100");
@@ -53,82 +37,30 @@ void basics() {
   stage("allocate 10");
   assert(second == first);
   void* third = malloc(10);
-  assert(size_t(third) == size_t(first) + ((100 + ALLOCATION_UNIT - 1)&(-ALLOCATION_UNIT)) + ALLOCATION_UNIT); // allocation units are multiples of ALLOCATION_UNIT
+  assert(!emmalloc_validate_memory_regions());
   stage("allocate 10 more");
   void* four = malloc(10);
-  assert(size_t(four) == size_t(third) + (2*ALLOCATION_UNIT) + ALLOCATION_UNIT); // payload (10 = 2 allocation units) and metadata
+  assert(!emmalloc_validate_memory_regions());
   stage("free the first");
   free(second);
-  stage("several temp alloc/frees");
-  // we reuse the first area, despite stuff later.
-  for (int i = 0; i < 4; i++) {
-    check_where_we_would_malloc(100, first);
-  }
   stage("free all");
   free(third);
   free(four);
-  stage("allocate various sizes to see they all start at the start");
-  for (int i = 1; i < 1500; i++) {
-    check_where_we_would_malloc(i, first);
-  }
-}
-
-void blank_slate() {
-  stage("blank_slate");
-  emmalloc_blank_slate_from_orbit();
-  void* ptr = malloc(0);
-  free(ptr);
-  for (int i = 0; i < 3; i++) {
-    void* two = malloc(0);
-    assert(two == ptr);
-    free(two);
-  }
-  for (int i = 0; i < 3; i++) {
-    emmalloc_blank_slate_from_orbit();
-    void* two = malloc(0);
-    assert(two == ptr);
-    free(two);
-  }
+  assert(!emmalloc_validate_memory_regions());
 }
 
 void previous_sbrk() {
   stage("previous_sbrk");
   emmalloc_blank_slate_from_orbit();
   void* old = sbrk(0);
-  assert((size_t)old % ALLOCATION_UNIT == 0);
+  assert((size_t)old % 4 == 0);
   sbrk(3); // unalign things
   void* other = malloc(10);
   free(other);
   assert(other != old);
-  assert((char*)other == (char*)old + 2 * ALLOCATION_UNIT);
 }
 
-void min_alloc() {
-  stage("min_alloc");
-  emmalloc_blank_slate_from_orbit();
-  void* start = check_where_we_would_malloc(1);
-  for (int i = 1; i < 100; i++) {
-    void* temp = malloc(i);
-    void* expected = (char*)start + ALLOCATION_UNIT + ALLOCATION_UNIT * ((i + ALLOCATION_UNIT - 1) / ALLOCATION_UNIT);
-    check_where_we_would_malloc(1, expected);
-    free(temp);
-  }
-}
-
-void space_at_end() {
-  stage("space_at_end");
-  emmalloc_blank_slate_from_orbit();
-  void* start = check_where_we_would_malloc(1);
-  for (int i = 1; i < 50; i++) {
-    for (int j = 1; j < 50; j++) {
-      void* temp = malloc(i);
-      free(temp);
-      check_where_we_would_malloc(j, start);
-    }
-  }
-}
-
-void calloc() {
+void test_calloc() {
   stage("calloc");
   emmalloc_blank_slate_from_orbit();
   char* ptr = (char*)malloc(10);
@@ -139,11 +71,11 @@ void calloc() {
   assert(ptr[0] == 0);
 }
 
-void realloc() {
+void test_realloc() {
   stage("realloc0");
   emmalloc_blank_slate_from_orbit();
   for (int i = 0; i < 2; i++) {
-    char* ptr = (char*)malloc(10);
+    char* ptr = (char*)malloc(100);
     stage("realloc0.1");
     char* raptr = (char*)realloc(ptr, 1);
     assert(raptr == ptr);
@@ -165,18 +97,16 @@ void realloc() {
   }
   stage("realloc1");
   emmalloc_blank_slate_from_orbit();
-  {
-    // realloc of NULL is like malloc
-    void* ptr = check_where_we_would_malloc(10);
-    assert(realloc(NULL, 10) == ptr);
-  }
+
+  // realloc of NULL is like malloc
+  assert(realloc(NULL, 10) != 0);
+
   stage("realloc2");
   emmalloc_blank_slate_from_orbit();
   {
     // realloc to 0 is like free
     void* ptr = malloc(10);
     assert(realloc(ptr, 0) == NULL);
-    assert(check_where_we_would_malloc(10) == ptr);
   }
   stage("realloc3");
   emmalloc_blank_slate_from_orbit();
@@ -202,11 +132,11 @@ void realloc() {
 }
 
 void check_aligned(size_t align, size_t ptr) {
-  if (align < 4 || ((align & (align - 1)) != 0)) {
+  if (align != 0 && ((align & (align - 1)) != 0)) {
     assert(ptr == 0);
   } else {
     assert(ptr);
-    assert(ptr % align == 0);
+    assert(align == 0 || ptr % align == 0);
   }
 }
 
@@ -227,7 +157,7 @@ void aligned() {
 void randoms() {
   stage("randoms");
   emmalloc_blank_slate_from_orbit();
-  void* start = check_where_we_would_malloc(10);
+  void* start = malloc(10);
   const int N = 1000;
   const int BINS = 128;
   void* bins[BINS];
@@ -282,20 +212,16 @@ void randoms() {
   for (int i = 0; i < BINS; i++) {
     if (bins[i]) free(bins[i]);
   }
-  // it's all freed, should be a blank slate
-  assert(check_where_we_would_malloc(10) == start);
+  assert(!emmalloc_validate_memory_regions());
 }
 
 int main() {
   stage("beginning");
 
   basics();
-  blank_slate();
   previous_sbrk();
-  min_alloc();
-  space_at_end();
-  calloc();
-  realloc();
+  test_calloc();
+  test_realloc();
   aligned();
   randoms();
 

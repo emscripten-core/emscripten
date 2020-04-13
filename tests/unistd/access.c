@@ -33,8 +33,9 @@ int main() {
     FS.writeFile('allaccess', ''); FS.chmod('allaccess', 0777);
   );
 #endif
+  // Empty path checks #9136 fix
   char* files[] = {"readable", "writeable",
-                   "allaccess", "forbidden", "nonexistent"};
+                   "allaccess", "forbidden", "nonexistent", ""};
   for (int i = 0; i < sizeof files / sizeof files[0]; i++) {
     printf("F_OK(%s): %d\n", files[i], access(files[i], F_OK));
     printf("errno: %d\n", errno);
@@ -50,6 +51,17 @@ int main() {
     errno = 0;
     printf("\n");
   }
+
+  EM_ASM({FS.writeFile('filetorename',  'renametest');});
+  
+  rename("filetorename", "renamedfile");
+
+  errno = 0;
+  printf("F_OK(%s): %d\n", "filetorename", access("filetorename", F_OK));
+  printf("errno: %d\n", errno);
+  errno = 0;
+  printf("F_OK(%s): %d\n", "renamedfile", access("renamedfile", F_OK));
+  printf("errno: %d\n", errno);
 
 #ifndef __EMSCRIPTEN_ASMFS__
   // Restore full permissions on all created files so that python test runner rmtree

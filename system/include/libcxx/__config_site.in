@@ -1,9 +1,8 @@
 //===----------------------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -14,6 +13,7 @@
 #cmakedefine _LIBCPP_ABI_UNSTABLE
 #cmakedefine _LIBCPP_ABI_FORCE_ITANIUM
 #cmakedefine _LIBCPP_ABI_FORCE_MICROSOFT
+#cmakedefine _LIBCPP_HIDE_FROM_ABI_PER_TU_BY_DEFAULT
 #cmakedefine _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
 #cmakedefine _LIBCPP_HAS_NO_STDIN
 #cmakedefine _LIBCPP_HAS_NO_STDOUT
@@ -23,9 +23,12 @@
 #cmakedefine _LIBCPP_HAS_MUSL_LIBC
 #cmakedefine _LIBCPP_HAS_THREAD_API_PTHREAD
 #cmakedefine _LIBCPP_HAS_THREAD_API_EXTERNAL
+#cmakedefine _LIBCPP_HAS_THREAD_API_WIN32
 #cmakedefine _LIBCPP_HAS_THREAD_LIBRARY_EXTERNAL
 #cmakedefine _LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS
 #cmakedefine _LIBCPP_NO_VCRUNTIME
+#cmakedefine01 _LIBCPP_HAS_MERGED_TYPEINFO_NAMES_DEFAULT
+#cmakedefine _LIBCPP_ABI_NAMESPACE @_LIBCPP_ABI_NAMESPACE@
 
 @_LIBCPP_ABI_DEFINES@
 

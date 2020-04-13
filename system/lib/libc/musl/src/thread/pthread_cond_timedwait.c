@@ -80,6 +80,13 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 	int e, seq, clock = c->_c_clock, cs, shared=0, oldstate, tmp;
 	volatile int *fut;
 
+#ifdef __EMSCRIPTEN__
+	// TODO: Optimize this away in MINIMAL_RUNTIME.
+	if (pthread_self() == emscripten_main_browser_thread_id()) {
+		emscripten_check_blocking_allowed();
+	}
+#endif
+
 	if ((m->_m_type&15) && (m->_m_lock&INT_MAX) != __pthread_self()->tid)
 		return EPERM;
 

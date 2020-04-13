@@ -262,7 +262,9 @@ state of the request.
 The emscripten_fetch_attr_t object has a timeoutMSecs field which allows
 specifying a timeout duration for the transfer. Additionally,
 emscripten_fetch_close() can be called at any time for asynchronous and waitable
-fetches to abort the download. The following example illustrates these fields
+fetches to abort the download (this is currently broken, see `#8234
+<https://github.com/emscripten-core/emscripten/issues/8234>`_).
+The following example illustrates these fields
 and the onprogress handler.
 
 .. code-block:: cpp
@@ -314,6 +316,8 @@ size, but will not contain the data bytes to the file.
 
 Streaming Downloads
 -------------------
+
+Note: This currently only works in Firefox as it uses 'moz-chunked-arraybuffer'.
 
 If the application does not need random seek access to the file, but is able to
 process the file in a streaming manner, it can use the

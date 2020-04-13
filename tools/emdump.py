@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2018 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -25,6 +25,32 @@ diffing_two_data_sets = False
 
 # Global command line options
 options = None
+
+# Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
+def which(program):
+  def is_exe(fpath):
+    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+  fpath, fname = os.path.split(program)
+  if fpath:
+    if is_exe(program):
+      return program
+  else:
+    for path in os.environ["PATH"].split(os.pathsep):
+      path = path.strip('"')
+      exe_file = os.path.join(path, program)
+      if is_exe(exe_file):
+        return exe_file
+
+      if os.name == 'nt' and '.' not in fname:
+        if is_exe(exe_file + '.exe'):
+          return exe_file + '.exe'
+        if is_exe(exe_file + '.cmd'):
+          return exe_file + '.cmd'
+        if is_exe(exe_file + '.bat'):
+          return exe_file + '.bat'
+
+  return None
 
 # Given a string s and an index i, counts how many times character ch is repeated looking backwards at s[i], s[i-1], s[i-2], s[i-3], ...
 def rcount(s, ch, i):
@@ -114,10 +140,20 @@ def is_javascript_symbol_char(ch):
   i = ord(ch)
   return (i >= 97 and i <= 122) or (i >= 65 and i <= 90) or (i >= 48 and i <= 57) or i == 36 or i == 95 # a-z, A-Z, 0-9, $, _
 
+def cxxfilt():
+  filt = which('llvm-cxxfilt')
+  if filt:
+    return filt
+  return which('c++filt')
+
 # Runs the given symbols list through c++filt to demangle.
 def cpp_demangle(symbols):
   try:
-    proc = subprocess.Popen(['c++filt', '--strip-underscore'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    filt = cxxfilt()
+    if not filt:
+      print('"llvm-cxxfilt" or "c++filt" executable is not found, demangled symbol names will not be available')
+      return ''
+    proc = subprocess.Popen([cxxfilt(), '--strip-underscore'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     output = proc.communicate(input=symbols)
     return output[0].replace('\r\n', '\n')
   except Exception as e:
@@ -137,24 +173,28 @@ def merge_entry_to_existing(existing_data, new_entry, total_source_set_size):
   name = new_entry['unminified_name']
   if name in existing_data:
     ex = existing_data[name]
+    num_times_occurs_1 = ex['num_times_occurs'] if 'num_times_occurs' in ex else 1
+    num_times_occurs_2 = new_entry['num_times_occurs'] if 'num_times_occurs' in new_entry else 1
     existing_data[name] = {
       'lines': ex['lines'] + new_entry['lines'],
       'bytes': ex['bytes'] + new_entry['bytes'],
+      'demangled_name': ex['demangled_name'] if 'demangled_name' in ex else (new_entry['demangled_name'] if 'demangled_name' in new_entry else new_entry['minified_name']),
       'minified_name': ex['minified_name'],
       'unminified_name': ex['unminified_name'],
       'function_parameters': ex['function_parameters'],
       'type': ex['type'],
-      'percentage': (ex['bytes'] + new_entry['bytes']) * 100.0 / total_source_set_size
+      'percentage': (ex['bytes'] + new_entry['bytes']) * 100.0 / total_source_set_size,
+      'num_times_occurs': num_times_occurs_1 + num_times_occurs_2
     }
   else:
     existing_data[name] = new_entry
 
-def merge_to_data_set(to_set, from_set, from_set_filename, total_source_set_size):
+def merge_to_data_set(to_set, from_set, total_source_set_size):
   for key, value in from_set.items():
     if diffing_two_data_sets:
       merge_entry_to_existing(to_set, value, total_source_set_size)
     else:
-      if key in to_set: key = from_set_filename + '__' + key
+      if key in to_set: key = s + '__' + key
       to_set[key] = value
 
 # Builds up a dataset of functions and variables in the given JavaScript file (JS or asm.js)
@@ -164,9 +204,9 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
   parse_pos = 0
   prev_end_pos = 0
   file_len = len(file_contents)
-  func_regex = re.compile('function\s+([\w$]+)\s*\(([\w\s$,]*?)\)\s*{') # Search for "function foo (param1, param2, ..., paranN) {"
-  var_block_regex = re.compile('var\s+(\w+)\s*=\s*([{\[\(])') # Search for "var foo = {"
-  var_regex = re.compile('var\s+([\w]+)\s*=\s*[\w\s,]*?;') # Search for "var foo = .... ;"
+  func_regex = re.compile(r'function\s+([\w$]+)\s*\(([\w\s$,]*?)\)\s*{') # Search for "function foo (param1, param2, ..., paranN) {"
+  var_block_regex = re.compile(r'var\s+(\w+)\s*=\s*([{\[\(])') # Search for "var foo = {"
+  var_regex = re.compile(r'var\s+([\w]+)\s*=\s*[\w\s,]*?;') # Search for "var foo = .... ;"
   unaccounted_bytes = 0
   unaccounted_lines = 0
 
@@ -322,7 +362,7 @@ def analyze_html_file(filename, total_source_set_size, symbol_map=None):
       unaccounted_bytes += script_pos - parse_pos
       unaccounted_lines += file_contents.count('\n', parse_pos, script_pos) + 1
     data_set = analyze_javascript_file_contents(filename, file_contents[script_pos:script_end_pos], total_source_set_size, symbol_map)
-    merge_to_data_set(data, data_set, filename, total_source_set_size)
+    merge_to_data_set(data, data_set, total_source_set_size)
     parse_pos = script_end_pos
 
   if file_len > parse_pos:
@@ -395,6 +435,26 @@ def uniq_compare(data1, data2):
   print('set 2 has {} lines {} than set 1 overall in unique functions'.format(abs(uniqlinediff), linesword))
   print('set 2 has {} bytes {} than set 1 overall in unique functions'.format(str(abs(uniqbytediff)), bytesword))
 
+# Use a bunch of regexps to simplify the demangled name
+DEM_RE = None
+def simplify_cxx_name(name):
+  global DEM_RE
+  if DEM_RE is None:
+    DEM_RE = []
+    string_m = re.compile(r'std::__2::basic_string<char, std::__2::char_traits<char>, std::__2::allocator<char> >')
+    DEM_RE.append(lambda s: string_m.sub(r'std::string', s))
+    vec_m = re.compile(r'std::__2::vector<([^,]+), std::__2::allocator<\1\s*> >')
+    DEM_RE.append(lambda s: vec_m.sub(r'std::vector<\1>', s))
+    unordered_map_m = re.compile(r'std::__2::unordered_map<([^,]+), ([^,]+), std::__2::hash<\1\s*>, std::__2::equal_to<\1\s*>, std::__2::allocator<std::__2::pair<\1 const, \2> > >')
+    DEM_RE.append(lambda s: unordered_map_m.sub(r'std::unordered_map<\1, \2>', s))
+    sort_m = re.compile(r'std::__2::__sort<std::__2::__less<([^,]+), \1\s*>&, \1\*>\(\1\*, \1\*, std::__2::__less<\1, \1\s*>&\)')
+    DEM_RE.append(lambda s: sort_m.sub(r'std::sort(\1*, \1*)', s))
+    DEM_RE.append(lambda s: s.replace('std::__2::', 'std::'))
+
+  for dem in DEM_RE:
+    name = dem(name)
+  return name
+
 # 'foo(int, float)' -> 'foo'
 def function_args_removed(s):
   if '(' in s: return s[:s.find('(')]
@@ -421,10 +481,14 @@ def print_symbol_info(data, total_source_set_size):
     if options.only_unique_1 and e['in_set_2']: continue
     if options.only_unique_2 and e['in_set_1']: continue
     if options.only_common and (not e['in_set_1'] or not e['in_set_2']): continue
-    if max(e['bytes'], e['prev_bytes'] if 'prev_bytes' in e else 0) < options.filter_size: continue
+    prev_bytes = e['prev_bytes'] if 'prev_bytes' in e else 0
+    if max(e['bytes'], prev_bytes) < options.filter_size: continue
+    if e['bytes'] == prev_bytes and options.only_changes: continue
 
     minified_name = e['minified_name']
     demangled_name = e['demangled_name']
+    if options.simplify_cxx:
+      demangled_name = simplify_cxx_name(demangled_name)
 
     if not '(' in demangled_name and 'js' in e['type']: demangled_name_with_args = demangled_name + '(' + e['function_parameters'] + ')'
     else: demangled_name_with_args = demangled_name
@@ -470,6 +534,8 @@ def print_symbol_info(data, total_source_set_size):
       i += 1
 
     print_name = ' ; '.join(print_name)
+    if 'num_times_occurs' in e:
+      print_name = '[' + str(e['num_times_occurs']) + ' times] ' + print_name
     delta_string = ' %+8d (%+6.2f%%)' % (e['bytes'] - e['prev_bytes'], e['percentage'] - e['prev_percentage']) if diffing_two_data_sets else ''
     print('%6d lines %7s (%5.2f%%) %s: %8s %s' % (e['lines'], str(e['bytes']), e['percentage'], delta_string, e['type'], print_name))
 
@@ -546,6 +612,69 @@ def diff_data_sets(data1, data2):
     diffed_data[k] = e
   return diffed_data
 
+# Given string s and start index that contains a (, {, <, [, ", or ', finds forward the index where the token closes (taking nesting into account)
+def find_index_of_closing_token(s, start):
+  start_ch = s[start]
+  if start_ch == '(': end_ch = ')'
+  elif start_ch == '{': end_ch = '}'
+  elif start_ch == '<': end_ch = '>'
+  elif start_ch == '[': end_ch = ']'
+  elif start_ch == '"': end_ch = '"'
+  elif start_ch == "'": end_ch = "'"
+  else:
+    raise Exception('Unknown start token ' + start_ch + ', string ' + s + ', start ' + start)
+
+  i = start + 1
+  nesting_count = 1
+  while i < len(s):
+    if s[i] == end_ch:
+      nesting_count -= 1
+      if nesting_count <= 0:
+        return i
+    elif s[i] == start_ch:
+      nesting_count += 1
+    i += 1
+  return i
+
+def compute_templates_collapsed_name(demangled_name):
+  i = 0
+  generic_template_name = 'T'
+  type_names = {}
+  while True:
+    i = demangled_name.find('<', i)
+    if i < 0:
+      return demangled_name
+
+    end = find_index_of_closing_token(demangled_name, i)
+    if end < 0:
+      return demangled_name
+
+    i += 1
+    template_type = demangled_name[i:end]
+    if template_type in type_names:
+      template_name = type_names[template_type]
+    else:
+      template_name = generic_template_name
+      type_names[template_type] = generic_template_name
+      generic_template_name = chr(ord(generic_template_name) + 1)
+
+    demangled_name = demangled_name[:i] + template_name + demangled_name[end:]
+
+def collapse_templates(data_set, total_source_set_size, no_function_args):
+  collapsed_data_set = {}
+  keys = data_set.keys()
+  for k in keys:
+    e = data_set[k]
+    if 'demangled_name' in e:
+      demangled_name = compute_templates_collapsed_name(e['demangled_name'])
+      if no_function_args: demangled_name = function_args_removed(demangled_name)
+      e['demangled_name'] = e['unminified_name'] = demangled_name
+    merge_entry_to_existing(collapsed_data_set, e, total_source_set_size)
+  return collapsed_data_set
+
+def print_function_args(options):
+  return 'D' in options.print_format or 'U' in options.print_format or 'M' in options.print_format
+
 def main():
   global options, diffing_two_data_sets
   usage_str = "emdump.py prints out statistics about compiled code sizes.\npython emdump.py --file a.js [--file2 b.js]"
@@ -581,6 +710,9 @@ def main():
   parser.add_argument('--only-common', dest='only_common', action='store_true', default=False,
     help='If two data sets are specified, prints out only the symbols that are common to both data sets')
 
+  parser.add_argument('--only-changes', dest='only_changes', action='store_true', default=False,
+    help='If two data sets are specified, prints out only the symbols that have changed size or are added/removed')
+
   parser.add_argument('--only-summarize', dest='only_summarize', action='store_true', default=False,
     help='If specified, detailed information about each symbol is not printed, but only summary data is shown.')
 
@@ -598,6 +730,12 @@ def main():
 
   parser.add_argument('--sort-ascending', dest='sort_ascending', action='store_true', default=False,
     help='If true, reverses the sorting order to be ascending instead of default descending.')
+
+  parser.add_argument('--simplify-cxx', dest='simplify_cxx', action='store_true', default=False,
+    help='Simplify C++ STL types as much as possible in the output')
+
+  parser.add_argument('--group-templates', dest='group_templates', action='store_true', default=False,
+    help='Group/collapse all C++ templates with Foo<asdf> and Foo<qwer> to generic Foo<T>')
 
   options = parser.parse_args(sys.argv[1:])
   options.file = options.file + options.file1
@@ -646,16 +784,20 @@ def main():
   data1 = {}
   for s in options.file:
     data = analyze_source_file(s, set1_size, symbol_map1)
-    merge_to_data_set(data1, data, s, set1_size)
+    merge_to_data_set(data1, data, set1_size)
 
   set2_size = count_file_set_size(options.file2)
   data2 = {}
   for s in options.file2:
     data = analyze_source_file(s, set2_size, symbol_map2)
-    merge_to_data_set(data2, data, s, set2_size)
+    merge_to_data_set(data2, data, set2_size)
 
   find_demangled_names(data1)
   find_demangled_names(data2)
+
+  if options.group_templates:
+    data1 = collapse_templates(data1, set1_size, not print_function_args(options))
+    data2 = collapse_templates(data2, set2_size, not print_function_args(options))
 
   if diffing_two_data_sets:
     diffed_data = diff_data_sets(data1, data2)

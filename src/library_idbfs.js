@@ -1,7 +1,8 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 mergeInto(LibraryManager.library, {
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
@@ -106,7 +107,7 @@ mergeInto(LibraryManager.library, {
           check.push.apply(check, FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
         }
 
-        entries[path] = { timestamp: stat.mtime };
+        entries[path] = { 'timestamp': stat.mtime };
       }
 
       return callback(null, { type: 'local', entries: entries });
@@ -134,7 +135,7 @@ mergeInto(LibraryManager.library, {
               return callback(null, { type: 'remote', db: db, entries: entries });
             }
 
-            entries[cursor.primaryKey] = { timestamp: cursor.key };
+            entries[cursor.primaryKey] = { 'timestamp': cursor.key };
 
             cursor.continue();
           };
@@ -155,28 +156,28 @@ mergeInto(LibraryManager.library, {
       }
 
       if (FS.isDir(stat.mode)) {
-        return callback(null, { timestamp: stat.mtime, mode: stat.mode });
+        return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode });
       } else if (FS.isFile(stat.mode)) {
         // Performance consideration: storing a normal JavaScript array to a IndexedDB is much slower than storing a typed array.
         // Therefore always convert the file contents to a typed array first before writing the data to IndexedDB.
         node.contents = MEMFS.getFileDataAsTypedArray(node);
-        return callback(null, { timestamp: stat.mtime, mode: stat.mode, contents: node.contents });
+        return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode, 'contents': node.contents });
       } else {
         return callback(new Error('node type not supported'));
       }
     },
     storeLocalEntry: function(path, entry, callback) {
       try {
-        if (FS.isDir(entry.mode)) {
-          FS.mkdir(path, entry.mode);
-        } else if (FS.isFile(entry.mode)) {
-          FS.writeFile(path, entry.contents, { canOwn: true });
+        if (FS.isDir(entry['mode'])) {
+          FS.mkdir(path, entry['mode']);
+        } else if (FS.isFile(entry['mode'])) {
+          FS.writeFile(path, entry['contents'], { canOwn: true });
         } else {
           return callback(new Error('node type not supported'));
         }
 
-        FS.chmod(path, entry.mode);
-        FS.utime(path, entry.timestamp, entry.timestamp);
+        FS.chmod(path, entry['mode']);
+        FS.utime(path, entry['timestamp'], entry['timestamp']);
       } catch (e) {
         return callback(e);
       }
@@ -230,7 +231,7 @@ mergeInto(LibraryManager.library, {
       Object.keys(src.entries).forEach(function (key) {
         var e = src.entries[key];
         var e2 = dst.entries[key];
-        if (!e2 || e.timestamp > e2.timestamp) {
+        if (!e2 || e['timestamp'] > e2['timestamp']) {
           create.push(key);
           total++;
         }
@@ -251,27 +252,26 @@ mergeInto(LibraryManager.library, {
       }
 
       var errored = false;
-      var completed = 0;
       var db = src.type === 'remote' ? src.db : dst.db;
       var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
       var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
 
       function done(err) {
-        if (err) {
-          if (!done.errored) {
-            done.errored = true;
-            return callback(err);
-          }
-          return;
-        }
-        if (++completed >= total) {
-          return callback(null);
+        if (err && !errored) {
+          errored = true;
+          return callback(err);
         }
       };
 
       transaction.onerror = function(e) {
         done(this.error);
         e.preventDefault();
+      };
+
+      transaction.oncomplete = function(e) {
+        if (!errored) {
+          callback(null);
+        }
       };
 
       // sort paths in ascending order so directory entries are created

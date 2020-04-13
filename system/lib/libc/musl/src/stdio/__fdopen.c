@@ -25,8 +25,10 @@ FILE *__fdopen(int fd, const char *mode)
 	/* Impose mode restrictions */
 	if (!strchr(mode, '+')) f->flags = (*mode == 'r') ? F_NOWR : F_NORD;
 
+#ifndef __EMSCRIPTEN__ // CLOEXEC makes no sense for a single process
 	/* Apply close-on-exec flag */
 	if (strchr(mode, 'e')) __syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
+#endif
 
 	/* Set append mode on fd if opened for append */
 	if (*mode == 'a') {

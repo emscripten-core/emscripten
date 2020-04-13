@@ -1,10 +1,9 @@
 // -*- C++ -*-
 //===-------------------- support/win32/locale_win32.cpp ------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -12,6 +11,8 @@
 #include <cstdarg> // va_start, va_end
 #include <memory>
 #include <type_traits>
+
+int __libcpp_vasprintf(char **sptr, const char *__restrict fmt, va_list ap);
 
 using std::__libcpp_locale_guard;
 
@@ -86,10 +87,17 @@ int wctob_l( wint_t c, locale_t loc )
 
 int snprintf_l(char *ret, size_t n, locale_t loc, const char *format, ...)
 {
-    __libcpp_locale_guard __current(loc);
     va_list ap;
     va_start( ap, format );
+#if defined(_LIBCPP_MSVCRT)
+    // FIXME: Remove usage of internal CRT function and globals.
+    int result = __stdio_common_vsprintf(
+        _CRT_INTERNAL_LOCAL_PRINTF_OPTIONS | _CRT_INTERNAL_PRINTF_STANDARD_SNPRINTF_BEHAVIOR,
+        ret, n, format, loc, ap);
+#else
+    __libcpp_locale_guard __current(loc);
     int result = vsnprintf( ret, n, format, ap );
+#endif
     va_end(ap);
     return result;
 }
@@ -105,7 +113,7 @@ int asprintf_l( char **ret, locale_t loc, const char *format, ... )
 int vasprintf_l( char **ret, locale_t loc, const char *format, va_list ap )
 {
     __libcpp_locale_guard __current(loc);
-    return vasprintf( ret, format, ap );
+    return __libcpp_vasprintf( ret, format, ap );
 }
 
 #if !defined(_LIBCPP_MSVCRT)

@@ -55,6 +55,8 @@ void ready(void *arg, const char *fileName) {
     free((void*)seenName); // As the API docs say, we are responsible for freeing the 'fake' names we are given
 
     SDL_Flip(screen);
+
+    EM_ASM({ doReftest() });
   }
 }
 

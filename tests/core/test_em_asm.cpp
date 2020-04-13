@@ -20,9 +20,9 @@ int main() {
 #define TEST() \
   FUNC({ out("  takes ints: " + $0);}, 5); \
   FUNC({ out("  takes doubles: " + $0);}, 5.0675); \
-  FUNC({ out("  takes strings: " + Pointer_stringify($0)); return 7.75; }, "string arg"); \
+  FUNC({ out("  takes strings: " + UTF8ToString($0)); return 7.75; }, "string arg"); \
   FUNC({ out("  takes multiple ints: " + $0 + ", " + $1); return 6; }, 5, 7); \
-  FUNC({ out("  mixed arg types: " + $0 + ", " + Pointer_stringify($1) + ", " + $2); return 8.125; }, 3, "hello", 4.75); \
+  FUNC({ out("  mixed arg types: " + $0 + ", " + UTF8ToString($1) + ", " + $2); return 8.125; }, 3, "hello", 4.75); \
   FUNC({ out("  ignores unused args"); return 5.5; }, 0);     \
   FUNC({ out("  skips unused args: " + $1); return 6; }, 5, 7); \
   FUNC({ out("  " + $0 + " + " + $2); return $0 + $2; }, 5.5, 7.0, 14.375);

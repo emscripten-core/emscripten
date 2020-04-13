@@ -102,14 +102,14 @@ int main()
   i = EM_ASM_INT("{console.log('5. got int ' + $0); return 7.5;}", 42); printf("5. returned int %d\n", i);
 
   printf("\nEM_ASM_INT: Return an integer in a single brief statement.\n");
-  i = EM_ASM_INT(return TOTAL_MEMORY); printf("1. returned statement %d\n", i);
-  i = EM_ASM_INT("return TOTAL_MEMORY+1"); printf("2. returned statement %d\n", i);
-  i = EM_ASM_INT({"return TOTAL_MEMORY+2"}); printf("3. returned statement %d\n", i);
-  i = EM_ASM_INT({return TOTAL_MEMORY+3}); printf("4. returned statement %d\n", i);
-  i = EM_ASM_INT("return TOTAL_MEMORY+4"); printf("5. returned statement %d\n", i);
+  i = EM_ASM_INT(return HEAP8.length); printf("1. returned statement %d\n", i);
+  i = EM_ASM_INT("return HEAP8.length+1"); printf("2. returned statement %d\n", i);
+  i = EM_ASM_INT({"return HEAP8.length+2"}); printf("3. returned statement %d\n", i);
+  i = EM_ASM_INT({return HEAP8.length+3}); printf("4. returned statement %d\n", i);
+  i = EM_ASM_INT("return HEAP8.length+4"); printf("5. returned statement %d\n", i);
 
   // Note that expressions do not evaluate to return values, but the "return" keyword is needed. That is, the following line would return undefined and store i <- 0.
-  // i = EM_ASM_INT(TOTAL_MEMORY); printf("returned statement %d\n", i);
+  // i = EM_ASM_INT(HEAP8.length); printf("returned statement %d\n", i);
 
   double d;
 

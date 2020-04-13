@@ -101,7 +101,7 @@ void encode(int size, const char* str, int* out_size, char** output) {
   *out_size = out - *output;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
   int TRIES;
 
   int arg = argc > 1 ? argv[1][0] - '0' : 3;
@@ -150,5 +150,6 @@ int main(int argc, char *argv[]) {
     free(str3);
   }
   printf("decode: %d, %.2f\n", s, (float)(clock() - t)/CLOCKS_PER_SEC);
+  return 0;
 }
 

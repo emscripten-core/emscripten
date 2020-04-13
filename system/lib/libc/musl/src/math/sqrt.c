@@ -82,6 +82,11 @@ static const double tiny = 1.0e-300;
 
 double sqrt(double x)
 {
+// XXX EMSCRIPTEN: on wasm backend, use the wasm instruction via clang builtin
+// See https://github.com/emscripten-core/emscripten/issues/9236
+#ifdef __wasm__
+	return __builtin_sqrt(x);
+#else
 	double z;
 	int32_t sign = (int)0x80000000;
 	int32_t ix0,s0,q,m,t,i;
@@ -182,4 +187,5 @@ double sqrt(double x)
 	ix0 += m << 20;
 	INSERT_WORDS(z, ix0, ix1);
 	return z;
+#endif
 }

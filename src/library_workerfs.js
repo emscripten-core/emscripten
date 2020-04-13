@@ -1,7 +1,8 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 mergeInto(LibraryManager.library, {
   $WORKERFS__deps: ['$FS'],
@@ -76,7 +77,7 @@ mergeInto(LibraryManager.library, {
       getattr: function(node) {
         return {
           dev: 1,
-          ino: undefined,
+          ino: node.id,
           mode: node.mode,
           nlink: 1,
           uid: 0,
@@ -99,19 +100,19 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       },
       mknod: function (parent, name, mode, dev) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       rename: function (oldNode, newDir, newName) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       unlink: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       rmdir: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readdir: function(node) {
         var entries = ['.', '..'];
@@ -124,10 +125,10 @@ mergeInto(LibraryManager.library, {
         return entries;
       },
       symlink: function(parent, newName, oldPath) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readlink: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
     },
     stream_ops: {
@@ -139,19 +140,19 @@ mergeInto(LibraryManager.library, {
         return chunk.size;
       },
       write: function (stream, buffer, offset, length, position) {
-        throw new FS.ErrnoError(ERRNO_CODES.EIO);
+        throw new FS.ErrnoError({{{ cDefine('EIO') }}});
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.size;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         return position;
       },

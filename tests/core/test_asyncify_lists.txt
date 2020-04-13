@@ -1,0 +1,8 @@
+baz
+foo: 1
+bar: 2
+c++: 3
+c_baz
+foo: 1
+bar: 2
+c++: 3

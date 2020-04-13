@@ -30,8 +30,8 @@ interface Child2 {
   void virtualFunc2();
   void virtualFunc3(long x);
   void virtualFunc4(long x);
-  static void runVirtualFunc(Child2 self);
-  static void runVirtualFunc3(Child2 self, long x);
+  static void runVirtualFunc(Child2 myself);
+  static void runVirtualFunc3(Child2 myself, long x);
 };
 
 Child2 implements Parent;
@@ -90,6 +90,16 @@ interface Inner {
   [Operator="*=", Ref] Inner mul(float x);
   [Operator="[]"] long getAsArray(long x);
   [Operator="+="] void incInPlace([Const, Ref] Inner i);
+};
+
+[Prefix = "Space::"]
+interface InnerUserBase {
+};
+
+[JSImplementation = "InnerUserBase"]
+interface InnerUser {
+  void InnerUser();
+  void Callback(Inner inner);
 };
 
 enum AnEnum {
@@ -155,3 +165,7 @@ interface StoreArray {
   long getArrayValue(long index);
 };
 
+interface LongLongTypes {
+  readonly attribute unsigned long long[] lluArray;
+  attribute long long ll;
+};

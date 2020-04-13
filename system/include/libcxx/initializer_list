@@ -1,10 +1,9 @@
 // -*- C++ -*-
 //===----------------------- initializer_list -----------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -61,7 +60,7 @@ class _LIBCPP_TEMPLATE_VIS initializer_list
     const _Ep* __begin_;
     size_t    __size_;
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR_AFTER_CXX11
     initializer_list(const _Ep* __b, size_t __s) _NOEXCEPT
         : __begin_(__b),
@@ -76,19 +75,19 @@ public:
     typedef const _Ep* iterator;
     typedef const _Ep* const_iterator;
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR_AFTER_CXX11
     initializer_list() _NOEXCEPT : __begin_(nullptr), __size_(0) {}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR_AFTER_CXX11
     size_t    size()  const _NOEXCEPT {return __size_;}
-    
-    _LIBCPP_ALWAYS_INLINE
+
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR_AFTER_CXX11
     const _Ep* begin() const _NOEXCEPT {return __begin_;}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR_AFTER_CXX11
     const _Ep* end()   const _NOEXCEPT {return __begin_ + __size_;}
 };

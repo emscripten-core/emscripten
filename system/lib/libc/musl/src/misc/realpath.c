@@ -37,9 +37,17 @@ char *realpath(const char *restrict filename, char *restrict resolved)
 		goto err;
 	}
 
+#ifdef __EMSCRIPTEN__
+	__wasi_fd_close(fd);
+#else
 	__syscall(SYS_close, fd);
+#endif
 	return resolved ? strcpy(resolved, tmp) : strdup(tmp);
 err:
+#ifdef __EMSCRIPTEN__
+	__wasi_fd_close(fd);
+#else
 	__syscall(SYS_close, fd);
+#endif
 	return 0;
 }

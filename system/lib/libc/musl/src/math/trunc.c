@@ -2,6 +2,11 @@
 
 double trunc(double x)
 {
+// XXX EMSCRIPTEN: on wasm backend, use the wasm instruction via clang builtin
+// See https://github.com/emscripten-core/emscripten/issues/9236
+#ifdef __wasm__
+	return __builtin_trunc(x);
+#else
 	union {double f; uint64_t i;} u = {x};
 	int e = (int)(u.i >> 52 & 0x7ff) - 0x3ff + 12;
 	uint64_t m;
@@ -16,4 +21,5 @@ double trunc(double x)
 	FORCE_EVAL(x + 0x1p120f);
 	u.i &= ~m;
 	return u.f;
+#endif
 }

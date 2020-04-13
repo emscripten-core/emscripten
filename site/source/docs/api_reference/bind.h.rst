@@ -4,7 +4,7 @@
 bind.h (under-construction)
 ===========================
 
-The C++ APIs in `bind.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/bind.h>`_ define (**HamishW**-Replace with description.)
+The C++ APIs in `bind.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/bind.h>`_ define
 
 Guide documentation for this API can be found in :ref:`Embind`.
 
@@ -24,8 +24,6 @@ Defines
 
 .. cpp:function:: EMSCRIPTEN_BINDINGS(name)
 
-   **HamishW** Confirm this is correct.
-
    This define is used to bind C++ classes, functions and other constructs to
    JavaScript. It is used differently depending on the construct being mapped
    — see the :ref:`embind guide <embind>` for examples.
@@ -36,20 +34,11 @@ Defines
 
 .. cpp:type:: sharing_policy
 
-   **HamishW**-Replace with description. Note this is a strongly typed enum.
-   I can't see better way in Sphinx to represent it.
-
    .. cpp:type:: sharing_policy::NONE
-
-      **HamishW**-Replace with description.
 
    .. cpp:type:: sharing_policy::INTRUSIVE
 
-      **HamishW**-Replace with description.
-
    .. cpp:type:: sharing_policy::BY_EMVAL
-
-      **HamishW**-Replace with description.
 
 
 .. _bind-h-policies:
@@ -71,8 +60,6 @@ object ownership.
          // Prototype
          static constexpr int index
 
-      **HamishW** Add description.
-
 
 .. cpp:type:: ret_val
 
@@ -83,17 +70,12 @@ object ownership.
          // Prototype
          static constexpr int index
 
-      **HamishW** Add description.
-
-
 
 .. cpp:type:: allow_raw_pointers
 
    This policy is used to whitelist raw pointers.
 
    .. cpp:type:: Transform::type
-
-      **HamishW** Add description.
 
 
 .. cpp:type:: allow_raw_pointer
@@ -104,14 +86,9 @@ object ownership.
       template<typename Slot>
       struct allow_raw_pointer : public allow_raw_pointers
 
-   **HamishW** Add description. Note from source: "This type is temporary,
-   it will be changed when arg policies are reworked"
-
 
 select_overload and select_const
 ======================================
-
-**HamishW** Nicer title ?
 
 
 .. cpp:function:: typename std::add_pointer<Signature>::type select_overload(typename std::add_pointer<Signature>::type fn)
@@ -122,12 +99,7 @@ select_overload and select_const
       template<typename Signature>
       typename std::add_pointer<Signature>::type select_overload(typename std::add_pointer<Signature>::type fn)
 
-   **HamishW** Add description.
-
-   :param typename std\:\:add_pointer<Signature>::type fn: **HamishW** Add description.
-
-   :returns: **HamishW** Add description.
-
+   :param typename std\:\:add_pointer<Signature>::type fn
 
 .. cpp:function:: typename internal::MemberFunctionType<ClassType, Signature>::type select_overload()
 
@@ -137,12 +109,7 @@ select_overload and select_const
       template<typename Signature, typename ClassType>
       typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn))
 
-   **HamishW** Add description.
-
-   :param Signature (ClassType::*fn): **HamishW** Add description.
-
-   :returns: **HamishW** Add description.
-
+   :param Signature (ClassType::\*fn)
 
 .. cpp:function:: auto select_const()
 
@@ -152,11 +119,7 @@ select_overload and select_const
       template<typename ClassType, typename ReturnType, typename... Args>
       auto select_const(ReturnType (ClassType::*method)(Args...) const)
 
-   **HamishW** Add description.
-
-   :param ReturnType (ClassType::*method)(Args...) const: **HamishW** Add description.
-
-   :returns: **HamishW** Add description.
+   :param ReturnType (ClassType::\*method)(Args...) const
 
 
 .. cpp:function:: typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp)
@@ -167,12 +130,7 @@ select_overload and select_const
       template<typename LambdaType>
       typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp)
 
-   **HamishW** Add description.
-
-   :param const LambdaType& fp: **HamishW** Add description.
-
-   :returns: **HamishW** Add description.
-
+   :param const LambdaType& fp
 
 
 Functions
@@ -180,10 +138,8 @@ Functions
 
 .. cpp:function:: void* __getDynamicPointerType(void* p)
 
-   **HamishW** Add description.
 
-   :param void* p: **HamishW** Add description.
-   :returns: **HamishW** Add description.
+   :param void* p
 
 
 .. cpp:function:: void function()
@@ -216,10 +172,7 @@ Functions
 
 
 
-   **HamishW** Check description. Note that Sphinx could not cope with the
-   prototype, so have moved it into the body above.
-
-   :param const char* name: The name of the function to export (e.g. ``"lerp"``)  **HamishW** Check description.
+   :param const char* name: The name of the function to export (e.g. ``"lerp"``).
    :param ReturnType (\*fn)(Args...): Function pointer address for the exported function (e.g. ``&lerp``).
    :param Policies...: |policies-argument|
 
@@ -230,8 +183,6 @@ Value tuples
 
 .. cpp:class:: value_array : public internal::noncopyable
 
-   **HamishW** Add description.
-
    .. cpp:type:: class_type
 
       A typedef of ``ClassType``, the typename of the templated type for the class.
@@ -239,39 +190,30 @@ Value tuples
 
    .. cpp:function:: value_array(const char* name)
 
-      Constructor. **HamishW** Add description.
+      Constructor.
 
-      :param const char* name: **HamishW** Add description.
+      :param const char* name
 
 
    .. cpp:function:: ~value_array()
 
-      Destructor. **HamishW** Add description.
+      Destructor.
 
 
    .. cpp:function:: value_array& element(ElementType InstanceType::*field)
 
-      **HamishW** Add description.
-
-      :param ElementType InstanceType::*field: **HamishW** Add description. Note that ``ElementType`` and ``InstanceType`` are typenames (templated types).
-      :returns: **HamishW** Add description.
+      :param ElementType InstanceType::\*field: Note that ``ElementType`` and ``InstanceType`` are typenames (templated types).
 
 
    .. cpp:function:: value_array& element(Getter getter, Setter setter)
 
-      **HamishW** Add description.
-
-      :param Getter getter: **HamishW** Add description. Note that ``Getter`` is a typename (templated type).
-      :param Setter setter: **HamishW** Add description. Note that ``Setter`` is a typename (templated type).
-      :returns: **HamishW** Add description.
+      :param Getter getter. Note that ``Getter`` is a typename (templated type).
+      :param Setter setter. Note that ``Setter`` is a typename (templated type).
 
 
    .. cpp:function:: value_array& element(index<Index>)
 
-      **HamishW** Add description.
-
-      :param index<Index>: **HamishW** Add description. Note that ``Index`` is an integer template parameter.
-      :returns: **HamishW** Add description.
+      :param index<Index>:Note that ``Index`` is an integer template parameter.
 
 
 
@@ -282,8 +224,6 @@ Value structs
 
 .. cpp:class:: value_object : public internal::noncopyable
 
-   **HamishW** Add description.
-
    .. cpp:type:: class_type
 
       A typedef of ``ClassType``, the typename of the templated type for the class.
@@ -291,44 +231,34 @@ Value structs
 
    .. cpp:function:: value_object(const char* name)
 
-      Constructor. **HamishW** Add description.
+      Constructor.
 
-      :param const char* name: **HamishW** Add description.
+      :param const char* name
 
 
    .. cpp:function:: ~value_object()
 
-      Destructor. **HamishW** Add description.
+      Destructor.
 
 
    .. cpp:function:: value_object& field(const char* fieldName, FieldType InstanceType::*field)
 
-      **HamishW** Add description.
-
-      :param const char* fieldName: **HamishW** Add description.
-      :param FieldType InstanceType\:\:\*field: **HamishW** Add description.
-
-      :returns: **HamishW** Add description.
+      :param const char* fieldName.
+      :param FieldType InstanceType\:\:\*field.
 
 
 
    .. cpp:function:: value_object& field(const char* fieldName, Getter getter, Setter setter)
 
-      **HamishW** Add description.
-
-      :param const char* fieldName: **HamishW** Add description.
-      :param Getter getter: **HamishW** Add description. Note that ``Getter`` is a typename (templated type).
-      :param Setter setter: **HamishW** Add description. Note that ``Setter`` is a typename (templated type).
-      :returns: **HamishW** Add description.
+      :param const char* fieldName.
+      :param Getter getter. Note that ``Getter`` is a typename (templated type).
+      :param Setter setter. Note that ``Setter`` is a typename (templated type).
 
 
    .. cpp:function:: value_object& field(const char* fieldName, index<Index>)
 
-      **HamishW** Add description.
-
-      :param const char* fieldName: **HamishW** Add description.
-      :param index<Index>: **HamishW** Add description. Note that ``Index`` is an integer template parameter.
-      :returns: **HamishW** Add description.
+      :param const char* fieldName.
+      :param index<Index>. Note that ``Index`` is an integer template parameter.
 
 
 Smart pointers
@@ -343,28 +273,17 @@ Smart pointers
       template<typename PointerType>
       struct default_smart_ptr_trait
 
-   **HamishW** Add description.
-
    .. cpp:function:: static sharing_policy get_sharing_policy()
-
-      **HamishW** Add description.
-
-      :returns: **HamishW** Add description.
 
 
    .. cpp:function:: static void* share(void* v)
 
-      **HamishW** Add description.
-
-      :param void* v: **HamishW** Add description.
-      :returns: **HamishW** Add description.
+      :param void* v
 
 
    .. cpp:function:: static PointerType* construct_null()
 
-      **HamishW** Add description.
-
-      :returns: **HamishW** Add description. Note that the ``PointerType`` returned is a typename (templated type).
+      :returns: Note that the ``PointerType`` returned is a typename (templated type).
 
 
 
@@ -376,8 +295,6 @@ Smart pointers
       template<typename PointerType>
       struct smart_ptr_trait : public default_smart_ptr_trait<PointerType>
 
-   **HamishW** Add description. Note from source is: // specialize if you have a different pointer type
-
    .. cpp:type:: PointerType::element_type element_type
 
       .. code-block:: cpp
@@ -386,15 +303,12 @@ Smart pointers
          typedef typename PointerType::element_type element_type;
 
 
-      **HamishW** Add description. A typedef for the PointerType::element_type, where ``PointerType`` is a typename (templated type).
+      A typedef for the PointerType::element_type, where ``PointerType`` is a typename (templated type).
 
 
    .. cpp:function:: static element_type* get(const PointerType& ptr)
 
-      **HamishW** Add description.
-
-      :param const PointerType& ptr: **HamishW** Add description. Note that ``PointerType`` is a typename (templated type)
-      :returns: **HamishW** Add description.
+      :param const PointerType& ptr: Note that ``PointerType`` is a typename (templated type)
 
 
 
@@ -406,53 +320,34 @@ Smart pointers
       template<typename PointeeType>
       struct smart_ptr_trait<std::shared_ptr<PointeeType>>
 
-   **HamishW** Add description.
-
    .. cpp:type:: PointerType
 
-      **HamishW** Add description. A typedef to std::shared_ptr<PointeeType>, where ``PointeeType`` is a typename (templated type).
+      A typedef to std::shared_ptr<PointeeType>, where ``PointeeType`` is a typename (templated type).
 
    .. cpp:type:: element_type
 
-      **HamishW** Add description. A typedef for the ``PointerType::element_type``.
+      A typedef for the ``PointerType::element_type``.
 
 
    .. cpp:function:: static element_type* get(const PointerType& ptr)
 
-      **HamishW** Add description.
-
-      :param const PointerType& ptr: **HamishW** Add description.
-      :returns: **HamishW** Add description.
+      :param const PointerType& ptr
 
    .. cpp:function:: static sharing_policy get_sharing_policy()
-
-      **HamishW** Add description.
-
-      :returns: **HamishW** Add description.
 
 
    .. cpp:function:: static std::shared_ptr<PointeeType>* share(PointeeType* p, internal::EM_VAL v)
 
-      **HamishW** Add description.
+      :param PointeeType* p: Note that ``PointeeType`` is a typename (templated type).
+      :param internal\:\:EM_VAL v:
 
-      :param PointeeType* p: **HamishW** Add description. Note that ``PointeeType`` is a typename (templated type).
-      :param internal\:\:EM_VAL v: **HamishW** Add description.
-      :returns: **HamishW** Add description.
 
    .. cpp:function:: static PointerType* construct_null()
 
-      **HamishW** Add description.
-
-      :returns: **HamishW** Add description.
-
-
-**HamishW** Note, did not include private class val_deleter. I am assuming all private classes are internal. Delete this Chad when read!
 
 
 Classes
 =======
-
-**HamishW** Add description if needed. Note from source "// abstract classes"
 
 
 .. cpp:class:: wrapper : public T, public internal::WrapperBase
@@ -463,11 +358,9 @@ Classes
       template<typename T>
       class wrapper : public T, public internal::WrapperBase
 
-   **HamishW** Add description.
-
    .. cpp:type:: class_type
 
-      **HamishW** Add description. A typedef of ``T``, the typename of the templated type for the class.
+      A typedef of ``T``, the typename of the templated type for the class.
 
 
    .. cpp:function:: wrapper(val&& wrapped, Args&&... args)
@@ -480,59 +373,45 @@ Classes
            : T(std::forward<Args>(args)...)
            , wrapped(std::forward<val>(wrapped))
 
-      Constructor. **HamishW** Add description.
+      Constructor.
 
-      :param val&& wrapped: **HamishW** Add description.
-      :param Args&&... args: **HamishW** Add description. Note that ``Args`` is a typename (templated type).
-      :returns: **HamishW** Add description.
+      :param val&& wrapped
+      :param Args&&... args: Note that ``Args`` is a typename (templated type).
 
 
    .. cpp:function:: ~wrapper()
 
-      Destructor. **HamishW** Add description.
+      Destructor.
 
 
    .. cpp:function:: ReturnType call(const char* name, Args&&... args) const
 
-      Constructor. **HamishW** Add description.
+      Constructor.
 
-      :param const char* name: **HamishW** Add description.
-      :param Args&&... args: **HamishW** Add description. Note that ``Args`` is a typename (templated type).
-      :returns: **HamishW** Add description. Note that ``ReturnType`` is a typename (templated type).
+      :param const char* name
+      :param Args&&... args: Note that ``Args`` is a typename (templated type).
+      :returns: Note that ``ReturnType`` is a typename (templated type).
 
 
 .. cpp:function:: EMSCRIPTEN_WRAPPER(T)
 
-   **HamishW** Add description. Note that this is actually a define, but I've implemented it as a function, because that is how it behaves, and it allows me to have the T as shown, which isn't possible on Sphinx type declaration.
-
-   :param T: **HamishW** Add description.
+   :param T
 
 
 .. cpp:type:: base
 
-   **HamishW** Add description.
-
    .. cpp:type:: class_type
 
-      **HamishW** Add description. A typedef of ``BaseClass``, the typename of the templated type for the class.
+      A typedef of ``BaseClass``, the typename of the templated type for the class.
 
 
    .. cpp:function:: static void verify()
 
-      **HamishW** Add description. Note, is templated function which takes typename ``ClassType``.
+      Note, is templated function which takes typename ``ClassType``.
 
 
    .. cpp:function:: static internal::TYPEID get()
 
-      **HamishW** Add description.
-
-      :returns: **HamishW** Add description.
-
-
-
-   .. cpp:function:: HAMISHW_ HELP_Needed()
-
-      **HamishW** I don't understand this C++, so not sure how to document. Putting code here for Chad to advise on how to document
 
       .. code-block:: cpp
 
@@ -551,10 +430,6 @@ Classes
          template<typename ClassType>
          static Upcaster<ClassType> getUpcaster()
 
-      **HamishW** Add description.
-
-      :returns: **HamishW** Add description.
-
 
    .. cpp:function:: static Downcaster<ClassType> getDowncaster()
 
@@ -563,10 +438,6 @@ Classes
          //prototype
          template<typename ClassType>
          static Downcaster<ClassType> getDowncaster()
-
-      **HamishW** Add description.
-
-      :returns: **HamishW** Add description.
 
 
    .. cpp:function:: static To* convertPointer(From* ptr)
@@ -577,49 +448,44 @@ Classes
          template<typename From, typename To>
          static To* convertPointer(From* ptr)
 
-      **HamishW** Add description.
-
-      :param From* ptr: **HamishW** Add description.
-      :returns: **HamishW** Add description.
+      :param From* ptr
 
 
 
 .. cpp:type:: pure_virtual
 
-   **HamishW** Add description.
-
    .. cpp:type:: Transform
 
-      **HamishW** Add description. Note that this is a templated struct taking typename parameter ``InputType`` and integer ``Index``.
+      Note that this is a templated struct taking typename parameter ``InputType`` and integer ``Index``.
 
       .. cpp:type:: type
 
-         **HamishW** Add description. This is a typdef to the parent struct typename parameter ``InputType``.
+         This is a typdef to the parent struct typename parameter ``InputType``.
 
 
 .. cpp:type:: constructor
 
-   **HamishW** Add description. Note that this is a template struct taking typename ``... ConstructorArgs``.
+   Note that this is a template struct taking typename ``... ConstructorArgs``.
 
 
 
 .. cpp:class:: class_
 
-   **HamishW** Add description. Note that this is a templated class with typename parameters ``ClassType`` and ``BaseSpecifier``.
+   Note that this is a templated class with typename parameters ``ClassType`` and ``BaseSpecifier``.
 
    .. cpp:type:: class_type
 
-      **HamishW** Add description. A typedef of ``ClassType`` (a typename for the class).
+      A typedef of ``ClassType`` (a typename for the class).
 
 
    .. cpp:type:: base_specifier
 
-      **HamishW** Add description. A typedef of ``BaseSpecifier`` (a typename for the class).
+      A typedef of ``BaseSpecifier`` (a typename for the class).
 
 
    .. cpp:type:: HELPNEEDEDHERE
 
-      **HamishW** Don't know what to do with this: ::
+      ::
 
          class_() = delete;
 
@@ -632,10 +498,9 @@ Classes
          EMSCRIPTEN_ALWAYS_INLINE explicit class_(const char* name)
 
 
-      Constructor. **HamishW** Add description.
+      Constructor.
 
-      :param const char* name: **HamishW** Add description.
-      :returns: **HamishW** Add description.
+      :param const char* name
 
 
    .. cpp:function:: const class_& smart_ptr(const char* name) const
@@ -646,9 +511,7 @@ Classes
          template<typename PointerType>
          EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr(const char* name) const
 
-      **HamishW** Add description.
-
-      :param const char* name: **HamishW** Add description.
+      :param const char* name.
       :returns: |class_-function-returns|
 
 
@@ -664,25 +527,38 @@ Classes
 
       Zero-argument form of the class constructor. This invokes the natural constructor with the arguments specified in the template. See :ref:`embind-external-constructors` for more information.
 
-      **HamishW** Check description. Note that prototype moved into block as was breaking Sphinx.
-
       :param Policies... policies: |policies-argument|
       :returns: |class_-function-returns|
 
       .. _embind-class-function-pointer-constructor:
 
 
-   .. cpp:function:: const class_& constructor(ReturnType (*factory)(Args...), Policies...) const
+   .. cpp:function:: const class_& constructor(Callable callable, Policies...) const
 
       .. code-block:: cpp
 
          //prototype
-         template<typename... Args, typename ReturnType, typename... Policies>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(ReturnType (*factory)(Args...), Policies...) const
+         template<typename Signature = internal::DeduceArgumentsTag, typename Callable, typename... Policies>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(Callable callable, Policies...) const
 
-      Class constructor for objects that use a factory function to create the object. See :ref:`embind-external-constructors` for more information.
+      Class constructor for objects that use a factory function to create the object.  This method will accept either a function pointer, ``std::function``
+      object or function object which will return a newly constructed object.  When the ``Callable`` is a function object the function signature must be
+      explicitly specified in the ``Signature`` template parameter in the format ``ReturnType (Args...)``.  For ``Callable`` types other than function objects
+      the method signature will be deduced.
 
-      :param ReturnType (\*factory)(Args...): The address of the class factory function.
+      The following are all valid calls to ``constructor``:
+
+      .. code-block:: cpp
+
+         using namespace std::placeholders;
+         myClass1.constructor(&my_factory);
+         myClass2.constructor(std::function<ClassType2(float, float)>(&class2_factory));
+         myClass3.constructor<ClassType3(const val&)>(std::bind(Class3Functor(), _1));
+
+      See :ref:`embind-external-constructors` for more information.
+
+
+      :param Callable callable Note that ``Callable`` may be either a member function pointer, function pointer, ``std::function`` or function object.
       :param Policies... policies: |policies-argument|
       :returns: |class_-function-returns|
 
@@ -695,10 +571,8 @@ Classes
          template<typename SmartPtr, typename... Args, typename... Policies>
          EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const
 
-      **HamishW** Add description. Note that Sphinx could NOT cope with the prototype, so have pulled it into the body of the text.
-
-      :param const char* smartPtrName: **HamishW** Add description.
-      :param SmartPtr (\*factory)(Args...): **HamishW** Add description.
+      :param const char* smartPtrName
+      :param SmartPtr (\*factory)(Args...)
       :param Policies... policies: |policies-argument|
       :returns: |class_-function-returns|
 
@@ -715,11 +589,9 @@ Classes
            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
          ) const
 
-      **HamishW** Add description.
-
-      :param const char* wrapperClassName: **HamishW** Add description.
-      :param const char* pointerName: **HamishW** Add description.
-      :param emscripten\:\:constructor<ConstructorArgs...> constructor): **HamishW** Add description.
+      :param const char* wrapperClassName
+      :param const char* pointerName
+      :param emscripten\:\:constructor<ConstructorArgs...> constructor)
       :returns: |class_-function-returns|
 
 
@@ -734,10 +606,8 @@ Classes
            ::emscripten::constructor<ConstructorArgs...> constructor = ::emscripten::constructor<>()
          ) const
 
-      **HamishW** Add description. Explain how this constructor differs from other one.
-
-      :param const char* wrapperClassName: **HamishW** Add description.
-      :param \:\:emscripten\:\:constructor<ConstructorArgs...> constructor): **HamishW** Add description.
+      :param const char* wrapperClassName
+      :param \:\:emscripten\:\:constructor<ConstructorArgs...> constructor)
 
       :returns: |class_-function-returns|
 
@@ -747,49 +617,30 @@ Classes
       .. code-block:: cpp
 
          //prototype
-         template<typename ReturnType, typename... Args, typename... Policies>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const
+         template<typename Signature = internal::DeduceArgumentsTag, typename Callable, typename... Policies>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, Callable callable, Policies...) const
 
       This method is for declaring a method belonging to a class.
 
-      On the JavaScript side this is a function that gets bound as a property of the prototype. For example ``.function("myClassMember", &MyClass::myClassMember)`` would bind ``myClassMember`` to ``MyClass.prototype.myClassMember`` in the JavaScript.
+      On the JavaScript side this is a function that gets bound as a property of the prototype. For example ``.function("myClassMember", &MyClass::myClassMember)``
+      would bind ``myClassMember`` to ``MyClass.prototype.myClassMember`` in the JavaScript.  This method will accept either a pointer-to-member-function, function
+      pointer, ``std::function`` object or function object.  When the ``Callable`` is not a pointer-to-member-function it must accept the ``ClassType`` as the first
+      (``this``) parameter.  When the ``Callable`` is a function object the function signature must be explicitly specified in the ``Signature`` template parameter
+      in the format ``ReturnType (Args...)``.  For ``Callable`` types other than function objects the method signature will be deduced.
 
-      **HamishW** Check description. Note prototype moved to "prototype" block above because syntax broke Sphinx. Also explain how this method differs from the other overloads.
-
-      :param const char* methodName: **HamishW** Add description.
-      :param ReturnType (ClassType\:\:\*memberFunction)(Args...): **HamishW** Add description. Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
-      :param typename... Policies: |policies-argument|
-      :returns: |class_-function-returns|
-
-
-   .. cpp:function:: const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const
+      The following are all valid calls to ``function``:
 
       .. code-block:: cpp
 
-         //prototype
-         template<typename ReturnType, typename... Args, typename... Policies>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const
-
-      **HamishW** Add description. Note, prototype moved into block above as it broke Sphinx. Also this only differs by a const on the ReturnType from the previous function
-
-      :param const char* methodName: **HamishW** Add description.
-      :param ReturnType (ClassType\:\:\*memberFunction)(Args...) const: **HamishW** Add description. Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
-      :param typename... Policies: |policies-argument|
-      :returns: |class_-function-returns|
+         using namespace std::placeholders;
+         myClass.function("myClassMember", &MyClass::myClassMember)
+             .function("myFreeFunction", &my_free_function)
+             .function("myStdFunction", std::function<float(ClassType&, float, float)>(&my_function))
+             .function<val(const MyClass&)>("myFunctor", std::bind(&my_functor_taking_this, _1));
 
 
-   .. cpp:function:: const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const
-
-      .. code-block:: cpp
-
-         //prototype
-         template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const
-
-      **HamishW** Add description. Note, prototype moved into block above as it broke Sphinx.
-
-      :param const char* methodName: **HamishW** Add description.
-      :param ReturnType (\*function)(ThisType, Args...): **HamishW** Add description.
+      :param const char* methodName
+      :param Callable callable Note that ``Callable`` may be either a member function pointer, function pointer, ``std::function`` or function object.
       :param typename... Policies: |policies-argument|
       :returns: |class_-function-returns|
 
@@ -802,10 +653,8 @@ Classes
          template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const
 
-      **HamishW** Add description. Note, signature copied to prototype block above because proper signature broke Sphinx. Also because it is useful to include the template information.
-
-      :param const char* fieldName: **HamishW** Add description.
-      :param const FieldType ClassType\:\:\*field: **HamishW** Add description.
+      :param const char* fieldName
+      :param const FieldType ClassType\:\:\*field
 
       :returns: |class_-function-returns|
 
@@ -818,10 +667,8 @@ Classes
          template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const
 
-      **HamishW** Add description.
-
-      :param const char* fieldName: **HamishW** Add description.
-      :param FieldType ClassType\:\:\*field: **HamishW** Add description.
+      :param const char* fieldName
+      :param FieldType ClassType\:\:\*field
 
       :returns: |class_-function-returns|
 
@@ -831,13 +678,17 @@ Classes
       .. code-block:: cpp
 
          //prototype
-         template<typename Getter>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const
+         template<typename PropertyType = internal::DeduceArgumentsTag, typename Getter>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const;
 
-      **HamishW** Add description.
+      Declare a read-only property with the specified ``fieldName`` on the class using the specified ``getter`` to retrieve the property
+      value.  ``Getter`` may be either a class method, a function, a ``std::function`` or a function object.  When ``Getter``
+      is not pointer-to-member-function, it must accept an instance of the ``ClassType`` as the ``this`` argument.  When
+      ``Getter`` is a function object, the property type must be specified as a template parameter as it cannot be deduced,
+      e.g.: ``myClass.property<int>("myIntProperty", MyIntGetterFunctor());``
 
-      :param const char* fieldName: **HamishW** Add description.
-      :param Getter getter: **HamishW** Add description. Note that ``Getter`` is a function template typename.
+      :param const char* fieldName
+      :param Getter getter Note that ``Getter`` is a function template typename.
       :returns: |class_-function-returns|
 
 
@@ -846,14 +697,19 @@ Classes
       .. code-block:: cpp
 
          //prototype
-         template<typename Getter, typename Setter>
+         template<typename PropertyType = internal::DeduceArgumentsTag, typename Getter, typename Setter>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter) const
 
-      **HamishW** Add description. Note that this is a function template taking typenames ``Setter`` and ``Getter``: ``template<typename Getter, typename Setter>``
+      This is a function template taking typenames ``Setter`` and ``Getter``: ``template<typename Getter, typename Setter>``
+      which declares a read-write property with the specified ``fieldName`` on the class. ``Getter`` and ``Setter`` may be either a
+      class method, a function, a ``std::function`` or a function object.  When ``Getter`` or ``Setter`` is not pointer-to-member-function,
+      it must accept an instance of the ``ClassType`` as the ``this`` argument. When ``Getter`` or ``Setter`` is a function object, the
+      property type must be specified as a template parameter as it cannot be deduced, e.g.:
+      ``myClass.property<int>("myIntProperty", MyIntGetterFunctor(), MyIntSetterFunctor());``
 
-      :param const char* fieldName: **HamishW** Add description.
-      :param Getter getter: **HamishW** Add description. Note that ``Getter`` is a function template typename.
-      :param Setter setter: **HamishW** Add description. Note that ``Setter`` is a function template typename.
+      :param const char* fieldName
+      :param Getter getter: Note that ``Getter`` is a function template typename.
+      :param Setter setter: Note that ``Setter`` is a function template typename.
       :returns: |class_-function-returns|
 
    .. cpp:function:: const class_& class_function() const
@@ -871,10 +727,8 @@ Classes
       &MyClass::myStaticFunction)`` binds ``myStaticFunction`` to
       ``MyClass.myStaticFunction``.
 
-      **HamishW** Check description. Note prototype moved to "prototype" block above because syntax broke Sphinx.
-
-      :param const char* methodName: **HamishW** Add description.
-      :param ReturnType (\*classMethod)(Args...): **HamishW** Add description.
+      :param const char* methodName
+      :param ReturnType (\*classMethod)(Args...)
       :param Policies...: |policies-argument|
       :returns: |class_-function-returns|
 
@@ -886,10 +740,8 @@ Classes
          template<typename FieldType>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType *field) const
 
-      **HamishW** Add description.
-
-      :param const char* fieldName: **HamishW** Add description.
-      :param FieldType ClassType\:\:\*field: **HamishW** Add description.
+      :param const char* fieldNam
+      :param FieldType ClassType\:\:\*field
 
       :returns: |class_-function-returns|
 
@@ -908,12 +760,9 @@ Vectors
       template<typename T>
       class_<std::vector<T>> register_vector(const char* name)
 
-   **HamishW** Check description.
-
    A function to register a ``std::vector<T>``.
 
-   :param const char* name: **HamishW** Add description.
-   :returns: **HamishW** Add description.
+   :param const char* name
 
 
 Maps
@@ -927,12 +776,9 @@ Maps
       template<typename K, typename V>
       class_<std::map<K, V>> register_map(const char* name)
 
-   **HamishW** Check description.
-
    A function to register a ``std::map<K, V>``.
 
-   :param const char* name: **HamishW** Add description.
-   :returns: **HamishW** Add description.
+   :param const char* name
 
 
 
@@ -955,20 +801,19 @@ Enums
 
    .. cpp:type:: enum_type
 
-      **HamishW** Add description. A typedef of ``EnumType`` (a typename for the class).
+      A typedef of ``EnumType`` (a typename for the class).
 
 
    .. cpp:function::  enum_(const char* name)
 
-      Constructor. **HamishW** Add description.
+      Constructor.
 
-      :param const char* name: **HamishW** Add description.
-      :returns: **HamishW** Add description.
+      :param const char* name
 
 
    .. cpp:function::  enum_& value(const char* name, EnumType value)
 
-      Registers an enum value. **HamishW** Check description.
+      Registers an enum value.
 
       :param const char* name: The name of the enumerated value.
       :param EnumType value: The type of the enumerated value.
@@ -986,8 +831,6 @@ Constants
       //prototype
       template<typename ConstantType>
       void constant(const char* name, const ConstantType& v)
-
-   **HamishW** Check description.
 
    Registers a constant to export to JavaScript. This is called from within
    an :cpp:func:`EMSCRIPTEN_BINDINGS` block.

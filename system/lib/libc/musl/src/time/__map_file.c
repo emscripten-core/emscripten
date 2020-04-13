@@ -15,6 +15,10 @@ const char unsigned *__map_file(const char *pathname, size_t *size)
 		map = __mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
 		*size = st.st_size;
 	}
+#ifdef __EMSCRIPTEN__
+	__wasi_fd_close(fd);
+#else
 	__syscall(SYS_close, fd);
+#endif
 	return map == MAP_FAILED ? 0 : map;
 }

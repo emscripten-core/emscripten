@@ -1,29 +1,88 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS',
-#if __EMSCRIPTEN_HAS_idbfs_js__
+  $FS__deps: ['$setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
+#if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
-#if __EMSCRIPTEN_HAS_nodefs_js__
+#if LibraryManager.has('library_nodefs.js')
     '$NODEFS',
 #endif
-#if __EMSCRIPTEN_HAS_workerfs_js__
+#if LibraryManager.has('library_workerfs.js')
     '$WORKERFS',
 #endif
-#if __EMSCRIPTEN_HAS_noderawfs_js__
+#if LibraryManager.has('library_noderawfs.js')
     '$NODERAWFS',
 #endif
-    'stdin', 'stdout', 'stderr'],
-  $FS__postset: 'FS.staticInit();' +
-                '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
-                '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
-                '__ATEXIT__.push(function() { FS.quit() });' +
-                // Get module methods from settings
-                '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}',
+#if ASSERTIONS
+    '$ERRNO_MESSAGES', '$ERRNO_CODES',
+#endif
+    ],
+  $FS__postset: function() {
+    // TODO: do we need noFSInit?
+    addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
+    addAtMain('FS.ignorePermissions = false;');
+    addAtExit('FS.quit();');
+    // We must statically create FS.FSNode here so that it is created in a manner
+    // that is visible to Closure compiler. That lets us use type annotations for
+    // Closure to the "this" pointer in various node creation functions.
+    return `var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
+  if (!parent) {
+    parent = this;  // root node sets parent to itself
+  }
+  this.parent = parent;
+  this.mount = parent.mount;
+  this.mounted = null;
+  this.id = FS.nextInode++;
+  this.name = name;
+  this.mode = mode;
+  this.node_ops = {};
+  this.stream_ops = {};
+  this.rdev = rdev;
+};
+var readMode = 292/*{{{ cDefine("S_IRUGO") }}}*/ | 73/*{{{ cDefine("S_IXUGO") }}}*/;
+var writeMode = 146/*{{{ cDefine("S_IWUGO") }}}*/;
+Object.defineProperties(FSNode.prototype, {
+ read: {
+  get: /** @this{FSNode} */function() {
+   return (this.mode & readMode) === readMode;
+  },
+  set: /** @this{FSNode} */function(val) {
+   val ? this.mode |= readMode : this.mode &= ~readMode;
+  }
+ },
+ write: {
+  get: /** @this{FSNode} */function() {
+   return (this.mode & writeMode) === writeMode;
+  },
+  set: /** @this{FSNode} */function(val) {
+   val ? this.mode |= writeMode : this.mode &= ~writeMode;
+  }
+ },
+ isFolder: {
+  get: /** @this{FSNode} */function() {
+   return FS.isDir(this.mode);
+  }
+ },
+ isDevice: {
+  get: /** @this{FSNode} */function() {
+   return FS.isChrdev(this.mode);
+  }
+ }
+});
+FS.FSNode = FSNode;
+FS.staticInit();` +
+#if USE_CLOSURE_COMPILER
+           // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.init()
+           '/**@suppress {duplicate, undefinedVars}*/var Browser;' +
+#endif
+           // Get module methods from settings
+           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+  },
   $FS: {
     root: null,
     mounts: [],
@@ -52,14 +111,14 @@ mergeInto(LibraryManager.library, {
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-      return ___setErrNo(e.errno);
+      return setErrNo(e.errno);
     },
 
     //
     // paths
     //
     lookupPath: function(path, opts) {
-      path = PATH.resolve(FS.cwd(), path);
+      path = PATH_FS.resolve(FS.cwd(), path);
       opts = opts || {};
 
       if (!path) return { path: '', node: null };
@@ -75,7 +134,7 @@ mergeInto(LibraryManager.library, {
       }
 
       if (opts.recurse_count > 8) {  // max recursive lookup of 8
-        throw new FS.ErrnoError(ERRNO_CODES.ELOOP);
+        throw new FS.ErrnoError({{{ cDefine('ELOOP') }}});
       }
 
       // split the path
@@ -110,13 +169,13 @@ mergeInto(LibraryManager.library, {
           var count = 0;
           while (FS.isLink(current.mode)) {
             var link = FS.readlink(current_path);
-            current_path = PATH.resolve(PATH.dirname(current_path), link);
+            current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
 
             var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count });
             current = lookup.node;
 
             if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
-              throw new FS.ErrnoError(ERRNO_CODES.ELOOP);
+              throw new FS.ErrnoError({{{ cDefine('ELOOP') }}});
             }
           }
         }
@@ -173,9 +232,9 @@ mergeInto(LibraryManager.library, {
       }
     },
     lookupNode: function(parent, name) {
-      var err = FS.mayLookup(parent);
-      if (err) {
-        throw new FS.ErrnoError(err, parent);
+      var errCode = FS.mayLookup(parent);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode, parent);
       }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
@@ -194,48 +253,6 @@ mergeInto(LibraryManager.library, {
       return FS.lookup(parent, name);
     },
     createNode: function(parent, name, mode, rdev) {
-      if (!FS.FSNode) {
-        FS.FSNode = function(parent, name, mode, rdev) {
-          if (!parent) {
-            parent = this;  // root node sets parent to itself
-          }
-          this.parent = parent;
-          this.mount = parent.mount;
-          this.mounted = null;
-          this.id = FS.nextInode++;
-          this.name = name;
-          this.mode = mode;
-          this.node_ops = {};
-          this.stream_ops = {};
-          this.rdev = rdev;
-        };
-
-        FS.FSNode.prototype = {};
-
-        // compatibility
-        var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-        var writeMode = {{{ cDefine('S_IWUGO') }}};
-
-        // NOTE we must use Object.defineProperties instead of individual calls to
-        // Object.defineProperty in order to make closure compiler happy
-        Object.defineProperties(FS.FSNode.prototype, {
-          read: {
-            get: function() { return (this.mode & readMode) === readMode; },
-            set: function(val) { val ? this.mode |= readMode : this.mode &= ~readMode; }
-          },
-          write: {
-            get: function() { return (this.mode & writeMode) === writeMode; },
-            set: function(val) { val ? this.mode |= writeMode : this.mode &= ~writeMode; }
-          },
-          isFolder: {
-            get: function() { return FS.isDir(this.mode); }
-          },
-          isDevice: {
-            get: function() { return FS.isChrdev(this.mode); }
-          }
-        });
-      }
-
       var node = new FS.FSNode(parent, name, mode, rdev);
 
       FS.hashAddNode(node);
@@ -315,24 +332,24 @@ mergeInto(LibraryManager.library, {
       }
       // return 0 if any user, group or owner bits are set.
       if (perms.indexOf('r') !== -1 && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
-        return ERRNO_CODES.EACCES;
+        return {{{ cDefine('EACCES') }}};
       } else if (perms.indexOf('w') !== -1 && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
-        return ERRNO_CODES.EACCES;
+        return {{{ cDefine('EACCES') }}};
       } else if (perms.indexOf('x') !== -1 && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
-        return ERRNO_CODES.EACCES;
+        return {{{ cDefine('EACCES') }}};
       }
       return 0;
     },
     mayLookup: function(dir) {
-      var err = FS.nodePermissions(dir, 'x');
-      if (err) return err;
-      if (!dir.node_ops.lookup) return ERRNO_CODES.EACCES;
+      var errCode = FS.nodePermissions(dir, 'x');
+      if (errCode) return errCode;
+      if (!dir.node_ops.lookup) return {{{ cDefine('EACCES') }}};
       return 0;
     },
     mayCreate: function(dir, name) {
       try {
         var node = FS.lookupNode(dir, name);
-        return ERRNO_CODES.EEXIST;
+        return {{{ cDefine('EEXIST') }}};
       } catch (e) {
       }
       return FS.nodePermissions(dir, 'wx');
@@ -344,34 +361,34 @@ mergeInto(LibraryManager.library, {
       } catch (e) {
         return e.errno;
       }
-      var err = FS.nodePermissions(dir, 'wx');
-      if (err) {
-        return err;
+      var errCode = FS.nodePermissions(dir, 'wx');
+      if (errCode) {
+        return errCode;
       }
       if (isdir) {
         if (!FS.isDir(node.mode)) {
-          return ERRNO_CODES.ENOTDIR;
+          return {{{ cDefine('ENOTDIR') }}};
         }
         if (FS.isRoot(node) || FS.getPath(node) === FS.cwd()) {
-          return ERRNO_CODES.EBUSY;
+          return {{{ cDefine('EBUSY') }}};
         }
       } else {
         if (FS.isDir(node.mode)) {
-          return ERRNO_CODES.EISDIR;
+          return {{{ cDefine('EISDIR') }}};
         }
       }
       return 0;
     },
     mayOpen: function(node, flags) {
       if (!node) {
-        return ERRNO_CODES.ENOENT;
+        return {{{ cDefine('ENOENT') }}};
       }
       if (FS.isLink(node.mode)) {
-        return ERRNO_CODES.ELOOP;
+        return {{{ cDefine('ELOOP') }}};
       } else if (FS.isDir(node.mode)) {
         if (FS.flagsToPermissionString(flags) !== 'r' || // opening for write
             (flags & {{{ cDefine('O_TRUNC') }}})) { // TODO: check for O_SEARCH? (== search for dir only)
-          return ERRNO_CODES.EISDIR;
+          return {{{ cDefine('EISDIR') }}};
         }
       }
       return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
@@ -389,7 +406,7 @@ mergeInto(LibraryManager.library, {
           return fd;
         }
       }
-      throw new FS.ErrnoError(ERRNO_CODES.EMFILE);
+      throw new FS.ErrnoError({{{ cDefine('EMFILE') }}});
     },
     getStream: function(fd) {
       return FS.streams[fd];
@@ -399,10 +416,8 @@ mergeInto(LibraryManager.library, {
     // SOCKFS is completed.
     createStream: function(stream, fd_start, fd_end) {
       if (!FS.FSStream) {
-        FS.FSStream = function(){};
-        FS.FSStream.prototype = {};
-        // compatibility
-        Object.defineProperties(FS.FSStream.prototype, {
+        FS.FSStream = /** @constructor */ function(){};
+        FS.FSStream.prototype = {
           object: {
             get: function() { return this.node; },
             set: function(val) { this.node = val; }
@@ -416,7 +431,7 @@ mergeInto(LibraryManager.library, {
           isAppend: {
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
           }
-        });
+        };
       }
       // clone it, so we can return an instance of FSStream
       var newStream = new FS.FSStream();
@@ -453,7 +468,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       llseek: function() {
-        throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
+        throw new FS.ErrnoError({{{ cDefine('ESPIPE') }}});
       }
     },
     major: function(dev) {
@@ -498,23 +513,25 @@ mergeInto(LibraryManager.library, {
       FS.syncFSRequests++;
 
       if (FS.syncFSRequests > 1) {
-        console.log('warning: ' + FS.syncFSRequests + ' FS.syncfs operations in flight at once, probably just doing extra work');
+        err('warning: ' + FS.syncFSRequests + ' FS.syncfs operations in flight at once, probably just doing extra work');
       }
 
       var mounts = FS.getMounts(FS.root.mount);
       var completed = 0;
 
-      function doCallback(err) {
+      function doCallback(errCode) {
+#if ASSERTIONS
         assert(FS.syncFSRequests > 0);
+#endif
         FS.syncFSRequests--;
-        return callback(err);
+        return callback(errCode);
       }
 
-      function done(err) {
-        if (err) {
+      function done(errCode) {
+        if (errCode) {
           if (!done.errored) {
             done.errored = true;
-            return doCallback(err);
+            return doCallback(errCode);
           }
           return;
         }
@@ -532,12 +549,19 @@ mergeInto(LibraryManager.library, {
       });
     },
     mount: function(type, opts, mountpoint) {
+#if ASSERTIONS
+      if (typeof type === 'string') {
+        // The filesystem was not included, and instead we have an error
+        // message stored in the variable.
+        throw type;
+      }
+#endif
       var root = mountpoint === '/';
       var pseudo = !mountpoint;
       var node;
 
       if (root && FS.root) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
+        throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       } else if (!root && !pseudo) {
         var lookup = FS.lookupPath(mountpoint, { follow_mount: false });
 
@@ -545,11 +569,11 @@ mergeInto(LibraryManager.library, {
         node = lookup.node;
 
         if (FS.isMountpoint(node)) {
-          throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
+          throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
         }
 
         if (!FS.isDir(node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+          throw new FS.ErrnoError({{{ cDefine('ENOTDIR') }}});
         }
       }
 
@@ -583,7 +607,7 @@ mergeInto(LibraryManager.library, {
       var lookup = FS.lookupPath(mountpoint, { follow_mount: false });
 
       if (!FS.isMountpoint(lookup.node)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
 
       // destroy the nodes for this mount, and all its child mounts
@@ -610,7 +634,9 @@ mergeInto(LibraryManager.library, {
 
       // remove this mount from the child mounts
       var idx = node.mount.mounts.indexOf(mount);
+#if ASSERTIONS
       assert(idx !== -1);
+#endif
       node.mount.mounts.splice(idx, 1);
     },
     lookup: function(parent, name) {
@@ -622,14 +648,14 @@ mergeInto(LibraryManager.library, {
       var parent = lookup.node;
       var name = PATH.basename(path);
       if (!name || name === '.' || name === '..') {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      var err = FS.mayCreate(parent, name);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.mayCreate(parent, name);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.mknod) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
@@ -656,7 +682,7 @@ mergeInto(LibraryManager.library, {
         try {
           FS.mkdir(d, mode);
         } catch(e) {
-          if (e.errno != ERRNO_CODES.EEXIST) throw e;
+          if (e.errno != {{{ cDefine('EEXIST') }}}) throw e;
         }
       }
     },
@@ -669,21 +695,21 @@ mergeInto(LibraryManager.library, {
       return FS.mknod(path, mode, dev);
     },
     symlink: function(oldpath, newpath) {
-      if (!PATH.resolve(oldpath)) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      if (!PATH_FS.resolve(oldpath)) {
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       var lookup = FS.lookupPath(newpath, { parent: true });
       var parent = lookup.node;
       if (!parent) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       var newname = PATH.basename(newpath);
-      var err = FS.mayCreate(parent, newname);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.mayCreate(parent, newname);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.symlink) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
@@ -700,24 +726,24 @@ mergeInto(LibraryManager.library, {
         lookup = FS.lookupPath(new_path, { parent: true });
         new_dir = lookup.node;
       } catch (e) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
+        throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
-      if (!old_dir || !new_dir) throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      if (!old_dir || !new_dir) throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       // need to be part of the same mount
       if (old_dir.mount !== new_dir.mount) {
-        throw new FS.ErrnoError(ERRNO_CODES.EXDEV);
+        throw new FS.ErrnoError({{{ cDefine('EXDEV') }}});
       }
       // source must exist
       var old_node = FS.lookupNode(old_dir, old_name);
       // old path should not be an ancestor of the new path
-      var relative = PATH.relative(old_path, new_dirname);
+      var relative = PATH_FS.relative(old_path, new_dirname);
       if (relative.charAt(0) !== '.') {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       // new path should not be an ancestor of the old path
-      relative = PATH.relative(new_path, old_dirname);
+      relative = PATH_FS.relative(new_path, old_dirname);
       if (relative.charAt(0) !== '.') {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
+        throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
       }
       // see if the new path already exists
       var new_node;
@@ -732,29 +758,29 @@ mergeInto(LibraryManager.library, {
       }
       // we'll need to delete the old entry
       var isdir = FS.isDir(old_node.mode);
-      var err = FS.mayDelete(old_dir, old_name, isdir);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.mayDelete(old_dir, old_name, isdir);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       // need delete permissions if we'll be overwriting.
       // need create permissions if new doesn't already exist.
-      err = new_node ?
+      errCode = new_node ?
         FS.mayDelete(new_dir, new_name, isdir) :
         FS.mayCreate(new_dir, new_name);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       if (!old_dir.node_ops.rename) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       if (FS.isMountpoint(old_node) || (new_node && FS.isMountpoint(new_node))) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
+        throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
       // if we are going to change the parent, check write permissions
       if (new_dir !== old_dir) {
-        err = FS.nodePermissions(old_dir, 'w');
-        if (err) {
-          throw new FS.ErrnoError(err);
+        errCode = FS.nodePermissions(old_dir, 'w');
+        if (errCode) {
+          throw new FS.ErrnoError(errCode);
         }
       }
       try {
@@ -762,7 +788,7 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['willMovePath'](old_path, new_path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
@@ -779,7 +805,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (FS.trackingDelegate['onMovePath']) FS.trackingDelegate['onMovePath'](old_path, new_path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
     },
     rmdir: function(path) {
@@ -787,36 +813,36 @@ mergeInto(LibraryManager.library, {
       var parent = lookup.node;
       var name = PATH.basename(path);
       var node = FS.lookupNode(parent, name);
-      var err = FS.mayDelete(parent, name, true);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.mayDelete(parent, name, true);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.rmdir) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       if (FS.isMountpoint(node)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
+        throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
       try {
         if (FS.trackingDelegate['willDeletePath']) {
           FS.trackingDelegate['willDeletePath'](path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
       }
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
       try {
         if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readdir: function(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
       if (!node.node_ops.readdir) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+        throw new FS.ErrnoError({{{ cDefine('ENOTDIR') }}});
       }
       return node.node_ops.readdir(node);
     },
@@ -825,53 +851,53 @@ mergeInto(LibraryManager.library, {
       var parent = lookup.node;
       var name = PATH.basename(path);
       var node = FS.lookupNode(parent, name);
-      var err = FS.mayDelete(parent, name, false);
-      if (err) {
+      var errCode = FS.mayDelete(parent, name, false);
+      if (errCode) {
         // According to POSIX, we should map EISDIR to EPERM, but
         // we instead do what Linux does (and we must, as we use
         // the musl linux libc).
-        throw new FS.ErrnoError(err);
+        throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.unlink) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       if (FS.isMountpoint(node)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
+        throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
       try {
         if (FS.trackingDelegate['willDeletePath']) {
           FS.trackingDelegate['willDeletePath'](path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
       }
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
       try {
         if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readlink: function(path) {
       var lookup = FS.lookupPath(path);
       var link = lookup.node;
       if (!link) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       if (!link.node_ops.readlink) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      return PATH.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
+      return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
     },
     stat: function(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
       if (!node) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       if (!node.node_ops.getattr) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       return node.node_ops.getattr(node);
     },
@@ -887,7 +913,7 @@ mergeInto(LibraryManager.library, {
         node = path;
       }
       if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       node.node_ops.setattr(node, {
         mode: (mode & {{{ cDefine('S_IALLUGO') }}}) | (node.mode & ~{{{ cDefine('S_IALLUGO') }}}),
@@ -900,7 +926,7 @@ mergeInto(LibraryManager.library, {
     fchmod: function(fd, mode) {
       var stream = FS.getStream(fd);
       if (!stream) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       FS.chmod(stream.node, mode);
     },
@@ -913,7 +939,7 @@ mergeInto(LibraryManager.library, {
         node = path;
       }
       if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       node.node_ops.setattr(node, {
         timestamp: Date.now()
@@ -926,13 +952,13 @@ mergeInto(LibraryManager.library, {
     fchown: function(fd, uid, gid) {
       var stream = FS.getStream(fd);
       if (!stream) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       FS.chown(stream.node, uid, gid);
     },
     truncate: function(path, len) {
       if (len < 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       var node;
       if (typeof path === 'string') {
@@ -942,17 +968,17 @@ mergeInto(LibraryManager.library, {
         node = path;
       }
       if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       if (FS.isDir(node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EISDIR);
+        throw new FS.ErrnoError({{{ cDefine('EISDIR') }}});
       }
       if (!FS.isFile(node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      var err = FS.nodePermissions(node, 'w');
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.nodePermissions(node, 'w');
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       node.node_ops.setattr(node, {
         size: len,
@@ -962,10 +988,10 @@ mergeInto(LibraryManager.library, {
     ftruncate: function(fd, len) {
       var stream = FS.getStream(fd);
       if (!stream) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       FS.truncate(stream.node, len);
     },
@@ -978,7 +1004,7 @@ mergeInto(LibraryManager.library, {
     },
     open: function(path, flags, mode, fd_start, fd_end) {
       if (path === "") {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
       mode = typeof mode === 'undefined' ? 438 /* 0666 */ : mode;
@@ -1007,7 +1033,7 @@ mergeInto(LibraryManager.library, {
         if (node) {
           // if O_CREAT and O_EXCL are set, error out if the node already exists
           if ((flags & {{{ cDefine('O_EXCL') }}})) {
-            throw new FS.ErrnoError(ERRNO_CODES.EEXIST);
+            throw new FS.ErrnoError({{{ cDefine('EEXIST') }}});
           }
         } else {
           // node doesn't exist, try to create it
@@ -1016,7 +1042,7 @@ mergeInto(LibraryManager.library, {
         }
       }
       if (!node) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       // can't truncate a device
       if (FS.isChrdev(node.mode)) {
@@ -1024,15 +1050,15 @@ mergeInto(LibraryManager.library, {
       }
       // if asked only for a directory, then this must be one
       if ((flags & {{{ cDefine('O_DIRECTORY') }}}) && !FS.isDir(node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+        throw new FS.ErrnoError({{{ cDefine('ENOTDIR') }}});
       }
       // check permissions, if this is not a file we just created now (it is ok to
       // create and write to a file with read-only permissions; it is read-only
       // for later use)
       if (!created) {
-        var err = FS.mayOpen(node, flags);
-        if (err) {
-          throw new FS.ErrnoError(err);
+        var errCode = FS.mayOpen(node, flags);
+        if (errCode) {
+          throw new FS.ErrnoError(errCode);
         }
       }
       // do truncation if necessary
@@ -1040,7 +1066,7 @@ mergeInto(LibraryManager.library, {
         FS.truncate(node, 0);
       }
       // we've already handled these, don't pass down to the underlying vfs
-      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}});
+      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_NOFOLLOW') }}});
 
       // register the stream with the filesystem
       var stream = FS.createStream({
@@ -1062,7 +1088,7 @@ mergeInto(LibraryManager.library, {
         if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-          err('read file: ' + path);
+          err("FS.trackingDelegate error on read file: " + path);
         }
       }
       try {
@@ -1077,13 +1103,13 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['onOpenFile'](path, trackingFlags);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
+        err("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
       }
       return stream;
     },
     close: function(stream) {
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if (stream.getdents) stream.getdents = null; // free readdir state
       try {
@@ -1102,58 +1128,67 @@ mergeInto(LibraryManager.library, {
     },
     llseek: function(stream, offset, whence) {
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if (!stream.seekable || !stream.stream_ops.llseek) {
-        throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
+        throw new FS.ErrnoError({{{ cDefine('ESPIPE') }}});
+      }
+      if (whence != {{{ cDefine('SEEK_SET') }}} && whence != {{{ cDefine('SEEK_CUR') }}} && whence != {{{ cDefine('SEEK_END') }}}) {
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
       return stream.position;
     },
     read: function(stream, buffer, offset, length, position) {
+#if CAN_ADDRESS_2GB
+      offset >>>= 0;
+#endif
       if (length < 0 || position < 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if (FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EISDIR);
+        throw new FS.ErrnoError({{{ cDefine('EISDIR') }}});
       }
       if (!stream.stream_ops.read) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       var seeking = typeof position !== 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
-        throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
+        throw new FS.ErrnoError({{{ cDefine('ESPIPE') }}});
       }
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position, canOwn) {
+#if CAN_ADDRESS_2GB
+      offset >>>= 0;
+#endif
       if (length < 0 || position < 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if (FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EISDIR);
+        throw new FS.ErrnoError({{{ cDefine('EISDIR') }}});
       }
       if (!stream.stream_ops.write) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      if (stream.flags & {{{ cDefine('O_APPEND') }}}) {
+      if (stream.seekable && stream.flags & {{{ cDefine('O_APPEND') }}}) {
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
@@ -1161,46 +1196,62 @@ mergeInto(LibraryManager.library, {
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
-        throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
+        throw new FS.ErrnoError({{{ cDefine('ESPIPE') }}});
       }
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
       try {
         if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onWriteToFile']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
     allocate: function(stream, offset, length) {
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if (offset < 0 || length <= 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+        throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
       if (!FS.isFile(stream.node.mode) && !FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+        throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
       }
       if (!stream.stream_ops.allocate) {
-        throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
+        throw new FS.ErrnoError({{{ cDefine('EOPNOTSUPP') }}});
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
     mmap: function(stream, buffer, offset, length, position, prot, flags) {
-      // TODO if PROT is PROT_WRITE, make sure we have write access
+#if CAN_ADDRESS_2GB
+      offset >>>= 0;
+#endif
+      // User requests writing to file (prot & PROT_WRITE != 0).
+      // Checking if we have permissions to write to the file unless
+      // MAP_PRIVATE flag is set. According to POSIX spec it is possible
+      // to write to file opened in read-only mode with MAP_PRIVATE flag,
+      // as all modifications will be visible only in the memory of
+      // the current process.
+      if ((prot & {{{ cDefine('PROT_WRITE') }}}) !== 0
+          && (flags & {{{ cDefine('MAP_PRIVATE')}}}) === 0
+          && (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDWR')}}}) {
+        throw new FS.ErrnoError({{{ cDefine('EACCES') }}});
+      }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EACCES);
+        throw new FS.ErrnoError({{{ cDefine('EACCES') }}});
       }
       if (!stream.stream_ops.mmap) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+        throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
       }
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
     },
     msync: function(stream, buffer, offset, length, mmapFlags) {
+#if CAN_ADDRESS_2GB
+      offset >>>= 0;
+#endif
       if (!stream || !stream.stream_ops.msync) {
         return 0;
       }
@@ -1211,7 +1262,7 @@ mergeInto(LibraryManager.library, {
     },
     ioctl: function(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOTTY);
+        throw new FS.ErrnoError({{{ cDefine('ENOTTY') }}});
       }
       return stream.stream_ops.ioctl(stream, cmd, arg);
     },
@@ -1261,14 +1312,14 @@ mergeInto(LibraryManager.library, {
     chdir: function(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       if (lookup.node === null) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       if (!FS.isDir(lookup.node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+        throw new FS.ErrnoError({{{ cDefine('ENOTDIR') }}});
       }
-      var err = FS.nodePermissions(lookup.node, 'x');
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.nodePermissions(lookup.node, 'x');
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       FS.currentPath = lookup.path;
     },
@@ -1295,18 +1346,31 @@ mergeInto(LibraryManager.library, {
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
       var random_device;
-      if (typeof crypto !== 'undefined') {
+      if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
         // for modern web browsers
         var randomBuffer = new Uint8Array(1);
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
-      } else if (ENVIRONMENT_IS_NODE) {
+      } else
 #if ENVIRONMENT_MAY_BE_NODE
-        // for nodejs
-        random_device = function() { return require('crypto')['randomBytes'](1)[0]; };
+      if (ENVIRONMENT_IS_NODE) {
+        // for nodejs with or without crypto support included
+        try {
+          var crypto_module = require('crypto');
+          // nodejs has crypto support
+          random_device = function() { return crypto_module['randomBytes'](1)[0]; };
+        } catch (e) {
+          // nodejs doesn't have crypto support
+        }
+      } else
 #endif // ENVIRONMENT_MAY_BE_NODE
-      } else {
-        // default for ES5 platforms
-        random_device = function() { abort("random_device"); /*Math.random() is not safe for random number generation, so this fallback random_device implementation aborts... see kripken/emscripten/pull/7096 */ };
+      {}
+      if (!random_device) {
+        // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
+#if ASSERTIONS
+        random_device = function() { abort("no cryptographic support found for random_device. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
+#else
+        random_device = function() { abort("random_device"); };
+#endif
       }
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);
@@ -1327,7 +1391,7 @@ mergeInto(LibraryManager.library, {
             lookup: function(parent, name) {
               var fd = +name;
               var stream = FS.getStream(fd);
-              if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+              if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
               var ret = {
                 parent: null,
                 mount: { mountpoint: 'fake' },
@@ -1368,40 +1432,50 @@ mergeInto(LibraryManager.library, {
 
       // open default streams for the stdin, stdout and stderr devices
       var stdin = FS.open('/dev/stdin', 'r');
-      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
-
       var stdout = FS.open('/dev/stdout', 'w');
-      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
-
       var stderr = FS.open('/dev/stderr', 'w');
+#if ASSERTIONS
+      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
+      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
       assert(stderr.fd === 2, 'invalid handle for stderr (' + stderr.fd + ')');
+#endif
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
-      FS.ErrnoError = function ErrnoError(errno, node) {
-        //err(stackTrace()); // useful for debugging
+      FS.ErrnoError = /** @this{Object} */ function ErrnoError(errno, node) {
         this.node = node;
-        this.setErrno = function(errno) {
+        this.setErrno = /** @this{Object} */ function(errno) {
           this.errno = errno;
+#if ASSERTIONS
           for (var key in ERRNO_CODES) {
             if (ERRNO_CODES[key] === errno) {
               this.code = key;
               break;
             }
           }
+#endif
         };
         this.setErrno(errno);
-        this.message = ERRNO_MESSAGES[errno];
-        // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
-        if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
 #if ASSERTIONS
-        if (this.stack) this.stack = demangleAll(this.stack);
+        this.message = ERRNO_MESSAGES[errno];
+#else
+        this.message = 'FS error';
 #endif
+
+#if ASSERTIONS && !MINIMAL_RUNTIME
+        // Try to get a maximally helpful stack trace. On Node.js, getting Error.stack
+        // now ensures it shows what we want.
+        if (this.stack) {
+          // Define the stack property for Node.js 4, which otherwise errors on the next line.
+          Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
+          this.stack = demangleAll(this.stack);
+        }
+#endif // ASSERTIONS
       };
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
       // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
-      [ERRNO_CODES.ENOENT].forEach(function(code) {
+      [{{{ cDefine('ENOENT') }}}].forEach(function(code) {
         FS.genericErrors[code] = new FS.ErrnoError(code);
         FS.genericErrors[code].stack = '<generic error, no stack>';
       });
@@ -1419,19 +1493,21 @@ mergeInto(LibraryManager.library, {
 
       FS.filesystems = {
         'MEMFS': MEMFS,
-#if __EMSCRIPTEN_HAS_idbfs_js__
+#if LibraryManager.has('library_idbfs.js')
         'IDBFS': IDBFS,
 #endif
-#if __EMSCRIPTEN_HAS_nodefs_js__
+#if LibraryManager.has('library_nodefs.js')
         'NODEFS': NODEFS,
 #endif
-#if __EMSCRIPTEN_HAS_workerfs_js__
+#if LibraryManager.has('library_workerfs.js')
         'WORKERFS': WORKERFS,
 #endif
       };
     },
     init: function(input, output, error) {
+#if ASSERTIONS
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+#endif
       FS.init.initialized = true;
 
       FS.ensureErrnoError();
@@ -1473,7 +1549,7 @@ mergeInto(LibraryManager.library, {
       return path;
     },
     absolutePath: function(relative, base) {
-      return PATH.resolve(base, relative);
+      return PATH_FS.resolve(base, relative);
     },
     standardizePath: function(path) {
       return PATH.normalize(path);
@@ -1483,7 +1559,7 @@ mergeInto(LibraryManager.library, {
       if (ret.exists) {
         return ret.object;
       } else {
-        ___setErrNo(ret.error);
+        setErrNo(ret.error);
         return null;
       }
     },
@@ -1584,10 +1660,10 @@ mergeInto(LibraryManager.library, {
             try {
               result = input();
             } catch (e) {
-              throw new FS.ErrnoError(ERRNO_CODES.EIO);
+              throw new FS.ErrnoError({{{ cDefine('EIO') }}});
             }
             if (result === undefined && bytesRead === 0) {
-              throw new FS.ErrnoError(ERRNO_CODES.EAGAIN);
+              throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
             }
             if (result === null || result === undefined) break;
             bytesRead++;
@@ -1603,7 +1679,7 @@ mergeInto(LibraryManager.library, {
             try {
               output(buffer[offset+i]);
             } catch (e) {
-              throw new FS.ErrnoError(ERRNO_CODES.EIO);
+              throw new FS.ErrnoError({{{ cDefine('EIO') }}});
             }
           }
           if (length) {
@@ -1625,12 +1701,12 @@ mergeInto(LibraryManager.library, {
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
-      } else if (Module['read']) {
+      } else if (read_) {
         // Command-line.
         try {
           // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
           //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(Module['read'](obj.url), true);
+          obj.contents = intArrayFromString(read_(obj.url), true);
           obj.usedBytes = obj.contents.length;
         } catch (e) {
           success = false;
@@ -1638,7 +1714,7 @@ mergeInto(LibraryManager.library, {
       } else {
         throw new Error('Cannot load without read() or XMLHttpRequest.');
       }
-      if (!success) ___setErrNo(ERRNO_CODES.EIO);
+      if (!success) setErrNo({{{ cDefine('EIO') }}});
       return success;
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
@@ -1646,21 +1722,22 @@ mergeInto(LibraryManager.library, {
     // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile: function(parent, name, url, canRead, canWrite) {
       // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
+      /** @constructor */
       function LazyUint8Array() {
         this.lengthKnown = false;
         this.chunks = []; // Loaded chunks. Index is the chunk number
       }
-      LazyUint8Array.prototype.get = function LazyUint8Array_get(idx) {
+      LazyUint8Array.prototype.get = /** @this{Object} */ function LazyUint8Array_get(idx) {
         if (idx > this.length-1 || idx < 0) {
           return undefined;
         }
         var chunkOffset = idx % this.chunkSize;
         var chunkNum = (idx / this.chunkSize)|0;
         return this.getter(chunkNum)[chunkOffset];
-      }
+      };
       LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {
         this.getter = getter;
-      }
+      };
       LazyUint8Array.prototype.cacheLength = function LazyUint8Array_cacheLength() {
         // Find length
         var xhr = new XMLHttpRequest();
@@ -1699,7 +1776,7 @@ mergeInto(LibraryManager.library, {
           xhr.send(null);
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
           if (xhr.response !== undefined) {
-            return new Uint8Array(xhr.response || []);
+            return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
           } else {
             return intArrayFromString(xhr.responseText || '', true);
           }
@@ -1721,19 +1798,19 @@ mergeInto(LibraryManager.library, {
           chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
           datalength = this.getter(0).length;
           chunkSize = datalength;
-          console.log("LazyFiles on gzip forces download of the whole file when length is accessed");
+          out("LazyFiles on gzip forces download of the whole file when length is accessed");
         }
 
         this._length = datalength;
         this._chunkSize = chunkSize;
         this.lengthKnown = true;
-      }
+      };
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();
         Object.defineProperties(lazyArray, {
           length: {
-            get: function() {
+            get: /** @this{Object} */ function() {
               if(!this.lengthKnown) {
                 this.cacheLength();
               }
@@ -1741,7 +1818,7 @@ mergeInto(LibraryManager.library, {
             }
           },
           chunkSize: {
-            get: function() {
+            get: /** @this{Object} */ function() {
               if(!this.lengthKnown) {
                 this.cacheLength();
               }
@@ -1768,7 +1845,7 @@ mergeInto(LibraryManager.library, {
       // Add a function that defers querying the file size until it is asked the first time.
       Object.defineProperties(node, {
         usedBytes: {
-          get: function() { return this.contents.length; }
+          get: /** @this {FSNode} */ function() { return this.contents.length; }
         }
       });
       // override each stream op with one that tries to force load the lazy file first
@@ -1778,7 +1855,7 @@ mergeInto(LibraryManager.library, {
         var fn = node.stream_ops[key];
         stream_ops[key] = function forceLoadLazyFile() {
           if (!FS.forceLoadFile(node)) {
-            throw new FS.ErrnoError(ERRNO_CODES.EIO);
+            throw new FS.ErrnoError({{{ cDefine('EIO') }}});
           }
           return fn.apply(null, arguments);
         };
@@ -1786,13 +1863,15 @@ mergeInto(LibraryManager.library, {
       // use a custom read function
       stream_ops.read = function stream_ops_read(stream, buffer, offset, length, position) {
         if (!FS.forceLoadFile(node)) {
-          throw new FS.ErrnoError(ERRNO_CODES.EIO);
+          throw new FS.ErrnoError({{{ cDefine('EIO') }}});
         }
         var contents = stream.node.contents;
         if (position >= contents.length)
           return 0;
         var size = Math.min(contents.length - position, length);
+#if ASSERTIONS
         assert(size >= 0);
+#endif
         if (contents.slice) { // normal array
           for (var i = 0; i < size; i++) {
             buffer[offset + i] = contents[position + i];
@@ -1823,7 +1902,7 @@ mergeInto(LibraryManager.library, {
       Browser.init(); // XXX perhaps this method should move onto Browser?
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
-      var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;
+      var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
       var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
       function processData(byteArray) {
         function finish(byteArray) {
@@ -1881,7 +1960,7 @@ mergeInto(LibraryManager.library, {
         return onerror(e);
       }
       openRequest.onupgradeneeded = function openRequest_onupgradeneeded() {
-        console.log('creating db');
+        out('creating db');
         var db = openRequest.result;
         db.createObjectStore(FS.DB_STORE_NAME);
       };

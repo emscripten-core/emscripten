@@ -75,9 +75,9 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   num = fread(buffer, 1, 1, f3); assert(num == 1); // also near the end
   EM_ASM((
     assert(!Module['decompressedChunks']);
-    Module.compressedData.debug = true;
-    console.log('last cached indexes ' + Module.compressedData.cachedIndexes);
-    assert(Module.compressedData.cachedIndexes.indexOf(0) < 0); // 0 is not cached
+    Module['compressedData']['debug'] = true;
+    console.log('last cached indexes ' + Module['compressedData']['cachedIndexes']);
+    assert(Module['compressedData']['cachedIndexes'].indexOf(0) < 0); // 0 is not cached
   ));
   printf("multiple reads of same byte\n");
   for (int i = 0; i < 100; i++) {
@@ -145,8 +145,8 @@ int main() {
       FS.mkdir('/files');
       LZ4.loadPackage({ 'metadata': meta, 'data': data });
 
-      Module.compressedData = FS.root.contents['file1.txt'].contents.compressedData;
-      var compressedSize = Module.compressedData.data.length;
+      Module['compressedData'] = FS.root.contents['file1.txt'].contents.compressedData;
+      var compressedSize = Module['compressedData']['data'].length;
       var low = COMPLETE_SIZE/3;
       var high = COMPLETE_SIZE/2;
       console.log('seeing compressed size of ' + compressedSize + ', expect in ' + [low, high]);

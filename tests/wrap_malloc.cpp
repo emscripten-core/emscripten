@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,12 +33,20 @@ void __attribute__((noinline)) free(void *ptr)
 
 }
 
+// Mark as used to defeat LTO which can otherwise completely elimate the
+// calls to malloc below.
+void *out __attribute__((used));
+
 int main()
 {
 	for(int i = 0; i < 20; ++i)
 	{
 		void *ptr = malloc(1024 * 1024);
+		out = ptr;
 		free(ptr);
 	}
+	printf("totalAllocated: %d\n", totalAllocated);
+	assert(totalAllocated == 20);
 	printf("OK.\n");
+	return 0;
 }

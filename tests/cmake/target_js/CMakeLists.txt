@@ -17,7 +17,7 @@ else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimi
 endif()
 
 # Ensure synchronous startup for this test, whose output expects it
-SET(linkFlags "${linkFlags} -s BINARYEN_ASYNC_COMPILATION=0")
+SET(linkFlags "${linkFlags} -s WASM_ASYNC_COMPILATION=0")
 
 # Test that the CMake-provided macro check_function_exists() works.
 include(CheckFunctionExists)

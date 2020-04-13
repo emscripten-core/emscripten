@@ -1,0 +1,4 @@
+# Configuration for new-pr-welcome - https://github.com/behaviorbot/new-pr-welcome
+newPRWelcomeComment: >
+  Thank you for submitting a pull request!
+  If this is your first PR, make sure to add yourself to AUTHORS.

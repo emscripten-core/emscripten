@@ -1,0 +1,5 @@
+$__wasm_call_ctors
+$dlmalloc
+$main
+$sbrk
+$stackAlloc

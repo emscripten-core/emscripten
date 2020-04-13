@@ -31,7 +31,7 @@ static void *thread_start(void *arg)
 
 int main()
 {
-  // Test existence of nanosleep(), https://github.com/kripken/emscripten/issues/4578
+  // Test existence of nanosleep(), https://github.com/emscripten-core/emscripten/issues/4578
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
 
@@ -46,15 +46,26 @@ int main()
 
   pthread_t thr;
 
+  assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
+  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8); // This test should be run with a prepopulated pool of size 8.
+
   int n = 20;
   EM_ASM(out('Main: Spawning thread to compute fib('+$0+')...'), n);
   int s = pthread_create(&thr, NULL, thread_start, (void*)n);
   assert(s == 0);
   EM_ASM(out('Main: Waiting for thread to join.'));
   int result = 0;
+
+  assert(EM_ASM_INT(return PThread.runningWorkers.length) == 1);
+  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 7);
+
   s = pthread_join(thr, (void**)&result);
   assert(s == 0);
   EM_ASM(out('Main: Thread joined with result: '+$0+'.'), result);
+
+  assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
+  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8);
+
 #ifdef REPORT_RESULT
   REPORT_RESULT(result);
 #endif

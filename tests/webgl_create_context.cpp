@@ -56,12 +56,12 @@ void loop()
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
     EM_ASM(
-      var canvas2 = Module.canvas.cloneNode();
-      Module.canvas.parentElement.appendChild(canvas2);
-      Module.canvas = canvas2;
+      var canvas2 = Module['canvas'].cloneNode(true);
+      Module['canvas'].parentElement.appendChild(canvas2);
+      Module['canvas'] = canvas2;
     );
     assert(emscripten_webgl_get_current_context() == 0);
-    context = emscripten_webgl_create_context(0, &attrs);
+    context = emscripten_webgl_create_context("#canvas", &attrs);
 
     assert(context > 0); // Must have received a valid context.
     res = emscripten_webgl_make_context_current(context);
@@ -102,12 +102,12 @@ int main()
 
     EM_ASM(
       var canvas2 = document.createElement('canvas');
-      Module.canvas.parentElement.appendChild(canvas2);
+      Module['canvas'].parentElement.appendChild(canvas2);
       canvas2.id = 'customCanvas';
     );
     
     assert(emscripten_webgl_get_current_context() == 0);
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("customCanvas", &attrs);
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#customCanvas", &attrs);
     assert(context > 0); // Must have received a valid context.
     EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
     assert(res == EMSCRIPTEN_RESULT_SUCCESS);
@@ -157,7 +157,7 @@ int main()
     assert(!!numSamples == !!antialias);
     printf("\n");
 
-    // Test bug https://github.com/kripken/emscripten/issues/1330:
+    // Test bug https://github.com/emscripten-core/emscripten/issues/1330:
     unsigned vb;
     glGenBuffers(1, &vb);
     glBindBuffer(GL_ARRAY_BUFFER, vb);
@@ -177,6 +177,11 @@ int main()
     glGetVertexAttribiv(1, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &vb4);
     if (vb2 != vb4) printf("Index 1: Generated VB: %d, read back VB: %d\n", vb2, vb4);
     assert(vb2 == vb4);
+
+    // Test bug https://github.com/emscripten-core/emscripten/issues/7472:
+    GLint enabled = 0;
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
+    assert(enabled == 0);
 
     // Test that deleting the context works.
     res = emscripten_webgl_destroy_context(context);

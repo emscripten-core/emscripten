@@ -564,7 +564,7 @@ gears_draw(void)
    glutPostRedisplay(); // check for issues with not throttling calls
 #endif
 
-  EM_ASM(dump('close!!!\n'); window.close());
+  EM_ASM({ window.close() });
 }
 
 /**

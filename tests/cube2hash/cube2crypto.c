@@ -17,7 +17,7 @@ char *cube2crypto_hashstring(char *string)
 		*(result+(i*2))   = "0123456789ABCDEF"[c&0xF];
 		*(result+(i*2)+1) = "0123456789ABCDEF"[c>>4];
 	}
-	*(result+(i*2)+2) = '\0';
+	*(result+(i*2)) = '\0';
 	
 	return result;
 }

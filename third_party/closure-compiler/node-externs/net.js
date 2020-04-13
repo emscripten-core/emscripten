@@ -124,14 +124,14 @@ net.Socket.prototype.bufferSize;
 net.Socket.prototype.setEncoding = function(encoding) {};
 
 /**
- * @param {string|buffer.Buffer} data
+ * @param {string|nodeBuffer.Buffer} data
  * @param {(string|function(...))=}encoding
  * @param {function(...)=} callback
  */
 net.Socket.prototype.write = function(data, encoding, callback) {};
 
 /**
- * @param {(string|buffer.Buffer)=}data
+ * @param {(string|nodeBuffer.Buffer)=}data
  * @param {string=} encoding
  */
 net.Socket.prototype.end = function(data, encoding) {};

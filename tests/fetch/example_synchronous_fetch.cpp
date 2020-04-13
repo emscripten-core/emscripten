@@ -15,12 +15,8 @@ int main()
   strcpy(attr.requestMethod, "GET");
   attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
-  
-  if (result == 0) {
-    result = 2;
-    printf("emscripten_fetch() failed to run synchronously!\n");
-  }
+  printf("Fetch finished with status %d\n", fetch->status);
 #ifdef REPORT_RESULT
-    REPORT_RESULT(result);
+  REPORT_RESULT(fetch->status);
 #endif
 }

@@ -32,8 +32,8 @@ int gotWheelClick = 0;
 
 void instruction()
 {
-  if (!gotWheelUp || !gotWheelButtonUp) printf("Please scroll the mouse wheel upwards (move your finger away from you towards the display).\n");
-  else if (!gotWheelDown || !gotWheelButtonDown) printf("Please scroll the mouse wheel downwards (move your finger towards you).\n");
+  if (!gotWheelUp || !gotWheelButtonUp) printf("Please scroll the mouse wheel upwards by a single notch (slowly move your finger away from you towards the display).\n");
+  else if (!gotWheelDown || !gotWheelButtonDown) printf("Please scroll the mouse wheel downwards by a single notch (slowly move your finger towards you).\n");
   else if (!gotWheelClick) printf("Please click the wheel button.\n");
   else if (gotWheelUp && gotWheelButtonUp && gotWheelDown && gotWheelButtonDown && gotWheelClick) report_result(0);
 }
@@ -47,12 +47,14 @@ void main_tick()
         printf("SDL_MOUSEWHEEL: timestamp: %u, windowID: %u, which: %u, x: %d, y: %d\n", event.wheel.timestamp, event.wheel.windowID, event.wheel.which, event.wheel.x, event.wheel.y);
         if (!gotWheelUp)
         {
-          if (event.wheel.y > 0) { gotWheelUp = 1; instruction(); }
+          if (event.wheel.y > 0 && event.wheel.y < 2) { gotWheelUp = 1; instruction(); }
+          else if (event.wheel.y >= 2) { printf("The scroll amount was too large. Either you scrolled very fast or the normalization is not working."); report_result(1); }
           else if (event.wheel.y < 0) { printf("You scrolled to the wrong direction (downwards)!\n"); report_result(1); }
         }
         else if (!gotWheelDown)
         {
-          if (event.wheel.y < 0) { gotWheelDown = 1; instruction(); }
+          if (event.wheel.y < 0 && event.wheel.y > -2) { gotWheelDown = 1; instruction(); }
+          else if (event.wheel.y <= -2) { printf("The scroll amount was too large. Either you scrolled very fast or the normalization is not working."); report_result(1); }
         }
         break;
       case SDL_MOUSEBUTTONDOWN:

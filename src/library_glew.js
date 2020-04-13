@@ -1,9 +1,10 @@
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 /*
- * Copyright 2014 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- *
  * EMSCRIPTEN GLEW 1.10.0 emulation
  *
  * What it does:
@@ -99,7 +100,7 @@ var LibraryGLEW = {
 
     extensionIsSupported: function(name) {
       if (!GLEW.extensions) {
-        GLEW.extensions = Pointer_stringify(_glGetString(0x1F03)).split(' ');
+        GLEW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
       }
 
       if (GLEW.extensions.indexOf(name) != -1)
@@ -114,8 +115,8 @@ var LibraryGLEW = {
   glewInit: function() { return 0; },
 
   glewIsSupported: function(name) {
-    var exts = Pointer_stringify(name).split(' ');
-    for (var i in exts) {
+    var exts = UTF8ToString(name).split(' ');
+    for (var i = 0; i < exts.length; ++i) {
       if (!GLEW.extensionIsSupported(exts[i]))
         return 0;
     }
@@ -123,7 +124,7 @@ var LibraryGLEW = {
   },
 
   glewGetExtension: function(name) {
-    return GLEW.extensionIsSupported(Pointer_stringify(name));
+    return GLEW.extensionIsSupported(UTF8ToString(name));
   },
 
   glewGetErrorString: function(error) {

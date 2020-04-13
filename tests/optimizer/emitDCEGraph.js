@@ -32,7 +32,7 @@ function useManySorted() {
   Module['expI2']();
 }
 
-Module.asmLibraryArg = {
+var asmLibraryArg = {
   'tempNum': tempNum,
   'tempFunc': tempFunc,
   'rootedFunc1': rootedFunc1,
@@ -98,4 +98,9 @@ dynCall_v(ptr); // use directly
 Module['dynCall_vi'](ptr, 1); // use on module
 dynCall('vii', ptr, [2, 3]); // use indirectly, depending on analysis of dynCall(string, )
 // and viii is never used, so definitely legitimately eliminatable
+
+// Don't crash on this code pattern, which regressed in #10724
+(function(output) {
+  x++;
+});
 

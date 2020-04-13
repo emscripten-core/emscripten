@@ -1,0 +1,13 @@
+STACKTOP
+___wasi_fd_write
+__memory_base
+__table_base
+_emscripten_get_heap_size
+_emscripten_memcpy_big
+_emscripten_resize_heap
+abort
+fb
+gb
+memory
+setTempRet0
+table

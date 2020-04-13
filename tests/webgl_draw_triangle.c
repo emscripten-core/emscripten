@@ -51,6 +51,10 @@ int main()
 #ifdef EXPLICIT_SWAP
   attr.explicitSwapControl = 1;
 #endif
+#ifdef DRAW_FROM_CLIENT_MEMORY
+  // This test verifies that drawing from client-side memory when enableExtensionsByDefault==false works.
+  attr.enableExtensionsByDefault = 0;
+#endif
 
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
@@ -76,18 +80,24 @@ int main()
   GLuint program = create_program(vs, fs);
   glUseProgram(program);
 
-  GLuint vbo;
-  glGenBuffers(1, &vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  const float pos_and_color[] = {
+  static const float pos_and_color[] = {
   //     x,     y, r, g, b
      -0.6f, -0.6f, 1, 0, 0,
       0.6f, -0.6f, 0, 1, 0,
       0.f,   0.6f, 0, 0, 1,
   };
+
+#ifdef DRAW_FROM_CLIENT_MEMORY
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 20, pos_and_color);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 20, (void*)(pos_and_color+2));
+#else
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(pos_and_color), pos_and_color, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 20, 0);
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 20, (void*)8);
+#endif
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
 

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #include <emscripten.h>
 
@@ -128,7 +129,7 @@ static void drawTriangle(GLuint verticesVBO, unsigned char r, unsigned char g, u
 // Draw a red triangle on a white background. If antialiasing is disabled, resulting pixels
 // will only have white and red colors. If antialiasing is enabled, there will be pixels
 // whose color is different from red and white.
-static int testAntiAliasing(bool activated) {
+static bool testAntiAliasing(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, backgroundColor[3]/255.f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -162,7 +163,7 @@ static int testAntiAliasing(bool activated) {
 // Draw a red triangle with depth equals to 0 then a green triangle whose depth equals -1.
 // If there is an attached depth buffer, the resulting image will be a red triangle. If not,
 // the resulting image will be a green triangle.
-static int testDepth(bool activated) {
+static bool testDepth(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, backgroundColor[3]/255.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -195,7 +196,7 @@ static int testDepth(bool activated) {
 // Then draw a green triangle whose stencil ref value is 0xFF.
 // If there is an attached stencil buffer, the resulting image will be a red triangle. If not,
 // the resulting image will be a green triangle.
-static int testStencil(bool activated) {
+static bool testStencil(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, backgroundColor[3]/255.f);
     glClearStencil(0xFF);
@@ -226,7 +227,7 @@ static int testStencil(bool activated) {
 
 // Clear to a color with alpha = 0. If alpha is enabled then all pixels will have alpha = 0.
 // If alpha is disabled then pixels will have alpha of 255
-static int testAlpha(bool activated) {
+static bool testAlpha(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -259,24 +260,26 @@ static bool depthActivated = false;
 static bool stencilActivated = false;
 static bool alphaActivated = false;
 
-static int result = 0;
-static int resultAA = 0;
-static int resultDepth = 0;
-static int resultStencil = 0;
-static int resultAlpha = 0;
+static bool result = 0;
+static bool resultAA = 0;
+static bool resultDepth = 0;
+static bool resultStencil = 0;
+static bool resultAlpha = 0;
 
 static void draw() {
-  
   if (!resultAA) resultAA = testAntiAliasing(antiAliasingActivated);
+  assert(resultAA);
    
   if (!resultDepth) resultDepth = testDepth(depthActivated);
+  assert(resultDepth);
   
   if (!resultStencil) resultStencil = testStencil(stencilActivated);
+  assert(resultStencil);
   
   if (!resultAlpha) resultAlpha = testAlpha(alphaActivated);
+  assert(resultAlpha);
   
   result = resultAA && resultDepth && resultStencil && resultAlpha;
- 
 }
 
 extern int webglAntialiasSupported(void);
@@ -288,19 +291,19 @@ extern int webglAlphaSupported(void);
 // Tests will succeed if they are not.
 static void checkContextAttributesSupport() {
   if (!webglAntialiasSupported()) {
-    resultAA = 1;
+    resultAA = true;
     EM_ASM(out('warning: no antialiasing\n'));
   }
   if (!webglDepthSupported()) {
-    resultDepth = 1;
+    resultDepth = true;
     EM_ASM(out('warning: no depth\n'));
   }
   if (!webglStencilSupported()) {
-    resultStencil = 1;
+    resultStencil = true;
     EM_ASM(out('warning: no stencil\n'));
   }
   if (!webglAlphaSupported()) {
-    resultAlpha = 1;
+    resultAlpha = true;
     EM_ASM(out('warning: no alpha\n'));
   }
 }

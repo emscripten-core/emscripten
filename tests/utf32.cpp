@@ -22,9 +22,9 @@ int main() {
 		utf32 *memory = new utf32[wstr.length()+1];
 
 		EM_ASM({
-			var str = Module.UTF32ToString($0);
+			var str = UTF32ToString($0);
 			out(str);
-			var numBytesWritten = Module.stringToUTF32(str, $1, $2);
+			var numBytesWritten = stringToUTF32(str, $1, $2);
 			if (numBytesWritten != 23*4) throw 'stringToUTF32 wrote an invalid length ' + numBytesWritten;
 		}, wstr.c_str(), memory, (wstr.length()+1)*sizeof(utf32));
 
@@ -37,9 +37,9 @@ int main() {
 		}
 
 		EM_ASM({
-			var str = Module.UTF32ToString($0);
+			var str = UTF32ToString($0);
 			out(str);
-			var numBytesWritten = Module.stringToUTF32(str, $1, $2);
+			var numBytesWritten = stringToUTF32(str, $1, $2);
 			if (numBytesWritten != 5*4) throw 'stringToUTF32 wrote an invalid length ' + numBytesWritten;
 		}, wstr.c_str(), memory, 6*sizeof(utf32));
 		assert(memory[5] == 0);
@@ -49,9 +49,9 @@ int main() {
 		utf16 *memory = new utf16[2*wstr.length()+1];
 
 		EM_ASM({
-			var str = Module.UTF16ToString($0);
+			var str = UTF16ToString($0);
 			out(str);
-			var numBytesWritten = Module.stringToUTF16(str, $1, $2);
+			var numBytesWritten = stringToUTF16(str, $1, $2);
 			if (numBytesWritten != 25*2) throw 'stringToUTF16 wrote an invalid length ' + numBytesWritten;
 		}, wstr.c_str(), memory, (2*wstr.length()+1)*sizeof(utf16));
 
@@ -64,9 +64,9 @@ int main() {
 		}
 
 		EM_ASM({
-			var str = Module.UTF16ToString($0);
+			var str = UTF16ToString($0);
 			out(str);
-			var numBytesWritten = Module.stringToUTF16(str, $1, $2);
+			var numBytesWritten = stringToUTF16(str, $1, $2);
 			if (numBytesWritten != 5*2) throw 'stringToUTF16 wrote an invalid length ' + numBytesWritten;
 		}, wstr.c_str(), memory, 6*sizeof(utf16));
 		assert(memory[5] == 0);

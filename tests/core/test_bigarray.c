@@ -14,7 +14,7 @@ struct Struct {
   char x;
   int y;
 };
-Struct buffy[SIZE];
+struct Struct buffy[SIZE];
 
 int main() {
   for (int i = 0; i < SIZE; i++) {

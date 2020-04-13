@@ -137,6 +137,7 @@ void randoms() {
   printf("sbrk chng:        %u\n", sbrk_change);
   printf("sbrk chng/allocs: %.2f\n", sbrk_change / double(allocs_at_max));
   printf("overhead:         %.2f\n", -((double(sizes) / allocations) - (sbrk_change / double(allocs_at_max))));
+  printf("sbrk top now:     %p\n", (void*)sbrk(0));
   if (POLL_SBRK) {
     printf("sbrk mean change: %.2f\n", (sum_sbrk / double(ITERS)) - before);
     printf("sbrk max change:  %u\n", max_sbrk - before);

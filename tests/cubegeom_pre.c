@@ -21,8 +21,12 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #endif
 
 #include "SDL/SDL.h"
-#if !USE_GLEW
+#if !USE_GLEW && !USE_REGAL
 #include "SDL/SDL_opengl.h"
+#endif
+
+#if USE_REGAL
+#include "GL/Regal.h"
 #endif
 
 #include <stdio.h>
@@ -44,6 +48,10 @@ int main(int argc, char *argv[])
         printf("Unable to set video mode: %s\n", SDL_GetError());
         return 1;
     }
+
+#if USE_REGAL
+    RegalMakeCurrent((void*)1);
+#endif
     
     glClearColor( 0, 0, 0, 0 );
     glClear( GL_COLOR_BUFFER_BIT );

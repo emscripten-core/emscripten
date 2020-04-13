@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
         glTexCoord2f(1, 1  ); glVertex3f(630, 400, 0);
     glEnd();
 
-    // Test https://github.com/kripken/emscripten/issues/3693
+    // Test https://github.com/emscripten-core/emscripten/issues/3693
     glBegin( GL_TRIANGLES );
     glEnd();
 

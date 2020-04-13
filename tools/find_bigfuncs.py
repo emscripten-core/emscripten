@@ -3,17 +3,18 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-Tool to find or compare big functions in a js or ll file
-'''
+"""Tool to find or compare big functions in a js or ll file
+"""
+
 from __future__ import print_function
-import os, sys
+import sys
+
 
 def humanbytes(nbytes):
-    if nbytes > 9*1024*1024:
-        return '{}MB'.format(nbytes/1024/1024)
-    elif nbytes > 9*1024:
-        return '{}KB'.format(nbytes/1024)
+    if nbytes > 9 * 1024 * 1024:
+        return '{}MB'.format(nbytes / 1024 / 1024)
+    elif nbytes > 9 * 1024:
+        return '{}KB'.format(nbytes / 1024)
     else:
         return '{}B'.format(nbytes)
 
@@ -30,12 +31,13 @@ def processfile(filename):
             nbytes = len(line)
         elif line.startswith(('}', ' )')) and curr:
             nlines = i - start
-            data[curr] = (nlines, nbytes+1)
+            data[curr] = (nlines, nbytes + 1)
             curr = None
             start = None
         elif curr:
             nbytes += len(line)
     return data
+
 
 def common_compare(data1, data2):
     fns1 = set(data1.keys())
@@ -52,6 +54,7 @@ def common_compare(data1, data2):
     bytesword = 'more' if commonbytediff >= 0 else 'less'
     print('file 2 has {} lines {} than file 1 in {} common functions'.format(abs(commonlinediff), linesword, len(commonfns)))
     print('file 2 has {} {} than file 1 in {} common functions'.format(humanbytes(abs(commonbytediff)), bytesword, len(commonfns)))
+
 
 def uniq_compare(data1, data2):
     fns1 = set(data1.keys())
@@ -81,30 +84,37 @@ def uniq_compare(data1, data2):
     print('file 2 has {} lines {} than file 1 overall in unique functions'.format(abs(uniqlinediff), linesword))
     print('file 2 has {} {} than file 1 overall in unique functions'.format(humanbytes(abs(uniqbytediff)), bytesword))
 
+
 def list_bigfuncs(data):
     data = list(data.items())
-    data.sort(key=lambda (f, d): d[0])
+    data.sort(key=lambda f_d: f_d[1][0])
     print(''.join(['%6d lines (%6s) : %s' % (d[0], humanbytes(d[1]), f) for f, d in data]))
+
 
 def main():
     if len(sys.argv) < 2 or len(sys.argv) > 3 or sys.argv[1] == '--help':
         print('Usage:')
         print('    {} file1 - list functions in a file in ascending order of size'.format(sys.argv[0]))
         print('    {} file1 file2 - compare functions across two files'.format(sys.argv[0]))
-        sys.exit(1)
-    elif len(sys.argv) == 2:
+        return 1
+
+    if len(sys.argv) == 2:
         filename = sys.argv[1]
         data = processfile(filename)
         list_bigfuncs(data)
-        sys.exit(0)
-    elif len(sys.argv) == 3:
+        return 0
+
+    if len(sys.argv) == 3:
         filename1 = sys.argv[1]
         data1 = processfile(filename1)
         filename2 = sys.argv[2]
         data2 = processfile(filename2)
         uniq_compare(data1, data2)
         common_compare(data1, data2)
-        sys.exit(0)
+        return 0
+
     assert False
 
-main()
+
+if __name__ == '__main__':
+  sys.exit(main())

@@ -12,7 +12,7 @@ import os, sys, re
 
 filename = sys.argv[1]
 data = open(filename).read()
-iss = re.findall(' i\d+ [^=]', data)
+iss = re.findall(r' i\d+ [^=]', data)
 set_iss = set(iss)
 bigs = []
 for iss in set_iss:

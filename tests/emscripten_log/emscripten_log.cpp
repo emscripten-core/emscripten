@@ -13,11 +13,11 @@
 int result = 1; // If 1, this test succeeded.
 
 // A custom assert macro to test varargs routing to emscripten_log().
-#define MYASSERT(condition, ...) \
+#define MYASSERT(condition, msg, ...) \
 	do { \
 		if (!(condition)) { \
 			emscripten_log(EM_LOG_ERROR, "%s", "Condition '" #condition "' failed in file " __FILE__ ":" STRINGIZE(__LINE__) "!"); \
-			emscripten_log(EM_LOG_ERROR, ##__VA_ARGS__); \
+			emscripten_log(EM_LOG_ERROR, msg, ##__VA_ARGS__); \
 			result = 0; \
 		} \
 	} while(0)
@@ -33,6 +33,8 @@ void __attribute__((noinline)) kitten()
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE, "Info log to console: int: %d, string: %s", 42, "hello");
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_WARN, "Warning message to console.");
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR, "Error message to console! This should appear in red!");
+	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_INFO, "Info message to console.");
+	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_DEBUG, "Debug message to console.");
 
 	// Log to with full callstack information (both original C source and JS callstacks):
 	emscripten_log(EM_LOG_C_STACK | EM_LOG_JS_STACK | EM_LOG_DEMANGLE, "A message with as full call stack information as possible:");
@@ -42,10 +44,6 @@ void __attribute__((noinline)) kitten()
 
 	// Log only clean C callstack:
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_C_STACK | EM_LOG_DEMANGLE, "This message should have a clean C callstack:");
-
-	// We can leave out the message to just print out the callstack:
-	printf("The following line should show just the callstack without a message:\n");
-	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_ERROR | EM_LOG_C_STACK | EM_LOG_JS_STACK | EM_LOG_DEMANGLE);
 }
 
 void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary function signature to add some content to callstack.
@@ -53,7 +51,7 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	if (1 == 2)
 		MYASSERT(2 == 1, "World falls apart!");
 	else
-		MYASSERT(1 == 1);
+		MYASSERT(1 == 1, "");
 
 	int flags = EM_LOG_NO_PATHS | EM_LOG_JS_STACK | EM_LOG_DEMANGLE | EM_LOG_FUNC_PARAMS;
 #ifndef RUN_FROM_JS_SHELL
@@ -100,16 +98,16 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	char str[1024];
 	emscripten_get_callstack(EM_LOG_NO_PATHS | EM_LOG_JS_STACK, str, 1024);
 
-	// Test that obtaining a truncated callstack works. (https://github.com/kripken/emscripten/issues/2171)
+	// Test that obtaining a truncated callstack works. (https://github.com/emscripten-core/emscripten/issues/2171)
 	char *buffer = new char[21];
 	buffer[20] = 0x01; // Magic sentinel that should not change its value.
 	emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_DEMANGLE | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 20);
 #if EMTERPRETER
 	MYASSERT(!!strstr(buffer, "at emterpret ("), "Truncated emterpreter callstack was %s!", buffer);
-	MYASSERT(buffer[20] == 0x01);
+	MYASSERT(buffer[20] == 0x01, "");
 #else
 	MYASSERT(!!strstr(buffer, "at bar(int,"), "Truncated callstack was %s!", buffer);
-	MYASSERT(buffer[20] == 0x01);
+	MYASSERT(buffer[20] == 0x01, "");
 #endif
 	delete[] buffer;
 

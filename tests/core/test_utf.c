@@ -15,7 +15,7 @@ int main() {
   emscripten_run_script(
       "cheez = _malloc(100);"
       "Module.stringToUTF8(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez, 100);"
-      "out([Pointer_stringify(cheez), Module.getValue(cheez, "
+      "out([UTF8ToString(cheez), Module.getValue(cheez, "
       "'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, "
       "Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, "
       "'i8')&0xff].join(','));");

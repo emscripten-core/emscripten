@@ -8,7 +8,7 @@
 #include <stdio.h>
 int test(int i) {
   int x = 10;
-  int ret = reinterpret_cast<long>(&x);  // both for the number, and forces x to not be nativized
+  int ret = (long)&x;  // both for the number, and forces x to not be nativized
   if (i > 0) {
     if ((i % 2001) != 1500)
       return test(i - 1);

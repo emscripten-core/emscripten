@@ -1,8 +1,16 @@
+<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+#xxx {background-color: purple;}
+</style>
 #if ASSERTIONS == 1
 T1:ASSERTIONS == 1
 #else
 T1:(else) ASSERTIONS != 1
-#endif 
+#endif
 #if ASSERTIONS != 1
 T2:ASSERTIONS != 1
 #else

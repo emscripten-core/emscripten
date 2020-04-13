@@ -44,8 +44,8 @@ void ensure_js(string js_code)
 {
   js_code.append(";");
   const char* js_code_pointer = js_code.c_str();
-  ensure(EM_ASM_({
-    var js_code = Pointer_stringify($0);
+  ensure(EM_ASM_INT({
+    var js_code = UTF8ToString($0);
     return eval(js_code);
   }, js_code_pointer));
 }
@@ -55,6 +55,16 @@ void ensure_js_not(string js_code)
   js_code.insert(0, "!( ");
   js_code.append(" )");
   ensure_js(js_code);
+}
+
+void throw_js_error(val js_error)
+{
+  js_error.throw_();
+}
+
+EMSCRIPTEN_BINDINGS(test_bindings)
+{
+  emscripten::function("throw_js_error", &throw_js_error);
 }
 
 int main()
@@ -312,6 +322,30 @@ int main()
   ensure(val::global("a") <= val::global("d"));
   ensure_not(val::global("c") <= val::global("a"));
   ensure_not(val::global("d") <= val::global("a"));
+
+  test("bool operator!()");
+  EM_ASM(
+    a = true;
+    b = false;
+    c = null;
+    d = undefined;
+    e = 0;
+    f = 1;
+    g = '';
+    h = '0';
+    i = 'false';
+  );
+  ensure(!val::global("a") == false);
+  ensure(!val::global("b") == true);
+  ensure(!val::global("c") == true);
+  ensure(!val::global("d") == true);
+  ensure(!val::global("e") == true);
+  ensure(!val::global("f") == false);
+  ensure(!val::global("g") == true);
+  ensure(!val::global("h") == false);
+  ensure(!val::global("i") == false);
+  ensure(!!val::global("a") == true);
+  ensure(!!val::global("b") == false);
   
   test("template<typename... Args> val new_(Args&&... args)");
   EM_ASM(
@@ -457,6 +491,13 @@ int main()
   ensure(val::global("f").typeOf().as<string>() == "symbol");
   ensure(val::global("g").typeOf().as<string>() == "function");
   ensure(val::global("h").typeOf().as<string>() == "object");
+  ensure(val::undefined().typeOf().as<string>() == "undefined");
+  ensure(val::null().typeOf().as<string>() == "object");
+  ensure(val(true).typeOf().as<string>() == "boolean");
+  ensure(val(2).typeOf().as<string>() == "number");
+  ensure(val("2").typeOf().as<string>() == "string");
+  ensure(val::global().call<val>("Symbol").typeOf().as<string>() == "symbol");
+  ensure(val::object().typeOf().as<string>() == "object");
   
   test("bool instanceof(const val& v)");
   EM_ASM(
@@ -504,6 +545,29 @@ int main()
   ensure_js_not("0 in a");
   ensure_js_not("1 in a");
   ensure_js_not("'c' in a");
+  
+  test("void throw_() const");
+  EM_ASM(
+    test_val_throw_ = function(error)
+    {
+      try
+      {
+        Module.throw_js_error(error);
+        return false;
+      }
+      catch(error_thrown)
+      {
+        if (error_thrown != error)
+          throw error_thrown;
+      }
+      return true;
+    }
+  );
+  ensure_js("test_val_throw_(new Error)");
+  ensure_js("test_val_throw_(Error)");
+  ensure_js("test_val_throw_(2)");
+  ensure_js("test_val_throw_('message')");
+  ensure_js("test_val_throw_(new TypeError('message'))");
   
   // this test should probably go elsewhere as it is not a member of val
   test("template<typename T> std::vector<T> vecFromJSArray(val v)");

@@ -1,0 +1,4 @@
+__handle_stack_overflow
+emscripten_resize_heap
+memory
+table

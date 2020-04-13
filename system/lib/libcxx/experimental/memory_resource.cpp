@@ -1,9 +1,8 @@
 //===------------------------ memory_resource.cpp -------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -13,6 +12,9 @@
 #include "atomic"
 #elif !defined(_LIBCPP_HAS_NO_THREADS)
 #include "mutex"
+#if defined(__unix__) &&  defined(__ELF__) && defined(_LIBCPP_HAS_COMMENT_LIB_PRAGMA)
+#pragma comment(lib, "pthread")
+#endif
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
@@ -26,18 +28,23 @@ _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
 class _LIBCPP_TYPE_VIS __new_delete_memory_resource_imp
     : public memory_resource
 {
+    void *do_allocate(size_t size, size_t align) override {
+#ifdef _LIBCPP_HAS_NO_ALIGNED_ALLOCATION
+        if (__is_overaligned_for_new(align))
+            __throw_bad_alloc();
+#endif
+        return _VSTD::__libcpp_allocate(size, align);
+    }
+
+    void do_deallocate(void *p, size_t n, size_t align) override {
+      _VSTD::__libcpp_deallocate(p, n, align);
+    }
+
+    bool do_is_equal(memory_resource const & other) const _NOEXCEPT override
+        { return &other == this; }
+
 public:
-    ~__new_delete_memory_resource_imp() = default;
-
-protected:
-    virtual void* do_allocate(size_t __size, size_t __align)
-        { return __allocate(__size); }
-
-    virtual void do_deallocate(void * __p, size_t, size_t)
-        { _VSTD::__libcpp_deallocate(__p); }
-
-    virtual bool do_is_equal(memory_resource const & __other) const _NOEXCEPT
-        { return &__other == this; }
+    ~__new_delete_memory_resource_imp() override = default;
 };
 
 // null_memory_resource()
@@ -68,12 +75,23 @@ union ResourceInitHelper {
   _LIBCPP_CONSTEXPR_AFTER_CXX11 ResourceInitHelper() : resources() {}
   ~ResourceInitHelper() {}
 };
+
+// Detect if the init_priority attribute is supported.
+#if (defined(_LIBCPP_COMPILER_GCC) && defined(__APPLE__)) \
+  || defined(_LIBCPP_COMPILER_MSVC)
+// GCC on Apple doesn't support the init priority attribute,
+// and MSVC doesn't support any GCC attributes.
+# define _LIBCPP_INIT_PRIORITY_MAX
+#else
+# define _LIBCPP_INIT_PRIORITY_MAX __attribute__((init_priority(101)))
+#endif
+
 // When compiled in C++14 this initialization should be a constant expression.
 // Only in C++11 is "init_priority" needed to ensure initialization order.
 #if _LIBCPP_STD_VER > 11
 _LIBCPP_SAFE_STATIC
 #endif
-ResourceInitHelper res_init  __attribute__((init_priority (101)));
+ResourceInitHelper res_init _LIBCPP_INIT_PRIORITY_MAX;
 
 } // end namespace
 

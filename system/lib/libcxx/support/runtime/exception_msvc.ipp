@@ -1,10 +1,9 @@
 // -*- C++ -*-
 //===----------------------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -15,30 +14,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if !defined(_ACRTIMP)
-#define _ACRTIMP __declspec(dllimport)
-#endif
-
-#if !defined(_VCRTIMP)
-#define _VCRTIMP __declspec(dllimport)
-#endif
-
-#if !defined(__CRTDECL)
-#define __CRTDECL __cdecl
-#endif
-
 extern "C" {
-typedef void (__CRTDECL* terminate_handler)();
-_ACRTIMP terminate_handler __cdecl set_terminate(
+typedef void (__cdecl* terminate_handler)();
+_LIBCPP_CRT_FUNC terminate_handler __cdecl set_terminate(
     terminate_handler _NewTerminateHandler) throw();
-_ACRTIMP terminate_handler __cdecl _get_terminate();
+_LIBCPP_CRT_FUNC terminate_handler __cdecl _get_terminate();
 
-typedef void (__CRTDECL* unexpected_handler)();
-_VCRTIMP unexpected_handler __cdecl set_unexpected(
+typedef void (__cdecl* unexpected_handler)();
+unexpected_handler __cdecl set_unexpected(
     unexpected_handler _NewUnexpectedHandler) throw();
-_VCRTIMP unexpected_handler __cdecl _get_unexpected();
+unexpected_handler __cdecl _get_unexpected();
 
-_VCRTIMP int __cdecl __uncaught_exceptions();
+int __cdecl __uncaught_exceptions();
 }
 
 namespace std {
@@ -95,20 +82,7 @@ int uncaught_exceptions() _NOEXCEPT {
     return __uncaught_exceptions();
 }
 
-bad_array_length::bad_array_length() _NOEXCEPT
-{
-}
-
-bad_array_length::~bad_array_length() _NOEXCEPT
-{
-}
-
-const char*
-bad_array_length::what() const _NOEXCEPT
-{
-    return "bad_array_length";
-}
-
+#if !defined(_LIBCPP_ABI_VCRUNTIME)
 bad_cast::bad_cast() _NOEXCEPT
 {
 }
@@ -137,7 +111,6 @@ bad_typeid::what() const _NOEXCEPT
   return "std::bad_typeid";
 }
 
-#if defined(_LIBCPP_NO_VCRUNTIME)
 exception::~exception() _NOEXCEPT
 {
 }
@@ -185,6 +158,6 @@ bad_array_new_length::what() const _NOEXCEPT
 {
     return "bad_array_new_length";
 }
-#endif // _LIBCPP_NO_VCRUNTIME
+#endif // !_LIBCPP_ABI_VCRUNTIME
 
 } // namespace std

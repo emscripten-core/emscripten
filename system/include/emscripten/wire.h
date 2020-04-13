@@ -9,7 +9,7 @@
 
 #if __cplusplus < 201103L
 #error Including <emscripten/wire.h> requires building with -std=c++11 or newer!
-#else
+#endif
 
 // A value moving between JavaScript and C++ has three representations:
 // - The original JS value: a String
@@ -43,7 +43,7 @@ namespace emscripten {
         // We don't need the full std::type_info implementation.  We
         // just need a unique identifier per type and polymorphic type
         // identification.
-        
+
         template<typename T>
         struct CanonicalizedID {
             static char c;
@@ -99,7 +99,9 @@ namespace emscripten {
             return LightTypeID<T>::get();
         }
 
-        template<typename T>
+        // The second typename is an unused stub so it's possible to
+        // specialize groups of classes via SFINAE.
+        template<typename T, typename = void>
         struct TypeID {
             static constexpr TYPEID get() {
                 return LightTypeID<T>::get();
@@ -128,7 +130,7 @@ namespace emscripten {
                 return LightTypeID<T*>::get();
             }
         };
-        
+
         // ExecutePolicies<>
 
         template<typename... Policies>
@@ -141,7 +143,7 @@ namespace emscripten {
                 typedef T type;
             };
         };
-        
+
         template<typename Policy, typename... Remaining>
         struct ExecutePolicies<Policy, Remaining...> {
             template<typename T, int Index>
@@ -241,7 +243,9 @@ namespace emscripten {
 
         // BindingType<T>
 
-        template<typename T>
+        // The second typename is an unused stub so it's possible to
+        // specialize groups of classes via SFINAE.
+        template<typename T, typename = void>
         struct BindingType;
 
 #define EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(type)                 \
@@ -284,37 +288,22 @@ namespace emscripten {
             }
         };
 
-        template<>
-        struct BindingType<std::string> {
+        template<typename T>
+        struct BindingType<std::basic_string<T>> {
+            using String = std::basic_string<T>;
+            static_assert(std::is_trivially_copyable<T>::value, "basic_string elements are memcpy'd");
             typedef struct {
                 size_t length;
-                char data[1]; // trailing data
+                T data[1]; // trailing data
             }* WireType;
-            static WireType toWireType(const std::string& v) {
-                WireType wt = (WireType)malloc(sizeof(size_t) + v.length());
+            static WireType toWireType(const String& v) {
+                WireType wt = (WireType)malloc(sizeof(size_t) + v.length() * sizeof(T));
                 wt->length = v.length();
-                memcpy(wt->data, v.data(), v.length());
+                memcpy(wt->data, v.data(), v.length() * sizeof(T));
                 return wt;
             }
-            static std::string fromWireType(WireType v) {
-                return std::string(v->data, v->length);
-            }
-        };
-
-        template<>
-        struct BindingType<std::wstring> {
-            typedef struct {
-                size_t length;
-                wchar_t data[1]; // trailing data
-            }* WireType;
-            static WireType toWireType(const std::wstring& v) {
-                WireType wt = (WireType)malloc(sizeof(size_t) + v.length() * sizeof(wchar_t));
-                wt->length = v.length();
-                wmemcpy(wt->data, v.data(), v.length());
-                return wt;
-            }
-            static std::wstring fromWireType(WireType v) {
-                return std::wstring(v->data, v->length);
+            static String fromWireType(WireType v) {
+                return String(v->data, v->length);
             }
         };
 
@@ -396,7 +385,7 @@ namespace emscripten {
         };
 
         // catch-all generic binding
-        template<typename T>
+        template<typename T, typename>
         struct BindingType : std::conditional<
             std::is_enum<T>::value,
             EnumBindingType<T>,
@@ -457,5 +446,3 @@ namespace emscripten {
         };
     }
 }
-
-#endif // ~C++11 version check

@@ -2,6 +2,7 @@ module({
     Emscripten: '../../../../build/embind_test.js',
 }, function(imports) {
     /*jshint sub:true */
+    /* global console */
     var cm = imports.Emscripten;
 
     var CheckForLeaks = fixture("check for leaks", function() {
@@ -161,7 +162,7 @@ module({
         });
 
         test("setting and getting property on unrelated class throws error", function() {
-            var className = Module['NO_DYNAMIC_EXECUTION'] ? '' : 'HasTwoBases';
+            var className = cm['DYNAMIC_EXECUTION'] ? 'HasTwoBases' : '';
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').set.call(a, 10);
@@ -378,13 +379,14 @@ module({
     });
 
     BaseFixture.extend("string", function() {
-        var stdStringIsUTF8 = (Module['EMBIND_STD_STRING_IS_UTF8'] == true);
+        var stdStringIsUTF8 = (cm['EMBIND_STD_STRING_IS_UTF8'] === true);
 
         test("non-ascii strings", function() {
 
+            var expected = '';
             if(stdStringIsUTF8) {
                 //ASCII
-                var expected = 'aei';
+                expected = 'aei';
                 //Latin-1 Supplement
                 expected += '\u00E1\u00E9\u00ED';
                 //Greek
@@ -396,7 +398,6 @@ module({
                 //Euro sign
                 expected += '\u20AC';
             } else {
-                var expected = '';
                 for (var i = 0; i < 128; ++i) {
                     expected += String.fromCharCode(128 + i);
                 }
@@ -441,6 +442,12 @@ module({
             assert.equal('ABCD', e);
         });
 
+        test("can pass long string to std::basic_string<unsigned char>", function() {
+            var s = 'this string is long enough to exceed the short string optimization';
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(s);
+            assert.equal(s, e);
+        });
+
         test("can pass Uint8ClampedArray to std::basic_string<unsigned char>", function() {
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8ClampedArray([65, 66, 67, 68]));
             assert.equal('ABCD', e);
@@ -463,27 +470,57 @@ module({
             var e = cm.emval_test_take_and_return_std_string(string);
             assert.equal(string, e);
         });
+        
+        var utf16TestString = String.fromCharCode(10) +
+            String.fromCharCode(1234) +
+            String.fromCharCode(2345) +
+            String.fromCharCode(65535);
+        var utf32TestString = String.fromCharCode(10) +
+            String.fromCharCode(1234) +
+            String.fromCharCode(2345) +
+            String.fromCharCode(55357) +
+            String.fromCharCode(56833) +
+            String.fromCharCode(55357) +
+            String.fromCharCode(56960);
 
         test("non-ascii wstrings", function() {
-            var expected = String.fromCharCode(10) +
-                String.fromCharCode(1234) +
-                String.fromCharCode(2345) +
-                String.fromCharCode(65535);
-            assert.equal(expected, cm.get_non_ascii_wstring());
+            assert.equal(utf16TestString, cm.get_non_ascii_wstring());
         });
 
-        test("passing unicode string into C++", function() {
-            var expected = String.fromCharCode(10) +
-                String.fromCharCode(1234) +
-                String.fromCharCode(2345) +
-                String.fromCharCode(65535);
-            assert.equal(expected, cm.take_and_return_std_wstring(expected));
+        test("non-ascii u16strings", function() {
+            assert.equal(utf16TestString, cm.get_non_ascii_u16string());
+        });
+
+        test("non-ascii u32strings", function() {
+            assert.equal(utf32TestString, cm.get_non_ascii_u32string());
+        });
+
+        test("passing unicode (wide) string into C++", function() {
+            assert.equal(utf16TestString, cm.take_and_return_std_wstring(utf16TestString));
+        });
+
+        test("passing unicode (utf-16) string into C++", function() {
+            assert.equal(utf16TestString, cm.take_and_return_std_u16string(utf16TestString));
+        });
+
+        test("passing unicode (utf-32) string into C++", function() {
+            assert.equal(utf32TestString, cm.take_and_return_std_u32string(utf32TestString));
         });
 
         if (cm.isMemoryGrowthEnabled) {
             test("can access a literal wstring after a memory growth", function() {
                 cm.force_memory_growth();
                 assert.equal("get_literal_wstring", cm.get_literal_wstring());
+            });
+            
+            test("can access a literal u16string after a memory growth", function() {
+                cm.force_memory_growth();
+                assert.equal("get_literal_u16string", cm.get_literal_u16string());
+            });
+            
+            test("can access a literal u32string after a memory growth", function() {
+                cm.force_memory_growth();
+                assert.equal("get_literal_u32string", cm.get_literal_u32string());
             });
         }
 
@@ -1146,6 +1183,48 @@ module({
             c.delete();
         });
 
+        test("class properties can be std::function objects", function() {
+            var a = {};
+            var b = {foo: 'foo'};
+            var c = new cm.ValHolder(a);
+            assert.equal(a, c.function_val);
+            c.function_val = b;
+            assert.equal(b, c.function_val);
+            c.delete();
+        });
+
+        test("class properties can be read-only std::function objects", function() {
+            var a = {};
+            var h = new cm.ValHolder(a);
+            assert.equal(a, h.readonly_function_val);
+            var e = assert.throws(cm.BindingError, function() {
+                h.readonly_function_val = 10;
+            })
+            assert.equal('ValHolder.readonly_function_val is a read-only property', e.message);
+            h.delete();
+        });
+
+        test("class properties can be function objects (functor)", function() {
+            var a = {};
+            var b = {foo: 'foo'};
+            var c = new cm.ValHolder(a);
+            assert.equal(a, c.functor_val);
+            c.function_val = b;
+            assert.equal(b, c.functor_val);
+            c.delete();
+        });
+
+        test("class properties can be read-only function objects (functor)", function() {
+            var a = {};
+            var h = new cm.ValHolder(a);
+            assert.equal(a, h.readonly_functor_val);
+            var e = assert.throws(cm.BindingError, function() {
+                h.readonly_functor_val = 10;
+            })
+            assert.equal('ValHolder.readonly_functor_val is a read-only property', e.message);
+            h.delete();
+        });
+
         test("class properties can be read-only", function() {
             var a = {};
             var h = new cm.ValHolder(a);
@@ -1182,6 +1261,35 @@ module({
 
             var b = cm.ValHolder.makeValHolder("foo");
             assert.equal("foo", b.getVal());
+            b.delete();
+        });
+
+        test("function objects as class constructors", function() {
+            let a = new cm.ConstructFromStdFunction("foo", 10);
+            assert.equal("foo", a.getVal());
+            assert.equal(10, a.getA());
+
+            let b = new cm.ConstructFromFunctionObject("bar", 12);
+            assert.equal("bar", b.getVal());
+            assert.equal(12, b.getA());
+
+            a.delete();
+            b.delete();
+        });
+
+        test("function objects as class methods", function() {
+            let b = cm.ValHolder.makeValHolder("foo");
+
+            // get & set via std::function
+            assert.equal("foo", b.getValFunction());
+            b.setValFunction("bar");
+
+            // get & set via 'callable'
+            assert.equal("bar", b.getValFunctor());
+            b.setValFunctor("baz");
+
+            assert.equal("baz", b.getValFunction())
+
             b.delete();
         });
 
@@ -1597,7 +1705,7 @@ module({
 
         test("smart pointer object has correct constructor name", function() {
             var e = new cm.HeldBySmartPtr(10, "foo");
-            var expectedName = Module['NO_DYNAMIC_EXECUTION'] ? "" : "HeldBySmartPtr";
+            var expectedName = cm['DYNAMIC_EXECUTION'] ? "HeldBySmartPtr" : "";
             assert.equal(expectedName, e.constructor.name);
             e.delete();
         });
@@ -2341,7 +2449,7 @@ module({
     });
 
     BaseFixture.extend("function names", function() {
-        if (Module['NO_DYNAMIC_EXECUTION']) {
+        if (!cm['DYNAMIC_EXECUTION']) {
           assert.equal('', cm.ValHolder.name);
           assert.equal('', cm.ValHolder.prototype.setVal.name);
           assert.equal('', cm.ValHolder.makeConst.name);
@@ -2615,6 +2723,14 @@ module({
             assert.equal(4.0, instance.b);
             assert.equal(65538, instance.c);
         });
+
+        if (cm.isMemoryGrowthEnabled) {
+            test("before and after memory growth", function() {
+                var array = cm.construct_with_arguments_before_and_after_memory_growth();
+                assert.equal(array[0].byteLength, 5);
+                assert.equal(array[0].byteLength, array[1].byteLength);
+            });
+        }
     });
 
     BaseFixture.extend("intrusive pointers", function() {

@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __em_js_h__
-#define __em_js_h__
+#pragma once
 
 #ifdef __cplusplus
 #define _EM_JS_CPP_BEGIN extern "C" {
@@ -63,5 +62,3 @@
     return #params "<::>" #__VA_ARGS__;        \
   }                                            \
   _EM_JS_CPP_END
-
-#endif // __em_js_h__

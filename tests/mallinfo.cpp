@@ -29,7 +29,7 @@ extern "C" {
 
 unsigned int getTotalMemory()
 {
-	return EM_ASM_INT(return TOTAL_MEMORY);
+	return EM_ASM_INT(return HEAP8.length);
 }
 
 unsigned int getFreeMemory()

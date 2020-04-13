@@ -16,7 +16,7 @@ This section lists APIs that are not suitable for general use, but which may be 
 settings.js
 ============
 
-`settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_ contains default values and options used in various places by the compiler.
+`settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_ contains default values and options used in various places by the compiler.
 
 .. Warning :: Many **settings.js** options are highly brittle - certain combinations of options, and combinations of certain options used with some source code, can cause Emscripten to fail badly. This is intended for use by "advanced users", and possibly even only people developing Emscripten itself.
 
@@ -36,7 +36,7 @@ The small number of options that developers may have cause to change should be m
 preamble.js
 ===========
 
-The following advanced APIs are documented in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_.
+The following advanced APIs are documented in `preamble.js <https://github.com/emscripten-core/emscripten/blob/master/src/preamble.js>`_.
 
 .. js:function:: allocate(slab, types, allocator, ptr)
 

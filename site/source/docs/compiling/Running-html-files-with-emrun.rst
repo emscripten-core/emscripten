@@ -58,7 +58,7 @@ To enumerate the list of browser aliases on your system, use the ``--list_browse
     - iexplore: Microsoft Internet Explorer 11.0.9600.16384
     - opera: Opera 18.0.1284.63
 
-.. note:: For your browser to be detected, it should be installed in the default install location on the system (``%ProgramFiles%`` on Windows and ``/Applications/`` on OSX) or by adding it to the ``PATH`` for the current user.
+.. note:: For your browser to be detected, it should be installed in the default install location on the system (``%ProgramFiles%`` on Windows and ``/Applications/`` on macOS) or by adding it to the ``PATH`` for the current user.
 
 You can pass the ``--browser <alias>`` option to launch with a given browser. For example, to run the *Firefox Nightly* browser you would call:
 

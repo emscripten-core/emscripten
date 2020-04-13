@@ -1,20 +1,18 @@
+#!/usr/bin/env python3
 # Copyright 2011 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-Processes an LLVM assembly (.ll) file, adding debugging information.
+"""Processes an LLVM assembly (.ll) file, adding debugging information.
 
-You can then run the .ll file in the LLVM interpreter (lli) and 
+You can then run the .ll file in the LLVM interpreter (lli) and
 compare that to the output when compiled using emscripten.
-
-Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
-         there may be weird errors.
-'''
+"""
 
 from __future__ import print_function
-import os, sys, re
+import re
+import sys
 
 ALLOW_POINTERS = True
 ALLOW_MISC = True
@@ -118,17 +116,6 @@ return:                                           ; preds = %entry
 }
 '''
 
-filename, ofilename = sys.argv[1], sys.argv[2]
-f = open(filename, 'r')
-data = f.read()
-f.close()
-
-if not re.search('(declare.*@printf\(|define.*@printf\()', data):
-  POSTAMBLE += '''
-; [#uses=1]
-declare i32 @printf(i8*, ...)
-'''
-
 if MEMCPY:
   POSTAMBLE = '''
 @.emscripten.memcpy.str = private constant [7 x i8] c"MC:%d\\0A\\00", align 1 ; [#uses=1]
@@ -185,90 +172,117 @@ for.end:                                          ; preds = %for.body, %entry
 }
 '''
 
-lines_added = 0
-lines = data.split('\n')
-in_func = False
-added_entry = False
-for i in range(len(lines)):
-  if MEMCPY:
-    if not lines[i].startswith('declare void'):
-      lines[i] = lines[i].replace('@llvm.memcpy.p0i8.p0i8.i32', '@emscripten_memcpy')
 
-  try:
-    pre = ''
-    if lines[i].startswith('define '):
-      in_func = True
-      if NO_DLMALLOC and ('@malloc(' in lines[i] or '@free(' in lines[i] or '@sys_alloc(' in lines[i] or '@segment_holding(' in lines[i] or '@init_top(' in lines[i] or '@add_segment(' in lines[i] or '@tmalloc_small(' in lines[i]):
+def main():
+  global POSTAMBLE
+  filename, ofilename = sys.argv[1], sys.argv[2]
+  with open(filename, 'r') as f:
+    data = f.read()
+
+  if not re.search(r'(declare.*@printf\(|define.*@printf\()', data):
+    POSTAMBLE += '''
+; [#uses=1]
+declare i32 @printf(i8*, ...)
+'''
+
+  summaries = re.search(r'\^0 = module:', data)
+  if summaries:
+    summaries_start = summaries.start()
+    # Strip ThinLTO summaries since we don't want to have to generate
+    # summaries for the functions we are adding.  Currently llvm-as will
+    # assert if it finds summaries for some, but not all, functions.
+    print("warning: stripping ThinLTO summaries", file=sys.stderr)
+    data = data[:summaries_start]
+
+  lines_added = 0
+  in_func = False
+  added_entry = False
+
+  lines = data.splitlines()
+  for i in range(len(lines)):
+    if MEMCPY:
+      if not lines[i].startswith('declare void'):
+        lines[i] = lines[i].replace('@llvm.memcpy.p0i8.p0i8.i32', '@emscripten_memcpy')
+
+    try:
+      pre = ''
+      if lines[i].startswith('define '):
+        in_func = True
+        if NO_DLMALLOC and ('@malloc(' in lines[i] or '@free(' in lines[i] or '@sys_alloc(' in lines[i] or '@segment_holding(' in lines[i] or '@init_top(' in lines[i] or '@add_segment(' in lines[i] or '@tmalloc_small(' in lines[i]):
+          in_func = False
+        if in_func:
+          added_entry = False
+        if 'printf' in lines[i] or '__fwritex' in lines[i] or '__towrite' in lines[i] or 'pop_arg391' in lines[i] or 'fmt_u' in lines[i] or 'pad(' in lines[i] or 'stdout_write' in lines[i] or 'stdio_write' in lines[i] or 'syscall' in lines[i]:
+          if not JS_LIB_PRINTING:
+            in_func = False # do not add logging in musl printing code, which would infinitely recurse
+      elif lines[i].startswith('}'):
         in_func = False
-      if in_func:
-        added_entry = False
-      if 'printf' in lines[i] or '__fwritex' in lines[i] or '__towrite' in lines[i] or 'pop_arg391' in lines[i] or 'fmt_u' in lines[i] or 'pad(' in lines[i] or 'stdout_write' in lines[i] or 'stdio_write' in lines[i] or 'syscall' in lines[i]:
-        if not JS_LIB_PRINTING:
-          in_func = False # do not add logging in musl printing code, which would infinitely recurse
-    elif lines[i].startswith('}'):
-      in_func = False
-    elif in_func and not added_entry and ' = alloca' not in lines[i] and lines[i].startswith('  '):
-      # This is a good place to mark entry to this function
-      added_entry = True
-      index = i+1+lines_added
-      pre = '  call void @emscripten_autodebug_i32(i32 -1, i32 %d)' % index
-    elif in_func and lines[i].startswith('  ret '):
-      # This is a good place to mark entry to this function
-      index = i+1+lines_added
-      pre = '  call void @emscripten_autodebug_i32(i32 -2, i32 %d)' % index
+      elif in_func and not added_entry and ' = alloca' not in lines[i] and lines[i].startswith('  '):
+        # This is a good place to mark entry to this function
+        added_entry = True
+        index = i + 1 + lines_added
+        pre = '  call void @emscripten_autodebug_i32(i32 -1, i32 %d)' % index
+      elif in_func and lines[i].startswith('  ret '):
+        # This is a good place to mark entry to this function
+        index = i + 1 + lines_added
+        pre = '  call void @emscripten_autodebug_i32(i32 -2, i32 %d)' % index
 
-    if in_func:
-      m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
-      if m:
-        index = i+1+lines_added
-        if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
-          lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
-          lines_added += 1
-        elif ALLOW_POINTERS and m.group('type').endswith('*') and m.group('type').count('*') == 1:
-          lines[i] += '\n  %%ead.%d = ptrtoint %s %s to i32' % (index, m.group('type'), m.group('var'))
-          lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
-          lines_added += 2
-        continue
-      m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
-      if m:
-        index = i+1+lines_added
-        lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
-        lines_added += 1
-        continue
-      if ALLOW_MISC:
-        # call is risky - return values can be i32 (i8*) (i16)
-        m = re.match('  %(?P<var>[\w_.]+) = (mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
+      if in_func:
+        m = re.match(r'  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
         if m:
-          index = i+1+lines_added
+          index = i + 1 + lines_added
+          if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
+            lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+            lines_added += 1
+          elif ALLOW_POINTERS and m.group('type').endswith('*') and m.group('type').count('*') == 1:
+            lines[i] += '\n  %%ead.%d = ptrtoint %s %s to i32' % (index, m.group('type'), m.group('var'))
+            lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
+            lines_added += 2
+          continue
+        m = re.match(r'  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
+        if m:
+          index = i + 1 + lines_added
           lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
           lines_added += 1
           continue
-        if MEMCPY2:
-          m = re.match('  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
+        if ALLOW_MISC:
+          # call is risky - return values can be i32 (i8*) (i16)
+          m = re.match(r'  %(?P<var>[\w_.]+) = (mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
           if m:
-            index = i+1+lines_added
-            lines[i] += '\n  %%adtemp%d = load i8* %%%s, align 1' % (index, m.group('src')) + \
-                        '\n  call void @emscripten_autodebug_i8(i32 %d, i8 %%adtemp%d)' % (index, index)
-            lines_added += 3
+            index = i + 1 + lines_added
+            lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
+            lines_added += 1
             continue
-      m = re.match('[^ ].*; preds = ', lines[i])
-      if m:
-        # basic block
-        if len(lines) > i+1 and 'phi' not in lines[i+1] and 'landingpad' not in lines[i+1]:
-          lines[i] += '\n  call void @emscripten_autodebug_i32(i32 -10, i32 %d)' % (i+1+lines_added,)
-          lines_added += 1
-          continue
+          if MEMCPY2:
+            m = re.match(r'  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
+            if m:
+              index = i + 1 + lines_added
+              lines[i] += '\n  %%adtemp%d = load i8* %%%s, align 1' % (index, m.group('src')) + \
+                          '\n  call void @emscripten_autodebug_i8(i32 %d, i8 %%adtemp%d)' % (index, index)
+              lines_added += 3
+              continue
+        m = re.match('[^ ].*; preds = ', lines[i])
+        if m:
+          # basic block
+          if len(lines) > i + 1 and 'phi' not in lines[i + 1] and 'landingpad' not in lines[i + 1]:
+            lines[i] += '\n  call void @emscripten_autodebug_i32(i32 -10, i32 %d)' % (i + 1 + lines_added,)
+            lines_added += 1
+            continue
 
-  finally:
-    if len(pre):
-      lines[i] = pre + '\n' + lines[i]
-      lines_added += 1
+    finally:
+      if len(pre):
+        lines[i] = pre + '\n' + lines[i]
+        lines_added += 1
 
-f = open(ofilename, 'w')
-ll = '\n'.join(lines)
-meta_start = ll.find('\n!')
-f.write(ll[:meta_start] + '\n' + POSTAMBLE + '\n' + ll[meta_start:])
-f.close()
+  ll = '\n'.join(lines) + '\n'
+  meta_start = ll.find('\n!')
 
-print('Success.')
+  with open(ofilename, 'w') as f:
+    f.write(ll[:meta_start] + '\n' + POSTAMBLE + '\n' + ll[meta_start:])
 
+  print('Success.')
+  return 0
+
+
+if __name__ == '__main__':
+  sys.exit(main())

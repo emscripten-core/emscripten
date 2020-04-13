@@ -38,6 +38,7 @@ int main() {
     else {
       char buffer[8];
       fread(buffer, 1, 7, fd);
+      buffer[7] = 0;
       printf("buffer is %s\n", buffer);
       fclose(fd);
     }

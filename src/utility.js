@@ -1,7 +1,8 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 //"use strict";
 
@@ -179,41 +180,6 @@ function splitter(array, filter) {
   return { leftIn: leftIn, splitOut: splitOut };
 }
 
-function dcheck(tag) {
-  return DEBUG_TAGS_SHOWING.indexOf(arguments[0]) != -1;
-}
-var DPRINT_INDENT = '';
-function dprint_indent() {
-  DPRINT_INDENT += '   ';
-}
-function dprint_unindent() {
-  DPRINT_INDENT = DPRINT_INDENT.substr(3);
-}
-
-function dprint() {
-  var text;
-  if (arguments[1]) {
-    if (!dcheck(arguments[0])) return;
-    text = arguments[1];
-  } else {
-    text = arguments[0];
-  }
-  if (typeof text === 'function') {
-    text = text(); // Allows deferred calculation, so dprints don't slow us down when not needed
-  }
-  text = DPRINT_INDENT + '// ' + text;
-  printErr(text);
-}
-
-var _PROF_ORIGIN = Date.now();
-var _PROF_TIME = _PROF_ORIGIN;
-function PROF(pass) {
-  if (!pass) {
-    dprint("Profiling: " + ((Date.now() - _PROF_TIME)/1000) + ' seconds, total: ' + ((Date.now() - _PROF_ORIGIN)/1000));
-  }
-  PROF_TIME = Date.now();
-}
-
 // Usage: arrayOfArrays.reduce(concatenator, []);
 function concatenator(x, y) {
   return x.concat(y);
@@ -237,6 +203,17 @@ function isArray(x) {
   } catch(e) {
     return false;
   }
+}
+
+// Functions that start with '$' should not be imported to asm.js/wasm module.
+// They are intended to be exclusive to JS code only.
+function isJsOnlyIdentifier(ident) {
+  return ident[0] == '$';
+}
+
+function isJsLibraryConfigIdentifier(ident) {
+  return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
+   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
 }
 
 // Flattens something like [5, 6, 'hi', [1, 'bye'], 44] into

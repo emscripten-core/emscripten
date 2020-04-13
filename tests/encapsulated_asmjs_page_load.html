@@ -1,0 +1,45 @@
+<!doctype html><html lang="en-us"><head><meta charset="utf-8"></head>
+<body>
+<script>
+  function script(url) {
+    return new Promise((resolve, reject) => {
+      var s = document.createElement('script');
+      s.src = url;
+      s.onload = function() {
+        var code = EmscriptenCode; // Capture the js/asm.js content from global scope to a local variable
+        delete EmscriptenCode;
+        resolve(code);
+      };
+      document.body.appendChild(s);
+    });
+  }
+
+  // Verify that browser script onload() happens tightly after it has evaluated the page, so that no other
+  // event handlers have a chance to get in between. (add event handlers that try to race to get in between)
+  setInterval(function(){ EmscriptenCode = null; }, 0);
+  setInterval(function(){ EmscriptenCode = null; }, 0);
+  setInterval(function(){ EmscriptenCode = null; }, 0);
+  setInterval(function(){ EmscriptenCode = null; }, 0);
+
+  var asmJs = script('a.asm.js');
+  var js = script('a.js');
+  Promise.all([asmJs, js]).then((result) => {
+    var asmJs = result[0];
+    var js = result[1];
+    var emscriptenModuleConfig = {
+      asm: asmJs,
+      /* other Emscripten module configuration go here */
+      inputData: 1
+    };
+
+    // Run the page
+    js(emscriptenModuleConfig);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'http://localhost:8888/report_result?' + emscriptenModuleConfig.weHaveExecutedSomeCCode);
+    xhr.send();
+    setTimeout(function() { window.close() }, 1000);
+  });
+</script>
+</body>
+</html>

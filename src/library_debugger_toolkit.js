@@ -1,7 +1,8 @@
-// Copyright 2016 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2016 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 var CyberDWARFHeapPrinter = function(cdFileLocation) {
   var BASIC_TYPE = 0,
@@ -452,7 +453,7 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
   function initialize_debugger(cb) {
     cdFileLocation = locateFile(cdFileLocation);
     if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-      var data = Module['read'](cdFileLocation);
+      var data = read_(cdFileLocation);
       install_cyberdwarf(data);
     } else {
       var applyCDFile = function(data) {
@@ -463,8 +464,8 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
           cb();
         }
       }
-      function doBrowserLoad() {
-        Module['readAsync'](cdFileLocation, applyCDFile, function() {
+      var doBrowserLoad = function() {
+        readAsync(cdFileLocation, applyCDFile, function() {
           throw 'could not load debug data ' + cdFileLocation;
         });
       }

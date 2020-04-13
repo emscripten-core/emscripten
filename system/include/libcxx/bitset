@@ -1,10 +1,9 @@
 // -*- C++ -*-
 //===---------------------------- bitset ----------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -238,9 +237,9 @@ __bitset<_N_words, _Size>::__init(unsigned long long __v, false_type) _NOEXCEPT
     size_t __sz = _Size;
     for (size_t __i = 0; __i < sizeof(__t)/sizeof(__t[0]); ++__i, __v >>= __bits_per_word, __sz -= __bits_per_word )
         if ( __sz < __bits_per_word)
-        	__t[__i] = static_cast<__storage_type>(__v) & ( 1ULL << __sz ) - 1;
+            __t[__i] = static_cast<__storage_type>(__v) & ( 1ULL << __sz ) - 1;
         else
-        	__t[__i] = static_cast<__storage_type>(__v);
+            __t[__i] = static_cast<__storage_type>(__v);
 
     _VSTD::copy(__t, __t + sizeof(__t)/sizeof(__t[0]), __first_);
     _VSTD::fill(__first_ + sizeof(__t)/sizeof(__t[0]), __first_ + sizeof(__first_)/sizeof(__first_[0]),
@@ -254,7 +253,7 @@ __bitset<_N_words, _Size>::__init(unsigned long long __v, true_type) _NOEXCEPT
 {
     __first_[0] = __v;
     if (_Size < __bits_per_word)
-    	__first_[0] &= ( 1ULL << _Size ) - 1;
+        __first_[0] &= ( 1ULL << _Size ) - 1;
 
     _VSTD::fill(__first_ + 1, __first_ + sizeof(__first_)/sizeof(__first_[0]), __storage_type(0));
 }
@@ -269,9 +268,9 @@ __bitset<_N_words, _Size>::__bitset(unsigned long long __v) _NOEXCEPT
 #if __SIZEOF_SIZE_T__ == 8
     : __first_{__v}
 #elif __SIZEOF_SIZE_T__ == 4
-    : __first_{static_cast<__storage_type>(__v), 
-    			_Size >= 2 * __bits_per_word ? static_cast<__storage_type>(__v >> __bits_per_word)
-    			: static_cast<__storage_type>((__v >> __bits_per_word) & (__storage_type(1) << (_Size - __bits_per_word)) - 1)}
+    : __first_{static_cast<__storage_type>(__v),
+                _Size >= 2 * __bits_per_word ? static_cast<__storage_type>(__v >> __bits_per_word)
+                : static_cast<__storage_type>((__v >> __bits_per_word) & (__storage_type(1) << (_Size - __bits_per_word)) - 1)}
 #else
 #error This constructor has not been ported to this platform
 #endif
@@ -680,7 +679,7 @@ public:
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR bitset() _NOEXCEPT {}
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR
         bitset(unsigned long long __v) _NOEXCEPT : base(__v) {}
-    template<class _CharT>
+    template<class _CharT, class = _EnableIf<_IsCharLikeType<_CharT>::value> >
         explicit bitset(const _CharT* __str,
                         typename basic_string<_CharT>::size_type __n = basic_string<_CharT>::npos,
                         _CharT __zero = _CharT('0'), _CharT __one = _CharT('1'));
@@ -761,7 +760,7 @@ private:
 };
 
 template <size_t _Size>
-template<class _CharT>
+template<class _CharT, class>
 bitset<_Size>::bitset(const _CharT* __str,
                       typename basic_string<_CharT>::size_type __n,
                       _CharT __zero, _CharT __one)
@@ -991,7 +990,7 @@ inline
 size_t
 bitset<_Size>::count() const _NOEXCEPT
 {
-    return static_cast<size_t>(_VSTD::count(base::__make_iter(0), base::__make_iter(_Size), true));
+    return static_cast<size_t>(__count_bool_true(base::__make_iter(0), _Size));
 }
 
 template <size_t _Size>

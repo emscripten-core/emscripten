@@ -57,7 +57,7 @@ The sequence to clean up at de-initialization is as follows:
 Sample code
 -----------
 
-Example code for using EGL to initialize a WebGL context can be found in the sample applications in the `emscripten/test/glbook <https://github.com/kripken/emscripten/tree/master/tests/glbook>`_ directory, more specifically in the file `esUtil.c <https://github.com/kripken/emscripten/blob/master/tests/glbook/Common/esUtil.c>`_.
+Example code for using EGL to initialize a WebGL context can be found in the sample applications in the `emscripten/test/glbook <https://github.com/emscripten-core/emscripten/tree/master/tests/glbook>`_ directory, more specifically in the file `esUtil.c <https://github.com/emscripten-core/emscripten/blob/master/tests/glbook/Common/esUtil.c>`_.
 
 Implementation status and notes
 ===============================
@@ -81,9 +81,9 @@ Fully implemented
 Partially implemented
 ---------------------
 
-- ``eglChooseConfig``: Implemented as a stub, but this function does not do searching/filtering, and is at the moment identical to ``eglGetConfigs`` (`issue #643 <https://github.com/kripken/emscripten/issues/643>`_).
+- ``eglChooseConfig``: Implemented as a stub, but this function does not do searching/filtering, and is at the moment identical to ``eglGetConfigs`` (`issue #643 <https://github.com/emscripten-core/emscripten/issues/643>`_).
 
-- ``eglGetConfigAttrib``: Implemented. Querying for the attributes ``EGL_BUFFER_SIZE``, ``EGL_ALPHA_SIZE``, ``EGL_BLUE_SIZE``, ``EGL_GREEN_SIZE``, ``EGL_RED_SIZE``, ``EGL_DEPTH_SIZE`` and ``EGL_STENCIL_SIZE`` currently return hardcoded default values (`issue #644 <https://github.com/kripken/emscripten/issues/644>`_). The attributes ``EGL_MIN_SWAP_INTERVAL`` and ``EGL_MAX_SWAP_INTERVAL`` don't currently have any function. Instead, call :c:func:`emscripten_set_main_loop` to specify the main loop update rate.
+- ``eglGetConfigAttrib``: Implemented. Querying for the attributes ``EGL_BUFFER_SIZE``, ``EGL_ALPHA_SIZE``, ``EGL_BLUE_SIZE``, ``EGL_GREEN_SIZE``, ``EGL_RED_SIZE``, ``EGL_DEPTH_SIZE`` and ``EGL_STENCIL_SIZE`` currently return hardcoded default values (`issue #644 <https://github.com/emscripten-core/emscripten/issues/644>`_). The attributes ``EGL_MIN_SWAP_INTERVAL`` and ``EGL_MAX_SWAP_INTERVAL`` don't currently have any function. Instead, call :c:func:`emscripten_set_main_loop` to specify the main loop update rate.
 
 - ``eglCreateWindowSurface``: Implemented, except it is not possible to call this function multiple times to create multiple render windows.
 
@@ -118,4 +118,4 @@ Currently, Emscripten does not implement any extensions in the `EGL Extension Re
 EGL-related bugs and todos
 ---------------------------
 
-The `Emscripten issue tracker <https://github.com/kripken/emscripten/issues?labels=EGL&state=open>`_ lists EGL-relates issues using the label EGL. Check that page to report or find issues in Emscripten related to EGL.
+The `Emscripten issue tracker <https://github.com/emscripten-core/emscripten/issues?labels=EGL&state=open>`_ lists EGL-relates issues using the label EGL. Check that page to report or find issues in Emscripten related to EGL.

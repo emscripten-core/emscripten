@@ -1,0 +1,5 @@
+uncompress(): hello, hello!
+inflate(): hello, hello!
+large_inflate(): OK
+after inflateSync(): hello, hello!
+inflate with dictionary: hello, hello!

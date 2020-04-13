@@ -4,14 +4,21 @@
 Emscripten Test Suite
 =====================
 
-Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to pass on the master branch (and almost always on the incoming branch). In addition to correctness tests, there are also benchmarks that you can run.
+Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to pass on the master branch. In addition to correctness tests, there are also benchmarks that you can run.
 
 This article explains how to run the test and benchmark suite, and provides an overview of what tests are available.
+
+Setting up
+==========
+
+To run the tests, you need an emscripten setup, as it will run ``emcc`` and other
+commands. See the :ref:`developer's guide <developers-guide-setting-up>` for
+how best to do that.
 
 Running tests
 =============
 
-Run the test suite runner (`tests/runner.py <https://github.com/kripken/emscripten/blob/master/tests/runner.py>`_) with no arguments to see the help message:
+Run the test suite runner (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_) with no arguments to see the help message:
 
 .. code-block:: bash
 
@@ -31,12 +38,12 @@ The tests are divided into *modes*. You can run either an entire mode or an indi
   python tests/runner.py asm*.test_loop
 
   # run a bunch of tests in one mode (here, all i64 tests in wasm -O3)
-  python tests/runner.py binaryen3.test_*i64*
+  python tests/runner.py wasm3.test_*i64*
 
   # run all tests in a specific mode (here, asm.js -O1)
   python tests/runner.py asm1
 
-The *core* test modes (``asm*`` and ``binaryen*``, defined in ``tests/test_core.py``) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
+The *core* test modes (defined at the bottom of `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
 
  * `other`: Non-core tests running in the shell.
  * `browser`: Tests that run in a browser.
@@ -89,12 +96,13 @@ Replace ``100`` with another number as you prefer. This will run that number of 
 Important Tests
 ===============
 
-When you want to run the entire test suite locally, these are the important commands:
+Please see the bottom the file `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_ for the current test modes, as they may change slowly over time.
+When you want to run the entire test suite locally, these are currently the important commands:
 
 .. code-block:: bash
 
-  # Run all core asm.js and wasm tests
-  python tests/runner.py asm* binaryen*
+  # Run all core wasm tests
+  python tests/runner.py wasm*
 
   # Run "other" test suite
   python tests/runner.py other

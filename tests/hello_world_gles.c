@@ -601,7 +601,12 @@ gears_idle(void)
 {
    static int frames = 0;
    static double tRot0 = -1.0, tRate0 = -1.0;
-   double dt, t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
+   double dt;
+#if ANIMATE
+   double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
+#else
+   double t = 0;
+#endif
 
    if (tRot0 < 0.0)
       tRot0 = t;

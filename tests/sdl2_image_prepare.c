@@ -41,6 +41,8 @@ void ready(const char *f) {
   testImage("screenshot.jpg"); // relative path
 
   SDL_RenderPresent(renderer);
+
+  EM_ASM({ doReftest() });
 }
 
 int main() {

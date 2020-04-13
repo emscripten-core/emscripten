@@ -1,6 +1,10 @@
 #ifndef _STDIO_H
 #define _STDIO_H
 
+#ifdef __EMSCRIPTEN__
+#include <wasi/api.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,9 +37,15 @@ extern "C" {
 #undef SEEK_SET
 #undef SEEK_CUR
 #undef SEEK_END
+#ifdef __EMSCRIPTEN__
+#define SEEK_SET __WASI_WHENCE_SET
+#define SEEK_CUR __WASI_WHENCE_CUR
+#define SEEK_END __WASI_WHENCE_END
+#else
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
+#endif // EMSCRIPTEN
 
 #define _IOFBF 0
 #define _IOLBF 1

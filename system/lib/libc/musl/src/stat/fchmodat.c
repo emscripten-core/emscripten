@@ -34,6 +34,10 @@ int fchmodat(int fd, const char *path, mode_t mode, int flag)
 		else ret = __syscall(SYS_fchmodat, AT_FDCWD, proc, mode);
 	}
 
+#ifdef __EMSCRIPTEN__
+	__wasi_fd_close(fd2);
+#else
 	__syscall(SYS_close, fd2);
+#endif
 	return __syscall_ret(ret);
 }

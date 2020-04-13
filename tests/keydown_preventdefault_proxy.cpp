@@ -52,9 +52,9 @@ int main(int argc, char **argv)
 {
   printf("main argc:%d\n", argc);
 
-  emscripten_set_keydown_callback("#document", 0, 1, keydown_callback);
-  emscripten_set_keypress_callback("#document", 0, 1, keypress_callback);
-  emscripten_set_keyup_callback("#document", 0, 1, keyup_callback);
+  emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, keydown_callback);
+  emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, keypress_callback);
+  emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, keyup_callback);
 
   return 0;
 }

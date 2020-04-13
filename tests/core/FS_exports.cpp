@@ -3,7 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include<emscripten.h>
+#include <emscripten.h>
+#include <stdio.h>
 
 int main() {
 #ifdef USE_FILES

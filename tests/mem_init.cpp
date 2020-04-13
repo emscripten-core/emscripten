@@ -15,7 +15,7 @@ char* EMSCRIPTEN_KEEPALIVE note(int n) {
   noted = noted | n;
   EM_ASM({ out(['noted is now', $0]) }, noted);
   if (noted == 3) {
-    REPORT_RESULT(noted);
+    MAYBE_REPORT_RESULT(noted);
   }
   return "silly-string";
 }

@@ -21,7 +21,7 @@ int main() {
   if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
   SDL_RenderPresent(renderer);
 
-  SDL_Quit();
+  // Don't quit - we need to reftest the canvas! SDL_Quit();
 
   return 0;
 }

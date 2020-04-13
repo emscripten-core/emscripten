@@ -94,4 +94,12 @@ void __ofl_unlock(void);
 FILE *__fopen_rb_ca(const char *, FILE *, unsigned char *, size_t);
 int __fclose_ca(FILE *);
 
+// XXX EMSCRIPTEN
+extern int vfiprintf(FILE *restrict f, const char *restrict fmt, va_list ap);
+extern int vsiprintf(char *restrict s, const char *restrict fmt, va_list ap);
+extern int vsniprintf(char *restrict s, size_t n, const char *restrict fmt, va_list ap);
+extern int __small_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap);
+extern int __small_vsprintf(char *restrict s, const char *restrict fmt, va_list ap);
+extern int __small_vsnprintf(char *restrict s, size_t n, const char *restrict fmt, va_list ap);
+
 #endif

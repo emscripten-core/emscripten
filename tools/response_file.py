@@ -9,9 +9,7 @@ import shlex
 import tempfile
 
 
-DEBUG = os.environ.get('EMCC_DEBUG')
-if DEBUG == "0":
-  DEBUG = None
+DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
 
 def create_response_file(args, directory):
@@ -20,15 +18,28 @@ def create_response_file(args, directory):
 
   The returned filename has a suffix '.rsp'.
   """
-  (response_fd, response_filename) = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
-  response_fd = os.fdopen(response_fd, "w")
+  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
 
-  args = [p.replace('\\', '\\\\').replace('"', '\\"') for p in args]
-  contents = '"' + '" "'.join(args) + '"'
+  # Backslashes and other special chars need to be escaped in the response file.
+  escape_chars = ('\\', '\"', '\'')
+
+  def escape(arg):
+    for char in escape_chars:
+      arg = arg.replace(char, '\\' + char)
+    return arg
+
+  args = [escape(a) for a in args]
+  contents = ""
+
+  # Arguments containing spaces need to be quoted.
+  for arg in args:
+    if ' ' in arg:
+      arg = '"%s"' % arg
+    contents += arg + '\n'
+  with os.fdopen(response_fd, 'w') as f:
+    f.write(contents)
   if DEBUG:
     logging.warning('Creating response file ' + response_filename + ': ' + contents)
-  response_fd.write(contents)
-  response_fd.close()
 
   # Register the created .rsp file to be automatically cleaned up once this
   # process finishes, so that caller does not have to remember to do it.
@@ -47,7 +58,7 @@ def read_response_file(response_filename):
     response_filename = response_filename[1:]
 
   if not os.path.exists(response_filename):
-    raise Exception("Response file '%s' not found!" % response_filename)
+    raise IOError("response file not found: %s" % response_filename)
 
   with open(response_filename) as f:
     args = f.read()

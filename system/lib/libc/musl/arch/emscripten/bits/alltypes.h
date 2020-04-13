@@ -219,12 +219,12 @@ typedef unsigned _Reg nlink_t;
 #endif
 
 #if defined(__NEED_off_t) && !defined(__DEFINED_off_t)
-typedef int off_t;
+typedef _Int64 off_t;
 #define __DEFINED_off_t
 #endif
 
 #if defined(__NEED_ino_t) && !defined(__DEFINED_ino_t)
-typedef unsigned int ino_t;
+typedef unsigned _Int64 ino_t;
 #define __DEFINED_ino_t
 #endif
 
@@ -277,6 +277,11 @@ typedef int clockid_t;
 #if defined(__NEED_clock_t) && !defined(__DEFINED_clock_t)
 typedef long clock_t;
 #define __DEFINED_clock_t
+#endif
+
+#if defined(__NEED_max_align_t) && !defined(__DEFINED_max_align_t)
+typedef struct { long long __ll; long double __ld; } max_align_t;
+#define __DEFINED_max_align_t
 #endif
 
 #if defined(__NEED_struct_timeval) && !defined(__DEFINED_struct_timeval)

@@ -21,7 +21,7 @@ int main()
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.enableExtensionsByDefault = true;
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context(0, &attrs);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   emscripten_webgl_make_context_current(context);
 
   // Test what the return values of GL_IMPLEMENTATION_COLOR_READ_TYPE and GL_IMPLEMENTATION_COLOR_READ_FORMAT are.

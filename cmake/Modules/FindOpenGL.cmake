@@ -21,7 +21,7 @@ SET(OPENGL_XMESA_FOUND FALSE)
 # This is the path where <GL/gl.h> is found
 SET(OPENGL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
 
-# No library to link against for OpenGL, since Emscripten picks it up automatically from library_gl.js,
+# No library to link against for OpenGL, since Emscripten picks it up automatically from library_webgl.js,
 # but need to report something, or CMake thinks we failed in the search.
 SET(OPENGL_LIBRARIES "nul")
 SET(OPENGL_gl_LIBRARY "nul")

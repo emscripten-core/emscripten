@@ -6,16 +6,18 @@
  */
 
 #include <stdio.h>
+
 struct S {
   int x, y;
 };
+
 int main() {
-  S a, b;
+  struct S a, b;
   a.x = 5;
   a.y = 6;
   b.x = 101;
   b.y = 7009;
-  S *c, *d;
+  struct S *c, *d;
   c = &a;
   c->x *= 2;
   c = &b;

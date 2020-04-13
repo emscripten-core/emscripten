@@ -5,11 +5,11 @@
  * found in the LICENSE file.
  */
 
-#include <cassert>
+#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 
-__attribute((noinline)) bool eq(double d, int64_t i) {
+__attribute((noinline)) int eq(double d, int64_t i) {
   int64_t i2 = (int64_t)d;
   if (i != i2) {
     printf("%.20g converted to int64 returns %lld, not %lld as expected!\n", d,

@@ -45,9 +45,16 @@ help:
 	@echo "  pseudoxml  to make pseudoxml-XML files for display purposes"
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
+	@echo ""
+	@echo "  install    install to emscripte-site directory (set \$$(EMSCRIPTEN_SITE))"
 
 clean:
 	rm -rf $(BUILDDIR)/*
+
+install: html
+	@ if [ -z "$(EMSCRIPTEN_SITE)" ]; then echo "Please set EMSCRIPTEN_SITE"; exit 1; fi
+	rm -rf $(EMSCRIPTEN_SITE)/docs $(EMSCRIPTEN_SITE)/_images $(EMSCRIPTEN_SITE)/_source $(EMSCRIPTEN_SITE)/_start
+	cp -R $(BUILDDIR)/html/* $(EMSCRIPTEN_SITE)
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html

@@ -98,7 +98,7 @@ void print_results()
 	for(size_t i = 0; i < copySizes.size(); ++i)
 	{
 		std::cout << copySizes[i];
-		if (i != copySizes.size()-1) std::cout << ",";
+		if (i != copySizes.size()-1) std::cout << ", ";
 		else std::cout << std::endl;
 		if (i % 10 == 9) std::cout << std::endl;
 	}
@@ -109,7 +109,7 @@ void print_results()
 	for(size_t i = 0; i < results.size(); ++i)
 	{
 		std::cout << results[i];
-		if (i != results.size()-1) std::cout << ",";
+		if (i != results.size()-1) std::cout << ", ";
 		else std::cout << std::endl;
 		if (i % 10 == 9) std::cout << std::endl;
 	}

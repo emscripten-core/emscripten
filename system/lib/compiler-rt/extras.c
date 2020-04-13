@@ -13,19 +13,10 @@
  * cannot be static */
 int __THREW__ = 0;
 int __threwValue = 0;
-int __tempRet0 = 0;
 
 void setThrew(int threw, int value) {
   if (__THREW__ == 0) {
     __THREW__ = threw;
     __threwValue = value;
   }
-}
-
-void setTempRet0(int value) {
-  __tempRet0 = value;
-}
-
-int getTempRet0() {
-  return __tempRet0;
 }

@@ -1,6 +1,10 @@
 #ifndef	_UNISTD_H
 #define	_UNISTD_H
 
+#ifdef __EMSCRIPTEN__
+#include <wasi/api.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,9 +15,15 @@ extern "C" {
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
 
+#ifdef __EMSCRIPTEN__
+#define SEEK_SET __WASI_WHENCE_SET
+#define SEEK_CUR __WASI_WHENCE_CUR
+#define SEEK_END __WASI_WHENCE_END
+#else
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
+#endif // EMSCRIPTEN
 
 #ifdef __cplusplus
 #define NULL 0L
@@ -221,11 +231,23 @@ int eaccess(const char *, int);
 #define _POSIX_FSYNC            _POSIX_VERSION
 #define _POSIX_NO_TRUNC         1
 #define _POSIX_RAW_SOCKETS      _POSIX_VERSION
+
+#ifndef __EMSCRIPTEN__
 #define _POSIX_REALTIME_SIGNALS _POSIX_VERSION
+#else
+#define _POSIX_REALTIME_SIGNALS -1
+#endif
+
 #define _POSIX_REGEXP           1
 #define _POSIX_SAVED_IDS        1
 #define _POSIX_SHELL            1
+
+#ifndef __EMSCRIPTEN__
 #define _POSIX_SPAWN            _POSIX_VERSION
+#else
+#define _POSIX_SPAWN            -1
+#endif
+
 #define _POSIX_VDISABLE         0
 
 #define _POSIX_THREADS          _POSIX_VERSION

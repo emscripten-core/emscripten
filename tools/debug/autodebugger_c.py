@@ -23,7 +23,7 @@ for filename in filenames:
 
   lines = data.split('\n')
   for i in range(len(lines)):
-    m = re.match('^  [ ]*([\w\d \[\]]+) = +([^;]+);$', lines[i])
+    m = re.match(r'^  [ ]*([\w\d \[\]]+) = +([^;]+);$', lines[i])
     if m and (' if ' not in lines[i-1] or '{' in lines[i-1]) and \
              (' if ' not in lines[i+1] or '{' in lines[i+1]) and \
              (' else' not in lines[i-1] or '{' in lines[i-1]) and \

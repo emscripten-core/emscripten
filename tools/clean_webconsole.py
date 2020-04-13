@@ -37,5 +37,5 @@ for line in lines:
   if line.startswith('['):
     line = line[15:]
   line = line.split(' @ ')[0]
-  line = re.sub('(0x[\dabcdef]+)', lambda hexx: reps[nice(hexx.group(0))] if nice(hexx.group(0)) in reps else nice(hexx.group(0)), line)
+  line = re.sub(r'(0x[\dabcdef]+)', lambda hexx: reps[nice(hexx.group(0))] if nice(hexx.group(0)) in reps else nice(hexx.group(0)), line)
   print(line)

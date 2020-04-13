@@ -1,7 +1,8 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // Implementation of libuuid creating RFC4122 version 4 random UUIDs.
 
@@ -85,7 +86,7 @@ mergeInto(LibraryManager.library, {
   // pointed to by uu, otherwise -1 is returned.
   uuid_parse: function(inp, uu) {
     // int uuid_parse(const char *in, uuid_t uu);
-    var inp = Pointer_stringify(inp);
+    inp = UTF8ToString(inp);
     if (inp.length === 36) {
       var i = 0;
       var uuid = new Array(16);
@@ -107,6 +108,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Convert a 'compact' form UUID to a string, if the upper parameter is supplied make the string upper case.
+  uuid_unparse__docs: '/** @param {number|boolean=} upper */',
   uuid_unparse: function(uu, out, upper) {
     // void uuid_unparse(const uuid_t uu, char *out);
     var i = 0;

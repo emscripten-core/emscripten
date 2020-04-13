@@ -1,9 +1,8 @@
 //===------------------------- cxa_handlers.cpp ---------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //
 // This file implements the functionality associated with the terminate_handler,
@@ -18,6 +17,33 @@
 #include "cxa_handlers.hpp"
 #include "cxa_exception.hpp"
 #include "private_typeinfo.h"
+#include "include/atomic_support.h"
+
+namespace __cxxabiv1 {
+
+#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+// XXX EMSCRIPTEN: Copied from cxa_exception.cpp since we don't compile that
+// file in Emscripten EH mode. Note that in no-exceptions builds we include
+// cxa_noexception.cpp which provides stubs of those anyhow.
+
+//  Is it one of ours?
+uint64_t __getExceptionClass(const _Unwind_Exception* unwind_exception) {
+//	On x86 and some ARM unwinders, unwind_exception->exception_class is
+//		a uint64_t. On other ARM unwinders, it is a char[8]
+//	See: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
+//	So we just copy it into a uint64_t to be sure.
+	uint64_t exClass;
+	::memcpy(&exClass, &unwind_exception->exception_class, sizeof(exClass));
+	return exClass;
+}
+
+bool __isOurExceptionClass(const _Unwind_Exception* unwind_exception) {
+    return (__getExceptionClass(unwind_exception) & get_vendor_and_language) == 
+           (kOurExceptionClass                    & get_vendor_and_language);
+}
+#endif
+
+}
 
 namespace std
 {
@@ -25,13 +51,9 @@ namespace std
 unexpected_handler
 get_unexpected() _NOEXCEPT
 {
-    return __sync_fetch_and_add(&__cxa_unexpected_handler, (unexpected_handler)0);
-//  The above is safe but overkill on x86
-//  Using of C++11 atomics this should be rewritten
-//  return __cxa_unexpected_handler.load(memory_order_acq);
+    return __libcpp_atomic_load(&__cxa_unexpected_handler, _AO_Acquire);
 }
 
-__attribute__((visibility("hidden"), noreturn))
 void
 __unexpected(unexpected_handler func)
 {
@@ -50,37 +72,34 @@ unexpected()
 terminate_handler
 get_terminate() _NOEXCEPT
 {
-    return __sync_fetch_and_add(&__cxa_terminate_handler, (terminate_handler)0);
-//  The above is safe but overkill on x86
-//  Using of C++11 atomics this should be rewritten
-//  return __cxa_terminate_handler.load(memory_order_acq);
+    return __libcpp_atomic_load(&__cxa_terminate_handler, _AO_Acquire);
 }
 
-__attribute__((visibility("hidden"), noreturn))
 void
 __terminate(terminate_handler func) _NOEXCEPT
 {
-#if __has_feature(cxx_exceptions)
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
     try
     {
-#endif  // __has_feature(cxx_exceptions)
+#endif  // _LIBCXXABI_NO_EXCEPTIONS
         func();
         // handler should not return
         abort_message("terminate_handler unexpectedly returned");
-#if __has_feature(cxx_exceptions)
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
     }
     catch (...)
     {
         // handler should not throw exception
         abort_message("terminate_handler unexpectedly threw an exception");
     }
-#endif  // #if __has_feature(cxx_exceptions)
+#endif  // _LIBCXXABI_NO_EXCEPTIONS
 }
 
 __attribute__((noreturn))
 void
 terminate() _NOEXCEPT
 {
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
     // If there might be an uncaught exception
     using namespace __cxxabiv1;
     __cxa_eh_globals* globals = __cxa_get_globals_fast();
@@ -91,35 +110,28 @@ terminate() _NOEXCEPT
         {
             _Unwind_Exception* unwind_exception =
                 reinterpret_cast<_Unwind_Exception*>(exception_header + 1) - 1;
-            bool native_exception =
-                (unwind_exception->exception_class & get_vendor_and_language) ==
-                               (kOurExceptionClass & get_vendor_and_language);
-            if (native_exception)
+            if (__isOurExceptionClass(unwind_exception))
                 __terminate(exception_header->terminateHandler);
         }
     }
+#endif
     __terminate(get_terminate());
 }
 
-extern "C" new_handler __cxa_new_handler = 0;
-// In the future these will become:
-// std::atomic<std::new_handler>  __cxa_new_handler(0);
+extern "C" {
+new_handler __cxa_new_handler = 0;
+}
 
 new_handler
 set_new_handler(new_handler handler) _NOEXCEPT
 {
-    return __sync_swap(&__cxa_new_handler, handler);
-//  Using of C++11 atomics this should be rewritten
-//  return __cxa_new_handler.exchange(handler, memory_order_acq_rel);
+    return __libcpp_atomic_exchange(&__cxa_new_handler, handler, _AO_Acq_Rel);
 }
 
 new_handler
 get_new_handler() _NOEXCEPT
 {
-    return __sync_fetch_and_add(&__cxa_new_handler, (new_handler)0);
-//  The above is safe but overkill on x86
-//  Using of C++11 atomics this should be rewritten
-//  return __cxa_new_handler.load(memory_order_acq);
+    return __libcpp_atomic_load(&__cxa_new_handler, _AO_Acquire);
 }
 
 }  // std

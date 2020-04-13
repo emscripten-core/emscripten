@@ -30,7 +30,7 @@ rightf.write(file2)
 rightf.close()
 
 def run_code(name):
-  shutil.copyfile(name, 'src.cpp.o.wast')
+  shutil.copyfile(name, 'src.cpp.o.wat')
   ret = run_js('src.cpp.o.js', stderr=PIPE, full_output=True, assert_returncode=None, engine=SPIDERMONKEY_ENGINE)
   # fix stack traces
   ret = [line for line in ret.split('\n') if not line.startswith('    at ') and not name in line]

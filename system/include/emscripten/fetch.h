@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_fetch_h__
-#define __emscripten_fetch_h__
+#pragma once
 
 #include <limits.h>
 #include <stddef.h>
@@ -23,18 +22,23 @@ extern "C" {
 
 // If passed, the intermediate streamed bytes will be passed in to the onprogress() handler. If not specified, the
 // onprogress() handler will still be called, but without data bytes.
+// Note: Firefox only as it depends on 'moz-chunked-arraybuffer'.
 #define EMSCRIPTEN_FETCH_STREAM_DATA 2
 
 // If passed, the final download will be stored in IndexedDB. If not specified, the file will only reside in browser memory.
 #define EMSCRIPTEN_FETCH_PERSIST_FILE 4
 
-// If the file already exists in IndexedDB, it is returned without redownload. If a partial transfer exists in IndexedDB,
-// the download will resume from where it left off and run to completion.
+// Looks up if the file already exists in IndexedDB, and if so, it is returned without redownload. If a partial transfer
+// exists in IndexedDB, the download will resume from where it left off and run to completion.
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and EMSCRIPTEN_FETCH_NO_DOWNLOAD are mutually exclusive.
+// If none of these three flags is specified, the fetch operation is implicitly treated as if EMSCRIPTEN_FETCH_APPEND
+// had been passed.
 #define EMSCRIPTEN_FETCH_APPEND 8
 
 // If the file already exists in IndexedDB, the old file will be deleted and a new download is started.
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and EMSCRIPTEN_FETCH_NO_DOWNLOAD are mutually exclusive.
+// If you would like to perform an XHR that neither reads or writes to IndexedDB, pass this flag EMSCRIPTEN_FETCH_REPLACE,
+// and do not pass the flag EMSCRIPTEN_FETCH_PERSIST_FILE.
 #define EMSCRIPTEN_FETCH_REPLACE 16
 
 // If specified, the file will only be looked up in IndexedDB, but if it does not exist, it is not attempted to be downloaded
@@ -47,7 +51,7 @@ extern "C" {
 #define EMSCRIPTEN_FETCH_SYNCHRONOUS 64
 
 // If specified, it will be possible to call emscripten_fetch_wait() on the fetch
-// to test or wair for its completion.
+// to test or wait for its completion.
 #define EMSCRIPTEN_FETCH_WAITABLE 128
 
 struct emscripten_fetch_t;
@@ -64,6 +68,7 @@ typedef struct emscripten_fetch_attr_t
 	void (*onsuccess)(struct emscripten_fetch_t *fetch);
 	void (*onerror)(struct emscripten_fetch_t *fetch);
 	void (*onprogress)(struct emscripten_fetch_t *fetch);
+	void (*onreadystatechange)(struct emscripten_fetch_t *fetch);
 
 	// EMSCRIPTEN_FETCH_* attributes
 	uint32_t attributes;
@@ -181,9 +186,69 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 // onerror() handler will be called in the calling thread before this function returns.
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
 
+// Gets the size (in bytes) of the response headers as plain text.
+// This must be called on the same thread as the fetch originated on.
+// Note that this will return 0 if readyState < HEADERS_RECEIVED.
+size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch);
+
+// Gets the response headers as plain text. dstSizeBytes should be headers_length + 1 (for the null terminator).
+// This must be called on the same thread as the fetch originated on.
+size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes);
+
+// Converts the plain text headers into an array of strings. This array takes the form
+// {"key1", "value1", "key2", "value2", "key3", "value3", ..., 0 }; Note especially that the array
+// is terminated with a null pointer.
+char **emscripten_fetch_unpack_response_headers(const char *headersString);
+
+// This frees the memory used by the array of headers. Call this when finished with the data returned
+// by emscripten_fetch_unpack_response_headers.
+void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders);
+
+#define emscripten_asmfs_open_t int
+
+// The following flags specify how opening files for reading works (from strictest behavior to most flexible)
+
+// When a file is opened for reading, the file data must already fully reside in memory. (most similar to MEMFS behavior)
+#define EMSCRIPTEN_ASMFS_OPEN_MEMORY    0
+
+// The file data does not need to be already in memory, but can reside in IndexedDB.
+#define EMSCRIPTEN_ASMFS_OPEN_INDEXEDDB 1
+
+// The file will be downloaded from remote server, as long as it has an index entry in local filesystem.
+#define EMSCRIPTEN_ASMFS_OPEN_REMOTE    2
+
+// A file entry does not need to exist on the local filesystem, but discovery will be attempted from remote server via an XHR first.
+#define EMSCRIPTEN_ASMFS_OPEN_REMOTE_DISCOVER 3
+
+// Specifies how calls to non-truncating open(), fopen(), std::ifstream etc. behave on the calling thread.
+void emscripten_asmfs_set_file_open_behavior(emscripten_asmfs_open_t behavior);
+
+// Returns the current file open behavior modein the calling thread.
+emscripten_asmfs_open_t emscripten_asmfs_get_file_open_behavior();
+
+// Records the URL from where the given file on the ASMFS filesystem can be obtained from.
+void emscripten_asmfs_set_remote_url(const char *filename, const char *remoteUrl);
+
+// Given a filename, outputs the remote URL address that file can be located in.
+void emscripten_asmfs_remote_url(const char *filename, char *outRemoteUrl, int maxBytesToWrite);
+
+// Unloads the given file from the ASMFS filesystem. Call this function to save memory from files that have been already loaded
+// in to memory and will no longer be needed.
+void emscripten_asmfs_unload_data(const char *pathname);
+
+// Starts an asynchronous preload of a file from the given URL to the local filesystem to destination path 'pathname' for synchronous
+// access on the main thread. Specify a onsuccess callback in options structure to be notified of when the transfer finishes.
+// The resulting download will always be performed with the flag EMSCRIPTEN_FETCH_LOAD_TO_MEMORY and without the flags
+// EMSCRIPTEN_FETCH_SYNCHRONOUS | EMSCRIPTEN_FETCH_WAITABLE | EMSCRIPTEN_FETCH_STREAM_DATA. The remaining flags
+// EMSCRIPTEN_FETCH_NO_DOWNLOAD, EMSCRIPTEN_FETCH_PERSIST_FILE, EMSCRIPTEN_FETCH_APPEND/REPLACE are
+// customizable in the options field. In particular, if EMSCRIPTEN_FETCH_NO_DOWNLOAD is passed, then the file is loaded to memory for
+// synchronous access by looking at IndexedDB only.
+EMSCRIPTEN_RESULT emscripten_asmfs_preload_file(const char *url, const char *pathname, int mode, emscripten_fetch_attr_t *options);
+
+// Computes the total amount of bytes in memory utilized by the filesystem at the moment.
+// Note: This function can be slow since it walks through the whole filesystem.
+uint64_t emscripten_asmfs_compute_memory_usage();
+
 #ifdef __cplusplus
 }
-#endif
-
-// ~__emscripten_fetch_h__
 #endif

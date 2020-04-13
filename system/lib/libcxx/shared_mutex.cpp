@@ -1,17 +1,18 @@
 //===---------------------- shared_mutex.cpp ------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
 #include "__config"
 #ifndef _LIBCPP_HAS_NO_THREADS
 
-#define _LIBCPP_BUILDING_SHARED_MUTEX
 #include "shared_mutex"
+#if defined(__unix__) &&  defined(__ELF__) && defined(_LIBCPP_HAS_COMMENT_LIB_PRAGMA)
+#pragma comment(lib, "pthread")
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 

@@ -24,17 +24,25 @@ int fcntl(int fd, int cmd, ...)
 	if (cmd == F_DUPFD_CLOEXEC) {
 		int ret = __syscall(SYS_fcntl, fd, F_DUPFD_CLOEXEC, arg);
 		if (ret != -EINVAL) {
+#ifndef __EMSCRIPTEN__ // CLOEXEC makes no sense for a single process
 			if (ret >= 0)
 				__syscall(SYS_fcntl, ret, F_SETFD, FD_CLOEXEC);
+#endif
 			return __syscall_ret(ret);
 		}
 		ret = __syscall(SYS_fcntl, fd, F_DUPFD_CLOEXEC, 0);
 		if (ret != -EINVAL) {
+#ifdef __EMSCRIPTEN__
+			if (ret >= 0) __wasi_fd_close(ret);
+#else
 			if (ret >= 0) __syscall(SYS_close, ret);
+#endif
 			return __syscall_ret(-EINVAL);
 		}
 		ret = __syscall(SYS_fcntl, fd, F_DUPFD, arg);
+#ifndef __EMSCRIPTEN__ // CLOEXEC makes no sense for a single process
 		if (ret >= 0) __syscall(SYS_fcntl, ret, F_SETFD, FD_CLOEXEC);
+#endif
 		return __syscall_ret(ret);
 	}
 	switch (cmd) {

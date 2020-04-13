@@ -78,9 +78,9 @@ Inner::+= => 2
 return char 127
 char: 127
 char: -1
-return unsigned char -1
+return unsigned char 255
 unsigned char: 255
-return unsigned short -1
+return unsigned short 65535
 unsigned short int: 65535
 return unsigned long -1
 unsigned long int: 4294967295

@@ -14,7 +14,7 @@
 int main(int argc, char **argv)
 {
   char *buf1 = (char*)malloc(100);
-  char *data1 = "hello";
+  const char *data1 = "hello";
   memcpy(buf1, data1, strlen(data1)+1);
 
   float *buf2 = (float*)malloc(100);
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 
   printf("*pre: %s,%.3f*\n", buf1, buf2[0]);
 
-  int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
+  int totalMemory = emscripten_run_script_int("HEAP8.length");
   int chunk = 1024*1024;
   char *buf3;
   for (int i = 0; i < (totalMemory/chunk)+1; i++) {

@@ -39,10 +39,11 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   Creates worker threads, manages the task queue, and combines the results.
   """
 
-  def __init__(self):
+  def __init__(self, max_cores):
     super(ParallelTestSuite, self).__init__()
     self.processes = None
     self.result_queue = None
+    self.max_cores = max_cores
 
   def run(self, result):
     test_queue = self.create_test_queue()
@@ -73,9 +74,11 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return tests[::-1]
 
   def init_processes(self, test_queue):
+    use_cores = min(self.max_cores, num_cores())
+    print('Using %s parallel test processes' % use_cores)
     self.processes = []
     self.result_queue = multiprocessing.Queue()
-    self.dedicated_temp_dirs = [tempfile.mkdtemp() for x in range(num_cores())]
+    self.dedicated_temp_dirs = [tempfile.mkdtemp() for x in range(use_cores)]
     for temp_dir in self.dedicated_temp_dirs:
       p = multiprocessing.Process(target=g_testing_thread,
                                   args=(test_queue, self.result_queue, temp_dir))

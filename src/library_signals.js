@@ -1,7 +1,8 @@
-// Copyright 2014 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // 'use strict'
 var funs = {
@@ -62,7 +63,7 @@ var funs = {
 #endif
     return 0;
   },
-  kill__deps: ['$ERRNO_CODES', '__setErrNo'],
+  kill__deps: ['$ERRNO_CODES', '$setErrNo'],
   kill: function(pid, sig) {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/kill.html
     // Makes no sense in a single-process environment.
@@ -70,16 +71,16 @@ var funs = {
 #if ASSERTIONS
     err('Calling stub instead of kill()');
 #endif
-    ___setErrNo(ERRNO_CODES.EPERM);
+    setErrNo(ERRNO_CODES.EPERM);
     return -1;
   },
 
-  killpg__deps: ['$ERRNO_CODES', '__setErrNo'],
+  killpg__deps: ['$ERRNO_CODES', '$setErrNo'],
   killpg: function() {
 #if ASSERTIONS
     err('Calling stub instead of killpg()');
 #endif
-    ___setErrNo(ERRNO_CODES.EPERM);
+    setErrNo(ERRNO_CODES.EPERM);
     return -1;
   },
   siginterrupt: function() {
@@ -89,12 +90,12 @@ var funs = {
     return 0;
   },
 
-  raise__deps: ['$ERRNO_CODES', '__setErrNo'],
+  raise__deps: ['$ERRNO_CODES', '$setErrNo'],
   raise: function(sig) {
 #if ASSERTIONS
     err('Calling stub instead of raise()');
 #endif
-  ___setErrNo(ERRNO_CODES.ENOSYS);
+  setErrNo(ERRNO_CODES.ENOSYS);
 #if ASSERTIONS
     warnOnce('raise() returning an error as we do not support it');
 #endif
@@ -105,7 +106,7 @@ var funs = {
   alarm__deps: ['_sigalrm_handler'],
   alarm: function(seconds) {
     setTimeout(function() {
-      if (__sigalrm_handler) Module['dynCall_vi'](__sigalrm_handler, 0);
+      if (__sigalrm_handler) {{{ makeDynCall('vi') }}}(__sigalrm_handler, 0);
     }, seconds*1000);
   },
   ualarm: function() {
@@ -118,7 +119,7 @@ var funs = {
     throw 'getitimer() is not implemented yet';
   },
 
-  pause__deps: ['__setErrNo', '$ERRNO_CODES'],
+  pause__deps: ['$setErrNo', '$ERRNO_CODES'],
   pause: function() {
     // int pause(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/pause.html
@@ -126,9 +127,10 @@ var funs = {
 #if ASSERTIONS
     err('Calling stub instead of pause()');
 #endif
-    ___setErrNo(ERRNO_CODES.EINTR);
+    setErrNo(ERRNO_CODES.EINTR);
     return -1;
   },
+#if SUPPORT_LONGJMP
 #if ASSERTIONS
   siglongjmp__deps: ['longjmp'],
   siglongjmp: function(env, value) {
@@ -140,8 +142,11 @@ var funs = {
     _longjmp(env, value);
   },
 #else
+  siglongjmp__sig: 'vii',
   siglongjmp: 'longjmp',
 #endif
+#endif
+
   sigpending: function(set) {
     {{{ makeSetValue('set', 0, 0, 'i32') }}};
     return 0;
