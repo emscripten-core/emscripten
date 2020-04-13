@@ -3249,7 +3249,12 @@ LibraryManager.library = {
     return value;
   },
 #else
-  $setErrNo: function(value) { return 0; },
+  $setErrNo: function(value) {
+#if ASSERTIONS
+    err('failed to set errno from JS');
+#endif
+    return 0;
+  },
 #endif
 
 #if !WASM_BACKEND

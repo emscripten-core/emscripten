@@ -10770,7 +10770,12 @@ int main() {
     # Or using emcc with `-x c++`
     run_process([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0', '-x', 'c++-header'])
 
-  def test_support_errno(self):
+  @parameterized({
+    '': ([],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_support_errno(self, args):
+    self.emcc_args += args
     src = path_from_root('tests', 'core', 'test_support_errno.c')
     output = path_from_root('tests', 'core', 'test_support_errno.out')
     self.do_run_from_file(src, output)
