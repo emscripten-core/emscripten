@@ -1779,8 +1779,6 @@ var USE_OFFSET_CONVERTER = 0;
 // report undefined symbols within the binary.  Without this option that linker
 // doesn't know which symmbols might be defined JS and so reporting of undefined
 // symbols is deleyed until the JS compiler is run.
-// There are some known issues with this flag.  e.g. EM_JS function:
-// https://github.com/emscripten-core/emscripten/issues/10779
 // [link]
 var LLD_REPORT_UNDEFINED = 0;
 
