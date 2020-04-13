@@ -1948,7 +1948,7 @@ def suite_for_module(module, tests):
   has_multiple_tests = len(tests) > 1
   has_multiple_cores = parallel_runner.num_cores() > 1
   if suite_supported and has_multiple_tests and has_multiple_cores:
-    return parallel_runner.ParallelTestSuite()
+    return parallel_runner.ParallelTestSuite(len(tests))
   return unittest.TestSuite()
 
 
