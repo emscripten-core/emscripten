@@ -1559,14 +1559,19 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
       fullname = "fp$" + extern
       key = '%sModule["%s"]' % (side, fullname)
       asm_setup += '''\
-    var %s = function() {
-      if (!%s) { %s
-        var fid = addFunction(%sModule["%s"] || %s, "%s");
-        %s = fid;
+    var %(fullname)s = function() {
+        if (!%(key)s) { %(assetMsg)s
+        // Use the original wasm function itself, for the table, from the main module.
+        var func = Module['asm']['%(barename)s'];
+        if (!func) {
+          func = %(side)sModule["%(barename)s"] || %(barename)s;
+        }
+        var fid = addFunction(func, "%(sig)s");
+        %(key)s = fid;
       }
-      return %s;
+      return %(key)s;
     }
-    ''' % (fullname, key, check(barename), side, barename, barename, sig, key, key)
+    ''' % {'fullname': fullname, 'key': key, 'assetMsg': check(barename), 'side': side, 'barename': barename, 'sig': sig}
 
   asm_setup += create_invoke_wrappers(invoke_function_names)
   asm_setup += setup_function_pointers(function_table_sigs)
