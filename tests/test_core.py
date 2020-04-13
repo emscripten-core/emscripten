@@ -8903,16 +8903,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXPORTED_FUNCTIONS', [])
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
-  def test_support_errno(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_support_errno')
-
-    # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
-    # to be set after the failign syscall.
-    self.set_setting('SUPPORT_ERRNO', 0)
-    src = path_from_root('tests', 'core', 'test_support_errno.c')
-    output = path_from_root('tests', 'core', 'test_support_errno_disabled.out')
-    self.do_run_from_file(src, output)
-
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
