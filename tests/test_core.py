@@ -6952,9 +6952,8 @@ return malloc(size);
     self.emcc_args += extra_args
     self.set_setting('DEMANGLE_SUPPORT', 1)
     self.set_setting('ASSERTIONS', 1)
-    # unless `-g` is pass function names are not preserved by default.
-    if '-g' not in str(self.emcc_args):
-      self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
+    # ensure function names are preserved
+    self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
     # in the emterpreter, we interpret code execution and control flow,
     # so there is nothing on the browser-visible stack for meaningful
     # stack traces. enabling profiling makes the emterpreter call through
