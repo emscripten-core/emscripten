@@ -575,6 +575,12 @@ function loadWebAssemblyModule(binary, flags) {
         assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
       }
 #endif
+      for (var i = tableBase + 1; i < table.length; i++) {
+        var item = table.get(i);
+        if (item) {
+          functionsInTableMap.set(item, i);
+        }
+      }
       var exports = relocateExports(instance.exports, memoryBase, tableBase, moduleLocal);
       // initialize the module
       var init = exports['__post_instantiate'];
