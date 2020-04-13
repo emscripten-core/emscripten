@@ -10562,6 +10562,10 @@ Module.arguments has been replaced with plain arguments_
     stderr = run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
+    # check that `-Werror=foo` also enales foo
+    stderr = self.expect_fail(cmd + ['-Werror=legacy-settings', '-s', 'TOTAL_MEMORY=1'])
+    self.assertContained('error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]', stderr)
+
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')
     create_test_file('bar.c', 'int bar = 2;')
