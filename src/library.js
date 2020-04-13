@@ -3242,17 +3242,15 @@ LibraryManager.library = {
     {{{ cDefine('EOWNERDEAD') }}}: 'Previous owner died',
     {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
   },
-  $setErrNo: function(value) {
 #if SUPPORT_ERRNO
-    if (Module['___errno_location']) {{{ makeSetValue("Module['___errno_location']()", 0, 'value', 'i32') }}};
-#if ASSERTIONS
-    else err('failed to set errno from JS');
-#endif
+  $setErrNo__deps: ['__errno_location'],
+  $setErrNo: function(value) {
+    {{{makeSetValue("___errno_location()", 0, 'value', 'i32') }}};
     return value;
-#else
-    return 0;
-#endif
   },
+#else
+  $setErrNo: function(value) { return 0; },
+#endif
 
 #if !WASM_BACKEND
   // ==========================================================================
