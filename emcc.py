@@ -1486,14 +1486,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
 
     if shared.Settings.FILESYSTEM:
-      if shared.Settings.SUPPORT_ERRNO:
-        shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       # to flush streams on FS exit, we need to be able to call fflush
       # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have disabled NO_EXIT_RUNTIME)
       if shared.Settings.EXIT_RUNTIME or shared.Settings.ASSERTIONS:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
+
+    if shared.Settings.SUPPORT_ERRNO:
+      # so setErrNo JS library function can report errno back to C
+      shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
     if shared.Settings.GLOBAL_BASE < 0:
       # default if nothing else sets it
