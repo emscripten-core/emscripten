@@ -21,7 +21,7 @@ void sound_loop_then_quit() {
 int main(int argc, char* argv[]){
     if (SDL_Init(SDL_INIT_AUDIO) < 0)
         return -1;
-    int const frequency = EM_ASM_INT_V({
+    int const frequency = EM_ASM_INT({
         var context;
         try {
             context = new AudioContext();

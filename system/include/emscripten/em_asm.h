@@ -18,10 +18,6 @@
 #define MAIN_THREAD_EM_ASM_INT(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM_DOUBLE(...) EM_ASM_ERROR
 #define MAIN_THREAD_ASYNC_EM_ASM(...) EM_ASM_ERROR
-#define EM_ASM_(...) EM_ASM_ERROR
-#define EM_ASM_ARGS(...) EM_ASM_ERROR
-#define EM_ASM_INT_V(...) EM_ASM_ERROR
-#define EM_ASM_DOUBLE_V(...) EM_ASM_ERROR
 
 #else
 
@@ -233,12 +229,9 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 // guard any accesses to shared memory on the heap inside the JavaScript code with appropriate locking.
 #define MAIN_THREAD_ASYNC_EM_ASM(code, ...) ((void)emscripten_asm_const_async_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__)))
 
-// Old forms for compatibility, no need to use these.
-// Replace EM_ASM_, EM_ASM_ARGS and EM_ASM_INT_V with EM_ASM_INT,
-// and EM_ASM_DOUBLE_V with EM_ASM_DOUBLE.
-#define EM_ASM_(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
-#define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
-#define EM_ASM_INT_V(code) EM_ASM_INT(#code)
-#define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(#code)
-
 #endif // !defined(__cplusplus) && defined(__STRICT_ANSI__)
+
+#define EM_ASM_ _Pragma("GCC error(\"EM_ASM_ has been removed. Use EM_ASM_INT instead.\")")
+#define EM_ASM_ARGS _Pragma("GCC error(\"EM_ASM_ARGS has been removed. Use EM_ASM_INT instead.\")")
+#define EM_ASM_INT_V _Pragma("GCC error(\"EM_ASM_INT_V has been removed. Use EM_ASM_INT instead.\")")
+#define EM_ASM_DOUBLE_V _Pragma("GCC error(\"EM_ASM_DOUBLE_V has been removed. Use EM_ASM_DOUBLE instead.\")")

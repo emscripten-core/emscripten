@@ -10,10 +10,6 @@ int main() {
   printf("BEGIN\n");
   EM_ASM({ out("no args works"); });
 
-  // The following two lines are deprecated, test them still.
-  printf("  EM_ASM_INT_V returned: %d\n", EM_ASM_INT_V({ out("no args returning int"); return 12; }));
-  printf("  EM_ASM_DOUBLE_V returned: %f\n", EM_ASM_DOUBLE_V({ out("no args returning double"); return 12.25; }));
-
   printf("  EM_ASM_INT returned: %d\n", EM_ASM_INT({ out("no args returning int"); return 12; }));
   printf("  EM_ASM_DOUBLE returned: %f\n", EM_ASM_DOUBLE({ out("no args returning double"); return 12.25; }));
 
@@ -28,18 +24,11 @@ int main() {
   FUNC({ out("  " + $0 + " + " + $2); return $0 + $2; }, 5.5, 7.0, 14.375);
 
 #define FUNC_WITH(macro, format, ...) printf("    returned: " format "\n", macro(__VA_ARGS__));
-#define FUNC(...) FUNC_WITH(EM_ASM_, "%d", __VA_ARGS__)
-  printf("EM_ASM_ :\n");
-  TEST()
-#undef FUNC
+
+// We don't test EM_ASM here as it doesn't return anything. It has sufficient tests elsewhere.
 
 #define FUNC(...) FUNC_WITH(EM_ASM_INT, "%d", __VA_ARGS__)
   printf("EM_ASM_INT :\n");
-  TEST()
-#undef FUNC
-
-#define FUNC(...) FUNC_WITH(EM_ASM_ARGS, "%d", __VA_ARGS__)
-  printf("EM_ASM_ARGS :\n");
   TEST()
 #undef FUNC
 

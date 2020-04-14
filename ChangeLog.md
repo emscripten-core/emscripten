@@ -18,6 +18,10 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+- `EM_ASM_`, `EM_ASM_ARGS`, `EM_ASM_INT_V` has been removed in favor of using
+  `EM_ASM_INT`. `EM_ASM_DOUBLE_V` has been removed in favor of using
+  `EM_ASM_DOUBLE`.
+
 v1.39.12: 04/09/2020
 --------------------
 - Pass linker flags dirctly to wasm-ld by default.  We still filter out certain

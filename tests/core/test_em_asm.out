@@ -1,48 +1,10 @@
 BEGIN
 no args works
 no args returning int
-  EM_ASM_INT_V returned: 12
-no args returning double
-  EM_ASM_DOUBLE_V returned: 12.250000
-no args returning int
   EM_ASM_INT returned: 12
 no args returning double
   EM_ASM_DOUBLE returned: 12.250000
-EM_ASM_ :
-  takes ints: 5
-    returned: 0
-  takes doubles: 5.0675
-    returned: 0
-  takes strings: string arg
-    returned: 7
-  takes multiple ints: 5, 7
-    returned: 6
-  mixed arg types: 3, hello, 4.75
-    returned: 8
-  ignores unused args
-    returned: 5
-  skips unused args: 7
-    returned: 6
-  5.5 + 14.375
-    returned: 19
 EM_ASM_INT :
-  takes ints: 5
-    returned: 0
-  takes doubles: 5.0675
-    returned: 0
-  takes strings: string arg
-    returned: 7
-  takes multiple ints: 5, 7
-    returned: 6
-  mixed arg types: 3, hello, 4.75
-    returned: 8
-  ignores unused args
-    returned: 5
-  skips unused args: 7
-    returned: 6
-  5.5 + 14.375
-    returned: 19
-EM_ASM_ARGS :
   takes ints: 5
     returned: 0
   takes doubles: 5.0675
