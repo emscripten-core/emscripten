@@ -208,6 +208,13 @@ set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 
 option(EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES "If set, static library targets generate LLVM bitcode files (.bc). If disabled (default), UNIX ar archives (.a) are generated." OFF)
 if (EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES)
+  if (${CMAKE_C_COMPILER_VERSION} VERSION_LESS 7.0.0)
+    set(EMSCRIPTEN_FASTCOMP TRUE)
+  endif()
+  if (NOT EMSCRIPTEN_FASTCOMP)
+    message(FATAL_ERROR "EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the llvm backend")
+  endif()
+
   set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
   # Use the compiler to create a bitcode object rather than the default of using the AR tool
   set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_C_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")

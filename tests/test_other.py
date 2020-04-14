@@ -735,13 +735,18 @@ f.close()
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
 
   # Tests that the Emscripten CMake toolchain option
-  # -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
+    if self.is_wasm_backend():
+      # Test that this option produces an error with the llvm backend
+      err = self.expect_fail([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
+      self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
+      return
+
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
     self.clear()
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
     run_process(['cmake', '--build', '.'])
-    assert Building.is_ar('libstatic_lib.a')
+    self.assertTrue(Building.is_ar('libstatic_lib.a'))
     run_process([PYTHON, EMAR, 'x', 'libstatic_lib.a'])
     found = False # hashing makes the object name random
     for x in os.listdir('.'):
