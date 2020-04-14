@@ -61,7 +61,7 @@
 // exceed its size, whether all allocations (stack and static) are
 // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
 // if code flow runs into a fault
-// ASSERTIONS == 2 gives even more runtime checks
+// ASSERTIONS == 2 gives even more runtime checks, that may be very slow.
 var ASSERTIONS = 1;
 
 // Whether extra logging should be enabled.
