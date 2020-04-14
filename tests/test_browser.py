@@ -3151,6 +3151,12 @@ window.close = function() {
     self.run_browser('something.html', '.', '/report_result?1')
 
   @requires_graphics_hardware
+  def test_sdl2_glmatrixmode_texture(self):
+    self.btest('sdl2_glmatrixmode_texture.c', reference='sdl2_glmatrixmode_texture.png',
+               args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_SDL=2'],
+               message='You should see a (top) red-white and (bottom) white-red image.')
+
+  @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
