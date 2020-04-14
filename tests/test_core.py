@@ -6417,11 +6417,11 @@ return malloc(size);
     self.set_setting('EXIT_RUNTIME', 1)
 
     # These tests don't end up linking with libc due to a behaviour in emcc
-    # where the llvm-link step is skipped when the the input is a single
+    # where the llvm-link step is skipped when the input is a single
     # object file.  Since most of them `printf` (which comes from JS) but
     # depends on `strlen` (which comes from musl) these tests almost all
     # have an undefined `strlen`, which happens to not get called.
-    # TODO(sbc): Remove the specical case from emcc what bypasses llvm-link
+    # TODO(sbc): Remove the special case from emcc what bypasses llvm-link
     # and then remove this line?
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
     self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
