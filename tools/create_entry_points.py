@@ -41,8 +41,8 @@ def main():
   for entry_point in entry_points:
     if os.path.exists(os.path.join(root_dir, entry_point)):
         os.remove(os.path.join(root_dir, entry_point))
-    shutil.copyfile(sh_file, os.path.join(root_dir, entry_point))
-    shutil.copyfile(bat_file, os.path.join(root_dir, entry_point) + '.bat')
+    shutil.copy2(sh_file, os.path.join(root_dir, entry_point))
+    shutil.copy2(bat_file, os.path.join(root_dir, entry_point) + '.bat')
 
 
 if __name__ == '__main__':
