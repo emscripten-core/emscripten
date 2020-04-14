@@ -331,7 +331,10 @@ class RunnerMeta(type):
       return func(self, *args)
 
     # Add suffix to the function name so that it displays correctly.
-    resulting_test.__name__ = '%s_%s' % (name, suffix)
+    if suffix:
+      resulting_test.__name__ = '%s_%s' % (name, suffix)
+    else:
+      resulting_test.__name__ = name
 
     # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
     # We add the suffix to it as well.

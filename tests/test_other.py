@@ -10522,7 +10522,7 @@ Module.arguments has been replaced with plain arguments_
   def test_compile_only_with_object_extension(self):
     # Emscripten supports compiling to an object file when the output has an
     # object extension.
-    # Most compilers require the `-c` to be explict.
+    # Most compilers require the `-c` to be explicit.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'hello1.o'])
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'], stderr=PIPE).stderr
     self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
@@ -10770,7 +10770,12 @@ int main() {
     # Or using emcc with `-x c++`
     run_process([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0', '-x', 'c++-header'])
 
-  def test_support_errno(self):
+  @parameterized({
+    '': ([],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_support_errno(self, args):
+    self.emcc_args += args
     src = path_from_root('tests', 'core', 'test_support_errno.c')
     output = path_from_root('tests', 'core', 'test_support_errno.out')
     self.do_run_from_file(src, output)

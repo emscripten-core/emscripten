@@ -82,7 +82,7 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive'
 )
 
-# Maps to true if the the flag takes an argument
+# Maps to true if the flag takes an argument
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
     '-bind_at_load': False,
@@ -1486,14 +1486,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
 
     if shared.Settings.FILESYSTEM:
-      if shared.Settings.SUPPORT_ERRNO:
-        shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       # to flush streams on FS exit, we need to be able to call fflush
       # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have disabled NO_EXIT_RUNTIME)
       if shared.Settings.EXIT_RUNTIME or shared.Settings.ASSERTIONS:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
+
+    if shared.Settings.SUPPORT_ERRNO:
+      # so setErrNo JS library function can report errno back to C
+      shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
     if shared.Settings.GLOBAL_BASE < 0:
       # default if nothing else sets it
@@ -2255,7 +2257,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.SIDE_MODULE:
           exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
         if final_suffix.lower() in ('.so', '.dylib', '.dll'):
-          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
+          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
         logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + specified_target)
         if len(temp_files) == 1:
           temp_file = temp_files[0][1]
