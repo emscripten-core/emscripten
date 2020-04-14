@@ -1968,7 +1968,7 @@ Struct
 
     By default, when ``explicitSwapControl`` is in its default state ``false``, rendered WebGL content is implicitly presented (displayed to the user) on the canvas when the event handler that renders with WebGL returns back to the browser event loop. If ``explicitSwapControl`` is set to ``true``, rendered content will not be displayed on screen automatically when event handler function finishes, but the control of swapping is given to the user to manage, via the ``emscripten_webgl_commit_frame()`` function.
 
-    In order to be able to set ``explicitSwapControl==true``, support for it must explicitly be enabled either 1) via adding the ``-s OFFSCREEN_FRAMEBUFFER=1`` Emscripten linker flag, and enabling ``renderViaOffscreenBackBuffer==1``, or 2) via adding the the linker flag ``-s OFFSCREENCANVAS_SUPPORT=1``, and running in a browser that supports OffscreenCanvas.
+    In order to be able to set ``explicitSwapControl==true``, support for it must explicitly be enabled either 1) via adding the ``-s OFFSCREEN_FRAMEBUFFER=1`` Emscripten linker flag, and enabling ``renderViaOffscreenBackBuffer==1``, or 2) via adding the linker flag ``-s OFFSCREENCANVAS_SUPPORT=1``, and running in a browser that supports OffscreenCanvas.
 
 
   .. c:member:: EM_BOOL renderViaOffscreenBackBuffer
