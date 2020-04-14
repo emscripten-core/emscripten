@@ -10769,3 +10769,23 @@ int main() {
     run_process([PYTHON, EMXX, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
     # Or using emcc with `-x c++`
     run_process([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0', '-x', 'c++-header'])
+
+  @parameterized({
+    '': ([],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_support_errno(self, args):
+    self.emcc_args += args
+    src = path_from_root('tests', 'core', 'test_support_errno.c')
+    output = path_from_root('tests', 'core', 'test_support_errno.out')
+    self.do_run_from_file(src, output)
+    size_default = os.path.getsize('src.c.o.js')
+
+    # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
+    # to be set after the failing syscall.
+    self.set_setting('SUPPORT_ERRNO', 0)
+    output = path_from_root('tests', 'core', 'test_support_errno_disabled.out')
+    self.do_run_from_file(src, output)
+
+    # Verify the JS output was smaller
+    self.assertLess(os.path.getsize('src.c.o.js'), size_default)

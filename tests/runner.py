@@ -331,7 +331,10 @@ class RunnerMeta(type):
       return func(self, *args)
 
     # Add suffix to the function name so that it displays correctly.
-    resulting_test.__name__ = '%s_%s' % (name, suffix)
+    if suffix:
+      resulting_test.__name__ = '%s_%s' % (name, suffix)
+    else:
+      resulting_test.__name__ = name
 
     # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
     # We add the suffix to it as well.
@@ -1948,7 +1951,7 @@ def suite_for_module(module, tests):
   has_multiple_tests = len(tests) > 1
   has_multiple_cores = parallel_runner.num_cores() > 1
   if suite_supported and has_multiple_tests and has_multiple_cores:
-    return parallel_runner.ParallelTestSuite()
+    return parallel_runner.ParallelTestSuite(len(tests))
   return unittest.TestSuite()
 
 
