@@ -125,7 +125,7 @@ function addFunctionWasm(func, sig) {
 
   // It's not in the table, add it now.
 
-#if ASSERTIONS
+#if ASSERTIONS >= 2
   // Make sure functionsInTableMap is actually up to date, that is, that this
   // function is not actually in the wasm Table despite not being tracked in
   // functionsInTableMap.
