@@ -168,7 +168,7 @@ function addFunctionWasm(func, sig) {
     table.set(ret, wrapped);
   }
 
-  functionsInTableMap[func] = ret;
+  functionsInTableMap.set(func, ret);
 
   return ret;
 }
