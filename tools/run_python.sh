@@ -5,17 +5,20 @@
 # found in the LICENSE file.
 #
 # Entry point for running python scripts on UNIX systems.
+#
+# To modify this file, edit `tools/run_python.py` and then run
+# `tools/create_entry_points.py`
 
 if [ -z $PYTHON ]; then
-  PYTHON=$(which python3)
+  PYTHON=$(which python3 2> /dev/null)
 fi
 
 if [ -z $PYTHON ]; then
-  PYTHON=$(which python)
+  PYTHON=$(which python 2> /dev/null)
 fi
 
 if [ -z $PYTHON ]; then
-  PYTHON=$(which python2)
+  PYTHON=$(which python2 2> /dev/null)
 fi
 
 if [ -z $PYTHON ]; then
