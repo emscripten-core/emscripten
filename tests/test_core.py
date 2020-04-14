@@ -7121,7 +7121,7 @@ int main() {
   std::cout << txtTestString.data() << std::endl;
   return 0;
 }
-      ''', '''std_string(const char* s) 
+      ''', '''std_string(const char* s)
 someweirdtext
 212121
 212121
@@ -7265,7 +7265,7 @@ someweirdtext
     create_test_file('pre.js', '''
       Module = {};
       Module['postRun'] = function() {
-        out("dotest retured: " + Module.dotest());
+        out("dotest returned: " + Module.dotest());
       };
     ''')
     src = r'''
@@ -7287,7 +7287,50 @@ someweirdtext
       }
     '''
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0', '--pre-js', 'pre.js']
-    self.do_run(src, '418\ndotest retured: 42\n')
+    self.do_run(src, '418\ndotest returned: 42\n')
+
+  def test_embind_polymorphic_class_no_rtti(self):
+    create_test_file('pre.js', '''
+      Module = {};
+      Module['postRun'] = function() {
+        var foo = new Module.Foo();
+        out("foo.test() returned: " + foo.test());
+      };
+    ''')
+    src = r'''
+      #include <emscripten/bind.h>
+      #include <emscripten/val.h>
+      #include <stdio.h>
+
+      class Foo {
+       public:
+        virtual ~Foo() = default;
+        virtual int test() = 0;
+      };
+
+      class Bar : public Foo {
+       public:
+        int test() override { return 42; }
+      };
+
+      int main(int argc, char** argv){
+        printf("Hello, world.\n");
+        return 0;
+      }
+
+      std::shared_ptr<Foo> MakeFoo() {
+        return std::make_shared<Bar>();
+      }
+
+      EMSCRIPTEN_BINDINGS(interface_tests) {
+        emscripten::class_<Foo>("Foo")
+          .smart_ptr_constructor("Foo", &MakeFoo)
+          .function("test", &Foo::test)
+          ;
+      };
+    '''
+    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0', '--pre-js', 'pre.js']
+    self.do_run(src, 'Hello, world.\nfoo.test() returned: 42\n')
 
   @sync
   def test_webidl(self):
