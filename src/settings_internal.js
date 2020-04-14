@@ -204,3 +204,8 @@ var ONLY_CALC_JS_SYMBOLS = 0;
 
 // Used internally to store the starting value of the stack pointer.
 var STACK_BASE = 0;
+
+// Set to true if the program has a main function.  By default this is
+// enabled, but if `--no-entry` is passed, or if `_main` is not part of 
+// EXPORTED_FUNCTIONS then this gets set to 0.
+var HAS_MAIN = 1;

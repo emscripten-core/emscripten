@@ -131,7 +131,7 @@ function err(text) {
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
-#if INVOKE_RUN && hasExportedFunction('_main')
+#if INVOKE_RUN && HAS_MAIN
 #if USE_PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD) {
 #endif

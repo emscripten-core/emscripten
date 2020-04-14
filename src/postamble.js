@@ -171,7 +171,7 @@ dependenciesFulfilled = function runCaller() {
   if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 };
 
-#if HAS_MAIN
+#if SUPPORT_MAIN
 function callMain(args) {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
@@ -281,7 +281,7 @@ function callMain(args) {
     calledMain = true;
   }
 }
-#endif // HAS_MAIN
+#endif // SUPPORT_MAIN
 
 {{GLOBAL_VARS}}
 
@@ -321,13 +321,13 @@ function run(args) {
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 #endif
 
-#if HAS_MAIN
+#if SUPPORT_MAIN
     if (shouldRunNow) callMain(args);
 #else
 #if ASSERTIONS
     assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
 #endif // ASSERTIONS
-#endif // HAS_MAIN
+#endif // SUPPORT_MAIN
 
     postRun();
   }
@@ -460,7 +460,7 @@ if (Module['preInit']) {
 }
 #endif
 
-#if HAS_MAIN
+#if SUPPORT_MAIN
 // shouldRunNow refers to calling main(), not run().
 #if INVOKE_RUN
 var shouldRunNow = true;
@@ -472,7 +472,7 @@ var shouldRunNow = false;
 if (Module['noInitialRun']) shouldRunNow = false;
 #endif
 
-#endif // HAS_MAIN
+#endif // SUPPORT_MAIN
 
 #if EXIT_RUNTIME == 0
 #if USE_PTHREADS
