@@ -1261,12 +1261,11 @@ int main() {
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_custom(self):
+  @with_both_exception_handling
+  def test_exceptions_custom(self, js_engines):
     self.set_setting('EXCEPTION_DEBUG', 1)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.maybe_closure()
     src = '''
     #include <iostream>
@@ -1314,7 +1313,7 @@ int main() {
     }
     '''
 
-    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
+    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...', js_engines=js_engines)
 
   @with_both_exception_handling
   def test_exceptions_2(self, js_engines):
@@ -1326,10 +1325,8 @@ int main() {
       self.set_setting('SAFE_HEAP', safe)
       self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_3(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-
+  @with_both_exception_handling
+  def test_exceptions_3(self, js_engines):
     src = r'''
 #include <iostream>
 #include <stdexcept>
@@ -1359,11 +1356,11 @@ int main(int argc, char **argv)
 '''
 
     print('0')
-    self.do_run(src, 'Caught C string: a c string\nDone.', ['0'])
+    self.do_run(src, 'Caught C string: a c string\nDone.', ['0'], js_engines=js_engines)
     print('1')
-    self.do_run(None, 'Caught exception: std::exception\nDone.', ['1'], no_build=True)
+    self.do_run(None, 'Caught exception: std::exception\nDone.', ['1'], no_build=True, js_engines=js_engines)
     print('2')
-    self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
+    self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True, js_engines=js_engines)
 
   def test_exceptions_white_list(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
@@ -1435,9 +1432,8 @@ int main(int argc, char **argv)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_uncaught')
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_uncaught(self):
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_uncaught(self, js_engines):
       # needs to flush stdio streams
       self.set_setting('EXIT_RUNTIME', 1)
       src = r'''
@@ -1460,7 +1456,7 @@ int main(int argc, char **argv)
           return 0;
         }
       '''
-      self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n')
+      self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n', js_engines=js_engines)
 
       src = r'''
         #include <fstream>
@@ -1472,11 +1468,10 @@ int main(int argc, char **argv)
           std::cout << "success";
         }
       '''
-      self.do_run(src, 'success')
+      self.do_run(src, 'success', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_uncaught_2(self):
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_uncaught_2(self, js_engines):
       # needs to flush stdio streams
       self.set_setting('EXIT_RUNTIME', 1)
       src = r'''
@@ -1498,7 +1493,7 @@ int main(int argc, char **argv)
             std::cout << "OK";
         }
       '''
-      self.do_run(src, 'OK\n')
+      self.do_run(src, 'OK\n', js_engines=js_engines)
 
   @with_both_exception_handling
   def test_exceptions_typed(self, js_engines):
@@ -1508,16 +1503,13 @@ int main(int argc, char **argv)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_virtual_inheritance(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_virtual_inheritance(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance', js_engines=js_engines)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance')
-
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_convert(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert')
+  @with_both_exception_handling
+  def test_exceptions_convert(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert', js_engines=js_engines)
 
   # TODO Make setjmp-longjmp also use Wasm exception handling
   @with_both_exception_handling
@@ -1534,55 +1526,45 @@ int main(int argc, char **argv)
   def test_exceptions_alias(self, js_engines):
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_rethrow(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow')
+  @with_both_exception_handling
+  def test_exceptions_rethrow(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_resume(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_resume(self, js_engines):
     self.set_setting('EXCEPTION_DEBUG', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_destroy_virtual(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual')
+  @with_both_exception_handling
+  def test_exceptions_destroy_virtual(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_refcount(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount')
+  @with_both_exception_handling
+  def test_exceptions_refcount(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_primary(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary')
+  @with_both_exception_handling
+  def test_exceptions_primary(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_simplify_cfg(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg')
+  @with_both_exception_handling
+  def test_exceptions_simplify_cfg(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_libcxx(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx')
+  @with_both_exception_handling
+  def test_exceptions_libcxx(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx', js_engines=js_engines)
 
   @with_both_exception_handling
   def test_exceptions_multiple_inherit(self, js_engines):
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_multiple_inherit_rethrow(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow')
+  @with_both_exception_handling
+  def test_exceptions_multiple_inherit_rethrow(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_bad_typeid(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-
+  @with_both_exception_handling
+  def test_bad_typeid(self, js_engines):
     self.do_run(r'''
 // exception example
 #include <iostream>       // std::cerr
@@ -1603,7 +1585,7 @@ int main () {
   }
   return 0;
 }
-''', 'exception caught: std::bad_typeid')
+''', 'exception caught: std::bad_typeid', js_engines=js_engines)
 
   def test_iostream_ctors(self):
     # iostream stuff must be globally constructed before user global
@@ -3542,9 +3524,10 @@ pre 9
 out!
 ''', force_c=True)
 
+  # TODO: make this work. need to forward tempRet0 across modules
   # TODO Enable @with_both_exception_handling (the test is not working now)
   @needs_dlfcn
-  def zzztest_dlfcn_exceptions(self): # TODO: make this work. need to forward tempRet0 across modules
+  def zzztest_dlfcn_exceptions(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.prep_dlfcn_lib()
