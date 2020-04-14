@@ -21,6 +21,17 @@ extern "C" int baz() {
 }
 
 int main(int argc, char **argv) {
+#if defined(__wasm__) && defined(GROWTH)
+  EM_ASM({
+    // Get an export that isn't in the table (we never took its address in C).
+    var baz = asm["baz"];
+    var tableSizeBefore = wasmTable.length;
+    var bazIndex = addFunction(baz);
+    assert(bazIndex >= tableSizeBefore, "we actually added it");
+    assert(addFunction(baz) === bazIndex, "we never add it again");
+  });
+#endif
+
   int fp = atoi(argv[1]);
   printf("fp: %d\n", fp);
   void (*f)(int) = reinterpret_cast<void (*)(int)>(fp);
@@ -47,19 +58,6 @@ int main(int argc, char **argv) {
   }, &foo, &bar); // taking the addresses here ensures they are in the table
                   // (the optimizer can't remove these uses) which then lets
                   // us assume the table is of a certain size in the test.
-#ifdef GROWTH
-  EM_ASM({
-    // Add another function to counteract the removal from before, so we
-    // have no more free indexes, and new additions must actually add.
-    addFunction(function(){}, 'v');
-    // Get an export that isn't in the table (we never took its address in C).
-    var baz = asm["baz"];
-    var tableSizeBefore = wasmTable.length;
-    var bazIndex = addFunction(baz);
-    assert(bazIndex >= tableSizeBefore, "we actually added it");
-    assert(addFunction(baz) === bazIndex, "we never add it again");
-  });
-#endif
 #endif
   printf("ok\n");
   return 0;
