@@ -62,12 +62,12 @@ The typical format of registration functions is as follows (some methods may omi
 
 The ``target`` parameter is the ID of the HTML element to which the callback registration is to be applied. This field has the following special meanings:
 
-  - ``0`` or ``NULL``: A default element is chosen automatically based on the event type, which should be reasonable most of the time.
-  - ``#window``: The event listener is applied to the JavaScript ``window`` object.
-  - ``#document``: The event listener is applied to the JavaScript ``document`` object.
-  - ``#screen``: The event listener is applied to the JavaScript ``window.screen`` object.
-  - ``#canvas``: The event listener is applied to the Emscripten default WebGL canvas element.
-  - Any other string **without a leading hash "#"** sign: The event listener is applied to the element on the page with the given ID.
+  - ``EMSCRIPTEN_EVENT_TARGET_WINDOW``: The event listener is applied to the JavaScript ``window`` object.
+  - ``EMSCRIPTEN_EVENT_TARGET_DOCUMENT``: The event listener is applied to the JavaScript ``document`` object.
+  - ``EMSCRIPTEN_EVENT_TARGET_SCREEN``: The event listener is applied to the JavaScript ``window.screen`` object.
+  - ``0`` or ``NULL``: If building with the option ``-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1`` (default), ``NULL`` denotes an invalid element. If building with legacy option ``-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), a default element is chosen automatically based on the event type.
+  - ``#canvas``: If building with legacy option ``-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), the event listener is applied to the Emscripten default WebGL canvas element. If building with the option ``-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1`` (default), ``#canvas`` is interpreted as a CSS query selector: "the first element with CSS ID 'canvas'".
+  - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the the event listener is applied to the first element that matches the query.
 
 .. _userdata-parameter-html5-api:
 
