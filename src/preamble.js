@@ -960,7 +960,7 @@ function createWasm() {
     removeRunDependency('wasm-instantiate');
 #endif
   }
-   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+  // we can't run yet (except in a pthread, where we have a custom sync instantiator)
   {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
 
 #if LOAD_SOURCE_MAP
@@ -988,8 +988,8 @@ function createWasm() {
 #if USE_PTHREADS
     receiveInstance(output['instance'], output['module']);
 #else
-      // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
-      // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
+    // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
+    // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
     receiveInstance(output['instance']);
 #endif
   }
