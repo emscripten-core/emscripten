@@ -6902,6 +6902,7 @@ return malloc(size);
       self.do_run(open(src).read(), 'Unable to grow wasm table', assert_returncode=None)
       print('- with table growth')
       self.set_setting('ALLOW_TABLE_GROWTH', 1)
+      self.emcc_args += ['-DGROWTH']
       self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
     else:
       self.do_run(open(src).read(), 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.', assert_returncode=None)
