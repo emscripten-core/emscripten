@@ -1199,7 +1199,7 @@ module({
             assert.equal(a, h.readonly_function_val);
             var e = assert.throws(cm.BindingError, function() {
                 h.readonly_function_val = 10;
-            })
+            });
             assert.equal('ValHolder.readonly_function_val is a read-only property', e.message);
             h.delete();
         });
@@ -1220,7 +1220,7 @@ module({
             assert.equal(a, h.readonly_functor_val);
             var e = assert.throws(cm.BindingError, function() {
                 h.readonly_functor_val = 10;
-            })
+            });
             assert.equal('ValHolder.readonly_functor_val is a read-only property', e.message);
             h.delete();
         });
@@ -1265,11 +1265,11 @@ module({
         });
 
         test("function objects as class constructors", function() {
-            let a = new cm.ConstructFromStdFunction("foo", 10);
+            var a = new cm.ConstructFromStdFunction("foo", 10);
             assert.equal("foo", a.getVal());
             assert.equal(10, a.getA());
 
-            let b = new cm.ConstructFromFunctionObject("bar", 12);
+            var b = new cm.ConstructFromFunctionObject("bar", 12);
             assert.equal("bar", b.getVal());
             assert.equal(12, b.getA());
 
@@ -1278,7 +1278,7 @@ module({
         });
 
         test("function objects as class methods", function() {
-            let b = cm.ValHolder.makeValHolder("foo");
+            var b = cm.ValHolder.makeValHolder("foo");
 
             // get & set via std::function
             assert.equal("foo", b.getValFunction());
@@ -1288,7 +1288,7 @@ module({
             assert.equal("bar", b.getValFunctor());
             b.setValFunctor("baz");
 
-            assert.equal("baz", b.getValFunction())
+            assert.equal("baz", b.getValFunction());
 
             b.delete();
         });
