@@ -176,6 +176,9 @@ function JSify(data, functionsOnly) {
           var msg = 'undefined symbol: ' + ident;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
+            if (WASM_BACKEND && !LLD_REPORT_UNDEFINED) {
+              warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
+            }
             warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
             warnOnce(finalName + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library')
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
@@ -262,6 +265,9 @@ function JSify(data, functionsOnly) {
       if (LibraryManager.library[ident + '__import']) {
         Functions.libraryFunctions[finalName] = 1;
       }
+
+      if (ONLY_CALC_JS_SYMBOLS)
+        return '';
 
       var postsetId = ident + '__postset';
       var postset = LibraryManager.library[postsetId];
@@ -415,7 +421,7 @@ function JSify(data, functionsOnly) {
           print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
         }
         // emit "metadata" in a comment. FIXME make this nicer
-        print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
+        print('// STATICTOP = STATIC_BASE + ' + alignMemory(Variables.nextIndexedOffset) + ';\n');
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));

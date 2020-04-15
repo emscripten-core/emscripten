@@ -920,6 +920,13 @@ def report_missing_symbols(all_implemented, pre):
       continue
     diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
 
+  # Handle main specially, unless IGNORE_MISSING_MAIN is set
+  if not shared.Settings.IGNORE_MISSING_MAIN:
+    if '_main' in shared.Settings.EXPORTED_FUNCTIONS and '_main' not in all_implemented:
+      # For compatibility with the output of wasm-ld we use the same wording here in our
+      # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
+      exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
+
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
   funcs = set(metadata['exports'])
@@ -2320,6 +2327,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # (which matches what llvm+lld has given us)
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST:
     args.append('-g')
+  if shared.Settings.WASM_BIGINT:
+    args.append('--bigint')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     args.append('--no-legalize-javascript-ffi')
   if not shared.Settings.MEM_INIT_IN_WASM:

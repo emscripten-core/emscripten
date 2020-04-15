@@ -72,10 +72,12 @@ var LibraryManager = {
       'library_int53.js'
     ];
 
-    if (!DISABLE_EXCEPTION_THROWING) {
-      libraries.push('library_exceptions.js');
-    } else {
-      libraries.push('library_exceptions_stub.js');
+    if (!EXCEPTION_HANDLING) {
+      if (!DISABLE_EXCEPTION_THROWING) {
+        libraries.push('library_exceptions.js');
+      } else {
+        libraries.push('library_exceptions_stub.js');
+      }
     }
 
     if (MINIMAL_RUNTIME) {

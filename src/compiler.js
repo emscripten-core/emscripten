@@ -187,8 +187,7 @@ if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slo
 load('modules.js');
 load('parseTools.js');
 load('jsifier.js');
-globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
-Runtime.QUANTUM_SIZE = 4;
+load('runtime.js');
 
 // State computations
 

@@ -1,10 +1,10 @@
 #!/bin/sh
-# Copyright 2011 The Emscripten Authors.  All rights reserved.
+# Copyright 2020 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 #
-# Entpy point for running python scripts on UNIX systems.
+# Entry point for running python scripts on UNIX systems.
 
 if [ -z $PYTHON ]; then
   PYTHON=$(which python3)

@@ -444,9 +444,13 @@ function loadWebAssemblyModule(binary, flags) {
     var moduleLocal = {};
 
     var resolveSymbol = function(sym, type, legalized) {
+#if WASM_BIGINT
+      assert(!legalized);
+#else
       if (legalized) {
         sym = 'orig$' + sym;
       }
+#endif
 
       var resolved = Module["asm"][sym];
       if (!resolved) {
@@ -460,7 +464,7 @@ function loadWebAssemblyModule(binary, flags) {
 #if ASSERTIONS
         assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
-     }
+      }
       return resolved;
     }
 
@@ -510,7 +514,11 @@ function loadWebAssemblyModule(binary, flags) {
           assert(parts.length == 3)
           var name = parts[1];
           var sig = parts[2];
+#if WASM_BIGINT
+          var legalized = false;
+#else
           var legalized = sig.indexOf('j') >= 0; // check for i64s
+#endif
           var fp = 0;
           return obj[prop] = function() {
             if (!fp) {
@@ -753,15 +761,6 @@ function getCompilerSetting(name) {
 #endif // ASSERTIONS
 #endif // RETAIN_COMPILER_SETTINGS
 
-var Runtime = {
-#if ASSERTIONS
-  // helpful errors
-  getTempRet0: function() { abort('getTempRet0() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
-  staticAlloc: function() { abort('staticAlloc() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
-  stackAlloc: function() { abort('stackAlloc() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
-#endif
-};
-
 // The address globals begin at. Very low in memory, for code size and optimization opportunities.
 // Above 0 is static memory, starting with globals.
 // Then the stack.
@@ -779,4 +778,3 @@ var Atomics_load = Atomics.load;
 var Atomics_store = Atomics.store;
 var Atomics_compareExchange = Atomics.compareExchange;
 #endif
-
