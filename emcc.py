@@ -1328,9 +1328,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
-      # MODULARIZE's .then() method uses onRuntimeInitialized currently, so make sure
-      # it is expected to be used.
-      shared.Settings.INCOMING_MODULE_JS_API += ['onRuntimeInitialized']
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -3448,26 +3445,32 @@ var %(EXPORT_NAME)s = (function() {
         'src': src
       }
   else:
-    # Create the promise for the MODULARIZE_INSTANCE instance. Note that the
-    # global, custom-named `Module` object is passed to the factory function
-    # invocation, just like in non-MODULARIZE mode. This is noticeably
+    promise_variable_suffix = '_promise'
+    # Create the promise for the MODULARIZE_INSTANCE instance. The name of the
+    # variable will be `Module_promise` by default. If the EXPORT_NAME option
+    # is specified, the variable named will be `{EXPORT_NAME}_promise`.
+    # 
+    # Note that the global, custom-named `Module` object is passed to the
+    # factory function invocation, just like in non-MODULARIZE mode. This is
     # different than code built with the MODULARIZE option where the user
     # specifies any Module seed when calling the factory function themselves.
     src = '''
-var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
+var %(EXPORT_NAME)s%(promise_variable_suffix)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
 ''' % {
       'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-      'src': src
+      'src': src,
+      'promise_variable_suffix': promise_variable_suffix,
     }
 
   final = final + '.modular.js'
   with open(final, 'w') as f:
     f.write(src)
-
+    export_name = shared.Settings.EXPORT_NAME
+    if (shared.Settings.MODULARIZE_INSTANCE):
+      export_name += promise_variable_suffix
     # Export using a UMD style export, or ES6 exports if selected
-
     if shared.Settings.EXPORT_ES6:
-      f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+      f.write('''export default %s;''' % export_name)
     elif not shared.Settings.MINIMAL_RUNTIME:
       f.write('''if (typeof exports === 'object' && typeof module === 'object')
       module.exports = %(EXPORT_NAME)s;
@@ -3476,7 +3479,7 @@ var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_N
     else if (typeof exports === 'object')
       exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
     ''' % {
-        'EXPORT_NAME': shared.Settings.EXPORT_NAME
+        'EXPORT_NAME': export_name
       })
 
   save_intermediate('modularized')
