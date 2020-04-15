@@ -278,9 +278,9 @@ function run(args) {
 #endif
 
   preRun();
-  
+
   if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
-  
+
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
