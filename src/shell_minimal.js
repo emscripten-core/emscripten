@@ -131,6 +131,9 @@ function err(text) {
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
+#if MODULARIZE
+  returned_promise_resolve(Module);
+#endif // MODULARIZE
 #if INVOKE_RUN && hasExportedFunction('_main')
 #if USE_PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD) {

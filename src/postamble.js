@@ -479,8 +479,9 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif // EMBIND
 #if MODULARIZE
   // The promise resolve function typically gets called as part of the execution 
-  // of the Module `run`. The pthreads themselves don't execute `run`, so the
-  // creation promise can be resolved, marking the pthread-Module as initialized.
+  // of the Module `run`. The workers/pthreads don't execute `run` here, they
+  // call `run` in response to a message at a later time, so the creation
+  // promise can be resolved, marking the pthread-Module as initialized.
   returned_promise_resolve(Module);
 #endif // MODULARIZE
 }
