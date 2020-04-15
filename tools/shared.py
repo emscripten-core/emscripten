@@ -292,22 +292,8 @@ elif os.path.exists(embedded_config):
 else:
   EM_CONFIG = '~/.emscripten'
 
-# Emscripten compiler spawns other processes, which can reimport shared.py, so
-# make sure that those child processes get the same configuration file by
-# setting it to the currently active environment.
-os.environ['EM_CONFIG'] = EM_CONFIG
-
-if '\n' in EM_CONFIG:
-  CONFIG_FILE = None
-  logger.debug('EM_CONFIG is specified inline without a file')
-else:
-  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
-  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
-  if not os.path.exists(CONFIG_FILE):
-    generate_config(EM_CONFIG, first_time=True)
-    sys.exit(0)
-
 PYTHON = os.getenv('EM_PYTHON', sys.executable)
+EMSCRIPTEN_ROOT = __rootpath__
 
 # The following globals can be overridden by the config file.
 # See parse_config_file below.
@@ -328,7 +314,21 @@ WASMTIME = None
 WASM_ENGINES = []
 COMPILER_OPTS = []
 FROZEN_CACHE = False
-EMSCRIPTEN_ROOT = __rootpath__
+
+# Emscripten compiler spawns other processes, which can reimport shared.py, so
+# make sure that those child processes get the same configuration file by
+# setting it to the currently active environment.
+os.environ['EM_CONFIG'] = EM_CONFIG
+
+if '\n' in EM_CONFIG:
+  CONFIG_FILE = None
+  logger.debug('EM_CONFIG is specified inline without a file')
+else:
+  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
+  if not os.path.exists(CONFIG_FILE):
+    generate_config(EM_CONFIG, first_time=True)
+    sys.exit(0)
 
 
 def parse_config_file():
