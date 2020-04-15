@@ -2962,6 +2962,9 @@ class Building(object):
       # note that we add this pass first, so that it doesn't interfere with
       # the final set of passes (which may generate stack IR, and nothing
       # should be run after that)
+      # TODO: if lld can strip dwarf then we don't need this. atm though it can
+      #       only strip all debug info or none, which includes the name section
+      #       which we may need
       # TODO: once fastcomp is gone, either remove source maps entirely, or
       #       support them by emitting a source map at the end from the dwarf,
       #       and use llvm-objcpy to remove that final dwarf
