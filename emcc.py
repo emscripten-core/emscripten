@@ -1313,9 +1313,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
       link_to_object = True
 
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
-    link_flags = filter_link_flags(link_flags, using_lld)
-
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
@@ -2240,7 +2237,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if compile_only:
       logger.debug('stopping after compile phase')
+      for flag in link_flags:
+        diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
       return 0
+
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
+    link_flags = filter_link_flags(link_flags, using_lld)
 
     # Decide what we will link
     consumed = process_libraries(libs, lib_dirs, temp_files)
