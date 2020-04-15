@@ -3454,7 +3454,7 @@ var %(EXPORT_NAME)s = (function() {
     # different than code built with the MODULARIZE option where the user
     # specifies any Module seed when calling the factory function themselves.
     src = '''
-var initPromise = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
+var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
 ''' % {
       'EXPORT_NAME': shared.Settings.EXPORT_NAME,
       'src': src

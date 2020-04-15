@@ -158,7 +158,7 @@ this.onmessage = function(e) {
         URL.revokeObjectURL(objectUrl);
       }
 #if MODULARIZE_INSTANCE
-      initPromise.then((instance) => {
+      {{{ EXPORT_NAME }}}.then((instance) => {
         Module = instance;
         postMessage({ 'cmd': 'loaded' });
       });
