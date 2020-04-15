@@ -1434,66 +1434,66 @@ int main(int argc, char **argv)
 
   @with_both_exception_handling
   def test_exceptions_uncaught(self, js_engines):
-      # needs to flush stdio streams
-      self.set_setting('EXIT_RUNTIME', 1)
-      src = r'''
-        #include <stdio.h>
-        #include <exception>
-        struct X {
-          ~X() {
-            printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
-          }
-        };
-        int main() {
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME', 1)
+    src = r'''
+      #include <stdio.h>
+      #include <exception>
+      struct X {
+        ~X() {
           printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
-          try {
-            X x;
-            throw 1;
-          } catch(...) {
-            printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
-          }
-          printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
-          return 0;
         }
-      '''
-      self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n', js_engines=js_engines)
+      };
+      int main() {
+        printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        try {
+          X x;
+          throw 1;
+        } catch(...) {
+          printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        }
+        printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        return 0;
+      }
+    '''
+    self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n', js_engines=js_engines)
 
-      src = r'''
-        #include <fstream>
-        #include <iostream>
-        int main() {
-          std::ofstream os("test");
-          os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exception from
-                                       // std::basic_ostream::sentry::~sentry
-          std::cout << "success";
-        }
-      '''
-      self.do_run(src, 'success', js_engines=js_engines)
+    src = r'''
+      #include <fstream>
+      #include <iostream>
+      int main() {
+        std::ofstream os("test");
+        os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exception from
+                                     // std::basic_ostream::sentry::~sentry
+        std::cout << "success";
+      }
+    '''
+    self.do_run(src, 'success', js_engines=js_engines)
 
   @with_both_exception_handling
   def test_exceptions_uncaught_2(self, js_engines):
-      # needs to flush stdio streams
-      self.set_setting('EXIT_RUNTIME', 1)
-      src = r'''
-        #include <iostream>
-        #include <exception>
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME', 1)
+    src = r'''
+      #include <iostream>
+      #include <exception>
 
-        int main() {
+      int main() {
+        try {
+            throw std::exception();
+        } catch(std::exception) {
           try {
-              throw std::exception();
-          } catch(std::exception) {
-            try {
-              throw;
-            } catch(std::exception) {}
-          }
-
-          if (std::uncaught_exception())
-            std::cout << "ERROR: uncaught_exception still set.";
-          else
-            std::cout << "OK";
+            throw;
+          } catch(std::exception) {}
         }
-      '''
-      self.do_run(src, 'OK\n', js_engines=js_engines)
+
+        if (std::uncaught_exception())
+          std::cout << "ERROR: uncaught_exception still set.";
+        else
+          std::cout << "OK";
+      }
+    '''
+    self.do_run(src, 'OK\n', js_engines=js_engines)
 
   @with_both_exception_handling
   def test_exceptions_typed(self, js_engines):
