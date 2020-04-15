@@ -219,7 +219,7 @@ def generate_config(path, first_time=False):
   config_file = config_file[3:] # remove the initial comment
   config_file = '\n'.join(config_file)
   # autodetect some default paths
-  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
+  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(EMSCRIPTEN_ROOT))
   llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
   config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
@@ -250,7 +250,7 @@ Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
+''' % (path, abspath, llvm_root, node, EMSCRIPTEN_ROOT), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option
@@ -328,6 +328,7 @@ WASMTIME = None
 WASM_ENGINES = []
 COMPILER_OPTS = []
 FROZEN_CACHE = False
+EMSCRIPTEN_ROOT = __rootpath__
 
 
 def parse_config_file():
