@@ -278,9 +278,9 @@ function run(args) {
 #endif
 
   preRun();
-
+  
   if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
-
+  
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
@@ -470,15 +470,23 @@ if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior 
 #endif
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) run();
+if (!ENVIRONMENT_IS_PTHREAD) {
+  run();
+} else {
 #if EMBIND
-else {  // Embind must initialize itself on all threads, as it generates support JS.
+  // Embind must initialize itself on all threads, as it generates support JS.
   Module['___embind_register_native_and_builtin_types']();
-}
 #endif // EMBIND
+#if MODULARIZE
+  // The promise resolve function typically gets called as part of the execution 
+  // of the Module `run`. The pthreads themselves don't execute `run`, so the
+  // creation promise can be resolved, marking the pthread-Module as initialized.
+  returned_promise_resolve(Module);
+#endif // MODULARIZE
+}
 #else
 run();
-#endif
+#endif // USE_PTHREADS
 
 #if BUILD_AS_WORKER
 
