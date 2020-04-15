@@ -169,7 +169,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
 #if ASYNCIFY && WASM_BACKEND
   var asyncMode = opts && opts.async;
   var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
-  var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0; 
+  var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0;
 #if ASSERTIONS
   assert(!asyncMode || !prevRunningAsync, 'Cannot have multiple async ccalls in flight at once');
 #endif
@@ -254,7 +254,7 @@ function allocate(slab, types, allocator, ptr) {
     ret = ptr;
   } else {
     ret = [_malloc,
-#if DECLARE_ASM_MODULE_EXPORTS    
+#if DECLARE_ASM_MODULE_EXPORTS
     stackAlloc,
 #else
     typeof stackAlloc !== 'undefined' ? stackAlloc : null,
@@ -1072,19 +1072,16 @@ function createWasm() {
             // Save the new compiled code when we have it.
             hasCached = false;
           }
-err(module);
         }
       }
       if (!module) {
         module = new WebAssembly.Module(binary);
       }
-      if (ENVIRONMENT_IS_NODE) {
-        if (!hasCached) {
+      if (ENVIRONMENT_IS_NODE && !hasCached) {
 #if RUNTIME_LOGGING
-          err('NODE_CODE_CACHING: saving module');
+        err('NODE_CODE_CACHING: saving module');
 #endif
-          nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
-        }
+        nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
       }
 #else // NODE_CODE_CACHING
       module = new WebAssembly.Module(binary);

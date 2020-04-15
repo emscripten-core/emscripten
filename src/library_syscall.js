@@ -1157,7 +1157,7 @@ var SyscallsLibrary = {
     FS.llseek(stream, idx * struct_size, {{{ cDefine('SEEK_SET') }}});
     return pos;
   },
-  __sys_fcntl64__deps: ['__setErrNo'],
+  __sys_fcntl64__deps: ['$setErrNo'],
   __sys_fcntl64: function(fd, cmd, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -1207,7 +1207,7 @@ var SyscallsLibrary = {
         return -{{{ cDefine('EINVAL') }}}; // These are for sockets. We don't have them fully implemented yet.
       case {{{ cDefine('F_GETOWN') }}}:
         // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fnctl() returns that, and we set errno ourselves.
-        ___setErrNo({{{ cDefine('EINVAL') }}});
+        setErrNo({{{ cDefine('EINVAL') }}});
         return -1;
       default: {
 #if SYSCALL_DEBUG

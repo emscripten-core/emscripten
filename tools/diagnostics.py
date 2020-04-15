@@ -189,7 +189,10 @@ class WarningManager(object):
       if cmd_args[i].startswith('-Werror=') or cmd_args[i].startswith('-Wno-error='):
         warning_name = cmd_args[i].split('=', 1)[1]
         if warning_name in self.warnings:
-          self.warnings[warning_name]['error'] = not cmd_args[i].startswith('-Wno-')
+          enabled = not cmd_args[i].startswith('-Wno-')
+          self.warnings[warning_name]['error'] = enabled
+          if enabled:
+            self.warnings[warning_name]['enabled'] = True
           cmd_args[i] = ''
           continue
 

@@ -925,7 +925,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 //
 // This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
 // is enabled. This has to happen because this is the only chance - this browser
-// main thread does the the only pthread_create call that happens on
+// main thread does the only pthread_create call that happens on
 // that thread, so it's the only chance to transfer the canvas from there.
 var PROXY_TO_PTHREAD = 0;
 
@@ -951,6 +951,7 @@ var LINKABLE = 0;
 //   * IGNORE_MISSING_MAIN is disabled.
 //   * AUTO_JS_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
+//   * DEFAULT_TO_CXX is disabled.
 // [compile+link]
 var STRICT = 0;
 
@@ -1776,12 +1777,15 @@ var USE_OFFSET_CONVERTER = 0;
 
 // If set to 1, the JS compiler is run before wasm-ld so that the linker can
 // report undefined symbols within the binary.  Without this option that linker
-// doesn't know which symmbols might be defined JS and so reporting of undefined
-// symbols is deleyed until the JS compiler is run.
-// There are some known issues with this flag.  e.g. EM_JS function:
-// https://github.com/emscripten-core/emscripten/issues/10779
+// doesn't know which symbols might be defined JS and so reporting of undefined
+// symbols is delayed until the JS compiler is run.
 // [link]
 var LLD_REPORT_UNDEFINED = 0;
+
+// Default to c++ mode even when run as `emcc` rather then `emc++`.
+// When this is disabled `em++` is required when compiling and linking C++
+// programs. This which matches the behaviour of gcc/g++ and clang/clang++.
+var DEFAULT_TO_CXX = 1;
 
 //===========================================
 // Internal, used for testing only, from here
