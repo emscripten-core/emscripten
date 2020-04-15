@@ -1793,6 +1793,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if sanitize:
         shared.Settings.USE_OFFSET_CONVERTER = 1
+        shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_emscripten_builtin_memalign',
+                                               '_emscripten_builtin_malloc', '_emscripten_builtin_free',
+                                               '___data_end', '___heap_base', '___global_base']
 
         if not shared.Settings.WASM_BACKEND:
           exit_with_error('Sanitizers are not compatible with the fastcomp backend. Please upgrade to the upstream wasm backend by following these instructions: https://v8.dev/blog/emscripten-llvm-wasm#testing')
