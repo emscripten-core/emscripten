@@ -3449,7 +3449,7 @@ var %(EXPORT_NAME)s = (function() {
     # Create the promise for the MODULARIZE_INSTANCE instance. The name of the
     # variable will be `Module_promise` by default. If the EXPORT_NAME option
     # is specified, the variable named will be `{EXPORT_NAME}_promise`.
-    # 
+    #
     # Note that the global, custom-named `Module` object is passed to the
     # factory function invocation, just like in non-MODULARIZE mode. This is
     # different than code built with the MODULARIZE option where the user
