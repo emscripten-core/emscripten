@@ -189,3 +189,11 @@ var SEPARATE_DWARF = 0;
 
 // New WebAssembly exception handling (experimental)
 var EXCEPTION_HANDLING = 0;
+
+// Enabled when building C++ code (for example via em++ or via -c c++)
+var USE_CXX = 0;
+
+// Used internally when running the JS compiler simply to generate list of all
+// JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
+// JS library symbols.
+var ONLY_CALC_JS_SYMBOLS = 0;
