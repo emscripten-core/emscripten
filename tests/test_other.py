@@ -44,6 +44,10 @@ import tools.tempfiles
 import tools.duplicate_function_eliminator
 
 scons_path = Building.which('scons')
+if WINDOWS:
+  emcmake = path_from_root('emcmake.bat')
+else:
+  emcmake = path_from_root('emcmake')
 
 
 class temp_directory(object):
@@ -624,11 +628,6 @@ f.close()
                       }
     }
 
-    if WINDOWS:
-      emcmake = path_from_root('emcmake.bat')
-    else:
-      emcmake = path_from_root('emcmake')
-
     for generator in generators:
       conf = configurations[generator]
 
@@ -709,11 +708,6 @@ f.close()
       print(str(cmd))
       native_features = run_process(cmd, stdout=PIPE).stdout
 
-    if WINDOWS:
-      emcmake = path_from_root('emcmake.bat')
-    else:
-      emcmake = path_from_root('emcmake')
-
     with temp_directory(self.get_dir()):
       cmd = [emcmake, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
@@ -727,7 +721,7 @@ f.close()
   def test_cmake_with_embind_cpp11_mode(self):
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
       with temp_directory(self.get_dir()) as tempdirname:
-        configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
+        configure = [emcmake, 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print(str(configure))
         run_process(configure)
         build = ['cmake', '--build', '.']
@@ -743,15 +737,10 @@ f.close()
   # Tests that the Emscripten CMake toolchain option
   # -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
-    if WINDOWS:
-      emcmake = path_from_root('emcmake.bat')
-    else:
-      emcmake = path_from_root('emcmake')
-
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
     self.clear()
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
-    run_process([Building.which('cmake'), '--build', '.'])
+    run_process(['cmake', '--build', '.'])
     assert Building.is_ar('libstatic_lib.a')
     run_process([PYTHON, EMAR, 'x', 'libstatic_lib.a'])
     found = False # hashing makes the object name random
@@ -769,7 +758,7 @@ f.close()
     # (.bc)
     self.clear()
     run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
-    run_process([Building.which('cmake'), '--build', '.'])
+    run_process(['cmake', '--build', '.'])
     if self.is_wasm_backend():
       assert Building.is_wasm('libstatic_lib.bc')
     else:
@@ -781,16 +770,11 @@ f.close()
     # with ".so" suffix which are in fact either ar archives or bitcode files)
     self.clear()
     run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
-    run_process([Building.which('cmake'), '--build', '.'])
+    run_process(['cmake', '--build', '.'])
     assert Building.is_ar('myprefix_static_lib.somecustomsuffix')
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
-    if WINDOWS:
-      emcmake = path_from_root('emcmake.bat')
-    else:
-      emcmake = path_from_root('emcmake')
-
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'emscripten_version')])
 
   def test_system_include_paths(self):
