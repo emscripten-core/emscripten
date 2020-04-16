@@ -671,10 +671,10 @@ namespace emscripten {
         template<typename T>
         struct SetterPolicy;
 
-        template<typename SetterThisType, typename SetterArgumentType>
-        struct SetterPolicy<void (SetterThisType::*)(SetterArgumentType)> {
+        template<typename SetterReturnType, typename SetterThisType, typename SetterArgumentType>
+        struct SetterPolicy<SetterReturnType (SetterThisType::*)(SetterArgumentType)> {
             typedef SetterArgumentType ArgumentType;
-            typedef void (SetterThisType::*Context)(SetterArgumentType);
+            typedef SetterReturnType (SetterThisType::*Context)(SetterArgumentType);
 
             typedef internal::BindingType<SetterArgumentType> Binding;
             typedef typename Binding::WireType WireType;
@@ -689,10 +689,10 @@ namespace emscripten {
             }
         };
 
-        template<typename SetterThisType, typename SetterArgumentType>
-        struct SetterPolicy<void (*)(SetterThisType&, SetterArgumentType)> {
+        template<typename SetterReturnType, typename SetterThisType, typename SetterArgumentType>
+        struct SetterPolicy<SetterReturnType (*)(SetterThisType&, SetterArgumentType)> {
             typedef SetterArgumentType ArgumentType;
-            typedef void (*Context)(SetterThisType&, SetterArgumentType);
+            typedef SetterReturnType (*Context)(SetterThisType&, SetterArgumentType);
 
             typedef internal::BindingType<SetterArgumentType> Binding;
             typedef typename Binding::WireType WireType;
@@ -707,10 +707,10 @@ namespace emscripten {
             }
         };
 
-        template<typename SetterThisType, typename SetterArgumentType>
-        struct SetterPolicy<std::function<void(SetterThisType&, SetterArgumentType)>> {
+        template<typename SetterReturnType, typename SetterThisType, typename SetterArgumentType>
+        struct SetterPolicy<std::function<SetterReturnType(SetterThisType&, SetterArgumentType)>> {
             typedef SetterArgumentType ArgumentType;
-            typedef std::function<void(SetterThisType&, SetterArgumentType)> Context;
+            typedef std::function<SetterReturnType(SetterThisType&, SetterArgumentType)> Context;
 
             typedef internal::BindingType<SetterArgumentType> Binding;
             typedef typename Binding::WireType WireType;

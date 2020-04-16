@@ -4,6 +4,5 @@ __table_base
 emscripten_memcpy_big
 emscripten_resize_heap
 fd_write
-g$stdout
 memory
 table

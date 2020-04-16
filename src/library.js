@@ -57,7 +57,7 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  utime__deps: ['$FS', '__setErrNo'],
+  utime__deps: ['$FS', '$setErrNo'],
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
@@ -82,7 +82,7 @@ LibraryManager.library = {
     }
   },
 
-  utimes__deps: ['$FS', '__setErrNo'],
+  utimes__deps: ['$FS', '$setErrNo'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
   utimes: function(path, times) {
@@ -115,17 +115,17 @@ LibraryManager.library = {
     return 0;
   },
 
-  chroot__deps: ['__setErrNo'],
+  chroot__deps: ['$setErrNo'],
   chroot__proxy: 'sync',
   chroot__sig: 'ii',
   chroot: function(path) {
     // int chroot(const char *path);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
-    ___setErrNo({{{ cDefine('EACCES') }}});
+    setErrNo({{{ cDefine('EACCES') }}});
     return -1;
   },
 
-  fpathconf__deps: ['__setErrNo'],
+  fpathconf__deps: ['$setErrNo'],
   fpathconf__proxy: 'sync',
   fpathconf__sig: 'iii',
   fpathconf: function(fildes, name) {
@@ -163,12 +163,12 @@ LibraryManager.library = {
       case {{{ cDefine('_PC_FILESIZEBITS') }}}:
         return 64;
     }
-    ___setErrNo({{{ cDefine('EINVAL') }}});
+    setErrNo({{{ cDefine('EINVAL') }}});
     return -1;
   },
   pathconf: 'fpathconf',
 
-  confstr__deps: ['__setErrNo', '$ENV'],
+  confstr__deps: ['$setErrNo', '$ENV'],
   confstr__proxy: 'sync',
   confstr__sig: 'iiii',
   confstr: function(name, buf, len) {
@@ -210,7 +210,7 @@ LibraryManager.library = {
         value = '-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64';
         break;
       default:
-        ___setErrNo({{{ cDefine('EINVAL') }}});
+        setErrNo({{{ cDefine('EINVAL') }}});
         return 0;
     }
     if (len == 0 || buf == 0) {
@@ -225,13 +225,13 @@ LibraryManager.library = {
     }
   },
 
-  execl__deps: ['__setErrNo'],
+  execl__deps: ['$setErrNo'],
   execl__sig: 'iiii',
   execl: function(path, arg0, varArgs) {
     // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
     // We don't support executing external code.
-    ___setErrNo({{{ cDefine('ENOEXEC') }}});
+    setErrNo({{{ cDefine('ENOEXEC') }}});
     return -1;
   },
   execle: 'execl',
@@ -265,34 +265,34 @@ LibraryManager.library = {
   },
 #endif
 
-  fork__deps: ['__setErrNo'],
+  fork__deps: ['$setErrNo'],
   fork__sig: 'i',
   fork: function() {
     // pid_t fork(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
     // We don't support multiple processes.
-    ___setErrNo({{{ cDefine('EAGAIN') }}});
+    setErrNo({{{ cDefine('EAGAIN') }}});
     return -1;
   },
   vfork: 'fork',
   posix_spawn: 'fork',
   posix_spawnp: 'fork',
 
-  setgroups__deps: ['__setErrNo', 'sysconf'],
+  setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
     // int setgroups(int ngroups, const gid_t *gidset);
     // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
     if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     } else {
       // We have just one process/user/group, so it makes no sense to set groups.
-      ___setErrNo({{{ cDefine('EPERM') }}});
+      setErrNo({{{ cDefine('EPERM') }}});
       return -1;
     }
   },
 
-  sysconf__deps: ['__setErrNo'],
+  sysconf__deps: ['$setErrNo'],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
   sysconf: function(name) {
@@ -445,7 +445,7 @@ LibraryManager.library = {
         return 1;
       }
     }
-    ___setErrNo({{{ cDefine('EINVAL') }}});
+    setErrNo({{{ cDefine('EINVAL') }}});
     return -1;
   },
 
@@ -644,7 +644,7 @@ LibraryManager.library = {
     updateGlobalBufferAndViews(wasmMemory.buffer);
   },
 
-  system__deps: ['__setErrNo'],
+  system__deps: ['$setErrNo'],
   system: function(command) {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -686,7 +686,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    ___setErrNo({{{ cDefine('EAGAIN') }}});
+    setErrNo({{{ cDefine('EAGAIN') }}});
     return -1;
   },
 
@@ -830,20 +830,20 @@ LibraryManager.library = {
     ___buildEnvironment(__get_environ());
     return 0;
   },
-  setenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
+  setenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
   setenv__proxy: 'sync',
   setenv__sig: 'iiii',
   setenv: function(envname, envval, overwrite) {
     // int setenv(const char *envname, const char *envval, int overwrite);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
     if (envname === 0) {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     var name = UTF8ToString(envname);
     var val = UTF8ToString(envval);
     if (name === '' || name.indexOf('=') !== -1) {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     if (ENV.hasOwnProperty(name) && !overwrite) return 0;
@@ -851,19 +851,19 @@ LibraryManager.library = {
     ___buildEnvironment(__get_environ());
     return 0;
   },
-  unsetenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
+  unsetenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
   unsetenv__proxy: 'sync',
   unsetenv__sig: 'ii',
   unsetenv: function(name) {
     // int unsetenv(const char *name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
     if (name === 0) {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     name = UTF8ToString(name);
     if (name === '' || name.indexOf('=') !== -1) {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     if (ENV.hasOwnProperty(name)) {
@@ -872,7 +872,7 @@ LibraryManager.library = {
     }
     return 0;
   },
-  putenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
+  putenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
   putenv__proxy: 'sync',
   putenv__sig: 'ii',
   putenv: function(string) {
@@ -882,13 +882,13 @@ LibraryManager.library = {
     //          string is taken by reference so future changes are reflected.
     //          We copy it instead, possibly breaking some uses.
     if (string === 0) {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     string = UTF8ToString(string);
     var splitPoint = string.indexOf('=')
     if (string === '' || string.indexOf('=') === -1) {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     var name = string.slice(0, splitPoint);
@@ -2131,15 +2131,15 @@ LibraryManager.library = {
     }
   },
 
-  stime__deps: ['__setErrNo'],
+  stime__deps: ['$setErrNo'],
   stime: function(when) {
-    ___setErrNo({{{ cDefine('EPERM') }}});
+    setErrNo({{{ cDefine('EPERM') }}});
     return -1;
   },
 
-  __map_file__deps: ['__setErrNo'],
+  __map_file__deps: ['$setErrNo'],
   __map_file: function(pathname, size) {
-    ___setErrNo({{{ cDefine('EPERM') }}});
+    setErrNo({{{ cDefine('EPERM') }}});
     return -1;
   },
 
@@ -2772,12 +2772,12 @@ LibraryManager.library = {
     return 0;
   },
 
-  timespec_get__deps: ['clock_gettime', '__setErrNo'],
+  timespec_get__deps: ['clock_gettime', '$setErrNo'],
   timespec_get: function(ts, base) {
     //int timespec_get(struct timespec *ts, int base);
     if (base !== {{{ cDefine('TIME_UTC') }}}) {
       // There is no other implemented value than TIME_UTC; all other values are considered erroneous.
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return 0;
     }
     var ret = _clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
@@ -2788,7 +2788,7 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
-  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
+  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
     var now;
@@ -2797,7 +2797,7 @@ LibraryManager.library = {
     } else if ((clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} || clk_id === {{{ cDefine('CLOCK_MONOTONIC_RAW') }}}) && _emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
@@ -2806,7 +2806,7 @@ LibraryManager.library = {
   },
   __clock_gettime__sig: 'iii',
   __clock_gettime: 'clock_gettime', // musl internal alias
-  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '__setErrNo'],
+  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$setErrNo'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
     var nsec;
@@ -2815,7 +2815,7 @@ LibraryManager.library = {
     } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
@@ -2977,13 +2977,13 @@ LibraryManager.library = {
   // sys/wait.h
   // ==========================================================================
 
-  wait__deps: ['__setErrNo'],
+  wait__deps: ['$setErrNo'],
   wait__sig: 'ii',
   wait: function(stat_loc) {
     // pid_t wait(int *stat_loc);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
     // Makes no sense in a single-process environment.
-    ___setErrNo({{{ cDefine('ECHILD') }}});
+    setErrNo({{{ cDefine('ECHILD') }}});
     return -1;
   },
   // NOTE: These aren't really the same, but we use the same stub for them all.
@@ -3242,17 +3242,20 @@ LibraryManager.library = {
     {{{ cDefine('EOWNERDEAD') }}}: 'Previous owner died',
     {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
   },
-  __setErrNo: function(value) {
 #if SUPPORT_ERRNO
-    if (Module['___errno_location']) {{{ makeSetValue("Module['___errno_location']()", 0, 'value', 'i32') }}};
-#if ASSERTIONS
-    else err('failed to set errno from JS');
-#endif
+  $setErrNo__deps: ['__errno_location'],
+  $setErrNo: function(value) {
+    {{{makeSetValue("___errno_location()", 0, 'value', 'i32') }}};
     return value;
-#else
-    return 0;
-#endif
   },
+#else
+  $setErrNo: function(value) {
+#if ASSERTIONS
+    err('failed to set errno from JS');
+#endif
+    return 0;
+  },
+#endif
 
 #if !WASM_BACKEND
   // ==========================================================================
@@ -3584,7 +3587,7 @@ LibraryManager.library = {
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
     if (type !== {{{ cDefine('AF_INET') }}}) {
-      ___setErrNo({{{ cDefine('EAFNOSUPPORT') }}});
+      setErrNo({{{ cDefine('EAFNOSUPPORT') }}});
       // TODO: set h_errno
       return null;
     }
@@ -3982,11 +3985,11 @@ LibraryManager.library = {
   // nonblocking
   // ==========================================================================
 #if SOCKET_WEBRTC
-  $Sockets__deps: ['__setErrNo',
+  $Sockets__deps: ['$setErrNo',
     function() { return 'var SocketIO = ' + read('socket.io.js') + ';\n' },
     function() { return 'var Peer = ' + read('wrtcp.js') + ';\n' }],
 #else
-  $Sockets__deps: ['__setErrNo'],
+  $Sockets__deps: ['$setErrNo'],
 #endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size

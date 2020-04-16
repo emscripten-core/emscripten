@@ -444,9 +444,13 @@ function loadWebAssemblyModule(binary, flags) {
     var moduleLocal = {};
 
     var resolveSymbol = function(sym, type, legalized) {
+#if WASM_BIGINT
+      assert(!legalized);
+#else
       if (legalized) {
         sym = 'orig$' + sym;
       }
+#endif
 
       var resolved = Module["asm"][sym];
       if (!resolved) {
@@ -460,7 +464,7 @@ function loadWebAssemblyModule(binary, flags) {
 #if ASSERTIONS
         assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
-     }
+      }
       return resolved;
     }
 
@@ -510,7 +514,11 @@ function loadWebAssemblyModule(binary, flags) {
           assert(parts.length == 3)
           var name = parts[1];
           var sig = parts[2];
+#if WASM_BIGINT
+          var legalized = false;
+#else
           var legalized = sig.indexOf('j') >= 0; // check for i64s
+#endif
           var fp = 0;
           return obj[prop] = function() {
             if (!fp) {

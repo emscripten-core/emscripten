@@ -958,7 +958,8 @@ var LibraryWebGPU = {
 
   // wgpuFence
 
-  wgpuFenceOnCompletion: function(fenceId, completionValue_l, completionValue_h, callback, userdata) {
+  wgpuFenceOnCompletion: function(fenceId, {{{ defineI64Param('completionValue') }}}, callback, userdata) {
+    {{{ receiveI64ParamAsI32s('completionValue') }}}
     var fence = WebGPU.mgrFence.get(fenceId);
     var completionValue = {{{ gpu.makeU64ToNumber('completionValue_l', 'completionValue_h') }}};
 
@@ -990,7 +991,8 @@ var LibraryWebGPU = {
     return WebGPU.mgrFence.create(queue.createFence(desc));
   },
 
-  wgpuQueueSignal: function(queueId, fenceId, signalValue_l, signalValue_h) {
+  wgpuQueueSignal: function(queueId, fenceId, {{{ defineI64Param('signalValue') }}}) {
+    {{{ receiveI64ParamAsI32s('signalValue') }}}
     var queue = WebGPU.mgrQueue.get(queueId);
     var fence = WebGPU.mgrFence.get(fenceId);
     var signalValue = {{{ gpu.makeU64ToNumber('signalValue_l', 'signalValue_h') }}};
@@ -1135,7 +1137,10 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderPassEncoder.create(commandEncoder["beginRenderPass"](desc));
   },
 
-  wgpuCommandEncoderCopyBufferToBuffer: function(encoderId, srcId, srcOffset_l, srcOffset_h, dstId, dstOffset_l, dstOffset_h, size_l, size_h) {
+  wgpuCommandEncoderCopyBufferToBuffer: function(encoderId, srcId, {{{ defineI64Param('srcOffset') }}}, dstId, {{{ defineI64Param('dstOffset') }}}, {{{ defineI64Param('size') }}}) {
+    {{{ receiveI64ParamAsI32s('srcOffset') }}}
+    {{{ receiveI64ParamAsI32s('dstOffset') }}}
+    {{{ receiveI64ParamAsI32s('size') }}}
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var src = WebGPU.mgrBuffer.get(srcId);
     var dst = WebGPU.mgrBuffer.get(dstId);
@@ -1168,7 +1173,9 @@ var LibraryWebGPU = {
 
   // wgpuBuffer
 
-  wgpuBufferSetSubData: function(bufferId, start_l, start_h, count_l, count_h, data) {
+  wgpuBufferSetSubData: function(bufferId, {{{ defineI64Param('start') }}}, {{{ defineI64Param('count') }}}, data) {
+    {{{ receiveI64ParamAsI32s('start') }}}
+    {{{ receiveI64ParamAsI32s('count') }}}
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     var start = {{{ gpu.makeU64ToNumber('start_l', 'start_h') }}};
     var count = {{{ gpu.makeU64ToNumber('count_l', 'count_h') }}};
@@ -1187,7 +1194,7 @@ var LibraryWebGPU = {
       var dataLength_h = (mapped.byteLength / 0x100000000) | 0;
       var dataLength_l = mapped.byteLength | 0;
       // WGPUBufferMapAsyncStatus status, const void* data, uint64_t dataLength, void* userdata
-      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, dataLength_l, dataLength_h, userdata]);
+      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, {{{ sendI64Argument('dataLength_l', 'dataLength_h') }}}, userdata]);
     }, function() {
       // TODO(kainino0x): Figure out how to pick other error status values.
       var WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR = 1;
@@ -1208,7 +1215,7 @@ var LibraryWebGPU = {
       var dataLength_h = (mapped.byteLength / 0x100000000) | 0;
       var dataLength_l = mapped.byteLength | 0;
       // WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void* userdata
-      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, dataLength_l, dataLength_h, userdata]);
+      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, {{{ sendI64Argument('dataLength_l', 'dataLength_h') }}}, userdata]);
     }, function() {
       // TODO(kainino0x): Figure out how to pick other error status values.
       dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR, 0, 0, 0, userdata]);
@@ -1271,7 +1278,8 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["dispatch"](x, y, z);
   },
-  wgpuComputePassEncoderDispatchIndirect: function(passId, indirectBufferId, indirectOffset_l, indirectOffset_h) {
+  wgpuComputePassEncoderDispatchIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
+    {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_l', 'indirectOffset_h') }}};
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
@@ -1336,13 +1344,15 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
-  wgpuRenderPassEncoderDrawIndirect: function(passId, indirectBufferId, indirectOffset_l, indirectOffset_h) {
+  wgpuRenderPassEncoderDrawIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
+    {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_l', 'indirectOffset_h') }}};
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndirect"](indirectBuffer, indirectOffset);
   },
-  wgpuRenderPassEncoderDrawIndexedIndirect: function(passId, indirectBufferId, indirectOffset_l, indirectOffset_h) {
+  wgpuRenderPassEncoderDrawIndexedIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
+    {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_l', 'indirectOffset_h') }}};
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
@@ -1379,7 +1389,8 @@ var LibraryWebGPU = {
       pass["setBindGroup"](groupIndex, group, offsets);
     }
   },
-  wgpuRenderBundleEncoderSetIndexBuffer: function(bundleId, bufferId, offset_l, offset_h) {
+  wgpuRenderBundleEncoderSetIndexBuffer: function(bundleId, bufferId, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsI32s('offset') }}}
     var offset = {{{ gpu.makeU64ToNumber('offset_l', 'offset_h') }}};
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
@@ -1390,7 +1401,8 @@ var LibraryWebGPU = {
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
     pass["setPipeline"](pipeline);
   },
-  wgpuRenderBundleEncoderSetVertexBuffer: function(bundleId, slot, bufferId, offset_l, offset_h) {
+  wgpuRenderBundleEncoderSetVertexBuffer: function(bundleId, slot, bufferId, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsI32s('offset') }}}
     var offset = {{{ gpu.makeU64ToNumber('offset_l', 'offset_h') }}};
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["setVertexBuffer"](slot, WebGPU.mgrBuffer.get(bufferId), offset);

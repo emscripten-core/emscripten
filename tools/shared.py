@@ -67,6 +67,7 @@ diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
 def exit_with_error(msg, *args):
@@ -218,7 +219,7 @@ def generate_config(path, first_time=False):
   config_file = config_file[3:] # remove the initial comment
   config_file = '\n'.join(config_file)
   # autodetect some default paths
-  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
+  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(EMSCRIPTEN_ROOT))
   llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
   config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
@@ -249,7 +250,7 @@ Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
+''' % (path, abspath, llvm_root, node, EMSCRIPTEN_ROOT), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option
@@ -291,22 +292,8 @@ elif os.path.exists(embedded_config):
 else:
   EM_CONFIG = '~/.emscripten'
 
-# Emscripten compiler spawns other processes, which can reimport shared.py, so
-# make sure that those child processes get the same configuration file by
-# setting it to the currently active environment.
-os.environ['EM_CONFIG'] = EM_CONFIG
-
-if '\n' in EM_CONFIG:
-  CONFIG_FILE = None
-  logger.debug('EM_CONFIG is specified inline without a file')
-else:
-  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
-  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
-  if not os.path.exists(CONFIG_FILE):
-    generate_config(EM_CONFIG, first_time=True)
-    sys.exit(0)
-
 PYTHON = os.getenv('EM_PYTHON', sys.executable)
+EMSCRIPTEN_ROOT = __rootpath__
 
 # The following globals can be overridden by the config file.
 # See parse_config_file below.
@@ -327,6 +314,21 @@ WASMTIME = None
 WASM_ENGINES = []
 COMPILER_OPTS = []
 FROZEN_CACHE = False
+
+# Emscripten compiler spawns other processes, which can reimport shared.py, so
+# make sure that those child processes get the same configuration file by
+# setting it to the currently active environment.
+os.environ['EM_CONFIG'] = EM_CONFIG
+
+if '\n' in EM_CONFIG:
+  CONFIG_FILE = None
+  logger.debug('EM_CONFIG is specified inline without a file')
+else:
+  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
+  if not os.path.exists(CONFIG_FILE):
+    generate_config(EM_CONFIG, first_time=True)
+    sys.exit(0)
 
 
 def parse_config_file():
@@ -916,7 +918,9 @@ def emsdk_cflags():
     return result
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  return c_opts + include_directive(cxx_include_paths) + include_directive(c_include_paths)
+  if Settings.USE_CXX:
+    c_opts += include_directive(cxx_include_paths)
+  return c_opts + include_directive(c_include_paths)
 
 
 def get_cflags(user_args):
@@ -1710,7 +1714,7 @@ class Building(object):
     # code (necessary for asm.js, for wasm bitcode see
     # https://bugs.llvm.org/show_bug.cgi?id=40654)
     if Settings.WASM_BACKEND and not Settings.LTO:
-      Building.link_lld(linker_inputs, target, ['--relocatable'])
+      Building.link_lld(linker_inputs + ['--relocatable'], target)
     else:
       Building.link(linker_inputs, target)
 
@@ -1725,34 +1729,12 @@ class Building(object):
     return target
 
   @staticmethod
-  def link_lld(args, target, opts=[], all_external_symbols=None):
-    if not os.path.exists(WASM_LD):
-      exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
-    # runs lld to link things.
-    # lld doesn't currently support --start-group/--end-group since the
-    # semantics are more like the windows linker where there is no need for
-    # grouping.
-    args = [a for a in args if a not in ('--start-group', '--end-group')]
-
-    # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
-    # include all archive contents.
-    if Settings.LINKABLE:
-      args.insert(0, '--whole-archive')
-      args.append('--no-whole-archive')
-
-    if Settings.STRICT:
-      args.append('--fatal-warnings')
-
-    cmd = [
-        WASM_LD,
-        '-o',
-        target,
-    ] + args
-
-    if all_external_symbols:
+  def lld_flags_for_executable(external_symbol_list):
+    cmd = []
+    if external_symbol_list:
       undefs = configuration.get_temp_files().get('.undefined').name
       with open(undefs, 'w') as f:
-        f.write('\n'.join(all_external_symbols))
+        f.write('\n'.join(external_symbol_list))
       cmd.append('--allow-undefined-file=%s' % undefs)
     else:
       cmd.append('--allow-undefined')
@@ -1767,9 +1749,6 @@ class Building(object):
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
 
-    for a in Building.llvm_backend_args():
-      cmd += ['-mllvm', a]
-
     if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
                                      not Settings.PROFILING_FUNCS and
                                      not Settings.ASYNCIFY):
@@ -1781,6 +1760,8 @@ class Building(object):
       else:
         cmd.append('--no-gc-sections')
         cmd.append('--export-dynamic')
+
+    expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
 
     if Settings.LINKABLE:
       cmd.append('--export-all')
@@ -1794,9 +1775,11 @@ class Building(object):
       c_exports = [e for e in Settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
       # Strip the leading underscores
       c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-      if all_external_symbols:
+      if external_symbol_list:
         # Filter out symbols external/JS symbols
-        c_exports = [e for e in c_exports if e not in all_external_symbols]
+        c_exports = [e for e in c_exports if e not in external_symbol_list]
+        if expect_main and Settings.IGNORE_MISSING_MAIN:
+          c_exports.remove('main')
       for export in c_exports:
         cmd += ['--export', export]
 
@@ -1814,7 +1797,6 @@ class Building(object):
       use_start_function = Settings.STANDALONE_WASM
 
       if not use_start_function:
-        expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
         if expect_main and not Settings.IGNORE_MISSING_MAIN:
           cmd += ['--entry=main']
         else:
@@ -1826,7 +1808,35 @@ class Building(object):
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
-    cmd += opts
+    return cmd
+
+  @staticmethod
+  def link_lld(args, target, external_symbol_list=None):
+    if not os.path.exists(WASM_LD):
+      exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
+    # runs lld to link things.
+    # lld doesn't currently support --start-group/--end-group since the
+    # semantics are more like the windows linker where there is no need for
+    # grouping.
+    args = [a for a in args if a not in ('--start-group', '--end-group')]
+
+    # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
+    # include all archive contents.
+    if Settings.LINKABLE:
+      args.insert(0, '--whole-archive')
+      args.append('--no-whole-archive')
+
+    if Settings.STRICT:
+      args.append('--fatal-warnings')
+
+    cmd = [WASM_LD, '-o', target] + args
+    for a in Building.llvm_backend_args():
+      cmd += ['-mllvm', a]
+
+    # For relocatable output (generating an object file) we don't pass any of the normal linker
+    # flags that are used when building and exectuable
+    if '--relocatable' not in args and '-r' not in args:
+      cmd += Building.lld_flags_for_executable(external_symbol_list)
 
     print_compiler_stage(cmd)
     cmd = Building.get_command_with_possible_response_file(cmd)
@@ -3109,6 +3119,9 @@ class JS(object):
 
   @staticmethod
   def legalize_sig(sig):
+    # with BigInt support all sigs are legal since we can use i64s.
+    if Settings.WASM_BIGINT:
+      return sig
     legal = [sig[0]]
     # a return of i64 is legalized into an i32 (and the high bits are
     # accessible on the side through getTempRet0).
@@ -3125,6 +3138,9 @@ class JS(object):
 
   @staticmethod
   def is_legal_sig(sig):
+    # with BigInt support all sigs are legal since we can use i64s.
+    if Settings.WASM_BIGINT:
+      return True
     return sig == JS.legalize_sig(sig)
 
   @staticmethod

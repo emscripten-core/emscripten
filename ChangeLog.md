@@ -24,11 +24,20 @@ Current Trunk
   function is added which is always async.
 - Pass linker flags dirctly to wasm-ld by default.  We still filter out certain
   flags explcitly.  If there are other flags that it would be useful for us
+- Add another value for ENVIRONMENT named 'webview' - it is a companion
+  option for 'web' and enables some additional compatibility checks
+  so that generated code works both in normal web and in a webview like Cordova.
+  See #10846
+
+v1.39.12: 04/09/2020
+--------------------
+- Pass linker flags directly to wasm-ld by default.  We still filter out certain
+  flags explicitly.  If there are other flags that it would be useful for us
   to ignore we can add them to the list of ignored flags.
 - Optionally support 2GB+ heap sizes. To do this we make the JS code have unsigned
   pointers (we need all 32 bits in them now), which can slightly increase code
   size (>>> instead of >>). This only happens when the heap size may be over
-  2GB, which you must opt into explicity, by setting `MAXIMUM_MEMORY` to a
+  2GB, which you must opt into explicitly, by setting `MAXIMUM_MEMORY` to a
   higher value (i.e. by default you do not get support for 2GB+ heaps).
   See #10601
 - `--llvm-lto` flag is now ignored when using the upstream llvm backend.
@@ -44,6 +53,14 @@ Current Trunk
   undefined symbols can come from JS, but in the future we hope to mark such
   symbols explicitly to allow the linker to report on genuinely undefined
   symbols.
+- Dynamic linking optimizations: Stop emitting unnecessary `fp$` and `g$`
+  accessors in main modules, possible in Binaryen thanks to ensuring function
+  table indexes are unique (#10741).
+- New `JS_MATH` option to use `Math.*` in JS instead of compiled musl (#10821).
+- Pass `Module` to Module callback functions like `Module.preRun` (#10777).
+- Support not having ports, for packagers of emscripten that don't want
+  them (#10810).
+- Rename syscalls to have meaningful names (#10750).
 
 v1.39.11: 03/20/2020
 --------------------
