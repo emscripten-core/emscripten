@@ -7,3 +7,5 @@ tests/other/test_emsize.js -diff
 tests/* linguist-vendored
 third_party/* linguist-vendored
 system/ linguist-vendored
+
+AUTHORS merge=union
