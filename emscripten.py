@@ -1562,10 +1562,7 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
     var %(fullname)s = function() {
       if (!%(key)s) { %(assetMsg)s
         // Use the original wasm function itself, for the table, from the main module.
-        var func = Module['asm']['%(barename)s'];
-        if (!func) {
-          func = %(side)sModule["%(barename)s"] || %(barename)s;
-        }
+        var func = Module['asm'] ? Module['asm']['%(barename)s'] : %(side)sModule["%(barename)s"] || %(barename)s;
         var fid = addFunction(func, "%(sig)s");
         %(key)s = fid;
       }
