@@ -854,6 +854,11 @@ int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
+  // TODO: handle errors in a better way, this pattern appears in several places
+  //       in this file. The current behavior makes the calling thread hang as
+  //       it waits (for synchronous calls).
+  if (!q)
+    return;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
   q->satelliteData = satellite;
