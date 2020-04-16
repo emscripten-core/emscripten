@@ -1300,13 +1300,22 @@ var LibraryGL = {
               case 0x8894: // ARRAY_BUFFER_BINDING
               case 0x8B8D: // CURRENT_PROGRAM
               case 0x8895: // ELEMENT_ARRAY_BUFFER_BINDING
-              case 0x8CA6: // FRAMEBUFFER_BINDING
+              case 0x8CA6: // FRAMEBUFFER_BINDING or DRAW_FRAMEBUFFER_BINDING
               case 0x8CA7: // RENDERBUFFER_BINDING
               case 0x8069: // TEXTURE_BINDING_2D
               case 0x85B5: // WebGL 2 GL_VERTEX_ARRAY_BINDING, or WebGL 1 extension OES_vertex_array_object GL_VERTEX_ARRAY_BINDING_OES
 #if MAX_WEBGL_VERSION >= 2
-              case 0x8919: // GL_SAMPLER_BINDING
-              case 0x8E25: // GL_TRANSFORM_FEEDBACK_BINDING
+              case 0x8F36: // COPY_READ_BUFFER_BINDING or COPY_READ_BUFFER
+              case 0x8F37: // COPY_WRITE_BUFFER_BINDING or COPY_WRITE_BUFFER
+              case 0x88ED: // PIXEL_PACK_BUFFER_BINDING
+              case 0x88EF: // PIXEL_UNPACK_BUFFER_BINDING
+              case 0x8CAA: // READ_FRAMEBUFFER_BINDING
+              case 0x8919: // SAMPLER_BINDING
+              case 0x8C1D: // TEXTURE_BINDING_2D_ARRAY
+              case 0x806A: // TEXTURE_BINDING_3D
+              case 0x8E25: // TRANSFORM_FEEDBACK_BINDING
+              case 0x8C8F: // TRANSFORM_FEEDBACK_BUFFER_BINDING
+              case 0x8A28: // UNIFORM_BUFFER_BINDING
 #endif
               case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
                 ret = 0;
