@@ -598,9 +598,14 @@ var LEGACY_VM_SUPPORT = 0;
 //    'shell'   - a JS shell like d8, js, or jsc.
 // Or it can be a comma-separated list of them, e.g., "web,worker". If this is
 // the empty string, then all runtime environments are supported.
-// (There is also a 'pthread' environment, see shell.js, but it cannot be specified
-// manually yet TODO)
-// Note that putting only "webview" is not supported, you must specify that as "web,webview"
+//
+// Note that the set of environments recognized here is not identical to the
+// ones we identify at runtime using ENVIRONMENT_IS_*. Specifically:
+//  * We detect whether we are a pthread at runtime, but that's set for workers
+//    and not for the main file so it wouldn't make sense to specify here.
+//  * The webview target is basically a subset of web. It must be specified
+//    alongside web (e.g. "web,webview") and we only use it for code generation
+//    at compile time, there is no runtime behavior change.
 var ENVIRONMENT = '';
 
 // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
