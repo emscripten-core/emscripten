@@ -67,6 +67,7 @@ diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
 def exit_with_error(msg, *args):
@@ -916,7 +917,9 @@ def emsdk_cflags():
     return result
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  return c_opts + include_directive(cxx_include_paths) + include_directive(c_include_paths)
+  if Settings.USE_CXX:
+    c_opts += include_directive(cxx_include_paths)
+  return c_opts + include_directive(c_include_paths)
 
 
 def get_cflags(user_args):
@@ -1757,6 +1760,8 @@ class Building(object):
         cmd.append('--no-gc-sections')
         cmd.append('--export-dynamic')
 
+    expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
+
     if Settings.LINKABLE:
       cmd.append('--export-all')
     else:
@@ -1772,6 +1777,8 @@ class Building(object):
       if external_symbol_list:
         # Filter out symbols external/JS symbols
         c_exports = [e for e in c_exports if e not in external_symbol_list]
+        if expect_main and Settings.IGNORE_MISSING_MAIN:
+          c_exports.remove('main')
       for export in c_exports:
         cmd += ['--export', export]
 
@@ -1789,7 +1796,6 @@ class Building(object):
       use_start_function = Settings.STANDALONE_WASM
 
       if not use_start_function:
-        expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
         if expect_main and not Settings.IGNORE_MISSING_MAIN:
           cmd += ['--entry=main']
         else:
@@ -3112,6 +3118,9 @@ class JS(object):
 
   @staticmethod
   def legalize_sig(sig):
+    # with BigInt support all sigs are legal since we can use i64s.
+    if Settings.WASM_BIGINT:
+      return sig
     legal = [sig[0]]
     # a return of i64 is legalized into an i32 (and the high bits are
     # accessible on the side through getTempRet0).
@@ -3128,6 +3137,9 @@ class JS(object):
 
   @staticmethod
   def is_legal_sig(sig):
+    # with BigInt support all sigs are legal since we can use i64s.
+    if Settings.WASM_BIGINT:
+      return True
     return sig == JS.legalize_sig(sig)
 
   @staticmethod

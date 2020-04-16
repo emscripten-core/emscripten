@@ -158,10 +158,12 @@ def warn(msg, *args):
 class WarningManager(object):
   warnings = {}
 
-  def add_warning(self, name, enabled=True, part_of_all=True):
+  def add_warning(self, name, enabled=True, part_of_all=True, shared=False):
     self.warnings[name] = {
       'enabled': enabled,
       'part_of_all': part_of_all,
+      # True for flags that are shared with the underlying clang driver
+      'shared': shared,
       'error': False,
     }
 
@@ -189,7 +191,10 @@ class WarningManager(object):
       if cmd_args[i].startswith('-Werror=') or cmd_args[i].startswith('-Wno-error='):
         warning_name = cmd_args[i].split('=', 1)[1]
         if warning_name in self.warnings:
-          self.warnings[warning_name]['error'] = not cmd_args[i].startswith('-Wno-')
+          enabled = not cmd_args[i].startswith('-Wno-')
+          self.warnings[warning_name]['error'] = enabled
+          if enabled:
+            self.warnings[warning_name]['enabled'] = True
           cmd_args[i] = ''
           continue
 
@@ -204,7 +209,8 @@ class WarningManager(object):
 
       if warning_name in self.warnings:
         self.warnings[warning_name]['enabled'] = enabled
-        cmd_args[i] = ''
+        if not self.warnings[warning_name]['shared']:
+          cmd_args[i] = ''
         continue
 
     return cmd_args
@@ -221,8 +227,8 @@ class WarningManager(object):
       logger.debug('disabled warning: ' + msg)
 
 
-def add_warning(name, enabled=True, part_of_all=True):
-  manager.add_warning(name, enabled, part_of_all)
+def add_warning(name, enabled=True, part_of_all=True, shared=False):
+  manager.add_warning(name, enabled, part_of_all, shared)
 
 
 def enable_warning(name, as_error=False):

@@ -1379,9 +1379,9 @@ var LibraryPThread = {
   // Wasm boundaries.
   _emscripten_notify_thread_queue: function(targetThreadId, mainThreadId) {
     if (targetThreadId == mainThreadId) {
-      postMessage({cmd : 'processQueuedMainThreadWork'});
+      postMessage({'cmd' : 'processQueuedMainThreadWork'});
     } else if (ENVIRONMENT_IS_PTHREAD) {
-      postMessage({targetThread: targetThreadId, cmd: 'processThreadQueue'});
+      postMessage({'targetThread': targetThreadId, 'cmd': 'processThreadQueue'});
     } else {
       var pthread = PThread.pthreads[targetThreadId];
       var worker = pthread && pthread.worker;
@@ -1391,7 +1391,7 @@ var LibraryPThread = {
 #endif
         return /*0*/;
       }
-      worker.postMessage({cmd : 'processThreadQueue'});
+      worker.postMessage({'cmd' : 'processThreadQueue'});
     }
     return 1;
   }
