@@ -67,6 +67,7 @@ diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
 def exit_with_error(msg, *args):
@@ -1759,6 +1760,8 @@ class Building(object):
         cmd.append('--no-gc-sections')
         cmd.append('--export-dynamic')
 
+    expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
+
     if Settings.LINKABLE:
       cmd.append('--export-all')
     else:
@@ -1774,6 +1777,8 @@ class Building(object):
       if external_symbol_list:
         # Filter out symbols external/JS symbols
         c_exports = [e for e in c_exports if e not in external_symbol_list]
+        if expect_main and Settings.IGNORE_MISSING_MAIN:
+          c_exports.remove('main')
       for export in c_exports:
         cmd += ['--export', export]
 
@@ -1791,7 +1796,6 @@ class Building(object):
       use_start_function = Settings.STANDALONE_WASM
 
       if not use_start_function:
-        expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
         if expect_main and not Settings.IGNORE_MISSING_MAIN:
           cmd += ['--entry=main']
         else:

@@ -82,7 +82,7 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive'
 )
 
-# Maps to true if the the flag takes an argument
+# Maps to true if the flag takes an argument
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
     '-bind_at_load': False,
@@ -518,22 +518,19 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
-def get_all_js_library_funcs(temp_files):
-  # Runs the js compiler to generate a list of all functions available in the JS
+def get_all_js_syms(temp_files):
+  # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invokation since the
-  # list of library functions depends on what settings are used.
+  # list of symbols depends on what settings are used.
   # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
   old_full = shared.Settings.INCLUDE_FULL_LIBRARY
-  old_linkable = shared.Settings.LINKABLE
   try:
     # Temporarily define INCLUDE_FULL_LIBRARY since we want a full list
     # of all available JS library functions.
     shared.Settings.INCLUDE_FULL_LIBRARY = True
-    # Temporarily set LINKABLE so that the jscompiler doesn't report
-    # undefined symbolls itself.
-    shared.Settings.LINKABLE = True
+    shared.Settings.ONLY_CALC_JS_SYMBOLS = True
     emscripten.generate_struct_info()
     glue, forwarded_data = emscripten.compile_settings(temp_files)
     forwarded_json = json.loads(forwarded_data)
@@ -543,13 +540,10 @@ def get_all_js_library_funcs(temp_files):
       if shared.is_c_symbol(name):
         name = shared.demangle_c_symbol_name(name)
         library_fns_list.append(name)
-        # TODO(sbc): wasm-ld shouldn't be reporting errors for symbols
-        # such as __wasi_fd_write which are defined with import_name attibutes
-        # but it currently does.  Remove this once we fix wasm-ld.
-        library_fns_list.append('__wasi_' + name)
   finally:
+    shared.Settings.ONLY_CALC_JS_SYMBOLS = False
     shared.Settings.INCLUDE_FULL_LIBRARY = old_full
-    shared.Settings.LINKABLE = old_linkable
+
   return library_fns_list
 
 
@@ -1199,6 +1193,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ASSERTIONS:
       shared.Settings.STACK_OVERFLOW_CHECK = 2
 
+    if shared.Settings.LLD_REPORT_UNDEFINED:
+      # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
+      # or not.
+      shared.Settings.IGNORE_MISSING_MAIN = 0
+
     if shared.Settings.STRICT:
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
@@ -1313,9 +1312,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # TODO(sbc): Remove this emscripten-specific special case.
       diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
       link_to_object = True
-
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
-    link_flags = filter_link_flags(link_flags, using_lld)
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
@@ -1487,14 +1483,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
 
     if shared.Settings.FILESYSTEM:
-      if shared.Settings.SUPPORT_ERRNO:
-        shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       # to flush streams on FS exit, we need to be able to call fflush
       # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have disabled NO_EXIT_RUNTIME)
       if shared.Settings.EXIT_RUNTIME or shared.Settings.ASSERTIONS:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
+
+    if shared.Settings.SUPPORT_ERRNO:
+      # so setErrNo JS library function can report errno back to C
+      shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
     if shared.Settings.GLOBAL_BASE < 0:
       # default if nothing else sets it
@@ -1792,6 +1790,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if sanitize:
         shared.Settings.USE_OFFSET_CONVERTER = 1
+        shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_emscripten_builtin_memalign',
+                                               '_emscripten_builtin_malloc', '_emscripten_builtin_free',
+                                               '___data_end', '___heap_base', '___global_base']
 
         if not shared.Settings.WASM_BACKEND:
           exit_with_error('Sanitizers are not compatible with the fastcomp backend. Please upgrade to the upstream wasm backend by following these instructions: https://v8.dev/blog/emscripten-llvm-wasm#testing')
@@ -2239,7 +2240,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if compile_only:
       logger.debug('stopping after compile phase')
+      for flag in link_flags:
+        diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
       return 0
+
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
+    link_flags = filter_link_flags(link_flags, using_lld)
 
     # Decide what we will link
     consumed = process_libraries(libs, lib_dirs, temp_files)
@@ -2256,7 +2262,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.SIDE_MODULE:
           exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
         if final_suffix.lower() in ('.so', '.dylib', '.dll'):
-          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
+          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
         logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + specified_target)
         if len(temp_files) == 1:
           temp_file = temp_files[0][1]
@@ -2325,14 +2331,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # TODO: we could check if this is a fastcomp build, and still speed things up here
         just_calculate = DEBUG != 2 and not shared.Settings.WASM_BACKEND
         if shared.Settings.WASM_BACKEND:
-          all_externals = None
-          if shared.Settings.LLD_REPORT_UNDEFINED:
-            all_externals = get_all_js_library_funcs(misc_temp_files)
+          js_funcs = None
+          if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
+            js_funcs = get_all_js_syms(misc_temp_files)
             log_time('JS symbol generation')
-            # TODO(sbc): This is an incomplete list of __invoke functions.  Perhaps add
-            # support for wildcard to wasm-ld.
-            all_externals += ['emscripten_longjmp_jmpbuf', '__invoke_void', '__invoke_i32_i8*_...']
-          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=all_externals)
+          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=js_funcs)
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:

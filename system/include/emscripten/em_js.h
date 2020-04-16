@@ -33,7 +33,7 @@
 //   EM_JS(int, foo, (int x, int y), { return 2 * x + y; })
 // would get translated into:
 //   int foo(int x, int y);
-//   __attribute__((used, visibility("default")))
+//   __attribute__((used, visibility("default"), import_name("foo")))
 //   const char* __em_js__foo() {
 //     return "(int x, int y)<::>{ return 2 * x + y; }";
 //   }
@@ -56,7 +56,7 @@
 
 #define EM_JS(ret, name, params, ...)          \
   _EM_JS_CPP_BEGIN                             \
-  extern ret name params;                      \
+  extern ret name params EM_IMPORT(name);      \
   __attribute__((used, visibility("default"))) \
   const char* __em_js__##name() {              \
     return #params "<::>" #__VA_ARGS__;        \

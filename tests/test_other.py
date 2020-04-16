@@ -10509,6 +10509,10 @@ Module.arguments has been replaced with plain arguments_
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
+  def test_linker_flags_unused(self):
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-lbar'], stderr=PIPE).stderr
+    self.assertContained("warning: argument unused during compilation: '-lbar' [-Wunused-command-line-argument]", err)
+
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=0'])
@@ -10522,7 +10526,7 @@ Module.arguments has been replaced with plain arguments_
   def test_compile_only_with_object_extension(self):
     # Emscripten supports compiling to an object file when the output has an
     # object extension.
-    # Most compilers require the `-c` to be explict.
+    # Most compilers require the `-c` to be explicit.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'hello1.o'])
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'], stderr=PIPE).stderr
     self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
@@ -10561,6 +10565,10 @@ Module.arguments has been replaced with plain arguments_
     # with -Werror + -Wno-error=<type> should only warn
     stderr = run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+
+    # check that `-Werror=foo` also enales foo
+    stderr = self.expect_fail(cmd + ['-Werror=legacy-settings', '-s', 'TOTAL_MEMORY=1'])
+    self.assertContained('error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]', stderr)
 
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')
@@ -10769,3 +10777,23 @@ int main() {
     run_process([PYTHON, EMXX, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
     # Or using emcc with `-x c++`
     run_process([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0', '-x', 'c++-header'])
+
+  @parameterized({
+    '': ([],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_support_errno(self, args):
+    self.emcc_args += args
+    src = path_from_root('tests', 'core', 'test_support_errno.c')
+    output = path_from_root('tests', 'core', 'test_support_errno.out')
+    self.do_run_from_file(src, output)
+    size_default = os.path.getsize('src.c.o.js')
+
+    # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
+    # to be set after the failing syscall.
+    self.set_setting('SUPPORT_ERRNO', 0)
+    output = path_from_root('tests', 'core', 'test_support_errno_disabled.out')
+    self.do_run_from_file(src, output)
+
+    # Verify the JS output was smaller
+    self.assertLess(os.path.getsize('src.c.o.js'), size_default)
