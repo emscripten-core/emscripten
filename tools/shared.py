@@ -265,8 +265,8 @@ This command will now exit. When you are done editing those paths, re-run it.
 # 4. Fall back users home directory (~/.emscripten).
 
 embedded_config = path_from_root('.emscripten')
-# For compatability with emsdk --embedded mode also look two levels up.  This
-# could be removed in emsdk was use the emscripten directory itself for the
+# For compatibility with emsdk --embedded mode also look two levels up.  This
+# could be removed if emsdk was to use the emscripten directory itself for the
 # embedded config: https://github.com/emscripten-core/emsdk/pull/367
 emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
 emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
