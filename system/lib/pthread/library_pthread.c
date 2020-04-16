@@ -857,8 +857,10 @@ int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   // TODO: handle errors in a better way, this pattern appears in several places
   //       in this file. The current behavior makes the calling thread hang as
   //       it waits (for synchronous calls).
+  // If we failed to allocate, return 0 which means we did not execute anything
+  // (we also never will in that case).
   if (!q)
-    return;
+    return 0;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
   q->satelliteData = satellite;
