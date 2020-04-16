@@ -206,28 +206,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
 set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 
-# We would prefer to specify a standard set of Clang+Emscripten-friendly common
-# convention for suffix files, especially for CMake executable files, but if
-# these are adjusted, ${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake will fail,
-# since it depends on being able to compile output files with predefined names.
-#set(CMAKE_LINK_LIBRARY_SUFFIX "")
-#set(CMAKE_STATIC_LIBRARY_PREFIX "")
-#set(CMAKE_SHARED_LIBRARY_PREFIX "")
-#set(CMAKE_FIND_LIBRARY_PREFIXES "")
-#set(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
-#set(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
-
 option(EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES "If set, static library targets generate LLVM bitcode files (.bc). If disabled (default), UNIX ar archives (.a) are generated." OFF)
 if (EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES)
   set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
-
+  # Use the compiler to create a bitcode object rather than the default of using the AR tool
   set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_C_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
   set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_CXX_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
-else()
-  # Specify the program to use when building static libraries. Force
-  # Emscripten-related command line options to clang.
-  set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
-  set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
 endif()
 
 set(CMAKE_EXECUTABLE_SUFFIX ".js")
