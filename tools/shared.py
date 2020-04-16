@@ -219,7 +219,7 @@ def generate_config(path, first_time=False):
   config_file = config_file[3:] # remove the initial comment
   config_file = '\n'.join(config_file)
   # autodetect some default paths
-  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
+  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(EMSCRIPTEN_ROOT))
   llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
   config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
@@ -250,7 +250,7 @@ Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
+''' % (path, abspath, llvm_root, node, EMSCRIPTEN_ROOT), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option
@@ -292,22 +292,8 @@ elif os.path.exists(embedded_config):
 else:
   EM_CONFIG = '~/.emscripten'
 
-# Emscripten compiler spawns other processes, which can reimport shared.py, so
-# make sure that those child processes get the same configuration file by
-# setting it to the currently active environment.
-os.environ['EM_CONFIG'] = EM_CONFIG
-
-if '\n' in EM_CONFIG:
-  CONFIG_FILE = None
-  logger.debug('EM_CONFIG is specified inline without a file')
-else:
-  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
-  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
-  if not os.path.exists(CONFIG_FILE):
-    generate_config(EM_CONFIG, first_time=True)
-    sys.exit(0)
-
 PYTHON = os.getenv('EM_PYTHON', sys.executable)
+EMSCRIPTEN_ROOT = __rootpath__
 
 # The following globals can be overridden by the config file.
 # See parse_config_file below.
@@ -328,6 +314,21 @@ WASMTIME = None
 WASM_ENGINES = []
 COMPILER_OPTS = []
 FROZEN_CACHE = False
+
+# Emscripten compiler spawns other processes, which can reimport shared.py, so
+# make sure that those child processes get the same configuration file by
+# setting it to the currently active environment.
+os.environ['EM_CONFIG'] = EM_CONFIG
+
+if '\n' in EM_CONFIG:
+  CONFIG_FILE = None
+  logger.debug('EM_CONFIG is specified inline without a file')
+else:
+  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
+  if not os.path.exists(CONFIG_FILE):
+    generate_config(EM_CONFIG, first_time=True)
+    sys.exit(0)
 
 
 def parse_config_file():

@@ -2474,6 +2474,10 @@ int f() {
   def test_emconfig(self):
     output = run_process([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, LLVM_ROOT)
+    # EMSCRIPTEN_ROOT is kind of special since it should always report the locaton of em-config
+    # itself (its not configurable via the config file but driven by the location for arg0)
+    output = run_process([PYTHON, EMCONFIG, 'EMSCRIPTEN_ROOT'], stdout=PIPE).stdout.strip()
+    self.assertEqual(output, os.path.dirname(EMCONFIG))
     invalid = 'Usage: em-config VAR_NAME'
     # Don't accept variables that do not exist
     output = self.expect_fail([PYTHON, EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST']).strip()
