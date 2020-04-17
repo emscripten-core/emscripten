@@ -109,7 +109,7 @@ Using Asyncify to yield to the browser
 
 Another option is to use :ref:`Asyncify <yielding_to_main_loop>` which will
 rewrite the program so that it can return to the browser's main event loop
-by just calling ``emscripten_sleep()``. Note that this rewriting causes overhead
+by just calling ``emscripten_sleep()``. Note that this rewriting causes size and speed overhead
 while ``emscripten_request_animation_frame_loop / emscripten_set_main_loop``
 as described earlier do not.
 
