@@ -261,10 +261,26 @@ This command will now exit. When you are done editing those paths, re-run it.
 # The search order from the config file is as follows:
 # 1. Specified on the command line (--em-config)
 # 2. Specified via EM_CONFIG environment variable
-# 3. If emscripten-local .emscripten file is found, use that
-# 4. Fall back users home directory (~/.emscripten).
+# 3. Local .emscripten file, if found
+# 4. Local .emscripten file, as used by `emsdk --embedded` (two levels above, see below)
+# 5. Fall back users home directory (~/.emscripten).
 
 embedded_config = path_from_root('.emscripten')
+# For compatibility with `emsdk --embedded` mode also look two levels up.  The
+# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
+#  - emsdk/upstream/emscripten/emcc
+#  - emsdk/emscipten/1.38.31/emcc
+# However `emsdk --embedded` stores the config file in the emsdk root.
+# Without this check, when emcc is run from within the emsdk in embedded mode
+# and the user forgets to first run `emsdk_env.sh` (which sets EM_CONFIG) emcc
+# will not see any config file at all and fall back to creating a new/emtpy
+# one.
+# We could remove this special case if emsdk were to write its embedded config
+# file into the emscripten directory itself.
+# See: https://github.com/emscripten-core/emsdk/pull/367
+emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
+emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
+
 if '--em-config' in sys.argv:
   EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
   # And now remove it from sys.argv
@@ -289,6 +305,8 @@ elif 'EM_CONFIG' in os.environ:
   EM_CONFIG = os.environ['EM_CONFIG']
 elif os.path.exists(embedded_config):
   EM_CONFIG = embedded_config
+elif os.path.exists(emsdk_embedded_config):
+  EM_CONFIG = emsdk_embedded_config
 else:
   EM_CONFIG = '~/.emscripten'
 
