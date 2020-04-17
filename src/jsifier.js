@@ -176,6 +176,9 @@ function JSify(data, functionsOnly) {
           var msg = 'undefined symbol: ' + ident;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
+            if (WASM_BACKEND && !LLD_REPORT_UNDEFINED) {
+              warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
+            }
             warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
             warnOnce(finalName + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library')
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
@@ -262,6 +265,9 @@ function JSify(data, functionsOnly) {
       if (LibraryManager.library[ident + '__import']) {
         Functions.libraryFunctions[finalName] = 1;
       }
+
+      if (ONLY_CALC_JS_SYMBOLS)
+        return '';
 
       var postsetId = ident + '__postset';
       var postset = LibraryManager.library[postsetId];

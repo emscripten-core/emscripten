@@ -1677,3 +1677,34 @@ function makeAsmImportsAccessInPthread(variable) {
 function hasExportedFunction(func) {
   return Object.keys(EXPORTED_FUNCTIONS).indexOf(func) != -1;
 }
+
+// JS API I64 param handling: if we have BigInt support, the ABI is simple,
+// it is a BigInt. Otherwise, we legalize into pairs of i32s.
+function defineI64Param(name) {
+  if (WASM_BIGINT) {
+    return name + '_bigint';
+  } else {
+    return name + '_low, ' + name + '_high';
+  }
+}
+
+function receiveI64ParamAsI32s(name) {
+  if (WASM_BIGINT) {
+    // TODO: use Xn notation when JS parsers support it (as of April 6 2020,
+    //  * closure compiler is missing support
+    //    https://github.com/google/closure-compiler/issues/3167
+    //  * acorn needs to be upgraded, and to set ecmascript version >= 11
+    //  * terser needs to be upgraded
+    return 'var ' + name + '_low = Number(' + name + '_bigint & BigInt(0xffffffff)) | 0, ' + name + '_high = Number(' + name + '_bigint >> BigInt(32)) | 0;';
+  } else {
+    return '';
+  }
+}
+
+function sendI64Argument(low, high) {
+  if (WASM_BIGINT) {
+    return 'BigInt(low) | (BigInt(high) << BigInt(32))';
+  } else {
+    return low + ', ' + high;
+  }
+}
