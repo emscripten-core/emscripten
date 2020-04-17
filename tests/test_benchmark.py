@@ -313,8 +313,8 @@ benchmarkers = []
 
 if CLANG_CC and CLANG:
   benchmarkers += [
-    NativeBenchmarker('clang', CLANG_CC, CLANG),
-    NativeBenchmarker('gcc',   'gcc',    'g++')
+    # NativeBenchmarker('clang', CLANG_CC, CLANG),
+    # NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
 
 if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
@@ -324,10 +324,8 @@ if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   aot_v8 = V8_ENGINE + ['--no-liftoff']
   default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
   benchmarkers += [
-    #EmscriptenBenchmarker(default_v8_name + '-lto-aot', V8_ENGINE + ['--no-liftoff'], ['-flto']),
-    #EmscriptenBenchmarker(default_v8_name + '-lto-nrm', V8_ENGINE, ['-flto']),
-    EmscriptenBenchmarker(default_v8_name + '-aot', V8_ENGINE + ['--no-liftoff']),
-    EmscriptenBenchmarker(default_v8_name + '-nrm', V8_ENGINE),
+    EmscriptenBenchmarker(default_v8_name, aot_v8),
+    EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
   ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
@@ -918,7 +916,6 @@ class benchmark(runner.RunnerCore):
 
     def lib_builder(name, native, env_init):
       ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
-
       if native:
         return ret
       shutil.copyfile(ret[0], ret[0] + '.bc')
