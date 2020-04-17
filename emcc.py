@@ -745,7 +745,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
     compiler = os.environ.get('CONFIGURE_CC') or shared.EMXX
-    if run_via_emxx:
+    if not run_via_emxx:
       compiler = shared.to_cc(compiler)
 
     def filter_emscripten_options(argv):
