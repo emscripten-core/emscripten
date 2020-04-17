@@ -1,3 +1,6 @@
+// gcc 9.2.1 complains about narrowing
+#pragma GCC diagnostic ignored "-Wnarrowing"
+
 unsigned char sBulletDNAstr[]= {
 83,68,78,65,78,65,77,69,42,1,0,0,109,95,115,105,122,101,0,109,
 95,99,97,112,97,99,105,116,121,0,42,109,95,100,97,116,97,0,109,95,
