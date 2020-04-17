@@ -371,8 +371,6 @@ class benchmark(runner.RunnerCore):
     fingerprint.append('llvm: ' + LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))
 
-    Building.COMPILER = CLANG
-
   # avoid depending on argument reception from the commandline
   def hardcode_arguments(self, code):
     if not code or 'int main()' in code:
