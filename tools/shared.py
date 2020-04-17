@@ -1344,7 +1344,6 @@ def asmjs_mangle(name):
 
 #  Building
 class Building(object):
-  COMPILER = CLANG
   multiprocessing_pool = None
   binaryen_checked = False
 
@@ -1501,7 +1500,6 @@ class Building(object):
     env['NM'] = quote(LLVM_NM)
     env['LDSHARED'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
     env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
-    env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     if cflags:
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
