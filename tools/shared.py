@@ -5,7 +5,6 @@
 
 from __future__ import print_function
 
-from distutils.spawn import find_executable
 from subprocess import PIPE, STDOUT
 import atexit
 import base64
@@ -220,10 +219,10 @@ def generate_config(path, first_time=False):
   config_file = '\n'.join(config_file)
   # autodetect some default paths
   config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(EMSCRIPTEN_ROOT))
-  llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
+  llvm_root = os.path.dirname(Building.which('llvm-dis') or '/usr/bin/llvm-dis')
   config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
-  node = find_executable('nodejs') or find_executable('node') or 'node'
+  node = Building.which('nodejs') or Building.which('node') or 'node'
   config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
 
   abspath = os.path.abspath(os.path.expanduser(path))
