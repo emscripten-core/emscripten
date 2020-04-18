@@ -29,7 +29,13 @@ void __attribute__ ((noinline)) doit(unsigned char *buffer, int size, int i) {
   unsigned long decompressedSize = size;
   uncompress(buffer3, &decompressedSize, buffer2, (int)compressedSize);
   assert(decompressedSize == size);
-  if (i == 0) assert(strcmp((char*)buffer, (char*)buffer3) == 0);
+  if (i == 0) {
+    if (strcmp((char*)buffer, (char*)buffer3) != 0) {
+      puts("incorrect output!");
+      abort();
+    }
+    puts("output looks good");
+  }
 }
 
 int main(int argc, char **argv) {

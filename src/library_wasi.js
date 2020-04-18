@@ -11,10 +11,9 @@ var WasiLibrary = {
     _exit(code);
   },
 
-  emscripten_get_environ__deps: ['$ENV', '_getExecutableName'],
-  emscripten_get_environ__sig: 'i',
-  emscripten_get_environ: function() {
-    if (!_emscripten_get_environ.strings) {
+  $getEnvStrings__deps: ['$ENV', '_getExecutableName'],
+  $getEnvStrings: function() {
+    if (!getEnvStrings.strings) {
       // Default values.
       var env = {
         'USER': 'web_user',
@@ -34,15 +33,15 @@ var WasiLibrary = {
       for (var x in env) {
         strings.push(x + '=' + env[x]);
       }
-      _emscripten_get_environ.strings = strings;
+      getEnvStrings.strings = strings;
     }
-    return _emscripten_get_environ.strings;
+    return getEnvStrings.strings;
   },
 
-  environ_sizes_get__deps: ['emscripten_get_environ'],
+  environ_sizes_get__deps: ['$getEnvStrings'],
   environ_sizes_get__sig: 'iii',
   environ_sizes_get: function(penviron_count, penviron_buf_size) {
-    var strings = _emscripten_get_environ();
+    var strings = getEnvStrings();
     {{{ makeSetValue('penviron_count', 0, 'strings.length', 'i32') }}};
     var bufSize = 0;
     strings.forEach(function(string) {
@@ -52,16 +51,15 @@ var WasiLibrary = {
     return 0;
   },
 
-  environ_get__deps: ['emscripten_get_environ'
+  environ_get__deps: ['$getEnvStrings'
 #if MINIMAL_RUNTIME
     , '$writeAsciiToMemory'
 #endif
   ],
   environ_get__sig: 'iii',
   environ_get: function(__environ, environ_buf) {
-    var strings = _emscripten_get_environ();
     var bufSize = 0;
-    strings.forEach(function(string, i) {
+    getEnvStrings().forEach(function(string, i) {
       var ptr = environ_buf + bufSize;
       {{{ makeSetValue('__environ', 'i * 4', 'ptr', 'i32') }}};
       writeAsciiToMemory(string, ptr);
@@ -104,15 +102,16 @@ var WasiLibrary = {
   // this is needed. To get this code to be usable as a JS shim we need to
   // either wait for BigInt support or to legalize on the client.
   clock_time_get__sig: 'iiiii',
-  clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
-  clock_time_get: function(clk_id, precision_l, precision_h, ptime) {
+  clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
+  clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
+    {{{ receiveI64ParamAsI32s('precision') }}}
     var now;
     if (clk_id === {{{ cDefine('__WASI_CLOCKID_REALTIME') }}}) {
       now = Date.now();
     } else if (clk_id === {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     // "now" is in ms, and wasi times are in ns.
@@ -123,7 +122,7 @@ var WasiLibrary = {
   },
 
   clock_res_get__sig: 'iii',
-  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
+  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
   clock_res_get: function(clk_id, pres) {
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
@@ -131,7 +130,7 @@ var WasiLibrary = {
     } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
-      ___setErrNo({{{ cDefine('EINVAL') }}});
+      setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     {{{ makeSetValue('pres', 0, 'nsec >>> 0', 'i32') }}};
@@ -146,6 +145,7 @@ var WasiLibrary = {
 if (!WASM_BACKEND) {
   for (var x in WasiLibrary) {
     if (isJsLibraryConfigIdentifier(x)) continue;
+    if (isJsOnlyIdentifier(x)) continue;
     WasiLibrary['__wasi_' + x] = x;
   }
 }

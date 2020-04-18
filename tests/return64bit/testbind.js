@@ -8,11 +8,14 @@ var Module = {
 };
 
 Module['runtest'] = function() {
-    var low = _test_return64();
-    var high = getTempRet0();
+  var low = _test_return64(0x11223344, 0xaabbccdd);
+  var high = getTempRet0();
+  console.log("low = " + low);
+  console.log("high = " + high);
 
-    console.log("low = " + low);
-    console.log("high = " + high);
+  var ptr = _get_func_ptr();
+  low = dynCall_jj(ptr, 0x12345678, 0xabcdef19);
+  high = getTempRet0();
+  console.log("low = " + low);
+  console.log("high = " + high);
 };
-
-

@@ -1174,10 +1174,10 @@ int main(int argc, char **argv){
   switch(arg) {
     case 0: return 0; break;
     case 1: arg = 5; break;
-    case 2: arg = 10; break;
-    case 3: arg = 20; break;
-    case 4: arg = 40; break;
-    case 5: arg = 80; break;
+    case 2: arg = 15; break;
+    case 3: arg = 40; break;
+    case 4: arg = 80; break;
+    case 5: arg = 160; break;
     default:
       printf("error: %d\\n", arg);
       return -1;
