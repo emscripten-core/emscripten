@@ -2598,9 +2598,14 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
-  # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_webgl_create_context2(self):
-    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), args=['--shell-file', path_from_root('tests', 'webgl_create_context2_shell.html'), '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0'], expected='0')
+    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), expected='0')
+
+  @requires_graphics_hardware
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
+  # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
+  def test_html5_special_event_targets(self):
+    self.btest(path_from_root('tests', 'browser', 'html5_special_event_targets.cpp'), args=['-lGL'], expected='0')
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):

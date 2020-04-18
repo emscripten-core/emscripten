@@ -69,6 +69,17 @@ The ``target`` parameter is the ID of the HTML element to which the callback reg
   - ``#canvas``: If building with legacy option ``-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), the event listener is applied to the Emscripten default WebGL canvas element. If building with the option ``-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1`` (default), ``#canvas`` is interpreted as a CSS query selector: "the first element with CSS ID 'canvas'".
   - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the the event listener is applied to the first element that matches the query.
 
+If the above are insufficient for you, you can add custom mappings in JavaScript
+using something like
+
+  .. code-block:: cpp
+
+    specialHTMLTargets["!canvas"] = Module.canvas;
+
+That will let ``!canvas`` map to the canvas held in Module.canvas. (You can write
+that JavaScript in an ``EM_JS`` or ``EM_ASM`` block that happens before you
+call the registration function, for example.)
+
 .. _userdata-parameter-html5-api:
 
 The ``userData`` parameter is a user-defined value that is passed (unchanged) to the registered event callback. This can be used to, for example, pass a pointer to a C++ class or similarly to enclose the C API in a clean object-oriented manner.
