@@ -253,102 +253,6 @@ This command will now exit. When you are done editing those paths, re-run it.
 ''' % (path, abspath, llvm_root, node, EMSCRIPTEN_ROOT), file=sys.stderr)
 
 
-# Emscripten configuration is done through the --em-config command line option
-# or the EM_CONFIG environment variable. If the specified string value contains
-# newline or semicolon-separated definitions, then these definitions will be
-# used to configure Emscripten.  Otherwise, the string is understood to be a
-# path to a settings file that contains the required definitions.
-# The search order from the config file is as follows:
-# 1. Specified on the command line (--em-config)
-# 2. Specified via EM_CONFIG environment variable
-# 3. Local .emscripten file, if found
-# 4. Local .emscripten file, as used by `emsdk --embedded` (two levels above, see below)
-# 5. Fall back users home directory (~/.emscripten).
-
-embedded_config = path_from_root('.emscripten')
-# For compatibility with `emsdk --embedded` mode also look two levels up.  The
-# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
-#  - emsdk/upstream/emscripten/emcc
-#  - emsdk/emscipten/1.38.31/emcc
-# However `emsdk --embedded` stores the config file in the emsdk root.
-# Without this check, when emcc is run from within the emsdk in embedded mode
-# and the user forgets to first run `emsdk_env.sh` (which sets EM_CONFIG) emcc
-# will not see any config file at all and fall back to creating a new/emtpy
-# one.
-# We could remove this special case if emsdk were to write its embedded config
-# file into the emscripten directory itself.
-# See: https://github.com/emscripten-core/emsdk/pull/367
-emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
-emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
-
-if '--em-config' in sys.argv:
-  EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
-  # And now remove it from sys.argv
-  skip = False
-  newargs = []
-  for arg in sys.argv:
-    if not skip and arg != '--em-config':
-      newargs += [arg]
-    elif arg == '--em-config':
-      skip = True
-    elif skip:
-      skip = False
-  sys.argv = newargs
-  if not os.path.isfile(EM_CONFIG):
-    if EM_CONFIG.startswith('-'):
-      exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
-    if '=' not in EM_CONFIG:
-      exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
-    else:
-      EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
-elif 'EM_CONFIG' in os.environ:
-  EM_CONFIG = os.environ['EM_CONFIG']
-elif os.path.exists(embedded_config):
-  EM_CONFIG = embedded_config
-elif os.path.exists(emsdk_embedded_config):
-  EM_CONFIG = emsdk_embedded_config
-else:
-  EM_CONFIG = '~/.emscripten'
-
-PYTHON = os.getenv('EM_PYTHON', sys.executable)
-EMSCRIPTEN_ROOT = __rootpath__
-
-# The following globals can be overridden by the config file.
-# See parse_config_file below.
-NODE_JS = None
-BINARYEN_ROOT = None
-EM_POPEN_WORKAROUND = None
-SPIDERMONKEY_ENGINE = None
-V8_ENGINE = None
-LLVM_ROOT = None
-LLVM_ADD_VERSION = None
-CLANG_ADD_VERSION = None
-CLOSURE_COMPILER = None
-EMSCRIPTEN_NATIVE_OPTIMIZER = None
-JAVA = None
-JS_ENGINES = []
-WASMER = None
-WASMTIME = None
-WASM_ENGINES = []
-COMPILER_OPTS = []
-FROZEN_CACHE = False
-
-# Emscripten compiler spawns other processes, which can reimport shared.py, so
-# make sure that those child processes get the same configuration file by
-# setting it to the currently active environment.
-os.environ['EM_CONFIG'] = EM_CONFIG
-
-if '\n' in EM_CONFIG:
-  CONFIG_FILE = None
-  logger.debug('EM_CONFIG is specified inline without a file')
-else:
-  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
-  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
-  if not os.path.exists(CONFIG_FILE):
-    generate_config(EM_CONFIG, first_time=True)
-    sys.exit(0)
-
-
 def parse_config_file():
   """Parse the emscripten config file using python's exec.
 
@@ -443,38 +347,6 @@ def fix_js_engine(old, new):
   return new
 
 
-parse_config_file()
-SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
-NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
-V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
-WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
-
-# Install our replacement Popen handler if we are running on Windows to avoid
-# python spawn process function.
-# nb. This is by default disabled since it has the adverse effect of buffering
-# up all logging messages, which makes builds look unresponsive (messages are
-# printed only after the whole build finishes). Whether this workaround is
-# needed seems to depend on how the host application that invokes emcc has set
-# up its stdout and stderr.
-if EM_POPEN_WORKAROUND and os.name == 'nt':
-  logger.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
-  Popen = WindowsPopen
-else:
-  Popen = subprocess.Popen
-
-# Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
-# 0: disabled.
-# 1: Log stderr of subprocess spawns.
-# 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
-# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
-EM_BUILD_VERBOSE = int(os.getenv('EM_BUILD_VERBOSE', '0'))
-
-# Expectations
-
-actual_clang_version = None
-
-
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
     return "11.0"
@@ -483,14 +355,13 @@ def expected_llvm_version():
 
 
 def get_clang_version():
-  global actual_clang_version
-  if actual_clang_version is None:
+  if not hasattr(get_clang_version, 'found_version'):
     if not os.path.exists(CLANG):
       exit_with_error('clang executable not found at `%s`' % CLANG)
     proc = check_call([CLANG, '--version'], stdout=PIPE)
     m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
-    actual_clang_version = m and m.group(1)
-  return actual_clang_version
+    get_clang_version.found_version = m and m.group(1)
+  return get_clang_version.found_version
 
 
 def check_llvm_version():
@@ -579,25 +450,6 @@ def set_version_globals():
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
-set_version_globals()
-
-# For the Emscripten-specific WASM metadata section, follows semver, changes
-# whenever metadata section changes structure.
-# NB: major version 0 implies no compatibility
-# NB: when changing the metadata format, we should only append new fields, not
-#     reorder, modify, or remove existing ones.
-EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
-# For the JS/WASM ABI, specifies the minimum ABI version required of
-# the WASM runtime implementation by the generated WASM binary. It follows
-# semver and changes whenever C types change size/signedness or
-# syscalls change signature. By semver, the maximum ABI version is
-# implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
-# change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
-# or the ABI change is backwards compatible, otherwise increment
-# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 25)
-
-
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
@@ -681,14 +533,6 @@ def check_sanity(force=False):
         f.write(expected)
 
 
-# Tools/paths
-if LLVM_ADD_VERSION is None:
-  LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
-
-if CLANG_ADD_VERSION is None:
-  CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
-
-
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
 def build_llvm_tool_path(tool):
@@ -721,36 +565,6 @@ def replace_suffix(filename, new_suffix):
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
   return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
-
-
-CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
-CLANG_CPP = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
-CLANG = CLANG_CPP
-LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
-LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
-LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
-LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
-LLVM_AS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
-LLVM_DIS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
-LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
-LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
-LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
-LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
-LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
-WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
-
-EMSCRIPTEN = path_from_root('emscripten.py')
-EMCC = path_from_root('emcc.py')
-EMXX = path_from_root('em++.py')
-EMAR = path_from_root('emar.py')
-EMRANLIB = path_from_root('emranlib.py')
-EMCONFIG = path_from_root('em-config.py')
-EMLINK = path_from_root('emlink.py')
-EMCONFIGURE = path_from_root('emconfigure.py')
-EMMAKE = path_from_root('emmake.py')
-AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
-FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
@@ -814,15 +628,6 @@ def apply_configuration():
   TEMP_DIR = configuration.TEMP_DIR
 
 
-apply_configuration()
-
-# Additional compiler options
-
-# Target choice.
-ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-emscripten'
-
-
 def check_vanilla():
   global LLVM_TARGET
   # if the env var tells us what to do, do that
@@ -875,9 +680,6 @@ def check_vanilla():
     else:
       logger.debug('check tells us to use asm.js backend')
       LLVM_TARGET = ASM_JS_TARGET
-
-
-check_vanilla()
 
 
 def get_llvm_target():
@@ -972,14 +774,6 @@ def get_cflags(user_args):
   return c_opts + emsdk_cflags()
 
 
-# Engine tweaks
-if SPIDERMONKEY_ENGINE:
-  new_spidermonkey = SPIDERMONKEY_ENGINE
-  if '-w' not in str(new_spidermonkey):
-    new_spidermonkey += ['-w']
-  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
-
-
 # Utilities
 def run_js(filename, engine=None, *args, **kw):
   if engine is None:
@@ -1009,13 +803,11 @@ def unique_ordered(values):
   return list(filter(check, values))
 
 
-SIZE_SUFFIXES = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
-
-
 def expand_byte_size_suffixes(value):
   """Given a string with KB/MB size suffixes, such as "32MB", computes how
   many bytes that is and returns it as an integer.
   """
+  SIZE_SUFFIXES = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
   match = re.match(r'\s*(\d+)\s*([kmgt]?b)$', value, re.I)
   if not match:
     try:
@@ -1211,10 +1003,6 @@ def verify_settings():
       exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')
 
 
-Settings = SettingsManager()
-verify_settings()
-
-
 # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
 # will trample each other when we extract them. to help warn of such situations, we warn if there
 # are duplicate entries in the archive
@@ -1297,9 +1085,6 @@ def g_multiprocessing_initializer(*args):
       os.chdir(value)
     else:
       os.environ[key] = value
-
-
-PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
 
 def print_compiler_stage(cmd):
@@ -3014,11 +2799,6 @@ class Building(object):
       shutil.copyfile(src, dst)
 
 
-# compatibility with existing emcc, etc. scripts
-Cache = cache.Cache()
-chunkify = cache.chunkify
-
-
 def reconfigure_cache():
   global Cache
   Cache = cache.Cache()
@@ -3529,3 +3309,213 @@ def make_fetch_worker(source_file, output_file):
 
   fetch_worker_src = function_prologue + '\n' + read_and_preprocess(path_from_root('src', 'fetch-worker.js'), expand_macros=True)
   open(output_file, 'w').write(fetch_worker_src)
+
+
+# =================================================================================================
+# End declarations.
+# =================================================================================================
+
+# Everything below this point is top level code that get run when importing this
+# file.  TODO(sbc): We should try to reduce that amount we do here and instead
+# have consumers explicitly call initialization functions.
+
+# Emscripten configuration is done through the --em-config command line option
+# or the EM_CONFIG environment variable. If the specified string value contains
+# newline or semicolon-separated definitions, then these definitions will be
+# used to configure Emscripten.  Otherwise, the string is understood to be a
+# path to a settings file that contains the required definitions.
+# The search order from the config file is as follows:
+# 1. Specified on the command line (--em-config)
+# 2. Specified via EM_CONFIG environment variable
+# 3. Local .emscripten file, if found
+# 4. Local .emscripten file, as used by `emsdk --embedded` (two levels above,
+#    see below)
+# 5. Fall back users home directory (~/.emscripten).
+
+embedded_config = path_from_root('.emscripten')
+# For compatibility with `emsdk --embedded` mode also look two levels up.  The
+# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
+#  - emsdk/upstream/emscripten/emcc
+#  - emsdk/emscipten/1.38.31/emcc
+# However `emsdk --embedded` stores the config file in the emsdk root.
+# Without this check, when emcc is run from within the emsdk in embedded mode
+# and the user forgets to first run `emsdk_env.sh` (which sets EM_CONFIG) emcc
+# will not see any config file at all and fall back to creating a new/emtpy
+# one.
+# We could remove this special case if emsdk were to write its embedded config
+# file into the emscripten directory itself.
+# See: https://github.com/emscripten-core/emsdk/pull/367
+emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
+emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
+
+if '--em-config' in sys.argv:
+  EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
+  # And now remove it from sys.argv
+  skip = False
+  newargs = []
+  for arg in sys.argv:
+    if not skip and arg != '--em-config':
+      newargs += [arg]
+    elif arg == '--em-config':
+      skip = True
+    elif skip:
+      skip = False
+  sys.argv = newargs
+  if not os.path.isfile(EM_CONFIG):
+    if EM_CONFIG.startswith('-'):
+      exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
+    if '=' not in EM_CONFIG:
+      exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
+    else:
+      EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
+elif 'EM_CONFIG' in os.environ:
+  EM_CONFIG = os.environ['EM_CONFIG']
+elif os.path.exists(embedded_config):
+  EM_CONFIG = embedded_config
+elif os.path.exists(emsdk_embedded_config):
+  EM_CONFIG = emsdk_embedded_config
+else:
+  EM_CONFIG = '~/.emscripten'
+
+PYTHON = os.getenv('EM_PYTHON', sys.executable)
+EMSCRIPTEN_ROOT = __rootpath__
+
+# The following globals can be overridden by the config file.
+# See parse_config_file below.
+NODE_JS = None
+BINARYEN_ROOT = None
+EM_POPEN_WORKAROUND = None
+SPIDERMONKEY_ENGINE = None
+V8_ENGINE = None
+LLVM_ROOT = None
+LLVM_ADD_VERSION = None
+CLANG_ADD_VERSION = None
+CLOSURE_COMPILER = None
+EMSCRIPTEN_NATIVE_OPTIMIZER = None
+JAVA = None
+JS_ENGINES = []
+WASMER = None
+WASMTIME = None
+WASM_ENGINES = []
+COMPILER_OPTS = []
+FROZEN_CACHE = False
+
+# Emscripten compiler spawns other processes, which can reimport shared.py, so
+# make sure that those child processes get the same configuration file by
+# setting it to the currently active environment.
+os.environ['EM_CONFIG'] = EM_CONFIG
+
+if '\n' in EM_CONFIG:
+  CONFIG_FILE = None
+  logger.debug('EM_CONFIG is specified inline without a file')
+else:
+  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
+  if not os.path.exists(CONFIG_FILE):
+    generate_config(EM_CONFIG, first_time=True)
+    sys.exit(0)
+
+parse_config_file()
+SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
+NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
+V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
+JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
+WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+
+# Install our replacement Popen handler if we are running on Windows to avoid
+# python spawn process function.
+# nb. This is by default disabled since it has the adverse effect of buffering
+# up all logging messages, which makes builds look unresponsive (messages are
+# printed only after the whole build finishes). Whether this workaround is
+# needed seems to depend on how the host application that invokes emcc has set
+# up its stdout and stderr.
+if EM_POPEN_WORKAROUND and os.name == 'nt':
+  logger.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
+  Popen = WindowsPopen
+else:
+  Popen = subprocess.Popen
+
+# Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
+# 0: disabled.
+# 1: Log stderr of subprocess spawns.
+# 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
+# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
+EM_BUILD_VERBOSE = int(os.getenv('EM_BUILD_VERBOSE', '0'))
+
+set_version_globals()
+
+# For the Emscripten-specific WASM metadata section, follows semver, changes
+# whenever metadata section changes structure.
+# NB: major version 0 implies no compatibility
+# NB: when changing the metadata format, we should only append new fields, not
+#     reorder, modify, or remove existing ones.
+EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
+# For the JS/WASM ABI, specifies the minimum ABI version required of
+# the WASM runtime implementation by the generated WASM binary. It follows
+# semver and changes whenever C types change size/signedness or
+# syscalls change signature. By semver, the maximum ABI version is
+# implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
+# change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
+# or the ABI change is backwards compatible, otherwise increment
+# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 25)
+
+# Tools/paths
+if LLVM_ADD_VERSION is None:
+  LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+
+if CLANG_ADD_VERSION is None:
+  CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
+
+CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
+CLANG_CPP = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
+CLANG = CLANG_CPP
+LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
+LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
+LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
+LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
+LLVM_AS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
+LLVM_DIS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
+LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
+LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
+LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
+LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
+LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
+WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
+
+EMSCRIPTEN = path_from_root('emscripten.py')
+EMCC = path_from_root('emcc.py')
+EMXX = path_from_root('em++.py')
+EMAR = path_from_root('emar.py')
+EMRANLIB = path_from_root('emranlib.py')
+EMCONFIG = path_from_root('em-config.py')
+EMLINK = path_from_root('emlink.py')
+EMCONFIGURE = path_from_root('emconfigure.py')
+EMMAKE = path_from_root('emmake.py')
+AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
+EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
+FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
+
+apply_configuration()
+
+# Target choice.
+ASM_JS_TARGET = 'asmjs-unknown-emscripten'
+WASM_TARGET = 'wasm32-unknown-emscripten'
+
+check_vanilla()
+
+# Engine tweaks
+if SPIDERMONKEY_ENGINE:
+  new_spidermonkey = SPIDERMONKEY_ENGINE
+  if '-w' not in str(new_spidermonkey):
+    new_spidermonkey += ['-w']
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
+
+Settings = SettingsManager()
+verify_settings()
+
+PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
+
+# compatibility with existing emcc, etc. scripts
+Cache = cache.Cache()
+chunkify = cache.chunkify
