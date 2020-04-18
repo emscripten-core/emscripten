@@ -285,12 +285,12 @@ var LibraryJSEvents = {
   // scheme should be needed, but the object-specific event callback registration functions should handle them individually).
   //
   // Users can also add more special event targets, basically by just doing something like
-  //    SpecialHTMLTargets["!canvas"] = Module.canvas;
+  //    specialHTMLTargets["!canvas"] = Module.canvas;
   // (that will let !canvas map to the canvas held in Module.canvas).
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || USE_PTHREADS
-  $SpecialHTMLTargets: "[0, typeof document !== 'undefined' ? document : 0, typeof window !== 'undefined' ? window : 0]",
+  $specialHTMLTargets: "[0, typeof document !== 'undefined' ? document : 0, typeof window !== 'undefined' ? window : 0]",
 #else
-  $SpecialHTMLTargets: "[0, document, window]",
+  $specialHTMLTargets: "[0, document, window]",
 #endif
 
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -302,13 +302,13 @@ var LibraryJSEvents = {
     return cString > 2 ? UTF8ToString(cString) : cString;
   },
 
-  _findEventTarget__deps: ['_maybeCStringToJsString', '$SpecialHTMLTargets'],
+  _findEventTarget__deps: ['_maybeCStringToJsString', '$specialHTMLTargets'],
   _findEventTarget: function(target) {
     target = __maybeCStringToJsString(target);
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
-    var domElement = SpecialHTMLTargets[target] || (typeof document !== 'undefined' ? document.querySelector(target) : undefined);
+    var domElement = specialHTMLTargets[target] || (typeof document !== 'undefined' ? document.querySelector(target) : undefined);
 #else
-    var domElement = SpecialHTMLTargets[target] || document.querySelector(target);
+    var domElement = specialHTMLTargets[target] || document.querySelector(target);
 #endif
     return domElement;
   },
@@ -347,7 +347,7 @@ var LibraryJSEvents = {
 
 #else
   // Find a DOM element with the given ID.
-  _findEventTarget__deps: ['$SpecialHTMLTargets'],
+  _findEventTarget__deps: ['$specialHTMLTargets'],
   _findEventTarget: function(target) {
 #if ASSERTIONS
     warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 to change to the new lookup rules. See https://github.com/emscripten-core/emscripten/pull/7977 for more details.');
@@ -357,7 +357,7 @@ var LibraryJSEvents = {
       // since DOM events mostly can default to that. Specific callback registrations
       // override their own defaults.
       if (!target) return window;
-      if (typeof target === "number") target = SpecialHTMLTargets[target] || UTF8ToString(target);
+      if (typeof target === "number") target = specialHTMLTargets[target] || UTF8ToString(target);
       if (target === '#window') return window;
       else if (target === '#document') return document;
       else if (target === '#screen') return screen;
@@ -409,16 +409,16 @@ var LibraryJSEvents = {
 
   // Outline access to function .getBoundingClientRect() since it is a long string. Closure compiler does not outline access to it by itself, but it can inline access if
   // there is only one caller to this function.
-  _getBoundingClientRect__deps: ['$SpecialHTMLTargets'],
+  _getBoundingClientRect__deps: ['$specialHTMLTargets'],
   _getBoundingClientRect: function(e) {
-    return SpecialHTMLTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {'left':0,'top':0};
+    return specialHTMLTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {'left':0,'top':0};
   },
 
   // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
-  _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '$SpecialHTMLTargets'],
+  _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '$specialHTMLTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
@@ -1145,13 +1145,13 @@ var LibraryJSEvents = {
 
   emscripten_set_fullscreenchange_callback_on_thread__proxy: 'sync',
   emscripten_set_fullscreenchange_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '_registerFullscreenChangeEventCallback', '_findEventTarget', '$SpecialHTMLTargets'],
+  emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '_registerFullscreenChangeEventCallback', '_findEventTarget', '$specialHTMLTargets'],
   emscripten_set_fullscreenchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = __findEventTarget(target);
 #else
-    target = target ? __findEventTarget(target) : SpecialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
+    target = target ? __findEventTarget(target) : specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
 #endif
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "fullscreenchange", targetThread);
@@ -1649,7 +1649,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['$JSEvents', '_currentFullscreenStrategy', 'JSEvents_requestFullscreen', '$SpecialHTMLTargets'],
+  emscripten_exit_fullscreen__deps: ['$JSEvents', '_currentFullscreenStrategy', 'JSEvents_requestFullscreen', '$specialHTMLTargets'],
   emscripten_exit_fullscreen__proxy: 'sync',
   emscripten_exit_fullscreen__sig: 'i',
   emscripten_exit_fullscreen: function() {
@@ -1659,7 +1659,7 @@ var LibraryJSEvents = {
     JSEvents.removeDeferredCalls(_JSEvents_requestFullscreen);
 #endif
 
-    var d = SpecialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
+    var d = specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
     if (d.exitFullscreen) {
       d.fullscreenElement && d.exitFullscreen();
 #if MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
@@ -1729,7 +1729,7 @@ var LibraryJSEvents = {
 
   emscripten_set_pointerlockchange_callback_on_thread__proxy: 'sync',
   emscripten_set_pointerlockchange_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockChangeEventCallback', '_findEventTarget', '$SpecialHTMLTargets'],
+  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockChangeEventCallback', '_findEventTarget', '$specialHTMLTargets'],
   emscripten_set_pointerlockchange_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
@@ -1740,7 +1740,7 @@ var LibraryJSEvents = {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = __findEventTarget(target);
 #else
-    target = target ? __findEventTarget(target) : SpecialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
+    target = target ? __findEventTarget(target) : specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
 #endif
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     __registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_POINTERLOCKCHANGE') }}}, "pointerlockchange", targetThread);
@@ -1750,7 +1750,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerPointerlockErrorEventCallback__deps: ['$JSEvents', '_findEventTarget', '$SpecialHTMLTargets'],
+  _registerPointerlockErrorEventCallback__deps: ['$JSEvents', '_findEventTarget', '$specialHTMLTargets'],
   _registerPointerlockErrorEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1778,7 +1778,7 @@ var LibraryJSEvents = {
 
   emscripten_set_pointerlockerror_callback_on_thread__proxy: 'sync',
   emscripten_set_pointerlockerror_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockErrorEventCallback', '_findEventTarget', '$SpecialHTMLTargets'],
+  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockErrorEventCallback', '_findEventTarget', '$specialHTMLTargets'],
   emscripten_set_pointerlockerror_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockerror_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
@@ -1789,7 +1789,7 @@ var LibraryJSEvents = {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = __findEventTarget(target);
 #else
-    target = target ? __findEventTarget(target) : SpecialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
+    target = target ? __findEventTarget(target) : specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
 #endif
 
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
@@ -1987,14 +1987,14 @@ var LibraryJSEvents = {
 
   emscripten_set_visibilitychange_callback_on_thread__proxy: 'sync',
   emscripten_set_visibilitychange_callback_on_thread__sig: 'iiiii',
-  emscripten_set_visibilitychange_callback_on_thread__deps: ['_registerVisibilityChangeEventCallback', '$SpecialHTMLTargets'],
+  emscripten_set_visibilitychange_callback_on_thread__deps: ['_registerVisibilityChangeEventCallback', '$specialHTMLTargets'],
   emscripten_set_visibilitychange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-  if (!SpecialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]) {
+  if (!specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]) {
     return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
   }
 #endif
-    __registerVisibilityChangeEventCallback(SpecialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}], userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_VISIBILITYCHANGE') }}}, "visibilitychange", targetThread);
+    __registerVisibilityChangeEventCallback(specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}], userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_VISIBILITYCHANGE') }}}, "visibilitychange", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 

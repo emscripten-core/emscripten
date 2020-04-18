@@ -13,7 +13,7 @@
 int main()
 {
   EM_ASM({
-    SpecialHTMLTargets["!foovas"] = Module.canvas;
+    specialHTMLTargets["!foovas"] = Module.canvas;
   });
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);

@@ -511,8 +511,8 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 
 // proxyWorker.js has defined 'document' and 'window' objects above, so need to
 // initialize them for library_html5.js explicitly here.
-if (typeof SpecialHTMLTargets !== 'undefined') {
-  SpecialHTMLTargets = [0, document, window];
+if (typeof specialHTMLTargets !== 'undefined') {
+  specialHTMLTargets = [0, document, window];
 }
 
 function postCustomMessage(data) {
