@@ -6201,30 +6201,29 @@ return malloc(size);
 
   @needs_make('make')
   @is_slow_test
-  def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  @parameterized({
+    'cmake': (True,),
+    'autoconf': (False,)
+  })
+  # Called thus so it runs late in the alphabetical cycle... it is long
+  def test_bullet(self, use_cmake):
+    if WINDOWS and not use_cmake:
+      self.skipTest("Windows cannot run configure sh scripts")
+
     self.set_setting('DEAD_FUNCTIONS', ['__ZSt9terminatev'])
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
-
     asserts = self.get_setting('ASSERTIONS')
 
-    for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
-      print('cmake', use_cmake)
-      # Windows cannot run configure sh scripts.
-      if WINDOWS and not use_cmake:
-        continue
+    # extra testing for ASSERTIONS == 2
+    self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
 
-      # extra testing for ASSERTIONS == 2
-      self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
-
-      def test():
-        self.do_run(open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
-                    [open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
-                     open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
-                     open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
-                     open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
-                    libraries=self.get_bullet_library(use_cmake),
-                    includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
-      test()
+    self.do_run(open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
+                [open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
+                 open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
+                 open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
+                 open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
+                libraries=self.get_bullet_library(use_cmake),
+                includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
 
   @needs_make('depends on freetype')
   @is_slow_test
