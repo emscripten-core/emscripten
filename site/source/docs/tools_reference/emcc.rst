@@ -459,7 +459,6 @@ Environment variables
 
   - ``EMMAKEN_JUST_CONFIGURE``
   - ``EMMAKEN_JUST_CONFIGURE_RECURSE``
-  - ``CONFIGURE_CC``
   - ``EMMAKEN_COMPILER``
   - ``EMMAKEN_CFLAGS``
   - ``EMCC_DEBUG``

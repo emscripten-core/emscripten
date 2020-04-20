@@ -19,6 +19,9 @@ Current Trunk
 -------------
 - Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
   The two uses cases in our test code were covered by the `-nostdlib` option.
+- Remove `CONFIGURE_CC`.  This could be used to override the underlying compiler
+  used in emcc/em++ but only during configure tests.  This feature was not
+  tested ..
 
 v1.39.13: 04/17/2020
 --------------------

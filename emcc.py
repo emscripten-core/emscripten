@@ -565,13 +565,6 @@ def filter_link_flags(flags, using_lld):
   return results
 
 
-def cxx_to_c_compiler(cxx):
-  # Convert C++ compiler name into C compiler name
-  dirname, basename = os.path.split(cxx)
-  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
-  return os.path.join(dirname, basename)
-
-
 run_via_emxx = False
 
 
@@ -734,10 +727,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         except IOError:
           pass
 
-    # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-    compiler = os.environ.get('CONFIGURE_CC') or shared.EMXX
-    if not run_via_emxx:
-      compiler = cxx_to_c_compiler(compiler)
+    if run_via_emxx:
+      compiler = [shared.PYTHON, shared.EMXX]
+    else:
+      compiler = [shared.PYTHON, shared.EMCC]
 
     def filter_emscripten_options(argv):
       skip_next = False
@@ -748,10 +741,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if arg != '--tracing':
           yield arg
 
-    if compiler in (shared.EMCC, shared.EMXX):
-      compiler = [shared.PYTHON, compiler]
-    else:
-      compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(args))
     # configure tests want a more shell-like style, where we emit return codes on exit()
     cmd += ['-s', 'NO_EXIT_RUNTIME=0']
