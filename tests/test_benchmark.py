@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
 import clang_native
 import runner
-from tools.shared import run_process, path_from_root, CLANG, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, CLANG_CC, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
+from tools.shared import run_process, path_from_root, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
 from tools import shared, jsrun
 
 # standard arguments for timing:
@@ -309,13 +309,10 @@ class CheerpBenchmarker(Benchmarker):
 
 # Benchmarkers
 
-benchmarkers = []
-
-if CLANG_CC and CLANG:
-  benchmarkers += [
-    # NativeBenchmarker('clang', CLANG_CC, CLANG),
-    # NativeBenchmarker('gcc',   'gcc',    'g++')
-  ]
+benchmarkers = [
+  # NativeBenchmarker('clang', shared.CLANG_CC, shared.CLANG_CXX),
+  # NativeBenchmarker('gcc',   'gcc',    'g++')
+]
 
 if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   # avoid the baseline compiler running, because it adds a lot of noise

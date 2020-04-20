@@ -176,7 +176,7 @@ def get_native_optimizer():
       shared.logging.debug('building native optimizer: ' + name)
       output = shared.Cache.get_path(name)
       shared.try_delete(output)
-      for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
+      for compiler in [shared.CLANG_CXX, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
         shared.logging.debug('  using ' + compiler)
         try:
           shared.run_process([compiler,
