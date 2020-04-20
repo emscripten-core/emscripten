@@ -28,6 +28,8 @@ expands on the Emscripten examples from that post.
           so if you are using fastcomp, these docs may not be accurate - you
           should upgrade to the wasm backend and new Asyncify!
 
+.. _yielding_to_main_loop:
+
 Sleeping / yielding to the event loop
 #####################################
 

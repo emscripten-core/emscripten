@@ -43,6 +43,8 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
       s.send_response(200)
       s.send_header("Content-Length", str(length))
       s.send_header("Access-Control-Allow-Origin", "http://localhost:%s" % port)
+      s.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+      s.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
       s.send_header("Content-type", "application/octet-stream")
       if support_byte_ranges:
@@ -2596,9 +2598,14 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
-  # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_webgl_create_context2(self):
-    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), args=['--shell-file', path_from_root('tests', 'webgl_create_context2_shell.html'), '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0'], expected='0')
+    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), expected='0')
+
+  @requires_graphics_hardware
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
+  # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
+  def test_html5_special_event_targets(self):
+    self.btest(path_from_root('tests', 'browser', 'html5_special_event_targets.cpp'), args=['-lGL'], expected='0')
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):

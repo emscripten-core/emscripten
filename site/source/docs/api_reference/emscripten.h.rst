@@ -455,7 +455,6 @@ Functions
 
   :param int num: The number of blockers that are about to be pushed.
 
-
 .. c:function:: void emscripten_async_call(em_arg_callback_func func, void *arg, int millis)
 
   Call a C function asynchronously, that is, after returning control to the JavaScript event loop.

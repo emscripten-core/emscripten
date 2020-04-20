@@ -61,7 +61,7 @@
 // exceed its size, whether all allocations (stack and static) are
 // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
 // if code flow runs into a fault
-// ASSERTIONS == 2 gives even more runtime checks
+// ASSERTIONS == 2 gives even more runtime checks, that may be very slow.
 var ASSERTIONS = 1;
 
 // Whether extra logging should be enabled.
@@ -590,14 +590,22 @@ var LEGACY_VM_SUPPORT = 0;
 // in node.js, or in a JS shell like d8, js, or jsc. You can set this option to
 // specify that the output should only run in one particular environment, which
 // must be one of
-//    'web'    - the normal web environment.
-//    'worker' - a web worker environment.
-//    'node'   - Node.js.
-//    'shell'  - a JS shell like d8, js, or jsc.
+//    'web'     - the normal web environment.
+//    'webview' - just like web, but in a webview like Cordova;
+//                considered to be same as "web" in almost every place
+//    'worker'  - a web worker environment.
+//    'node'    - Node.js.
+//    'shell'   - a JS shell like d8, js, or jsc.
 // Or it can be a comma-separated list of them, e.g., "web,worker". If this is
 // the empty string, then all runtime environments are supported.
-// (There is also a 'pthread' environment, see shell.js, but it cannot be specified
-// manually yet TODO)
+//
+// Note that the set of environments recognized here is not identical to the
+// ones we identify at runtime using ENVIRONMENT_IS_*. Specifically:
+//  * We detect whether we are a pthread at runtime, but that's set for workers
+//    and not for the main file so it wouldn't make sense to specify here.
+//  * The webview target is basically a subset of web. It must be specified
+//    alongside web (e.g. "web,webview") and we only use it for code generation
+//    at compile time, there is no runtime behavior change.
 var ENVIRONMENT = '';
 
 // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and

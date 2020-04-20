@@ -578,6 +578,13 @@ def filter_link_flags(flags, using_lld):
   return results
 
 
+def cxx_to_c_compiler(cxx):
+  # Convert C++ compiler name into C compiler name
+  dirname, basename = os.path.split(cxx)
+  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
+  return os.path.join(dirname, basename)
+
+
 run_via_emxx = False
 
 
@@ -745,8 +752,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
     compiler = os.environ.get('CONFIGURE_CC') or shared.EMXX
-    if run_via_emxx:
-      compiler = shared.to_cc(compiler)
+    if not run_via_emxx:
+      compiler = cxx_to_c_compiler(compiler)
 
     def filter_emscripten_options(argv):
       skip_next = False
@@ -803,8 +810,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass # can fail if e.g. writing the executable to /dev/null
     return ret
 
-  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CPP)
-  CC = shared.to_cc(CXX)
+  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
+  CC = cxx_to_c_compiler(CXX)
 
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
@@ -1313,9 +1320,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
       link_to_object = True
 
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
-    link_flags = filter_link_flags(link_flags, using_lld)
-
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
@@ -1790,6 +1794,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if sanitize:
         shared.Settings.USE_OFFSET_CONVERTER = 1
+        shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_emscripten_builtin_memalign',
+                                               '_emscripten_builtin_malloc', '_emscripten_builtin_free',
+                                               '___data_end', '___heap_base', '___global_base']
 
         if not shared.Settings.WASM_BACKEND:
           exit_with_error('Sanitizers are not compatible with the fastcomp backend. Please upgrade to the upstream wasm backend by following these instructions: https://v8.dev/blog/emscripten-llvm-wasm#testing')
@@ -2237,7 +2244,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if compile_only:
       logger.debug('stopping after compile phase')
+      for flag in link_flags:
+        diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
       return 0
+
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
+    link_flags = filter_link_flags(link_flags, using_lld)
 
     # Decide what we will link
     consumed = process_libraries(libs, lib_dirs, temp_files)
