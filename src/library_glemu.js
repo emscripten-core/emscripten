@@ -2742,12 +2742,13 @@ var LibraryGLEmulation = {
 #endif
         GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.currentContext.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
+        GLImmediate.mode = GLctx.TRIANGLES;
       }
 
       renderer.prepare();
 
       if (numIndexes) {
-        GLctx.drawElements(GLctx.TRIANGLES, numIndexes, GLctx.UNSIGNED_SHORT, ptr);
+        GLctx.drawElements(GLImmediate.mode, numIndexes, GLctx.UNSIGNED_SHORT, ptr);
       } else {
         GLctx.drawArrays(GLImmediate.mode, startIndex, numVertexes);
       }
