@@ -28,7 +28,11 @@ MYLIBS=
 MYOBJS=
 
 # XXX EMSCRIPTEN - add this
+ifndef $(EMSCRIPTEN)
 AR_ARGS=rc
+else
+AR_ARGS=rcu
+endif
 
 # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
 
