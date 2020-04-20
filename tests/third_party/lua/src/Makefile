@@ -13,7 +13,7 @@ CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
 #AR= ar
-ifndef $(EMSCRIPTEN)
+ifndef EMSCRIPTEN
 RANLIB= ranlib
 endif
 #RM= rm -f
@@ -28,7 +28,7 @@ MYLIBS=
 MYOBJS=
 
 # XXX EMSCRIPTEN - add this
-ifndef $(EMSCRIPTEN)
+ifndef EMSCRIPTEN
 AR_ARGS=rc
 else
 AR_ARGS=rcu
