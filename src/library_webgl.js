@@ -114,7 +114,11 @@ var LibraryGL = {
     uniforms: [],
     shaders: [],
     vaos: [],
+#if USE_PTHREADS // with pthreads a context is a location in memory with some synchronized data between threads
     contexts: {},
+#else            // without pthreads, it's just an integer ID
+    contexts: [],
+#endif
     currentContext: null,
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
     timerQueriesEXT: [],
@@ -899,16 +903,21 @@ var LibraryGL = {
 #endif
 
     registerContext: function(ctx, webGLContextAttributes) {
-      var handle = _malloc(8); // Make space on the heap to store GL context attributes that need to be accessible as shared between threads.
+#if USE_PTHREADS
+      // with pthreads a context is a location in memory with some synchronized data between threads
+      var handle = _malloc(8);
 #if GL_ASSERTIONS
       assert(handle, 'malloc() failed in GL.registerContext!');
 #endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
 #endif
-#if USE_PTHREADS
       {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
-#endif
+#else // USE_PTHREADS
+      // without pthreads a context is just an integer ID
+      var handle = GL.getNewId(GL.contexts);
+#endif // USE_PTHREADS
+
       var context = {
         handle: handle,
         attributes: webGLContextAttributes,
@@ -994,7 +1003,9 @@ var LibraryGL = {
       if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = null;
       if (typeof JSEvents === 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
       if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
+#if USE_PTHREADS
       _free(GL.contexts[contextHandle].handle);
+#endif
       GL.contexts[contextHandle] = null;
     },
 
@@ -2038,7 +2049,7 @@ var LibraryGL = {
 #endif
     var data = GLctx.getVertexAttrib(index, pname);
     if (pname == 0x889F/*VERTEX_ATTRIB_ARRAY_BUFFER_BINDING*/) {
-      {{{ makeSetValue('params', '0', 'data["name"]', 'i32') }}};
+      {{{ makeSetValue('params', '0', 'data && data["name"]', 'i32') }}};
     } else if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
         case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;

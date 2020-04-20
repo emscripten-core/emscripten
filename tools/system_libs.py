@@ -255,10 +255,6 @@ class Library(object):
   # returned by `read_symbols`.
   symbols = set()
 
-  # A list of symbols that must be exported to keep the JavaScript
-  # dependencies of this library working.
-  js_depends = []
-
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
@@ -956,7 +952,6 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
     elif self.eh_mode == exceptions.wasm:
       filenames += [
         'cxa_exception.cpp',
-        'cxa_noexception.cpp',
         'cxa_personality.cpp'
       ]
 
@@ -1337,7 +1332,6 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
   depends = ['libc++abi']
   includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal']]
-  js_depends = ['memalign', 'emscripten_builtin_memalign', '__data_end', '__heap_base']
   never_force = True
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
@@ -1355,7 +1349,6 @@ class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
 
 class libubsan_rt_wasm(SanitizerLibrary):
   name = 'libubsan_rt_wasm'
-  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
 
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
@@ -1363,7 +1356,6 @@ class libubsan_rt_wasm(SanitizerLibrary):
 
 class liblsan_common_rt_wasm(SanitizerLibrary):
   name = 'liblsan_common_rt_wasm'
-  js_depends = ['__global_base']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
   src_glob = 'lsan_common*.cc'
@@ -1372,7 +1364,6 @@ class liblsan_common_rt_wasm(SanitizerLibrary):
 class liblsan_rt_wasm(SanitizerLibrary):
   name = 'liblsan_rt_wasm'
   depends = ['liblsan_common_rt_wasm']
-  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
   src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
@@ -1456,6 +1447,13 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def can_build(self):
     return super(libstandalonewasm, self).can_build() and shared.Settings.WASM_BACKEND
+
+
+class libjsmath(Library):
+  name = 'libjsmath'
+  cflags = ['-Os']
+  src_dir = ['system', 'lib']
+  src_files = ['jsmath.c']
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
@@ -1583,11 +1581,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for d in lib.get_depends():
       add_library(system_libs_map[d])
 
-    for d in lib.js_depends:
-      d = '_' + d
-      if d not in shared.Settings.EXPORTED_FUNCTIONS:
-        shared.Settings.EXPORTED_FUNCTIONS.append(d)
-
   if shared.Settings.STANDALONE_WASM:
     add_library(system_libs_map['crt1'])
 
@@ -1663,6 +1656,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # is first then it would "win", breaking exception throwing from those string
   # header methods. To avoid that, we link libc++abi last.
   libs_to_link.sort(key=lambda x: x[0].endswith('libc++abi.bc'))
+
+  # JS math must come before anything else, so that it overrides the normal
+  # libc math.
+  if shared.Settings.JS_MATH:
+    libs_to_link = [(system_libs_map['libjsmath'].get_path(), True)] + libs_to_link
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.

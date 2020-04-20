@@ -161,7 +161,7 @@ Defines
     }, arr);
 
   .. note::
-    - As of Emscripten ``1.30.4``, the contents of ``EM_ASM`` code blocks appear inside the normal JS file, and as result, Closure compiler and other JavaScript minifiers will be able to operate on them. You may need to use safety quotes in some places (``a['b']`` instead of ``a.b``) to avoid minification fro occurring.
+    - As of Emscripten ``1.30.4``, the contents of ``EM_ASM`` code blocks appear inside the normal JS file, and as result, Closure compiler and other JavaScript minifiers will be able to operate on them. You may need to use safety quotes in some places (``a['b']`` instead of ``a.b``) to avoid minification from occurring.
     - The C preprocessor does not have an understanding of JavaScript tokens, and as a result, if the ``code`` block contains a comma character ``,``, it may be necessary to wrap the code block inside parentheses. For example, code ``EM_ASM(return [1,2,3].length);`` will not compile, but ``EM_ASM((return [1,2,3].length));`` does.
 
 .. c:macro:: EM_ASM_INT(code, ...)
@@ -454,7 +454,6 @@ Functions
   For example, a game might have to run 10 blockers before starting a new level. The operation would first set this value as '10' and then push the 10 blockers. When the 3\ :sup:`rd` blocker (say) completes, progress is displayed as 3/10.
 
   :param int num: The number of blockers that are about to be pushed.
-
 
 .. c:function:: void emscripten_async_call(em_arg_callback_func func, void *arg, int millis)
 

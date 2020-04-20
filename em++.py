@@ -7,7 +7,7 @@
 import sys
 import emcc
 
-sys.argv += ['--emscripten-cxx']
+emcc.run_via_emxx = True
 
 if __name__ == '__main__':
   try:

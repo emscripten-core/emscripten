@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['__setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
+  $FS__deps: ['$setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -111,7 +111,7 @@ FS.staticInit();` +
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-      return ___setErrNo(e.errno);
+      return setErrNo(e.errno);
     },
 
     //
@@ -1066,7 +1066,7 @@ FS.staticInit();` +
         FS.truncate(node, 0);
       }
       // we've already handled these, don't pass down to the underlying vfs
-      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}});
+      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_NOFOLLOW') }}});
 
       // register the stream with the filesystem
       var stream = FS.createStream({
@@ -1559,7 +1559,7 @@ FS.staticInit();` +
       if (ret.exists) {
         return ret.object;
       } else {
-        ___setErrNo(ret.error);
+        setErrNo(ret.error);
         return null;
       }
     },
@@ -1714,7 +1714,7 @@ FS.staticInit();` +
       } else {
         throw new Error('Cannot load without read() or XMLHttpRequest.');
       }
-      if (!success) ___setErrNo({{{ cDefine('EIO') }}});
+      if (!success) setErrNo({{{ cDefine('EIO') }}});
       return success;
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
