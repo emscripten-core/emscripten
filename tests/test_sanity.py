@@ -866,4 +866,4 @@ fi
     self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
 
     make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'unexpected binaryen version: 70 (expected 90)')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'unexpected binaryen version: 70 (expected ')
