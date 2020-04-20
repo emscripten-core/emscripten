@@ -811,7 +811,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return ret
 
   CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
-  CC = shared.to_cc(CXX)
+  CC = cxx_to_c_compiler(CXX)
 
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
