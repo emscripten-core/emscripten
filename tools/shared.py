@@ -355,9 +355,9 @@ def expected_llvm_version():
 
 def get_clang_version():
   if not hasattr(get_clang_version, 'found_version'):
-    if not os.path.exists(CLANG):
-      exit_with_error('clang executable not found at `%s`' % CLANG)
-    proc = check_call([CLANG, '--version'], stdout=PIPE)
+    if not os.path.exists(CLANG_CC):
+      exit_with_error('clang executable not found at `%s`' % CLANG_CC)
+    proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
     m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
     get_clang_version.found_version = m and m.group(1)
   return get_clang_version.found_version
@@ -461,7 +461,7 @@ def perform_sanify_checks():
       exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s', NODE_JS, EM_CONFIG)
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
+    for cmd in [CLANG_CC, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
 
@@ -778,13 +778,6 @@ def run_js(filename, engine=None, *args, **kw):
   if engine is None:
     engine = JS_ENGINES[0]
   return jsrun.run_js(filename, engine, *args, **kw)
-
-
-def to_cc(cxx):
-  # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
-  dirname, basename = os.path.split(cxx)
-  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
-  return os.path.join(dirname, basename)
 
 
 def unique_ordered(values):
@@ -1261,8 +1254,8 @@ class Building(object):
     env = os.environ.copy()
     if native:
       env['CC'] = quote(CLANG_CC)
-      env['CXX'] = quote(CLANG_CPP)
-      env['LD'] = quote(CLANG)
+      env['CXX'] = quote(CLANG_CXX)
+      env['LD'] = quote(CLANG_CXX)
       # get a non-native one, and see if we have some of its effects - remove them if so
       non_native = Building.get_building_env(cflags=cflags)
       # the ones that a non-native would modify
@@ -1288,7 +1281,7 @@ class Building(object):
     if cflags:
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
     env['HOST_CC'] = quote(CLANG_CC)
-    env['HOST_CXX'] = quote(CLANG_CPP)
+    env['HOST_CXX'] = quote(CLANG_CXX)
     env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
     env['HOST_CXXFLAGS'] = "-W" # if set to nothing, CXXFLAGS is used, which we don't want
     env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
@@ -3467,8 +3460,7 @@ if CLANG_ADD_VERSION is None:
   CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
-CLANG_CPP = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
-CLANG = CLANG_CPP
+CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
