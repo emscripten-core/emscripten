@@ -17,12 +17,12 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Support for WebAssembly BigInt integration with a new `WASM_BIGINT` flag. With
-  that the VM will use a JS BigInt for a wasm i64, avoiding the need for JS
-  legalization. See #10860.
 
 v1.39.13: 04/17/2020
 --------------------
+- Support for WebAssembly BigInt integration with a new `WASM_BIGINT` flag. With
+  that the VM will use a JS BigInt for a wasm i64, avoiding the need for JS
+  legalization. See #10860.
 - Add another value for ENVIRONMENT named 'webview' - it is a companion
   option for 'web' and enables some additional compatibility checks
   so that generated code works both in normal web and in a webview like Cordova.
