@@ -263,6 +263,17 @@ Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. T
     MyCode().then(function(Module) {
       // this is reached when everything is ready, and you can call methods on Module
     });
+    
+.. note:: Be careful with using ``Module.then()`` inside ``Promise.resolve()`` or ``await`` statements. ``Module.then()`` resolves with ``Module`` which still has ``then``, so the ``await`` statement loops indefinitely. If you need to use ``Module.then()`` with ``await`` statement, you can use this workaround:
+
+    ::
+
+         await Module.then(m => {
+           delete m['then'];
+           resolve(m);
+         });
+
+    For more information read `this issue <https://github.com/emscripten-core/emscripten/pull/10697>`_.
 
 .. _faq-NO_EXIT_RUNTIME:
 
