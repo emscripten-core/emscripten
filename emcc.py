@@ -578,6 +578,13 @@ def filter_link_flags(flags, using_lld):
   return results
 
 
+def cxx_to_c_compiler(cxx):
+  # Convert C++ compiler name into C compiler name
+  dirname, basename = os.path.split(cxx)
+  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
+  return os.path.join(dirname, basename)
+
+
 run_via_emxx = False
 
 
@@ -746,7 +753,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
     compiler = os.environ.get('CONFIGURE_CC') or shared.EMXX
     if not run_via_emxx:
-      compiler = shared.to_cc(compiler)
+      compiler = cxx_to_c_compiler(compiler)
 
     def filter_emscripten_options(argv):
       skip_next = False
@@ -803,8 +810,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass # can fail if e.g. writing the executable to /dev/null
     return ret
 
-  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CPP)
-  CC = shared.to_cc(CXX)
+  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
+  CC = cxx_to_c_compiler(CXX)
 
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:

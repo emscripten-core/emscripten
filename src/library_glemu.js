@@ -53,6 +53,9 @@ var LibraryGLEmulation = {
     fogMode: 0x800, // GL_EXP
     fogEnabled: false,
 
+    // GL_POINTS support.
+    pointSize: 1.0,
+
     // VAO support
     vaos: [],
     currentVao: null,
@@ -1985,7 +1988,12 @@ var LibraryGLEmulation = {
             break;
         }
       }
-      keyView.next((enabledAttributesKey << 2) | fogParam);
+      enabledAttributesKey = (enabledAttributesKey << 2) | fogParam;
+
+      // By drawing mode:
+      enabledAttributesKey = (enabledAttributesKey << 1) | (GLImmediate.mode == GLctx.POINTS ? 1 : 0);
+
+      keyView.next(enabledAttributesKey);
 
 #if !GL_FFP_ONLY
       // By cur program:
@@ -2097,6 +2105,13 @@ var LibraryGLEmulation = {
               vsFogVaryingInit = '  v_fogFragCoord = abs(ecPosition.z);\n';
             }
 
+            var vsPointSizeDefs = null;
+            var vsPointSizeInit = null;
+            if (GLImmediate.mode == GLctx.POINTS) {
+              vsPointSizeDefs = 'uniform float u_pointSize;\n';
+              vsPointSizeInit = '  gl_PointSize = u_pointSize;\n';
+            }
+
             var vsSource = [
               'attribute vec4 a_position;',
               'attribute vec4 a_color;',
@@ -2106,6 +2121,7 @@ var LibraryGLEmulation = {
               (GLEmulation.fogEnabled ? 'varying float v_fogFragCoord;' : null),
               'uniform mat4 u_modelView;',
               'uniform mat4 u_projection;',
+              vsPointSizeDefs,
               'void main()',
               '{',
               '  vec4 ecPosition = u_modelView * a_position;', // eye-coordinate position
@@ -2113,6 +2129,7 @@ var LibraryGLEmulation = {
               '  v_color = a_color;',
               vsTexCoordInits,
               vsFogVaryingInit,
+              vsPointSizeInit,
               '}',
               ''
             ].join('\n').replace(/\n\n+/g, '\n');
@@ -2242,6 +2259,8 @@ var LibraryGLEmulation = {
           this.fogDensityLocation = GLctx.getUniformLocation(this.program, 'u_fogDensity');
           this.hasFog = !!(this.fogColorLocation || this.fogEndLocation ||
                            this.fogScaleLocation || this.fogDensityLocation);
+
+          this.pointSizeLocation = GLctx.getUniformLocation(this.program, 'u_pointSize');
         },
 
         prepare: function prepare() {
@@ -2394,6 +2413,12 @@ var LibraryGLEmulation = {
             if (this.fogEndLocation) GLctx.uniform1f(this.fogEndLocation, GLEmulation.fogEnd);
             if (this.fogScaleLocation) GLctx.uniform1f(this.fogScaleLocation, 1/(GLEmulation.fogEnd - GLEmulation.fogStart));
             if (this.fogDensityLocation) GLctx.uniform1f(this.fogDensityLocation, GLEmulation.fogDensity);
+          }
+
+          if (GLImmediate.mode == GLctx.POINTS) {
+            if (this.pointSizeLocation) {
+              GLctx.uniform1f(this.pointSizeLocation, GLEmulation.pointSize);
+            }
           }
         },
 
@@ -3039,6 +3064,10 @@ var LibraryGLEmulation = {
   },
   glFogx: 'glFogi',
   glFogxv: 'glFogiv',
+
+  glPointSize: function(size) {
+    GLEmulation.pointSize = size;
+  },
 
   glPolygonMode: function(){}, // TODO
 

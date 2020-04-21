@@ -3157,6 +3157,12 @@ window.close = function() {
                message='You should see a (top) red-white and (bottom) white-red image.')
 
   @requires_graphics_hardware
+  def test_sdl2_gldrawelements(self):
+    self.btest('sdl2_gldrawelements.c', reference='sdl2_gldrawelements.png',
+               args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_SDL=2'],
+               message='GL drawing modes. Bottom: points, lines, line loop, line strip. Top: triangles, triangle strip, triangle fan, quad.')
+
+  @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
