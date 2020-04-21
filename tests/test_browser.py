@@ -43,6 +43,8 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
       s.send_response(200)
       s.send_header("Content-Length", str(length))
       s.send_header("Access-Control-Allow-Origin", "http://localhost:%s" % port)
+      s.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+      s.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
       s.send_header("Content-type", "application/octet-stream")
       if support_byte_ranges:
@@ -2596,9 +2598,14 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
-  # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_webgl_create_context2(self):
-    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), args=['--shell-file', path_from_root('tests', 'webgl_create_context2_shell.html'), '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0'], expected='0')
+    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), expected='0')
+
+  @requires_graphics_hardware
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
+  # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
+  def test_html5_special_event_targets(self):
+    self.btest(path_from_root('tests', 'browser', 'html5_special_event_targets.cpp'), args=['-lGL'], expected='0')
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):
@@ -3142,6 +3149,18 @@ window.close = function() {
     create_test_file('sdl2_gl_read.c', self.with_report_result(open(path_from_root('tests', 'sdl2_gl_read.c')).read()))
     self.compile_btest(['sdl2_gl_read.c', '-o', 'something.html', '-s', 'USE_SDL=2'])
     self.run_browser('something.html', '.', '/report_result?1')
+
+  @requires_graphics_hardware
+  def test_sdl2_glmatrixmode_texture(self):
+    self.btest('sdl2_glmatrixmode_texture.c', reference='sdl2_glmatrixmode_texture.png',
+               args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_SDL=2'],
+               message='You should see a (top) red-white and (bottom) white-red image.')
+
+  @requires_graphics_hardware
+  def test_sdl2_gldrawelements(self):
+    self.btest('sdl2_gldrawelements.c', reference='sdl2_gldrawelements.png',
+               args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_SDL=2'],
+               message='GL drawing modes. Bottom: points, lines, line loop, line strip. Top: triangles, triangle strip, triangle fan, quad.')
 
   @requires_graphics_hardware
   def test_sdl2_fog_simple(self):

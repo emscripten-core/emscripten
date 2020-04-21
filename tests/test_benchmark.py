@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
 import clang_native
 import runner
-from tools.shared import run_process, path_from_root, CLANG, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, CLANG_CC, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
+from tools.shared import run_process, path_from_root, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
 from tools import shared, jsrun
 
 # standard arguments for timing:
@@ -134,7 +134,7 @@ class NativeBenchmarker(Benchmarker):
     if lib_builder:
       env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
       env.update(clang_native.get_clang_native_env())
-      native_args += lib_builder(self.name, native=True, env_init=env)
+      native_args = native_args + lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -309,13 +309,10 @@ class CheerpBenchmarker(Benchmarker):
 
 # Benchmarkers
 
-benchmarkers = []
-
-if CLANG_CC and CLANG:
-  benchmarkers += [
-    # NativeBenchmarker('clang', CLANG_CC, CLANG),
-    # NativeBenchmarker('gcc',   'gcc',    'g++')
-  ]
+benchmarkers = [
+  # NativeBenchmarker('clang', shared.CLANG_CC, shared.CLANG_CXX),
+  # NativeBenchmarker('gcc',   'gcc',    'g++')
+]
 
 if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   # avoid the baseline compiler running, because it adds a lot of noise
@@ -370,8 +367,6 @@ class benchmark(runner.RunnerCore):
       pass
     fingerprint.append('llvm: ' + LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))
-
-    Building.COMPILER = CLANG
 
   # avoid depending on argument reception from the commandline
   def hardcode_arguments(self, code):
@@ -811,7 +806,7 @@ class benchmark(runner.RunnerCore):
     src = open(path_from_root('tests', 'life.c'), 'r').read()
     self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
-  def test_linpack(self):
+  def test_zzz_linpack(self):
     def output_parser(output):
       mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
       return 10000.0 / float(mflops)
@@ -925,7 +920,7 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
                       emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM=1', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
-                      lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
+                      lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
   def test_zzz_lua_scimark(self):
@@ -948,7 +943,7 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('zlib', src, 'ok.',
                       force_c=True, shared_args=['-I' + path_from_root('tests', 'third_party', 'zlib')], lib_builder=lib_builder)
 
-  def test_zzz_coremark(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  def test_zzz_coremark(self):
     src = open(path_from_root('tests', 'third_party', 'coremark', 'core_main.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
@@ -960,7 +955,7 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
 
-  def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  def test_zzz_box2d(self):
     src = open(path_from_root('tests', 'benchmark', 'test_box2d_benchmark.cpp')).read()
 
     def lib_builder(name, native, env_init):
@@ -968,7 +963,6 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'third_party', 'box2d')], lib_builder=lib_builder)
 
-  # Called thus so it runs late in the alphabetical cycle... it is long
   def test_zzz_bullet(self):
     self.emcc_args.remove('-Werror')
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']

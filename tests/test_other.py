@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
-from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR, LLVM_DWARFDUMP
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
@@ -44,6 +44,10 @@ import tools.tempfiles
 import tools.duplicate_function_eliminator
 
 scons_path = Building.which('scons')
+if WINDOWS:
+  emcmake = path_from_root('emcmake.bat')
+else:
+  emcmake = path_from_root('emcmake')
 
 
 class temp_directory(object):
@@ -565,7 +569,7 @@ f.close()
     flags = output.stdout.strip()
     self.assertContained(' '.join(Building.doublequote_spaces(shared.emsdk_cflags())), flags)
     # check they work
-    cmd = [CLANG, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
+    cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
     run_process(cmd)
     run_process([PYTHON, EMCC, 'a.bc'])
     self.assertContained('hello, world!', run_js('a.out.js'))
@@ -623,11 +627,6 @@ f.close()
                       'Eclipse CDT4 - Ninja': {'build'   : ['ninja'], # noqa
                       }
     }
-
-    if WINDOWS:
-      emcmake = path_from_root('emcmake.bat')
-    else:
-      emcmake = path_from_root('emcmake')
 
     for generator in generators:
       conf = configurations[generator]
@@ -705,14 +704,9 @@ f.close()
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   def test_cmake_compile_features(self):
     with temp_directory(self.get_dir()):
-      cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
+      cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CXX, path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       native_features = run_process(cmd, stdout=PIPE).stdout
-
-    if WINDOWS:
-      emcmake = path_from_root('emcmake.bat')
-    else:
-      emcmake = path_from_root('emcmake')
 
     with temp_directory(self.get_dir()):
       cmd = [emcmake, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
@@ -727,7 +721,7 @@ f.close()
   def test_cmake_with_embind_cpp11_mode(self):
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
       with temp_directory(self.get_dir()) as tempdirname:
-        configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
+        configure = [emcmake, 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print(str(configure))
         run_process(configure)
         build = ['cmake', '--build', '.']
@@ -741,18 +735,18 @@ f.close()
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
 
   # Tests that the Emscripten CMake toolchain option
-  # -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
-    if WINDOWS:
-      emcmake = path_from_root('emcmake.bat')
-    else:
-      emcmake = path_from_root('emcmake')
+    if self.is_wasm_backend():
+      # Test that this option produces an error with the llvm backend
+      err = self.expect_fail([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
+      self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
+      return
 
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
     self.clear()
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
-    run_process([Building.which('cmake'), '--build', '.'])
-    assert Building.is_ar('libstatic_lib.a')
+    run_process(['cmake', '--build', '.'])
+    self.assertTrue(Building.is_ar('libstatic_lib.a'))
     run_process([PYTHON, EMAR, 'x', 'libstatic_lib.a'])
     found = False # hashing makes the object name random
     for x in os.listdir('.'):
@@ -769,7 +763,7 @@ f.close()
     # (.bc)
     self.clear()
     run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
-    run_process([Building.which('cmake'), '--build', '.'])
+    run_process(['cmake', '--build', '.'])
     if self.is_wasm_backend():
       assert Building.is_wasm('libstatic_lib.bc')
     else:
@@ -781,16 +775,11 @@ f.close()
     # with ".so" suffix which are in fact either ar archives or bitcode files)
     self.clear()
     run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
-    run_process([Building.which('cmake'), '--build', '.'])
+    run_process(['cmake', '--build', '.'])
     assert Building.is_ar('myprefix_static_lib.somecustomsuffix')
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
-    if WINDOWS:
-      emcmake = path_from_root('emcmake.bat')
-    else:
-      emcmake = path_from_root('emcmake')
-
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'emscripten_version')])
 
   def test_system_include_paths(self):
@@ -2490,6 +2479,10 @@ int f() {
   def test_emconfig(self):
     output = run_process([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, LLVM_ROOT)
+    # EMSCRIPTEN_ROOT is kind of special since it should always report the locaton of em-config
+    # itself (its not configurable via the config file but driven by the location for arg0)
+    output = run_process([PYTHON, EMCONFIG, 'EMSCRIPTEN_ROOT'], stdout=PIPE).stdout.strip()
+    self.assertEqual(output, os.path.dirname(EMCONFIG))
     invalid = 'Usage: em-config VAR_NAME'
     # Don't accept variables that do not exist
     output = self.expect_fail([PYTHON, EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST']).strip()
@@ -3820,7 +3813,7 @@ int main()
       vs_env = shared.get_clang_native_env()
     except Exception:
       self.skipTest('Native clang env not found')
-    run_process([CLANG, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=vs_env)
+    run_process([CLANG_CXX, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=vs_env)
     err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
     if self.is_wasm_backend():
       self.assertContained('machine type must be wasm32', err)
@@ -10509,6 +10502,10 @@ Module.arguments has been replaced with plain arguments_
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
+  def test_linker_flags_unused(self):
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-lbar'], stderr=PIPE).stderr
+    self.assertContained("warning: argument unused during compilation: '-lbar' [-Wunused-command-line-argument]", err)
+
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=0'])
@@ -10522,7 +10519,7 @@ Module.arguments has been replaced with plain arguments_
   def test_compile_only_with_object_extension(self):
     # Emscripten supports compiling to an object file when the output has an
     # object extension.
-    # Most compilers require the `-c` to be explict.
+    # Most compilers require the `-c` to be explicit.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'hello1.o'])
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'], stderr=PIPE).stderr
     self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
@@ -10561,6 +10558,10 @@ Module.arguments has been replaced with plain arguments_
     # with -Werror + -Wno-error=<type> should only warn
     stderr = run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+
+    # check that `-Werror=foo` also enales foo
+    stderr = self.expect_fail(cmd + ['-Werror=legacy-settings', '-s', 'TOTAL_MEMORY=1'])
+    self.assertContained('error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]', stderr)
 
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')
@@ -10746,3 +10747,46 @@ int main() {
   def test_missing_argument(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts'])
     self.assertContained("error: option '--js-opts' requires an argument", err)
+
+  def test_default_to_cxx(self):
+    create_test_file('foo.h', '#include <string.h>')
+    create_test_file('cxxfoo.h', '#include <string>')
+
+    # The default bahviour is to default to C++, which means the C++ header can be compiled even
+    # with emcc.
+    run_process([PYTHON, EMCC, '-c', 'cxxfoo.h'])
+
+    # But this means that C flags can't be passed (since we are assuming C++)
+    err = self.expect_fail([PYTHON, EMCC, '-std=gnu11', '-c', 'foo.h'])
+    self.assertContained("'-std=gnu11' not allowed with 'C++'", err)
+
+    # If we disable DEFAULT_TO_CXX the emcc can be used with cflags, but can't be used to build
+    # C++ headers
+    run_process([PYTHON, EMCC, '-std=gnu11', '-c', 'foo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    err = self.expect_fail([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    self.assertContained("'string' file not found", err)
+
+    # Using em++ should alwasy work for C++ headers
+    run_process([PYTHON, EMXX, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    # Or using emcc with `-x c++`
+    run_process([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0', '-x', 'c++-header'])
+
+  @parameterized({
+    '': ([],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_support_errno(self, args):
+    self.emcc_args += args
+    src = path_from_root('tests', 'core', 'test_support_errno.c')
+    output = path_from_root('tests', 'core', 'test_support_errno.out')
+    self.do_run_from_file(src, output)
+    size_default = os.path.getsize('src.c.o.js')
+
+    # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
+    # to be set after the failing syscall.
+    self.set_setting('SUPPORT_ERRNO', 0)
+    output = path_from_root('tests', 'core', 'test_support_errno_disabled.out')
+    self.do_run_from_file(src, output)
+
+    # Verify the JS output was smaller
+    self.assertLess(os.path.getsize('src.c.o.js'), size_default)

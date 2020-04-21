@@ -76,7 +76,7 @@ Emscripten can also generate HTML for testing embedded JavaScript. To generate H
 
 You can now open ``hello.html`` in a web browser.
 
-.. note:: Unfortunately several browsers (including *Chrome*, *Safari*, and *Internet Explorer*) do not support ``file://`` :term:`XHR` requests, and can't load extra files needed by the HTML (like a ``.wasm`` file, or packaged file data as mentioned lower down). For these browsers you'll need to serve the files using a webserver. The easiest way to do this is to use the python **SimpleHTTPServer** (in the current directory do ``python -m SimpleHTTPServer 8080`` and then open ``http://localhost:8080/hello.html``).
+.. note:: Unfortunately several browsers (including *Chrome*, *Safari*, and *Internet Explorer*) do not support ``file://`` :term:`XHR` requests, and can't load extra files needed by the HTML (like a ``.wasm`` file, or packaged file data as mentioned lower down). For these browsers you'll need to serve the files using a :ref:`local webserver <faq-local-webserver>` and then open ``http://localhost:8000/hello.html``).
 
 Once you have the HTML loaded in your browser, you'll see a text area for displaying the output of the ``printf()`` calls in the native code.
 

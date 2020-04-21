@@ -2936,7 +2936,7 @@ private:
     }
 
     void release(T* px) {
-        if (--px->referenceCount == 0) {
+        if (px && --px->referenceCount == 0) {
             delete px;
         }
     }
