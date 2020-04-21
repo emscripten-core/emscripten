@@ -593,10 +593,6 @@ Environment variables
 
    * "CONFIGURE_CC"
 
-   * "EMMAKEN_CXX"
-
-   * "EMMAKEN_CXX"
-
    * "EMMAKEN_COMPILER"
 
    * "EMMAKEN_CFLAGS"

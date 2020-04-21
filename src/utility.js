@@ -205,6 +205,12 @@ function isArray(x) {
   }
 }
 
+// Functions that start with '$' should not be imported to asm.js/wasm module.
+// They are intended to be exclusive to JS code only.
+function isJsOnlyIdentifier(ident) {
+  return ident[0] == '$';
+}
+
 function isJsLibraryConfigIdentifier(ident) {
   return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
    || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');

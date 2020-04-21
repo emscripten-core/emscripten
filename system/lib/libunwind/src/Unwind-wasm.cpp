@@ -37,6 +37,9 @@ _Unwind_Reason_Code _Unwind_CallPersonality(void *exception_ptr) {
   _LIBUNWIND_TRACE_API("_Unwind_CallPersonality(exception_object=%p)",
                        (void *)exception_object);
 
+  // Reset the selector.
+  __wasm_lpad_context.selector = 0;
+
   // Call personality function. Wasm does not have two-phase unwinding, so we
   // only do the cleanup phase.
   _Unwind_Reason_Code ret = __gxx_personality_wasm0(

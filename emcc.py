@@ -82,7 +82,7 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive'
 )
 
-# Maps to true if the the flag takes an argument
+# Maps to true if the flag takes an argument
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
     '-bind_at_load': False,
@@ -260,6 +260,7 @@ class EmccOptions(object):
     # Whether we will expand the full path of any input files to remove any
     # symlinks.
     self.expand_symlinks = True
+    self.no_entry = False
 
 
 def use_source_map(options):
@@ -419,13 +420,25 @@ def apply_settings(changes):
 
     if value[0] == '@':
       if key not in DEFERRED_RESPONSE_FILES:
-        value = open(value[1:]).read()
+        filename = value[1:]
+        if not os.path.exists(filename):
+          exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
+        value = open(filename).read()
     else:
       value = value.replace('\\', '\\\\')
     try:
       value = parse_value(value)
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+
+    # Do some basic type checking by comparing to the existing settings.
+    # Sadly we can't do this generically in the SettingsManager since there are settings
+    # that so change types internally over time.
+    existing = getattr(shared.Settings, user_key, None)
+    if existing is not None:
+      # We only currently worry about lists vs non-lists.
+      if (type(existing) == list) != (type(value) == list):
+        exit_with_error('setting `%s` expects `%s` but got `%s`' % (user_key, type(existing), type(value)))
     setattr(shared.Settings, user_key, value)
 
     if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
@@ -505,22 +518,19 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
-def get_all_js_library_funcs(temp_files):
-  # Runs the js compiler to generate a list of all functions available in the JS
+def get_all_js_syms(temp_files):
+  # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invokation since the
-  # list of library functions depends on what settings are used.
+  # list of symbols depends on what settings are used.
   # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
   old_full = shared.Settings.INCLUDE_FULL_LIBRARY
-  old_linkable = shared.Settings.LINKABLE
   try:
     # Temporarily define INCLUDE_FULL_LIBRARY since we want a full list
     # of all available JS library functions.
     shared.Settings.INCLUDE_FULL_LIBRARY = True
-    # Temporarily set LINKABLE so that the jscompiler doesn't report
-    # undefined symbolls itself.
-    shared.Settings.LINKABLE = True
+    shared.Settings.ONLY_CALC_JS_SYMBOLS = True
     emscripten.generate_struct_info()
     glue, forwarded_data = emscripten.compile_settings(temp_files)
     forwarded_json = json.loads(forwarded_data)
@@ -530,13 +540,10 @@ def get_all_js_library_funcs(temp_files):
       if shared.is_c_symbol(name):
         name = shared.demangle_c_symbol_name(name)
         library_fns_list.append(name)
-        # TODO(sbc): wasm-ld shouldn't be reporting errors for symbols
-        # such as __wasi_fd_write which are defined with import_name attibutes
-        # but it currently does.  Remove this once we fix wasm-ld.
-        library_fns_list.append('__wasi_' + name)
   finally:
+    shared.Settings.ONLY_CALC_JS_SYMBOLS = False
     shared.Settings.INCLUDE_FULL_LIBRARY = old_full
-    shared.Settings.LINKABLE = old_linkable
+
   return library_fns_list
 
 
@@ -571,6 +578,16 @@ def filter_link_flags(flags, using_lld):
   return results
 
 
+def cxx_to_c_compiler(cxx):
+  # Convert C++ compiler name into C compiler name
+  dirname, basename = os.path.split(cxx)
+  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
+  return os.path.join(dirname, basename)
+
+
+run_via_emxx = False
+
+
 #
 # Main run() function
 #
@@ -594,12 +611,6 @@ def run(args):
 
   if DEBUG and LEAVE_INPUTS_RAW:
     logger.warning('leaving inputs raw')
-
-  if '--emscripten-cxx' in args:
-    run_via_emxx = True
-    args = [x for x in args if x != '--emscripten-cxx']
-  else:
-    run_via_emxx = False
 
   misc_temp_files = shared.configuration.get_temp_files()
 
@@ -688,13 +699,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
     return 0
 
-  # Default to using C++ even when run as `emcc`.
-  # This means that emcc will act as a C++ linker when no source files are
-  # specified.  However, when a C source is specified we do default to C.
-  # This differs to clang and gcc where the default is always C unless run as
-  # clang++/g++.
-  use_cxx = True
-
   def get_language_mode(args):
     return_next = False
     for item in args:
@@ -707,20 +711,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return item[2:]
     return None
 
-  def has_c_source(args):
-    for a in args:
-      if a[0] != '-' and a.endswith(C_ENDINGS + OBJC_ENDINGS):
-        return True
-    return False
-
   language_mode = get_language_mode(args)
   has_fixed_language_mode = language_mode is not None
-  if language_mode == 'c':
-    use_cxx = False
-
-  if not has_fixed_language_mode:
-    if not run_via_emxx and has_c_source(args):
-      use_cxx = False
 
   def is_minus_s_for_emcc(args, i):
     # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
@@ -737,7 +729,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # If this is a configure-type thing, do not compile to JavaScript, instead use clang
   # to compile to a native binary (using our headers, so things make sense later)
   CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
-  CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(args)# or 'CMakeCCompilerId' in ' '.join(args)
+  CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(args)
   if CONFIGURE_CONFIG or CMAKE_CONFIG:
     # XXX use this to debug configure stuff. ./configure's generally hide our
     # normal output including stderr so we write to a file
@@ -760,8 +752,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
     compiler = os.environ.get('CONFIGURE_CC') or shared.EMXX
-    if 'CXXCompiler' not in ' '.join(args) and not use_cxx:
-      compiler = shared.to_cc(compiler)
+    if not run_via_emxx:
+      compiler = cxx_to_c_compiler(compiler)
 
     def filter_emscripten_options(argv):
       skip_next = False
@@ -818,8 +810,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass # can fail if e.g. writing the executable to /dev/null
     return ret
 
-  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CPP)
-  CC = shared.to_cc(CXX)
+  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
+  CC = cxx_to_c_compiler(CXX)
 
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
@@ -901,13 +893,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options, settings_changes, newargs = parse_args(newargs)
 
-    if use_cxx:
-      clang_compiler = CXX
-    else:
-      clang_compiler = CC
-
     if '-print-search-dirs' in newargs:
-      return run_process([clang_compiler, '-print-search-dirs'], check=False).returncode
+      return run_process([CC, '-print-search-dirs'], check=False).returncode
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -987,7 +974,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # counter for the next index that should be used.
     next_arg_index = len(newargs)
 
-    has_source_inputs = False
     has_header_inputs = False
     lib_dirs = []
 
@@ -1013,17 +999,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # find input files with a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
     # what is left contains no more |-x OPT| things
+    skip = False
     for i in range(len(newargs)):
+      if skip:
+        skip = False
+        continue
+
       arg = newargs[i]
-      if i > 0:
-        prev = newargs[i - 1]
-        if prev in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
-                    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-                    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-                    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-                    '-install_name', '-compatibility_version',
-                    '-current_version', '-I', '-L', '-include-pch'):
-          continue # ignore this gcc-style argument
+      if arg in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
+                 '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+                 '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+                 '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+                 '-install_name', '-compatibility_version',
+                 '-current_version', '-I', '-L', '-include-pch',
+                 '-Xlinker'):
+        skip = True
 
       if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
         arg = os.path.realpath(arg)
@@ -1037,7 +1027,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs[i] = ''
           if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
-            has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
             input_files.append((i, arg))
             has_header_inputs = True
@@ -1071,7 +1060,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if has_fixed_language_mode:
             newargs[i] = ''
             input_files.append((i, arg))
-            has_source_inputs = True
           else:
             exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
       elif arg == '-r':
@@ -1091,6 +1079,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for flag_index, flag in enumerate(link_flags_to_add):
           add_link_flag(i + float(flag_index) / len(link_flags_to_add), flag)
         newargs[i] = ''
+      elif arg == '-Xlinker':
+        add_link_flag(i + 1, newargs[i + 1])
+        newargs[i] = ''
+        newargs[i + 1] = ''
       elif arg == '-s':
         # -s and some other compiler flags are normally passed onto the linker
         # TODO(sbc): Pass this and other flags through when using lld
@@ -1102,7 +1094,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     newargs = [a for a in newargs if a]
 
     if has_dash_c or has_dash_S:
-      assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c or -S'
       if has_dash_c:
         if '-emit-llvm' in newargs:
           final_suffix = '.bc'
@@ -1164,8 +1155,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
     if not shared.Settings.WASM_BACKEND:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        'memset', 'memcpy', 'malloc', 'free', 'emscripten_get_heap_size']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['memset', 'memcpy', 'emscripten_get_heap_size']
 
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
@@ -1176,6 +1166,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
+
+    if options.no_entry and '_main' in shared.Settings.EXPORTED_FUNCTIONS:
+      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
 
     shared.verify_settings()
 
@@ -1207,10 +1200,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ASSERTIONS:
       shared.Settings.STACK_OVERFLOW_CHECK = 2
 
+    if shared.Settings.LLD_REPORT_UNDEFINED:
+      # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
+      # or not.
+      shared.Settings.IGNORE_MISSING_MAIN = 0
+
     if shared.Settings.STRICT:
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
       shared.Settings.AUTO_ARCHIVE_INDEXES = 0
+      shared.Settings.IGNORE_MISSING_MAIN = 0
+      shared.Settings.DEFAULT_TO_CXX = 0
 
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
     # tools/autodebugger).  Note that this will disable inclusion of libraries. This
@@ -1282,6 +1282,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
 
+    def has_c_source(args):
+      for a in args:
+        if a[0] != '-' and a.endswith(C_ENDINGS + OBJC_ENDINGS):
+          return True
+      return False
+
+    use_cxx = False
+    if has_fixed_language_mode:
+      if 'c++' in language_mode:
+        use_cxx = True
+    elif run_via_emxx:
+      use_cxx = True
+    elif shared.Settings.DEFAULT_TO_CXX and not has_c_source(args):
+      # Default to using C++ even when run as `emcc`.
+      # This means that emcc will act as a C++ linker when no source files are
+      # specified.
+      # This differs to clang and gcc where the default is always C unless run as
+      # clang++/g++.
+      use_cxx = True
+    shared.Settings.USE_CXX = use_cxx
+
     if not compile_only:
       ldflags = shared.emsdk_ldflags(newargs)
       for f in ldflags:
@@ -1298,9 +1319,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # TODO(sbc): Remove this emscripten-specific special case.
       diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
       link_to_object = True
-
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
-    link_flags = filter_link_flags(link_flags, using_lld)
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
@@ -1403,7 +1421,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs.append('libembind')
 
     if not shared.Settings.MINIMAL_RUNTIME:
-      # Always need malloc and free to be kept alive and exported, for internal use and other modules
+      # Always need malloc and free to be kept alive and exported, for internal use and other
+      # modules
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
@@ -1471,14 +1490,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
 
     if shared.Settings.FILESYSTEM:
-      if shared.Settings.SUPPORT_ERRNO:
-        shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       # to flush streams on FS exit, we need to be able to call fflush
       # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have disabled NO_EXIT_RUNTIME)
       if shared.Settings.EXIT_RUNTIME or shared.Settings.ASSERTIONS:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
+
+    if shared.Settings.SUPPORT_ERRNO:
+      # so setErrNo JS library function can report errno back to C
+      shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
     if shared.Settings.GLOBAL_BASE < 0:
       # default if nothing else sets it
@@ -1776,6 +1797,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if sanitize:
         shared.Settings.USE_OFFSET_CONVERTER = 1
+        shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_emscripten_builtin_memalign',
+                                               '_emscripten_builtin_malloc', '_emscripten_builtin_free',
+                                               '___data_end', '___heap_base', '___global_base']
 
         if not shared.Settings.WASM_BACKEND:
           exit_with_error('Sanitizers are not compatible with the fastcomp backend. Please upgrade to the upstream wasm backend by following these instructions: https://v8.dev/blog/emscripten-llvm-wasm#testing')
@@ -1998,6 +2022,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
 
+    if shared.Settings.WASM_BIGINT:
+      shared.Settings.LEGALIZE_JS_FFI = 0
+
     if shared.Settings.WASM_BACKEND:
       if shared.Settings.SIMD:
         newargs.append('-msimd128')
@@ -2053,6 +2080,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   try:
     with ToolchainProfiler.profile_block('compile inputs'):
+      if use_cxx:
+        clang_compiler = CXX
+      else:
+        clang_compiler = CC
       # Precompiled headers support
       if has_header_inputs:
         headers = [header for _, header in input_files]
@@ -2155,11 +2186,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
               shared.Building.llvm_as(input_file, temp_file)
               temp_files.append((i, temp_file))
+          elif has_fixed_language_mode:
+            compile_source_file(i, input_file)
+          elif input_file == '-':
+            exit_with_error('-E or -x required when input is from standard input')
           else:
-            if has_fixed_language_mode:
-              compile_source_file(i, input_file)
-            else:
-              exit_with_error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
+            exit_with_error(input_file + ': unknown input file suffix')
 
     # exit block 'compile inputs'
     log_time('compile inputs')
@@ -2195,11 +2227,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           assert len(input_files) == 1
           input_file = input_files[0][1]
           temp_file = temp_files[0][1]
-          bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_suffix
-          if temp_file != input_file:
-            safe_move(temp_file, bitcode_target)
-          else:
-            shutil.copyfile(temp_file, bitcode_target)
+          if specified_target != '-':
+            if temp_file != input_file:
+              safe_move(temp_file, specified_target)
+            else:
+              shutil.copyfile(temp_file, specified_target)
           temp_output_base = unsuffixed(temp_file)
           if os.path.exists(temp_output_base + '.d'):
             # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
@@ -2215,7 +2247,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if compile_only:
       logger.debug('stopping after compile phase')
+      for flag in link_flags:
+        diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
       return 0
+
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
+    link_flags = filter_link_flags(link_flags, using_lld)
 
     # Decide what we will link
     consumed = process_libraries(libs, lib_dirs, temp_files)
@@ -2232,7 +2269,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.SIDE_MODULE:
           exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
         if final_suffix.lower() in ('.so', '.dylib', '.dll'):
-          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
+          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
         logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + specified_target)
         if len(temp_files) == 1:
           temp_file = temp_files[0][1]
@@ -2301,14 +2338,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # TODO: we could check if this is a fastcomp build, and still speed things up here
         just_calculate = DEBUG != 2 and not shared.Settings.WASM_BACKEND
         if shared.Settings.WASM_BACKEND:
-          all_externals = None
-          if shared.Settings.LLD_REPORT_UNDEFINED:
-            all_externals = get_all_js_library_funcs(misc_temp_files)
+          js_funcs = None
+          if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
+            js_funcs = get_all_js_syms(misc_temp_files)
             log_time('JS symbol generation')
-            # TODO(sbc): This is an incomplete list of __invoke functions.  Perhaps add
-            # support for wildcard to wasm-ld.
-            all_externals += ['emscripten_longjmp_jmpbuf', '__invoke_void', '__invoke_i32_i8*_...']
-          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, all_external_symbols=all_externals)
+          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=js_funcs)
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:
@@ -2761,15 +2795,26 @@ def parse_args(newargs):
   eh_enabled = False
   wasm_eh_enabled = False
 
-  def check_arg(arg, value):
-    if arg.startswith(value) and '=' in arg:
-      exit_with_error('Invalid parameter (do not use "=" with "--" options)')
-    return arg == value
-
   for i in range(len(newargs)):
     # On Windows Vista (and possibly others), excessive spaces in the command line
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     newargs[i] = newargs[i].strip()
+    arg = newargs[i]
+
+    def check_arg(value):
+      if arg.startswith(value) and '=' in arg:
+        exit_with_error('Invalid parameter (do not use "=" with "--" options)')
+      return arg == value
+
+    def consume_arg():
+      # Consume that option and its argument
+      if len(newargs) <= i + 1:
+        exit_with_error("option '%s' requires an argument" % arg)
+      ret = newargs[i + 1]
+      newargs[i] = ''
+      newargs[i + 1] = ''
+      return ret
+
     if newargs[i].startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
       options.requested_level = newargs[i][2:] or '2'
@@ -2784,53 +2829,37 @@ def parse_args(newargs):
         shared.Settings.SHRINK_LEVEL = 2
         settings_changes.append('INLINING_LIMIT=25')
       shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
-    elif check_arg(newargs[i], '--js-opts'):
-      options.js_opts = int(newargs[i + 1])
+    elif check_arg('--js-opts'):
+      options.js_opts = int(consume_arg())
       if options.js_opts:
         options.force_js_opts = True
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--llvm-opts'):
-      options.llvm_opts = parse_value(newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
+    elif check_arg('--llvm-opts'):
+      options.llvm_opts = parse_value(consume_arg())
     elif newargs[i].startswith('-flto'):
       if '=' in newargs[i]:
         shared.Settings.LTO = newargs[i].split('=')[1]
       else:
         shared.Settings.LTO = "full"
-    elif check_arg(newargs[i], '--llvm-lto'):
+    elif check_arg('--llvm-lto'):
       if shared.Settings.WASM_BACKEND:
         logger.warning('--llvm-lto ignored when using llvm backend')
-      options.llvm_lto = int(newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--closure-args'):
-      args = newargs[i + 1]
+      options.llvm_lto = int(consume_arg())
+    elif check_arg('--closure-args'):
+      args = consume_arg()
       options.closure_args += shlex.split(args)
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--closure'):
-      options.use_closure_compiler = int(newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--js-transform'):
-      options.js_transform = newargs[i + 1]
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--pre-js'):
-      options.pre_js += open(newargs[i + 1]).read() + '\n'
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--post-js'):
-      options.post_js += open(newargs[i + 1]).read() + '\n'
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--minify'):
-      assert newargs[i + 1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
+    elif check_arg('--closure'):
+      options.use_closure_compiler = int(consume_arg())
+    elif check_arg('--js-transform'):
+      options.js_transform = consume_arg()
+    elif check_arg('--pre-js'):
+      options.pre_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--post-js'):
+      options.post_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--minify'):
+      arg = consume_arg()
+      if arg != '0':
+        exit_with_error('0 is the only supported option for --minify; 1 has been deprecated')
       shared.Settings.DEBUG_LEVEL = max(1, shared.Settings.DEBUG_LEVEL)
-      newargs[i] = ''
-      newargs[i + 1] = ''
     elif newargs[i].startswith('-g'):
       options.requested_debug = newargs[i]
       requested_level = newargs[i][2:] or '3'
@@ -2889,18 +2918,12 @@ def parse_args(newargs):
       newargs[i] = ''
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'emval.js'))
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'embind.js'))
-    elif check_arg(newargs[i], '--embed-file'):
-      options.embed_files.append(newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--preload-file'):
-      options.preload_files.append(newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--exclude-file'):
-      options.exclude_files.append(newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
+    elif check_arg('--embed-file'):
+      options.embed_files.append(consume_arg())
+    elif check_arg('--preload-file'):
+      options.preload_files.append(consume_arg())
+    elif check_arg('--exclude-file'):
+      options.exclude_files.append(consume_arg())
     elif newargs[i].startswith('--use-preload-cache'):
       options.use_preload_cache = True
       newargs[i] = ''
@@ -2916,29 +2939,24 @@ def parse_args(newargs):
     elif newargs[i] == '-v':
       shared.PRINT_STAGES = True
       shared.check_sanity(force=True)
-    elif check_arg(newargs[i], '--shell-file'):
-      options.shell_path = newargs[i + 1]
+    elif check_arg('--shell-file'):
+      options.shell_path = consume_arg()
+    elif check_arg('--source-map-base'):
+      options.source_map_base = consume_arg()
+    elif newargs[i] == '--no-entry':
+      options.no_entry = True
       newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--source-map-base'):
-      options.source_map_base = newargs[i + 1]
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--js-library'):
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(os.path.abspath(newargs[i + 1]))
-      newargs[i] = ''
-      newargs[i + 1] = ''
+    elif check_arg('--js-library'):
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(os.path.abspath(consume_arg()))
     elif newargs[i] == '--remove-duplicates':
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
       newargs[i] = ''
     elif newargs[i] == '--jcache':
       logger.error('jcache is no longer supported')
       newargs[i] = ''
-    elif check_arg(newargs[i], '--cache'):
-      os.environ['EM_CACHE'] = os.path.normpath(newargs[i + 1])
+    elif check_arg('--cache'):
+      os.environ['EM_CACHE'] = os.path.normpath(consume_arg())
       shared.reconfigure_cache()
-      newargs[i] = ''
-      newargs[i + 1] = ''
     elif newargs[i] == '--clear-cache':
       logger.info('clearing cache as requested by --clear-cache')
       shared.Cache.erase()
@@ -2953,14 +2971,10 @@ def parse_args(newargs):
     elif newargs[i] == '--show-ports':
       system_libs.show_ports()
       should_exit = True
-    elif check_arg(newargs[i], '--save-bc'):
-      options.save_bc = newargs[i + 1]
-      newargs[i] = ''
-      newargs[i + 1] = ''
-    elif check_arg(newargs[i], '--memory-init-file'):
-      options.memory_init_file = int(newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
+    elif check_arg('--save-bc'):
+      options.save_bc = consume_arg()
+    elif check_arg('--memory-init-file'):
+      options.memory_init_file = int(consume_arg())
     elif newargs[i] == '--proxy-to-worker':
       options.proxy_to_worker = True
       newargs[i] = ''
@@ -3059,7 +3073,7 @@ def parse_args(newargs):
   if should_exit:
     sys.exit(0)
 
-  newargs = [arg for arg in newargs if arg]
+  newargs = [a for a in newargs if a]
   return options, settings_changes, newargs
 
 
@@ -3235,10 +3249,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         os.unlink(memfile)
     log_time('asm2wasm')
   if options.binaryen_passes:
-    if '--post-emscripten' in options.binaryen_passes:
+    if '--post-emscripten' in options.binaryen_passes and not shared.Settings.SIDE_MODULE:
       # the value of the sbrk pointer has been computed by the JS compiler, and we can apply it in the wasm
       # (we can't add this value when we placed post-emscripten in the proper position in the list of
       # passes because that was before the value was computed)
+      # note that we don't pass this for a side module, as the value can't be applied - it must be
+      # imported
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
