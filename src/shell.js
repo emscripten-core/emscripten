@@ -32,6 +32,14 @@ var /** @type {{
   preloadResults: Object
 }}
  */ Module;
+#if MODULARIZE
+// These variables types are declared here instead of where they're really
+// created in emcc.py so that the Closure Compiler will know they exist.
+/** @type {Function} */
+var returnedPromiseResolve;
+/** @type {Function} */
+var returnedPromiseReject;
+#endif // MODULARIZE
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #else
 var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};

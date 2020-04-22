@@ -1069,12 +1069,3 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
-
-// These functions are declared in emcc.py, but the Closure Compiler
-// optimization occurs before that declaration is a part of the
-// generated code, so we must explicitly tell Closure Compiler about
-// their existence.
-/** @type {Function} */
-var returnedPromiseResolve;
-/** @type {Function} */
-var returnedPromiseReject;
