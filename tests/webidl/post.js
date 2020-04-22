@@ -1,6 +1,5 @@
 (async function main(){
-// The test setup is the same whether or not MODULARIZE is used, in which
-// `TheModule` is a promise. This handles both cases.
+// If MODULARIZE is used, `TheModule` is a promise.
 if (TheModule instanceof Promise) {
   TheModule = await TheModule;
 }
