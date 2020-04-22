@@ -1,7 +1,9 @@
 (async function main(){
 // The test setup is the same whether or not MODULARIZE is used, in which
 // `TheModule` is a promise. This handles both cases.
-TheModule = await Promise.resolve(TheModule);
+if (TheModule instanceof Promise) {
+  TheModule = await TheModule;
+}
 
 // Part 1
 
