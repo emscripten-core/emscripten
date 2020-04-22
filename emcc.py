@@ -62,16 +62,17 @@ C_ENDINGS = ('.c', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
+ASSEMBLY_CPP_ENDINGS = ('.S',)
 SPECIAL_ENDINGLESS_FILENAMES = ('/dev/null' if not WINDOWS else 'NUL',)
 
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES
+SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ASSEMBLY_CPP_ENDINGS
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
 JS_CONTAINING_ENDINGS = ('.js', '.mjs', '.html')
 OBJECT_FILE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
-ASSEMBLY_ENDINGS = ('.ll',)
+ASSEMBLY_ENDINGS = ('.ll', '.s')
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
 WASM_ENDINGS = ('.wasm',)
 
@@ -1289,12 +1290,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs.append(f)
         add_link_flag(len(newargs), f)
 
-    if not shared.Settings.STRICT:
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      newargs += ['-DEMSCRIPTEN']
-
-    newargs = shared.get_cflags(newargs) + newargs
     if not link_to_object and not compile_only and final_suffix not in executable_endings:
       # TODO(sbc): Remove this emscripten-specific special case.
       diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
@@ -1441,10 +1436,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
+    cflags = shared.get_cflags(newargs)
+    if not shared.Settings.STRICT:
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      cflags += ['-DEMSCRIPTEN']
+
     # if exception catching is disabled, we can prevent that code from being
     # generated in the frontend
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND and not shared.Settings.EXCEPTION_HANDLING:
-      newargs.append('-fignore-exceptions')
+      cflags.append('-fignore-exceptions')
 
     if shared.Settings.DEAD_FUNCTIONS:
       if not options.js_opts:
@@ -2072,17 +2073,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
       if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
-        compile_args.append('-fno-discard-value-names')
+        cflags.append('-fno-discard-value-names')
 
       if not shared.Building.can_inline():
-        compile_args.append('-fno-inline-functions')
+        cflags.append('-fno-inline-functions')
 
       # For fastcomp backend, no LLVM IR functions should ever be annotated
       # 'optnone', because that would skip running the SimplifyCFG pass on
       # them, which is required to always run to clean up LandingPadInst
       # instructions that are not needed.
       if not shared.Settings.WASM_BACKEND:
-        compile_args += ['-Xclang', '-disable-O0-optnone']
+        cflags += ['-Xclang', '-disable-O0-optnone']
 
       # Precompiled headers support
       if has_header_inputs:
@@ -2090,7 +2091,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for header in headers:
           if not header.endswith(HEADER_ENDINGS):
             exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
-        args = compile_args + headers
+        args = compile_args + cflags + headers
         if specified_target:
           args += ['-o', specified_target]
         args = system_libs.process_args(args, shared.Settings)
@@ -2099,8 +2100,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Bitcode args generation code
       def get_clang_command(input_files):
-        args = [clang_compiler] + compile_args + input_files
-        return system_libs.process_args(args, shared.Settings)
+        args = [clang_compiler]
+        asm_only = all(get_file_suffix(f) in ASSEMBLY_ENDINGS for f in input_files)
+        if asm_only:
+          args += shared.get_asmflags(compile_args)
+        else:
+          args += cflags
+        args += compile_args + input_files
+        if not asm_only:
+          args = system_libs.process_args(args, shared.Settings)
+        return args
 
       # preprocessor-only (-E) support
       if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
@@ -2163,10 +2172,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           ensure_archive_index(input_file)
           temp_files.append((i, input_file))
         elif file_suffix in ASSEMBLY_ENDINGS:
-          logger.debug('assembling assembly file: ' + input_file)
           temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-          shared.Building.llvm_as(input_file, temp_file)
-          temp_files.append((i, temp_file))
+          if file_suffix == '.ll':
+            logger.debug('assembling assembly file: ' + input_file)
+            shared.Building.llvm_as(input_file, temp_file)
+            temp_files.append((i, temp_file))
+          else:
+            if not shared.Settings.WASM_BACKEND:
+              exit_with_error('assembly files not supported by fastcomp')
+            compile_source_file(i, input_file)
         elif has_fixed_language_mode:
           compile_source_file(i, input_file)
         elif input_file == '-':

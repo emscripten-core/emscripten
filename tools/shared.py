@@ -741,6 +741,10 @@ def emsdk_cflags():
   return c_opts + include_directive(c_include_paths)
 
 
+def get_asmflags(user_args):
+  return ['-target', get_llvm_target()]
+
+
 def get_cflags(user_args):
   # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
   # data and other nice fixes.
