@@ -565,6 +565,13 @@ def filter_link_flags(flags, using_lld):
   return results
 
 
+def cxx_to_c_compiler(cxx):
+  # Convert C++ compiler name into C compiler name
+  dirname, basename = os.path.split(cxx)
+  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
+  return os.path.join(dirname, basename)
+
+
 run_via_emxx = False
 
 
