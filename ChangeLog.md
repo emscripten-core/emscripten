@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
+  The two uses cases in our test code were covered by the `-nostdlib` option.
 
 v1.39.13: 04/17/2020
 --------------------
