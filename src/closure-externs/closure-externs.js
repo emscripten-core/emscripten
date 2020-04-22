@@ -1074,6 +1074,6 @@ var sampleRate;
 // to explicitly tell Closure Compiler about their existence since the
 // postamble is optimized independently
 /** @type {Function} */
-var returned_promise_resolve;
+var returnedPromiseResolve;
 /** @type {Function} */
-var returned_promise_reject;
+var returnedPromiseReject;

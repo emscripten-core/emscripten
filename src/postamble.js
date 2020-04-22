@@ -70,7 +70,7 @@ if (memoryInitializer) {
       readAsync(memoryInitializer, applyMemoryInitializer, function() {
         var e = new Error('could not load memory initializer ' + memoryInitializer);
 #if MODULARIZE
-          returned_promise_reject(e);
+          returnedPromiseReject(e);
 #else
           throw e;
 #endif
@@ -295,7 +295,7 @@ function run(args) {
     preMain();
 
 #if MODULARIZE
-    returned_promise_resolve(Module);
+    returnedPromiseResolve(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
@@ -410,13 +410,13 @@ function exit(status, implicit) {
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
       err(msg);
 #if MODULARIZE
-      returned_promise_reject(msg);
+      returnedPromiseReject(msg);
 #endif // MODULARIZE
 #else
       var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
       err(msg);
 #if MODULARIZE
-      returned_promise_reject(msg);
+      returnedPromiseReject(msg);
 #endif // MODULARIZE
 #endif // EXIT_RUNTIME
     }
@@ -482,7 +482,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   // of the Module `run`. The workers/pthreads don't execute `run` here, they
   // call `run` in response to a message at a later time, so the creation
   // promise can be resolved, marking the pthread-Module as initialized.
-  returned_promise_resolve(Module);
+  returnedPromiseResolve(Module);
 #endif // MODULARIZE
 }
 #else

@@ -132,7 +132,7 @@ function err(text) {
 // the program.
 function ready() {
 #if MODULARIZE
-  returned_promise_resolve(Module);
+  returnedPromiseResolve(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && hasExportedFunction('_main')
 #if USE_PTHREADS

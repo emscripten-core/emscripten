@@ -3411,8 +3411,11 @@ def modularize():
 
   src = '''
 function(%(EXPORT_NAME)s) {
-  var returned_promise_resolve, returned_promise_reject;
-  var promise = new Promise(function(resolve, reject) { returned_promise_resolve=resolve, returned_promise_reject=reject; });
+  var returnedPromiseResolve, returnedPromiseReject;
+  var promise = new Promise(function(resolve, reject) { 
+    returnedPromiseResolve=resolve;
+    returnedPromiseReject=reject;
+  });
 
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
