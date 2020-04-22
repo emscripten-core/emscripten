@@ -1069,11 +1069,3 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
-
-// These functions are declared in emcc.py but used in postamble.js; we need
-// to explicitly tell Closure Compiler about their existence since the
-// postamble is optimized independently
-/** @type {Function} */
-var returnedPromiseResolve;
-/** @type {Function} */
-var returnedPromiseReject;
