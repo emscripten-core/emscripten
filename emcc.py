@@ -2329,9 +2329,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:
         logger.debug('skipping linking: ' + str(linker_inputs))
+        temp_file = temp_files[0][1]
         input_file = input_files[0][1]
-        final = in_temp(input_file)
-        shutil.copyfile(input_file, final)
+        final = in_temp(target_basename + '.bc')
+        if temp_file != input_file:
+          shutil.move(temp_file, final)
+        else:
+          shutil.copyfile(temp_file, final)
 
     # exit block 'link'
     log_time('link')
