@@ -8332,6 +8332,7 @@ int main() {
   })
   @no_fastcomp()
   def test_metadce_cxx(self, *args):
+    self.skipTest("temporarily disabled while we roll https://github.com/WebAssembly/binaryen/pull/2782")
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
