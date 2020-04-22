@@ -64,7 +64,9 @@ How:
 2. Tag the emscripten repo on the emscripten commit used by that release (which
    you can tell from the DEPS file), using something like
    `git checkout [COMMIT]` ; `git tag [VERSION]` ; `git push --tags`.
-3. Update
+3. Tag the emsdk repo as well, on the commit that does the update, after it
+   lands on master.
+4. Update
    [emscripten-version.txt](https://github.com/emscripten-core/emscripten/blob/master/emscripten-version.txt)
    in the emscripten repo. This is a delayed update, in that the tag will refer
    to the actual release, but the update to emscripten-version.txt is a new

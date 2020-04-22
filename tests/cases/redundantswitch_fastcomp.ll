@@ -5,7 +5,7 @@ target triple = "asmjs-unknown-emscripten"
 
 declare i32 @printf(i8*, ...)
 
-define linkonce_odr i32 @main() align 2 {
+define i32 @main() {
 entry:
   %temp32 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 5)
   switch i32 %temp32, label %mid1 [

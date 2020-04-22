@@ -17,9 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
+  The two uses cases in our test code were covered by the `-nostdlib` option.
 
 v1.39.13: 04/17/2020
 --------------------
+- Support for WebAssembly BigInt integration with a new `WASM_BIGINT` flag. With
+  that the VM will use a JS BigInt for a wasm i64, avoiding the need for JS
+  legalization. See #10860.
 - Add another value for ENVIRONMENT named 'webview' - it is a companion
   option for 'web' and enables some additional compatibility checks
   so that generated code works both in normal web and in a webview like Cordova.

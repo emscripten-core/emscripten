@@ -84,10 +84,16 @@ Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smal
 Network latency is also a possible factor in startup time. Consider putting the file loading code in a separate script element from the generated code so that the browser can start the network download in parallel to starting up the codebase (run the :ref:`file packager <packaging-files>` and put file loading code in one script element, and the generated codebase in a later script element).
 
 
-Why does my program stall in "Downloading..." or "Preparing..."?
-================================================================
+.. _faq-local-webserver:
 
-This can happen when loading the page using a ``file://`` URL. That works in some browsers (like Firefox) but not in others (like Chrome). Instead, it's best to use a webserver (like Python's dev server, ``python -m SimpleHTTPServer``).
+How do I run a local webserver for testing / why does my program stall in "Downloading..." or "Preparing..."?
+=============================================================================================================
+
+That error can happen when loading the page using a ``file://`` URL, which works
+in some browsers but not in others. Instead, it's best
+to use a local webserver. For example, Python has one built in,
+``python -m http.server`` in Python 3 or ``python -m SimpleHTTPServer``
+in Python 2. After doing that, you can visit ``http://localhost:8000/``.
 
 Otherwise, to debug this, look for an error reported on the page itself, or in the browser devtools (web console and network tab), or in your webserver's logging.
 
@@ -263,6 +269,17 @@ Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. T
     MyCode().then(function(Module) {
       // this is reached when everything is ready, and you can call methods on Module
     });
+    
+.. note:: Be careful with using ``Module.then()`` inside ``Promise.resolve()`` or ``await`` statements. ``Module.then()`` resolves with ``Module`` which still has ``then``, so the ``await`` statement loops indefinitely. If you need to use ``Module.then()`` with ``await`` statement, you can use this workaround:
+
+    ::
+
+         await Module.then(m => {
+           delete m['then'];
+           resolve(m);
+         });
+
+    For more information read `this issue <https://github.com/emscripten-core/emscripten/pull/10697>`_.
 
 .. _faq-NO_EXIT_RUNTIME:
 

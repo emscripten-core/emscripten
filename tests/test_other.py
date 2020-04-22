@@ -2059,23 +2059,14 @@ int f() {
 
   @no_wasm_backend('depends on bc output')
   def test_save_bc(self):
-    for save in [0, 1]:
-      self.clear()
-      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')]
-      if save:
-        cmd += ['--save-bc', 'my_bitcode.bc']
-      run_process(cmd)
-      assert 'hello, world!' in run_js('a.out.js')
-      if save:
-        self.assertExists('my_bitcode.bc')
-      else:
-        self.assertNotExists('my_bitcode.bc')
-      if save:
-        try_delete('a.out.js')
-        Building.llvm_dis('my_bitcode.bc', 'my_ll.ll')
-        with env_modify({'EMCC_LEAVE_INPUTS_RAW': '1'}):
-          run_process([PYTHON, EMCC, 'my_ll.ll', '-o', 'two.js'])
-          assert 'hello, world!' in run_js('two.js')
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp'), '--save-bc', 'my_bitcode.bc']
+    run_process(cmd)
+    assert 'hello, world!' in run_js('a.out.js')
+    self.assertExists('my_bitcode.bc')
+    try_delete('a.out.js')
+    Building.llvm_dis('my_bitcode.bc', 'my_ll.ll')
+    run_process([PYTHON, EMCC, 'my_ll.ll', '-nostdlib', '-o', 'two.js'])
+    assert 'hello, world!' in run_js('two.js')
 
   def test_js_optimizer(self):
     ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers']
@@ -8332,6 +8323,7 @@ int main() {
   })
   @no_fastcomp()
   def test_metadce_cxx(self, *args):
+    self.skipTest("temporarily disabled while we roll https://github.com/WebAssembly/binaryen/pull/2782")
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({

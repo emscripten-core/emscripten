@@ -6411,8 +6411,8 @@ return malloc(size);
 
     emcc_args = self.emcc_args
 
-    # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = [
+    # The following tests link to libc, whereas others link with -nostdlib
+    needs_stdlib = [
       'muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star',
       'legalizer_ta2', 'quotedlabel', 'alignedunaligned', 'sillybitcast',
       'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2',
@@ -6461,14 +6461,6 @@ return malloc(size);
       if self.is_wasm() and basename in skip_wasm:
         continue
 
-      if basename in need_no_leave_inputs_raw:
-        leave_inputs = '0'
-        self.set_setting('FILESYSTEM', 1)
-      else:
-        leave_inputs = '1'
-        # no libc is linked in; with FILESYSTEM=0 we have a chance at printfing anyhow
-        self.set_setting('FILESYSTEM', 0)
-
       if '_noasm' in shortname and self.get_setting('ASM_JS'):
         print('case "%s" not relevant for asm.js' % shortname)
         continue
@@ -6484,12 +6476,17 @@ return malloc(size);
         output = 'hello, world!'
 
       if output.rstrip() != 'skip':
-        self.emcc_args = emcc_args
+        self.emcc_args = list(emcc_args)
+        if basename in needs_stdlib:
+          self.set_setting('FILESYSTEM', 1)
+        else:
+          self.emcc_args.append('-nostdlib')
+          # no libc is linked in; with FILESYSTEM=0 we have a chance at printfing anyhow
+          self.set_setting('FILESYSTEM', 0)
         if os.path.exists(shortname + '.emcc'):
           self.emcc_args += json.loads(open(shortname + '.emcc').read())
 
-        with env_modify({'EMCC_LEAVE_INPUTS_RAW': leave_inputs}):
-          self.do_ll_run(path_from_root('tests', 'cases', name), output, assert_returncode=None)
+        self.do_ll_run(path_from_root('tests', 'cases', name), output, assert_returncode=None)
 
       # Optional source checking, a python script that gets a global generated with the source
       src_checker = path_from_root('tests', 'cases', shortname + '.py')
@@ -7333,8 +7330,6 @@ err = err = function(){};
   @no_wasm2js('TODO: source maps in wasm2js')
   @no_emterpreter
   def test_source_map(self):
-    if not jsrun.check_engine(NODE_JS):
-      self.skipTest('sourcemapper requires Node to run')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
 
@@ -7606,9 +7601,6 @@ err = err = function(){};
   @no_wasm2js('no source maps support yet')
   def test_exception_source_map(self):
     self.emcc_args.append('-g4')
-    if not jsrun.check_engine(NODE_JS):
-      self.skipTest('sourcemapper requires Node to run')
-
     src = '''
       #include <stdio.h>
 
