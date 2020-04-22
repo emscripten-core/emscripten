@@ -21,7 +21,7 @@ def generate(env, emscripten_path=None, **kw):
   # so manually route all environment variables referenced
   # by Emscripten to the child.
   for var in ['EM_CACHE', 'EMCC_DEBUG', 'EMSCRIPTEN_NATIVE_OPTIMIZER', 'EMTEST_BROWSER',
-              'EMMAKEN_JUST_CONFIGURE', 'EMCC_CFLAGS', 'EMCC_LEAVE_INPUTS_RAW', 'EMCC_TEMP_DIR',
+              'EMMAKEN_JUST_CONFIGURE', 'EMCC_CFLAGS', 'EMCC_TEMP_DIR',
               'EMCC_AUTODEBUG', 'EMMAKEN_JUST_CONFIGURE_RECURSE', 'CONFIGURE_CC',
               'EMMAKEN_COMPILER', 'EMMAKEN_CFLAGS', 'EMCC_JSOPT_BLACKLIST',
               'MOZ_DISABLE_AUTO_SAFE_MODE', 'EMCC_STDERR_FILE',
