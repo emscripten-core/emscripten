@@ -3412,7 +3412,7 @@ def modularize():
   src = '''
 function(%(EXPORT_NAME)s) {
   var returnedPromiseResolve, returnedPromiseReject;
-  var promise = new Promise(function(resolve, reject) { 
+  var promise = new Promise(function(resolve, reject) {
     returnedPromiseResolve=resolve;
     returnedPromiseReject=reject;
   });
