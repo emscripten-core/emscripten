@@ -7313,8 +7313,6 @@ err = err = function(){};
   @no_wasm2js('TODO: source maps in wasm2js')
   @no_emterpreter
   def test_source_map(self):
-    if not jsrun.check_engine(NODE_JS):
-      self.skipTest('sourcemapper requires Node to run')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
 
@@ -7586,9 +7584,6 @@ err = err = function(){};
   @no_wasm2js('no source maps support yet')
   def test_exception_source_map(self):
     self.emcc_args.append('-g4')
-    if not jsrun.check_engine(NODE_JS):
-      self.skipTest('sourcemapper requires Node to run')
-
     src = '''
       #include <stdio.h>
 
