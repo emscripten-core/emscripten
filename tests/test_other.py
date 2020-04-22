@@ -3356,17 +3356,22 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
     output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None)
     assert r'<{(123456789)}>' in output, output
 
+  def test_precompiled_headers_warnings(self):
+    # Check that we don't have any underlying warnings from clang, this can happen if we
+    # pass any link flags to when building a pch.
+    create_test_file('header.h', '#define X 5\n')
+    run_process([PYTHON, EMCC, '-Werror', '-xc++-header', 'header.h'])
+
   def test_precompiled_headers(self):
     for suffix in ['gch', 'pch']:
       print(suffix)
       self.clear()
-
       create_test_file('header.h', '#define X 5\n')
       run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-c'])
       self.assertExists('header.h.gch') # default output is gch
       if suffix != 'gch':
         run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
-        assert open('header.h.gch', 'rb').read() == open('header.h.' + suffix, 'rb').read()
+        self.assertBinaryEqual('header.h.gch', 'header.h.' + suffix)
 
       create_test_file('src.cpp', r'''
 #include <stdio.h>
@@ -3378,7 +3383,7 @@ int main() {
       run_process([PYTHON, EMCC, 'src.cpp', '-include', 'header.h'])
 
       output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS)
-      assert '|5|' in output, output
+      self.assertContained('|5|', output)
 
       # also verify that the gch is actually used
       err = run_process([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
@@ -3386,7 +3391,7 @@ int main() {
       # and sanity check it is not mentioned when not
       try_delete('header.h.' + suffix)
       err = run_process([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-      assert '*** PCH/Modules Loaded:\nModule: header.h.' + suffix not in err.replace('\r\n', '\n'), err
+      self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
 
       # with specified target via -o
       try_delete('header.h.' + suffix)
@@ -3397,7 +3402,7 @@ int main() {
       run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
       run_process([PYTHON, EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
       output = run_js('a.out.js')
-      assert '|5|' in output, output
+      self.assertContained('|5|', output)
 
   @no_wasm_backend('tests extra fastcomp warnings on unaligned loads/stores, which matter a lot more in asm.js')
   def test_warn_unaligned(self):

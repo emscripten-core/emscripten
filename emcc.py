@@ -2064,12 +2064,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         clang_compiler = CXX
       else:
         clang_compiler = CC
+
+      def is_link_flag(flag):
+        return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
+
+      compile_args = [a for a in newargs if a and not is_link_flag(a)]
+
       # Precompiled headers support
       if has_header_inputs:
         headers = [header for _, header in input_files]
         for header in headers:
           assert header.endswith(HEADER_ENDINGS), 'if you have one header input, we assume you want to precompile headers, and cannot have source files or other inputs as well: ' + str(headers) + ' : ' + header
-        args = newargs + headers
+        args = compile_args + headers
         if specified_target:
           args += ['-o', specified_target]
         args = system_libs.process_args(args, shared.Settings)
@@ -2079,11 +2085,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
       if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
         newargs.append('-fno-discard-value-names')
-
-      def is_link_flag(flag):
-        return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
-
-      compile_args = [a for a in newargs if a and not is_link_flag(a)]
 
       # Bitcode args generation code
       def get_clang_command(input_files):
