@@ -19,6 +19,11 @@ Current Trunk
 -------------
 - Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
   The two uses cases in our test code were covered by the `-nostdlib` option.
+- Remove untested `CONFIGURE_CC`.  This could be used to override the underlying
+  compiler used in emcc/em++ but only during configure tests.  There are other
+  ways to control/fake the detected configure features that don't require such
+  monkey patching. For example setting defaults via a site file:
+  https://www.gnu.org/software/autoconf/manual/autoconf-2.67/html_node/Site-Defaults.html
 
 v1.39.13: 04/17/2020
 --------------------
