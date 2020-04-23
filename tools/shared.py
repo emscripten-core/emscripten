@@ -282,7 +282,6 @@ def parse_config_file():
     'WASMER',
     'WASMTIME',
     'WASM_ENGINES',
-    'COMPILER_OPTS',
     'FROZEN_CACHE',
   )
 
@@ -3400,7 +3399,6 @@ JS_ENGINES = []
 WASMER = None
 WASMTIME = None
 WASM_ENGINES = []
-COMPILER_OPTS = []
 FROZEN_CACHE = False
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
