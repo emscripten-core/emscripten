@@ -2066,15 +2066,30 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         clang_compiler = CC
 
       def is_link_flag(flag):
-        return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
+        return flag.startswith(('-l', '-L', '-Wl,'))
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
+
+      # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
+      if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
+        compile_args.append('-fno-discard-value-names')
+
+      if not shared.Building.can_inline():
+        compile_args.append('-fno-inline-functions')
+
+      # For fastcomp backend, no LLVM IR functions should ever be annotated
+      # 'optnone', because that would skip running the SimplifyCFG pass on
+      # them, which is required to always run to clean up LandingPadInst
+      # instructions that are not needed.
+      if not shared.Settings.WASM_BACKEND:
+        compile_args += ['-Xclang', '-disable-O0-optnone']
 
       # Precompiled headers support
       if has_header_inputs:
         headers = [header for _, header in input_files]
         for header in headers:
-          assert header.endswith(HEADER_ENDINGS), 'if you have one header input, we assume you want to precompile headers, and cannot have source files or other inputs as well: ' + str(headers) + ' : ' + header
+          if not header.endswith(HEADER_ENDINGS):
+            exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
         args = compile_args + headers
         if specified_target:
           args += ['-o', specified_target]
@@ -2082,23 +2097,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
 
-      # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
-      if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
-        newargs.append('-fno-discard-value-names')
-
       # Bitcode args generation code
       def get_clang_command(input_files):
         args = [clang_compiler] + compile_args + input_files
-        if not shared.Building.can_inline():
-          args.append('-fno-inline-functions')
-        # For fastcomp backend, no LLVM IR functions should ever be annotated
-        # 'optnone', because that would skip running the SimplifyCFG pass on
-        # them, which is required to always run to clean up LandingPadInst
-        # instructions that are not needed.
-        if not shared.Settings.WASM_BACKEND:
-          args += ['-Xclang', '-disable-O0-optnone']
-        args = system_libs.process_args(args, shared.Settings)
-        return args
+        return system_libs.process_args(args, shared.Settings)
 
       # preprocessor-only (-E) support
       if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
