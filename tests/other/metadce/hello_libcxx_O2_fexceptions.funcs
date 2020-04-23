@@ -169,7 +169,7 @@ $int\20std::__2::__get_up_to_n_digits<wchar_t\2c\20std::__2::istreambuf_iterator
 $is_equal\28std::type_info\20const*\2c\20std::type_info\20const*\2c\20bool\29
 $isdigit
 $isspace
-$legalfunc$__invoke_i64_i8*_i8*_i32*_i32
+$legalfunc$invoke_jiiii
 $legalstub$dynCall_iiiiiijj
 $legalstub$dynCall_iiiiij
 $legalstub$dynCall_iiiiijj
