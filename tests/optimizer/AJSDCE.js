@@ -59,3 +59,10 @@ function glue() {
 }
 glue();
 
+// unnecessary leftovers that seem to have side effects
+"undefined" !== typeof TextDecoder && new TextDecoder("utf8");
+new TextDecoder("utf8");
+
+// for comparison, a real side effect
+new SomethingUnknownWithSideEffects("utf8");
+

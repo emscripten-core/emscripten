@@ -31,3 +31,6 @@ function glue() {
 }
 
 glue();
+null
+null
+new SomethingUnknownWithSideEffects("utf8");

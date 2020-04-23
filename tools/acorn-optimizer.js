@@ -205,7 +205,8 @@ function hasSideEffects(node) {
       case 'Literal':
       case 'Identifier':
       case 'UnaryExpression':
-      case 'BinaryExpresson':
+      case 'BinaryExpression':
+      case 'LogicalExpression':
       case 'ExpressionStatement':
       case 'UpdateOperator':
       case 'ConditionalExpression':
@@ -230,9 +231,20 @@ function hasSideEffects(node) {
         }
         break;
       }
+      case 'NewExpression': {
+        // default to unsafe, but can be safe on some familiar objects
+        has = true;
+        if (node.callee.type === 'Identifier') {
+          var name = node.callee.name;
+          if (name === 'TextDecoder') {
+            // no side effects (but the arguments might, we walk them too)
+            has = false;
+          }
+        }
+        break;
+      }
       default: {
         has = true;
-        //console.error('because ' + node.type);
       }
     }
   });
@@ -253,7 +265,7 @@ function hasSideEffects(node) {
 // as they appear (like ArrowFunctionExpression). Instead, we do a conservative
 // analysis here.
 
-function JSDCE(ast, multipleIterations) {
+function JSDCE(ast, aggressive) {
   function iteration() {
     var removed = 0;
     var scopes = [{}]; // begin with empty toplevel scope
@@ -290,6 +302,12 @@ function JSDCE(ast, multipleIterations) {
             emptyOut(node);
             // If this is in a for, we may need to restore it.
             node.oldDeclarations = old;
+          }
+        },
+        ExpressionStatement(node, c) {
+          if (aggressive && !hasSideEffects(node)) {
+            convertToNull(node);
+            removed++;
           }
         },
         FunctionDeclaration(node, c) {
@@ -392,12 +410,12 @@ function JSDCE(ast, multipleIterations) {
     cleanUp(ast, names);
     return removed;
   }
-  while (iteration() && multipleIterations) { }
+  while (iteration() && aggressive) { }
 }
 
 // Aggressive JSDCE - multiple iterations
 function AJSDCE(ast) {
-  JSDCE(ast, /* multipleIterations= */ true);
+  JSDCE(ast, /* aggressive= */ true);
 }
 
 function isAsmLibraryArgAssign(node) { // var asmLibraryArg = ..
