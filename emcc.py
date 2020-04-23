@@ -1005,18 +1005,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(arg)
         if file_suffix in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
-          if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix == '.bc'):
+          if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
-          elif file_suffix.endswith(HEADER_ENDINGS):
+          elif file_suffix in HEADER_ENDINGS:
             input_files.append((i, arg))
             has_header_inputs = True
-          elif file_suffix.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg) or shared.Building.is_ar(arg):
+          elif file_suffix in ASSEMBLY_ENDINGS or shared.Building.is_bitcode(arg) or shared.Building.is_ar(arg):
             input_files.append((i, arg))
           elif shared.Building.is_wasm(arg):
             if not shared.Settings.WASM_BACKEND:
               exit_with_error('fastcomp is not compatible with wasm object files:' + arg)
             input_files.append((i, arg))
-          elif file_suffix.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
+          elif file_suffix in (STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
             libname = unsuffixed_basename(arg)
             for prefix in LIB_PREFIXES:
@@ -1029,7 +1029,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             newargs[i] = ''
           else:
             diagnostics.warning('invalid-input', arg + ' is not a valid input file')
-        elif file_suffix.endswith(STATICLIB_ENDINGS):
+        elif file_suffix in STATICLIB_ENDINGS:
           if not shared.Building.is_ar(arg):
             if shared.Building.is_bitcode(arg):
               message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(OBJECT_FILE_ENDINGS)
@@ -2146,21 +2146,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
-        file_ending = get_file_suffix(input_file)
-        if file_ending.endswith(SOURCE_ENDINGS) or (has_dash_c and file_ending == '.bc'):
+        file_suffix = get_file_suffix(input_file)
+        if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
           compile_source_file(i, input_file)
         else:
-          if file_ending.endswith(OBJECT_FILE_ENDINGS):
+          if file_suffix in OBJECT_FILE_ENDINGS:
             logger.debug('using object file: ' + input_file)
             temp_files.append((i, input_file))
-          elif file_ending.endswith(DYNAMICLIB_ENDINGS):
+          elif file_suffix in DYNAMICLIB_ENDINGS:
             logger.debug('using shared library: ' + input_file)
             temp_files.append((i, input_file))
           elif shared.Building.is_ar(input_file):
             logger.debug('using static library: ' + input_file)
             ensure_archive_index(input_file)
             temp_files.append((i, input_file))
-          elif file_ending.endswith(ASSEMBLY_ENDINGS):
+          elif file_suffix in ASSEMBLY_ENDINGS:
             logger.debug('assembling assembly file: ' + input_file)
             temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
             shared.Building.llvm_as(input_file, temp_file)
@@ -2182,8 +2182,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Optimize source files
         if optimizing(options.llvm_opts):
           for pos, (_, input_file) in enumerate(input_files):
-            file_ending = get_file_suffix(input_file)
-            if file_ending.endswith(SOURCE_ENDINGS):
+            file_suffix = get_file_suffix(input_file)
+            if file_suffix in SOURCE_ENDINGS:
               temp_file = temp_files[pos][1]
               logger.debug('optimizing %s', input_file)
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
