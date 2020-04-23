@@ -233,14 +233,20 @@ function hasSideEffects(node) {
       }
       case 'NewExpression': {
         // default to unsafe, but can be safe on some familiar objects
-        has = true;
         if (node.callee.type === 'Identifier') {
           var name = node.callee.name;
-          if (name === 'TextDecoder') {
-            // no side effects (but the arguments might, we walk them too)
-            has = false;
+          if (name === 'TextDecoder'  || name === 'ArrayBuffer' ||
+              name === 'Int8Array'    || name === 'Uint8Array' ||
+              name === 'Int16Array'   || name === 'Uint16Array' ||
+              name === 'Int32Array'   || name === 'Uint32Array' ||
+              name === 'Float32Array' || name === 'Float64Array') {
+            // no side effects, but the arguments might (we walk them in
+            // full walk as well)
+            break;
           }
         }
+        // not one of the safe cases
+        has = true;
         break;
       }
       default: {

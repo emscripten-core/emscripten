@@ -33,4 +33,13 @@ function glue() {
 glue();
 null
 null
+null
+null
+null
+null
+null
+null
+null
+null
 new SomethingUnknownWithSideEffects("utf8");
+new TextDecoder(Unknown());
