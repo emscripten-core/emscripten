@@ -1708,14 +1708,14 @@ def run():
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
     #   serve_forever = True
-    
+
     try:
       # Check if psutil can be imported, as waiting for browser pid silently fails otherwise.
       import psutil
-    
+      psutil.pids()
     except Exception:
       logi('Cannot import psutil module to wait for browser process to terminate. If emrun terminates prematurely, consider installing psutil module, or calling emrun with the --no_browser flag.')
-      
+
     global previous_browser_process_pids
     previous_browser_process_pids = list_processes_by_name(browser[0])
     browser_process = subprocess.Popen(browser, env=subprocess_env())
