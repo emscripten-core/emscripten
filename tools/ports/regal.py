@@ -147,6 +147,7 @@ def clear(ports, shared):
 def process_dependencies(settings):
   if settings.USE_REGAL == 1:
     settings.FULL_ES2 = 1
+    settings.LINK_AS_CXX = 1
 
 
 def process_args(ports, args, settings, shared):

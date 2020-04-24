@@ -197,6 +197,11 @@ var EXCEPTION_HANDLING = 0;
 // Enabled when building C++ code (for example via em++ or via -c c++)
 var USE_CXX = 0;
 
+// Sometime was want to force linking with C++ libraries.  For example, the
+// regal port will set this to true because even though it exposes a C API
+// it itself is written in C++.
+var LINK_AS_CXX = 0;
+
 // Used internally when running the JS compiler simply to generate list of all
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
 // JS library symbols.
