@@ -1,4 +1,7 @@
+$__stdio_exit
+$__wasm_call_ctors
 $_start
+$close_file
 $dlmalloc
 $main
 $sbrk

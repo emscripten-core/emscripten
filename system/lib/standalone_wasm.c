@@ -9,6 +9,7 @@
 #include <emscripten.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -24,13 +25,9 @@
 
 // libc
 
-void exit(int status) {
+void _Exit(int status) {
   __wasi_proc_exit(status);
   __builtin_unreachable();
-}
-
-void _Exit(int status) {
-  exit(status);
 }
 
 void _exit(int status) {
