@@ -112,7 +112,8 @@ def create_lib(libname, inputs):
   suffix = os.path.splitext(libname)[1]
   if suffix in ('.bc', '.o'):
     if len(inputs) == 1:
-      shutil.copyfile(inputs[0], libname)
+      if inputs[0] != libname:
+        shutil.copyfile(inputs[0], libname)
     else:
       shared.Building.link_to_object(inputs, libname)
   elif suffix == '.a':
@@ -384,7 +385,7 @@ class Library(object):
     objects = []
     cflags = self.get_cflags()
     for src in self.get_files():
-      o = self.in_temp(os.path.basename(src) + '.o')
+      o = self.in_temp(os.path.splitext(os.path.basename(src))[0] + '.o')
       commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
       objects.append(o)
     run_build_commands(commands)
