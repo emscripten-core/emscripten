@@ -10786,3 +10786,19 @@ int main() {
 
     # Verify the JS output was smaller
     self.assertLess(os.path.getsize('src.c.o.js'), size_default)
+
+  @no_fastcomp('no .s file support')
+  def test_assembly(self):
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
+    src = path_from_root('tests', 'other', 'test_asm.c')
+    output = path_from_root('tests', 'other', 'test_asm.out')
+    self.emcc_args.append('foo.o')
+    self.do_run_from_file(src, output)
+
+  @no_fastcomp('no .s file support')
+  def test_assembly_preprocessed(self):
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'other', 'test_asm_cpp.S'), '-o', 'foo.o'])
+    src = path_from_root('tests', 'other', 'test_asm.c')
+    output = path_from_root('tests', 'other', 'test_asm.out')
+    self.emcc_args.append('foo.o')
+    self.do_run_from_file(src, output)
