@@ -391,17 +391,18 @@ def inspect_code(headers, cpp_opts, structs, defines):
     if opt in safe_env:
       del safe_env[opt]
 
-  # Use binaryen, if necessary
-  binaryen = os.environ.get('EMCC_WASM_BACKEND_BINARYEN')
-  if binaryen:
-    cpp_opts += ['-s', 'BINARYEN=1']
-
   info = []
   # Compile the program.
   show('Compiling generated code...')
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-Wno-format']
+  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
+         '-O0', '--js-opts', '0', '--memory-init-file', '0', '-Werror', '-Wno-format',
+         '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+         '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
+         '-s', 'STRICT=1',
+         '-s', 'SINGLE_FILE=1']
   if not shared.Settings.WASM_BACKEND:
+    # Avoid the binaryen depednency if we are only using fastcomp
     cmd += ['-s', 'WASM=0']
   if shared.Settings.LTO:
     cmd += ['-flto=' + shared.Settings.LTO]
@@ -409,8 +410,8 @@ def inspect_code(headers, cpp_opts, structs, defines):
   show(cmd)
   try:
     subprocess.check_call(cmd, env=safe_env)
-  except subprocess.CalledProcessError:
-    sys.stderr.write('FAIL: Compilation failed!\n')
+  except subprocess.CalledProcessError as e:
+    sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
 
   # Run the compiled program.

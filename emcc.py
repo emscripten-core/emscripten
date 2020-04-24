@@ -1909,9 +1909,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           passes += parse_passes(shared.Settings.BINARYEN_EXTRA_PASSES)
         options.binaryen_passes = passes
 
-        # to bootstrap struct_info, we need binaryen
-        os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
-
       # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
       # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
       if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only() and not shared.Settings.WASM_BACKEND:
