@@ -711,11 +711,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logger.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
     return False
 
-  # If this is a configure-type thing, do not compile to JavaScript, instead use clang
-  # to compile to a native binary (using our headers, so things make sense later)
-  CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
-  CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(args)
-  if CONFIGURE_CONFIG or CMAKE_CONFIG:
+  CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args
+  if CONFIGURE_CONFIG and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE'):
     # XXX use this to debug configure stuff. ./configure's generally hide our
     # normal output including stderr so we write to a file
     debug_configure = 0
@@ -725,33 +722,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not os.path.exists(tempout):
         open(tempout, 'w').write('//\n')
 
-    src = None
-    for arg in args:
-      if arg.endswith(SOURCE_ENDINGS):
-        try:
-          src = open(arg).read()
-          if debug_configure:
+    if debug_configure:
+      for arg in args:
+        if arg.endswith(SOURCE_ENDINGS):
+          try:
+            src = open(arg).read()
             open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
-        except IOError:
-          pass
+          except IOError:
+            pass
 
     if run_via_emxx:
       compiler = [shared.PYTHON, shared.EMXX]
     else:
       compiler = [shared.PYTHON, shared.EMCC]
 
-    def filter_emscripten_options(argv):
-      skip_next = False
-      for idx, arg in enumerate(argv):
-        if skip_next:
-          skip_next = False
-          continue
-        if arg != '--tracing':
-          yield arg
-
-    cmd = compiler + list(filter_emscripten_options(args))
+    cmd = compiler + [a for a in args if a != '--tracing']
     # configure tests want a more shell-like style, where we emit return codes on exit()
-    cmd += ['-s', 'NO_EXIT_RUNTIME=0']
+    cmd += ['-s', 'EXIT_RUNTIME=1']
     # use node.js raw filesystem access, to behave just like a native executable
     cmd += ['-s', 'NODERAWFS=1']
 
@@ -771,24 +758,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
     ret = run_process(cmd, check=False).returncode
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
-    if not os.path.exists(target):
-      # note that emcc -c will cause target to have the wrong value here;
-      # but then, we don't care about bitcode outputs anyhow, below, so
-      # skipping returning early is fine
-      return ret
-    if target.endswith('.js'):
-      shutil.copyfile(target, unsuffixed(target))
-      target = unsuffixed(target)
-    if not target.endswith(OBJECT_FILE_ENDINGS):
-      src = open(target).read()
-      full_node = ' '.join(shared.NODE_JS)
-      if os.path.sep not in full_node:
-        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
-      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-      try:
-        os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
-      except OSError:
-        pass # can fail if e.g. writing the executable to /dev/null
+    if ret == 0:
+      if target.endswith('.js'):
+        shutil.copyfile(target, unsuffixed(target))
+        target = unsuffixed(target)
+      if not target.endswith(OBJECT_FILE_ENDINGS):
+        src = open(target).read()
+        full_node = ' '.join(shared.NODE_JS)
+        if os.path.sep not in full_node:
+          full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+        open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
+        try:
+          os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+        except OSError:
+          pass # can fail if e.g. writing the executable to /dev/null
     return ret
 
   CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
@@ -1477,7 +1460,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # to flush streams on FS exit, we need to be able to call fflush
       # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
-      # helping people see when they should have disabled NO_EXIT_RUNTIME)
+      # helping people see when they should have enabled EXIT_RUNTIME)
       if shared.Settings.EXIT_RUNTIME or shared.Settings.ASSERTIONS:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
