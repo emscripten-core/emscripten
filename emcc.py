@@ -734,10 +734,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         except IOError:
           pass
 
-    # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-    compiler = os.environ.get('CONFIGURE_CC') or shared.EMXX
-    if not run_via_emxx:
-      compiler = cxx_to_c_compiler(compiler)
+    if run_via_emxx:
+      compiler = [shared.PYTHON, shared.EMXX]
+    else:
+      compiler = [shared.PYTHON, shared.EMCC]
 
     def filter_emscripten_options(argv):
       skip_next = False
@@ -748,10 +748,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if arg != '--tracing':
           yield arg
 
-    if compiler in (shared.EMCC, shared.EMXX):
-      compiler = [shared.PYTHON, compiler]
-    else:
-      compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(args))
     # configure tests want a more shell-like style, where we emit return codes on exit()
     cmd += ['-s', 'NO_EXIT_RUNTIME=0']
@@ -1009,18 +1005,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(arg)
         if file_suffix in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
-          if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix == '.bc'):
+          if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
-          elif file_suffix.endswith(HEADER_ENDINGS):
+          elif file_suffix in HEADER_ENDINGS:
             input_files.append((i, arg))
             has_header_inputs = True
-          elif file_suffix.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg) or shared.Building.is_ar(arg):
+          elif file_suffix in ASSEMBLY_ENDINGS or shared.Building.is_bitcode(arg) or shared.Building.is_ar(arg):
             input_files.append((i, arg))
           elif shared.Building.is_wasm(arg):
             if not shared.Settings.WASM_BACKEND:
               exit_with_error('fastcomp is not compatible with wasm object files:' + arg)
             input_files.append((i, arg))
-          elif file_suffix.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
+          elif file_suffix in (STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
             libname = unsuffixed_basename(arg)
             for prefix in LIB_PREFIXES:
@@ -1033,7 +1029,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             newargs[i] = ''
           else:
             diagnostics.warning('invalid-input', arg + ' is not a valid input file')
-        elif file_suffix.endswith(STATICLIB_ENDINGS):
+        elif file_suffix in STATICLIB_ENDINGS:
           if not shared.Building.is_ar(arg):
             if shared.Building.is_bitcode(arg):
               message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(OBJECT_FILE_ENDINGS)
@@ -1298,7 +1294,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       newargs += ['-DEMSCRIPTEN']
 
-    newargs = shared.COMPILER_OPTS + shared.get_cflags(newargs) + newargs
+    newargs = shared.get_cflags(newargs) + newargs
     if not link_to_object and not compile_only and final_suffix not in executable_endings:
       # TODO(sbc): Remove this emscripten-specific special case.
       diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
@@ -2065,40 +2061,43 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         clang_compiler = CXX
       else:
         clang_compiler = CC
+
+      def is_link_flag(flag):
+        return flag.startswith(('-l', '-L', '-Wl,'))
+
+      compile_args = [a for a in newargs if a and not is_link_flag(a)]
+
+      # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
+      if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
+        compile_args.append('-fno-discard-value-names')
+
+      if not shared.Building.can_inline():
+        compile_args.append('-fno-inline-functions')
+
+      # For fastcomp backend, no LLVM IR functions should ever be annotated
+      # 'optnone', because that would skip running the SimplifyCFG pass on
+      # them, which is required to always run to clean up LandingPadInst
+      # instructions that are not needed.
+      if not shared.Settings.WASM_BACKEND:
+        compile_args += ['-Xclang', '-disable-O0-optnone']
+
       # Precompiled headers support
       if has_header_inputs:
         headers = [header for _, header in input_files]
         for header in headers:
-          assert header.endswith(HEADER_ENDINGS), 'if you have one header input, we assume you want to precompile headers, and cannot have source files or other inputs as well: ' + str(headers) + ' : ' + header
-        args = newargs + headers
+          if not header.endswith(HEADER_ENDINGS):
+            exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
+        args = compile_args + headers
         if specified_target:
           args += ['-o', specified_target]
         args = system_libs.process_args(args, shared.Settings)
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
 
-      # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
-      if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
-        newargs.append('-fno-discard-value-names')
-
-      def is_link_flag(flag):
-        return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
-
-      compile_args = [a for a in newargs if a and not is_link_flag(a)]
-
       # Bitcode args generation code
       def get_clang_command(input_files):
         args = [clang_compiler] + compile_args + input_files
-        if not shared.Building.can_inline():
-          args.append('-fno-inline-functions')
-        # For fastcomp backend, no LLVM IR functions should ever be annotated
-        # 'optnone', because that would skip running the SimplifyCFG pass on
-        # them, which is required to always run to clean up LandingPadInst
-        # instructions that are not needed.
-        if not shared.Settings.WASM_BACKEND:
-          args += ['-Xclang', '-disable-O0-optnone']
-        args = system_libs.process_args(args, shared.Settings)
-        return args
+        return system_libs.process_args(args, shared.Settings)
 
       # preprocessor-only (-E) support
       if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
@@ -2147,31 +2146,30 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
-        file_ending = get_file_suffix(input_file)
-        if file_ending.endswith(SOURCE_ENDINGS) or (has_dash_c and file_ending == '.bc'):
+        file_suffix = get_file_suffix(input_file)
+        if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
           compile_source_file(i, input_file)
+        elif file_suffix in OBJECT_FILE_ENDINGS:
+          logger.debug('using object file: ' + input_file)
+          temp_files.append((i, input_file))
+        elif file_suffix in DYNAMICLIB_ENDINGS:
+          logger.debug('using shared library: ' + input_file)
+          temp_files.append((i, input_file))
+        elif shared.Building.is_ar(input_file):
+          logger.debug('using static library: ' + input_file)
+          ensure_archive_index(input_file)
+          temp_files.append((i, input_file))
+        elif file_suffix in ASSEMBLY_ENDINGS:
+          logger.debug('assembling assembly file: ' + input_file)
+          temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
+          shared.Building.llvm_as(input_file, temp_file)
+          temp_files.append((i, temp_file))
+        elif has_fixed_language_mode:
+          compile_source_file(i, input_file)
+        elif input_file == '-':
+          exit_with_error('-E or -x required when input is from standard input')
         else:
-          if file_ending.endswith(OBJECT_FILE_ENDINGS):
-            logger.debug('using object file: ' + input_file)
-            temp_files.append((i, input_file))
-          elif file_ending.endswith(DYNAMICLIB_ENDINGS):
-            logger.debug('using shared library: ' + input_file)
-            temp_files.append((i, input_file))
-          elif shared.Building.is_ar(input_file):
-            logger.debug('using static library: ' + input_file)
-            ensure_archive_index(input_file)
-            temp_files.append((i, input_file))
-          elif file_ending.endswith(ASSEMBLY_ENDINGS):
-            logger.debug('assembling assembly file: ' + input_file)
-            temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-            shared.Building.llvm_as(input_file, temp_file)
-            temp_files.append((i, temp_file))
-          elif has_fixed_language_mode:
-            compile_source_file(i, input_file)
-          elif input_file == '-':
-            exit_with_error('-E or -x required when input is from standard input')
-          else:
-            exit_with_error(input_file + ': unknown input file suffix')
+          exit_with_error(input_file + ': unknown input file suffix')
 
     # exit block 'compile inputs'
     log_time('compile inputs')
@@ -2183,8 +2181,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Optimize source files
         if optimizing(options.llvm_opts):
           for pos, (_, input_file) in enumerate(input_files):
-            file_ending = get_file_suffix(input_file)
-            if file_ending.endswith(SOURCE_ENDINGS):
+            file_suffix = get_file_suffix(input_file)
+            if file_suffix in SOURCE_ENDINGS:
               temp_file = temp_files[pos][1]
               logger.debug('optimizing %s', input_file)
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')

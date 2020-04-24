@@ -59,3 +59,21 @@ function glue() {
 }
 glue();
 
+var buffer = new ArrayBuffer(1024);
+
+// unnecessary leftovers that seem to have side effects
+"undefined" !== typeof TextDecoder && new TextDecoder("utf8");
+new TextDecoder("utf8");
+new Int8Array(buffer);
+new Uint8Array(buffer);
+new Int16Array(buffer);
+new Uint16Array(buffer);
+new Int32Array(buffer);
+new Uint32Array(buffer);
+new Float32Array(buffer);
+new Float64Array(buffer);
+
+// for comparison, real side effects
+new SomethingUnknownWithSideEffects("utf8");
+new TextDecoder(Unknown());
+
