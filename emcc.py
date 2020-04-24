@@ -1994,6 +1994,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       newargs.append('-g')
 
     if options.tracing:
+      cflags.append('-D__EMSCRIPTEN_TRACING__=1')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
 
@@ -2101,18 +2102,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
 
-      # Bitcode args generation code
       def get_clang_command(input_files):
-        args = [clang_compiler]
-        asm_only = all(get_file_suffix(f) in ASSEMBLY_ENDINGS for f in input_files)
-        if asm_only:
-          args += shared.get_asmflags(compile_args)
-        else:
-          args += cflags
-        args += compile_args + input_files
-        if not asm_only:
-          args = system_libs.process_args(args, shared.Settings)
-        return args
+        args = [clang_compiler] + cflags + compile_args + input_files
+        return system_libs.process_args(args, shared.Settings)
+
+      def get_clang_command_asm(input_files):
+        asflags = shared.get_asmflags(compile_args)
+        return [clang_compiler] + asflags + compile_args + input_files
 
       # preprocessor-only (-E) support
       if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
@@ -2140,7 +2136,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('compiling source file: ' + input_file)
         output_file = get_object_filename(input_file)
         temp_files.append((i, output_file))
-        cmd = get_clang_command([input_file]) + ['-c', '-o', output_file]
+        if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
+          cmd = get_clang_command_asm([input_file])
+        else:
+          cmd = get_clang_command([input_file])
+        cmd += ['-c', '-o', output_file]
         if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
           cmd.append('-fPIC')
           cmd.append('-fvisibility=default')
@@ -2894,7 +2894,6 @@ def parse_args(newargs):
         options.memory_profiler = True
       options.tracing = True
       newargs[i] = ''
-      cflags.append('-D__EMSCRIPTEN_TRACING__=1')
       settings_changes.append("EMSCRIPTEN_TRACING=1")
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
