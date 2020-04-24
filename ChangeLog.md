@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Emscripten can now compile assembly files in llvm's .s/.S file format.
 - Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
   The two uses cases in our test code were covered by the `-nostdlib` option.
 - Remove untested `CONFIGURE_CC`.  This could be used to override the underlying
