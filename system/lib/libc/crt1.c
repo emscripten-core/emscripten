@@ -21,6 +21,9 @@ extern void __wasm_call_ctors(void) __attribute__((weak));
 // https://github.com/emscripten-core/emscripten/issues/9640
 extern int main(int argc, char** argv) __attribute__((weak));
 
+// musl atexit() handling code, which is only linked in if atexit() is called.
+extern void __funcs_on_exit() __attribute__((weak));
+
 // If main() uses argc/argv, then no __original_main is emitted, and then
 // this definition is used, which loads those values and sends them to main.
 // If main() does not use argc/argv, then the compiler emits __original_main
@@ -71,6 +74,10 @@ void _start(void) {
   }
 
   int r = __original_main();
+
+  if (__funcs_on_exit) {
+    __funcs_on_exit();
+  }
 
   /* If main exited successfully, just return, otherwise call _Exit.
    * TODO(sbc): switch to _Exit */

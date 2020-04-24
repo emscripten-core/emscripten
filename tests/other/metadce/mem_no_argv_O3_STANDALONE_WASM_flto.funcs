@@ -1,3 +1,5 @@
+$__funcs_on_exit
+$__wasm_call_ctors
 $_start
 $main
 $malloc
