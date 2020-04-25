@@ -403,7 +403,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
                                                    '-s', 'STRICT=1',
                                                    '-s', 'SINGLE_FILE=1']
   if not shared.Settings.WASM_BACKEND:
-    # Avoid the binaryen depednency if we are only using fastcomp
+    # Avoid the binaryen dependency if we are only using fastcomp
     cmd += ['-s', 'WASM=0']
   if shared.Settings.LTO:
     cmd += ['-flto=' + shared.Settings.LTO]
