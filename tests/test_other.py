@@ -2412,29 +2412,31 @@ int f() {
       output = run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
+  def test_embind_fail(self):
+    out = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'embind', 'test_unsigned.cpp')])
+    self.assertContained("undefined symbol: _embind_register_function", out)
+
+  @is_slow_test
   def test_embind(self):
     environ = os.environ.copy()
     environ['EMCC_CLOSURE_ARGS'] = environ.get('EMCC_CLOSURE_ARGS', '') + " --externs " + pipes.quote(path_from_root('tests', 'embind', 'underscore-externs.js'))
     test_cases = [
-        ([], True), # without --bind, we fail
-        (['--bind'], False),
-        (['--bind', '-O1'], False),
-        (['--bind', '-O2'], False),
-        (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')], False),
+        (['--bind']),
+        (['--bind', '-O1']),
+        (['--bind', '-O2']),
+        (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')]),
     ]
     without_utf8_args = ['-s', 'EMBIND_STD_STRING_IS_UTF8=0']
     test_cases_without_utf8 = []
-    for args, fail in test_cases:
-        test_cases_without_utf8.append((args + without_utf8_args, fail))
+    for args in test_cases:
+        test_cases_without_utf8.append((args + without_utf8_args))
     test_cases += test_cases_without_utf8
-    test_cases.extend([(args[:] + ['-s', 'DYNAMIC_EXECUTION=0'], status) for args, status in test_cases])
-    test_cases.append((['--bind', '-O2', '--closure', '1'], False)) # closure compiler doesn't work with DYNAMIC_EXECUTION=0
-    test_cases = [(args + ['-s', 'IN_TEST_HARNESS=1'], status) for args, status in test_cases]
-
-    for args, fail in test_cases:
-      print(args, fail)
+    test_cases.extend([(args[:] + ['-s', 'DYNAMIC_EXECUTION=0']) for args in test_cases])
+    # closure compiler doesn't work with DYNAMIC_EXECUTION=0
+    test_cases.append((['--bind', '-O2', '--closure', '1']))
+    for args in test_cases:
+      print(args)
       self.clear()
-      try_delete('a.out.js')
 
       testFiles = [
         path_from_root('tests', 'embind', 'underscore-1.4.2.js'),
@@ -2442,30 +2444,26 @@ int f() {
         path_from_root('tests', 'embind', 'embind.test.js'),
       ]
 
-      proc = run_process(
+      run_process(
         [PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'),
          '--pre-js', path_from_root('tests', 'embind', 'test.pre.js'),
          '--post-js', path_from_root('tests', 'embind', 'test.post.js'),
-         '-s', 'WASM_ASYNC_COMPILATION=0'] + args,
-        stderr=PIPE if fail else None,
-        check=not fail,
+         '-s', 'WASM_ASYNC_COMPILATION=0',
+         '-s', 'IN_TEST_HARNESS=1'] + args,
         env=environ)
 
-      if fail:
-        self.assertNotEqual(proc.returncode, 0)
-      else:
-        if 'DYNAMIC_EXECUTION=0' in args:
-          with open('a.out.js') as js_binary_file:
-            js_binary_str = js_binary_file.read()
-            self.assertNotIn('new Function(', js_binary_str, 'Found "new Function(" with DYNAMIC_EXECUTION=0')
-            self.assertNotIn('eval(', js_binary_str, 'Found "eval(" with DYNAMIC_EXECUTION=0')
+      if 'DYNAMIC_EXECUTION=0' in args:
+        with open('a.out.js') as js_binary_file:
+          js_binary_str = js_binary_file.read()
+          self.assertNotContained('new Function(', js_binary_str)
+          self.assertNotContained('eval(', js_binary_str)
 
-        with open('a.out.js', 'ab') as f:
-          for tf in testFiles:
-            f.write(open(tf, 'rb').read())
+      with open('a.out.js', 'ab') as f:
+        for tf in testFiles:
+          f.write(open(tf, 'rb').read())
 
-        output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, engine=NODE_JS)
-        assert "FAIL" not in output, output
+      output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, engine=NODE_JS)
+      self.assertNotContained('FAIL', output)
 
   def test_emconfig(self):
     output = run_process([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
