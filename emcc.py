@@ -746,32 +746,32 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if debug_configure:
       open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
 
-    only_object = '-c' in cmd
-    for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified
-      if cmd[i] == '-o':
-        if not only_object:
-          cmd[i + 1] += '.js'
-        target = cmd[i + 1]
-        break
-    if not target:
+    linking = '-c' not in cmd
+    # Last -o directive should take precedence, if multiple are specified
+    if linking:
       target = 'a.out.js'
-    os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
-    ret = run_process(cmd, check=False).returncode
-    os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
-    if ret == 0:
+      for i in reversed(range(len(cmd) - 1)):
+        if cmd[i] == '-o':
+          if linking:
+            cmd[i + 1] += '.js'
+          target = cmd[i + 1]
+          break
+    env = os.environ.copy()
+    env['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
+    ret = run_process(cmd, check=False, env=env).returncode
+    if ret == 0 and linking:
       if target.endswith('.js'):
         shutil.copyfile(target, unsuffixed(target))
         target = unsuffixed(target)
-      if not target.endswith(OBJECT_FILE_ENDINGS):
-        src = open(target).read()
-        full_node = ' '.join(shared.NODE_JS)
-        if os.path.sep not in full_node:
-          full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
-        open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-        try:
-          os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
-        except OSError:
-          pass # can fail if e.g. writing the executable to /dev/null
+      src = open(target).read()
+      full_node = ' '.join(shared.NODE_JS)
+      if os.path.sep not in full_node:
+        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
+      try:
+        os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+      except OSError:
+        pass # can fail if e.g. writing the executable to /dev/null
     return ret
 
   CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
