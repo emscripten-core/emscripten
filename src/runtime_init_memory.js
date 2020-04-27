@@ -96,7 +96,7 @@ HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
 // Older browsers may lack TypedArray.slice()
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/slice#Browser_compatibility
 [Int8Array, Uint8Array, Int16Array, Uint16Array, Int32Array, Uint32Array,
-   Float32Array, Float64Array].forEach(typedArray) {
+   Float32Array, Float64Array].forEach(function(typedArray) {
   if (!typedArray.prototype.slice) {
     Object.defineProperty(typedArray.prototype, 'slice', {
       value: function(begin, end) {
