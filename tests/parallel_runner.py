@@ -10,6 +10,7 @@ import subprocess
 import sys
 import unittest
 import tempfile
+import time
 
 from tools.tempfiles import try_delete
 
@@ -130,13 +131,15 @@ class BufferedParallelTestResult(object):
     result.stopTest(self.test)
 
   def startTest(self, test):
-    pass
+    self.startTime = time.perf_counter()
 
   def stopTest(self, test):
-    pass
+    # TODO(sbc): figure out a way to display this duration information agian when
+    # these results get passed back to the TextTestRunner/TextTestResult.
+    self.buffered_result.duration = time.perf_counter() - self.startTime
 
   def addSuccess(self, test):
-    print(test, '... ok', file=sys.stderr)
+    print(test, '... ok (%.2fs)' % (time.perf_counter() - self.startTime), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
   def addSkip(self, test, reason):
