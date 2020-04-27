@@ -2149,28 +2149,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(input_file)
         if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
           compile_source_file(i, input_file)
+        elif file_suffix in OBJECT_FILE_ENDINGS:
+          logger.debug('using object file: ' + input_file)
+          temp_files.append((i, input_file))
+        elif file_suffix in DYNAMICLIB_ENDINGS:
+          logger.debug('using shared library: ' + input_file)
+          temp_files.append((i, input_file))
+        elif shared.Building.is_ar(input_file):
+          logger.debug('using static library: ' + input_file)
+          ensure_archive_index(input_file)
+          temp_files.append((i, input_file))
+        elif file_suffix in ASSEMBLY_ENDINGS:
+          logger.debug('assembling assembly file: ' + input_file)
+          temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
+          shared.Building.llvm_as(input_file, temp_file)
+          temp_files.append((i, temp_file))
+        elif has_fixed_language_mode:
+          compile_source_file(i, input_file)
+        elif input_file == '-':
+          exit_with_error('-E or -x required when input is from standard input')
         else:
-          if file_suffix in OBJECT_FILE_ENDINGS:
-            logger.debug('using object file: ' + input_file)
-            temp_files.append((i, input_file))
-          elif file_suffix in DYNAMICLIB_ENDINGS:
-            logger.debug('using shared library: ' + input_file)
-            temp_files.append((i, input_file))
-          elif shared.Building.is_ar(input_file):
-            logger.debug('using static library: ' + input_file)
-            ensure_archive_index(input_file)
-            temp_files.append((i, input_file))
-          elif file_suffix in ASSEMBLY_ENDINGS:
-            logger.debug('assembling assembly file: ' + input_file)
-            temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-            shared.Building.llvm_as(input_file, temp_file)
-            temp_files.append((i, temp_file))
-          elif has_fixed_language_mode:
-            compile_source_file(i, input_file)
-          elif input_file == '-':
-            exit_with_error('-E or -x required when input is from standard input')
-          else:
-            exit_with_error(input_file + ': unknown input file suffix')
+          exit_with_error(input_file + ': unknown input file suffix')
 
     # exit block 'compile inputs'
     log_time('compile inputs')
