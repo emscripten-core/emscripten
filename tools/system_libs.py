@@ -312,7 +312,7 @@ class Library(object):
     # libc++-mt.symbols), and if there isn't one, it tries to read the 'default'
     # symbol file, which does not have any optional suffices (e.g.
     # libc++.symbols).
-    basename = os.path.splitext(self.get_filename())[0]
+    basename = shared.unsuffixed(self.get_filename())
     if shared.Settings.WASM_BACKEND:
       symbols_dir = shared.path_from_root('system', 'lib', 'symbols', 'wasm')
     else:
@@ -385,7 +385,7 @@ class Library(object):
     objects = []
     cflags = self.get_cflags()
     for src in self.get_files():
-      o = self.in_temp(os.path.splitext(os.path.basename(src))[0] + '.o')
+      o = self.in_temp(shared.unsuffixed_basename(src) + '.o')
       commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
       objects.append(o)
     run_build_commands(commands)
