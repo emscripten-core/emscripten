@@ -6,7 +6,7 @@
 #
 # Entry point for running python scripts on UNIX systems.
 #
-# To modify this file, edit `tools/run_python.py` and then run
+# To modify this file, edit `tools/run_python.sh` and then run
 # `tools/create_entry_points.py`
 
 if [ -z "$PYTHON" ]; then
