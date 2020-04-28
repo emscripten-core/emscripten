@@ -2056,7 +2056,6 @@ class Building(object):
     output = Building.maybe_add_license(code=output)
     return output
 
-
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
   def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
