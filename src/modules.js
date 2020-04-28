@@ -160,7 +160,7 @@ var LibraryManager = {
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) {
-      libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+      libraries = ['library_formatString.js'];
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: MIT
  */
 
+
+#if BOOTSTRAPPING_STRUCT_INFO
+assert(!LibraryManager.library);
+LibraryManager.library = {}
+#endif
+
 mergeInto(LibraryManager.library, {
   // Performs printf-style formatting.
   //   format: A pointer to the format string.
