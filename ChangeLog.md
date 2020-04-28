@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Emscripten can now compile assembly files in llvm's .s/.S file format.
 - Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
   The two uses cases in our test code were covered by the `-nostdlib` option.
 - Remove untested `CONFIGURE_CC`.  This could be used to override the underlying
@@ -24,6 +25,9 @@ Current Trunk
   ways to control/fake the detected configure features that don't require such
   monkey patching. For example setting defaults via a site file:
   https://www.gnu.org/software/autoconf/manual/autoconf-2.67/html_node/Site-Defaults.html
+- Remove undocumented and untesting config settings: `COMPILER_OPTS`.  This was
+  a global setting in the emscripten config file that would inject extra
+  compiler options.
 
 v1.39.13: 04/17/2020
 --------------------

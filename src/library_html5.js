@@ -2476,7 +2476,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
 #endif
-      return 0;
+      return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -2502,7 +2502,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
         console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
-        return 0;
+        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #endif
       }
 
@@ -2521,7 +2521,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
           console.error('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
 #endif
-          return 0;
+          return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
         }
         canvas = GL.offscreenCanvases[canvas.id];
       }
@@ -2539,7 +2539,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
 #endif
-      return 0;
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 #endif // ~!OFFSCREEN_FRAMEBUFFER
 
