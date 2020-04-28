@@ -4,6 +4,14 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if BOOTSTRAPPING_STRUCT_INFO
+// When bootstrapping struct info, this is the entire library.  It is literally
+// just enough to run the bootstrap program that prints out C constants for us,
+// we obviously need to run without any such constants ourselves...
+assert(!LibraryManager.library);
+LibraryManager.library = {}
+#endif
+
 mergeInto(LibraryManager.library, {
   // Performs printf-style formatting.
   //   format: A pointer to the format string.
