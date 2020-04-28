@@ -1648,10 +1648,6 @@ LibraryManager.library = {
     return +Math_max(+x, +y);
   },
 
-  _reallyNegative: function(x) {
-    return x < 0 || (x === 0 && (1/x) === -Infinity);
-  },
-
   // ==========================================================================
   // dlfcn.h - Dynamic library loading
   //
