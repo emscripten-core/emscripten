@@ -7857,6 +7857,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_wasm_backend('EMTERPRETIFY')
   def test_async_emterpretify(self):
+    self.emcc_args.append('-Wno-emterpreter')
     self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
@@ -8080,6 +8081,7 @@ extern "C" {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
+    self.emcc_args.append('-Wno-emterpreter')
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
@@ -8116,6 +8118,7 @@ extern "C" {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_emterpretify(self):
+    self.emcc_args.append('-Wno-emterpreter')
     self.set_setting('EMTERPRETIFY', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     print('async')
