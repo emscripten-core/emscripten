@@ -1387,7 +1387,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EMBIND:
       forced_stdlibs.append('libembind')
 
-    if not shared.Settings.MINIMAL_RUNTIME:
+    if not shared.Settings.MINIMAL_RUNTIME and not shared.Settings.STANDALONE_WASM:
       # Always need malloc and free to be kept alive and exported, for internal use and other
       # modules
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
