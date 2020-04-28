@@ -71,7 +71,7 @@
   "__cxa_allocate_exception": ["malloc", "setThrew"],
   "__cxa_free_exception": ["free"],
   "__cxa_throw": ["setThrew"],
-  "_formatString": ["strlen"],
+  "formatString": ["strlen"],
   "glfwSleep": ["sleep"],
   "glBegin": ["malloc", "free"],
   "bind": ["htonl", "htons", "ntohs"],
