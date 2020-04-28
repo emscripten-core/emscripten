@@ -17,7 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Add warning on use of `EMTERPRETIFY` which is due to be removed.
+- Add warning on use of `EMTERPRETIFY` which is soon to be removed.
 - Emscripten can now compile assembly files in llvm's .s/.S file format.
 - Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
   The two uses cases in our test code were covered by the `-nostdlib` option.
