@@ -1,8 +1,3 @@
-$__wasm_call_ctors
 $_start
-<<<<<<< HEAD
-$close_file
-=======
 $dlmalloc
->>>>>>> origin/master
 $main
