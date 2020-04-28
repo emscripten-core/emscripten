@@ -30,12 +30,8 @@ void _Exit(int status) {
   __builtin_unreachable();
 }
 
-void _exit(int status) {
-  exit(status);
-}
-
 void abort() {
-  exit(1);
+  _Exit(1);
 }
 
 _Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "must match");
