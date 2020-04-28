@@ -4318,10 +4318,10 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_log__deps: ['_formatString', 'emscripten_log_js'],
+  emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
   emscripten_log: function(flags, format, varargs) {
     var str = '';
-    var result = __formatString(format, varargs);
+    var result = formatString(format, varargs);
     for (var i = 0 ; i < result.length; ++i) {
       str += String.fromCharCode(result[i]);
     }
