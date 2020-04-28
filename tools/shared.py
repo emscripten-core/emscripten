@@ -42,7 +42,7 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 91
+EXPECTED_BINARYEN_VERSION = 92
 
 
 # can add  %(asctime)s  to see timestamps
