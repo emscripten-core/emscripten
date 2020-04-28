@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Update SDL2 to latest in ports, which has recently been updated to include
+  upstream 2.0.10.
 - Emscripten can now compile assembly files in llvm's .s/.S file format.
 - Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
   The two uses cases in our test code were covered by the `-nostdlib` option.
