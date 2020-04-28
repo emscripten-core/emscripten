@@ -100,7 +100,7 @@ HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
   if (!typedArray.prototype.slice) {
     Object.defineProperty(typedArray.prototype, 'slice', {
       value: function(begin, end) {
-        return new typedArray(Array.prototype.slice.call(this, begin, end));
+        return new typedArray(this.subarray(begin, end));
       }
     });
   }
