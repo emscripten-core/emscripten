@@ -3249,7 +3249,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   # after generating the wasm, do some final operations
   if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
-    shared.WebAssembly.make_shared_library(wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
+    shared.WebAssembly.add_dylink_section(wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
     if not DEBUG:
       os.unlink(asm_target) # we don't need the asm.js, it can just confuse
 

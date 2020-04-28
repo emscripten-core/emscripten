@@ -33,7 +33,6 @@ from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
-from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
 from tools import jsrun, shared
@@ -9655,47 +9654,16 @@ int main () {
       self.assertNotContained('invoke_ii', output)
       self.assertNotContained('invoke_v', output)
 
-  def test_add_emscripten_metadata(self):
+  def test_emscripten_metadata(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    self.assertNotIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
                  '-s', 'EMIT_EMSCRIPTEN_METADATA'])
-    wasm = open('a.out.wasm', 'rb').read()
-    # emscripten_metadata should be in the wasm data
-    offset = 8 # skip magic + header
-    while True:
-      section = wasm[offset:offset + 1]
-      # No emscripten_metadata section found before standard wasm sections')
-      self.assertEqual(section, b'\0')
-      offset += 1
-      section_size, offset = WebAssembly.readLEB(wasm, offset)
-      end_offset = offset + section_size
-      name_len, offset = WebAssembly.readLEB(wasm, offset)
-      name = wasm[offset:offset + name_len]
-      if name == b'emscripten_metadata':
-        break
-      offset = end_offset
-      if offset >= len(wasm):
-        self.assertFalse('No emscripten_metadata section found')
+    self.assertIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
 
     # make sure wasm executes correctly
     ret = run_process(NODE_JS + ['a.out.js'], stdout=PIPE).stdout
     self.assertTextDataIdentical('hello, world!\n', ret)
-
-  def test_no_emscripten_metadata(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
-    wasm = open('a.out.wasm', 'rb').read()
-    # emscripten_metadata should be in the wasm data
-    offset = 8 # skip magic + header
-    while offset < len(wasm):
-      section = wasm[offset:offset + 1]
-      offset += 1
-      section_size, offset = WebAssembly.readLEB(wasm, offset)
-      end_offset = offset + section_size
-      # if this is a custom section
-      if section == b'\0':
-        name_len, offset = WebAssembly.readLEB(wasm, offset)
-        name = wasm[offset:offset + name_len]
-        self.assertNotEqual(name, b'emscripten_metadata')
-      offset = end_offset
 
   @parameterized({
     'O2': (False, ['-O2']), # noqa

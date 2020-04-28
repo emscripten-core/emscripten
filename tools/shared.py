@@ -3137,7 +3137,7 @@ class WebAssembly(object):
       f.write(orig[8:])
 
   @staticmethod
-  def make_shared_library(wasm_file, needed_dynlibs):
+  def add_dylink_section(wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     assert not Settings.WASM_BACKEND
     mem_align = Settings.MAX_GLOBAL_ALIGN
