@@ -2482,10 +2482,10 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
-  def test_atexit_threads(self):
+  def test_atexit_cxa(self):
     # also tests thread exit (__cxa_thread_atexit)
     self.set_setting('EXIT_RUNTIME', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_atexit_threads')
+    self.do_run_in_out_file_test('tests', 'core', 'test_atexit_cxa')
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
