@@ -8983,7 +8983,7 @@ strict = make_run('strict', emcc_args=['-O2'], settings={'DEFAULT_TO_CXX': 0})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter
-  asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
+  asm2i = make_run('asm2i', emcc_args=['-O2', '-Wno-emterpreter'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
 if shared.Settings.WASM_BACKEND:
   lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
