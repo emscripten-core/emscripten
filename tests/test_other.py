@@ -2149,8 +2149,6 @@ int f() {
        ['applyImportAndExportNameChanges']),
       (path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges2.js'), open(path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges2-output.js')).read(),
        ['applyImportAndExportNameChanges']),
-      (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
-       ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'minimal-runtime-2-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-2-emitDCEGraph-output.js')).read(),
@@ -5472,391 +5470,6 @@ info: errno=54 Not a directory
 pass: error == ENOTDIR
 ''', run_js('a.out.js'))
 
-  @no_wasm_backend("uses EMTERPRETIFY")
-  @unittest.skipIf(SPIDERMONKEY_ENGINE not in JS_ENGINES, 'requires SpiderMonkey')
-  def test_emterpreter(self):
-    def do_emcc_test(source, args, output, emcc_args=[]):
-      print()
-      print('emcc', source[:40], '\n' in source)
-      try_delete('a.out.js')
-      if '\n' in source:
-        create_test_file('src.cpp', source)
-        source = 'src.cpp'
-      else:
-        source = path_from_root('tests', source)
-      run_process([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2', '-s', 'WASM=0'] + emcc_args)
-      self.assertTextDataContained(output, run_js('a.out.js', args=args))
-      out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
-      self.assertTextDataContained(output, out)
-      self.validate_asmjs(out)
-      # -g2 enables these
-      src = open('a.out.js').read()
-      assert 'function emterpret' in src, 'emterpreter should exist'
-      # and removing calls to the emterpreter break, so it was being used
-      out1 = run_js('a.out.js', args=args)
-      assert output in out1
-      create_test_file('a.out.js', src.replace('function emterpret', 'function do_not_find_me'))
-      out2 = run_js('a.out.js', args=args, stderr=PIPE, assert_returncode=None)
-      assert output not in out2, out2
-      assert out1 != out2
-
-    def do_test(source, args, output):
-      print()
-      print('emcc', source.replace('\n', '.')[:40], '\n' in source)
-      self.clear()
-      if '\n' in source:
-        create_test_file('src.cpp', source)
-        source = 'src.cpp'
-      else:
-        source = path_from_root('tests', source)
-      run_process([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048', '-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'WASM=0'])
-      run_process([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0'])
-      self.assertTextDataContained(output, run_js('a.out.js', args=args))
-      self.assertTextDataContained(output, run_js('em.out.js', args=args))
-      out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
-      self.assertTextDataContained(output, out)
-
-    # generate default shell for js test
-    def make_default(args=[]):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048', '-s', 'WASM=0'] + args)
-      default = open('a.out.js').read()
-      start = default.index('function _main(')
-      end = default.index('}', start)
-      default = default[:start] + '{{{MAIN}}}' + default[end + 1:]
-      default_mem = open('a.out.js.mem', 'rb').read()
-      return default, default_mem
-    default, default_mem = make_default()
-    default_float, default_float_mem = make_default(['-s', 'PRECISE_F32=1'])
-
-    def do_js_test(name, source, args, output, floaty=False):
-      print()
-      print('js', name)
-      self.clear()
-      if '\n' not in source:
-        source = open(source).read()
-      the_default = default if not floaty else default_float
-      the_default_mem = default_mem if not floaty else default_float_mem
-      source = the_default.replace('{{{MAIN}}}', source)
-      create_test_file('a.out.js', source)
-      open('a.out.js.mem', 'wb').write(the_default_mem)
-      run_process([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0'])
-      sm_no_warn = [x for x in SPIDERMONKEY_ENGINE if x != '-w']
-      self.assertTextDataContained(output, run_js('a.out.js', engine=sm_no_warn, args=args)) # run in spidermonkey for print()
-      self.assertTextDataContained(output, run_js('em.out.js', engine=sm_no_warn, args=args))
-
-    do_emcc_test('hello_world.c', [], 'hello, world!')
-
-    do_test('hello_world.c', [], 'hello, world!')
-    do_test('hello_world_loop.cpp', [], 'hello, world!')
-    do_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.')
-
-    print('profiling')
-
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2'])
-    normal = open('a.out.js').read()
-    shutil.copyfile('a.out.js', 'last.js')
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2', '--profiling'])
-    profiling = open('a.out.js').read()
-    assert len(profiling) > len(normal) + 250, [len(profiling), len(normal)] # should be much larger
-
-    print('blacklisting')
-
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', [])
-    src = open('a.out.js').read()
-    assert 'emterpret' in self.get_func(src, '_main'), 'main is emterpreted'
-    assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
-
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]']) # blacklist main
-    src = open('a.out.js').read()
-    assert 'emterpret' not in self.get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
-    assert 'emterpret' in self.get_func(src, '_atoi'), 'atoi is emterpreted'
-
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main", "_atoi"]']) # blacklist main and atoi
-    src = open('a.out.js').read()
-    assert 'emterpret' not in self.get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
-    assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
-
-    create_test_file('blacklist.txt', '["_main", "_atoi"]')
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=@blacklist.txt']) # blacklist main and atoi with a @response file
-    src = open('a.out.js').read()
-    assert 'emterpret' not in self.get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
-    assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
-
-    print('whitelisting')
-
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=[]'])
-    src = open('a.out.js').read()
-    assert 'emterpret' in self.get_func(src, '_main'), 'main is emterpreted'
-    assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
-
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=["_main"]'])
-    src = open('a.out.js').read()
-    assert 'emterpret' in self.get_func(src, '_main')
-    assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
-
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=["_main", "_atoi"]'])
-    src = open('a.out.js').read()
-    assert 'emterpret' in self.get_func(src, '_main')
-    assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
-
-    create_test_file('whitelist.txt', '["_main"]')
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=@whitelist.txt'])
-    src = open('a.out.js').read()
-    assert 'emterpret' in self.get_func(src, '_main')
-    assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
-
-    do_test(r'''
-#include <stdio.h>
-
-int main() {
-  volatile float f;
-  volatile float *ff = &f;
-  *ff = -10;
-  printf("hello, world! %d\n", (int)f);
-  return 0;
-}
-''', [], 'hello, world! -10')
-
-    do_test(r'''
-#include <stdio.h>
-
-int main() {
-  volatile float f;
-  volatile float *ff = &f;
-  *ff = -10;
-  printf("hello, world! %.2f\n", f);
-  return 0;
-}
-''', [], 'hello, world! -10.00')
-
-    do_js_test('float', r'''
-function _main() {
-  var f = f0;
-  f = f0 + f0;
-  print(f);
-}
-''', [], '0\n', floaty=True)
-
-    do_js_test('conditionals', r'''
-function _main() {
- var i8 = 0;
- var d10 = +d10, d11 = +d11, d7 = +d7, d5 = +d5, d6 = +d6, d9 = +d9;
- d11 = +1;
- d7 = +2;
- d5 = +3;
- d6 = +4;
- d10 = d11 < d7 ? d11 : d7;
- print(d10);
- d9 = d5 < d6 ? d5 : d6;
- print(d9);
- HEAPF64[tempDoublePtr >> 3] = d10;
- i8 = STACKTOP;
- HEAP32[i8 >> 2] = HEAP32[tempDoublePtr >> 2];
- HEAP32[i8 + 4 >> 2] = HEAP32[tempDoublePtr + 4 >> 2];
- print(HEAP32[i8 >> 2]);
- print(HEAP32[i8 + 4 >> 2]);
-}
-''', [], '1\n3\n0\n1072693248\n')
-
-    do_js_test('bigswitch', r'''
-function _main() {
- var i2 = 0, i3 = 0, i4 = 0, i6 = 0, i8 = 0, i9 = 0, i10 = 0, i11 = 0, i12 = 0, i13 = 0, i14 = 0, i15 = 0, i16 = 0, i5 = 0, i7 = 0, i1 = 0;
- print(4278);
- i6 = 0;
- L1 : while (1) {
-  i11 = -1;
-  switch ((i11 | 0)) {
-  case 0:
-   {
-    i6 = 67;
-    break;
-   }
-  default:
-   {}
-  }
-  print(i6);
-  break;
- }
- print(i6);
-}
-''', [], '4278\n0\n0\n')
-
-    do_js_test('big int compare', r'''
-function _main() {
-  print ((0 > 4294963001) | 0);
-}
-''', [], '0\n')
-
-    do_js_test('effectless expressions, with a subeffect', r'''
-function _main() {
-  (print (123) | 0) != 0;
-  print (456) | 0;
-  0 != (print (789) | 0);
-  0 | (print (159) | 0);
-}
-''', [], '123\n456\n789\n159\n')
-
-    do_js_test('effectless unary', r'''
-function _main() {
-  !(0 != 0);
-  !(print (123) | 0);
-}
-''', [], '123\n')
-
-    do_js_test('flexible mod', r'''
-function _main() {
-  print(1 % 16);
-}
-''', [], '1\n')
-
-  @no_wasm_backend("uses emterpreter")
-  def test_emterpreter_logging(self):
-    # codegen log tests
-
-    def do_log_test(source, expected, func):
-      print('log test', source, expected)
-      with env_modify({'EMCC_LOG_EMTERPRETER_CODE': '1'}):
-        err = run_process([PYTHON, EMCC, source, '-O3', '-s', 'EMTERPRETIFY=1'], stderr=PIPE).stderr
-      lines = err.split('\n')
-      lines = [line for line in lines if 'raw bytecode for ' + func in line]
-      assert len(lines) == 1, '\n\n'.join(lines)
-      err = lines[0]
-      parts = err.split('insts: ')
-      pre, post = parts[:2]
-      assert func in pre, pre
-      post = post.split('\n')[0]
-      seen = int(post)
-      print('  seen', seen, ', expected ', expected, type(seen), type(expected))
-      assert expected == seen or (type(expected) in [list, tuple] and seen in expected), ['expect', expected, 'but see', seen]
-
-    do_log_test(path_from_root('tests', 'primes.cpp'), list(range(88, 101)), '_main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), list(range(226, 241)), '__Z15fannkuch_workerPv')
-
-  @no_wasm_backend('uses emterpreter')
-  def test_emterpreter_advise(self):
-    out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).stdout
-    self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["__Z6middlev", "__Z7sleeperv", "__Z8recurserv", "_main"]\'', out)
-
-    out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).stdout
-    self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["__Z4posti", "__Z5post2i", "__Z6middlev", "__Z7sleeperv", "__Z8recurserv", "_main"]\'', out)
-
-    out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_synclist.c'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_SYNCLIST=["_j","_k"]'], stdout=PIPE).stdout
-    self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_a", "_b", "_e", "_f", "_main"]\'', out)
-
-    # The same EMTERPRETIFY_WHITELIST should be in core.test_coroutine_emterpretify_async
-    out = run_process([PYTHON, EMCC, path_from_root('tests', 'test_coroutines.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).stdout
-    self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_f", "_fib", "_g"]\'', out)
-
-  @no_wasm_backend('uses emterpreter')
-  def test_emterpreter_async_assertions(self):
-    # emterpretify-async mode with assertions adds checks on each call out of the emterpreter;
-    # make sure we handle all possible types there
-    for t, out in [
-      ('int',    '18.00'),
-      ('float',  '18.51'),
-      ('double', '18.51'),
-    ]:
-      print(t, out)
-      create_test_file('src.c', r'''
-        #include <stdio.h>
-        #include <emscripten.h>
-
-        #define TYPE %s
-
-        TYPE marfoosh(TYPE input) {
-          return input * 1.5;
-        }
-
-        TYPE fleefl(TYPE input) {
-          return marfoosh(input);
-        }
-
-        int main(void) {
-          printf("result: %%.2f\n", (double)fleefl((TYPE)12.34));
-        }
-      ''' % t)
-      run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_fleefl"]', '-s', 'PRECISE_F32=1'])
-      self.assertContained('result: ' + out, run_js('a.out.js'))
-
-  @no_wasm_backend('uses emterpreter')
-  def test_emterpreter_async_whitelist_wildcard(self):
-    # using wildcard to match homonymous functions that the linker
-    # unpredictably renamed
-    create_test_file('src1.c', r'''
-      #include <stdio.h>
-      extern void call_other_module();
-      static void homonymous() {
-          printf("result: 1\n");
-      }
-      int main() {
-          homonymous();
-          call_other_module();
-      }
-      ''')
-    create_test_file('src2.c', r'''
-      #include <emscripten.h>
-      #include <stdio.h>
-      static void homonymous() {
-          emscripten_sleep(1);
-          printf("result: 2\n");
-      }
-      void call_other_module() {
-          homonymous();
-      }
-      ''')
-    run_process([PYTHON, EMCC, 'src1.c', 'src2.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main", "_call_other_module", "_homonymous*"]'])
-    self.assertContained('result: 1\nresult: 2', run_js('a.out.js'))
-
-  @no_wasm_backend('uses EMTERPRETIFY')
-  def test_call_nonemterpreted_during_sleep(self):
-    create_test_file('src.c', r'''
-#include <stdio.h>
-#include <emscripten.h>
-
-EMSCRIPTEN_KEEPALIVE void emterpreted_yielder() {
-  int counter = 0;
-  while (1) {
-    printf("emterpreted_yielder() sleeping...\n");
-    emscripten_sleep_with_yield(10);
-    counter++;
-    if (counter == 3) {
-      printf("Success\n");
-      break;
-    }
-  }
-}
-
-EMSCRIPTEN_KEEPALIVE void not_emterpreted() {
-  printf("Entering not_emterpreted()\n");
-}
-
-int main() {
-  EM_ASM({
-    setTimeout(function () {
-      console.log("calling not_emterpreted()");
-      Module["_not_emterpreted"]();
-    }, 0);
-    console.log("calling emterpreted_yielder()");
-#ifdef BAD_EM_ASM
-    Module['_emterpreted_yielder']();
-#endif
-  });
-#ifndef BAD_EM_ASM
-  emterpreted_yielder();
-#endif
-}
-    ''')
-    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]'])
-    self.assertContained('Success', run_js('a.out.js'))
-
-    print('check calling of emterpreted as well')
-    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
-    self.assertContained('Success', run_js('a.out.js'))
-
-    print('check for invalid EM_ASM usage')
-    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]', '-DBAD_EM_ASM'])
-    self.assertContained('cannot have an EM_ASM on the stack when emterpreter pauses/resumes', run_js('a.out.js', stderr=STDOUT, assert_returncode=None))
-
   def test_link_with_a_static(self):
     create_test_file('x.c', r'''
 int init_weakref(int a, int b) {
@@ -7067,20 +6680,6 @@ Resolved: "/" => "/"
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).stderr
     self.assertEqual(err, '')
 
-  @no_wasm_backend("uses EMTERPRETIFY")
-  def test_emterpreter_file_suggestion(self):
-    for linkable in [0, 1]:
-      for to_file in [0, 1]:
-        self.clear()
-        cmd = [PYTHON, EMCC, '-s', 'EMTERPRETIFY=1', path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'LINKABLE=' + str(linkable), '-O1', '-s', 'USE_ZLIB=1']
-        if to_file:
-          cmd += ['-s', 'EMTERPRETIFY_FILE="code.dat"']
-        print(cmd)
-        stderr = run_process(cmd, stderr=PIPE).stderr
-        need_warning = linkable and not to_file
-        assert ('warning: emterpreter bytecode is fairly large' in stderr) == need_warning, stderr
-        assert ('It is recommended to use  -s EMTERPRETIFY_FILE=..' in stderr) == need_warning, stderr
-
   @no_wasm_backend("llvm-lto is fastcomp only flag")
   def test_llvm_lto(self):
     sizes = {}
@@ -7906,8 +7505,6 @@ int main() {
           (['-O1'], False, True, True),
           (['-O2'], False, True, True),
           (['-O2', '--js-opts', '1'], True, True, False), # user asked
-          (['-O2', '-s', 'EMTERPRETIFY=1'], True, True, False), # option forced
-          (['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, True, False), # option forced, and also check growth does not interfere
           (['-O2', '-s', 'EVAL_CTORS=1'], False, True, True), # ctor evaller turned off since only-wasm
           (['-O3'], False, True, True),
           (['-Os'], False, True, True),
@@ -8741,33 +8338,21 @@ int main() {
     for (single_file_enabled,
          meminit1_enabled,
          debug_enabled,
-         emterpreter_enabled,
-         emterpreter_file_enabled,
          closure_enabled,
-         wasm_enabled) in itertools.product([True, False], repeat=7):
+         wasm_enabled) in itertools.product([True, False], repeat=5):
       # skip unhelpful option combinations
-      if emterpreter_file_enabled and not emterpreter_enabled:
-        continue
-      if self.is_wasm_backend() and emterpreter_enabled:
-        continue
       if wasm_enabled and meminit1_enabled:
         continue
       if closure_enabled and debug_enabled:
         continue
 
       expect_wasm = wasm_enabled
-      expect_emterpretify_file = emterpreter_file_enabled
       expect_meminit = meminit1_enabled and not wasm_enabled
-      expect_success = not (emterpreter_file_enabled and single_file_enabled)
       expect_wat = debug_enabled and wasm_enabled and not self.is_wasm_backend()
-
-      # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
-      should_run_js = expect_success and not emterpreter_enabled
 
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
 
       if single_file_enabled:
-        expect_emterpretify_file = False
         expect_meminit = False
         expect_wasm = False
         cmd += ['-s', 'SINGLE_FILE=1']
@@ -8775,30 +8360,21 @@ int main() {
         cmd += ['--memory-init-file', '1']
       if debug_enabled:
         cmd += ['-g']
-      if emterpreter_enabled:
-        cmd += ['-s', 'EMTERPRETIFY=1']
-      if emterpreter_file_enabled:
-        cmd += ['-s', "EMTERPRETIFY_FILE='a.out.dat'"]
       if closure_enabled:
         cmd += ['--closure', '1']
       if not wasm_enabled:
         cmd += ['-s', 'WASM=0']
 
       self.clear()
-      if not expect_success:
-        self.expect_fail(cmd)
-        continue
 
       def do_test(cmd):
         print(' '.join(cmd))
         run_process(cmd)
         print(os.listdir('.'))
-        assert expect_emterpretify_file == os.path.exists('a.out.dat')
         assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
         assert expect_wasm == os.path.exists('a.out.wasm')
         assert expect_wat == os.path.exists('a.out.wat')
-        if should_run_js:
-          self.assertContained('hello, world!', run_js('a.out.js'))
+        self.assertContained('hello, world!', run_js('a.out.js'))
 
       do_test(cmd)
 

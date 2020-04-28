@@ -66,7 +66,6 @@ diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
 diagnostics.add_warning('version-check')
-diagnostics.add_warning('emterpreter')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
@@ -992,9 +991,6 @@ def verify_settings():
 
     if Settings.CYBERDWARF:
       exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
-
-    if Settings.EMTERPRETIFY:
-      exit_with_error('emcc: EMTERPRETIFY is not supported by the LLVM wasm backend')
 
     if Settings.EMULATED_FUNCTION_POINTERS:
       exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')

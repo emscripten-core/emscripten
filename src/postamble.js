@@ -190,10 +190,6 @@ function callMain(args) {
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
-#if EMTERPRETIFY_ASYNC
-  var initialEmtStackTop = Module['emtStackSave']();
-#endif
-
   try {
 #if BENCHMARK
     var start = Date.now();
@@ -225,16 +221,16 @@ function callMain(args) {
     // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
     // off to a pthread.
 #if !PROXY_TO_PTHREAD
-#if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#if WASM_BACKEND && ASYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
     if (!noExitRuntime) {
-#endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#endif // WASM_BACKEND && ASYNCIFY
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
-#if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#if WASM_BACKEND && ASYNCIFY
     }
-#endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#endif // WASM_BACKEND && ASYNCIFY
   }
   catch(e) {
     if (e instanceof ExitStatus) {
@@ -244,10 +240,6 @@ function callMain(args) {
     } else if (e == 'unwind') {
       // running an evented main loop, don't immediately exit
       noExitRuntime = true;
-#if EMTERPRETIFY_ASYNC
-      // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
-      Module['emtStackRestore'](initialEmtStackTop);
-#endif
       return;
     } else {
       var toLog = e;

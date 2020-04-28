@@ -104,8 +104,6 @@ UNSUPPORTED_LLD_FLAGS = {
 
 LIB_PREFIXES = ('', 'lib')
 
-DEFERRED_RESPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
-
 DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
@@ -417,11 +415,10 @@ def apply_settings(changes):
       value = str(shared.expand_byte_size_suffixes(value))
 
     if value[0] == '@':
-      if key not in DEFERRED_RESPONSE_FILES:
-        filename = value[1:]
-        if not os.path.exists(filename):
-          exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
-        value = open(filename).read()
+      filename = value[1:]
+      if not os.path.exists(filename):
+        exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
+      value = open(filename).read()
     else:
       value = value.replace('\\', '\\\\')
     try:
@@ -1219,9 +1216,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       diagnostics.warning('emcc', 'disabling closure because debug info was requested')
       options.use_closure_compiler = False
 
-    if shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE:
-      exit_with_error('cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time')
-
     if shared.Settings.WASM == 2 and shared.Settings.SINGLE_FILE:
       exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time (pick either JS to target with -s WASM=0 or Wasm to target with -s WASM=1)')
 
@@ -1459,19 +1453,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.WASM_BACKEND:
         exit_with_error('ASYNCIFY has been removed from fastcomp. There is a new implementation which can be used in the upstream wasm backend.')
 
-    if shared.Settings.EMTERPRETIFY:
-      diagnostics.warning('emterpreter', 'emterpreter is soon to be removed.  If you depend on this feature please reach out on github for help transitioning.')
-      shared.Settings.FINALIZE_ASM_JS = 0
-      shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
-      shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
-      if not options.js_opts:
-        logger.debug('enabling js opts for EMTERPRETIFY')
-        options.js_opts = True
-      options.force_js_opts = True
-      if options.use_closure_compiler == 2:
-         exit_with_error('EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that')
-      assert not use_source_map(options), 'EMTERPRETIFY is not compatible with source maps (maps are not useful in emterpreted code, and splitting out non-emterpreted source maps is not yet implemented)'
-
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
@@ -1635,8 +1616,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS>0!')
       if shared.Settings.MAIN_MODULE:
         exit_with_error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS>0!')
-      if shared.Settings.EMTERPRETIFY:
-        exit_with_error('-s EMTERPRETIFY=1 is not supported with -s USE_PTHREADS>0!')
       if shared.Settings.PROXY_TO_WORKER:
         exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
     else:
@@ -1991,9 +1970,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('memory growth is not supported with shared asm.js modules')
 
     if shared.Settings.MINIMAL_RUNTIME:
-      if shared.Settings.EMTERPRETIFY:
-        exit_with_error('-s EMTERPRETIFY=1 is not supported with -s MINIMAL_RUNTIME=1')
-
       if shared.Settings.PRECISE_F32 == 2:
         exit_with_error('-s PRECISE_F32=2 is not supported with -s MINIMAL_RUNTIME=1')
 
@@ -2680,14 +2656,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
           optimizer.queue += ['simplifyExpressions']
 
-          if shared.Settings.EMTERPRETIFY:
-            # emterpreter code will not run through a JS optimizing JIT, do more work ourselves
-            optimizer.queue += ['localCSE']
-
-      if shared.Settings.EMTERPRETIFY:
-        # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
-        optimizer.queue += ['safeLabelSetting']
-
       if shared.Settings.OPT_LEVEL >= 1 and options.js_opts:
         if shared.Settings.OPT_LEVEL >= 2:
           # simplify ifs if it is ok to make the code somewhat unreadable,
@@ -2723,7 +2691,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if options.js_opts:
         # some compilation modes require us to minify later or not at all
-        if not shared.Settings.EMTERPRETIFY and not shared.Settings.WASM:
+        if not shared.Settings.WASM:
           optimizer.do_minify()
 
         if shared.Settings.OPT_LEVEL >= 2:
@@ -2747,9 +2715,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('js opts')
 
     with ToolchainProfiler.profile_block('final emitting'):
-      if shared.Settings.EMTERPRETIFY:
-        emterpretify(js_target, optimizer, options)
-
       # Remove some trivial whitespace
       # TODO: do not run when compress has already been done on all parts of the code
       # src = open(final).read()
@@ -3121,64 +3086,6 @@ def parse_args(newargs):
 
   newargs = [a for a in newargs if a]
   return options, settings_changes, newargs
-
-
-def emterpretify(js_target, optimizer, options):
-  global final
-  optimizer.flush('pre-emterpretify')
-  logger.debug('emterpretifying')
-  blacklist = shared.Settings.EMTERPRETIFY_BLACKLIST
-  whitelist = shared.Settings.EMTERPRETIFY_WHITELIST
-  synclist = shared.Settings.EMTERPRETIFY_SYNCLIST
-  if type(blacklist) == list:
-    blacklist = json.dumps(blacklist)
-  if type(whitelist) == list:
-    whitelist = json.dumps(whitelist)
-  if type(synclist) == list:
-    synclist = json.dumps(synclist)
-
-  args = [shared.PYTHON,
-          shared.path_from_root('tools', 'emterpretify.py'),
-          js_target,
-          final + '.em.js',
-          blacklist,
-          whitelist,
-          synclist]
-  if shared.Settings.EMTERPRETIFY_ASYNC:
-    args += ['ASYNC=1']
-  if shared.Settings.EMTERPRETIFY_ADVISE:
-    args += ['ADVISE=1']
-  if options.profiling or options.profiling_funcs:
-    args += ['PROFILING=1']
-  if shared.Settings.ASSERTIONS:
-    args += ['ASSERTIONS=1']
-  if shared.Settings.PRECISE_F32:
-    args += ['FROUND=1']
-  if shared.Settings.ALLOW_MEMORY_GROWTH:
-    args += ['MEMORY_SAFE=1']
-  if shared.Settings.EMTERPRETIFY_FILE:
-    args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
-
-  try:
-    # move temp js to final position, alongside its mem init file
-    shutil.move(final, js_target)
-    shared.check_call(args)
-  finally:
-    shared.try_delete(js_target)
-
-  final = final + '.em.js'
-
-  if shared.Settings.EMTERPRETIFY_ADVISE:
-    logger.warning('halting compilation due to EMTERPRETIFY_ADVISE')
-    sys.exit(0)
-
-  # minify (if requested) after emterpreter processing, and finalize output
-  logger.debug('finalizing emterpreted code')
-  shared.Settings.FINALIZE_ASM_JS = 1
-  if not shared.Settings.WASM:
-    optimizer.do_minify()
-  optimizer.queue += ['last']
-  optimizer.flush('finalizing-emterpreted-code')
 
 
 def emit_js_source_maps(target, js_transform_tempfiles):
@@ -3581,28 +3488,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
                                     separate_asm=options.separate_asm)
 
   if not shared.Settings.SINGLE_FILE:
-    if shared.Settings.EMTERPRETIFY_FILE:
-      # We need to load the emterpreter file before anything else, it has to be synchronously ready
-      script.un_src()
-      script.inline = '''
-          var emterpretURL = '%s';
-          var emterpretXHR = new XMLHttpRequest();
-          emterpretXHR.open('GET', emterpretURL, true);
-          emterpretXHR.responseType = 'arraybuffer';
-          emterpretXHR.onload = function() {
-            if (emterpretXHR.status === 200 || emterpretXHR.status === 0) {
-              Module.emterpreterFile = emterpretXHR.response;
-            } else {
-              var emterpretURLBytes = tryParseAsDataURI(emterpretURL);
-              if (emterpretURLBytes) {
-                Module.emterpreterFile = emterpretURLBytes.buffer;
-              }
-            }
-%s
-          };
-          emterpretXHR.send(null);
-''' % (shared.JS.get_subresource_location(shared.Settings.EMTERPRETIFY_FILE), script.inline)
-
     if options.memory_init_file and not shared.Settings.MEM_INIT_IN_WASM:
       # start to load the memory init file in the HTML, in parallel with the JS
       script.un_src()

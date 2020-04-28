@@ -1039,7 +1039,7 @@ Functions
   Returns whether pseudo-synchronous functions can be used.
 
   :rtype: int
-  :returns: 1 if program was compiled with ASYNCIFY=1 or EMTERPRETER_ASYNC=1, 0 otherwise.
+  :returns: 1 if program was compiled with ASYNCIFY=1, 0 otherwise.
 
 
 .. c:function:: void emscripten_debugger()
@@ -1252,7 +1252,7 @@ Typedefs
 Pseudo-synchronous functions
 ============================
 
-These functions require Asyncify (``-s ASYNCIFY=1``) with the wasm backend, or Emterpreter-async with fastcomp (``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ and `Emterpreter <https://emscripten.org/docs/porting/emterpreter.html>`_ for more details.
+These functions require Asyncify (``-s ASYNCIFY=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
 
 Sleeping
 --------

@@ -72,6 +72,9 @@ Current Trunk
   this might result in slightly slower link times with the old fastcomp
   backend.  In order to exclude these libraries build with `-nostdlib` and/or
   `-nostdlib++`.
+- Remove emterpreter and ``EMTERPRETIFY`` settings.  Emterpreter has largerly
+  been replaced by asyncify and is fastcomp only so due for removing in
+  the near future anyway.
 
 1.39.15: 05/06/2020
 -------------------
