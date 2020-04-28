@@ -16,6 +16,8 @@
 /* dlmalloc has many checks, calls to abort() increase code size,
    leave them only in debug builds */
 #define ABORT __builtin_unreachable()
+/* allow malloc stats only in debug builds, which brings in stdio code. */
+#define NO_MALLOC_STATS 1
 #endif
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
@@ -872,7 +874,9 @@ struct mallinfo mallinfo(void) __attribute__((weak, alias("dlmallinfo")));
 #endif
 int mallopt(int, int) __attribute__((weak, alias("dlmallopt")));
 int malloc_trim(size_t) __attribute__((weak, alias("dlmalloc_trim")));
+#if !NO_MALLOC_STATS
 void malloc_stats(void) __attribute__((weak, alias("dlmalloc_stats")));
+#endif
 size_t malloc_usable_size(const void*) __attribute__((weak, alias("dlmalloc_usable_size")));
 size_t malloc_footprint(void) __attribute__((weak, alias("dlmalloc_footprint")));
 size_t malloc_max_footprint(void) __attribute__((weak, alias("dlmalloc_max_footprint")));

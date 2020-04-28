@@ -1105,7 +1105,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
   def get_default_variation(cls, **kwargs):
     return super(libmalloc, cls).get_default_variation(
       malloc=shared.Settings.MALLOC,
-      is_debug=shared.Settings.DEBUG_LEVEL >= 3,
+      is_debug=False,  # debug mode must be explicitly opted in
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
       use_64bit_ops=shared.Settings.MALLOC == 'emmalloc' and (shared.Settings.WASM == 1 or (shared.Settings.WASM_BACKEND and shared.Settings.WASM2JS == 0)),
