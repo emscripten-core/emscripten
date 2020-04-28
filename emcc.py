@@ -1388,8 +1388,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs.append('libembind')
 
     if not shared.Settings.MINIMAL_RUNTIME and not shared.Settings.STANDALONE_WASM:
-      # Always need malloc and free to be kept alive and exported, for internal use and other
-      # modules
+      # The normal JS runtime depends on malloc and free so always keep them alive.
+      # MINIMAL_RUNTIME avoids this dependency as does STANDALONE_WASM mode (since it has no
+      # JS runtime at all).
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
