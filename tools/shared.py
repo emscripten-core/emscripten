@@ -2031,11 +2031,8 @@ class Building(object):
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
   @staticmethod
-  def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None, acorn=False):
-    if not acorn:
-      optimizer = path_from_root('tools', 'js-optimizer.js')
-    else:
-      optimizer = path_from_root('tools', 'acorn-optimizer.js')
+  def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
+    optimizer = path_from_root('tools', 'acorn-optimizer.js')
     original_filename = filename
     if extra_info is not None:
       temp_files = configuration.get_temp_files()
@@ -2047,7 +2044,7 @@ class Building(object):
     cmd = NODE_JS + [optimizer, filename] + passes
     # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
     # will be carried over to a later Closure run.
-    if acorn and Settings.USE_CLOSURE_COMPILER:
+    if Settings.USE_CLOSURE_COMPILER:
       cmd += ['--closureFriendly']
     if not return_output:
       next = original_filename + '.jso.js'
@@ -2055,14 +2052,9 @@ class Building(object):
       check_call(cmd, stdout=open(next, 'w'))
       next = Building.maybe_add_license(filename=next)
       return next
-    else:
-      output = check_call(cmd, stdout=PIPE).stdout
-      output = Building.maybe_add_license(code=output)
-      return output
-
-  @staticmethod
-  def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
-    return Building.js_optimizer_no_asmjs(filename, passes, extra_info=extra_info, return_output=return_output, acorn=True)
+    output = check_call(cmd, stdout=PIPE).stdout
+    output = Building.maybe_add_license(code=output)
+    return output
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod

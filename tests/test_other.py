@@ -2148,7 +2148,7 @@ int f() {
         expected = [expected]
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
-      acorn = any([p for p in passes if p in ACORN_PASSES])
+      acorn = any(p in ACORN_PASSES for p in passes)
 
       # test calling optimizer
       if not acorn:
