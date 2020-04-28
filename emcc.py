@@ -3249,10 +3249,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   # after generating the wasm, do some final operations
   if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
-    wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
-    # replace the wasm binary output with the dynamic library.
-    # TODO: use a specific suffix for such files?
-    shutil.move(wso, wasm_binary_target)
+    shared.WebAssembly.make_shared_library(wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
     if not DEBUG:
       os.unlink(asm_target) # we don't need the asm.js, it can just confuse
 

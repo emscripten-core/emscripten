@@ -1014,7 +1014,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
         static const char *afunc_prev;
 
+        extern "C" {
         EMSCRIPTEN_KEEPALIVE void afunc(const char *s);
+        }
+
         void afunc(const char *s) {
           printf("a: %s (prev: %s)\n", s, afunc_prev);
           afunc_prev = s;
@@ -1032,8 +1035,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     create_test_file('libb.cpp', r'''
         #include <emscripten.h>
 
+        extern "C" {
         void afunc(const char *s);
         EMSCRIPTEN_KEEPALIVE void bfunc();
+        }
+
         void bfunc() {
           afunc("b");
         }
@@ -1042,8 +1048,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     create_test_file('libc.cpp', r'''
         #include <emscripten.h>
 
+        extern "C" {
         void afunc(const char *s);
         EMSCRIPTEN_KEEPALIVE void cfunc();
+        }
+
         void cfunc() {
           afunc("c");
         }
@@ -1072,10 +1081,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.set_setting('MAIN_MODULE', 1)
     self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
     do_run(r'''
+      extern "C" {
       void bfunc();
       void cfunc();
+      }
 
-      int _main() {
+      int test_main() {
         bfunc();
         cfunc();
         return 0;
@@ -1090,7 +1101,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       #include <dlfcn.h>
       #include <stddef.h>
 
-      int _main() {
+      int test_main() {
         void *bdso, *cdso;
         void (*bfunc)(), (*cfunc)();
 
@@ -1100,9 +1111,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         cdso = dlopen("libc%(so)s", RTLD_GLOBAL);
         assert(cdso != NULL);
 
-        bfunc = (void (*)())dlsym(bdso, "_Z5bfuncv");
+        bfunc = (void (*)())dlsym(bdso, "bfunc");
         assert(bfunc != NULL);
-        cfunc = (void (*)())dlsym(cdso, "_Z5cfuncv");
+        cfunc = (void (*)())dlsym(cdso, "cfunc");
         assert(cfunc != NULL);
 
         bfunc();

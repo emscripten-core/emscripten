@@ -2573,7 +2573,7 @@ class Building(object):
     section_size = len(section_name) + len(contents)
     with open(wasm_file, 'ab') as f:
       f.write(b'\0') # user section is code 0
-      f.write(WebAssembly.lebify(section_size))
+      f.write(WebAssembly.toLEB(section_size))
       f.write(section_name)
       f.write(contents)
 
@@ -3052,7 +3052,7 @@ function jsCall_%s(index%s) {
 
 class WebAssembly(object):
   @staticmethod
-  def lebify(x):
+  def toLEB(x):
     assert x >= 0, 'TODO: signed'
     ret = []
     while 1:
@@ -3067,7 +3067,7 @@ class WebAssembly(object):
     return bytearray(ret)
 
   @staticmethod
-  def delebify(buf, offset):
+  def readLEB(buf, offset):
     result = 0
     shift = 0
     while True:
@@ -3102,23 +3102,23 @@ class WebAssembly(object):
     name = b'\x13emscripten_metadata' # section name, including prefixed size
     contents = (
       # metadata section version
-      WebAssembly.lebify(EMSCRIPTEN_METADATA_MAJOR) +
-      WebAssembly.lebify(EMSCRIPTEN_METADATA_MINOR) +
+      WebAssembly.toLEB(EMSCRIPTEN_METADATA_MAJOR) +
+      WebAssembly.toLEB(EMSCRIPTEN_METADATA_MINOR) +
 
       # NB: The structure of the following should only be changed
       #     if EMSCRIPTEN_METADATA_MAJOR is incremented
       # Minimum ABI version
-      WebAssembly.lebify(EMSCRIPTEN_ABI_MAJOR) +
-      WebAssembly.lebify(EMSCRIPTEN_ABI_MINOR) +
+      WebAssembly.toLEB(EMSCRIPTEN_ABI_MAJOR) +
+      WebAssembly.toLEB(EMSCRIPTEN_ABI_MINOR) +
 
-      WebAssembly.lebify(int(Settings.WASM_BACKEND)) +
-      WebAssembly.lebify(mem_size) +
-      WebAssembly.lebify(table_size) +
-      WebAssembly.lebify(global_base) +
-      WebAssembly.lebify(dynamic_base) +
-      WebAssembly.lebify(dynamictop_ptr) +
-      WebAssembly.lebify(tempdouble_ptr) +
-      WebAssembly.lebify(int(Settings.STANDALONE_WASM))
+      WebAssembly.toLEB(int(Settings.WASM_BACKEND)) +
+      WebAssembly.toLEB(mem_size) +
+      WebAssembly.toLEB(table_size) +
+      WebAssembly.toLEB(global_base) +
+      WebAssembly.toLEB(dynamic_base) +
+      WebAssembly.toLEB(dynamictop_ptr) +
+      WebAssembly.toLEB(tempdouble_ptr) +
+      WebAssembly.toLEB(int(Settings.STANDALONE_WASM))
 
       # NB: more data can be appended here as long as you increase
       #     the EMSCRIPTEN_METADATA_MINOR
@@ -3131,13 +3131,13 @@ class WebAssembly(object):
       f.write(b'\0') # user section is code 0
       # need to find the size of this section
       size = len(name) + len(contents)
-      f.write(WebAssembly.lebify(size))
+      f.write(WebAssembly.toLEB(size))
       f.write(name)
       f.write(contents)
       f.write(orig[8:])
 
   @staticmethod
-  def make_shared_library(js_file, wasm_file, needed_dynlibs):
+  def make_shared_library(wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     assert not Settings.WASM_BACKEND
     mem_align = Settings.MAX_GLOBAL_ALIGN
@@ -3149,8 +3149,8 @@ class WebAssembly(object):
     # Write new wasm binary with 'dylink' section
     wasm = open(wasm_file, 'rb').read()
     section_name = b"\06dylink" # section name, including prefixed size
-    contents = (WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) +
-                WebAssembly.lebify(table_size) + WebAssembly.lebify(0))
+    contents = (WebAssembly.toLEB(mem_size) + WebAssembly.toLEB(mem_align) +
+                WebAssembly.toLEB(table_size) + WebAssembly.toLEB(0))
 
     # we extend "dylink" section with information about which shared libraries
     # our shared library needs. This is similar to DT_NEEDED entries in ELF.
@@ -3173,25 +3173,23 @@ class WebAssembly(object):
     #
     # a proposal has been filed to include the extension into "dylink" specification:
     # https://github.com/WebAssembly/tool-conventions/pull/77
-    contents += WebAssembly.lebify(len(needed_dynlibs))
+    contents += WebAssembly.toLEB(len(needed_dynlibs))
     for dyn_needed in needed_dynlibs:
       dyn_needed = bytes(asbytes(dyn_needed))
-      contents += WebAssembly.lebify(len(dyn_needed))
+      contents += WebAssembly.toLEB(len(dyn_needed))
       contents += dyn_needed
 
     section_size = len(section_name) + len(contents)
-    wso = js_file + '.wso'
-    with open(wso, 'wb') as f:
+    with open(wasm_file, 'wb') as f:
       # copy magic number and version
       f.write(wasm[0:8])
       # write the special section
       f.write(b'\0') # user section is code 0
-      f.write(WebAssembly.lebify(section_size))
+      f.write(WebAssembly.toLEB(section_size))
       f.write(section_name)
       f.write(contents)
       # copy rest of binary
       f.write(wasm[8:])
-    return wso
 
 
 # Python 2-3 compatibility helper function:

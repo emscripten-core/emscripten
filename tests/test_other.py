@@ -9657,28 +9657,45 @@ int main () {
 
   def test_add_emscripten_metadata(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
-                 '-s', 'EMIT_EMSCRIPTEN_METADATA',
-                 '-o', 'hello_world.js'])
-    wasm = open('hello_world.wasm', 'rb').read()
+                 '-s', 'EMIT_EMSCRIPTEN_METADATA'])
+    wasm = open('a.out.wasm', 'rb').read()
     # emscripten_metadata should be in the wasm data
     offset = 8 # skip magic + header
-    for _ in range(100):
+    while True:
       section = wasm[offset:offset + 1]
-      self.assertEqual(section, b'\0', 'No emscripten_metadata section found before standard wasm sections')
+      # No emscripten_metadata section found before standard wasm sections')
+      self.assertEqual(section, b'\0')
       offset += 1
-      (section_size, offset) = WebAssembly.delebify(wasm, offset)
+      section_size, offset = WebAssembly.readLEB(wasm, offset)
       end_offset = offset + section_size
-      (name_len, offset) = WebAssembly.delebify(wasm, offset)
+      name_len, offset = WebAssembly.readLEB(wasm, offset)
       name = wasm[offset:offset + name_len]
       if name == b'emscripten_metadata':
         break
       offset = end_offset
-    else:
-      self.assertFalse("No emscripten_metadata section found in first 100 custom sections")
+      if offset >= len(wasm):
+        self.assertFalse('No emscripten_metadata section found')
 
     # make sure wasm executes correctly
-    ret = run_process(NODE_JS + ['hello_world.js'], stdout=PIPE).stdout
+    ret = run_process(NODE_JS + ['a.out.js'], stdout=PIPE).stdout
     self.assertTextDataIdentical('hello, world!\n', ret)
+
+  def test_no_emscripten_metadata(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    wasm = open('a.out.wasm', 'rb').read()
+    # emscripten_metadata should be in the wasm data
+    offset = 8 # skip magic + header
+    while offset < len(wasm):
+      section = wasm[offset:offset + 1]
+      offset += 1
+      section_size, offset = WebAssembly.readLEB(wasm, offset)
+      end_offset = offset + section_size
+      # if this is a custom section
+      if section == b'\0':
+        name_len, offset = WebAssembly.readLEB(wasm, offset)
+        name = wasm[offset:offset + name_len]
+        self.assertNotEqual(name, b'emscripten_metadata')
+      offset = end_offset
 
   @parameterized({
     'O2': (False, ['-O2']), # noqa
@@ -9698,28 +9715,6 @@ int main () {
     self.assertContainedIf('SPDX-License-Identifier: MIT', js, expect_license)
     if expect_license:
       self.assertEqual(js.count('Copyright 2010 Emscripten authors'), 1)
-
-  def test_add_emscripten_metadata_not_emitted(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
-                 '-o', 'hello_world.js'])
-    wasm = open('hello_world.wasm', 'rb').read()
-    # emscripten_metadata should be in the wasm data
-    offset = 8 # skip magic + header
-    for _ in range(100):
-      if offset >= len(wasm):
-        break
-      section = wasm[offset:offset + 1]
-      offset += 1
-      (section_size, offset) = WebAssembly.delebify(wasm, offset)
-      end_offset = offset + section_size
-      # if this is a custom section
-      if section == b'\0':
-        (name_len, offset) = WebAssembly.delebify(wasm, offset)
-        name = wasm[offset:offset + name_len]
-        self.assertNotEqual(name, b'emscripten_metadata')
-      offset = end_offset
-    else:
-      self.assertFalse("wasm file had too many sections")
 
   # This test verifies that the generated exports from asm.js/wasm module only reference the
   # unminified exported name exactly once.  (need to contain the export name once for unminified

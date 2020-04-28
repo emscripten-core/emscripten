@@ -4583,7 +4583,7 @@ res64 - external 64\n''', header='''
   @no_wasm_backend('possible https://github.com/emscripten-core/emscripten/issues/9038')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
-      self.do_run(src + 'int main() { return _main(); }', expected_output)
+      self.do_run(src + 'int main() { return test_main(); }', expected_output)
     self._test_dylink_dso_needed(do_run)
 
   @needs_dlfcn
