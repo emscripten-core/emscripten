@@ -19,6 +19,32 @@
 #include "private_typeinfo.h"
 #include "include/atomic_support.h"
 
+namespace __cxxabiv1 {
+
+#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+// XXX EMSCRIPTEN: Copied from cxa_exception.cpp since we don't compile that
+// file in Emscripten EH mode. Note that in no-exceptions builds we include
+// cxa_noexception.cpp which provides stubs of those anyhow.
+
+//  Is it one of ours?
+uint64_t __getExceptionClass(const _Unwind_Exception* unwind_exception) {
+//	On x86 and some ARM unwinders, unwind_exception->exception_class is
+//		a uint64_t. On other ARM unwinders, it is a char[8]
+//	See: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
+//	So we just copy it into a uint64_t to be sure.
+	uint64_t exClass;
+	::memcpy(&exClass, &unwind_exception->exception_class, sizeof(exClass));
+	return exClass;
+}
+
+bool __isOurExceptionClass(const _Unwind_Exception* unwind_exception) {
+    return (__getExceptionClass(unwind_exception) & get_vendor_and_language) == 
+           (kOurExceptionClass                    & get_vendor_and_language);
+}
+#endif
+
+}
+
 namespace std
 {
 
