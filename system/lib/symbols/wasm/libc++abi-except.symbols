@@ -122,7 +122,9 @@
 -------- T _ZNSt20bad_array_new_lengthD1Ev
 -------- T _ZNSt20bad_array_new_lengthD2Ev
 -------- W _ZNSt3__214numeric_limitsIjE3maxEv
+-------- W _ZNSt3__216__libcpp_tls_setEjPv
 -------- W _ZNSt3__218__libcpp_refstringD2Ev
+-------- W _ZNSt3__219__libcpp_tls_createEPjPFvPvE
 -------- W _ZNSt3__223__libcpp_numeric_limitsIjLb1EE3maxEv
 -------- W _ZNSt3__24moveIRPKcEEONS_16remove_referenceIT_E4typeEOS5_
 -------- W _ZNSt3__24moveIRbEEONS_16remove_referenceIT_E4typeEOS3_
@@ -471,6 +473,7 @@
 -------- T __cxa_rethrow
 -------- T __cxa_rethrow_primary_exception
 -------- D __cxa_terminate_handler
+-------- T __cxa_thread_atexit
 -------- T __cxa_throw
 -------- T __cxa_throw_bad_array_new_length
 -------- T __cxa_uncaught_exception

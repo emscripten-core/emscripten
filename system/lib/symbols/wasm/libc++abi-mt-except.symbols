@@ -479,6 +479,7 @@
 -------- T __cxa_rethrow
 -------- T __cxa_rethrow_primary_exception
 -------- D __cxa_terminate_handler
+-------- T __cxa_thread_atexit
 -------- T __cxa_throw
 -------- T __cxa_throw_bad_array_new_length
 -------- T __cxa_uncaught_exception

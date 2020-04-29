@@ -705,8 +705,6 @@ LibraryManager.library = {
 #if MINIMAL_RUNTIME && !EXIT_RUNTIME
   atexit: function(){},
   __cxa_atexit: function(){},
-  __cxa_thread_atexit: function(){},
-  __cxa_thread_atexit_impl: function(){},
 #else
   atexit__proxy: 'sync',
   atexit__sig: 'iii',
@@ -719,10 +717,6 @@ LibraryManager.library = {
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
-
-  // used in rust, clang when doing thread_local statics
-  __cxa_thread_atexit: 'atexit',
-  __cxa_thread_atexit_impl: 'atexit',
 #endif
 
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),

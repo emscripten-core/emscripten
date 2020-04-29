@@ -1193,8 +1193,6 @@
 -------- T wmemcpy
 -------- T wmemmove
 -------- T wmemset
--------- T wordexp
--------- T wordfree
 -------- T wprintf
 -------- T write
 -------- T writev

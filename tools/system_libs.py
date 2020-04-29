@@ -941,6 +941,7 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
       'cxa_guard.cpp',
       'cxa_handlers.cpp',
       'cxa_virtual.cpp',
+      'cxa_thread_atexit.cpp',
       'fallback_malloc.cpp',
       'stdlib_new_delete.cpp',
       'stdlib_exception.cpp',
@@ -1385,6 +1386,7 @@ class libasan_rt_wasm(SanitizerLibrary):
 # in JS as it's more efficient that way).
 class libstandalonewasm(MuslInternalLibrary):
   name = 'libstandalonewasm'
+  depends = ['libc++abi']
 
   cflags = ['-Os']
   src_dir = ['system', 'lib']

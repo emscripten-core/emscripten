@@ -2482,6 +2482,7 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
+  @also_with_standalone_wasm
   def test_atexit_threads(self):
     # also tests thread exit (__cxa_thread_atexit)
     self.set_setting('EXIT_RUNTIME', 1)
