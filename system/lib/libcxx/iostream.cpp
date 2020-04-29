@@ -77,8 +77,7 @@ __asm__("?wclog@" _LIBCPP_ABI_NAMESPACE_STR "@std@@3V?$basic_ostream@_WU?$char_t
 #endif
 ;
 
-_LIBCPP_HIDDEN ios_base::Init __attribute__((init_priority(101))) __start_std_streams; // XXX EMSCRIPTEN: ensure a high priority for this constructor, see #3824
-
+_LIBCPP_HIDDEN ios_base::Init __start_std_streams;
 
 // On Windows the TLS storage for locales needs to be initialized before we create
 // the standard streams, otherwise it may not be alive during program termination
@@ -98,7 +97,13 @@ static void force_locale_initialization() {
 #endif
 }
 
-ios_base::Init::Init()
+class DoIOSInit {
+public:
+	DoIOSInit();
+	~DoIOSInit();
+};
+
+DoIOSInit::DoIOSInit()
 {
     force_locale_initialization();
 
@@ -127,7 +132,7 @@ ios_base::Init::Init()
 #endif
 }
 
-ios_base::Init::~Init()
+DoIOSInit::~DoIOSInit()
 {
 #ifndef _LIBCPP_HAS_NO_STDOUT
     ostream* cout_ptr = reinterpret_cast<ostream*>(cout);
@@ -140,6 +145,15 @@ ios_base::Init::~Init()
     wostream* wclog_ptr = reinterpret_cast<wostream*>(wclog);
     clog_ptr->flush();
     wclog_ptr->flush();
+}
+
+ios_base::Init::Init()
+{
+    static DoIOSInit init_the_streams; // gets initialized once
+}
+
+ios_base::Init::~Init()
+{
 }
 
 _LIBCPP_END_NAMESPACE_STD

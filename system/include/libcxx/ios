@@ -431,7 +431,7 @@ class _LIBCPP_EXCEPTION_ABI ios_base::failure
 public:
     explicit failure(const string& __msg, const error_code& __ec = io_errc::stream);
     explicit failure(const char* __msg, const error_code& __ec = io_errc::stream);
-    virtual ~failure() _NOEXCEPT;
+    virtual ~failure() throw();
 };
 
 _LIBCPP_NORETURN inline _LIBCPP_INLINE_VISIBILITY
