@@ -1084,8 +1084,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
 
     self.set_setting('RUNTIME_LINKED_LIBS', [])
-    for libname in ['liba.js', 'libb.js', 'libc.js']:
-      self.emcc_args += ['--embed-file', libname]
+    for libname in ['liba', 'libb', 'libc']:
+      self.emcc_args += ['--embed-file', libname + so]
     do_run(r'''
       #include <assert.h>
       #include <dlfcn.h>
