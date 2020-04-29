@@ -4,17 +4,29 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if BOOTSTRAPPING_STRUCT_INFO
+// When bootstrapping struct info, this is the entire library.  It is literally
+// just enough to run the bootstrap program that prints out C constants for us,
+// we obviously need to run without any such constants ourselves...
+assert(!LibraryManager.library);
+LibraryManager.library = {};
+#endif
+
 mergeInto(LibraryManager.library, {
+  $reallyNegative: function(x) {
+    return x < 0 || (x === 0 && (1/x) === -Infinity);
+  },
+
   // Performs printf-style formatting.
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  _formatString__deps: ['_reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53'
+  $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53'
 #if MINIMAL_RUNTIME
     , '$intArrayFromString'
 #endif
   ],
-  _formatString: function(format, varargs) {
+  $formatString: function(format, varargs) {
 #if ASSERTIONS
     assert((varargs & 3) === 0);
 #endif
@@ -313,7 +325,7 @@ mergeInto(LibraryManager.library, {
                 }
               } else if (next == {{{ charCode('f') }}} || next == {{{ charCode('F') }}}) {
                 argText = currArg.toFixed(effectivePrecision);
-                if (currArg === 0 && __reallyNegative(currArg)) {
+                if (currArg === 0 && reallyNegative(currArg)) {
                   argText = '-' + argText;
                 }
               }
@@ -431,7 +443,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // printf/puts implementations for when musl is not pulled in - very partial. useful for tests, and when bootstrapping structInfo
-  printf__deps: ['_formatString'
+  printf__deps: ['$formatString'
 #if MINIMAL_RUNTIME
     , '$intArrayToString'
 #endif
@@ -440,7 +452,7 @@ mergeInto(LibraryManager.library, {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     // extra effort to support printf, even without a filesystem. very partial, very hackish
-    var result = __formatString(format, varargs);
+    var result = formatString(format, varargs);
     var string = intArrayToString(result);
     if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
     out(string);

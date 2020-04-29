@@ -52,7 +52,7 @@ f = re.sub(r'([;{}=,\*/\(\)\[\]])[\s]', r'\1', f)
 
 # Finally, rerun minifier because the above changes may have left redundant whitespaces
 open(sys.argv[1], 'w').write(f)
-minified = shared.Building.js_optimizer_no_asmjs(sys.argv[1], ['minifyWhitespace'], acorn=True, return_output=True)
+minified = shared.Building.acorn_optimizer(sys.argv[1], ['minifyWhitespace'], return_output=True)
 open(sys.argv[1], 'w').write(minified)
 
 # optimized_size = len(f)

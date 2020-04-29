@@ -1147,7 +1147,7 @@ function createWasm() {
 }
 #endif
 
-#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like funciton
+#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like function
 Module['asm'] = createWasm;
 #endif
 

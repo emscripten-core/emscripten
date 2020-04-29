@@ -596,108 +596,74 @@ f.close()
         output = run_process(cmd, stdout=PIPE).stdout
         self.assertContained(expected, output)
 
-  def test_cmake(self):
+  @parameterized({
+    # ('directory to the test', 'output filename', ['extra args to pass to
+    # CMake']) Testing all combinations would be too much work and the test
+    # would take 10 minutes+ to finish (CMake feature detection is slow), so
+    # combine multiple features into one to try to cover as much as possible
+    # while still keeping this test in sensible time limit.
+    'js':          ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
+    'html':        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
+    'library':     ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
+    'static_cpp':  ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
+    'stdproperty': ('stdproperty',    'helloworld.js',         [])
+  })
+  def test_cmake(self, test_dir, output_file, cmake_args):
     # Test all supported generators.
     if WINDOWS:
       generators = ['MinGW Makefiles', 'NMake Makefiles']
     else:
       generators = ['Unix Makefiles', 'Ninja', 'Eclipse CDT4 - Ninja']
 
-    def nmake_detect_error(configuration):
-      if Building.which(configuration['build'][0]):
-        return None
-      else:
-        return 'Skipping NMake test for CMake support, since nmake was not found in PATH. Run this test in Visual Studio command prompt to easily access nmake.'
-
-    def check_makefile(dirname):
-      self.assertExists(dirname + '/Makefile', 'CMake call did not produce a Makefile!')
-
-    configurations = {'MinGW Makefiles'     : {'prebuild': check_makefile, # noqa
-                                               'build'   : ['mingw32-make'], # noqa
-                      },
-                      'NMake Makefiles'     : {'detect'  : nmake_detect_error, # noqa
-                                               'prebuild': check_makefile, # noqa
-                                               'build'   : ['nmake', '/NOLOGO'], # noqa
-                      },
-                      'Unix Makefiles'      : {'prebuild': check_makefile, # noqa
-                                               'build'   : ['make'], # noqa
-                      },
-                      'Ninja'               : {'build'   : ['ninja'], # noqa
-                      },
-                      'Eclipse CDT4 - Ninja': {'build'   : ['ninja'], # noqa
-                      }
+    configurations = {'MinGW Makefiles'     : {'build'   : ['mingw32-make'] }, # noqa
+                      'NMake Makefiles'     : {'build'   : ['nmake', '/NOLOGO']}, # noqa
+                      'Unix Makefiles'      : {'build'   : ['make']}, # noqa
+                      'Ninja'               : {'build'   : ['ninja']}, # noqa
+                      'Eclipse CDT4 - Ninja': {'build'   : ['ninja']}, # noqa
     }
-
     for generator in generators:
       conf = configurations[generator]
 
-      make = conf['build']
-      detector = conf.get('detect')
-      prebuild = conf.get('prebuild')
-
-      if detector:
-        error = detector(conf)
-      elif len(make) == 1 and not Building.which(make[0]):
+      if not Building.which(conf['build'][0]):
         # Use simple test if applicable
-        error = 'Skipping %s test for CMake support, since it could not be detected.' % generator
-      else:
-        error = None
-
-      if error:
-        print(error)
+        print('Skipping %s test for CMake support; build tool found found: %s.' % (generator, conf['build'][0]))
         continue
 
-      # ('directory to the test', 'output filename', ['extra args to pass to
-      # CMake']) Testing all combinations would be too much work and the test
-      # would take 10 minutes+ to finish (CMake feature detection is slow), so
-      # combine multiple features into one to try to cover as much as possible
-      # while still keeping this test in sensible time limit.
-      cases = [
-        ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
-        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
-        ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
-        ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
-        ('stdproperty',    'helloworld.js',         [])
-      ]
-      for test_dir, output_file, cmake_args in cases:
-        cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
-        with temp_directory(self.get_dir()) as tempdirname:
-          # Run Cmake
-          cmd = [emcmake, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+      cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
+      with temp_directory(self.get_dir()) as tempdirname:
+        # Run Cmake
+        cmd = [emcmake, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
-          env = os.environ.copy()
-          # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
-          if test_dir == 'target_html':
-            env['EMCC_SKIP_SANITY_CHECK'] = '1'
-          print(str(cmd))
-          ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
-          if ret.stderr is not None and len(ret.stderr.strip()):
-            print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
-          if ret.stderr is not None and 'error' in ret.stderr.lower():
-            print('Failed command: ' + ' '.join(cmd))
-            print('Result:\n' + ret.stderr)
-            self.fail('cmake call failed!')
+        env = os.environ.copy()
+        # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
+        if test_dir == 'target_html':
+          env['EMCC_SKIP_SANITY_CHECK'] = '1'
+        print(str(cmd))
+        ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
+        if ret.stderr is not None and len(ret.stderr.strip()):
+          print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
+        if ret.stderr is not None and 'error' in ret.stderr.lower():
+          print('Failed command: ' + ' '.join(cmd))
+          print('Result:\n' + ret.stderr)
+          self.fail('cmake call failed!')
 
-          if prebuild:
-            prebuild(tempdirname)
+        # Build
+        cmd = conf['build']
+        if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
+          cmd += ['VERBOSE=1']
+        ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
+        if ret.stderr is not None and len(ret.stderr.strip()):
+          print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
+        if ret.stdout is not None and 'error' in ret.stdout.lower() and '0 error(s)' not in ret.stdout.lower():
+          print('Failed command: ' + ' '.join(cmd))
+          print('Result:\n' + ret.stdout)
+          self.fail('make failed!')
+        self.assertExists(tempdirname + '/' + output_file, 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
 
-          # Build
-          cmd = make
-          if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
-            cmd += ['VERBOSE=1']
-          ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
-          if ret.stderr is not None and len(ret.stderr.strip()):
-            print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
-          if ret.stdout is not None and 'error' in ret.stdout.lower() and '0 error(s)' not in ret.stdout.lower():
-            print('Failed command: ' + ' '.join(cmd))
-            print('Result:\n' + ret.stdout)
-            self.fail('make failed!')
-          self.assertExists(tempdirname + '/' + output_file, 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
-
-          # Run through node, if CMake produced a .js file.
-          if output_file.endswith('.js'):
-            ret = run_process(NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
-            self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt').read().strip(), ret.strip())
+        # Run through node, if CMake produced a .js file.
+        if output_file.endswith('.js'):
+          ret = run_process(NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
+          self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt').read().strip(), ret.strip())
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
@@ -2182,7 +2148,7 @@ int f() {
         expected = [expected]
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
-      acorn = any([p for p in passes if p in ACORN_PASSES])
+      acorn = any(p in ACORN_PASSES for p in passes)
 
       # test calling optimizer
       if not acorn:
@@ -2412,29 +2378,31 @@ int f() {
       output = run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
+  def test_embind_fail(self):
+    out = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'embind', 'test_unsigned.cpp')])
+    self.assertContained("undefined symbol: _embind_register_function", out)
+
+  @is_slow_test
   def test_embind(self):
     environ = os.environ.copy()
     environ['EMCC_CLOSURE_ARGS'] = environ.get('EMCC_CLOSURE_ARGS', '') + " --externs " + pipes.quote(path_from_root('tests', 'embind', 'underscore-externs.js'))
     test_cases = [
-        ([], True), # without --bind, we fail
-        (['--bind'], False),
-        (['--bind', '-O1'], False),
-        (['--bind', '-O2'], False),
-        (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')], False),
+        (['--bind']),
+        (['--bind', '-O1']),
+        (['--bind', '-O2']),
+        (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')]),
     ]
     without_utf8_args = ['-s', 'EMBIND_STD_STRING_IS_UTF8=0']
     test_cases_without_utf8 = []
-    for args, fail in test_cases:
-        test_cases_without_utf8.append((args + without_utf8_args, fail))
+    for args in test_cases:
+        test_cases_without_utf8.append((args + without_utf8_args))
     test_cases += test_cases_without_utf8
-    test_cases.extend([(args[:] + ['-s', 'DYNAMIC_EXECUTION=0'], status) for args, status in test_cases])
-    test_cases.append((['--bind', '-O2', '--closure', '1'], False)) # closure compiler doesn't work with DYNAMIC_EXECUTION=0
-    test_cases = [(args + ['-s', 'IN_TEST_HARNESS=1'], status) for args, status in test_cases]
-
-    for args, fail in test_cases:
-      print(args, fail)
+    test_cases.extend([(args[:] + ['-s', 'DYNAMIC_EXECUTION=0']) for args in test_cases])
+    # closure compiler doesn't work with DYNAMIC_EXECUTION=0
+    test_cases.append((['--bind', '-O2', '--closure', '1']))
+    for args in test_cases:
+      print(args)
       self.clear()
-      try_delete('a.out.js')
 
       testFiles = [
         path_from_root('tests', 'embind', 'underscore-1.4.2.js'),
@@ -2442,30 +2410,26 @@ int f() {
         path_from_root('tests', 'embind', 'embind.test.js'),
       ]
 
-      proc = run_process(
+      run_process(
         [PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'),
          '--pre-js', path_from_root('tests', 'embind', 'test.pre.js'),
          '--post-js', path_from_root('tests', 'embind', 'test.post.js'),
-         '-s', 'WASM_ASYNC_COMPILATION=0'] + args,
-        stderr=PIPE if fail else None,
-        check=not fail,
+         '-s', 'WASM_ASYNC_COMPILATION=0',
+         '-s', 'IN_TEST_HARNESS=1'] + args,
         env=environ)
 
-      if fail:
-        self.assertNotEqual(proc.returncode, 0)
-      else:
-        if 'DYNAMIC_EXECUTION=0' in args:
-          with open('a.out.js') as js_binary_file:
-            js_binary_str = js_binary_file.read()
-            self.assertNotIn('new Function(', js_binary_str, 'Found "new Function(" with DYNAMIC_EXECUTION=0')
-            self.assertNotIn('eval(', js_binary_str, 'Found "eval(" with DYNAMIC_EXECUTION=0')
+      if 'DYNAMIC_EXECUTION=0' in args:
+        with open('a.out.js') as js_binary_file:
+          js_binary_str = js_binary_file.read()
+          self.assertNotContained('new Function(', js_binary_str)
+          self.assertNotContained('eval(', js_binary_str)
 
-        with open('a.out.js', 'ab') as f:
-          for tf in testFiles:
-            f.write(open(tf, 'rb').read())
+      with open('a.out.js', 'ab') as f:
+        for tf in testFiles:
+          f.write(open(tf, 'rb').read())
 
-        output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, engine=NODE_JS)
-        assert "FAIL" not in output, output
+      output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, engine=NODE_JS)
+      self.assertNotContained('FAIL', output)
 
   def test_emconfig(self):
     output = run_process([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -7123,7 +7087,7 @@ Resolved: "/" => "/"
     run_process([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('double-freed', run_js('a.out.js'))
     # in debug mode, the double-free is caught
-    run_process([PYTHON, EMCC, 'src.cpp', '-g'])
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'ASSERTIONS=2'])
     seen_error = False
     out = '?'
     try:
@@ -7271,7 +7235,7 @@ high = 1234
 
   def test_dash_s_valid_list(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"])
-    self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
+    self.assertNotContained('a problem occurred in evaluating the content after a "-s", specifically', err)
 
   def test_dash_s_wrong_type(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=foo'])
@@ -8399,7 +8363,7 @@ int main() {
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
                           ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM', '-flto'],
-                           [], [], 6309),         # noqa
+                           [], [], 4971),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, filename, *args):
@@ -10786,3 +10750,19 @@ int main() {
 
     # Verify the JS output was smaller
     self.assertLess(os.path.getsize('src.c.o.js'), size_default)
+
+  @no_fastcomp('no .s file support')
+  def test_assembly(self):
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
+    src = path_from_root('tests', 'other', 'test_asm.c')
+    output = path_from_root('tests', 'other', 'test_asm.out')
+    self.emcc_args.append('foo.o')
+    self.do_run_from_file(src, output)
+
+  @no_fastcomp('no .s file support')
+  def test_assembly_preprocessed(self):
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'other', 'test_asm_cpp.S'), '-o', 'foo.o'])
+    src = path_from_root('tests', 'other', 'test_asm.c')
+    output = path_from_root('tests', 'other', 'test_asm.out')
+    self.emcc_args.append('foo.o')
+    self.do_run_from_file(src, output)
