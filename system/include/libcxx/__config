@@ -54,7 +54,7 @@
 #  endif
 #endif  // _LIBCPP_STD_VER
 
-#if defined(__ELF__)
+#if defined(__ELF__) || defined(__asmjs__) // XXX EMSCRIPTEN: Add define to avoid selecting coff format which activates declspec defines (the ELF define is actually never used)
 #  define _LIBCPP_OBJECT_FORMAT_ELF   1
 #elif defined(__MACH__)
 #  define _LIBCPP_OBJECT_FORMAT_MACHO 1
@@ -1122,6 +1122,7 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
       defined(__APPLE__) || \
       defined(__CloudABI__) || \
       defined(__sun__) || \
+      defined(__EMSCRIPTEN__) || \
       (defined(__MINGW32__) && __has_include(<pthread.h>))
 #    define _LIBCPP_HAS_THREAD_API_PTHREAD
 #  elif defined(__Fuchsia__)
