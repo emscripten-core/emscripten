@@ -8,18 +8,18 @@
 // This file implements the default terminate_handler and unexpected_handler.
 //===----------------------------------------------------------------------===//
 
-#include <stdexcept>
-#include <new>
 #include <exception>
-#include <cstdlib>
+#include <stdlib.h>
 #include "abort_message.h"
 #include "cxxabi.h"
-#include "cxa_handlers.hpp"
-#include "cxa_exception.hpp"
+#include "cxa_handlers.h"
+#include "cxa_exception.h"
 #include "private_typeinfo.h"
 #include "include/atomic_support.h"
 
 #if !defined(LIBCXXABI_SILENT_TERMINATE)
+
+_LIBCPP_SAFE_STATIC
 static const char* cause = "uncaught";
 
 __attribute__((noreturn))
@@ -45,7 +45,6 @@ static void demangling_terminate_handler()
                         exception_header + 1;
                 const __shim_type_info* thrown_type =
                     static_cast<const __shim_type_info*>(exception_header->exceptionType);
-#ifndef __EMSCRIPTEN__
                 // Try to get demangled name of thrown_type
                 int status;
                 char buf[1024];
@@ -53,13 +52,9 @@ static void demangling_terminate_handler()
                 const char* name = __cxa_demangle(thrown_type->name(), buf, &len, &status);
                 if (status != 0)
                     name = thrown_type->name();
-#else // __EMSCRIPTEN__ - we can demangle stack traces ourselves, best not to
-      //                  pull in all of libcxxabi-demangle for just this file
-                const char* name = thrown_type->name();
-#endif
                 // If the uncaught exception can be caught with std::exception&
                 const __shim_type_info* catch_type =
-				 static_cast<const __shim_type_info*>(&typeid(std::exception));
+                    static_cast<const __shim_type_info*>(&typeid(std::exception));
                 if (catch_type->can_catch(thrown_type, thrown_object))
                 {
                     // Include the what() message from the exception
@@ -89,21 +84,21 @@ static void demangling_unexpected_handler()
     std::terminate();
 }
 
-static std::terminate_handler default_terminate_handler = demangling_terminate_handler;
-static std::terminate_handler default_unexpected_handler = demangling_unexpected_handler;
+static constexpr std::terminate_handler default_terminate_handler = demangling_terminate_handler;
+static constexpr std::terminate_handler default_unexpected_handler = demangling_unexpected_handler;
 #else
-static std::terminate_handler default_terminate_handler = std::abort;
-static std::terminate_handler default_unexpected_handler = std::terminate;
+static constexpr std::terminate_handler default_terminate_handler = ::abort;
+static constexpr std::terminate_handler default_unexpected_handler = std::terminate;
 #endif
 
 //
 // Global variables that hold the pointers to the current handler
 //
 _LIBCXXABI_DATA_VIS
-std::terminate_handler __cxa_terminate_handler = default_terminate_handler;
+_LIBCPP_SAFE_STATIC std::terminate_handler __cxa_terminate_handler = default_terminate_handler;
 
 _LIBCXXABI_DATA_VIS
-std::unexpected_handler __cxa_unexpected_handler = default_unexpected_handler;
+_LIBCPP_SAFE_STATIC std::unexpected_handler __cxa_unexpected_handler = default_unexpected_handler;
 
 namespace std
 {
