@@ -66,7 +66,7 @@ regex_error::regex_error(regex_constants::error_type ecode)
       __code_(ecode)
 {}
 
-regex_error::~regex_error() throw() {}
+regex_error::~regex_error() _NOEXCEPT {}
 
 namespace {
 
