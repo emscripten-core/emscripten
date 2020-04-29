@@ -29,7 +29,7 @@ both codegen and system libraries.
 Catching Null Dereference
 -------------------------
 
-By default, with Emscripten, deferencing a null pointer does not immediately
+By default, with Emscripten, dereferencing a null pointer does not immediately
 cause a segmentation fault, unlike traditional platforms. Instead, it checks
 a magic cookie stored at address 0 at the end of the program execution.
 

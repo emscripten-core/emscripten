@@ -417,7 +417,7 @@ def apply_settings(changes):
     try:
       value = parse_value(value)
     except Exception as e:
-      exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
 
     # Do some basic type checking by comparing to the existing settings.
     # Sadly we can't do this generically in the SettingsManager since there are settings
