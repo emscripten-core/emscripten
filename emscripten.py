@@ -2763,6 +2763,10 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [e for e in unexpected_exports if e not in shared.Settings.EXPORTED_FUNCTIONS]
   shared.Building.user_requested_exports += unexpected_exports
 
+  # With the wasm backend the set of implemented functions is identical to the set of exports
+  # Set this key here simply so that the shared code that handle it.
+  metadata['implementedFunctions'] = [asmjs_mangle(x) for x in metadata['exports']]
+
   return metadata
 
 
