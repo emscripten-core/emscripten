@@ -2476,11 +2476,16 @@ The current type of b is: 9
     # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
+  @also_with_standalone_wasm
   def test_atexit(self):
-    # Confirms they are called in reverse order
-    # needs atexits
+    # Confirms they are called in the proper reverse order
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
+
+  def test_atexit_threads(self):
+    # also tests thread exit (__cxa_thread_atexit)
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_atexit_threads')
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
