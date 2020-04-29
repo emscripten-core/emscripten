@@ -42,7 +42,7 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 92
+EXPECTED_BINARYEN_VERSION = 93
 
 
 # can add  %(asctime)s  to see timestamps
@@ -66,6 +66,7 @@ diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('emterpreter')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 

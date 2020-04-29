@@ -417,7 +417,7 @@ def apply_settings(changes):
     try:
       value = parse_value(value)
     except Exception as e:
-      exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
 
     # Do some basic type checking by comparing to the existing settings.
     # Sadly we can't do this generically in the SettingsManager since there are settings
@@ -1415,6 +1415,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('ASYNCIFY has been removed from fastcomp. There is a new implementation which can be used in the upstream wasm backend.')
 
     if shared.Settings.EMTERPRETIFY:
+      diagnostics.warning('emterpreter', 'emterpreter is soon to be removed.  If you depend on this feature please reach out on github for help transitioning.')
       shared.Settings.FINALIZE_ASM_JS = 0
       shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
       shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
