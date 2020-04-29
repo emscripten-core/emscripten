@@ -266,9 +266,10 @@ Consider ``leak.cpp``:
   SUMMARY: AddressSanitizer: 40 byte(s) leaked in 1 allocation(s).
 
 Note that since leak checks take place at program exit, you must use
-``-s EXIT_RUNTIME``, or invoke ``__lsan::DoLeakCheck`` manually.
+``-s EXIT_RUNTIME``, or invoke ``__lsan_do_leak_check`` or
+``__lsan_do_recoverable_leak_check`` manually.
 
-You can detect that AddressSanitizer is enabled and run ``__lsan::DoLeakCheck``
+You can detect that AddressSanitizer is enabled and run ``__lsan_do_leak_check``
 by doing:
 
 .. code-block:: c
@@ -276,9 +277,13 @@ by doing:
   #if defined(__has_feature)
   #if __has_feature(address_sanitizer)
     // code for ASan-enabled builds
-    __lsan::DoLeakCheck();
+    __lsan_do_leak_check();
   #endif
   #endif
+
+This will be fatal if there are memory leaks. To check for memory leaks
+and allow the process to continue running, use
+``__lsan_do_recoverable_leak_check``.
 
 Also, if you only want to check for memory leaks, you may use
 ``-fsanitize=leak`` instead of ``-fsanitize=address``. ``-fsanitize=leak``

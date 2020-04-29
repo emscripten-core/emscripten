@@ -15,9 +15,7 @@ void g(void) {
   while (1);
 }
 
-namespace __lsan {
-  void DoLeakCheck();
-}
+extern "C" void __lsan_do_leak_check(void);
 
 int main(int argc, char **argv) {
   std::thread t(g);
@@ -29,6 +27,6 @@ int main(int argc, char **argv) {
   void *local_ptr = memset(calloc(16, 128), 48, 2048);
   while (!atomic_load(&thread_done));
 
-  __lsan::DoLeakCheck();
+  __lsan_do_leak_check();
   fprintf(stderr, "LSAN TEST COMPLETE\n");
 }
