@@ -92,7 +92,7 @@ if (Module['ENVIRONMENT']) {
 #include "shell_pthreads.js"
 #endif
 
-#if USE_PTHREADS && (!MODULARIZE || MODULARIZE_INSTANCE)
+#if USE_PTHREADS && !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
 #if EXPORT_ES6
@@ -276,8 +276,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   } else if (document.currentScript) { // web
     scriptDirectory = document.currentScript.src;
   }
-#if MODULARIZE && MODULARIZE_INSTANCE == 0
-  // When MODULARIZE (and not _INSTANCE), this JS may be executed later, after document.currentScript
+#if MODULARIZE
+  // When MODULARIZE, this JS may be executed later, after document.currentScript
   // is gone, so we saved it, and we use it here instead of any other info.
   if (_scriptDir) {
     scriptDirectory = _scriptDir;
