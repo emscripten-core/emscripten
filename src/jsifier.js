@@ -143,7 +143,7 @@ function JSify(data, functionsOnly) {
       // what we just added to the library.
     }
 
-    function addFromLibrary(ident) {
+    function addFromLibrary(ident, dependent) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
 
@@ -176,6 +176,7 @@ function JSify(data, functionsOnly) {
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !(finalName in WEAK_DECLARES) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
+          if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
             if (WASM_BACKEND && !LLD_REPORT_UNDEFINED) {
@@ -305,7 +306,7 @@ function JSify(data, functionsOnly) {
         });
       });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
-      var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
+      var depsText = (deps ? '\n' + deps.map(function(dep){ addFromLibrary(dep, ident + "__deps: ['" + deps.join("','")+"']")}).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -384,7 +385,7 @@ function JSify(data, functionsOnly) {
         delete LibraryManager.library[shortident + '__deps'];
       }
     }
-    item.JS = addFromLibrary(shortident);
+    item.JS = addFromLibrary(shortident, 'top-level compiled C/C++ code');
   }
 
   // Final combiner
