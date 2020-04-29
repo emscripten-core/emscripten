@@ -201,3 +201,6 @@ var USE_CXX = 0;
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
 // JS library symbols.
 var ONLY_CALC_JS_SYMBOLS = 0;
+
+// Used internally to store the starting value of the stack pointer.
+var STACK_BASE = 0;
