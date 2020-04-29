@@ -31,6 +31,9 @@ Current Trunk
 - Remove undocumented and untested config settings: `COMPILER_OPTS`.  This was
   a global setting in the emscripten config file that would inject extra
   compiler options.
+- Remove `MODULARIZE_INSTANCE` build option (#11037). This was a seldom used
+  option that was complicating the logic for `MODULARIZE`. Module instances can
+  be created by using `MODULARIZE` and calling the factory function explicitly. 
 
 v1.39.13: 04/17/2020
 --------------------
