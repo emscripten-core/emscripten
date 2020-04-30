@@ -3528,21 +3528,20 @@ window.close = function() {
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
   def test_dylink_dso_needed_wasm(self):
-    self._test_dylink_dso_needed(1, 0)
+    self._run_dylink_dso_needed(1, 0)
 
   def test_dylink_dso_needed_wasm_inworker(self):
-    self._test_dylink_dso_needed(1, 1)
+    self._run_dylink_dso_needed(1, 1)
 
   def test_dylink_dso_needed_asmjs(self):
-    self._test_dylink_dso_needed(0, 0)
+    self._run_dylink_dso_needed(0, 0)
 
   def test_dylink_dso_needed_asmjs_inworker(self):
-    self._test_dylink_dso_needed(0, 1)
+    self._run_dylink_dso_needed(0, 1)
 
   @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
   @requires_sync_compilation
-  def _test_dylink_dso_needed(self, wasm, inworker):
-    # here we reuse runner._test_dylink_dso_needed, but the code is run via browser.
+  def _run_dylink_dso_needed(self, wasm, inworker):
     print('\n# wasm=%d inworker=%d' % (wasm, inworker))
     self.set_setting('WASM', wasm)
     self.emcc_args += ['-O2']
@@ -3565,7 +3564,7 @@ window.close = function() {
         ''')
       src += r'''
         int main() {
-          _main();
+          test_main();
           EM_ASM({
             var expected = %r;
             assert(Module.printed === expected, ['stdout expected:', expected]);
@@ -3578,7 +3577,7 @@ window.close = function() {
         self.emcc_args += ['--proxy-to-worker']
       self.btest(src, '0', args=self.get_emcc_args() + ['--post-js', 'post.js'])
 
-    super(browser, self)._test_dylink_dso_needed(do_run)
+    self._test_dylink_dso_needed(do_run)
 
   @requires_graphics_hardware
   @requires_sync_compilation
