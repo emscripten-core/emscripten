@@ -29,11 +29,6 @@
 #define SET_ERRNO()
 #endif
 
-#define RETURN_ERROR() { \
-  SET_ERRNO()            \
-  return (void*)-1;      \
-}
-
 void *sbrk(intptr_t increment) {
   // Enforce preserving a minimal 4-byte alignment for sbrk.
   increment = (increment + 3) & ~3;
@@ -55,7 +50,7 @@ void *sbrk(intptr_t increment) {
     // Check for a 32-bit overflow, which would indicate that we are trying to
     // allocate over 4GB, which is never possible in wasm32.
     if (increment > 0 && (uint32_t)new_brk <= (uint32_t)old_brk) {
-      RETURN_ERROR();
+      goto Error;
     }
 #ifdef __wasm__
     uintptr_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
@@ -65,7 +60,7 @@ void *sbrk(intptr_t increment) {
     if (new_brk > old_size) {
       // Try to grow memory.
       if (!emscripten_resize_heap(new_brk)) {
-        RETURN_ERROR();
+        goto Error;
       }
     }
 #if __EMSCRIPTEN_PTHREADS__
@@ -92,6 +87,10 @@ void *sbrk(intptr_t increment) {
 #if __EMSCRIPTEN_PTHREADS__
   }
 #endif // __EMSCRIPTEN_PTHREADS__
+
+Error:
+  SET_ERRNO();
+  return (void*)-1;
 }
 
 int brk(intptr_t ptr) {
