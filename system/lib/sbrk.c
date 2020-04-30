@@ -30,6 +30,7 @@
 #endif
 
 void *sbrk(intptr_t increment) {
+  uintptr_t old_size;
   // Enforce preserving a minimal 4-byte alignment for sbrk.
   increment = (increment + 3) & ~3;
 #if __EMSCRIPTEN_PTHREADS__
@@ -37,6 +38,7 @@ void *sbrk(intptr_t increment) {
   // work is necessary to keep things threadsafe, but we also make sure sbrk
   // itself is threadsafe so alternative allocators work. We do that by looping
   // and retrying if we hit interference with another thread.
+  intptr_t expected;
   while (1) {
 #endif // __EMSCRIPTEN_PTHREADS__
 
@@ -53,9 +55,9 @@ void *sbrk(intptr_t increment) {
       goto Error;
     }
 #ifdef __wasm__
-    uintptr_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
+    old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
 #else
-    uintptr_t old_size = emscripten_get_heap_size();
+    old_size = emscripten_get_heap_size();
 #endif
     if (new_brk > old_size) {
       // Try to grow memory.
@@ -67,7 +69,7 @@ void *sbrk(intptr_t increment) {
     // Attempt to update the dynamic top to new value. Another thread may have
     // beat this one to the update, in which case we will need to start over
     // by iterating the loop body again.
-    intptr_t expected = old_brk;
+    expected = old_brk;
     __c11_atomic_compare_exchange_strong(
         (_Atomic(intptr_t)*)sbrk_ptr,
         &expected, new_brk,
