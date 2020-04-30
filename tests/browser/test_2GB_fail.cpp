@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <emscripten.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 void* allocation;
 
