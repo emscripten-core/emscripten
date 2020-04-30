@@ -2456,11 +2456,16 @@ The current type of b is: 9
     # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
+  @also_with_standalone_wasm
   def test_atexit(self):
-    # Confirms they are called in reverse order
-    # needs atexits
+    # Confirms they are called in the proper reverse order
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
+
+  def test_atexit_threads(self):
+    # also tests thread exit (__cxa_thread_atexit)
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_atexit_threads')
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
@@ -4563,7 +4568,7 @@ res64 - external 64\n''', header='''
   @no_wasm_backend('possible https://github.com/emscripten-core/emscripten/issues/9038')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
-      self.do_run(src + 'int main() { return _main(); }', expected_output)
+      self.do_run(src + 'int main() { return test_main(); }', expected_output)
     self._test_dylink_dso_needed(do_run)
 
   @needs_dlfcn
@@ -6157,7 +6162,14 @@ return malloc(size);
 
   @needs_make('mingw32-make')
   @is_slow_test
-  def test_zlib(self):
+  @parameterized({
+    'cmake': (True,),
+    'configure': (False,)
+  })
+  def test_zlib(self, use_cmake):
+    if WINDOWS and not use_cmake:
+      self.skipTest("Windows cannot run configure sh scripts")
+
     self.maybe_closure()
 
     if self.run_name == 'asm2g':
@@ -6165,10 +6177,9 @@ return malloc(size);
     if self.run_name == 'asm2f':
       return self.skipTest('asm2f affects cflags in a way that changes zlib compile flag reporting, so the stdout is different')
 
-    use_cmake_configure = WINDOWS
-    if use_cmake_configure:
+    if use_cmake:
       make_args = []
-      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.']
+      configure = [PYTHON, path_from_root('emcmake.py'), 'cmake', '.']
     else:
       make_args = ['libz.a']
       configure = ['sh', './configure']
@@ -6391,8 +6402,8 @@ return malloc(size);
 
     emcc_args = self.emcc_args
 
-    # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = [
+    # The following tests link to libc, whereas others link with -nostdlib
+    needs_stdlib = [
       'muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star',
       'legalizer_ta2', 'quotedlabel', 'alignedunaligned', 'sillybitcast',
       'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2',
@@ -6441,14 +6452,6 @@ return malloc(size);
       if self.is_wasm() and basename in skip_wasm:
         continue
 
-      if basename in need_no_leave_inputs_raw:
-        leave_inputs = '0'
-        self.set_setting('FILESYSTEM', 1)
-      else:
-        leave_inputs = '1'
-        # no libc is linked in; with FILESYSTEM=0 we have a chance at printfing anyhow
-        self.set_setting('FILESYSTEM', 0)
-
       if '_noasm' in shortname and self.get_setting('ASM_JS'):
         print('case "%s" not relevant for asm.js' % shortname)
         continue
@@ -6464,12 +6467,17 @@ return malloc(size);
         output = 'hello, world!'
 
       if output.rstrip() != 'skip':
-        self.emcc_args = emcc_args
+        self.emcc_args = list(emcc_args)
+        if basename in needs_stdlib:
+          self.set_setting('FILESYSTEM', 1)
+        else:
+          self.emcc_args.append('-nostdlib')
+          # no libc is linked in; with FILESYSTEM=0 we have a chance at printfing anyhow
+          self.set_setting('FILESYSTEM', 0)
         if os.path.exists(shortname + '.emcc'):
           self.emcc_args += json.loads(open(shortname + '.emcc').read())
 
-        with env_modify({'EMCC_LEAVE_INPUTS_RAW': leave_inputs}):
-          self.do_ll_run(path_from_root('tests', 'cases', name), output, assert_returncode=None)
+        self.do_ll_run(path_from_root('tests', 'cases', name), output, assert_returncode=None)
 
       # Optional source checking, a python script that gets a global generated with the source
       src_checker = path_from_root('tests', 'cases', shortname + '.py')
@@ -7313,8 +7321,6 @@ err = err = function(){};
   @no_wasm2js('TODO: source maps in wasm2js')
   @no_emterpreter
   def test_source_map(self):
-    if not jsrun.check_engine(NODE_JS):
-      self.skipTest('sourcemapper requires Node to run')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
 
@@ -7586,9 +7592,6 @@ err = err = function(){};
   @no_wasm2js('no source maps support yet')
   def test_exception_source_map(self):
     self.emcc_args.append('-g4')
-    if not jsrun.check_engine(NODE_JS):
-      self.skipTest('sourcemapper requires Node to run')
-
     src = '''
       #include <stdio.h>
 
@@ -7839,6 +7842,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_wasm_backend('EMTERPRETIFY')
   def test_async_emterpretify(self):
+    self.emcc_args.append('-Wno-emterpreter')
     self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
@@ -8062,6 +8066,7 @@ extern "C" {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
+    self.emcc_args.append('-Wno-emterpreter')
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
@@ -8098,6 +8103,7 @@ extern "C" {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_emterpretify(self):
+    self.emcc_args.append('-Wno-emterpreter')
     self.set_setting('EMTERPRETIFY', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     print('async')
@@ -8965,7 +8971,7 @@ strict = make_run('strict', emcc_args=['-O2'], settings={'DEFAULT_TO_CXX': 0})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter
-  asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
+  asm2i = make_run('asm2i', emcc_args=['-O2', '-Wno-emterpreter'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
 if shared.Settings.WASM_BACKEND:
   lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})

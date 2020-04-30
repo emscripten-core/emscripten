@@ -72,7 +72,10 @@ To launch using a browser's filename use:
 
   --browser /path/to/browser/executable page.html
 
-If you just want to launch a web server you can pass the ``--no_browser`` command line flag. In this case *emrun* will run the server without spawning the browser (this is similar to using Python's `SimpleHTTPServer <http://www.pythonforbeginners.com/modules-in-python/how-to-use-simplehttpserver/>`_).
+If you just want to launch a web server you can pass the ``--no_browser``
+command line flag. In this case *emrun* will run the server without spawning the
+browser (this is similar to using a
+:ref:`local webserver <faq-local-webserver>`).
 
 
 Security implications

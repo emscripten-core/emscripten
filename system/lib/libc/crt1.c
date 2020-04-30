@@ -72,9 +72,5 @@ void _start(void) {
 
   int r = __original_main();
 
-  /* If main exited successfully, just return, otherwise call _Exit.
-   * TODO(sbc): switch to _Exit */
-  if (r != 0) {
-    __wasi_proc_exit(r);
-  }
+  exit(r);
 }

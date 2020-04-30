@@ -17,9 +17,26 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Update SDL2 to latest in ports, which has recently been updated to include
+  upstream 2.0.10.
+- Add warning on use of `EMTERPRETIFY` which is soon to be removed.
+- Emscripten can now compile assembly files in llvm's .s/.S file format.
+- Remove test-only environment variable handling for `EMCC_LEAVE_INPUTS_RAW`.
+  The two uses cases in our test code were covered by the `-nostdlib` option.
+- Remove untested `CONFIGURE_CC`.  This could be used to override the underlying
+  compiler used in emcc/em++ but only during configure tests.  There are other
+  ways to control/fake the detected configure features that don't require such
+  monkey patching. For example setting defaults via a site file:
+  https://www.gnu.org/software/autoconf/manual/autoconf-2.67/html_node/Site-Defaults.html
+- Remove undocumented and untested config settings: `COMPILER_OPTS`.  This was
+  a global setting in the emscripten config file that would inject extra
+  compiler options.
 
 v1.39.13: 04/17/2020
 --------------------
+- Support for WebAssembly BigInt integration with a new `WASM_BIGINT` flag. With
+  that the VM will use a JS BigInt for a wasm i64, avoiding the need for JS
+  legalization. See #10860.
 - Add another value for ENVIRONMENT named 'webview' - it is a companion
   option for 'web' and enables some additional compatibility checks
   so that generated code works both in normal web and in a webview like Cordova.

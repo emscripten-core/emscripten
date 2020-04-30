@@ -150,9 +150,9 @@ Note that you must tell the compiler that ``do_fetch()`` can do an
 asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
 instrument the code to allow pausing and resuming; see more details later down.
 
-To run this, you must run a webserver (like say ``python -m SimpleHTTPServer``)
-and then browse to ``http://localhost:8000/a.html`` (the URL may depend on the
-port number in the server). You will see something like this:
+To run this, you must run a :ref:`local webserver <faq-local-webserver>`
+and then browse to ``http://localhost:8000/a.html``.
+You will see something like this:
 
 ::
 
