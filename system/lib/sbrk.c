@@ -64,7 +64,6 @@ void *sbrk(intptr_t increment) {
 #endif
     if (new_brk > old_size) {
       // Try to grow memory.
-      intptr_t diff = new_brk - old_size;
       if (!emscripten_resize_heap(new_brk)) {
         RETURN_ERROR();
       }
