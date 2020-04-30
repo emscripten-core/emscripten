@@ -23,16 +23,19 @@ int main() {
     printf("test %d\n", i);
     chunks[i][i] = i;
     int fromJS = EM_ASM_INT({
-      return HEAP8[$0];
+      return 2 * HEAP8[$0];
     }, &chunks[i][i]);
-    printf("wrote %d in C, read %d from JS\n", i, fromJS);
+    assert(2 * i == fromJS);
     EM_ASM_INT({
-      HEAP8[$0] = 2 * $1;
+      HEAP8[$0] = 3 * $1;
     }, &chunks[i][i], i);
     int fromC = chunks[i][i];
-    printf("wrote %d in JS, read %d from C\n", 2 * i, fromC);
+    assert(3 * i == fromC);
   }
 
   puts("success");
-}
 
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
+}

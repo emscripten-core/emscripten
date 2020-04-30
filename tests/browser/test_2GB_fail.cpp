@@ -17,9 +17,16 @@ int main() {
     if (!allocation) {
       assert(i <= 20); // can't get to 2GB
       puts("expected allocation failure");
+#ifdef REPORT_RESULT
+      REPORT_RESULT(0);
+#endif
       return 0;
     }
   }
 
   puts("UNEXPECTED");
+
+#ifdef REPORT_RESULT
+  REPORT_RESULT(1);
+#endif
 }

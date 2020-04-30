@@ -27,4 +27,8 @@ int main() {
   // since we started with some small amount, and then add 512MB chunks).
   assert(num_allocations < 8);
   puts("success");
+
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
 }
