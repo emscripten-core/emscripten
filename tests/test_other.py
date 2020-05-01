@@ -8129,23 +8129,18 @@ int main() {
     # sizes must be different, as the flag has an impact
     self.assertEqual(len(set(sizes)), 2)
 
-  @no_fastcomp('BINARYEN_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
-  def test_binaryen_passes(self):
+  @no_fastcomp('BINARYEN_EXTRA_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
+  def test_binaryen_passes_extra(self):
     def build(args=[]):
-      return run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-O3'] + args, stdout=PIPE).stdout
+      return run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O3'] + args, stdout=PIPE).stdout
 
     build()
     base_size = os.path.getsize('a.out.wasm')
-    build(['-s', 'BINARYEN_PASSES="--metrics"'])
-    replace_size = os.path.getsize('a.out.wasm')
-    # replacing the default -O3 etc. increases code size
-    self.assertLess(base_size, replace_size)
     out = build(['-s', 'BINARYEN_EXTRA_PASSES="--metrics"'])
-    add_size = os.path.getsize('a.out.wasm')
-    # adding --metrics does not affect code size
-    self.assertEqual(base_size, add_size)
     # and --metrics output appears
     self.assertContained('[funcs]', out)
+    # adding --metrics should not affect code size
+    self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
   def assertFileContents(self, filename, contents):
     contents = contents.replace('\r', '')

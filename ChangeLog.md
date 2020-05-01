@@ -36,6 +36,9 @@ Current Trunk
   compiler options.
 - Allow spaces in a path to Python interpreter when running emscripten from Unix
   shell (#11005).
+- Remove `BINARYEN_PASSES` settings.  We still have `BINARYEN_EXTRA_PASSES`, but
+  completely overriding the set of passes from the command line didn't make much
+  sense.
 
 v1.39.13: 04/17/2020
 --------------------
