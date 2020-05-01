@@ -4,6 +4,7 @@ __growWasmMemory
 __wasm_call_ctors
 add
 free
+global_val
 malloc
 stackAlloc
 stackRestore
