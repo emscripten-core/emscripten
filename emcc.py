@@ -587,6 +587,108 @@ def cxx_to_c_compiler(cxx):
   return os.path.join(dirname, basename)
 
 
+def backend_binaryen_passes():
+  # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
+  # we run the optimizer during asm2wasm itself). use it, if not overridden.
+
+  passes = []
+  # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
+  if shared.Settings.SAFE_HEAP:
+    passes += ['--safe-heap']
+  passes += ['--post-emscripten']
+  # always inline __original_main into main, as otherwise it makes debugging confusing,
+  # and doing so is never bad for code size
+  # FIXME however, don't do it with DWARF for now, as inlining is not
+  #       fully handled in DWARF updating yet
+  if shared.Settings.DEBUG_LEVEL < 3:
+    passes += ['--inline-main']
+  if not shared.Settings.EXIT_RUNTIME:
+    passes += ['--no-exit-runtime']
+  if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
+    passes += [shared.Building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
+  elif shared.Settings.STANDALONE_WASM:
+    # even if not optimizing, make an effort to remove all unused imports and
+    # exports, to make the wasm as standalone as possible
+    passes += ['--remove-unused-module-elements']
+  if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
+    passes += ['--low-memory-unused']
+  if shared.Settings.DEBUG_LEVEL < 3:
+    passes += ['--strip-debug']
+  if not shared.Settings.EMIT_PRODUCERS_SECTION:
+    passes += ['--strip-producers']
+  if shared.Settings.AUTODEBUG:
+    # adding '--flatten' here may make these even more effective
+    passes += ['--instrument-locals']
+    passes += ['--log-execution']
+    passes += ['--instrument-memory']
+    if shared.Settings.LEGALIZE_JS_FFI:
+      # legalize it again now, as the instrumentation may need it
+      passes += ['--legalize-js-interface']
+  if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+    # note that this pass must run before asyncify, as if it runs afterwards we only
+    # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
+    # be able to whitelist them etc.
+    passes += ['--fpcast-emu']
+  if shared.Settings.ASYNCIFY:
+    # TODO: allow whitelist as in asyncify
+    passes += ['--asyncify']
+    if shared.Settings.ASSERTIONS:
+      passes += ['--pass-arg=asyncify-asserts']
+    if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
+      passes += ['--pass-arg=asyncify-ignore-indirect']
+    else:
+      # if we are not ignoring indirect calls, then we must treat invoke_* as if
+      # they are indirect calls, since that is what they do - we can't see their
+      # targets statically.
+      shared.Settings.ASYNCIFY_IMPORTS += ['invoke_*']
+    # with pthreads we may call main through the __call_main mechanism, which can
+    # therefore reach anything in the program, so mark it as possibly causing a
+    # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
+    # see what it itself calls)
+    if shared.Settings.USE_PTHREADS:
+      shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
+    # add the default imports
+    shared.Settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
+
+    # return the full import name, including module. The name may
+    # already have a module prefix; if not, we assume it is "env".
+    def get_full_import_name(name):
+      if '.' in name:
+        return name
+      return 'env.' + name
+
+    shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
+
+    passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
+
+    # shell escaping can be confusing; try to emit useful warnings
+    def check_human_readable_list(items):
+      for item in items:
+        if item.count('(') != item.count(')'):
+          logger.warning('''emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):''')
+          logger.warning('''   ''' + item)
+          logger.warning('''This may indicate improper escaping that led to splitting inside your names.''')
+          logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_WHITELIST=["foo(int, char)", "bar"]' ''')
+          break
+
+    if shared.Settings.ASYNCIFY_BLACKLIST:
+      check_human_readable_list(shared.Settings.ASYNCIFY_BLACKLIST)
+      passes += ['--pass-arg=asyncify-blacklist@%s' % ','.join(shared.Settings.ASYNCIFY_BLACKLIST)]
+    if shared.Settings.ASYNCIFY_WHITELIST:
+      check_human_readable_list(shared.Settings.ASYNCIFY_WHITELIST)
+      passes += ['--pass-arg=asyncify-whitelist@%s' % ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
+  if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
+    passes += ['--ignore-implicit-traps']
+
+  if shared.Settings.BINARYEN_EXTRA_PASSES:
+    # BINARYEN_EXTRA_PASSES is comma-separated, and we support both '-'-prefixed and
+    # unprefixed pass names
+    extras = shared.Settings.BINARYEN_EXTRA_PASSES.split(',')
+    passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
+
+  return passes
+
+
 run_via_emxx = False
 
 
@@ -1857,105 +1959,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
-
-        # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
-        # we run the optimizer during asm2wasm itself). use it, if not overridden.
-
-        passes = []
-        # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
-        if shared.Settings.SAFE_HEAP:
-          passes += ['--safe-heap']
-        passes += ['--post-emscripten']
-        # always inline __original_main into main, as otherwise it makes debugging confusing,
-        # and doing so is never bad for code size
-        # FIXME however, don't do it with DWARF for now, as inlining is not
-        #       fully handled in DWARF updating yet
-        if shared.Settings.DEBUG_LEVEL < 3:
-          passes += ['--inline-main']
-        if not shared.Settings.EXIT_RUNTIME:
-          passes += ['--no-exit-runtime']
-        if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
-          passes += [shared.Building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
-        elif shared.Settings.STANDALONE_WASM:
-          # even if not optimizing, make an effort to remove all unused imports and
-          # exports, to make the wasm as standalone as possible
-          passes += ['--remove-unused-module-elements']
-        if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
-          passes += ['--low-memory-unused']
-        if shared.Settings.DEBUG_LEVEL < 3:
-          passes += ['--strip-debug']
-        if not shared.Settings.EMIT_PRODUCERS_SECTION:
-          passes += ['--strip-producers']
-        if shared.Settings.AUTODEBUG:
-          # adding '--flatten' here may make these even more effective
-          passes += ['--instrument-locals']
-          passes += ['--log-execution']
-          passes += ['--instrument-memory']
-          if shared.Settings.LEGALIZE_JS_FFI:
-            # legalize it again now, as the instrumentation may need it
-            passes += ['--legalize-js-interface']
-        if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-          # note that this pass must run before asyncify, as if it runs afterwards we only
-          # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
-          # be able to whitelist them etc.
-          passes += ['--fpcast-emu']
-        if shared.Settings.ASYNCIFY:
-          # TODO: allow whitelist as in asyncify
-          passes += ['--asyncify']
-          if shared.Settings.ASSERTIONS:
-            passes += ['--pass-arg=asyncify-asserts']
-          if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
-            passes += ['--pass-arg=asyncify-ignore-indirect']
-          else:
-            # if we are not ignoring indirect calls, then we must treat invoke_* as if
-            # they are indirect calls, since that is what they do - we can't see their
-            # targets statically.
-            shared.Settings.ASYNCIFY_IMPORTS += ['invoke_*']
-          # with pthreads we may call main through the __call_main mechanism, which can
-          # therefore reach anything in the program, so mark it as possibly causing a
-          # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
-          # see what it itself calls)
-          if shared.Settings.USE_PTHREADS:
-            shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
-          # add the default imports
-          shared.Settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
-
-          # return the full import name, including module. The name may
-          # already have a module prefix; if not, we assume it is "env".
-          def get_full_import_name(name):
-            if '.' in name:
-              return name
-            return 'env.' + name
-
-          shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
-
-          passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
-
-          # shell escaping can be confusing; try to emit useful warnings
-          def check_human_readable_list(items):
-            for item in items:
-              if item.count('(') != item.count(')'):
-                logger.warning('''emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):''')
-                logger.warning('''   ''' + item)
-                logger.warning('''This may indicate improper escaping that led to splitting inside your names.''')
-                logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_WHITELIST=["foo(int, char)", "bar"]' ''')
-                break
-
-          if shared.Settings.ASYNCIFY_BLACKLIST:
-            check_human_readable_list(shared.Settings.ASYNCIFY_BLACKLIST)
-            passes += ['--pass-arg=asyncify-blacklist@%s' % ','.join(shared.Settings.ASYNCIFY_BLACKLIST)]
-          if shared.Settings.ASYNCIFY_WHITELIST:
-            check_human_readable_list(shared.Settings.ASYNCIFY_WHITELIST)
-            passes += ['--pass-arg=asyncify-whitelist@%s' % ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
-        if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
-          passes += ['--ignore-implicit-traps']
-
-        if shared.Settings.BINARYEN_EXTRA_PASSES:
-          # BINARYEN_EXTRA_PASSES is comma-separated, and we support both '-'-prefixed and
-          # unprefixed pass names
-          extras = shared.Settings.BINARYEN_EXTRA_PASSES.split(',')
-          passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
-        options.binaryen_passes = passes
+        options.binaryen_passes += backend_binaryen_passes()
 
       # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
       # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
