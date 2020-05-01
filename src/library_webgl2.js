@@ -976,6 +976,19 @@ var LibraryWebGL2 = {
     _glDrawElements(mode, count, type, indices);
   },
 
+  glDrawArraysInstancedBaseInstanceWEBGL: function(mode, first, count, instanceCount, baseInstance) {
+    GLctx.dibvbi['drawArraysInstancedBaseInstanceWEBGL'](mode, first, count, instanceCount, baseInstance);
+  },
+
+  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL: function(mode, count, type, offset, instanceCount, baseVertex, baseinstance) {
+    GLctx.dibvbi['drawElementsInstancedBaseVertexBaseInstanceWEBGL'](mode, count, type, offset, instanceCount, baseVertex, baseinstance);
+  },
+
+  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
+    // Closure is expected to be allowed to minify the '.dibvbi' property, so not accessing it quoted.
+    ctx.dibvbi = ctx.getExtension('WEBGL_draw_instanced_base_vertex_base_instance');
+  },
+
   glVertexAttribI4i__sig: 'viiiii',
   glVertexAttribI4ui__sig: 'viiiii',
   glCopyBufferSubData__sig: 'viiiii',
