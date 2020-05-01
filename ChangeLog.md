@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+1.39.14: 05/01/2020
+-------------------
 - Update SDL2 to latest in ports, which has recently been updated to include
   upstream 2.0.10.
 - Add warning on use of `EMTERPRETIFY` which is soon to be removed.
