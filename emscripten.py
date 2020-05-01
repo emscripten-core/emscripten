@@ -1840,7 +1840,7 @@ Module['%(full)s'] = function() {
 
 def create_named_globals(metadata):
   if not shared.Settings.RELOCATABLE:
-    return ''
+    return ''.join(["Module['_%s'] = %s;\n" % (k, v) for k, v in metadata['namedGlobals'].items()])
 
   named_globals = '''
 var NAMED_GLOBALS = {
@@ -1865,7 +1865,7 @@ for (var named in NAMED_GLOBALS) {
   })(named);
 }
 '''
-  named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
+  named_globals += ''.join(["Module['%s'] = Module['%s'];\n" % (k, v) for k, v in metadata['aliases'].items()])
   return named_globals
 
 

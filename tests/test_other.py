@@ -10729,3 +10729,9 @@ int main() {
     output = path_from_root('tests', 'other', 'test_asm.out')
     self.emcc_args.append('foo.o')
     self.do_run_from_file(src, output)
+
+  @no_fastcomp('https://github.com/emscripten-core/emscripten-fastcomp/pull/269')
+  def test_export_global_address(self):
+    src = path_from_root('tests', 'other', 'test_export_global_address.c')
+    output = path_from_root('tests', 'other', 'test_export_global_address.out')
+    self.do_run_from_file(src, output)
