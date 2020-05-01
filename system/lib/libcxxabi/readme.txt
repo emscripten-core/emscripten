@@ -1,7 +1,7 @@
 These files are from libc++, release branch 10.x.
 
-tag: none
-git: d2071b8fcdc5e8794d467cec9ebab735d09218bf
+tag: llvmorg-10.0.0
+git: d32170dbd5b0d54436537b6b75beaf44324e0c28
 
 Update Instructions
 -------------------

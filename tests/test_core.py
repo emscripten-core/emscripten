@@ -8860,10 +8860,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS', '1')
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics', js_engines=js_engines)
 
-  @node_pthreads
-  def test_pthread_tls(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_tls')
-  
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1

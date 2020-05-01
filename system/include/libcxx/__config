@@ -99,7 +99,7 @@
 // Previously libc++ used "unsigned int" exclusively.
 #  define _LIBCPP_ABI_VARIANT_INDEX_TYPE_OPTIMIZATION
 // Unstable attempt to provide a more optimized std::function
-//#  define _LIBCPP_ABI_OPTIMIZED_FUNCTION
+#  define _LIBCPP_ABI_OPTIMIZED_FUNCTION
 // All the regex constants must be distinct and nonzero.
 #  define _LIBCPP_ABI_REGEX_CONSTANTS_NONZERO
 #elif _LIBCPP_ABI_VERSION == 1
