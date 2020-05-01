@@ -1393,6 +1393,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # JS runtime at all).
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
+    if shared.Settings.WASM_BACKEND:
+      # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
+      # the STATIC_BUMP value.
+      shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
+      if not shared.Settings.STANDALONE_WASM:
+        # in standalone mode, crt1 will call the constructors from inside the wasm
+        shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
+
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
       exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
