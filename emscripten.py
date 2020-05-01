@@ -703,6 +703,7 @@ def update_settings_glue(metadata, DEBUG):
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
+  shared.Settings.WEAK_DECLARES = metadata.get('weakDeclares', [])
 
   if metadata['asmConsts']:
     # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
