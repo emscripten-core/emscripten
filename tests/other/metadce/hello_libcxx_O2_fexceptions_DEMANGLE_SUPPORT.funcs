@@ -207,7 +207,6 @@ $\28anonymous\20namespace\29::itanium_demangle::Node::Node\28\28anonymous\20name
 $\28anonymous\20namespace\29::itanium_demangle::Node::getBaseName\28\29\20const
 $\28anonymous\20namespace\29::itanium_demangle::Node::hasArray\28\28anonymous\20namespace\29::itanium_demangle::OutputStream&\29\20const
 $\28anonymous\20namespace\29::itanium_demangle::Node::hasFunction\28\28anonymous\20namespace\29::itanium_demangle::OutputStream&\29\20const
-$\28anonymous\20namespace\29::itanium_demangle::Node::hasRHSComponentSlow\28\28anonymous\20namespace\29::itanium_demangle::OutputStream&\29\20const
 $\28anonymous\20namespace\29::itanium_demangle::Node::hasRHSComponent\28\28anonymous\20namespace\29::itanium_demangle::OutputStream&\29\20const
 $\28anonymous\20namespace\29::itanium_demangle::Node::print\28\28anonymous\20namespace\29::itanium_demangle::OutputStream&\29\20const
 $\28anonymous\20namespace\29::itanium_demangle::NodeArray::NodeArray\28\29
@@ -533,6 +532,7 @@ $pad
 $pop_arg
 $pop_arg_long_double
 $printf_core
+$pthread_cond_wait
 $sbrk
 $scalbn
 $scalbnl
