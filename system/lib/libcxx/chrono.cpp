@@ -37,7 +37,7 @@
 #endif
 #endif
 
-#if defined(__unix__) &&  defined(__ELF__) && defined(_LIBCPP_HAS_COMMENT_LIB_PRAGMA)
+#if defined(__ELF__) && defined(_LIBCPP_LINK_RT_LIB)
 #pragma comment(lib, "rt")
 #endif
 
@@ -183,7 +183,7 @@ steady_clock::now() _NOEXCEPT
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms644905(v=vs.85).aspx says:
 //    If the function fails, the return value is zero. <snip>
-//    On systems that run Windows XP or later, the function will always succeed 
+//    On systems that run Windows XP or later, the function will always succeed
 //      and will thus never return zero.
 
 static LARGE_INTEGER

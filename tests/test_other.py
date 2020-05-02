@@ -6754,6 +6754,7 @@ int main() {
 #include <set>
 #include <emscripten.h>
 #include <stdio.h>
+#include <assert.h>
 
 std::set<int> seenInts;
 
