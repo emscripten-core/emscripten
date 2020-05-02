@@ -2686,15 +2686,14 @@ var LibraryJSEvents = {
 
   emscripten_webgl_enable_extension_calling_thread__deps: [
 #if MIN_WEBGL_VERSION == 1
-    'emscripten_webgl_enable_ANGLE_instanced_arrays',
-    'emscripten_webgl_enable_OES_vertex_array_object',
-    'emscripten_webgl_enable_WEBGL_draw_buffers',
+    '_webgl_enable_ANGLE_instanced_arrays',
+    '_webgl_enable_OES_vertex_array_object',
+    '_webgl_enable_WEBGL_draw_buffers',
 #endif
 #if MAX_WEBGL_VERSION >= 2
-    'emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+    '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
 #endif
-    ],
-
+  ],
   emscripten_webgl_enable_extension_calling_thread: function(contextHandle, extension) {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
@@ -2708,13 +2707,13 @@ var LibraryJSEvents = {
 
 #if MIN_WEBGL_VERSION == 1
     // Obtain function entry points to WebGL 1 extension related functions.
-    if (extString == 'ANGLE_instanced_arrays') _emscripten_webgl_enable_ANGLE_instanced_arrays(GLctx);
-    if (extString == 'OES_vertex_array_object') _emscripten_webgl_enable_OES_vertex_array_object(GLctx);
-    if (extString == 'WEBGL_draw_buffers') _emscripten_webgl_enable_WEBGL_draw_buffers(GLctx);
+    if (extString == 'ANGLE_instanced_arrays') __webgl_enable_ANGLE_instanced_arrays(GLctx);
+    if (extString == 'OES_vertex_array_object') __webgl_enable_OES_vertex_array_object(GLctx);
+    if (extString == 'WEBGL_draw_buffers') __webgl_enable_WEBGL_draw_buffers(GLctx);
 #endif
 
 #if MAX_WEBGL_VERSION >= 2
-    if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') _emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
+    if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
 #else

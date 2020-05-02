@@ -4379,6 +4379,17 @@ window.close = function() {
           print(str(cmd))
           self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
+  @requires_graphics_hardware
+  def test_webgl_simple_enable_extensions(self):
+    for webgl_version in [1, 2]:
+      for simple_enable_extensions in [0, 1]:
+        cmd = ['-DWEBGL_CONTEXT_VERSION=' + str(webgl_version),
+               '-DWEBGL_SIMPLE_ENABLE_EXTENSION=' + str(simple_enable_extensions),
+               '-s', 'MAX_WEBGL_VERSION=2',
+               '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=' + str(simple_enable_extensions),
+               '-s', 'GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
+        self.btest('webgl2_simple_enable_extensions.c', expected='0', args=cmd)
+
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s INITIAL_MEMORY=xxx option will be ignored.
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
