@@ -1440,7 +1440,9 @@ class libstandalonewasm(MuslInternalLibrary):
     # including fprintf etc.
     exit_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
-        filenames=['assert.c'])
+        filenames=['assert.c', 'atexit.c', 'exit.c']) + files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'unistd'],
+        filenames=['_exit.c'])
     conf_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'conf'],
         filenames=['sysconf.c'])

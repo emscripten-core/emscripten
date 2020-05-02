@@ -33,7 +33,6 @@ from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
-from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
 from tools import jsrun, shared
@@ -8131,23 +8130,18 @@ int main() {
     # sizes must be different, as the flag has an impact
     self.assertEqual(len(set(sizes)), 2)
 
-  @no_fastcomp('BINARYEN_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
-  def test_binaryen_passes(self):
+  @no_fastcomp('BINARYEN_EXTRA_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
+  def test_binaryen_passes_extra(self):
     def build(args=[]):
-      return run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-O3'] + args, stdout=PIPE).stdout
+      return run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O3'] + args, stdout=PIPE).stdout
 
     build()
     base_size = os.path.getsize('a.out.wasm')
-    build(['-s', 'BINARYEN_PASSES="--metrics"'])
-    replace_size = os.path.getsize('a.out.wasm')
-    # replacing the default -O3 etc. increases code size
-    self.assertLess(base_size, replace_size)
     out = build(['-s', 'BINARYEN_EXTRA_PASSES="--metrics"'])
-    add_size = os.path.getsize('a.out.wasm')
-    # adding --metrics does not affect code size
-    self.assertEqual(base_size, add_size)
     # and --metrics output appears
     self.assertContained('[funcs]', out)
+    # adding --metrics should not affect code size
+    self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
   def assertFileContents(self, filename, contents):
     contents = contents.replace('\r', '')
@@ -8980,7 +8974,7 @@ end
     self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
   def test_extern_weak(self):
-    self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+    self.do_other_test(os.path.join('other', 'extern_weak'))
     if not self.is_wasm_backend(): # TODO: wasm backend main module
       self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
 
@@ -9656,29 +9650,15 @@ int main () {
       self.assertNotContained('invoke_ii', output)
       self.assertNotContained('invoke_v', output)
 
-  def test_add_emscripten_metadata(self):
+  def test_emscripten_metadata(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    self.assertNotIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
-                 '-s', 'EMIT_EMSCRIPTEN_METADATA',
-                 '-o', 'hello_world.js'])
-    wasm = open('hello_world.wasm', 'rb').read()
-    # emscripten_metadata should be in the wasm data
-    offset = 8 # skip magic + header
-    for _ in range(100):
-      section = wasm[offset:offset + 1]
-      self.assertEqual(section, b'\0', 'No emscripten_metadata section found before standard wasm sections')
-      offset += 1
-      (section_size, offset) = WebAssembly.delebify(wasm, offset)
-      end_offset = offset + section_size
-      (name_len, offset) = WebAssembly.delebify(wasm, offset)
-      name = wasm[offset:offset + name_len]
-      if name == b'emscripten_metadata':
-        break
-      offset = end_offset
-    else:
-      self.assertFalse("No emscripten_metadata section found in first 100 custom sections")
+                 '-s', 'EMIT_EMSCRIPTEN_METADATA'])
+    self.assertIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
 
     # make sure wasm executes correctly
-    ret = run_process(NODE_JS + ['hello_world.js'], stdout=PIPE).stdout
+    ret = run_process(NODE_JS + ['a.out.js'], stdout=PIPE).stdout
     self.assertTextDataIdentical('hello, world!\n', ret)
 
   @parameterized({
@@ -9699,28 +9679,6 @@ int main () {
     self.assertContainedIf('SPDX-License-Identifier: MIT', js, expect_license)
     if expect_license:
       self.assertEqual(js.count('Copyright 2010 Emscripten authors'), 1)
-
-  def test_add_emscripten_metadata_not_emitted(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
-                 '-o', 'hello_world.js'])
-    wasm = open('hello_world.wasm', 'rb').read()
-    # emscripten_metadata should be in the wasm data
-    offset = 8 # skip magic + header
-    for _ in range(100):
-      if offset >= len(wasm):
-        break
-      section = wasm[offset:offset + 1]
-      offset += 1
-      (section_size, offset) = WebAssembly.delebify(wasm, offset)
-      end_offset = offset + section_size
-      # if this is a custom section
-      if section == b'\0':
-        (name_len, offset) = WebAssembly.delebify(wasm, offset)
-        name = wasm[offset:offset + name_len]
-        self.assertNotEqual(name, b'emscripten_metadata')
-      offset = end_offset
-    else:
-      self.assertFalse("wasm file had too many sections")
 
   # This test verifies that the generated exports from asm.js/wasm module only reference the
   # unminified exported name exactly once.  (need to contain the export name once for unminified
@@ -10766,4 +10724,9 @@ int main() {
     src = path_from_root('tests', 'other', 'test_asm.c')
     output = path_from_root('tests', 'other', 'test_asm.out')
     self.emcc_args.append('foo.o')
+    self.do_run_from_file(src, output)
+
+  def test_export_global_address(self):
+    src = path_from_root('tests', 'other', 'test_export_global_address.c')
+    output = path_from_root('tests', 'other', 'test_export_global_address.out')
     self.do_run_from_file(src, output)

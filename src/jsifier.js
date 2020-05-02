@@ -54,6 +54,8 @@ var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
 // static ctors, even if there is no user main.
 var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE || STANDALONE_WASM;
 
+WEAK_DECLARES = set(WEAK_DECLARES);
+
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
   return f[0] == '$' ? f.substr(1) : '_' + f;
@@ -172,7 +174,7 @@ function JSify(data, functionsOnly) {
         usedExternPrimitives[ident] = 1;
         return;
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
+        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !(finalName in WEAK_DECLARES) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
