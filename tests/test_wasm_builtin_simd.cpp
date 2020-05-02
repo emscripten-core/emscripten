@@ -545,25 +545,11 @@ i32x4 TESTFN i32x4_trunc_s_f32x4_sat(f32x4 vec) {
 i32x4 TESTFN i32x4_trunc_u_f32x4_sat(f32x4 vec) {
   return __builtin_wasm_trunc_saturate_u_i32x4_f32x4(vec);
 }
-#ifdef __wasm_unimplemented_simd128__
-i64x2 TESTFN i64x2_trunc_s_f64x2_sat(f64x2 vec) {
-  return __builtin_wasm_trunc_saturate_s_i64x2_f64x2(vec);
-}
-i64x2 TESTFN i64x2_trunc_u_f64x2_sat(f64x2 vec) {
-  return __builtin_wasm_trunc_saturate_u_i64x2_f64x2(vec);
-}
-#endif // __wasm_unimplemented_simd128__
 f32x4 TESTFN f32x4_convert_s_i32x4(i32x4 vec) {
   return __builtin_convertvector(vec, f32x4);
 }
 f32x4 TESTFN f32x4_convert_u_i32x4(i32x4 vec) {
   return __builtin_convertvector((u32x4)vec, f32x4);
-}
-f64x2 TESTFN f64x2_convert_s_i64x2(i64x2 vec) {
-  return __builtin_convertvector(vec, f64x2);
-}
-f64x2 TESTFN f64x2_convert_u_i64x2(i64x2 vec) {
-  return __builtin_convertvector((u64x2)vec, f64x2);
 }
 i8x16 TESTFN i8x16_narrow_i16x8_s(i16x8 a, i16x8 b) {
   return __builtin_wasm_narrow_s_i8x16_i16x8(a, b);
@@ -1357,20 +1343,8 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   // conversions
   expect_vec(i32x4_trunc_s_f32x4_sat((f32x4){42, NAN, INFINITY, -INFINITY}), ((i32x4){42, 0, 2147483647, -2147483648ll}));
   expect_vec(i32x4_trunc_u_f32x4_sat((f32x4){42, NAN, INFINITY, -INFINITY}), ((i32x4){42, 0, 4294967295ull, 0}));
-#ifdef __wasm_unimplemented_simd128__
-  expect_vec(i64x2_trunc_s_f64x2_sat((f64x2){42, NAN}), ((i64x2){42, 0}));
-  expect_vec(i64x2_trunc_s_f64x2_sat((f64x2){INFINITY, -INFINITY}), ((i64x2){9223372036854775807ll, -9223372036854775807ll - 1}));
-  expect_vec(i64x2_trunc_u_f64x2_sat((f64x2){42, NAN}), ((i64x2){42, 0}));
-  expect_vec(i64x2_trunc_u_f64x2_sat((f64x2){INFINITY, -INFINITY}), ((i64x2){18446744073709551615ull, 0}));
-#endif // __wasm_unimplemented_simd128__
   expect_vec(f32x4_convert_s_i32x4((i32x4){0, -1, 2147483647, -2147483647 - 1}), ((f32x4){0, -1, 2147483648., -2147483648.}));
   expect_vec(f32x4_convert_u_i32x4((i32x4){0, -1, 2147483647, -2147483647 - 1}), ((f32x4){0, 4294967296., 2147483648., 2147483648.}));
-#ifdef __wasm_unimplemented_simd128__
-  expect_vec(f64x2_convert_s_i64x2((i64x2){0, -1}), ((f64x2){0, -1}));
-  expect_vec(f64x2_convert_s_i64x2((i64x2){9223372036854775807, -9223372036854775807 - 1}), ((f64x2){9223372036854775807., -9223372036854775808.}));
-  expect_vec(f64x2_convert_u_i64x2((i64x2){0, -1}), ((f64x2){0, 18446744073709551616.}));
-  expect_vec(f64x2_convert_u_i64x2((i64x2){9223372036854775807 , -9223372036854775808.}), ((f64x2){9223372036854775807., 9223372036854775808.}));
-#endif // __wasm_unimplemented_simd128__
   expect_vec(
     i8x16_narrow_i16x8_s(
       (i16x8){129, 127, -32767, 32767, -32768, -1, 1, 0},

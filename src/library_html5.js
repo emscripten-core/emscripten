@@ -282,24 +282,33 @@ var LibraryJSEvents = {
   // In DOM capturing and bubbling sequence, there are two special elements at the top of the event chain that can be of interest
   // to register many events to: document and window. These cannot be addressed by using document.querySelector(), so
   // a special mechanism to address them is needed. (For any other special object, such as screen.orientation, no general access
-  // scheme should be needed, but the object-specific event callback registration functions should handle them individually)
+  // scheme should be needed, but the object-specific event callback registration functions should handle them individually).
+  //
+  // Users can also add more special event targets, basically by just doing something like
+  //    specialHTMLTargets["!canvas"] = Module.canvas;
+  // (that will let !canvas map to the canvas held in Module.canvas).
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || USE_PTHREADS
-  _specialEventTargets: "[0, typeof document !== 'undefined' ? document : 0, typeof window !== 'undefined' ? window : 0]",
+  $specialHTMLTargets: "[0, typeof document !== 'undefined' ? document : 0, typeof window !== 'undefined' ? window : 0]",
 #else
-  _specialEventTargets: "[0, document, window]",
+  $specialHTMLTargets: "[0, document, window]",
 #endif
 
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
   _maybeCStringToJsString: function(cString) {
-    return cString === cString + 0 ? UTF8ToString(cString) : cString;
+    // "cString > 2" checks if the input is a number, and isn't of the special
+    // values we accept here, EMSCRIPTEN_EVENT_TARGET_* (which map to 0, 1, 2).
+    // In other words, if cString > 2 then it's a pointer to a valid place in
+    // memory, and points to a C string.
+    return cString > 2 ? UTF8ToString(cString) : cString;
   },
 
-  _findEventTarget__deps: ['_maybeCStringToJsString', '_specialEventTargets'],
+  _findEventTarget__deps: ['_maybeCStringToJsString', '$specialHTMLTargets'],
   _findEventTarget: function(target) {
+    target = __maybeCStringToJsString(target);
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
-    var domElement = __specialEventTargets[target] || (typeof document !== 'undefined' ? document.querySelector(__maybeCStringToJsString(target)) : undefined);
+    var domElement = specialHTMLTargets[target] || (typeof document !== 'undefined' ? document.querySelector(target) : undefined);
 #else
-    var domElement = __specialEventTargets[target] || document.querySelector(__maybeCStringToJsString(target));
+    var domElement = specialHTMLTargets[target] || document.querySelector(target);
 #endif
     return domElement;
   },
@@ -338,7 +347,7 @@ var LibraryJSEvents = {
 
 #else
   // Find a DOM element with the given ID.
-  _findEventTarget__deps: ['_specialEventTargets'],
+  _findEventTarget__deps: ['$specialHTMLTargets'],
   _findEventTarget: function(target) {
 #if ASSERTIONS
     warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 to change to the new lookup rules. See https://github.com/emscripten-core/emscripten/pull/7977 for more details.');
@@ -348,7 +357,7 @@ var LibraryJSEvents = {
       // since DOM events mostly can default to that. Specific callback registrations
       // override their own defaults.
       if (!target) return window;
-      if (typeof target === "number") target = __specialEventTargets[target] || UTF8ToString(target);
+      if (typeof target === "number") target = specialHTMLTargets[target] || UTF8ToString(target);
       if (target === '#window') return window;
       else if (target === '#document') return document;
       else if (target === '#screen') return screen;
@@ -400,16 +409,16 @@ var LibraryJSEvents = {
 
   // Outline access to function .getBoundingClientRect() since it is a long string. Closure compiler does not outline access to it by itself, but it can inline access if
   // there is only one caller to this function.
-  _getBoundingClientRect__deps: ['_specialEventTargets'],
+  _getBoundingClientRect__deps: ['$specialHTMLTargets'],
   _getBoundingClientRect: function(e) {
-    return __specialEventTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {'left':0,'top':0};
+    return specialHTMLTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {'left':0,'top':0};
   },
 
   // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
-  _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '_specialEventTargets'],
+  _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '$specialHTMLTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
@@ -1136,13 +1145,13 @@ var LibraryJSEvents = {
 
   emscripten_set_fullscreenchange_callback_on_thread__proxy: 'sync',
   emscripten_set_fullscreenchange_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '_registerFullscreenChangeEventCallback', '_findEventTarget', '_specialEventTargets'],
+  emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '_registerFullscreenChangeEventCallback', '_findEventTarget', '$specialHTMLTargets'],
   emscripten_set_fullscreenchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = __findEventTarget(target);
 #else
-    target = target ? __findEventTarget(target) : __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
+    target = target ? __findEventTarget(target) : specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
 #endif
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "fullscreenchange", targetThread);
@@ -1640,7 +1649,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['$JSEvents', '_currentFullscreenStrategy', 'JSEvents_requestFullscreen', '_specialEventTargets'],
+  emscripten_exit_fullscreen__deps: ['$JSEvents', '_currentFullscreenStrategy', 'JSEvents_requestFullscreen', '$specialHTMLTargets'],
   emscripten_exit_fullscreen__proxy: 'sync',
   emscripten_exit_fullscreen__sig: 'i',
   emscripten_exit_fullscreen: function() {
@@ -1650,7 +1659,7 @@ var LibraryJSEvents = {
     JSEvents.removeDeferredCalls(_JSEvents_requestFullscreen);
 #endif
 
-    var d = __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
+    var d = specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
     if (d.exitFullscreen) {
       d.fullscreenElement && d.exitFullscreen();
 #if MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
@@ -1720,7 +1729,7 @@ var LibraryJSEvents = {
 
   emscripten_set_pointerlockchange_callback_on_thread__proxy: 'sync',
   emscripten_set_pointerlockchange_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockChangeEventCallback', '_findEventTarget', '_specialEventTargets'],
+  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockChangeEventCallback', '_findEventTarget', '$specialHTMLTargets'],
   emscripten_set_pointerlockchange_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
@@ -1731,7 +1740,7 @@ var LibraryJSEvents = {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = __findEventTarget(target);
 #else
-    target = target ? __findEventTarget(target) : __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
+    target = target ? __findEventTarget(target) : specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
 #endif
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     __registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_POINTERLOCKCHANGE') }}}, "pointerlockchange", targetThread);
@@ -1741,7 +1750,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerPointerlockErrorEventCallback__deps: ['$JSEvents', '_findEventTarget', '_specialEventTargets'],
+  _registerPointerlockErrorEventCallback__deps: ['$JSEvents', '_findEventTarget', '$specialHTMLTargets'],
   _registerPointerlockErrorEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1769,7 +1778,7 @@ var LibraryJSEvents = {
 
   emscripten_set_pointerlockerror_callback_on_thread__proxy: 'sync',
   emscripten_set_pointerlockerror_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockErrorEventCallback', '_findEventTarget', '_specialEventTargets'],
+  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockErrorEventCallback', '_findEventTarget', '$specialHTMLTargets'],
   emscripten_set_pointerlockerror_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockerror_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
@@ -1780,7 +1789,7 @@ var LibraryJSEvents = {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = __findEventTarget(target);
 #else
-    target = target ? __findEventTarget(target) : __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
+    target = target ? __findEventTarget(target) : specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
 #endif
 
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
@@ -1978,14 +1987,14 @@ var LibraryJSEvents = {
 
   emscripten_set_visibilitychange_callback_on_thread__proxy: 'sync',
   emscripten_set_visibilitychange_callback_on_thread__sig: 'iiiii',
-  emscripten_set_visibilitychange_callback_on_thread__deps: ['_registerVisibilityChangeEventCallback', '_specialEventTargets'],
+  emscripten_set_visibilitychange_callback_on_thread__deps: ['_registerVisibilityChangeEventCallback', '$specialHTMLTargets'],
   emscripten_set_visibilitychange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-  if (!__specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]) {
+  if (!specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]) {
     return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
   }
 #endif
-    __registerVisibilityChangeEventCallback(__specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}], userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_VISIBILITYCHANGE') }}}, "visibilitychange", targetThread);
+    __registerVisibilityChangeEventCallback(specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}], userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_VISIBILITYCHANGE') }}}, "visibilitychange", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -2467,7 +2476,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
 #endif
-      return 0;
+      return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -2493,7 +2502,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
         console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
-        return 0;
+        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #endif
       }
 
@@ -2512,7 +2521,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
           console.error('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
 #endif
-          return 0;
+          return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
         }
         canvas = GL.offscreenCanvases[canvas.id];
       }
@@ -2530,7 +2539,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
 #endif
-      return 0;
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 #endif // ~!OFFSCREEN_FRAMEBUFFER
 

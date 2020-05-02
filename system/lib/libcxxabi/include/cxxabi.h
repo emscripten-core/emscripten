@@ -11,7 +11,7 @@
 
 /*
  * This header provides the interface to the C++ ABI as defined at:
- *       http://www.codesourcery.com/cxx-abi/
+ *       https://itanium-cxx-abi.github.io/cxx-abi/
  */
 
 #include <stddef.h>
@@ -31,6 +31,7 @@ class _LIBCXXABI_TYPE_VIS type_info; // forward declaration
 class type_info; // forward declaration
 #endif
 }
+
 
 // runtime routines use C calling conventions, but are in __cxxabiv1 namespace
 namespace __cxxabiv1 {

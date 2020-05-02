@@ -75,6 +75,10 @@ var MAX_GLOBAL_ALIGN = -1;
 // List of functions implemented in compiled code; received from the backend.
 var IMPLEMENTED_FUNCTIONS = [];
 
+// List of weakly undefined externals; received from the backend
+// fastcomp-only
+var WEAK_DECLARES = [];
+
 // Name of the file containing the Fetch *.fetch.js, if relevant
 var FETCH_WORKER_FILE = '';
 
@@ -197,3 +201,6 @@ var USE_CXX = 0;
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
 // JS library symbols.
 var ONLY_CALC_JS_SYMBOLS = 0;
+
+// Used internally to store the starting value of the stack pointer.
+var STACK_BASE = 0;

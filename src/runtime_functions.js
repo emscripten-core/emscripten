@@ -124,6 +124,16 @@ function addFunctionWasm(func, sig) {
   }
 
   // It's not in the table, add it now.
+
+#if ASSERTIONS >= 2
+  // Make sure functionsInTableMap is actually up to date, that is, that this
+  // function is not actually in the wasm Table despite not being tracked in
+  // functionsInTableMap.
+  for (var i = 0; i < table.length; i++) {
+    assert(table.get(i) != func, 'function in Table but not functionsInTableMap');
+  }
+#endif
+
   var ret;
   // Reuse a free index if there is one, otherwise grow.
   if (freeTableIndexes.length) {
@@ -158,7 +168,7 @@ function addFunctionWasm(func, sig) {
     table.set(ret, wrapped);
   }
 
-  functionsInTableMap[func] = ret;
+  functionsInTableMap.set(func, ret);
 
   return ret;
 }

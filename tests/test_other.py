@@ -31,9 +31,8 @@ if __name__ == '__main__':
 
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
-from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR, LLVM_DWARFDUMP
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
-from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
 from tools import jsrun, shared
@@ -569,7 +568,7 @@ f.close()
     flags = output.stdout.strip()
     self.assertContained(' '.join(Building.doublequote_spaces(shared.emsdk_cflags())), flags)
     # check they work
-    cmd = [CLANG, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
+    cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
     run_process(cmd)
     run_process([PYTHON, EMCC, 'a.bc'])
     self.assertContained('hello, world!', run_js('a.out.js'))
@@ -596,115 +595,81 @@ f.close()
         output = run_process(cmd, stdout=PIPE).stdout
         self.assertContained(expected, output)
 
-  def test_cmake(self):
+  @parameterized({
+    # ('directory to the test', 'output filename', ['extra args to pass to
+    # CMake']) Testing all combinations would be too much work and the test
+    # would take 10 minutes+ to finish (CMake feature detection is slow), so
+    # combine multiple features into one to try to cover as much as possible
+    # while still keeping this test in sensible time limit.
+    'js':          ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
+    'html':        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
+    'library':     ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
+    'static_cpp':  ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
+    'stdproperty': ('stdproperty',    'helloworld.js',         [])
+  })
+  def test_cmake(self, test_dir, output_file, cmake_args):
     # Test all supported generators.
     if WINDOWS:
       generators = ['MinGW Makefiles', 'NMake Makefiles']
     else:
       generators = ['Unix Makefiles', 'Ninja', 'Eclipse CDT4 - Ninja']
 
-    def nmake_detect_error(configuration):
-      if Building.which(configuration['build'][0]):
-        return None
-      else:
-        return 'Skipping NMake test for CMake support, since nmake was not found in PATH. Run this test in Visual Studio command prompt to easily access nmake.'
-
-    def check_makefile(dirname):
-      self.assertExists(dirname + '/Makefile', 'CMake call did not produce a Makefile!')
-
-    configurations = {'MinGW Makefiles'     : {'prebuild': check_makefile, # noqa
-                                               'build'   : ['mingw32-make'], # noqa
-                      },
-                      'NMake Makefiles'     : {'detect'  : nmake_detect_error, # noqa
-                                               'prebuild': check_makefile, # noqa
-                                               'build'   : ['nmake', '/NOLOGO'], # noqa
-                      },
-                      'Unix Makefiles'      : {'prebuild': check_makefile, # noqa
-                                               'build'   : ['make'], # noqa
-                      },
-                      'Ninja'               : {'build'   : ['ninja'], # noqa
-                      },
-                      'Eclipse CDT4 - Ninja': {'build'   : ['ninja'], # noqa
-                      }
+    configurations = {'MinGW Makefiles'     : {'build'   : ['mingw32-make'] }, # noqa
+                      'NMake Makefiles'     : {'build'   : ['nmake', '/NOLOGO']}, # noqa
+                      'Unix Makefiles'      : {'build'   : ['make']}, # noqa
+                      'Ninja'               : {'build'   : ['ninja']}, # noqa
+                      'Eclipse CDT4 - Ninja': {'build'   : ['ninja']}, # noqa
     }
-
     for generator in generators:
       conf = configurations[generator]
 
-      make = conf['build']
-      detector = conf.get('detect')
-      prebuild = conf.get('prebuild')
-
-      if detector:
-        error = detector(conf)
-      elif len(make) == 1 and not Building.which(make[0]):
+      if not Building.which(conf['build'][0]):
         # Use simple test if applicable
-        error = 'Skipping %s test for CMake support, since it could not be detected.' % generator
-      else:
-        error = None
-
-      if error:
-        print(error)
+        print('Skipping %s test for CMake support; build tool found found: %s.' % (generator, conf['build'][0]))
         continue
 
-      # ('directory to the test', 'output filename', ['extra args to pass to
-      # CMake']) Testing all combinations would be too much work and the test
-      # would take 10 minutes+ to finish (CMake feature detection is slow), so
-      # combine multiple features into one to try to cover as much as possible
-      # while still keeping this test in sensible time limit.
-      cases = [
-        ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
-        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
-        ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
-        ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
-        ('stdproperty',    'helloworld.js',         [])
-      ]
-      for test_dir, output_file, cmake_args in cases:
-        cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
-        with temp_directory(self.get_dir()) as tempdirname:
-          # Run Cmake
-          cmd = [emcmake, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+      cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
+      with temp_directory(self.get_dir()) as tempdirname:
+        # Run Cmake
+        cmd = [emcmake, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
-          env = os.environ.copy()
-          # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
-          if test_dir == 'target_html':
-            env['EMCC_SKIP_SANITY_CHECK'] = '1'
-          print(str(cmd))
-          ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
-          if ret.stderr is not None and len(ret.stderr.strip()):
-            print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
-          if ret.stderr is not None and 'error' in ret.stderr.lower():
-            print('Failed command: ' + ' '.join(cmd))
-            print('Result:\n' + ret.stderr)
-            self.fail('cmake call failed!')
+        env = os.environ.copy()
+        # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
+        if test_dir == 'target_html':
+          env['EMCC_SKIP_SANITY_CHECK'] = '1'
+        print(str(cmd))
+        ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
+        if ret.stderr is not None and len(ret.stderr.strip()):
+          print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
+        if ret.stderr is not None and 'error' in ret.stderr.lower():
+          print('Failed command: ' + ' '.join(cmd))
+          print('Result:\n' + ret.stderr)
+          self.fail('cmake call failed!')
 
-          if prebuild:
-            prebuild(tempdirname)
+        # Build
+        cmd = conf['build']
+        if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
+          cmd += ['VERBOSE=1']
+        ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
+        if ret.stderr is not None and len(ret.stderr.strip()):
+          print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
+        if ret.stdout is not None and 'error' in ret.stdout.lower() and '0 error(s)' not in ret.stdout.lower():
+          print('Failed command: ' + ' '.join(cmd))
+          print('Result:\n' + ret.stdout)
+          self.fail('make failed!')
+        self.assertExists(tempdirname + '/' + output_file, 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
 
-          # Build
-          cmd = make
-          if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
-            cmd += ['VERBOSE=1']
-          ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
-          if ret.stderr is not None and len(ret.stderr.strip()):
-            print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
-          if ret.stdout is not None and 'error' in ret.stdout.lower() and '0 error(s)' not in ret.stdout.lower():
-            print('Failed command: ' + ' '.join(cmd))
-            print('Result:\n' + ret.stdout)
-            self.fail('make failed!')
-          self.assertExists(tempdirname + '/' + output_file, 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
-
-          # Run through node, if CMake produced a .js file.
-          if output_file.endswith('.js'):
-            ret = run_process(NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
-            self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt').read().strip(), ret.strip())
+        # Run through node, if CMake produced a .js file.
+        if output_file.endswith('.js'):
+          ret = run_process(NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
+          self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt').read().strip(), ret.strip())
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   def test_cmake_compile_features(self):
     with temp_directory(self.get_dir()):
-      cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
+      cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CXX, path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       native_features = run_process(cmd, stdout=PIPE).stdout
 
@@ -735,13 +700,18 @@ f.close()
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
 
   # Tests that the Emscripten CMake toolchain option
-  # -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
+    if self.is_wasm_backend():
+      # Test that this option produces an error with the llvm backend
+      err = self.expect_fail([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
+      self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
+      return
+
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
     self.clear()
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
     run_process(['cmake', '--build', '.'])
-    assert Building.is_ar('libstatic_lib.a')
+    self.assertTrue(Building.is_ar('libstatic_lib.a'))
     run_process([PYTHON, EMAR, 'x', 'libstatic_lib.a'])
     found = False # hashing makes the object name random
     for x in os.listdir('.'):
@@ -2054,23 +2024,14 @@ int f() {
 
   @no_wasm_backend('depends on bc output')
   def test_save_bc(self):
-    for save in [0, 1]:
-      self.clear()
-      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')]
-      if save:
-        cmd += ['--save-bc', 'my_bitcode.bc']
-      run_process(cmd)
-      assert 'hello, world!' in run_js('a.out.js')
-      if save:
-        self.assertExists('my_bitcode.bc')
-      else:
-        self.assertNotExists('my_bitcode.bc')
-      if save:
-        try_delete('a.out.js')
-        Building.llvm_dis('my_bitcode.bc', 'my_ll.ll')
-        with env_modify({'EMCC_LEAVE_INPUTS_RAW': '1'}):
-          run_process([PYTHON, EMCC, 'my_ll.ll', '-o', 'two.js'])
-          assert 'hello, world!' in run_js('two.js')
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp'), '--save-bc', 'my_bitcode.bc']
+    run_process(cmd)
+    assert 'hello, world!' in run_js('a.out.js')
+    self.assertExists('my_bitcode.bc')
+    try_delete('a.out.js')
+    Building.llvm_dis('my_bitcode.bc', 'my_ll.ll')
+    run_process([PYTHON, EMCC, 'my_ll.ll', '-nostdlib', '-o', 'two.js'])
+    assert 'hello, world!' in run_js('two.js')
 
   def test_js_optimizer(self):
     ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers']
@@ -2186,7 +2147,7 @@ int f() {
         expected = [expected]
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
-      acorn = any([p for p in passes if p in ACORN_PASSES])
+      acorn = any(p in ACORN_PASSES for p in passes)
 
       # test calling optimizer
       if not acorn:
@@ -2416,29 +2377,31 @@ int f() {
       output = run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
+  def test_embind_fail(self):
+    out = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'embind', 'test_unsigned.cpp')])
+    self.assertContained("undefined symbol: _embind_register_function", out)
+
+  @is_slow_test
   def test_embind(self):
     environ = os.environ.copy()
     environ['EMCC_CLOSURE_ARGS'] = environ.get('EMCC_CLOSURE_ARGS', '') + " --externs " + pipes.quote(path_from_root('tests', 'embind', 'underscore-externs.js'))
     test_cases = [
-        ([], True), # without --bind, we fail
-        (['--bind'], False),
-        (['--bind', '-O1'], False),
-        (['--bind', '-O2'], False),
-        (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')], False),
+        (['--bind']),
+        (['--bind', '-O1']),
+        (['--bind', '-O2']),
+        (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')]),
     ]
     without_utf8_args = ['-s', 'EMBIND_STD_STRING_IS_UTF8=0']
     test_cases_without_utf8 = []
-    for args, fail in test_cases:
-        test_cases_without_utf8.append((args + without_utf8_args, fail))
+    for args in test_cases:
+        test_cases_without_utf8.append((args + without_utf8_args))
     test_cases += test_cases_without_utf8
-    test_cases.extend([(args[:] + ['-s', 'DYNAMIC_EXECUTION=0'], status) for args, status in test_cases])
-    test_cases.append((['--bind', '-O2', '--closure', '1'], False)) # closure compiler doesn't work with DYNAMIC_EXECUTION=0
-    test_cases = [(args + ['-s', 'IN_TEST_HARNESS=1'], status) for args, status in test_cases]
-
-    for args, fail in test_cases:
-      print(args, fail)
+    test_cases.extend([(args[:] + ['-s', 'DYNAMIC_EXECUTION=0']) for args in test_cases])
+    # closure compiler doesn't work with DYNAMIC_EXECUTION=0
+    test_cases.append((['--bind', '-O2', '--closure', '1']))
+    for args in test_cases:
+      print(args)
       self.clear()
-      try_delete('a.out.js')
 
       testFiles = [
         path_from_root('tests', 'embind', 'underscore-1.4.2.js'),
@@ -2446,30 +2409,26 @@ int f() {
         path_from_root('tests', 'embind', 'embind.test.js'),
       ]
 
-      proc = run_process(
+      run_process(
         [PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'),
          '--pre-js', path_from_root('tests', 'embind', 'test.pre.js'),
          '--post-js', path_from_root('tests', 'embind', 'test.post.js'),
-         '-s', 'WASM_ASYNC_COMPILATION=0'] + args,
-        stderr=PIPE if fail else None,
-        check=not fail,
+         '-s', 'WASM_ASYNC_COMPILATION=0',
+         '-s', 'IN_TEST_HARNESS=1'] + args,
         env=environ)
 
-      if fail:
-        self.assertNotEqual(proc.returncode, 0)
-      else:
-        if 'DYNAMIC_EXECUTION=0' in args:
-          with open('a.out.js') as js_binary_file:
-            js_binary_str = js_binary_file.read()
-            self.assertNotIn('new Function(', js_binary_str, 'Found "new Function(" with DYNAMIC_EXECUTION=0')
-            self.assertNotIn('eval(', js_binary_str, 'Found "eval(" with DYNAMIC_EXECUTION=0')
+      if 'DYNAMIC_EXECUTION=0' in args:
+        with open('a.out.js') as js_binary_file:
+          js_binary_str = js_binary_file.read()
+          self.assertNotContained('new Function(', js_binary_str)
+          self.assertNotContained('eval(', js_binary_str)
 
-        with open('a.out.js', 'ab') as f:
-          for tf in testFiles:
-            f.write(open(tf, 'rb').read())
+      with open('a.out.js', 'ab') as f:
+        for tf in testFiles:
+          f.write(open(tf, 'rb').read())
 
-        output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, engine=NODE_JS)
-        assert "FAIL" not in output, output
+      output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, engine=NODE_JS)
+      self.assertNotContained('FAIL', output)
 
   def test_emconfig(self):
     output = run_process([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -3360,17 +3319,22 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
     output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None)
     assert r'<{(123456789)}>' in output, output
 
+  def test_precompiled_headers_warnings(self):
+    # Check that we don't have any underlying warnings from clang, this can happen if we
+    # pass any link flags to when building a pch.
+    create_test_file('header.h', '#define X 5\n')
+    run_process([PYTHON, EMCC, '-Werror', '-xc++-header', 'header.h'])
+
   def test_precompiled_headers(self):
     for suffix in ['gch', 'pch']:
       print(suffix)
       self.clear()
-
       create_test_file('header.h', '#define X 5\n')
       run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-c'])
       self.assertExists('header.h.gch') # default output is gch
       if suffix != 'gch':
         run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
-        assert open('header.h.gch', 'rb').read() == open('header.h.' + suffix, 'rb').read()
+        self.assertBinaryEqual('header.h.gch', 'header.h.' + suffix)
 
       create_test_file('src.cpp', r'''
 #include <stdio.h>
@@ -3382,7 +3346,7 @@ int main() {
       run_process([PYTHON, EMCC, 'src.cpp', '-include', 'header.h'])
 
       output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS)
-      assert '|5|' in output, output
+      self.assertContained('|5|', output)
 
       # also verify that the gch is actually used
       err = run_process([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
@@ -3390,7 +3354,7 @@ int main() {
       # and sanity check it is not mentioned when not
       try_delete('header.h.' + suffix)
       err = run_process([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-      assert '*** PCH/Modules Loaded:\nModule: header.h.' + suffix not in err.replace('\r\n', '\n'), err
+      self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
 
       # with specified target via -o
       try_delete('header.h.' + suffix)
@@ -3401,7 +3365,7 @@ int main() {
       run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
       run_process([PYTHON, EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
       output = run_js('a.out.js')
-      assert '|5|' in output, output
+      self.assertContained('|5|', output)
 
   @no_wasm_backend('tests extra fastcomp warnings on unaligned loads/stores, which matter a lot more in asm.js')
   def test_warn_unaligned(self):
@@ -3808,7 +3772,7 @@ int main()
       vs_env = shared.get_clang_native_env()
     except Exception:
       self.skipTest('Native clang env not found')
-    run_process([CLANG, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=vs_env)
+    run_process([CLANG_CXX, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=vs_env)
     err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
     if self.is_wasm_backend():
       self.assertContained('machine type must be wasm32', err)
@@ -6790,6 +6754,7 @@ int main() {
 #include <set>
 #include <emscripten.h>
 #include <stdio.h>
+#include <assert.h>
 
 std::set<int> seenInts;
 
@@ -7122,7 +7087,7 @@ Resolved: "/" => "/"
     run_process([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('double-freed', run_js('a.out.js'))
     # in debug mode, the double-free is caught
-    run_process([PYTHON, EMCC, 'src.cpp', '-g'])
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'ASSERTIONS=2'])
     seen_error = False
     out = '?'
     try:
@@ -7270,7 +7235,7 @@ high = 1234
 
   def test_dash_s_valid_list(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"])
-    self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
+    self.assertNotContained('a problem occurred in evaluating the content after a "-s", specifically', err)
 
   def test_dash_s_wrong_type(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=foo'])
@@ -8165,23 +8130,18 @@ int main() {
     # sizes must be different, as the flag has an impact
     self.assertEqual(len(set(sizes)), 2)
 
-  @no_fastcomp('BINARYEN_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
-  def test_binaryen_passes(self):
+  @no_fastcomp('BINARYEN_EXTRA_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
+  def test_binaryen_passes_extra(self):
     def build(args=[]):
-      return run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-O3'] + args, stdout=PIPE).stdout
+      return run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O3'] + args, stdout=PIPE).stdout
 
     build()
     base_size = os.path.getsize('a.out.wasm')
-    build(['-s', 'BINARYEN_PASSES="--metrics"'])
-    replace_size = os.path.getsize('a.out.wasm')
-    # replacing the default -O3 etc. increases code size
-    self.assertLess(base_size, replace_size)
     out = build(['-s', 'BINARYEN_EXTRA_PASSES="--metrics"'])
-    add_size = os.path.getsize('a.out.wasm')
-    # adding --metrics does not affect code size
-    self.assertEqual(base_size, add_size)
     # and --metrics output appears
     self.assertContained('[funcs]', out)
+    # adding --metrics should not affect code size
+    self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
   def assertFileContents(self, filename, contents):
     contents = contents.replace('\r', '')
@@ -8398,7 +8358,7 @@ int main() {
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
                           ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM', '-flto'],
-                           [], [], 6309),         # noqa
+                           [], [], 4971),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, filename, *args):
@@ -9014,7 +8974,7 @@ end
     self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
   def test_extern_weak(self):
-    self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+    self.do_other_test(os.path.join('other', 'extern_weak'))
     if not self.is_wasm_backend(): # TODO: wasm backend main module
       self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
 
@@ -9690,29 +9650,15 @@ int main () {
       self.assertNotContained('invoke_ii', output)
       self.assertNotContained('invoke_v', output)
 
-  def test_add_emscripten_metadata(self):
+  def test_emscripten_metadata(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    self.assertNotIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
-                 '-s', 'EMIT_EMSCRIPTEN_METADATA',
-                 '-o', 'hello_world.js'])
-    wasm = open('hello_world.wasm', 'rb').read()
-    # emscripten_metadata should be in the wasm data
-    offset = 8 # skip magic + header
-    for _ in range(100):
-      section = wasm[offset:offset + 1]
-      self.assertEqual(section, b'\0', 'No emscripten_metadata section found before standard wasm sections')
-      offset += 1
-      (section_size, offset) = WebAssembly.delebify(wasm, offset)
-      end_offset = offset + section_size
-      (name_len, offset) = WebAssembly.delebify(wasm, offset)
-      name = wasm[offset:offset + name_len]
-      if name == b'emscripten_metadata':
-        break
-      offset = end_offset
-    else:
-      self.assertFalse("No emscripten_metadata section found in first 100 custom sections")
+                 '-s', 'EMIT_EMSCRIPTEN_METADATA'])
+    self.assertIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
 
     # make sure wasm executes correctly
-    ret = run_process(NODE_JS + ['hello_world.js'], stdout=PIPE).stdout
+    ret = run_process(NODE_JS + ['a.out.js'], stdout=PIPE).stdout
     self.assertTextDataIdentical('hello, world!\n', ret)
 
   @parameterized({
@@ -9733,28 +9679,6 @@ int main () {
     self.assertContainedIf('SPDX-License-Identifier: MIT', js, expect_license)
     if expect_license:
       self.assertEqual(js.count('Copyright 2010 Emscripten authors'), 1)
-
-  def test_add_emscripten_metadata_not_emitted(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
-                 '-o', 'hello_world.js'])
-    wasm = open('hello_world.wasm', 'rb').read()
-    # emscripten_metadata should be in the wasm data
-    offset = 8 # skip magic + header
-    for _ in range(100):
-      if offset >= len(wasm):
-        break
-      section = wasm[offset:offset + 1]
-      offset += 1
-      (section_size, offset) = WebAssembly.delebify(wasm, offset)
-      end_offset = offset + section_size
-      # if this is a custom section
-      if section == b'\0':
-        (name_len, offset) = WebAssembly.delebify(wasm, offset)
-        name = wasm[offset:offset + name_len]
-        self.assertNotEqual(name, b'emscripten_metadata')
-      offset = end_offset
-    else:
-      self.assertFalse("wasm file had too many sections")
 
   # This test verifies that the generated exports from asm.js/wasm module only reference the
   # unminified exported name exactly once.  (need to contain the export name once for unminified
@@ -10649,6 +10573,7 @@ int main() {
 ''')
     run_process([PYTHON, EMCC, 'errno_type.c'])
 
+  @no_fastcomp("uses standalone mode")
   def test_standalone_syscalls(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'standalone_syscalls', 'test.cpp'), '-o', 'test.wasm'])
     with open(path_from_root('tests', 'other', 'standalone_syscalls', 'test.out')) as f:
@@ -10785,3 +10710,24 @@ int main() {
 
     # Verify the JS output was smaller
     self.assertLess(os.path.getsize('src.c.o.js'), size_default)
+
+  @no_fastcomp('no .s file support')
+  def test_assembly(self):
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
+    src = path_from_root('tests', 'other', 'test_asm.c')
+    output = path_from_root('tests', 'other', 'test_asm.out')
+    self.emcc_args.append('foo.o')
+    self.do_run_from_file(src, output)
+
+  @no_fastcomp('no .s file support')
+  def test_assembly_preprocessed(self):
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'other', 'test_asm_cpp.S'), '-o', 'foo.o'])
+    src = path_from_root('tests', 'other', 'test_asm.c')
+    output = path_from_root('tests', 'other', 'test_asm.out')
+    self.emcc_args.append('foo.o')
+    self.do_run_from_file(src, output)
+
+  def test_export_global_address(self):
+    src = path_from_root('tests', 'other', 'test_export_global_address.c')
+    output = path_from_root('tests', 'other', 'test_export_global_address.out')
+    self.do_run_from_file(src, output)

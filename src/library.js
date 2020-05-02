@@ -523,9 +523,7 @@ LibraryManager.library = {
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
-#if CAN_ADDRESS_2GB
     requestedSize = requestedSize >>> 0;
-#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -1646,10 +1644,6 @@ LibraryManager.library = {
     if (x != x) return +y;
     if (y != y) return +x;
     return +Math_max(+x, +y);
-  },
-
-  _reallyNegative: function(x) {
-    return x < 0 || (x === 0 && (1/x) === -Infinity);
   },
 
   // ==========================================================================
@@ -4322,10 +4316,10 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_log__deps: ['_formatString', 'emscripten_log_js'],
+  emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
   emscripten_log: function(flags, format, varargs) {
     var str = '';
-    var result = __formatString(format, varargs);
+    var result = formatString(format, varargs);
     for (var i = 0 ; i < result.length; ++i) {
       str += String.fromCharCode(result[i]);
     }

@@ -23,7 +23,7 @@
 // a file that cannot be reduced any further.
 
 var crypto = require('crypto');
-var uglify = require('../tools/eliminator/node_modules/uglify-js');
+var uglify = require('../third_party/uglify-js/uglify-js');
 
 var nodeFS = require('fs');
 var nodePath = require('path');

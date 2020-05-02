@@ -86,14 +86,6 @@ struct DumpVisitor {
     else
       printStr("<null>");
   }
-  void print(NodeOrString NS) {
-    if (NS.isNode())
-      print(NS.asNode());
-    else if (NS.isString())
-      print(NS.asString());
-    else
-      printStr("NodeOrString()");
-  }
   void print(NodeArray A) {
     ++Depth;
     printStr("{");
@@ -169,6 +161,16 @@ struct DumpVisitor {
       return printStr("SpecialSubKind::ostream");
     case SpecialSubKind::iostream:
       return printStr("SpecialSubKind::iostream");
+    }
+  }
+  void print(TemplateParamKind TPK) {
+    switch (TPK) {
+    case TemplateParamKind::Type:
+      return printStr("TemplateParamKind::Type");
+    case TemplateParamKind::NonType:
+      return printStr("TemplateParamKind::NonType");
+    case TemplateParamKind::Template:
+      return printStr("TemplateParamKind::Template");
     }
   }
 

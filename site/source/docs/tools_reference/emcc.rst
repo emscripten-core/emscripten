@@ -458,10 +458,6 @@ Environment variables
 *emcc* is affected by several environment variables, as listed below:
 
   - ``EMMAKEN_JUST_CONFIGURE``
-  - ``EMMAKEN_JUST_CONFIGURE_RECURSE``
-  - ``CONFIGURE_CC``
-  - ``EMMAKEN_CXX``
-  - ``EMMAKEN_CXX``
   - ``EMMAKEN_COMPILER``
   - ``EMMAKEN_CFLAGS``
   - ``EMCC_DEBUG``

@@ -22,7 +22,7 @@ import zlib
 
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
+from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
 from tools.shared import try_delete, run_process, run_js, Building
 
 try:
@@ -43,6 +43,8 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
       s.send_response(200)
       s.send_header("Content-Length", str(length))
       s.send_header("Access-Control-Allow-Origin", "http://localhost:%s" % port)
+      s.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+      s.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
       s.send_header("Content-type", "application/octet-stream")
       if support_byte_ranges:
@@ -2596,9 +2598,14 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
-  # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_webgl_create_context2(self):
-    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), args=['--shell-file', path_from_root('tests', 'webgl_create_context2_shell.html'), '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0'], expected='0')
+    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), expected='0')
+
+  @requires_graphics_hardware
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
+  # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
+  def test_html5_special_event_targets(self):
+    self.btest(path_from_root('tests', 'browser', 'html5_special_event_targets.cpp'), args=['-lGL'], expected='0')
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):
@@ -3144,6 +3151,18 @@ window.close = function() {
     self.run_browser('something.html', '.', '/report_result?1')
 
   @requires_graphics_hardware
+  def test_sdl2_glmatrixmode_texture(self):
+    self.btest('sdl2_glmatrixmode_texture.c', reference='sdl2_glmatrixmode_texture.png',
+               args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_SDL=2'],
+               message='You should see a (top) red-white and (bottom) white-red image.')
+
+  @requires_graphics_hardware
+  def test_sdl2_gldrawelements(self):
+    self.btest('sdl2_gldrawelements.c', reference='sdl2_gldrawelements.png',
+               args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_SDL=2'],
+               message='GL drawing modes. Bottom: points, lines, line loop, line strip. Top: triangles, triangle strip, triangle fan, quad.')
+
+  @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
@@ -3509,21 +3528,20 @@ window.close = function() {
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
   def test_dylink_dso_needed_wasm(self):
-    self._test_dylink_dso_needed(1, 0)
+    self._run_dylink_dso_needed(1, 0)
 
   def test_dylink_dso_needed_wasm_inworker(self):
-    self._test_dylink_dso_needed(1, 1)
+    self._run_dylink_dso_needed(1, 1)
 
   def test_dylink_dso_needed_asmjs(self):
-    self._test_dylink_dso_needed(0, 0)
+    self._run_dylink_dso_needed(0, 0)
 
   def test_dylink_dso_needed_asmjs_inworker(self):
-    self._test_dylink_dso_needed(0, 1)
+    self._run_dylink_dso_needed(0, 1)
 
   @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
   @requires_sync_compilation
-  def _test_dylink_dso_needed(self, wasm, inworker):
-    # here we reuse runner._test_dylink_dso_needed, but the code is run via browser.
+  def _run_dylink_dso_needed(self, wasm, inworker):
     print('\n# wasm=%d inworker=%d' % (wasm, inworker))
     self.set_setting('WASM', wasm)
     self.emcc_args += ['-O2']
@@ -3546,7 +3564,7 @@ window.close = function() {
         ''')
       src += r'''
         int main() {
-          _main();
+          test_main();
           EM_ASM({
             var expected = %r;
             assert(Module.printed === expected, ['stdout expected:', expected]);
@@ -3559,7 +3577,7 @@ window.close = function() {
         self.emcc_args += ['--proxy-to-worker']
       self.btest(src, '0', args=self.get_emcc_args() + ['--post-js', 'post.js'])
 
-    super(browser, self)._test_dylink_dso_needed(do_run)
+    self._test_dylink_dso_needed(do_run)
 
   @requires_graphics_hardware
   @requires_sync_compilation
@@ -4989,3 +5007,45 @@ window.close = function() {
 
   def test_system(self):
     self.btest(path_from_root('tests', 'system.c'), '0')
+
+  @no_fastcomp('only upstream supports 4GB')
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_4GB(self):
+    # TODO Convert to an actual browser test when it reaches stable.
+    #      For now, keep this in browser as this suite runs serially, which
+    #      means we don't compete for memory with anything else (and run it
+    #      at the very very end, to reduce the risk of it OOM-killing the
+    #      browser).
+
+    # test that we can allocate in the 2-4GB range, if we enable growth and
+    # set the max appropriately
+    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB', js_engines=[V8_ENGINE])
+
+  @no_fastcomp('only upstream supports 4GB')
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_2GB_fail(self):
+    # TODO Convert to an actual browser test when it reaches stable.
+    #      For now, keep this in browser as this suite runs serially, which
+    #      means we don't compete for memory with anything else (and run it
+    #      at the very very end, to reduce the risk of it OOM-killing the
+    #      browser).
+
+    # test that growth doesn't go beyond 2GB without the max being set for that,
+    # and that we can catch an allocation failure exception for that
+    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=2GB']
+    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail', js_engines=[V8_ENGINE])
+
+  @no_fastcomp('only upstream supports 4GB')
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_4GB_fail(self):
+    # TODO Convert to an actual browser test when it reaches stable.
+    #      For now, keep this in browser as this suite runs serially, which
+    #      means we don't compete for memory with anything else (and run it
+    #      at the very very end, to reduce the risk of it OOM-killing the
+    #      browser).
+
+    # test that we properly report an allocation error that would overflow over
+    # 4GB.
+    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail', js_engines=[V8_ENGINE])

@@ -1,10 +1,10 @@
 {
   "a.html": 563,
   "a.html.gz": 377,
-  "a.js": 4837,
-  "a.js.gz": 2361,
-  "a.wasm": 7982,
-  "a.wasm.gz": 4368,
-  "total": 13382,
-  "total_gz": 7106
+  "a.js": 4779,
+  "a.js.gz": 2358,
+  "a.wasm": 8004,
+  "a.wasm.gz": 4376,
+  "total": 13346,
+  "total_gz": 7111
 }

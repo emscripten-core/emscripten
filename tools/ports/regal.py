@@ -123,6 +123,8 @@ def get(ports, settings, shared):
                  '-I' + dest_path_lookup3,
                  '-I' + dest_path_boost,
                  '-Wall',
+                 '-Werror',
+                 '-Wno-deprecated-register',
                  '-Wno-unused-parameter']
       if settings.USE_PTHREADS:
         command += ['-pthread']

@@ -61,7 +61,8 @@
 // exceed its size, whether all allocations (stack and static) are
 // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
 // if code flow runs into a fault
-// ASSERTIONS == 2 gives even more runtime checks
+// ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
+// includes internal dlmalloc assertions.
 var ASSERTIONS = 1;
 
 // Whether extra logging should be enabled.
@@ -1293,22 +1294,9 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 // [fastcomp-only]
 var BINARYEN_TRAP_MODE = "allow";
 
-// A comma-separated list of passes to run in the binaryen optimizer, for
-// example, "dce,precompute,vacuum".  When set, this overrides/replaces
-// the default passes we would normally run.
-// Note that you can put any binaryen wasm-opt flag here, not just
-// passes. The key thing is that these flags are sent to the main wasm-opt
-// invocation to optimize the wasm binary, which is when we run several
-// important passes. We may also run wasm-opt for various other reasons,
-// like as part of metadce, and these flags are not passed at those times,
-// so they are a bunch of passes (+ other flags) for that one main
-// invocation.
-var BINARYEN_PASSES = "";
-
-// A comma-separated list of passes to run in the binaryen optimizer, like
-// BINARYEN_PASSES, but that is in addition to any default ones. That is,
-// setting this does not override/replace the default passes, and it is
-// appended at the end of the list of passes.
+// A comma-separated list of extra passes to run in the binaryen optimizer,
+// Setting this does not override/replace the default passes. It is appended at
+// the end of the list of passes.
 var BINARYEN_EXTRA_PASSES = "";
 
 // Whether to compile the wasm asynchronously, which is more efficient and does
@@ -1847,4 +1835,5 @@ var LEGACY_SETTINGS = [
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
   ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
+  ['BINARYEN_PASSES', [""], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
 ];

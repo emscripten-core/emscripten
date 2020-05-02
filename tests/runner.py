@@ -60,7 +60,7 @@ sys.path.append(__rootpath__)
 
 import parallel_runner
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
+from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
 
@@ -1014,7 +1014,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
         static const char *afunc_prev;
 
+        extern "C" {
         EMSCRIPTEN_KEEPALIVE void afunc(const char *s);
+        }
+
         void afunc(const char *s) {
           printf("a: %s (prev: %s)\n", s, afunc_prev);
           afunc_prev = s;
@@ -1032,8 +1035,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     create_test_file('libb.cpp', r'''
         #include <emscripten.h>
 
+        extern "C" {
         void afunc(const char *s);
         EMSCRIPTEN_KEEPALIVE void bfunc();
+        }
+
         void bfunc() {
           afunc("b");
         }
@@ -1042,8 +1048,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     create_test_file('libc.cpp', r'''
         #include <emscripten.h>
 
+        extern "C" {
         void afunc(const char *s);
         EMSCRIPTEN_KEEPALIVE void cfunc();
+        }
+
         void cfunc() {
           afunc("c");
         }
@@ -1072,10 +1081,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.set_setting('MAIN_MODULE', 1)
     self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
     do_run(r'''
+      extern "C" {
       void bfunc();
       void cfunc();
+      }
 
-      int _main() {
+      int test_main() {
         bfunc();
         cfunc();
         return 0;
@@ -1084,25 +1095,26 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
 
     self.set_setting('RUNTIME_LINKED_LIBS', [])
-    self.emcc_args += ['--embed-file', '.@/']
+    for libname in ['liba', 'libb', 'libc']:
+      self.emcc_args += ['--embed-file', libname + so]
     do_run(r'''
       #include <assert.h>
       #include <dlfcn.h>
       #include <stddef.h>
 
-      int _main() {
+      int test_main() {
         void *bdso, *cdso;
         void (*bfunc)(), (*cfunc)();
 
-        // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currenlty working
+        // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currently working
         bdso = dlopen("libb%(so)s", RTLD_GLOBAL);
         assert(bdso != NULL);
         cdso = dlopen("libc%(so)s", RTLD_GLOBAL);
         assert(cdso != NULL);
 
-        bfunc = (void (*)())dlsym(bdso, "_Z5bfuncv");
+        bfunc = (void (*)())dlsym(bdso, "bfunc");
         assert(bfunc != NULL);
-        cfunc = (void (*)())dlsym(cdso, "_Z5cfuncv");
+        cfunc = (void (*)())dlsym(cdso, "cfunc");
         assert(cfunc != NULL);
 
         bfunc();
@@ -1128,6 +1140,26 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     logger.debug('do_run_from_file: %s' % src)
     self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
+  def do_run_in_out_file_test(self, *path, **kwargs):
+    test_path = path_from_root(*path)
+
+    def find_files(*ext_list):
+      ret = None
+      count = 0
+      for ext in ext_list:
+        if os.path.isfile(test_path + ext):
+          ret = test_path + ext
+          count += 1
+      assert count > 0, ("No file found at {} with extension {}"
+                         .format(test_path, ext_list))
+      assert count <= 1, ("Test file {} found with multiple valid extensions {}"
+                          .format(test_path, ext_list))
+      return ret
+
+    src = find_files('.c', '.cpp')
+    output = find_files('.out', '.txt')
+    self.do_run_from_file(src, output, **kwargs)
+
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              no_build=False, main_file=None, additional_files=[],
@@ -1137,7 +1169,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              check_for_error=True):
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
-      Building.COMPILER = to_cc(Building.COMPILER)
 
     if no_build:
       if src:
