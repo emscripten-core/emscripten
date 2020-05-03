@@ -4,10 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// We can't currently use strict here because it applies to all code we eval
-// which is not yet conform the strict standards.
-//"use strict";
-
 // LLVM => JavaScript compiler, main entry point
 
 var nodeFS = require('fs');
