@@ -137,6 +137,45 @@ Debug printouts can even execute arbitrary JavaScript. For example::
   }
 
 
+Printing exception messages
+===========================
+
+Exceptions are thrown from WebAssembly using exception pointers, which means that try/catch/finally blocks in JavaScript will only receive a number, which represents a pointer into linear memory. In order to get the exception message, the user will need to create some WASM code which will extract the meaning from the exception, for example:
+
+.. code-block:: cpp
+
+  #include <bind.h>
+
+  std::string getExceptionMessage(int exceptionPtr) {
+    return std::string(reinterpret_cast<std::exception *>(exceptionPtr)->what());
+  }
+
+  EMSCRIPTEN_BINDINGS(Bindings) {
+    emscripten::function("getExceptionMessage", &getExceptionMessage);
+  };
+
+And then handling the exceptions in Javascript will look like this:
+
+.. code-block:: javascript
+
+  try {
+    ... // some code that calls WebAssembly
+  } catch (exception) {
+    console.error(Module.getExceptionMessage(exception));
+  } finally {
+    ...
+  }
+
+It's important to notice that this code will work only for thrown statically allocated exceptions. If your code throws other objects, such as strings or dynamically allocated exceptions, the handling code will need to take that into account. For example, in order to handle thrown strings use:
+
+.. code-block:: javascript
+
+  function getExceptionMessage(exception: any): any {
+    return typeof exception === 'number'
+      ? Module.getExceptionMessage(exception)
+      : exception;
+  }
+
 Disabling optimizations
 =======================
 
@@ -285,4 +324,3 @@ Need help?
 The :ref:`Emscripten Test Suite <emscripten-test-suite>` contains good examples of almost all functionality offered by Emscripten. If you have a problem, it is a good idea to search the suite to determine whether test code with similar behavior is able to run.
 
 If you've tried the ideas here and you need more help, please :ref:`contact`.
-
