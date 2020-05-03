@@ -1141,26 +1141,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
 
     # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
-    # This happens before the user settings are applies.
+    # We do this before the user settings are applied so it effect the default value only and a
+    # user could use `--no-entry` and still export main too.
     if options.no_entry:
       shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
 
-    if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
-      shared.Settings.HAS_MAIN = 0
-
     shared.verify_settings()
 
+    if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+      shared.Settings.EXPECT_MAIN = 0
+
     if shared.Settings.STANDALONE_WASM:
-      if 'EXIT_RUNTIME' in settings_changes:
-        exit_with_error('EXIT_RUNTIME not compatible with STANDALONE_WASM (use --no-entry to build a reactor)')
       # In STANDALONE_WASM mode we either build a command or a reactor.
       # See https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md
       # For a command we always want EXIT_RUNTIME=1
       # For a reactor we always want EXIT_RUNTIME=0
-      shared.Settings.EXIT_RUNTIME = not shared.Settings.HAS_MAIN
+      if 'EXIT_RUNTIME' in settings_changes:
+        exit_with_error('EXIT_RUNTIME not compatible with STANDALONE_WASM (use --no-entry to build a reactor)')
+      shared.Settings.EXIT_RUNTIME = not shared.Settings.EXPECT_MAIN
 
     def filter_out_dynamic_libs(inputs):
       # If not compiling to JS, then we are compiling to an intermediate bitcode

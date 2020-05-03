@@ -8,7 +8,7 @@
 
 {{{ exportRuntime() }}}
 
-#if HAS_MAIN
+#if hasExportedFunction('_main') // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER
   emscriptenMemoryProfiler.onPreloadComplete();

@@ -1584,7 +1584,7 @@ class Building(object):
       use_start_function = Settings.STANDALONE_WASM
 
       if not use_start_function:
-        if Settings.HAS_MAIN and not Settings.IGNORE_MISSING_MAIN:
+        if Settings.EXPECT_MAIN and not Settings.IGNORE_MISSING_MAIN:
           cmd += ['--entry=main']
         else:
           cmd += ['--no-entry']
