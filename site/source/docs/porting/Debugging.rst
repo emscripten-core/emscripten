@@ -140,7 +140,13 @@ Debug printouts can even execute arbitrary JavaScript. For example::
 Printing exception messages
 ===========================
 
-Exceptions are thrown from WebAssembly using exception pointers, which means that try/catch/finally blocks in JavaScript will only receive a number, which represents a pointer into linear memory. In order to get the exception message, the user will need to create some WASM code which will extract the meaning from the exception, for example:
+Exceptions are thrown from WebAssembly using exception pointers, which means
+that try/catch/finally blocks in JavaScript will only receive a number, which
+represents a pointer into linear memory. In order to get the exception message,
+the user will need to create some WASM code which will extract the meaning from
+the exception. In the example code below we created a function that receives an
+``int`` which is pointer to an ``std::exception``, and by casting the pointer
+returns the ``what`` function call result.
 
 .. code-block:: cpp
 
@@ -154,7 +160,9 @@ Exceptions are thrown from WebAssembly using exception pointers, which means tha
     emscripten::function("getExceptionMessage", &getExceptionMessage);
   };
 
-And then handling the exceptions in Javascript will look like this:
+Once such a function has been created, exception handling code in javascript
+can call it when receiving an exception from WASM. Here the function is used
+in order to log the thrown exception.
 
 .. code-block:: javascript
 
@@ -166,7 +174,12 @@ And then handling the exceptions in Javascript will look like this:
     ...
   }
 
-It's important to notice that this code will work only for thrown statically allocated exceptions. If your code throws other objects, such as strings or dynamically allocated exceptions, the handling code will need to take that into account. For example, in order to handle thrown strings use:
+It's important to notice that this example code will work only for thrown
+statically allocated exceptions. If your code throws other objects, such as
+strings or dynamically allocated exceptions, the handling code will need to
+take that into account. For example, if your code throws either exception
+pointers or strings, the javascript code can handle these situations like
+this:
 
 .. code-block:: javascript
 
