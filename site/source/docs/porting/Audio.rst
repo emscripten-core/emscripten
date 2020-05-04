@@ -122,4 +122,4 @@ Currently, the OpenAL capture implementation performs naïve linear resampling b
 
 However, you're welcome to improve this by contributing if you so wish! See `this issue <https://github.com/emscripten-core/emscripten/issues/5349>`_ , for instance.
 
-Likewise, if you'd like to see a particlar extension implemented (whether it is registered or not), then your best bet is to either file an issue (provided no related prior issue existed for this), or contribute! See :ref:`Contributing <contributing>` for guidelines.
+Likewise, if you'd like to see a particular extension implemented (whether it is registered or not), then your best bet is to either file an issue (provided no related prior issue existed for this), or contribute! See :ref:`Contributing <contributing>` for guidelines.

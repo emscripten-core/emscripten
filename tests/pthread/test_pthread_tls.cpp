@@ -1,5 +1,6 @@
 #include <thread>
 #include <cstdio>
+#include <cassert>
 
 thread_local int tls;
 thread_local struct {

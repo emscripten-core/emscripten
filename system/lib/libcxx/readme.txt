@@ -1,7 +1,7 @@
-These files are from libc++, release 9.0.0.
+These files are from libc++, release branch 10.x.
 
-tag: llvmorg-9.0.0
-git: 0399d5a9682b3cef71c653373e38890c63c4c365
+tag: llvmorg-10.0.0
+git: d32170dbd5b0d54436537b6b75beaf44324e0c28
 
 Update Instructions
 -------------------

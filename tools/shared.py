@@ -42,7 +42,7 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 91
+EXPECTED_BINARYEN_VERSION = 93
 
 
 # can add  %(asctime)s  to see timestamps
@@ -66,6 +66,7 @@ diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('emterpreter')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
@@ -739,6 +740,10 @@ def emsdk_cflags():
   if Settings.USE_CXX:
     c_opts += include_directive(cxx_include_paths)
   return c_opts + include_directive(c_include_paths)
+
+
+def get_asmflags(user_args):
+  return ['-target', get_llvm_target()]
 
 
 def get_cflags(user_args):
@@ -1558,12 +1563,6 @@ class Building(object):
     if Settings.LINKABLE:
       cmd.append('--export-all')
     else:
-      # in standalone mode, crt1 will call the constructors from inside the wasm
-      if not Settings.STANDALONE_WASM:
-        cmd += ['--export', '__wasm_call_ctors']
-
-      cmd += ['--export', '__data_end']
-
       c_exports = [e for e in Settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
       # Strip the leading underscores
       c_exports = [demangle_c_symbol_name(e) for e in c_exports]
@@ -2027,11 +2026,8 @@ class Building(object):
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
   @staticmethod
-  def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None, acorn=False):
-    if not acorn:
-      optimizer = path_from_root('tools', 'js-optimizer.js')
-    else:
-      optimizer = path_from_root('tools', 'acorn-optimizer.js')
+  def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
+    optimizer = path_from_root('tools', 'acorn-optimizer.js')
     original_filename = filename
     if extra_info is not None:
       temp_files = configuration.get_temp_files()
@@ -2043,7 +2039,7 @@ class Building(object):
     cmd = NODE_JS + [optimizer, filename] + passes
     # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
     # will be carried over to a later Closure run.
-    if acorn and Settings.USE_CLOSURE_COMPILER:
+    if Settings.USE_CLOSURE_COMPILER:
       cmd += ['--closureFriendly']
     if not return_output:
       next = original_filename + '.jso.js'
@@ -2051,14 +2047,9 @@ class Building(object):
       check_call(cmd, stdout=open(next, 'w'))
       next = Building.maybe_add_license(filename=next)
       return next
-    else:
-      output = check_call(cmd, stdout=PIPE).stdout
-      output = Building.maybe_add_license(code=output)
-      return output
-
-  @staticmethod
-  def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
-    return Building.js_optimizer_no_asmjs(filename, passes, extra_info=extra_info, return_output=return_output, acorn=True)
+    output = check_call(cmd, stdout=PIPE).stdout
+    output = Building.maybe_add_license(code=output)
+    return output
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
@@ -2577,7 +2568,7 @@ class Building(object):
     section_size = len(section_name) + len(contents)
     with open(wasm_file, 'ab') as f:
       f.write(b'\0') # user section is code 0
-      f.write(WebAssembly.lebify(section_size))
+      f.write(WebAssembly.toLEB(section_size))
       f.write(section_name)
       f.write(contents)
 
@@ -3056,7 +3047,7 @@ function jsCall_%s(index%s) {
 
 class WebAssembly(object):
   @staticmethod
-  def lebify(x):
+  def toLEB(x):
     assert x >= 0, 'TODO: signed'
     ret = []
     while 1:
@@ -3071,7 +3062,7 @@ class WebAssembly(object):
     return bytearray(ret)
 
   @staticmethod
-  def delebify(buf, offset):
+  def readLEB(buf, offset):
     result = 0
     shift = 0
     while True:
@@ -3106,23 +3097,23 @@ class WebAssembly(object):
     name = b'\x13emscripten_metadata' # section name, including prefixed size
     contents = (
       # metadata section version
-      WebAssembly.lebify(EMSCRIPTEN_METADATA_MAJOR) +
-      WebAssembly.lebify(EMSCRIPTEN_METADATA_MINOR) +
+      WebAssembly.toLEB(EMSCRIPTEN_METADATA_MAJOR) +
+      WebAssembly.toLEB(EMSCRIPTEN_METADATA_MINOR) +
 
       # NB: The structure of the following should only be changed
       #     if EMSCRIPTEN_METADATA_MAJOR is incremented
       # Minimum ABI version
-      WebAssembly.lebify(EMSCRIPTEN_ABI_MAJOR) +
-      WebAssembly.lebify(EMSCRIPTEN_ABI_MINOR) +
+      WebAssembly.toLEB(EMSCRIPTEN_ABI_MAJOR) +
+      WebAssembly.toLEB(EMSCRIPTEN_ABI_MINOR) +
 
-      WebAssembly.lebify(int(Settings.WASM_BACKEND)) +
-      WebAssembly.lebify(mem_size) +
-      WebAssembly.lebify(table_size) +
-      WebAssembly.lebify(global_base) +
-      WebAssembly.lebify(dynamic_base) +
-      WebAssembly.lebify(dynamictop_ptr) +
-      WebAssembly.lebify(tempdouble_ptr) +
-      WebAssembly.lebify(int(Settings.STANDALONE_WASM))
+      WebAssembly.toLEB(int(Settings.WASM_BACKEND)) +
+      WebAssembly.toLEB(mem_size) +
+      WebAssembly.toLEB(table_size) +
+      WebAssembly.toLEB(global_base) +
+      WebAssembly.toLEB(dynamic_base) +
+      WebAssembly.toLEB(dynamictop_ptr) +
+      WebAssembly.toLEB(tempdouble_ptr) +
+      WebAssembly.toLEB(int(Settings.STANDALONE_WASM))
 
       # NB: more data can be appended here as long as you increase
       #     the EMSCRIPTEN_METADATA_MINOR
@@ -3135,13 +3126,13 @@ class WebAssembly(object):
       f.write(b'\0') # user section is code 0
       # need to find the size of this section
       size = len(name) + len(contents)
-      f.write(WebAssembly.lebify(size))
+      f.write(WebAssembly.toLEB(size))
       f.write(name)
       f.write(contents)
       f.write(orig[8:])
 
   @staticmethod
-  def make_shared_library(js_file, wasm_file, needed_dynlibs):
+  def add_dylink_section(wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     assert not Settings.WASM_BACKEND
     mem_align = Settings.MAX_GLOBAL_ALIGN
@@ -3153,8 +3144,8 @@ class WebAssembly(object):
     # Write new wasm binary with 'dylink' section
     wasm = open(wasm_file, 'rb').read()
     section_name = b"\06dylink" # section name, including prefixed size
-    contents = (WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) +
-                WebAssembly.lebify(table_size) + WebAssembly.lebify(0))
+    contents = (WebAssembly.toLEB(mem_size) + WebAssembly.toLEB(mem_align) +
+                WebAssembly.toLEB(table_size) + WebAssembly.toLEB(0))
 
     # we extend "dylink" section with information about which shared libraries
     # our shared library needs. This is similar to DT_NEEDED entries in ELF.
@@ -3177,25 +3168,23 @@ class WebAssembly(object):
     #
     # a proposal has been filed to include the extension into "dylink" specification:
     # https://github.com/WebAssembly/tool-conventions/pull/77
-    contents += WebAssembly.lebify(len(needed_dynlibs))
+    contents += WebAssembly.toLEB(len(needed_dynlibs))
     for dyn_needed in needed_dynlibs:
       dyn_needed = bytes(asbytes(dyn_needed))
-      contents += WebAssembly.lebify(len(dyn_needed))
+      contents += WebAssembly.toLEB(len(dyn_needed))
       contents += dyn_needed
 
     section_size = len(section_name) + len(contents)
-    wso = js_file + '.wso'
-    with open(wso, 'wb') as f:
+    with open(wasm_file, 'wb') as f:
       # copy magic number and version
       f.write(wasm[0:8])
       # write the special section
       f.write(b'\0') # user section is code 0
-      f.write(WebAssembly.lebify(section_size))
+      f.write(WebAssembly.toLEB(section_size))
       f.write(section_name)
       f.write(contents)
       # copy rest of binary
       f.write(wasm[8:])
-    return wso
 
 
 # Python 2-3 compatibility helper function:

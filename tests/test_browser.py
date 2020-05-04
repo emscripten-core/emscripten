@@ -22,7 +22,7 @@ import zlib
 
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
+from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
 from tools.shared import try_delete, run_process, run_js, Building
 
 try:
@@ -3525,21 +3525,20 @@ window.close = function() {
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
   def test_dylink_dso_needed_wasm(self):
-    self._test_dylink_dso_needed(1, 0)
+    self._run_dylink_dso_needed(1, 0)
 
   def test_dylink_dso_needed_wasm_inworker(self):
-    self._test_dylink_dso_needed(1, 1)
+    self._run_dylink_dso_needed(1, 1)
 
   def test_dylink_dso_needed_asmjs(self):
-    self._test_dylink_dso_needed(0, 0)
+    self._run_dylink_dso_needed(0, 0)
 
   def test_dylink_dso_needed_asmjs_inworker(self):
-    self._test_dylink_dso_needed(0, 1)
+    self._run_dylink_dso_needed(0, 1)
 
   @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
   @requires_sync_compilation
-  def _test_dylink_dso_needed(self, wasm, inworker):
-    # here we reuse runner._test_dylink_dso_needed, but the code is run via browser.
+  def _run_dylink_dso_needed(self, wasm, inworker):
     print('\n# wasm=%d inworker=%d' % (wasm, inworker))
     self.set_setting('WASM', wasm)
     self.emcc_args += ['-O2']
@@ -3562,7 +3561,7 @@ window.close = function() {
         ''')
       src += r'''
         int main() {
-          _main();
+          test_main();
           EM_ASM({
             var expected = %r;
             assert(Module.printed === expected, ['stdout expected:', expected]);
@@ -3575,7 +3574,7 @@ window.close = function() {
         self.emcc_args += ['--proxy-to-worker']
       self.btest(src, '0', args=self.get_emcc_args() + ['--post-js', 'post.js'])
 
-    super(browser, self)._test_dylink_dso_needed(do_run)
+    self._test_dylink_dso_needed(do_run)
 
   @requires_graphics_hardware
   @requires_sync_compilation
@@ -3716,7 +3715,6 @@ window.close = function() {
     print() # new line
     test([])
     test(['-O3'])
-    test(['-s', 'MODULARIZE_INSTANCE=1'])
     test(['-s', 'MINIMAL_RUNTIME=1'])
 
   # Test that preallocating worker threads work.
@@ -4377,6 +4375,17 @@ window.close = function() {
           print(str(cmd))
           self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
+  @requires_graphics_hardware
+  def test_webgl_simple_enable_extensions(self):
+    for webgl_version in [1, 2]:
+      for simple_enable_extensions in [0, 1]:
+        cmd = ['-DWEBGL_CONTEXT_VERSION=' + str(webgl_version),
+               '-DWEBGL_SIMPLE_ENABLE_EXTENSION=' + str(simple_enable_extensions),
+               '-s', 'MAX_WEBGL_VERSION=2',
+               '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=' + str(simple_enable_extensions),
+               '-s', 'GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
+        self.btest('webgl2_simple_enable_extensions.c', expected='0', args=cmd)
+
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s INITIAL_MEMORY=xxx option will be ignored.
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
@@ -4607,7 +4616,6 @@ window.close = function() {
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
 
     run()
-    run(['-s', 'MODULARIZE_INSTANCE=1'])
     run(['-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests memory growth in a pthread.
@@ -4783,7 +4791,6 @@ window.close = function() {
         'Module();',    # documented way for using modularize
         'new Module();' # not documented as working, but we support it
        ]),
-      (['-s', 'MODULARIZE_INSTANCE=1'], ['']) # instance: no need to create anything
     ]:
       print(args)
       # compile the code with the modularize feature and the preload-file option enabled
@@ -4813,9 +4820,7 @@ window.close = function() {
     # (which creates by itself)
     for path, args, creation in [
       ([], ['-s', 'MODULARIZE=1'], 'Module();'),
-      ([], ['-s', 'MODULARIZE_INSTANCE=1'], ''),
       (['subdir'], ['-s', 'MODULARIZE=1'], 'Module();'),
-      (['subdir'], ['-s', 'MODULARIZE_INSTANCE=1'], ''),
     ]:
       print(path, args, creation)
       filesystem_path = os.path.join('.', *path)
@@ -4836,9 +4841,6 @@ window.close = function() {
         </script>
       ''' % creation)
       self.run_browser('/'.join(path + ['test.html']), None, '/report_result?0')
-
-  def test_modularize_Module_input(self):
-    self.btest(path_from_root('tests', 'browser', 'modularize_Module_input.cpp'), '0', args=['--shell-file', path_from_root('tests', 'browser', 'modularize_Module_input.html'), '-s', 'MODULARIZE_INSTANCE=1'])
 
   def test_emscripten_request_animation_frame(self):
     self.btest(path_from_root('tests', 'emscripten_request_animation_frame.c'), '0')
@@ -4983,20 +4985,47 @@ window.close = function() {
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
-  # Test that basic thread creation works in combination with MODULARIZE_INSTANCE=1 and EXPORT_NAME=MyModule
-  @no_fastcomp('more work would be needed for this to work in deprecated fastcomp')
-  @requires_threads
-  def test_pthread_modularize_export_name(self):
-    create_test_file('shell.html', '''
-        <body>
-          {{{ SCRIPT }}}
-        </body>
-      ''')
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
-               expected='0',
-               args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1',
-                     '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
-                     '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])
-
   def test_system(self):
     self.btest(path_from_root('tests', 'system.c'), '0')
+
+  @no_fastcomp('only upstream supports 4GB')
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_4GB(self):
+    # TODO Convert to an actual browser test when it reaches stable.
+    #      For now, keep this in browser as this suite runs serially, which
+    #      means we don't compete for memory with anything else (and run it
+    #      at the very very end, to reduce the risk of it OOM-killing the
+    #      browser).
+
+    # test that we can allocate in the 2-4GB range, if we enable growth and
+    # set the max appropriately
+    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB', js_engines=[V8_ENGINE])
+
+  @no_fastcomp('only upstream supports 4GB')
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_2GB_fail(self):
+    # TODO Convert to an actual browser test when it reaches stable.
+    #      For now, keep this in browser as this suite runs serially, which
+    #      means we don't compete for memory with anything else (and run it
+    #      at the very very end, to reduce the risk of it OOM-killing the
+    #      browser).
+
+    # test that growth doesn't go beyond 2GB without the max being set for that,
+    # and that we can catch an allocation failure exception for that
+    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=2GB']
+    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail', js_engines=[V8_ENGINE])
+
+  @no_fastcomp('only upstream supports 4GB')
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_4GB_fail(self):
+    # TODO Convert to an actual browser test when it reaches stable.
+    #      For now, keep this in browser as this suite runs serially, which
+    #      means we don't compete for memory with anything else (and run it
+    #      at the very very end, to reduce the risk of it OOM-killing the
+    #      browser).
+
+    # test that we properly report an allocation error that would overflow over
+    # 4GB.
+    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail', js_engines=[V8_ENGINE])

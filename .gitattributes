@@ -10,4 +10,4 @@ third_party/* linguist-vendored
 system/ linguist-vendored
 
 AUTHORS merge=union
-Changelog.md merge=union
+ChangeLog.md merge=union

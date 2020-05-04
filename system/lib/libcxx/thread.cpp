@@ -35,7 +35,7 @@
 #include <windows.h>
 #endif
 
-#if defined(__unix__) &&  defined(__ELF__) && defined(_LIBCPP_HAS_COMMENT_LIB_PRAGMA)
+#if defined(__ELF__) && defined(_LIBCPP_LINK_PTHREAD_LIB)
 #pragma comment(lib, "pthread")
 #endif
 
@@ -139,7 +139,7 @@ class _LIBCPP_HIDDEN __hidden_allocator
 {
 public:
     typedef T  value_type;
-    
+
     T* allocate(size_t __n)
         {return static_cast<T*>(::operator new(__n * sizeof(T)));}
     void deallocate(T* __p, size_t) {::operator delete(static_cast<void*>(__p));}

@@ -317,26 +317,6 @@ class TestCoreBase(RunnerCore):
       return True
     return False
 
-  def do_run_in_out_file_test(self, *path, **kwargs):
-    test_path = path_from_root(*path)
-
-    def find_files(*ext_list):
-      ret = None
-      count = 0
-      for ext in ext_list:
-        if os.path.isfile(test_path + ext):
-          ret = test_path + ext
-          count += 1
-      assert count > 0, ("No file found at {} with extension {}"
-                         .format(test_path, ext_list))
-      assert count <= 1, ("Test file {} found with multiple valid extensions {}"
-                          .format(test_path, ext_list))
-      return ret
-
-    src = find_files('.c', '.cpp')
-    output = find_files('.out', '.txt')
-    self.do_run_from_file(src, output, **kwargs)
-
   def verify_in_strict_mode(self, filename):
     with open(filename) as infile:
       js = infile.read()
@@ -2476,11 +2456,16 @@ The current type of b is: 9
     # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
+  @also_with_standalone_wasm
   def test_atexit(self):
-    # Confirms they are called in reverse order
-    # needs atexits
+    # Confirms they are called in the proper reverse order
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
+
+  def test_atexit_threads(self):
+    # also tests thread exit (__cxa_thread_atexit)
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_atexit_threads')
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
@@ -4583,7 +4568,7 @@ res64 - external 64\n''', header='''
   @no_wasm_backend('possible https://github.com/emscripten-core/emscripten/issues/9038')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
-      self.do_run(src + 'int main() { return _main(); }', expected_output)
+      self.do_run(src + 'int main() { return test_main(); }', expected_output)
     self._test_dylink_dso_needed(do_run)
 
   @needs_dlfcn
@@ -6018,6 +6003,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @wasm_simd
+  @unittest.skip("Disabled to allow SIMD opcode renumbering to roll")
   def test_wasm_builtin_simd(self, js_engines):
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
@@ -6028,6 +6014,7 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
+  @unittest.skip("Disabled to allow SIMD opcode renumbering to roll")
   def test_wasm_intrinsics_simd(self, js_engines):
     def run():
       self.do_run(
@@ -6177,7 +6164,14 @@ return malloc(size);
 
   @needs_make('mingw32-make')
   @is_slow_test
-  def test_zlib(self):
+  @parameterized({
+    'cmake': (True,),
+    'configure': (False,)
+  })
+  def test_zlib(self, use_cmake):
+    if WINDOWS and not use_cmake:
+      self.skipTest("Windows cannot run configure sh scripts")
+
     self.maybe_closure()
 
     if self.run_name == 'asm2g':
@@ -6185,10 +6179,9 @@ return malloc(size);
     if self.run_name == 'asm2f':
       return self.skipTest('asm2f affects cflags in a way that changes zlib compile flag reporting, so the stdout is different')
 
-    use_cmake_configure = WINDOWS
-    if use_cmake_configure:
+    if use_cmake:
       make_args = []
-      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.']
+      configure = [PYTHON, path_from_root('emcmake.py'), 'cmake', '.']
     else:
       make_args = ['libz.a']
       configure = ['sh', './configure']
@@ -7575,26 +7568,20 @@ err = err = function(){};
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
-    base_args = self.emcc_args + [
+    self.emcc_args += [
       '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
       '--closure', '1',
-      '-g1'
+      '-g1',
+      '-s',
+      'MODULARIZE=1',
     ]
 
-    for instance in (0, 1):
-      print("instance: %d" % instance)
-      if instance:
-        self.emcc_args = base_args + ['-s', 'MODULARIZE_INSTANCE=1']
-      else:
-        self.emcc_args = base_args + ['-s', 'MODULARIZE=1']
+    def post(filename):
+      with open(filename, 'a') as f:
+        f.write('\n\n')
+        f.write('var TheModule = Module();\n')
 
-      def post(filename):
-        with open(filename, 'a') as f:
-          f.write('\n\n')
-          if not instance:
-            f.write('var TheModule = Module();\n')
-
-      self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
+    self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
 
   @no_emterpreter
   @no_wasm('wasmifying destroys debug info and stack tracability')
@@ -7851,6 +7838,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_wasm_backend('EMTERPRETIFY')
   def test_async_emterpretify(self):
+    self.emcc_args.append('-Wno-emterpreter')
     self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
@@ -8074,6 +8062,7 @@ extern "C" {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
+    self.emcc_args.append('-Wno-emterpreter')
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
@@ -8110,6 +8099,7 @@ extern "C" {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_emterpretify(self):
+    self.emcc_args.append('-Wno-emterpreter')
     self.set_setting('EMTERPRETIFY', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     print('async')
@@ -8444,11 +8434,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
         wrong = 'node'
       # test with the right env
       self.set_setting('ENVIRONMENT', right)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
       # test with the wrong env
       self.set_setting('ENVIRONMENT', wrong)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       try:
         test()
         raise Exception('unexpected success')
@@ -8456,7 +8446,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         self.assertContained('not compiled for this environment', str(e))
       # test with a combined env
       self.set_setting('ENVIRONMENT', right + ',' + wrong)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
 
   def test_dfe(self):
@@ -8977,7 +8967,7 @@ strict = make_run('strict', emcc_args=['-O2'], settings={'DEFAULT_TO_CXX': 0})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter
-  asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
+  asm2i = make_run('asm2i', emcc_args=['-O2', '-Wno-emterpreter'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
 if shared.Settings.WASM_BACKEND:
   lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})

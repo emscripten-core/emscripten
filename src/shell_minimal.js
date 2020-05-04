@@ -156,7 +156,7 @@ function ready() {
 
 #if USE_PTHREADS
 
-#if !MODULARIZE || MODULARIZE_INSTANCE
+#if !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
 var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;

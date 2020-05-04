@@ -98,7 +98,7 @@ fastcomp the :ref:`main relevant flag <emcc-llvm-lto>` is ``--llvm-lto 1`` at
 link time.
 
 With the LLVM wasm backend, LTO triggered by compiling objects files with
-``-flto``.  The effect of this flag is to emit LTO object files (techinically
+``-flto``.  The effect of this flag is to emit LTO object files (technically
 this means emitting bitcode).  The linker can handle a mix wasm object files
 and LTO object files.  Passing ``-flto`` at link time will also trigger LTO
 system libraries to be used.

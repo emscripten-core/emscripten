@@ -2476,7 +2476,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
 #endif
-      return 0;
+      return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -2502,7 +2502,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
         console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
-        return 0;
+        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #endif
       }
 
@@ -2521,7 +2521,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
           console.error('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
 #endif
-          return 0;
+          return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
         }
         canvas = GL.offscreenCanvases[canvas.id];
       }
@@ -2539,7 +2539,7 @@ var LibraryJSEvents = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
 #endif
-      return 0;
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 #endif // ~!OFFSCREEN_FRAMEBUFFER
 
@@ -2684,10 +2684,16 @@ var LibraryJSEvents = {
   emscripten_webgl_destroy_context: 'emscripten_webgl_destroy_context_calling_thread',
 #endif
 
+  emscripten_webgl_enable_extension_calling_thread__deps: [
 #if MIN_WEBGL_VERSION == 1
-  emscripten_webgl_enable_extension_calling_thread__deps: ['_webgl_acquireInstancedArraysExtension',
-    '_webgl_acquireVertexArrayObjectExtension', '_webgl_acquireDrawBuffersExtension'],
+    '_webgl_enable_ANGLE_instanced_arrays',
+    '_webgl_enable_OES_vertex_array_object',
+    '_webgl_enable_WEBGL_draw_buffers',
 #endif
+#if MAX_WEBGL_VERSION >= 2
+    '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+#endif
+  ],
   emscripten_webgl_enable_extension_calling_thread: function(contextHandle, extension) {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
@@ -2695,11 +2701,33 @@ var LibraryJSEvents = {
     if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
 #endif
 
+#if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
+    // Switch-board that pulls in code for all GL extensions, even if those are not used :/
+    // Build with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS = 0 to avoid this.
+
 #if MIN_WEBGL_VERSION == 1
     // Obtain function entry points to WebGL 1 extension related functions.
-    if (extString == 'ANGLE_instanced_arrays') __webgl_acquireInstancedArraysExtension(GLctx);
-    else if (extString == 'OES_vertex_array_object') __webgl_acquireVertexArrayObjectExtension(GLctx);
-    else if (extString == 'WEBGL_draw_buffers') __webgl_acquireDrawBuffersExtension(GLctx);
+    if (extString == 'ANGLE_instanced_arrays') __webgl_enable_ANGLE_instanced_arrays(GLctx);
+    if (extString == 'OES_vertex_array_object') __webgl_enable_OES_vertex_array_object(GLctx);
+    if (extString == 'WEBGL_draw_buffers') __webgl_enable_WEBGL_draw_buffers(GLctx);
+#endif
+
+#if MAX_WEBGL_VERSION >= 2
+    if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
+#endif
+
+#else
+
+#if ASSERTIONS || GL_ASSERTIONS
+    if (['ANGLE_instanced_arrays',
+         'OES_vertex_array_object',
+         'WEBGL_draw_buffers',
+         'WEBGL_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
+      console.error('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
+                    + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
+    }
+#endif
+
 #endif
 
     var ext = context.GLctx.getExtension(extString);

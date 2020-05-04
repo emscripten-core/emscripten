@@ -1069,6 +1069,7 @@ function createWasm() {
         // to load ok, but we do actually recompile the binary every time).
         var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
         cachedCodeFile = locateFile(cachedCodeFile);
+        if (!nodeFS) nodeFS = require('fs');
         var hasCached = nodeFS.existsSync(cachedCodeFile);
         if (hasCached) {
 #if RUNTIME_LOGGING
@@ -1077,7 +1078,7 @@ function createWasm() {
           try {
             module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
           } catch (e) {
-            err('NODE_CODE_CACHING: failed to deserialize, bad cache file?');
+            err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
             // Save the new compiled code when we have it.
             hasCached = false;
           }
@@ -1147,7 +1148,7 @@ function createWasm() {
 }
 #endif
 
-#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like funciton
+#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like function
 Module['asm'] = createWasm;
 #endif
 
