@@ -72,15 +72,15 @@ operator new(std::size_t size) _THROW_BAD_ALLOC
         if (nh)
             nh();
         else
-#ifdef __EMSCRIPTEN__
-            abort();
-#else
 #ifndef _LIBCPP_NO_EXCEPTIONS
             throw std::bad_alloc();
 #else
+#ifdef __EMSCRIPTEN__
+            abort();
+#else
             break;
 #endif
-#endif // __EMSCRIPTEN__
+#endif
     }
     return p;
 }
