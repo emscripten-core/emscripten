@@ -6003,7 +6003,6 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @wasm_simd
-  @unittest.skip("Disabled to allow SIMD opcode renumbering to roll")
   def test_wasm_builtin_simd(self, js_engines):
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
@@ -6014,7 +6013,6 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
-  @unittest.skip("Disabled to allow SIMD opcode renumbering to roll")
   def test_wasm_intrinsics_simd(self, js_engines):
     def run():
       self.do_run(
