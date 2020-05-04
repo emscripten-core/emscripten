@@ -6754,6 +6754,7 @@ int main() {
 #include <set>
 #include <emscripten.h>
 #include <stdio.h>
+#include <assert.h>
 
 std::set<int> seenInts;
 
@@ -8521,7 +8522,7 @@ int main() {
         if target.endswith('.js'):
           self.assertContained('hello, world!', run_js('out.js'))
         # verify a standalone wasm
-        if standalone:
+        if standalone and self.is_wasm_backend():
           for engine in WASM_ENGINES:
             print(engine)
             self.assertContained('hello, world!', run_js('out.wasm', engine=engine))
@@ -10572,6 +10573,7 @@ int main() {
 ''')
     run_process([PYTHON, EMCC, 'errno_type.c'])
 
+  @no_fastcomp("uses standalone mode")
   def test_standalone_syscalls(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'standalone_syscalls', 'test.cpp'), '-o', 'test.wasm'])
     with open(path_from_root('tests', 'other', 'standalone_syscalls', 'test.out')) as f:

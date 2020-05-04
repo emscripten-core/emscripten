@@ -15,7 +15,7 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 
-#include "webgl1_ext.h"
+#include <webgl/webgl1_ext.h>
 
 // Define emscripten_ versions of gl functions, to avoid name collisions
 

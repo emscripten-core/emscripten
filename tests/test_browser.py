@@ -3718,7 +3718,6 @@ window.close = function() {
 
     test([])
     test(['-O3'])
-    test(['-s', 'MODULARIZE_INSTANCE=1'])
     test(['-s', 'MINIMAL_RUNTIME=1'])
 
   # Test that preallocating worker threads work.
@@ -4379,6 +4378,17 @@ window.close = function() {
           print(str(cmd))
           self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
+  @requires_graphics_hardware
+  def test_webgl_simple_enable_extensions(self):
+    for webgl_version in [1, 2]:
+      for simple_enable_extensions in [0, 1]:
+        cmd = ['-DWEBGL_CONTEXT_VERSION=' + str(webgl_version),
+               '-DWEBGL_SIMPLE_ENABLE_EXTENSION=' + str(simple_enable_extensions),
+               '-s', 'MAX_WEBGL_VERSION=2',
+               '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=' + str(simple_enable_extensions),
+               '-s', 'GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
+        self.btest('webgl2_simple_enable_extensions.c', expected='0', args=cmd)
+
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s INITIAL_MEMORY=xxx option will be ignored.
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
@@ -4609,7 +4619,6 @@ window.close = function() {
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
 
     run()
-    run(['-s', 'MODULARIZE_INSTANCE=1'])
     run(['-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests memory growth in a pthread.
@@ -4785,7 +4794,6 @@ window.close = function() {
         'Module();',    # documented way for using modularize
         'new Module();' # not documented as working, but we support it
        ]),
-      (['-s', 'MODULARIZE_INSTANCE=1'], ['']) # instance: no need to create anything
     ]:
       print(args)
       # compile the code with the modularize feature and the preload-file option enabled
@@ -4815,9 +4823,7 @@ window.close = function() {
     # (which creates by itself)
     for path, args, creation in [
       ([], ['-s', 'MODULARIZE=1'], 'Module();'),
-      ([], ['-s', 'MODULARIZE_INSTANCE=1'], ''),
       (['subdir'], ['-s', 'MODULARIZE=1'], 'Module();'),
-      (['subdir'], ['-s', 'MODULARIZE_INSTANCE=1'], ''),
     ]:
       print(path, args, creation)
       filesystem_path = os.path.join('.', *path)
@@ -4838,9 +4844,6 @@ window.close = function() {
         </script>
       ''' % creation)
       self.run_browser('/'.join(path + ['test.html']), None, '/report_result?0')
-
-  def test_modularize_Module_input(self):
-    self.btest(path_from_root('tests', 'browser', 'modularize_Module_input.cpp'), '0', args=['--shell-file', path_from_root('tests', 'browser', 'modularize_Module_input.html'), '-s', 'MODULARIZE_INSTANCE=1'])
 
   def test_emscripten_request_animation_frame(self):
     self.btest(path_from_root('tests', 'emscripten_request_animation_frame.c'), '0')
@@ -4984,21 +4987,6 @@ window.close = function() {
       open('test.html', 'w').write(html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.run_browser('test.html', 'hello!', '/report_result?0')
-
-  # Test that basic thread creation works in combination with MODULARIZE_INSTANCE=1 and EXPORT_NAME=MyModule
-  @no_fastcomp('more work would be needed for this to work in deprecated fastcomp')
-  @requires_threads
-  def test_pthread_modularize_export_name(self):
-    create_test_file('shell.html', '''
-        <body>
-          {{{ SCRIPT }}}
-        </body>
-      ''')
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
-               expected='0',
-               args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1',
-                     '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
-                     '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])
 
   def test_system(self):
     self.btest(path_from_root('tests', 'system.c'), '0')

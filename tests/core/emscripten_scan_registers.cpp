@@ -1,6 +1,7 @@
 #include <set>
 #include <emscripten.h>
 #include <stdio.h>
+#include <assert.h>
 
 std::set<int> seenInts;
 
@@ -60,4 +61,3 @@ int main() {
   assert(scans == 3);
   puts("ok");
 }
-

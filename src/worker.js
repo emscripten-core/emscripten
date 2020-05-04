@@ -15,13 +15,6 @@ var parentThreadId = 0; // The ID of the parent pthread that launched this threa
 
 var Module = {};
 
-// If we use a custom export name, refer to Module from it as well, so that
-// we connect properly to the modularized instance which is the only thing
-// in the global scope.
-#if MODULARIZE_INSTANCE && EXPORT_NAME != 'Module'
-var {{{ EXPORT_NAME }}} = Module;
-#endif
-
 #if ASSERTIONS
 function assert(condition, text) {
   if (!condition) abort('Assertion failed: ' + text);
@@ -76,11 +69,7 @@ this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if MINIMAL_RUNTIME
-#if MODULARIZE_INSTANCE
-      var imports = Module;
-#else
       var imports = {};
-#endif
 #endif
 
 #if !WASM_BACKEND
@@ -155,7 +144,7 @@ this.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
-#if MODULARIZE && !MODULARIZE_INSTANCE
+#if MODULARIZE
 #if MINIMAL_RUNTIME
       Module = {{{ EXPORT_NAME }}}(imports);
 #else

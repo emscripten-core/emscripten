@@ -474,6 +474,18 @@ var GL_EXTENSIONS_IN_PREFIXED_FORMAT = 1;
 // you will need to manually enable the extensions you need.
 var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
 
+// If true, the function emscripten_webgl_enable_extension() can be called to
+// enable any WebGL extension. If false, to save code size,
+// emscripten_webgl_enable_extension() cannot be called to enable any of extensions
+// 'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers' or
+// 'WEBGL_draw_instanced_base_vertex_base_instance', but the dedicated functions
+// emscripten_webgl_enable_*() found in html5.h are used to enable each of those
+// extensions. This way code size is increased only for the extensions that are
+// actually used.
+// N.B. if setting this to 0, GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS must be set
+// to zero as well.
+var GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS = 1;
+
 // If set to 0, Emscripten GLES2->WebGL translation layer does not track the kind
 // of GL errors that exist in GLES2 but do not exist in WebGL. Settings this to 0
 // saves code size. (Good to keep at 1 for development)
@@ -824,10 +836,9 @@ var NODERAWFS = 0;
 // The V8 version used in node is included in the cache name so that we don't
 // try to load cached code from another version, which fails silently (it seems
 // to load ok, but we do actually recompile).
-//  * This requires a somewhat recent node, but unclear what version, see
-//    https://github.com/nodejs/node/issues/18265#issuecomment-471237531
-//  * This option requires WASM_ASYNC_COMPILATION=0 (we load and save code
-//    in the sync compilation path for simplicity).
+//  * The only version known to work for sure is node 12.9.1, as this has
+//    regressed, see
+//    https://github.com/nodejs/node/issues/18265#issuecomment-622971547
 //  * The default location of the .cached files is alongside the wasm binary,
 //    as mentioned earlier. If that is in a read-only directory, you may need
 //    to place them elsewhere. You can use the locateFile() hook to do so.
@@ -1069,20 +1080,8 @@ var DETERMINISTIC = 0;
 // Note that in MODULARIZE mode we do *not* look at the global `Module`
 // object, so if you define things there they will be ignored. The reason
 // is that you will be constructing the instances manually, and can
-// provide Module there, or something else, as you want. This differs
-// in MODULARIZE_INSTANCE mode, where we *do* look at the global, since
-// as in non-MODULARIZE mode there is just one global instance, and it
-// is constructed by the setup code.
+// provide Module there, or something else, as you want.
 var MODULARIZE = 0;
-
-// Similar to MODULARIZE, but while that mode exports a function, with which you
-// can create multiple instances, this option exports a singleton instance. In
-// other words, it's the same as if you used MODULARIZE and did EXPORT_NAME =
-// EXPORT_NAME() to create the instance manually.
-//
-// Note that the promise-like API MODULARIZE provides isn't available here
-// (since you aren't creating the instance yourself).
-var MODULARIZE_INSTANCE = 0;
 
 // If we separate out asm.js with the --separate-asm option,
 // this is the name of the variable where the generated asm.js
