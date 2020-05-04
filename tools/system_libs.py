@@ -1467,14 +1467,11 @@ def warn_on_unexported_main(symbolses):
         return
 
 
-def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
-  global stdout, stderr
-  stdout = stdout_
-  stderr = stderr_
+def calculate(temp_files, in_temp, always_include):
 
   # Set of libraries to include on the link line, as opposed to `force` which
   # is the set of libraries to force include (with --whole-archive).
-  always_include = set()
+  always_include = set(always_include)
 
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
@@ -1557,7 +1554,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
     force = ','.join(name for name, lib in system_libs_map.items() if not lib.never_force)
-  force_include = set((force.split(',') if force else []) + forced)
+  force_include = set((force.split(',') if force else []))
   if force_include:
     logger.debug('forcing stdlibs: ' + str(force_include))
 
