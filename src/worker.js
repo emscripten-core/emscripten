@@ -159,7 +159,6 @@ this.onmessage = function(e) {
       });
 #endif
 #endif
-#endif
 
 #if !MODULARIZE && (!MINIMAL_RUNTIME || !WASM)
       // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But

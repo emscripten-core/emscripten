@@ -3436,10 +3436,11 @@ var %(EXPORT_NAME)s = (function() {
   final = final + '.modular.js'
   with open(final, 'w') as f:
     f.write(src)
-    export_name = shared.Settings.EXPORT_NAME
+
     # Export using a UMD style export, or ES6 exports if selected
+
     if shared.Settings.EXPORT_ES6:
-      f.write('''export default %s;''' % export_name)
+      f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
     elif not shared.Settings.MINIMAL_RUNTIME:
       f.write('''if (typeof exports === 'object' && typeof module === 'object')
       module.exports = %(EXPORT_NAME)s;
@@ -3448,7 +3449,7 @@ var %(EXPORT_NAME)s = (function() {
     else if (typeof exports === 'object')
       exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
     ''' % {
-        'EXPORT_NAME': export_name
+        'EXPORT_NAME': shared.Settings.EXPORT_NAME
       })
 
   save_intermediate('modularized')
