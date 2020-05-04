@@ -1081,20 +1081,8 @@ var DETERMINISTIC = 0;
 // Note that in MODULARIZE mode we do *not* look at the global `Module`
 // object, so if you define things there they will be ignored. The reason
 // is that you will be constructing the instances manually, and can
-// provide Module there, or something else, as you want. This differs
-// in MODULARIZE_INSTANCE mode, where we *do* look at the global, since
-// as in non-MODULARIZE mode there is just one global instance, and it
-// is constructed by the setup code.
+// provide Module there, or something else, as you want.
 var MODULARIZE = 0;
-
-// Similar to MODULARIZE, but while that mode exports a function, with which you
-// can create multiple instances, this option exports a singleton instance. In
-// other words, it's the same as if you used MODULARIZE and did EXPORT_NAME =
-// EXPORT_NAME() to create the instance manually.
-//
-// Note that the promise-like API MODULARIZE provides isn't available here
-// (since you aren't creating the instance yourself).
-var MODULARIZE_INSTANCE = 0;
 
 // If we separate out asm.js with the --separate-asm option,
 // this is the name of the variable where the generated asm.js

@@ -122,7 +122,6 @@ if (memoryInitializer) {
 var calledRun;
 
 #if MODULARIZE
-#if MODULARIZE_INSTANCE == 0
 // Modularize mode returns a function, which can be called to
 // create instances. The instances provide a then() method,
 // must like a Promise, that receives a callback. The callback
@@ -148,7 +147,6 @@ Module['then'] = function(func) {
   }
   return Module;
 };
-#endif
 #endif
 
 /**

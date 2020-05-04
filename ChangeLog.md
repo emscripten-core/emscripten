@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove `MODULARIZE_INSTANCE` build option (#11037). This was a seldom used
+  option that was complicating the logic for `MODULARIZE`. Module instances can
+  be created by using `MODULARIZE` and calling the factory function explicitly. 
 
 1.39.14: 05/01/2020
 -------------------
