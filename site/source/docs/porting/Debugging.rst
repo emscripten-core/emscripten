@@ -183,7 +183,7 @@ this:
 
 .. code-block:: javascript
 
-  function getExceptionMessage(exception: any): any {
+  function getExceptionMessage(exception) {
     return typeof exception === 'number'
       ? Module.getExceptionMessage(exception)
       : exception;
