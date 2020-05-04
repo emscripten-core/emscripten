@@ -14,10 +14,10 @@ int main() {
     // Catch the failure here so we can report it.
     try {
       _allocate_too_much();
-      out("no error happened");
+      out("no abort happened");
     } catch (e) {
-      assert(("" + e).indexOf("abort") >= 0, "expect an abort");
-      out("an expected error occurred");
+      assert(("" + e).indexOf("abort") >= 0, "expect an abort from new");
+      out("new aborted as expected");
     }
   });
 }
