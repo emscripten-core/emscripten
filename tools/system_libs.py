@@ -835,7 +835,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
-  symbols = set()
 
   cflags = ['-Os', '-fno-builtin']
 
@@ -846,7 +845,6 @@ class libsockets(MuslInternalLibrary, MTLibrary):
 
 class libsockets_proxy(MuslInternalLibrary, MTLibrary):
   name = 'libsockets_proxy'
-  symbols = set()
 
   cflags = ['-Os']
 
@@ -1440,7 +1438,9 @@ class libstandalonewasm(MuslInternalLibrary):
     # including fprintf etc.
     exit_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
-        filenames=['assert.c'])
+        filenames=['assert.c', 'atexit.c', 'exit.c']) + files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'unistd'],
+        filenames=['_exit.c'])
     conf_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'conf'],
         filenames=['sysconf.c'])

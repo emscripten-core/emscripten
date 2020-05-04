@@ -127,7 +127,7 @@ while 1:
           js_args += ['--js-opts', '1']
       if random.random() < 0.5:
         # pick random passes
-        BINARYEN_PASSES = [
+        BINARYEN_EXTRA_PASSES = [
           "code-pushing",
           "duplicate-function-elimination",
           "dce",
@@ -148,10 +148,10 @@ while 1:
         ]
         passes = []
         while 1:
-          passes.append(random.choice(BINARYEN_PASSES))
+          passes.append(random.choice(BINARYEN_EXTRA_PASSES))
           if random.random() < 0.1:
             break
-        js_args += ['-s', 'BINARYEN_PASSES="' + ','.join(passes) + '"']
+        js_args += ['-s', 'BINARYEN_EXTRA_PASSES="' + ','.join(passes) + '"']
     if random.random() < 0.5:
       js_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
     if random.random() < 0.5 and 'ALLOW_MEMORY_GROWTH=1' not in js_args and 'BINARYEN=1' not in js_args:

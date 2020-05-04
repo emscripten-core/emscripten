@@ -17,6 +17,12 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove `MODULARIZE_INSTANCE` build option (#11037). This was a seldom used
+  option that was complicating the logic for `MODULARIZE`. Module instances can
+  be created by using `MODULARIZE` and calling the factory function explicitly. 
+
+1.39.14: 05/01/2020
+-------------------
 - Update SDL2 to latest in ports, which has recently been updated to include
   upstream 2.0.10.
 - Add warning on use of `EMTERPRETIFY` which is soon to be removed.
@@ -31,9 +37,11 @@ Current Trunk
 - Remove undocumented and untested config settings: `COMPILER_OPTS`.  This was
   a global setting in the emscripten config file that would inject extra
   compiler options.
-- Remove `MODULARIZE_INSTANCE` build option (#11037). This was a seldom used
-  option that was complicating the logic for `MODULARIZE`. Module instances can
-  be created by using `MODULARIZE` and calling the factory function explicitly. 
+- Allow spaces in a path to Python interpreter when running emscripten from Unix
+  shell (#11005).
+- Remove `BINARYEN_PASSES` settings.  We still have `BINARYEN_EXTRA_PASSES`, but
+  completely overriding the set of passes from the command line didn't make much
+  sense.
 
 v1.39.13: 04/17/2020
 --------------------
