@@ -1958,6 +1958,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
       if not shared.Settings.target_environment_may_be('node'):
         exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
+      if shared.Settings.SINGLE_FILE:
+        exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
 
     # safe heap in asm.js uses the js optimizer (in wasm-only mode we can use binaryen)
     if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
