@@ -22,6 +22,9 @@ Current Trunk
   `BINARYEN_EXTRA_PASSES` (the removed setting completely overrides the set
   of passes from the command line, which doesn't make much sense as some of
   them are mandatory like setting the sbrk ptr).
+- Remove `MODULARIZE_INSTANCE` build option (#11037). This was a seldom used
+  option that was complicating the logic for `MODULARIZE`. Module instances can
+  be created by using `MODULARIZE` and calling the factory function explicitly. 
 
 1.39.14: 05/01/2020
 -------------------

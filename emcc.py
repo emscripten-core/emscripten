@@ -1294,11 +1294,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie', 'abortStackOverflow']
 
-    if shared.Settings.MODULARIZE_INSTANCE:
-      shared.Settings.MODULARIZE = 1
-
     if shared.Settings.MODULARIZE:
-      assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+      assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
       # MODULARIZE's .then() method uses onRuntimeInitialized currently, so make sure
       # it is expected to be used.
       shared.Settings.INCOMING_MODULE_JS_API += ['onRuntimeInitialized']
@@ -1702,7 +1699,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
         options.memory_init_file = True
 
-    if shared.Settings.MODULARIZE and not shared.Settings.MODULARIZE_INSTANCE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \
+    if shared.Settings.MODULARIZE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
@@ -1961,6 +1958,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
       if not shared.Settings.target_environment_may_be('node'):
         exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
+      if shared.Settings.SINGLE_FILE:
+        exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
 
     # safe heap in asm.js uses the js optimizer (in wasm-only mode we can use binaryen)
     if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
@@ -3407,47 +3406,32 @@ function(%(EXPORT_NAME)s) {
     'exports_object': exports_object
   }
 
-  if not shared.Settings.MODULARIZE_INSTANCE:
-    if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS:
-      # Single threaded MINIMAL_RUNTIME programs do not need access to
-      # document.currentScript, so a simple export declaration is enough.
-      src = 'var %s=%s' % (shared.Settings.EXPORT_NAME, src)
+  if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS:
+    # Single threaded MINIMAL_RUNTIME programs do not need access to
+    # document.currentScript, so a simple export declaration is enough.
+    src = 'var %s=%s' % (shared.Settings.EXPORT_NAME, src)
+  else:
+    script_url_node = ""
+    # When MODULARIZE this JS may be executed later,
+    # after document.currentScript is gone, so we save it.
+    # In EXPORT_ES6 + USE_PTHREADS the 'thread' is actually an ES6 module webworker running in strict mode,
+    # so doesn't have access to 'document'. In this case use 'import.meta' instead.
+    if shared.Settings.EXPORT_ES6 and shared.Settings.USE_ES6_IMPORT_META:
+      script_url = "import.meta.url"
     else:
-      script_url_node = ""
-      # When MODULARIZE this JS may be executed later,
-      # after document.currentScript is gone, so we save it.
-      # (when MODULARIZE_INSTANCE, an instance is created
-      # immediately anyhow, like in non-modularize mode)
-      # In EXPORT_ES6 + USE_PTHREADS the 'thread' is actually an ES6 module webworker running in strict mode,
-      # so doesn't have access to 'document'. In this case use 'import.meta' instead.
-      if shared.Settings.EXPORT_ES6 and shared.Settings.USE_ES6_IMPORT_META:
-        script_url = "import.meta.url"
-      else:
-        script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
-        if shared.Settings.target_environment_may_be('node'):
-          script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
-      src = '''
+      script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
+      if shared.Settings.target_environment_may_be('node'):
+        script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
+    src = '''
 var %(EXPORT_NAME)s = (function() {
   var _scriptDir = %(script_url)s;
   %(script_url_node)s
   return (%(src)s);
 })();
 ''' % {
-        'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'src': src
-      }
-  else:
-    # Create the MODULARIZE_INSTANCE instance
-    # Note that we notice the global Module object, just like in normal
-    # non-MODULARIZE mode (while MODULARIZE has the user create the instances,
-    # and the user can decide whether to use Module there or something
-    # else etc.).
-    src = '''
-var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
-''' % {
       'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+      'script_url': script_url,
+      'script_url_node': script_url_node,
       'src': src
     }
 
@@ -3487,7 +3471,7 @@ def module_export_name_substitution():
     src = re.sub(r'{[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:1}', replacement, src)
     # For Node.js and other shell environments, create an unminified Module object so that
     # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-    if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.MODULARIZE_INSTANCE and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
+    if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
       src = 'if(typeof Module==="undefined"){var Module={};}' + src
     f.write(src)
   save_intermediate('module_export_name_substitution')
