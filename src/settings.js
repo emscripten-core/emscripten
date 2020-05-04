@@ -824,10 +824,9 @@ var NODERAWFS = 0;
 // The V8 version used in node is included in the cache name so that we don't
 // try to load cached code from another version, which fails silently (it seems
 // to load ok, but we do actually recompile).
-//  * This requires a somewhat recent node, but unclear what version, see
-//    https://github.com/nodejs/node/issues/18265#issuecomment-471237531
-//  * This option requires WASM_ASYNC_COMPILATION=0 (we load and save code
-//    in the sync compilation path for simplicity).
+//  * The only version known to work for sure is node 12.9.1, as this has
+//    regressed, see
+//    https://github.com/nodejs/node/issues/18265#issuecomment-622971547
 //  * The default location of the .cached files is alongside the wasm binary,
 //    as mentioned earlier. If that is in a read-only directory, you may need
 //    to place them elsewhere. You can use the locateFile() hook to do so.
