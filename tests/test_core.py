@@ -8434,11 +8434,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
         wrong = 'node'
       # test with the right env
       self.set_setting('ENVIRONMENT', right)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
       # test with the wrong env
       self.set_setting('ENVIRONMENT', wrong)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       try:
         test()
         raise Exception('unexpected success')
@@ -8446,7 +8446,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         self.assertContained('not compiled for this environment', str(e))
       # test with a combined env
       self.set_setting('ENVIRONMENT', right + ',' + wrong)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
 
   def test_dfe(self):
