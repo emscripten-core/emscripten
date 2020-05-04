@@ -8522,7 +8522,7 @@ int main() {
         if target.endswith('.js'):
           self.assertContained('hello, world!', run_js('out.js'))
         # verify a standalone wasm
-        if standalone:
+        if standalone and self.is_wasm_backend():
           for engine in WASM_ENGINES:
             print(engine)
             self.assertContained('hello, world!', run_js('out.wasm', engine=engine))
