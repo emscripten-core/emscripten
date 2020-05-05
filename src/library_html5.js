@@ -329,10 +329,11 @@ var LibraryJSEvents = {
     // represents the set of OffscreenCanvases owned by the current calling thread.
 
     // First check out the list of OffscreenCanvases by CSS selector ID ('#myCanvasID')
-    return GL.offscreenCanvases[target.substr(1)] // Remove '#' prefix
+    var offscreenCanvas = GL.offscreenCanvases[target.substr(1)]; // Remove '#' prefix
+    if (!offscreenCanvas) offscreenCanvas = (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0]);
+    return offscreenCanvas && offscreenCanvas.canvas
     // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
     // OffscreenCanvas that we can find.
-     || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0])
     // If that is not found either, query via the regular DOM selector.
 #if USE_PTHREADS
      || (typeof document !== 'undefined' && document.querySelector(target));
@@ -2523,7 +2524,7 @@ var LibraryJSEvents = {
 #endif
           return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
         }
-        canvas = GL.offscreenCanvases[canvas.id];
+        canvas = GL.offscreenCanvases[canvas.id].canvas;
       }
     }
 #else // !OFFSCREENCANVAS_SUPPORT
