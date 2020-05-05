@@ -513,12 +513,11 @@ var LibraryWebGPU = {
 #if ASSERTIONS
     assert(queueId != 0, 'got invalid queue');
 #endif
-    if(queueId === undefined) {
+    if (queueId === undefined) {
       var device = WebGPU["mgrDevice"].get(deviceId);
       WebGPU.defaultQueues[deviceId] = WebGPU.mgrQueue.create(device["defaultQueue"]);
       queueId = WebGPU.defaultQueues[deviceId];
-    }
-    else {
+    } else {
       WebGPU.mgrQueue.reference(queueId);
     }
     return queueId;
@@ -964,12 +963,11 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUShaderModuleDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    if(sType === {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}) {
+    if (sType === {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}) {
       var count = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.codeSize) }}};
       var start = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.code, '*') }}};
       desc["code"] = HEAPU32.subarray(start >> 2, (start >> 2) + count);
-    }
-    else if(sType === {{{ gpu.SType.ShaderModuleWGSLDescriptor }}}) {
+    } else if (sType === {{{ gpu.SType.ShaderModuleWGSLDescriptor }}}) {
       var sourcePtr = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.source, '*') }}};
       if (sourcePtr) {
         desc["code"] = UTF8ToString(sourcePtr);
