@@ -9,7 +9,7 @@ int ilogbl(long double x)
 #elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384
 int ilogbl(long double x)
 {
-#ifndef __EMSCRIPTEN_
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
 #endif
 	union ldshape u = {x};
@@ -34,7 +34,7 @@ int ilogbl(long double x)
 #elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
 int ilogbl(long double x)
 {
-#ifndef __EMSCRIPTEN_
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
 #endif
 	union ldshape u = {x};

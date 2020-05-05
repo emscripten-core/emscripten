@@ -3,7 +3,7 @@
 
 int ilogbf(float x)
 {
-#ifndef __EMSCRIPTEN_
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
 #endif
 	union {float f; uint32_t i;} u = {x};

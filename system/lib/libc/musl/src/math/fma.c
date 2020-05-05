@@ -79,7 +79,7 @@ static int getexp(long double x)
 
 double fma(double x, double y, double z)
 {
-#ifndef __EMSCRIPTEN_
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
 #endif
 	long double hi, lo1, lo2, xy;
@@ -333,7 +333,7 @@ static inline struct dd dd_mul(double a, double b)
  */
 double fma(double x, double y, double z)
 {
-#ifndef __EMSCRIPTEN_
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
 #endif
 	double xs, ys, zs, adj;
