@@ -93,6 +93,8 @@ var INVOKE_RUN = 1;
 // like flushing the stdio streams.
 // Set this to 1 if you do want atexit()s or stdio streams to be flushed
 // on exit.
+// This settings default to 1 in STANDALONE_WASM mode, unless no main function
+// is found.
 var EXIT_RUNTIME = 0;
 
 // How to represent the initial memory content.

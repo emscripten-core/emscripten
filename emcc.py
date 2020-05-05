@@ -1141,7 +1141,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
 
     # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
-    # We do this before the user settings are applied so it effect the default value only and a
+    # We do this before the user settings are applied so it affects the default value only and a
     # user could use `--no-entry` and still export main too.
     if options.no_entry:
       shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
