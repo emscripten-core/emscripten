@@ -952,7 +952,6 @@ var LibraryWebGPU = {
 #if ASSERTIONS
     assert(nextInChainPtr !== 0);
 #endif
-    var next = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.next) }}};
     var sType = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}};
 #if ASSERTIONS
     assert(sType === {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}
@@ -966,12 +965,12 @@ var LibraryWebGPU = {
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     if(sType === {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}) {
-      var count = {{{ gpu.makeGetU32('next', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.codeSize) }}};
-      var start = {{{ makeGetValue('next', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.code, '*') }}};
+      var count = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.codeSize) }}};
+      var start = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.code, '*') }}};
       desc["code"] = HEAPU32.subarray(start >> 2, (start >> 2) + count);
     }
     else if(sType === {{{ gpu.SType.ShaderModuleWGSLDescriptor }}}) {
-      var sourcePtr = {{{ makeGetValue('next', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.source, '*') }}};
+      var sourcePtr = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.source, '*') }}};
       if (sourcePtr) {
         desc["code"] = UTF8ToString(sourcePtr);
       }
@@ -1533,7 +1532,7 @@ var LibraryWebGPU = {
     assert({{{ gpu.SType.SurfaceDescriptorFromHTMLCanvasId }}} ===
       {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}});
 #endif
-    var descriptorFromHTMLCanvasId = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.next) }}};
+    var descriptorFromHTMLCanvasId = nextInChainPtr;
 
     {{{ gpu.makeCheckDescriptor('descriptorFromHTMLCanvasId') }}}
     var idPtr = {{{ makeGetValue('descriptorFromHTMLCanvasId', C_STRUCTS.WGPUSurfaceDescriptorFromHTMLCanvasId.id, '*') }}};
