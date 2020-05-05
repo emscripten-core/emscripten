@@ -2169,6 +2169,16 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
+  @parameterized({
+    'nogrow': (['-s', 'ALLOW_MEMORY_GROWTH=0'],),
+    'grow': (['-s', 'ALLOW_MEMORY_GROWTH=1'],)
+  })
+  def test_aborting_new(self, args):
+    # test that C++ new properly errors if we fail to malloc when growth is
+    # enabled, with or without growth
+    self.emcc_args += ['-Wno-almost-asm', '-s', 'MAXIMUM_MEMORY=18MB'] + args
+    self.do_run_in_out_file_test('tests', 'core', 'test_aborting_new')
+
   @no_asmjs()
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
