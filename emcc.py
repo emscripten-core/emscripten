@@ -90,8 +90,11 @@ UNSUPPORTED_LLD_FLAGS = {
     # wasm-ld doesn't support map files yet.
     '--print-map': False,
     '-M': False,
-    # wasm-ld doesn't support soname yet
-    '-soname': True
+    # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
+    # in order to aid build systems that want to pass these flags.
+    '-soname': True,
+    '-rpath': True,
+    '-rpath-link': True
 }
 
 LIB_PREFIXES = ('', 'lib')
