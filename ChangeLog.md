@@ -17,6 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Update libcxx and libcxxabi to LLVM 10 release branch (#11038).
+- Remove `BINARYEN_PASSES` setting (#11057). We still have
+  `BINARYEN_EXTRA_PASSES` (the removed setting completely overrides the set
+  of passes from the command line, which doesn't make much sense as some of
+  them are mandatory like setting the sbrk ptr).
+- Remove `MODULARIZE_INSTANCE` build option (#11037). This was a seldom used
+  option that was complicating the logic for `MODULARIZE`. Module instances can
+  be created by using `MODULARIZE` and calling the factory function explicitly. 
 
 1.39.14: 05/01/2020
 -------------------
@@ -36,9 +44,8 @@ Current Trunk
   compiler options.
 - Allow spaces in a path to Python interpreter when running emscripten from Unix
   shell (#11005).
-- Remove `BINARYEN_PASSES` settings.  We still have `BINARYEN_EXTRA_PASSES`, but
-  completely overriding the set of passes from the command line didn't make much
-  sense.
+- Support atexit() in standalone mode (#10995). This also fixes stdio stream
+  flushing on exit in that mode.
 
 v1.39.13: 04/17/2020
 --------------------

@@ -16,8 +16,6 @@ def generate_minimal_runtime_load_statement(target_basename):
   then_statements = [] # Statements to appear inside a Promise .then() block after loading has finished
   modularize_imports = [] # Import parameters to call the main JS runtime function with
 
-  modularize_not_instance = shared.Settings.MODULARIZE and not shared.Settings.MODULARIZE_INSTANCE
-
   # Depending on whether streaming Wasm compilation is enabled or not, the minimal sized code to download Wasm looks a bit different.
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in the template directly)
   if shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
@@ -45,7 +43,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   # Download separate memory initializer file .mem
   if shared.Settings.MEM_INIT_METHOD == 1 and not shared.Settings.MEM_INIT_IN_WASM:
-    if modularize_not_instance:
+    if shared.Settings.MODULARIZE:
       modularize_imports += ['mem: r[%d]' % len(files_to_load)]
     else:
       then_statements += ["Module.mem = r[%d];" % len(files_to_load)]
@@ -57,26 +55,26 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   # Download .wasm file
   if shared.Settings.WASM == 1 or not download_wasm:
-    if modularize_not_instance:
+    if shared.Settings.MODULARIZE:
       modularize_imports += ['wasm: r[%d]' % len(files_to_load)]
     else:
       then_statements += ["Module.wasm = r[%d];" % len(files_to_load)]
     if download_wasm:
       files_to_load += [download_wasm]
 
-  if modularize_not_instance and shared.Settings.USE_PTHREADS:
+  if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
     modularize_imports += ["worker: '{{{ PTHREAD_WORKER_FILE }}}'"]
 
   # Download Wasm2JS code if target browser does not support WebAssembly
   if shared.Settings.WASM == 2:
-    if modularize_not_instance:
+    if shared.Settings.MODULARIZE:
       modularize_imports += ['wasm: supportsWasm ? r[%d] : 0' % len(files_to_load)]
     else:
       then_statements += ["if (supportsWasm) Module.wasm = r[%d];" % len(files_to_load)]
     files_to_load += ["supportsWasm ? %s : script('%s')" % (download_wasm, target_basename + '.wasm.js')]
 
   # Execute compiled output when building with MODULARIZE
-  if modularize_not_instance:
+  if shared.Settings.MODULARIZE:
     then_statements += ['''// Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this" directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
   var js = r[0];\n  js({ %s });''' % ',\n  '.join(modularize_imports)]
 
@@ -96,7 +94,8 @@ def generate_minimal_runtime_load_statement(target_basename):
       var s = document.createElement('script');
       s.src = url;
       s.onload = () => {
-#if MODULARIZE && !MODULARIZE_INSTANCE && WASM == 2
+#if MODULARIZE
+#if WASM == 2
         // In MODULARIZEd WASM==2 builds, we use this same function to download
         // both .js and .asm.js that are structured with {{{ EXPORT_NAME }}}
         // at the top level, but also use this function to download the Wasm2JS
@@ -110,13 +109,12 @@ def generate_minimal_runtime_load_statement(target_basename):
           ok();
         }
 #else
-#if MODULARIZE && !MODULARIZE_INSTANCE
         var c = {{{ EXPORT_NAME }}};
         delete {{{ EXPORT_NAME }}};
         ok(c);
+#endif
 #else
         ok();
-#endif
 #endif
       };
       document.body.appendChild(s);
@@ -126,12 +124,12 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   # Only one file to download - no need to use Promise.all()
   if len(files_to_load) == 1:
-    if modularize_not_instance:
+    if shared.Settings.MODULARIZE:
       return script_xhr + files_to_load[0] + ".then((js) => {\n  js();\n});"
     else:
       return script_xhr + files_to_load[0] + ";"
 
-  if not modularize_not_instance:
+  if not shared.Settings.MODULARIZE:
     # If downloading multiple files like .wasm or .mem, those need to be loaded in
     # before we can add the main runtime script to the DOM, so convert the main .js
     # script load from direct script() load to a binary() load so we can still
