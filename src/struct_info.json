@@ -1824,12 +1824,12 @@
                 "code"
             ],
             "WGPUShaderModuleSPIRVDescriptor": [
-                "nextInChain",
+                "chain",
                 "codeSize",
                 "code"
             ],
             "WGPUShaderModuleWGSLDescriptor": [
-                "nextInChain",
+                "chain",
                 "source"
             ],
             "WGPUStencilStateFaceDescriptor": [
@@ -1843,22 +1843,8 @@
                 "label"
             ],
             "WGPUSurfaceDescriptorFromHTMLCanvasId": [
-                "nextInChain",
+                "chain",
                 "id"
-            ],
-            "WGPUSurfaceDescriptorFromMetalLayer": [
-                "nextInChain",
-                "layer"
-            ],
-            "WGPUSurfaceDescriptorFromWindowsHWND": [
-                "nextInChain",
-                "hinstance",
-                "hwnd"
-            ],
-            "WGPUSurfaceDescriptorFromXlib": [
-                "nextInChain",
-                "display",
-                "window"
             ],
             "WGPUSwapChainDescriptor": [
                 "nextInChain",

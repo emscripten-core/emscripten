@@ -65,9 +65,14 @@
     },
     makeCheckDescriptor: function(descriptor) {
       // Assert descriptor is non-null, then that its nextInChain is null.
+      // For descriptors that aren't the first in the chain (e.g ShaderModuleSPIRVDescriptor),
+      // there is no nextInChain pointer but a ChainedStruct object named chain.
+      // So we need to check if chain.nextInChain is null. As long as nextInChain and chain are both the 
+      // first member in the struct, descriptor.nextInChain and descriptor.chain.nextInChain should have the same offset (0)
+      // to the descriptor pointer and we can check it as a general u32 value. Don't know of a better solution at the moment.
       var OffsetOfNextInChainMember = 0;
-      return this.makeCheck(descriptor) + this.makeCheck(makeGetValue(descriptor, OffsetOfNextInChainMember, '*') + ' === 0');
-      },
+      return this.makeCheck(descriptor) + this.makeCheck(this.makeGetU32(descriptor, OffsetOfNextInChainMember) + ' === 0');
+    },
 
     // Must be in sync with webgpu.h.
     PresentMode: {
@@ -75,6 +80,8 @@
     },
     SType: {
         SurfaceDescriptorFromHTMLCanvasId: 4,
+        ShaderModuleSPIRVDescriptor: 5,
+        ShaderModuleWGSLDescriptor: 6,
     },
   };
   return null;
@@ -223,6 +230,11 @@ var LibraryWebGPU = {
       };
     },
 
+    // maps deviceId to the queueId of the device's defaultQueue
+    defaultQueues: {
+      0: 0
+    },
+
     // This section is auto-generated:
     // https://dawn.googlesource.com/dawn/+/refs/heads/master/generator/templates/library_webgpu_enum_tables.json
     AddressMode: [
@@ -321,11 +333,6 @@ var LibraryWebGPU = {
     LoadOp: [
       'clear',
       'load',
-    ],
-    PresentMode: [
-      'immediate',
-      'mailbox',
-      'fifo',
     ],
     PrimitiveTopology: [
       'point-list',
@@ -502,9 +509,11 @@ var LibraryWebGPU = {
   // wgpuDevice
 
   wgpuDeviceGetDefaultQueue: function(deviceId) {
-    assert(WebGPU.mgrQueue.objects.length === 1, 'there is only one queue');
-    var device = WebGPU["mgrDevice"].get(deviceId);
-    return WebGPU.mgrQueue.create(device["defaultQueue"]);
+    if(WebGPU.mgrQueue.objects.length === 1) {
+      var device = WebGPU["mgrDevice"].get(deviceId);
+      WebGPU.defaultQueues[deviceId] = WebGPU.mgrQueue.create(device["defaultQueue"]);
+    }
+    return WebGPU.defaultQueues[deviceId];
   },
 
   // wgpuDeviceCreate*
@@ -943,7 +952,6 @@ var LibraryWebGPU = {
     var device = WebGPU["mgrDevice"].get(deviceId);
     return WebGPU.mgrShaderModule.create(device["createShaderModule"](desc));
   },
-  
 
   wgpuDeviceCreateQuerySet: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
@@ -953,7 +961,7 @@ var LibraryWebGPU = {
         {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.type) }}}],
       "count": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.count) }}}
     };
-    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUShaderModuleDescriptor.label, '*') }}};
+    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     var device = WebGPU["mgrDevice"].get(deviceId);

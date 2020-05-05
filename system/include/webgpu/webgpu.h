@@ -637,13 +637,13 @@ typedef struct WGPUShaderModuleDescriptor {
 } WGPUShaderModuleDescriptor;
 
 typedef struct WGPUShaderModuleSPIRVDescriptor {
-    WGPUChainedStruct const * nextInChain;
+    WGPUChainedStruct chain;
     uint32_t codeSize;
     uint32_t const * code;
 } WGPUShaderModuleSPIRVDescriptor;
 
 typedef struct WGPUShaderModuleWGSLDescriptor {
-    WGPUChainedStruct const * nextInChain;
+    WGPUChainedStruct chain;
     char const * source;
 } WGPUShaderModuleWGSLDescriptor;
 
@@ -660,23 +660,23 @@ typedef struct WGPUSurfaceDescriptor {
 } WGPUSurfaceDescriptor;
 
 typedef struct WGPUSurfaceDescriptorFromHTMLCanvasId {
-    WGPUChainedStruct const * nextInChain;
+    WGPUChainedStruct chain;
     char const * id;
 } WGPUSurfaceDescriptorFromHTMLCanvasId;
 
 typedef struct WGPUSurfaceDescriptorFromMetalLayer {
-    WGPUChainedStruct const * nextInChain;
+    WGPUChainedStruct chain;
     void * layer;
 } WGPUSurfaceDescriptorFromMetalLayer;
 
 typedef struct WGPUSurfaceDescriptorFromWindowsHWND {
-    WGPUChainedStruct const * nextInChain;
+    WGPUChainedStruct chain;
     void * hinstance;
     void * hwnd;
 } WGPUSurfaceDescriptorFromWindowsHWND;
 
 typedef struct WGPUSurfaceDescriptorFromXlib {
-    WGPUChainedStruct const * nextInChain;
+    WGPUChainedStruct chain;
     void * display;
     uint32_t window;
 } WGPUSurfaceDescriptorFromXlib;
