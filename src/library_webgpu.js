@@ -69,9 +69,9 @@
       // there is no nextInChain pointer but a ChainedStruct object named chain.
       // So we need to check if chain.nextInChain is null. As long as nextInChain and chain are both the 
       // first member in the struct, descriptor.nextInChain and descriptor.chain.nextInChain should have the same offset (0)
-      // to the descriptor pointer and we can check it as a general u32 value. Don't know of a better solution at the moment.
+      // to the descriptor pointer and we can check it to be null.
       var OffsetOfNextInChainMember = 0;
-      return this.makeCheck(descriptor) + this.makeCheck(this.makeGetU32(descriptor, OffsetOfNextInChainMember) + ' === 0');
+      return this.makeCheck(descriptor) + this.makeCheck(makeGetValue(descriptor, OffsetOfNextInChainMember, '*') + ' === 0');
     },
 
     // Must be in sync with webgpu.h.
@@ -509,11 +509,19 @@ var LibraryWebGPU = {
   // wgpuDevice
 
   wgpuDeviceGetDefaultQueue: function(deviceId) {
-    if(WebGPU.mgrQueue.objects.length === 1) {
+    var queueId = WebGPU.defaultQueues[deviceId];
+#if ASSERTIONS
+    assert(queueId != 0, 'got invalid queue');
+#endif
+    if(queueId === undefined) {
       var device = WebGPU["mgrDevice"].get(deviceId);
       WebGPU.defaultQueues[deviceId] = WebGPU.mgrQueue.create(device["defaultQueue"]);
+      queueId = WebGPU.defaultQueues[deviceId];
     }
-    return WebGPU.defaultQueues[deviceId];
+    else {
+      WebGPU.mgrQueue.reference(queueId);
+    }
+    return queueId;
   },
 
   // wgpuDeviceCreate*
