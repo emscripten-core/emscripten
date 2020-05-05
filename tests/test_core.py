@@ -2170,13 +2170,13 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   @parameterized({
-    'nogrow': ([],),
-    'grow': (['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=18MB'],)
+    'nogrow': (['-s', 'ALLOW_MEMORY_GROWTH=0'],),
+    'grow': (['-s', 'ALLOW_MEMORY_GROWTH=1'],)
   })
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
-    self.emcc_args += ['-Wno-almost-asm'] + args
+    self.emcc_args += ['-Wno-almost-asm', '-s', 'MAXIMUM_MEMORY=18MB'] + args
     self.do_run_in_out_file_test('tests', 'core', 'test_aborting_new')
 
   @no_asmjs()
