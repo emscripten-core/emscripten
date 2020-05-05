@@ -137,10 +137,10 @@ Debug printouts can even execute arbitrary JavaScript. For example::
   }
 
 
-Printing exception messages
-===========================
+Printing C++ exception messages
+===============================
 
-Exceptions are thrown from WebAssembly using exception pointers, which means
+C++ exceptions are thrown from WebAssembly using exception pointers, which means
 that try/catch/finally blocks in JavaScript will only receive a number, which
 represents a pointer into linear memory. In order to get the exception message,
 the user will need to create some WASM code which will extract the meaning from
