@@ -632,8 +632,6 @@ typedef struct WGPUSamplerDescriptor {
 typedef struct WGPUShaderModuleDescriptor {
     WGPUChainedStruct const * nextInChain;
     char const * label;
-    uint32_t codeSize;
-    uint32_t const * code;
 } WGPUShaderModuleDescriptor;
 
 typedef struct WGPUShaderModuleSPIRVDescriptor {

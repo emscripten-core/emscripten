@@ -947,15 +947,35 @@ var LibraryWebGPU = {
   },
 
   wgpuDeviceCreateShaderModule: function(deviceId, descriptor) {
-    {{{ gpu.makeCheckDescriptor('descriptor') }}}
-    var count = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUShaderModuleDescriptor.codeSize) }}};
-    var start = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUShaderModuleDescriptor.code, '*') }}};
+    {{{ gpu.makeCheck('descriptor') }}}
+    var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.nextInChain, '*') }}};
+#if ASSERTIONS
+    assert(nextInChainPtr !== 0);
+#endif
+    var next = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.next) }}};
+    var sType = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}};
+#if ASSERTIONS
+    assert(sType === {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}
+        || sType === {{{ gpu.SType.ShaderModuleWGSLDescriptor }}});
+#endif
     var desc = {
       "label": undefined,
-      "code": HEAPU32.subarray(start >> 2, (start >> 2) + count),
+      "code": "",
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUShaderModuleDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+
+    if(sType === {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}) {
+      var count = {{{ gpu.makeGetU32('next', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.codeSize) }}};
+      var start = {{{ makeGetValue('next', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.code, '*') }}};
+      desc["code"] = HEAPU32.subarray(start >> 2, (start >> 2) + count);
+    }
+    else if(sType === {{{ gpu.SType.ShaderModuleWGSLDescriptor }}}) {
+      var sourcePtr = {{{ makeGetValue('next', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.source, '*') }}};
+      if (sourcePtr) {
+        desc["code"] = UTF8ToString(sourcePtr);
+      }
+    }
 
     var device = WebGPU["mgrDevice"].get(deviceId);
     return WebGPU.mgrShaderModule.create(device["createShaderModule"](desc));
