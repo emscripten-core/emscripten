@@ -242,7 +242,17 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-post-js:
 
 ``--post-js <file>``
-  Like `--pre-js``, but emits a file *after* the emitted code.
+  Like ``--pre-js``, but emits a file *after* the emitted code.
+
+``--extern-pre-js <file>``
+  Specify a file whose contents are prepended to the JavaScript output. Unlike
+  ``--pre-js``, this file is external to the optimized code: it is simply
+  prepended, before anything else, to the final optimized JavaScript. It is
+  a convenient way to do so instead of your build system prepending it right
+  after running ``emcc``.
+
+``--extern-post-js <file>``
+  Like ``--extern-pre-js``, but appends to the end.
 
 .. _emcc-embed-file:
 
