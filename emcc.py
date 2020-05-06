@@ -1763,11 +1763,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.memory_init_file = True
         shared.Settings.MEM_INIT_IN_WASM = True if shared.Settings.WASM_BACKEND else not shared.Settings.USE_PTHREADS
 
-      # WASM_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
-      if not shared.Settings.MINIMAL_RUNTIME and shared.Settings.WASM_ASYNC_COMPILATION:
-        # async compilation requires a swappable module - we swap it in when it's ready
-        shared.Settings.SWAPPABLE_ASM_MODULE = 1
-
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
         diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
@@ -3091,8 +3086,7 @@ def emterpretify(js_target, optimizer, options):
           final + '.em.js',
           blacklist,
           whitelist,
-          synclist,
-          str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+          synclist]
   if shared.Settings.EMTERPRETIFY_ASYNC:
     args += ['ASYNC=1']
   if shared.Settings.EMTERPRETIFY_ADVISE:
@@ -3128,19 +3122,6 @@ def emterpretify(js_target, optimizer, options):
     optimizer.do_minify()
   optimizer.queue += ['last']
   optimizer.flush('finalizing-emterpreted-code')
-
-  # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
-  if shared.Settings.SWAPPABLE_ASM_MODULE:
-    real = final
-    original = js_target + '.orig.js' # the emterpretify tool saves the original here
-    final = original
-    logger.debug('finalizing original (non-emterpreted) code at ' + final)
-    if not shared.Settings.WASM:
-      optimizer.do_minify()
-    optimizer.queue += ['last']
-    optimizer.flush('finalizing-original-code')
-    safe_copy(final, original)
-    final = real
 
 
 def emit_js_source_maps(target, js_transform_tempfiles):
