@@ -36,7 +36,10 @@ Current Trunk
   them are mandatory like setting the sbrk ptr).
 - Remove `MODULARIZE_INSTANCE` build option (#11037). This was a seldom used
   option that was complicating the logic for `MODULARIZE`. Module instances can
-  be created by using `MODULARIZE` and calling the factory function explicitly. 
+  be created by using `MODULARIZE` and calling the factory function explicitly.
+  See the new `--extern-post-js` option added in this release, which can help
+  code that used `MODULARIZE_INSTANCE` (you can add an extern post js which
+  does `Module = Module();` for example).
 
 1.39.14: 05/01/2020
 -------------------
