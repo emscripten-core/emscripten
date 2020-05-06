@@ -19,7 +19,8 @@ Current Trunk
 -------------
 - Add `--extern-pre-js` and `--extern-post-js` emcc flags. Files provided there
   are prepended/appended to the final JavaScript output, *after* all other
-  work has been done, including optimization. They are the same as prepending/
+  work has been done, including optimization, optional `MODULARIZE`,
+  instrumentation like `SAFE_HEAP`, etc. They are the same as prepending/
   appending those files after `emcc` finishes running, and are just a convenient
   way to do that. (For comparison, `--pre-js` and `--post-js` include the code
   with the rest of the optimized output.)
