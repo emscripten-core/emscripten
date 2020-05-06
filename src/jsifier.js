@@ -231,6 +231,10 @@ function JSify(data, functionsOnly) {
       var snippet = original;
       var redirectedIdent = null;
       var deps = LibraryManager.library[ident + '__deps'] || [];
+      if (!Array.isArray(deps)) {
+        error('JS library directive ' + ident + '__deps=' + deps.toString() + ' is of type ' + typeof deps + ', but it should be an array!');
+        return;
+      }
       deps.forEach(function(dep) {
         if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #ifdefs in src/library*.js)');
       });

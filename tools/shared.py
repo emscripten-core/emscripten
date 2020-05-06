@@ -2653,6 +2653,7 @@ class Building(object):
       'EGL': 'library_egl.js',
       'GL': 'library_webgl.js',
       'GLESv2': 'library_webgl.js',
+      # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
       'GLEW': 'library_glew.js',
       'glfw': 'library_glfw.js',
       'glfw3': 'library_glfw.js',
