@@ -19,11 +19,12 @@ Current Trunk
 -------------
 - Add `--extern-pre-js` and `--extern-post-js` emcc flags. Files provided there
   are prepended/appended to the final JavaScript output, *after* all other
-  work has been done, including optimization, optional `MODULARIZE`,
+  work has been done, including optimization, optional `MODULARIZE`-ation,
   instrumentation like `SAFE_HEAP`, etc. They are the same as prepending/
   appending those files after `emcc` finishes running, and are just a convenient
-  way to do that. (For comparison, `--pre-js` and `--post-js` include the code
-  with the rest of the optimized output.)
+  way to do that. (For comparison, `--pre-js` and `--post-js` optimize that code
+  together with everything else, keep it in the same scope if running
+  `MODULARIZE`, etc.).
 - Stop defining `FE_INEXACT` and other floating point exception macros in libc,
   since we don't support them. That also prevents musl from including code using
   pragmas that don't make sense for wasm. Ifdef out other uses of those pragmas
