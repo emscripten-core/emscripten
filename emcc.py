@@ -223,6 +223,8 @@ class EmccOptions(object):
     self.js_transform = None
     self.pre_js = '' # before all js
     self.post_js = '' # after all js
+    self.extern_pre_js = '' # before all js, external to optimized code
+    self.extern_post_js = '' # after all js, external to optimized code
     self.preload_files = []
     self.embed_files = []
     self.exclude_files = []
@@ -567,6 +569,13 @@ def filter_link_flags(flags, using_lld):
       results.append(f)
 
   return results
+
+
+def fix_windows_newlines(text):
+  # Avoid duplicating \r\n to \r\r\n when writing out text.
+  if WINDOWS:
+    text = text.replace('\r\n', '\n')
+  return text
 
 
 def cxx_to_c_compiler(cxx):
@@ -2481,16 +2490,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('applying pre/postjses')
         src = open(final).read()
         final += '.pp.js'
-        if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
-          if options.pre_js:
-            options.pre_js = options.pre_js.replace('\r\n', '\n')
-          if options.post_js:
-            options.post_js = options.post_js.replace('\r\n', '\n')
         with open(final, 'w') as f:
           # pre-js code goes right after the Module integration code (so it
           # can use Module), we have a marker for it
-          f.write(src.replace('// {{PRE_JSES}}', options.pre_js))
-          f.write(options.post_js)
+          f.write(src.replace('// {{PRE_JSES}}', fix_windows_newlines(options.pre_js)))
+          f.write(fix_windows_newlines(options.post_js))
         options.pre_js = src = options.post_js = None
         save_intermediate('pre-post')
 
@@ -2731,6 +2735,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.WASM and shared.Settings.SEPARATE_ASM:
           shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), asm_target])
 
+      # Apply pre and postjs files
+      if options.extern_pre_js or options.extern_post_js:
+        logger.debug('applying extern pre/postjses')
+        src = open(final).read()
+        final += '.epp.js'
+        with open(final, 'w') as f:
+          f.write(fix_windows_newlines(options.extern_pre_js))
+          f.write(src)
+          f.write(fix_windows_newlines(options.extern_post_js))
+        save_intermediate('extern-pre-post')
+
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
 
@@ -2831,6 +2846,10 @@ def parse_args(newargs):
       options.pre_js += open(consume_arg()).read() + '\n'
     elif check_arg('--post-js'):
       options.post_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--extern-pre-js'):
+      options.extern_pre_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--extern-post-js'):
+      options.extern_post_js += open(consume_arg()).read() + '\n'
     elif check_arg('--minify'):
       arg = consume_arg()
       if arg != '0':

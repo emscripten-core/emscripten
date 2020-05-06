@@ -2022,6 +2022,30 @@ int f() {
     run_process([PYTHON, EMCC, 'main.cpp', '--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
     self.assertContained('prepre\npre-run\nhello from main\n', run_js('a.out.js'))
 
+  def test_extern_prepost(self):
+    create_test_file('extern-pre.js', '''
+      // I am an external pre.
+    ''')
+    create_test_file('extern-post.js', '''
+      // I am an external post.
+    ''')
+    run_process([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c'), '--extern-pre-js', 'extern-pre.js', '--extern-post-js', 'extern-post.js'])
+    # the files should be included, and externally - not as part of optimized
+    # code, so they are the very first and last things, and they are not
+    # minified.
+    with open('a.out.js') as output:
+      js = output.read()
+      pre = js.index('// I am an external pre.')
+      post = js.index('// I am an external post.')
+      # ignore some slack - newlines and other things. we just care about the
+      # big picture here
+      SLACK = 50
+      self.assertLess(pre, post)
+      self.assertLess(pre, SLACK)
+      self.assertGreater(post, len(js) - SLACK)
+      # make sure the slack is tiny compared to the whole program
+      self.assertGreater(len(js), 100 * SLACK)
+
   @no_wasm_backend('depends on bc output')
   def test_save_bc(self):
     cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp'), '--save-bc', 'my_bitcode.bc']
