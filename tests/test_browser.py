@@ -4679,10 +4679,25 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
-    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
+    self.btest('single_file_static_initializer.cpp', '19', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
+    self.assertNotExists('test.wasm')
+    self.assertNotExists('test.mem')
+
+  # Tests that SINGLE_FILE works as intended in generated HTML with MINIMAL_RUNTIME
+  def test_minimal_runtime_single_file_html(self):
+    for wasm in [0, 1]:
+      for opts in [[], ['-O3']]:
+        self.btest('single_file_static_initializer.cpp', '19', args=opts + ['-s', 'MINIMAL_RUNTIME=1', '-s', 'SINGLE_FILE=1', '-s', 'WASM=' + str(wasm)])
+        self.assertExists('test.html')
+        self.assertNotExists('test.js')
+        self.assertNotExists('test.wasm')
+        self.assertNotExists('test.asm.js')
+        self.assertNotExists('test.mem')
+        self.assertNotExists('test.js')
+        self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
   def test_single_file_in_web_environment_with_closure(self):

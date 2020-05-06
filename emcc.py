@@ -2552,7 +2552,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             else:
               return ''
 
-          if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.MEM_INIT_METHOD == 0 or shared.Settings.SINGLE_FILE):
+          if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.MEM_INIT_METHOD == 0 or (shared.Settings.SINGLE_FILE and not shared.Settings.WASM)):
             # In MINIMAL_RUNTIME emit the base64 memory initializer directly into a HEAPU8.set() statement.
             mem_init_data = re.search(shared.JS.memory_initializer_pattern, open(final).read())
             src = open(final).read().replace('{{{ BASE64_MEMORY_INITIALIZER }}}', base64_encode(bytearray(parse_mem_bytes(mem_init_data.group(1)))))
