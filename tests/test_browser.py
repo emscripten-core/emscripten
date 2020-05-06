@@ -4679,10 +4679,25 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
-    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
+    self.btest('single_file_static_initializer.cpp', '19', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
+    self.assertNotExists('test.wasm')
+    self.assertNotExists('test.mem')
+
+  # Tests that SINGLE_FILE works as intended in generated HTML with MINIMAL_RUNTIME
+  def test_minimal_runtime_single_file_html(self):
+    for wasm in [0, 1]:
+      for opts in [[], ['-O3']]:
+        self.btest('single_file_static_initializer.cpp', '19', args=opts + ['-s', 'MINIMAL_RUNTIME=1', '-s', 'SINGLE_FILE=1', '-s', 'WASM=' + str(wasm)])
+        self.assertExists('test.html')
+        self.assertNotExists('test.js')
+        self.assertNotExists('test.wasm')
+        self.assertNotExists('test.asm.js')
+        self.assertNotExists('test.mem')
+        self.assertNotExists('test.js')
+        self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
   def test_single_file_in_web_environment_with_closure(self):
@@ -4990,6 +5005,22 @@ window.close = function() {
 
   def test_system(self):
     self.btest(path_from_root('tests', 'system.c'), '0')
+
+  # Tests that it is possible to hook into/override a symbol defined in a system library.
+  @requires_graphics_hardware
+  def test_override_system_js_lib_symbol(self):
+    # This test verifies it is possible to override a symbol from WebGL library.
+
+    # When WebGL is implicitly linked in, the implicit linking should happen before any user --js-libraries, so that they can adjust
+    # the behavior afterwards.
+    self.btest(path_from_root('tests', 'test_override_system_js_lib_symbol.c'),
+               expected='5121',
+               args=['--js-library', path_from_root('tests', 'test_override_system_js_lib_symbol.js')])
+
+    # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
+    self.btest(path_from_root('tests', 'test_override_system_js_lib_symbol.c'),
+               expected='5121',
+               args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', path_from_root('tests', 'test_override_system_js_lib_symbol.js')])
 
   @no_fastcomp('only upstream supports 4GB')
   @no_firefox('no 4GB support yet')

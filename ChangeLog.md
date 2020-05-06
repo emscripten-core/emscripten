@@ -23,6 +23,10 @@ Current Trunk
   appending those files after `emcc` finishes running, and are just a convenient
   way to do that. (For comparison, `--pre-js` and `--post-js` include the code
   with the rest of the optimized output.)
+- Stop defining `FE_INEXACT` and other floating point exception macros in libc,
+  since we don't support them. That also prevents musl from including code using
+  pragmas that don't make sense for wasm. Ifdef out other uses of those pragmas
+  as well, as tip of tree LLVM now fails to compile them on wasm. (#11087)
 - Update libcxx and libcxxabi to LLVM 10 release branch (#11038).
 - Remove `BINARYEN_PASSES` setting (#11057). We still have
   `BINARYEN_EXTRA_PASSES` (the removed setting completely overrides the set

@@ -10433,6 +10433,12 @@ Module.arguments has been replaced with plain arguments_
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--print-map'], stderr=PIPE).stderr
     self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
 
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-rpath=foo'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `-rpath=foo`', out)
+
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-rpath-link,foo'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `-rpath-link`', out)
+
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
                        '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)

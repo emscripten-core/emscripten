@@ -2956,7 +2956,11 @@ LibraryManager.library = {
     return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
   },
 
-  longjmp__deps: ['saveSetjmp', 'testSetjmp', 'setThrew'],
+  longjmp__deps: ['saveSetjmp', 'testSetjmp'
+#if WASM_BACKEND == 0
+  , 'setThrew'
+#endif
+  ],
   longjmp: function(env, value) {
     _setThrew(env, value || 1);
     throw 'longjmp';

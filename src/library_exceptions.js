@@ -196,7 +196,11 @@ var LibraryExceptions = {
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__exception_caught', '__exception_last', '__exception_decRef', '__exception_deAdjust', 'setThrew'],
+  __cxa_end_catch__deps: ['__exception_caught', '__exception_last', '__exception_decRef', '__exception_deAdjust'
+#if WASM_BACKEND == 0
+  , 'setThrew'
+#endif
+  ],
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0);
