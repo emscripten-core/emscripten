@@ -1160,7 +1160,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # For a command we always want EXIT_RUNTIME=1
       # For a reactor we always want EXIT_RUNTIME=0
       if 'EXIT_RUNTIME' in settings_changes:
-        exit_with_error('EXIT_RUNTIME not compatible with STANDALONE_WASM (use --no-entry to build a reactor)')
+        exit_with_error('Explictly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
       shared.Settings.EXIT_RUNTIME = not shared.Settings.EXPECT_MAIN
 
     def filter_out_dynamic_libs(inputs):
