@@ -1140,13 +1140,28 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Set ASM_JS default here so that we can override it from the command line.
     shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
 
+    # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
+    # We do this before the user settings are applied so it affects the default value only and a
+    # user could use `--no-entry` and still export main too.
+    if options.no_entry:
+      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
+
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
 
-    if options.no_entry and '_main' in shared.Settings.EXPORTED_FUNCTIONS:
-      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
-
     shared.verify_settings()
+
+    if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+      shared.Settings.EXPECT_MAIN = 0
+
+    if shared.Settings.STANDALONE_WASM:
+      # In STANDALONE_WASM mode we either build a command or a reactor.
+      # See https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md
+      # For a command we always want EXIT_RUNTIME=1
+      # For a reactor we always want EXIT_RUNTIME=0
+      if 'EXIT_RUNTIME' in settings_changes:
+        exit_with_error('Explictly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
+      shared.Settings.EXIT_RUNTIME = not shared.Settings.EXPECT_MAIN
 
     def filter_out_dynamic_libs(inputs):
       # If not compiling to JS, then we are compiling to an intermediate bitcode
