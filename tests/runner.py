@@ -58,7 +58,7 @@ else:
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
-import parallel_runner
+import parallel_testsuite
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
@@ -1980,9 +1980,9 @@ def flattened_tests(loaded_tests):
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other')
   has_multiple_tests = len(tests) > 1
-  has_multiple_cores = parallel_runner.num_cores() > 1
+  has_multiple_cores = parallel_testsuite.num_cores() > 1
   if suite_supported and has_multiple_tests and has_multiple_cores:
-    return parallel_runner.ParallelTestSuite(len(tests))
+    return parallel_testsuite.ParallelTestSuite(len(tests))
   return unittest.TestSuite()
 
 
