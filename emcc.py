@@ -3387,17 +3387,11 @@ def modularize():
 
   src = '''
 function(%(EXPORT_NAME)s) {
-  var returnedPromiseResolve, returnedPromiseReject;
-  var promise = new Promise(function(resolve, reject) {
-    returnedPromiseResolve=resolve;
-    returnedPromiseReject=reject;
-  });
-
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
-  return promise;
+  return %(EXPORT_NAME)s.ready;
 }
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,

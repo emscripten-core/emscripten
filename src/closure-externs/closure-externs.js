@@ -1069,11 +1069,3 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
-
-// These are here because they're declared as part of code generation in
-// `modularize` in emcc.py, which isn't executed until after optimization with
-// Closure Compiler has been performed.
-/** @type {Function} */
-var returnedPromiseResolve;
-/** @type {Function} */
-var returnedPromiseReject;

@@ -15,6 +15,15 @@ var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
 #endif // SIDE_MODULE
 
+#if MODULARIZE
+// Set up the promise that indicates the Module is initialized
+var readyPromiseResolve, readyPromiseReject;
+Module['ready'] = new Promise(function(resolve, reject) {
+  readyPromiseResolve=resolve;
+  readyPromiseReject=reject;
+});
+#endif
+
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = typeof process === 'object';
 #endif
@@ -132,7 +141,7 @@ function err(text) {
 // the program.
 function ready() {
 #if MODULARIZE
-  returnedPromiseResolve(Module);
+  readyPromiseResolve(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && hasExportedFunction('_main')
 #if USE_PTHREADS
