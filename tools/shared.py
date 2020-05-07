@@ -284,6 +284,7 @@ def parse_config_file():
     'WASMTIME',
     'WASM_ENGINES',
     'FROZEN_CACHE',
+    'CACHE',
   )
 
   # Only propagate certain settings from the config file.
@@ -641,7 +642,7 @@ def check_vanilla():
     # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
     # must use wasm (or at least try to). to know that, we have to run llc to
     # see which backends it has. we cache this result.
-    temp_cache = cache.Cache(use_subdir=False)
+    temp_cache = cache.Cache(CACHE, use_subdir=False)
 
     def has_vanilla_targets():
       logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
@@ -2791,7 +2792,7 @@ class Building(object):
 
 def reconfigure_cache():
   global Cache
-  Cache = cache.Cache()
+  Cache = cache.Cache(CACHE)
 
 
 # Placeholder strings used for SINGLE_FILE
@@ -3385,6 +3386,7 @@ JS_ENGINES = []
 WASMER = None
 WASMTIME = None
 WASM_ENGINES = []
+CACHE = None
 FROZEN_CACHE = False
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
@@ -3408,6 +3410,8 @@ NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+if not CACHE:
+  CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.
@@ -3503,5 +3507,5 @@ verify_settings()
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
 # compatibility with existing emcc, etc. scripts
-Cache = cache.Cache()
+Cache = cache.Cache(CACHE)
 chunkify = cache.chunkify

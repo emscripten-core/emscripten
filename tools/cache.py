@@ -25,13 +25,9 @@ class Cache(object):
   # acquired.
   EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS', '0'))
 
-  def __init__(self, use_subdir=True):
+  def __init__(self, dirname, use_subdir=True):
     # figure out the root directory for all caching
-    dirname = os.environ.get('EM_CACHE')
-    if dirname:
-      dirname = os.path.normpath(dirname)
-    if not dirname:
-      dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+    dirname = os.path.normpath(dirname)
     self.root_dirname = dirname
 
     def try_remove_ending(thestring, ending):
