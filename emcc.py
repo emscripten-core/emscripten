@@ -41,7 +41,7 @@ from subprocess import PIPE
 
 import emscripten
 from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger, diagnostics
-from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -90,8 +90,11 @@ UNSUPPORTED_LLD_FLAGS = {
     # wasm-ld doesn't support map files yet.
     '--print-map': False,
     '-M': False,
-    # wasm-ld doesn't support soname yet
-    '-soname': True
+    # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
+    # in order to aid build systems that want to pass these flags.
+    '-soname': True,
+    '-rpath': True,
+    '-rpath-link': True
 }
 
 LIB_PREFIXES = ('', 'lib')
@@ -220,6 +223,8 @@ class EmccOptions(object):
     self.js_transform = None
     self.pre_js = '' # before all js
     self.post_js = '' # after all js
+    self.extern_pre_js = '' # before all js, external to optimized code
+    self.extern_post_js = '' # after all js, external to optimized code
     self.preload_files = []
     self.embed_files = []
     self.exclude_files = []
@@ -564,6 +569,13 @@ def filter_link_flags(flags, using_lld):
       results.append(f)
 
   return results
+
+
+def fix_windows_newlines(text):
+  # Avoid duplicating \r\n to \r\r\n when writing out text.
+  if WINDOWS:
+    text = text.replace('\r\n', '\n')
+  return text
 
 
 def cxx_to_c_compiler(cxx):
@@ -1128,13 +1140,28 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Set ASM_JS default here so that we can override it from the command line.
     shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
 
+    # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
+    # We do this before the user settings are applied so it affects the default value only and a
+    # user could use `--no-entry` and still export main too.
+    if options.no_entry:
+      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
+
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
 
-    if options.no_entry and '_main' in shared.Settings.EXPORTED_FUNCTIONS:
-      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
-
     shared.verify_settings()
+
+    if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+      shared.Settings.EXPECT_MAIN = 0
+
+    if shared.Settings.STANDALONE_WASM:
+      # In STANDALONE_WASM mode we either build a command or a reactor.
+      # See https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md
+      # For a command we always want EXIT_RUNTIME=1
+      # For a reactor we always want EXIT_RUNTIME=0
+      if 'EXIT_RUNTIME' in settings_changes:
+        exit_with_error('Explictly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
+      shared.Settings.EXIT_RUNTIME = not shared.Settings.EXPECT_MAIN
 
     def filter_out_dynamic_libs(inputs):
       # If not compiling to JS, then we are compiling to an intermediate bitcode
@@ -1345,19 +1372,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.FILESYSTEM = 0
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
       shared.Settings.FETCH = 1
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_asmfs.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_asmfs.js')))
 
     # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
     if not shared.Settings.USES_DYNAMIC_ALLOC:
       shared.Settings.MALLOC = 'none'
 
     if shared.Settings.MALLOC == 'emmalloc':
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_emmalloc.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_emmalloc.js')))
 
     if shared.Settings.FETCH and final_suffix in JS_CONTAINING_ENDINGS:
       forced_stdlibs.append('libfetch')
       next_arg_index += 1
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_fetch.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_fetch.js')))
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 
@@ -1500,7 +1527,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_pthread.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
       cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
       if shared.Settings.WASM_BACKEND:
         newargs += ['-pthread']
@@ -1514,7 +1541,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
     else:
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread_stub.js')))
 
     if shared.Settings.FORCE_FILESYSTEM and not shared.Settings.MINIMAL_RUNTIME:
       # when the filesystem is forced, we export by default methods that filesystem usage
@@ -1748,11 +1775,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.memory_init_file = True
         shared.Settings.MEM_INIT_IN_WASM = True if shared.Settings.WASM_BACKEND else not shared.Settings.USE_PTHREADS
 
-      # WASM_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
-      if not shared.Settings.MINIMAL_RUNTIME and shared.Settings.WASM_ASYNC_COMPILATION:
-        # async compilation requires a swappable module - we swap it in when it's ready
-        shared.Settings.SWAPPABLE_ASM_MODULE = 1
-
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
         diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
@@ -1971,8 +1993,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.CYBERDWARF:
       shared.Settings.DEBUG_LEVEL = max(shared.Settings.DEBUG_LEVEL, 2)
       shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_cyberdwarf.js')))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_debugger_toolkit.js')))
       newargs.append('-g')
 
     if options.tracing:
@@ -2475,16 +2497,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('applying pre/postjses')
         src = open(final).read()
         final += '.pp.js'
-        if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
-          if options.pre_js:
-            options.pre_js = options.pre_js.replace('\r\n', '\n')
-          if options.post_js:
-            options.post_js = options.post_js.replace('\r\n', '\n')
         with open(final, 'w') as f:
           # pre-js code goes right after the Module integration code (so it
           # can use Module), we have a marker for it
-          f.write(src.replace('// {{PRE_JSES}}', options.pre_js))
-          f.write(options.post_js)
+          f.write(src.replace('// {{PRE_JSES}}', fix_windows_newlines(options.pre_js)))
+          f.write(fix_windows_newlines(options.post_js))
         options.pre_js = src = options.post_js = None
         save_intermediate('pre-post')
 
@@ -2546,7 +2563,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             else:
               return ''
 
-          if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.MEM_INIT_METHOD == 0 or shared.Settings.SINGLE_FILE):
+          if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.MEM_INIT_METHOD == 0 or (shared.Settings.SINGLE_FILE and not shared.Settings.WASM)):
             # In MINIMAL_RUNTIME emit the base64 memory initializer directly into a HEAPU8.set() statement.
             mem_init_data = re.search(shared.JS.memory_initializer_pattern, open(final).read())
             src = open(final).read().replace('{{{ BASE64_MEMORY_INITIALIZER }}}', base64_encode(bytearray(parse_mem_bytes(mem_init_data.group(1)))))
@@ -2725,6 +2742,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.WASM and shared.Settings.SEPARATE_ASM:
           shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), asm_target])
 
+      # Apply pre and postjs files
+      if options.extern_pre_js or options.extern_post_js:
+        logger.debug('applying extern pre/postjses')
+        src = open(final).read()
+        final += '.epp.js'
+        with open(final, 'w') as f:
+          f.write(fix_windows_newlines(options.extern_pre_js))
+          f.write(src)
+          f.write(fix_windows_newlines(options.extern_post_js))
+        save_intermediate('extern-pre-post')
+
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
 
@@ -2825,6 +2853,10 @@ def parse_args(newargs):
       options.pre_js += open(consume_arg()).read() + '\n'
     elif check_arg('--post-js'):
       options.post_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--extern-pre-js'):
+      options.extern_pre_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--extern-post-js'):
+      options.extern_post_js += open(consume_arg()).read() + '\n'
     elif check_arg('--minify'):
       arg = consume_arg()
       if arg != '0':
@@ -2877,7 +2909,7 @@ def parse_args(newargs):
       options.tracing = True
       newargs[i] = ''
       settings_changes.append("EMSCRIPTEN_TRACING=1")
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_trace.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_trace.js')))
     elif newargs[i] == '--emit-symbol-map':
       options.emit_symbol_map = True
       shared.Settings.EMIT_SYMBOL_MAP = 1
@@ -2885,8 +2917,8 @@ def parse_args(newargs):
     elif newargs[i] == '--bind':
       shared.Settings.EMBIND = 1
       newargs[i] = ''
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'emval.js'))
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'embind.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'embind', 'emval.js')))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'embind', 'embind.js')))
     elif check_arg('--embed-file'):
       options.embed_files.append(consume_arg())
     elif check_arg('--preload-file'):
@@ -2916,7 +2948,7 @@ def parse_args(newargs):
       options.no_entry = True
       newargs[i] = ''
     elif check_arg('--js-library'):
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(os.path.abspath(consume_arg()))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg())))
     elif newargs[i] == '--remove-duplicates':
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
       newargs[i] = ''
@@ -3066,8 +3098,7 @@ def emterpretify(js_target, optimizer, options):
           final + '.em.js',
           blacklist,
           whitelist,
-          synclist,
-          str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+          synclist]
   if shared.Settings.EMTERPRETIFY_ASYNC:
     args += ['ASYNC=1']
   if shared.Settings.EMTERPRETIFY_ADVISE:
@@ -3103,19 +3134,6 @@ def emterpretify(js_target, optimizer, options):
     optimizer.do_minify()
   optimizer.queue += ['last']
   optimizer.flush('finalizing-emterpreted-code')
-
-  # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
-  if shared.Settings.SWAPPABLE_ASM_MODULE:
-    real = final
-    original = js_target + '.orig.js' # the emterpretify tool saves the original here
-    final = original
-    logger.debug('finalizing original (non-emterpreted) code at ' + final)
-    if not shared.Settings.WASM:
-      optimizer.do_minify()
-    optimizer.queue += ['last']
-    optimizer.flush('finalizing-original-code')
-    safe_copy(final, original)
-    final = real
 
 
 def emit_js_source_maps(target, js_transform_tempfiles):
@@ -3795,10 +3813,15 @@ def process_libraries(libs, lib_dirs, temp_files):
     if not found:
       jslibs = shared.Building.path_to_system_js_libraries(lib)
       if jslibs:
-        libraries += jslibs
+        libraries += [(i, jslib) for jslib in jslibs]
         consumed.append(i)
 
   shared.Settings.SYSTEM_JS_LIBRARIES += libraries
+
+  # At this point processing SYSTEM_JS_LIBRARIES is finished, no more items will be added to it.
+  # Sort the input list from (order, lib_name) pairs to a flat array in the right order.
+  shared.Settings.SYSTEM_JS_LIBRARIES.sort(key=lambda lib: lib[0])
+  shared.Settings.SYSTEM_JS_LIBRARIES = [lib[1] for lib in shared.Settings.SYSTEM_JS_LIBRARIES]
   return consumed
 
 
