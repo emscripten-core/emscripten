@@ -340,7 +340,10 @@ jobs:
     executor: bionic
     steps:
       - checkout
+      - run: pip3 install sphinx==1.4.9
       - run: make -C site html
+      - run: make -C site text
+      - run: tests/check_emcc_help_text.py
   flake8:
     executor: bionic
     steps:
