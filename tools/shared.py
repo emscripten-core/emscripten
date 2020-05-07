@@ -642,7 +642,7 @@ def check_vanilla():
     # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
     # must use wasm (or at least try to). to know that, we have to run llc to
     # see which backends it has. we cache this result.
-    temp_cache = cache.Cache(use_subdir=False)
+    temp_cache = cache.Cache(CACHE, use_subdir=False)
 
     def has_vanilla_targets():
       logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
