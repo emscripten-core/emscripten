@@ -10761,3 +10761,8 @@ int main() {
     src = path_from_root('tests', 'other', 'test_export_global_address.c')
     output = path_from_root('tests', 'other', 'test_export_global_address.out')
     self.do_run_from_file(src, output)
+
+  @no_fastcomp('wasm-ld only')
+  def test_linker_version(self):
+    out = run_process([PYTHON, EMCC, '-Wl,--version'], stdout=PIPE).stdout
+    self.assertContained('LLD ', out)
