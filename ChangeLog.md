@@ -19,6 +19,8 @@ Current Trunk
 -------------
 - Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
   environment variable or `--cache` commandline flag.
+- Remove `--cache` command line arg.  The `CACHE` config setting and the
+  `EM_CACHE` environment variable can be used to control this.
 
 1.39.15: 05/06/2020
 -------------------

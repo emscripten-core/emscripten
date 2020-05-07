@@ -2958,9 +2958,6 @@ def parse_args(newargs):
     elif newargs[i] == '--jcache':
       logger.error('jcache is no longer supported')
       newargs[i] = ''
-    elif check_arg('--cache'):
-      shared.CACHE = os.path.normpath(consume_arg())
-      shared.reconfigure_cache()
     elif newargs[i] == '--clear-cache':
       logger.info('clearing cache as requested by --clear-cache')
       shared.Cache.erase()
