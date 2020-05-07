@@ -2348,7 +2348,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             log_time('JS symbol generation')
           final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=js_funcs)
           # Special handling for when the user passed '-Wl,--version'.  In this case the linker
-          # does not create the output file, but just prints its vesion and exits with 0..
+          # does not create the output file, but just prints its version and exits with 0.
           if '--version' in linker_inputs:
             return 0
         else:
