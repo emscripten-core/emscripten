@@ -1728,8 +1728,10 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
     receiving += 'exportAsmFunctions(asm);'
   else:
-    swappable = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
-    if not swappable:
+    # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
+    # so we need to support delayed assignment.
+    delay_assignment = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
+    if not delay_assignment:
       if runtime_assertions:
         # assert on the runtime being in a valid state when calling into compiled code. The only
         # exceptions are some support code.
@@ -2640,8 +2642,10 @@ def create_receiving_wasm(exports, initializers):
   if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
 
-  swappable = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
-  if not swappable:
+  # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
+  # so we need to support delayed assignment.
+  delay_assignment = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
+  if not delay_assignment:
     if runtime_assertions:
       # assert on the runtime being in a valid state when calling into compiled code. The only
       # exceptions are some support code
