@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
+  environment variable or `--cache` commandline flag.
 
 1.39.15: 05/06/2020
 -------------------

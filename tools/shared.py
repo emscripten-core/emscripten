@@ -284,6 +284,7 @@ def parse_config_file():
     'WASMTIME',
     'WASM_ENGINES',
     'FROZEN_CACHE',
+    'CACHE',
   )
 
   # Only propagate certain settings from the config file.
@@ -2791,7 +2792,7 @@ class Building(object):
 
 def reconfigure_cache():
   global Cache
-  Cache = cache.Cache()
+  Cache = cache.Cache(CACHE)
 
 
 # Placeholder strings used for SINGLE_FILE
@@ -3385,6 +3386,7 @@ JS_ENGINES = []
 WASMER = None
 WASMTIME = None
 WASM_ENGINES = []
+CACHE = None
 FROZEN_CACHE = False
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
@@ -3408,6 +3410,11 @@ NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+if not CACHE:
+  if CONFIG_FILE:
+    CACHE = CONFIG_FILE + '_cache'
+  else:
+    CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.
@@ -3503,5 +3510,5 @@ verify_settings()
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
 # compatibility with existing emcc, etc. scripts
-Cache = cache.Cache()
+Cache = cache.Cache(CACHE)
 chunkify = cache.chunkify
