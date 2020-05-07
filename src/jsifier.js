@@ -306,7 +306,11 @@ function JSify(data, functionsOnly) {
         });
       });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
-      var depsText = (deps ? '\n' + deps.map(function(dep){ addFromLibrary(dep, ident + "__deps: ['" + deps.join("','")+"']")}).filter(function(x) { return x != '' }).join('\n') : '');
+      var identDependents = ident + "__deps: ['" + deps.join("','")+"']";
+      function addDependency(dep) {
+        return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
+      }
+      var depsText = (deps ? '\n' + deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
