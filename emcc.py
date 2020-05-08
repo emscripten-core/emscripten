@@ -622,14 +622,11 @@ def run(args):
   if '--help' in args:
     # Documentation for emcc and its options must be updated in:
     #    site/source/docs/tools_reference/emcc.rst
-    # A prebuilt local version of the documentation is available at:
+    # This then gets built (via: `make -C site text`) to:
     #    site/build/text/docs/tools_reference/emcc.txt
-    #    (it is read from there and printed out when --help is invoked)
-    # You can also build docs locally as HTML or other formats in site/
-    # An online HTML version (which may be of a different version of Emscripten)
-    #    is up at http://kripken.github.io/emscripten-site/docs/tools_reference/emcc.html
-
-    with open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt'), 'r') as f:
+    # This then needs to be copied to its final home in docs/emcc.txt from where
+    # we read it here.  We have CI rules that ensure its always up-to-date.
+    with open(shared.path_from_root('docs', 'emcc.txt'), 'r') as f:
       print(f.read())
 
     print('''
