@@ -665,10 +665,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = all_sources + libraries
-      for i in range(len(all_files)):
-        if '.' not in all_files[i]:
-          shutil.move(all_files[i], all_files[i] + '.bc')
-          all_files[i] += '.bc'
       args = [PYTHON, compiler] + self.get_emcc_args(main_file=True) + \
           ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
@@ -1724,11 +1720,11 @@ def build_library(name,
                   env_init={},
                   native=False,
                   cflags=[]):
-  """Build a library into a .bc file. We build the .bc file once and cache it
-  for all our tests. (We cache in memory since the test directory is destroyed
-  and recreated for each test. Note that we cache separately for different
-  compilers).  This cache is just during the test runner. There is a different
-  concept of caching as well, see |Cache|.
+  """Build a library and cache the result.  We build the library file
+  once and cache it for all our tests. (We cache in memory since the test
+  directory is destroyed and recreated for each test. Note that we cache
+  separately for different compilers).  This cache is just during the test
+  runner. There is a different concept of caching as well, see |Cache|.
   """
 
   if type(generated_libs) is not list:
