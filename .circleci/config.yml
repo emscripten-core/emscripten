@@ -340,10 +340,12 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: pip3 install sphinx==1.4.9
-      - run: make -C site html
+      # This version is mentioned in `site/source/docs/site/about.rst`.
+      # Please keep them in sync.
+      - run: pip3 install sphinx==1.7.9
       - run: make -C site text
       - run: tests/check_emcc_help_text.py
+      - run: make -C site html
   flake8:
     executor: bionic
     steps:

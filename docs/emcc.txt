@@ -1,4 +1,3 @@
-
 Emscripten Compiler Frontend (emcc)
 ***********************************
 
