@@ -265,6 +265,8 @@ LibraryManager.library = {
   },
 #endif
 
+  // fork, spawn, etc. all return an error as we don't support multiple
+  // processes.
   fork__deps: ['$setErrNo'],
   fork__sig: 'i',
   fork: function() {
@@ -277,6 +279,10 @@ LibraryManager.library = {
   vfork: 'fork',
   posix_spawn: 'fork',
   posix_spawnp: 'fork',
+  posix_spawn_file_actions_adddup2: 'fork',
+  posix_spawn_file_actions_addopen: 'fork',
+  posix_spawn_file_actions_destroy: 'fork',
+  posix_spawn_file_actions_init: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
