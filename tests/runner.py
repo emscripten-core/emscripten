@@ -914,10 +914,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     print('<building and saving %s into cache> ' % cache_name, file=sys.stderr)
 
-    rtn = build_library(name, build_dir, output_dir, generated_libs, configure,
+    return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
                          cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
-    return rtn
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
