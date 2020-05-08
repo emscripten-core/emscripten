@@ -10474,6 +10474,11 @@ Module.arguments has been replaced with plain arguments_
     self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
     self.assertBinaryEqual('hello1.o', 'hello2.o')
 
+  def test_empty_output_extension(self):
+    # Default to JS output when no extension is present
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Werror', '-o', 'hello'])
+    self.assertContained('hello, world!', run_js('hello'))
+
   def test_backwards_deps_in_archive(self):
     # Test that JS dependencies from deps_info.json work for code linked via
     # static archives using -l<name>

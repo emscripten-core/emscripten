@@ -954,7 +954,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     has_dash_S = '-S' in newargs
     has_dash_E = '-E' in newargs
     link_to_object = False
-    executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
     compile_only = has_dash_c or has_dash_S or has_dash_E
 
     def add_link_flag(i, f):
@@ -1091,6 +1090,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if final_suffix == '.mjs':
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
+
+    if final_suffix in ('.mjs', '.js', ''):
       js_target = target
     else:
       js_target = unsuffixed(target) + '.js'
@@ -1306,8 +1307,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       cflags.append('-DEMSCRIPTEN')
 
+    # Treat the empty extension as an executable, to handle the commond case of `emcc -o foo foo.c`
+    executable_endings = JS_CONTAINING_ENDINGS + WASM_ENDINGS + ('',)
     if not link_to_object and not compile_only and final_suffix not in executable_endings:
-      # TODO(sbc): Remove this emscripten-specific special case.
+      # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
+      # file output with an explicit `-c` or `-r`.
       diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
       link_to_object = True
 
