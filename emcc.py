@@ -3402,7 +3402,7 @@ def modularize():
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
 
-  return_value = 'return ' + shared.Settings.EXPORT_NAME + '.ready'
+  return_value = shared.Settings.EXPORT_NAME + '.ready'
   # in MINIMAL_RUNTIME, when we emit HTML then the HTML creates a singleton
   # instance of the modularized code. in that case, we do not need to return
   # the promise
@@ -3416,7 +3416,7 @@ function(%(EXPORT_NAME)s) {
 
 %(src)s
 
-  return %(return_value)s;
+  return %(return_value)s
 }
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
