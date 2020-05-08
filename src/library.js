@@ -4809,6 +4809,18 @@ LibraryManager.library = {
     err('TODO: Unwind_DeleteException');
   },
 
+  // execinfo.h
+
+  backtrace: function() {
+    abort('TODO: backtrace support');
+  },
+  backtrace_symbols: function() {
+    abort('TODO: backtrace support');
+  },
+  backtrace_symbols_fd: function() {
+    abort('TODO: backtrace support');
+  },
+
   // autodebugging
 
   emscripten_autodebug_i64: function(line, valuel, valueh) {
