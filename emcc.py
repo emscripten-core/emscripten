@@ -3402,17 +3402,26 @@ def modularize():
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
 
+  return_value = 'return ' + shared.Settings.EXPORT_NAME + '.ready'
+  # in MINIMAL_RUNTIME, when we emit HTML then the HTML creates a singleton
+  # instance of the modularized code. in that case, we do not need to return
+  # the promise
+  #
+  if shared.Settings.MINIMAL_RUNTIME and shared.Settings.TARGET_SUFFIX == '.html':
+    return_value = '{}'
+
   src = '''
 function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
-  return %(EXPORT_NAME)s.ready;
+  return %(return_value)s;
 }
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,
+    'return_value': return_value
   }
 
   if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS:
