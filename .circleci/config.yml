@@ -359,7 +359,7 @@ jobs:
       - checkout
       # This version is mentioned in `site/source/docs/site/about.rst`.
       # Please keep them in sync.
-      - run: pip3 install sphinx==1.7.9
+      - run: pip3 install sphinx==2.4.4
       - run: make -C site text
       - run: tests/check_emcc_help_text.py
       - run: make -C site html
