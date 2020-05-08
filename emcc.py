@@ -464,7 +464,6 @@ def find_output_arg(args):
       specified_target = arg[2:]
     else:
       outargs.append(arg)
-  shared.Settings.SPECIFIED_TARGET = specified_target
   return specified_target, outargs
 
 
@@ -823,6 +822,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     target = 'a.out.js'
 
   shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
+  shared.Settings.TARGET_SUFFIX = suffix(target)
 
   final_suffix = suffix(target)
 
