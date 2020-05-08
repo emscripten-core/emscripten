@@ -22,7 +22,7 @@ Current Trunk
 - Remove `--cache` command line arg.  The `CACHE` config setting and the
   `EM_CACHE` environment variable can be used to control this.
 - Compiling to a file with no suffix will now generate an executable (JS) rather
-  than an object file.  This means simple cases like `emcc -o foo foo.c` so the
+  than an object file.  This means simple cases like `emcc -o foo foo.c` do the
   expected thing and generate an executable.
 
 1.39.15: 05/06/2020
