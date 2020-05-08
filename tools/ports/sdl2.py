@@ -104,8 +104,8 @@ def show():
 
 
 def add_settings(settings):
+  # the default value is to use SDL1; to use the port, set to 2
   settings.add_new_setting('USE_SDL', 1)
-  settings.add_new_setting('SDL2_IMAGE_FORMATS', [])
 
 
 sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by configure.  */

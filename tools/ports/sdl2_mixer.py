@@ -64,4 +64,6 @@ def show():
 
 
 def add_settings(settings):
+  # the default value is to use SDL1; to use the port, set to 2
+  # this should normally match USE_SDL (i.e., don't mix SDL1 and 2)
   settings.add_new_setting('USE_SDL_MIXER', 1)
