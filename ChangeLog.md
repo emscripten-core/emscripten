@@ -24,6 +24,10 @@ Current Trunk
 
 1.39.15: 05/06/2020
 -------------------
+- Change the factory function created by using the `MODULARIZE` build option to
+  return a Promise instead of the module instance. If you use `MODULARIZE` you
+  will need to wait on the returned Promise, using `await` or its `then`
+  callback, to get the module instance (#10697).
 - Add `--extern-pre-js` and `--extern-post-js` emcc flags. Files provided there
   are prepended/appended to the final JavaScript output, *after* all other
   work has been done, including optimization, optional `MODULARIZE`-ation,

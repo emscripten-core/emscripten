@@ -1320,9 +1320,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
-      # MODULARIZE's .then() method uses onRuntimeInitialized currently, so make sure
-      # it is expected to be used.
-      shared.Settings.INCOMING_MODULE_JS_API += ['onRuntimeInitialized']
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -3404,22 +3401,17 @@ def modularize():
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
 
-  # TODO: exports object generation for MINIMAL_RUNTIME. As a temp measure, multithreaded MINIMAL_RUNTIME builds export like regular
-  # runtime does, so that worker.js can see the JS module contents.
-  exports_object = '{}' if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS else shared.Settings.EXPORT_NAME
-
   src = '''
 function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
-  return %(exports_object)s
+  return %(EXPORT_NAME)s.ready;
 }
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,
-    'exports_object': exports_object
   }
 
   if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS:

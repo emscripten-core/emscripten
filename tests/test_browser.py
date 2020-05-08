@@ -3327,39 +3327,36 @@ window.close = function() {
 
   @requires_sync_compilation
   def test_modularize(self):
-    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
+    for opts in [
+      [],
+      ['-O1'],
+      ['-O2', '-profiling'],
+      ['-O2'],
+      ['-O2', '--closure', '1']
+    ]:
       for args, code in [
-        ([], 'Module();'), # defaults
+        # defaults
+        ([], '''
+          let promise = Module();
+          if (!promise instanceof Promise) throw new Error('Return value should be a promise');
+        '''),
         # use EXPORT_NAME
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
           if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
           HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
-          HelloWorld();
+          let promise = HelloWorld();
+          if (!promise instanceof Promise) throw new Error('Return value should be a promise');
         '''),
         # pass in a Module option (which prevents main(), which we then invoke ourselves)
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
-          var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
-            setTimeout(function() { hello._main(); }); // must be async, because onRuntimeInitialized may be called synchronously, so |hello| is not yet set!
-          } });
-        '''),
-        # similar, but without a mem init file, everything is sync and simple
-        (['-s', 'EXPORT_NAME="HelloWorld"', '--memory-init-file', '0'], '''
-          var hello = HelloWorld({ noInitialRun: true});
-          hello._main();
-        '''),
-        # use the then() API
-        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
-          HelloWorld({ noInitialRun: true }).then(function(hello) {
+          HelloWorld({ noInitialRun: true }).then(hello => {
             hello._main();
           });
         '''),
-        # then() API, also note the returned value
-        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
-          var helloOutside = HelloWorld({ noInitialRun: true }).then(function(hello) {
-            setTimeout(function() {
-              hello._main();
-              if (hello !== helloOutside) throw 'helloOutside has not been set!'; // as we are async, helloOutside must have been set
-            });
+        # Even without a mem init file, everything is async
+        (['-s', 'EXPORT_NAME="HelloWorld"', '--memory-init-file', '0'], '''
+          HelloWorld({ noInitialRun: true }).then(hello => {
+            hello._main();
           });
         '''),
       ]:
@@ -3671,7 +3668,7 @@ window.close = function() {
     def test(args):
       print(args)
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args)
-
+    print() # new line
     test([])
     test(['-O3'])
     test(['-s', 'MINIMAL_RUNTIME=1'])

@@ -1,3 +1,8 @@
+(async function main(){
+// If MODULARIZE is used, `TheModule` is a promise.
+if (TheModule instanceof Promise) {
+  TheModule = await TheModule;
+}
 
 // Part 1
 
@@ -283,4 +288,4 @@ if (isMemoryGrowthAllowed) {
 //
 
 console.log('\ndone.')
-
+})();
