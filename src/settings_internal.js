@@ -209,3 +209,6 @@ var STACK_BASE = 0;
 // enabled, but if `--no-entry` is passed, or if `_main` is not part of 
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = 1;
+
+// The output file that the user specified, e.g. x.js for -o x.js.
+var SPECIFIED_TARGET = '';

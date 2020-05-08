@@ -15,7 +15,7 @@ var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
 #endif // SIDE_MODULE
 
-#if MODULARIZE
+#if MODULARIZE && !emittingHTML() // when we emit HTML, it will instantiate a singleton for us, and it does not need the promise.
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
 Module['ready'] = new Promise(function(resolve, reject) {

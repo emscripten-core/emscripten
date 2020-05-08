@@ -464,6 +464,7 @@ def find_output_arg(args):
       specified_target = arg[2:]
     else:
       outargs.append(arg)
+  shared.Settings.SPECIFIED_TARGET = specified_target
   return specified_target, outargs
 
 

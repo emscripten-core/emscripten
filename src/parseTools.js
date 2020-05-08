@@ -1708,3 +1708,7 @@ function sendI64Argument(low, high) {
     return low + ', ' + high;
   }
 }
+
+function emittingHTML() {
+  return SPECIFIED_TARGET.toLowerCase().endsWith('.html');
+}
