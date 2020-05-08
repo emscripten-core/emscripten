@@ -140,7 +140,7 @@ function err(text) {
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
-#if MODULARIZE
+#if MODULARIZE && !emittingHTML()
   readyPromiseResolve(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && hasExportedFunction('_main')
