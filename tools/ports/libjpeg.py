@@ -59,6 +59,10 @@ def show():
   return 'libjpeg (USE_LIBJPEG=1; BSD license)'
 
 
+def add_settings(settings):
+  settings.add_new_setting('USE_LIBJPEG', 0)
+
+
 jconfig_h = '''/* jconfig.h.  Generated from jconfig.cfg by configure.  */
 /* jconfig.cfg --- source file edited by configure script */
 /* see jconfig.txt for explanations */

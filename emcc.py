@@ -1143,6 +1143,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.no_entry:
       shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
 
+    # set up the settings for ports (i.e., add USE_ZLIB for the zlib port, etc.
+    # before applying the user settings)
+    system_libs.apply_ports_settings()
+
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
 

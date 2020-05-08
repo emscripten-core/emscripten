@@ -103,6 +103,11 @@ def show():
   return 'SDL2 (USE_SDL=2; zlib license)'
 
 
+def add_settings(settings):
+  settings.add_new_setting('USE_SDL', 1)
+  settings.add_new_setting('SDL2_IMAGE_FORMATS', [])
+
+
 sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by configure.  */
 /*
   Simple DirectMedia Layer

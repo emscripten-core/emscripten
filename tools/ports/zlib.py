@@ -60,6 +60,10 @@ def show():
   return 'zlib (USE_ZLIB=1; zlib license)'
 
 
+def add_settings(settings):
+  settings.add_new_setting('USE_ZLIB', 0)
+
+
 zconf_h = r'''/* zconf.h -- configuration of the zlib compression library
  * Copyright (C) 1995-2013 Jean-loup Gailly.
  * For conditions of distribution and use, see copyright notice in zlib.h

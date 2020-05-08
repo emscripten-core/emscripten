@@ -61,3 +61,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'bzip2 (USE_BZIP2=1; BSD license)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_BZIP2', 0)

@@ -157,3 +157,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'regal (USE_REGAL=1; Regal license)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_REGAL', 0)

@@ -944,6 +944,13 @@ class SettingsManager(object):
     def __getitem__(cls, key):
       return cls.attrs[key]
 
+    # Add a new setting and set its value. Normally setting a value will only
+    # work if the setting already exists; this actually adds a new setting.
+    @classmethod
+    def add_new_setting(cls, key, value):
+      assert key not in cls.attrs
+      cls.attrs[key] = value
+
     @classmethod
     def target_environment_may_be(self, environment):
       return self.attrs['ENVIRONMENT'] == '' or environment in self.attrs['ENVIRONMENT'].split(',')

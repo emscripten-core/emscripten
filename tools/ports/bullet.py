@@ -65,3 +65,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'bullet (USE_BULLET=1; zlib license)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_BULLET', 0)

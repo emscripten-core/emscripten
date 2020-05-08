@@ -63,3 +63,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'Boost headers v1.70.0 (USE_BOOST_HEADERS=1; Boost license)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_BOOST_HEADERS', 0)

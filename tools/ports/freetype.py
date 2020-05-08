@@ -127,6 +127,10 @@ def show():
   return 'freetype (USE_FREETYPE=1; freetype license)'
 
 
+def add_settings(settings):
+  settings.add_new_setting('USE_FREETYPE', 0)
+
+
 ftconf_h = r'''/***************************************************************************/
 /*                                                                         */
 /*  ftconfig.in                                                            */

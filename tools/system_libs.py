@@ -1973,3 +1973,12 @@ def show_ports():
   print('Available ports:')
   for port in ports.ports:
     print('   ', port.show())
+
+
+# each port can add new settings, like USE_ZLIB for zlib. The setting is how
+# a user would ask for the port to be used.
+# a port might have more than one setting, if it has sub-settings that affect
+# how it works.
+def apply_ports_settings():
+  for port in ports.ports:
+    port.add_settings(shared.Settings)

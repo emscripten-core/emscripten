@@ -53,3 +53,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'vorbis (USE_VORBIS=1; zlib license)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_VORBIS', 0)

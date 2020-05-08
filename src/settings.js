@@ -1338,70 +1338,12 @@ var EMIT_EMSCRIPTEN_LICENSE = 0;
 // LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
-// Ports
+// Ports-related flags.
 
 // Specify the SDL version that is being linked against.
 // 1, the default, is 1.3, which is implemented in JS
 // 2 is a port of the SDL C code on emscripten-ports
 var USE_SDL = 1;
-
-// Specify the SDL_gfx version that is being linked against. Must match USE_SDL
-var USE_SDL_GFX = 0;
-
-// Specify the SDL_image version that is being linked against. Must match USE_SDL
-var USE_SDL_IMAGE = 1;
-
-// Specify the SDL_ttf version that is being linked against. Must match USE_SDL
-var USE_SDL_TTF = 1;
-
-// Specify the SDL_net version that is being linked against. Must match USE_SDL
-var USE_SDL_NET = 1;
-
-// 1 = use icu from emscripten-ports
-var USE_ICU = 0;
-
-// 1 = use zlib from emscripten-ports
-var USE_ZLIB = 0;
-
-// 1 = use bzip2 from emscripten-ports
-var USE_BZIP2 = 0;
-
-// 1 = use libjpeg from emscripten-ports
-var USE_LIBJPEG = 0;
-
-// 1 = use libpng from emscripten-ports
-var USE_LIBPNG = 0;
-
-// 1 = use Regal from emscripten-ports
-var USE_REGAL = 0;
-
-// 1 = use Boost headers from emscripten-ports
-var USE_BOOST_HEADERS = 0;
-
-// 1 = use bullet from emscripten-ports
-var USE_BULLET = 0;
-
-// 1 = use vorbis from emscripten-ports
-var USE_VORBIS = 0;
-
-// 1 = use ogg from emscripten-ports
-var USE_OGG = 0;
-
-// 1 = use freetype from emscripten-ports
-var USE_FREETYPE = 0;
-
-// Specify the SDL_mixer version that is being linked against.
-// Doesn't *have* to match USE_SDL, but a good idea.
-var USE_SDL_MIXER = 1;
-
-// 1 = use harfbuzz from harfbuzz upstream
-var USE_HARFBUZZ = 0;
-
-// 3 = use cocos2d v3 from emscripten-ports
-var USE_COCOS2D = 0;
-
-// Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
-var SDL2_IMAGE_FORMATS = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.

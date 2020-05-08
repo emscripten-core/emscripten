@@ -57,6 +57,10 @@ def show():
   return 'libpng (USE_LIBPNG=1; zlib license)'
 
 
+def add_settings(settings):
+  settings.add_new_setting('USE_LIBPNG', 0)
+
+
 pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 
 /* pnglibconf.h - library build configuration */

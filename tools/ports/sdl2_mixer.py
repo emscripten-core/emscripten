@@ -61,3 +61,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'SDL2_mixer (USE_SDL_MIXER=2; zlib license)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_SDL_MIXER', 1)

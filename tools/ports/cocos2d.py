@@ -97,6 +97,10 @@ def show():
   return 'cocos2d'
 
 
+def add_settings(settings):
+  settings.add_new_setting('USE_COCOS2D', 0)
+
+
 def make_source_list(cocos2d_root, cocos2dx_root):
   sources = []
 

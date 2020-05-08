@@ -48,3 +48,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'icu (USE_ICU=1; Unicode License)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_ICU', 0)

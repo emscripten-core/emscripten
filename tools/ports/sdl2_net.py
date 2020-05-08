@@ -52,3 +52,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'SDL2_net (zlib license)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_SDL_NET', 1)

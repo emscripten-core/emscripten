@@ -55,6 +55,10 @@ def show():
   return 'ogg (USE_OGG=1; zlib license)'
 
 
+def add_settings(settings):
+  settings.add_new_setting('USE_OGG', 0)
+
+
 config_types_h = '''\
 #ifndef __CONFIG_TYPES_H__
 #define __CONFIG_TYPES_H__

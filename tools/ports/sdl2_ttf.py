@@ -59,3 +59,7 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'SDL2_ttf (USE_SDL_TTF=2; zlib license)'
+
+
+def add_settings(settings):
+  settings.add_new_setting('USE_SDL_TTF', 1)
