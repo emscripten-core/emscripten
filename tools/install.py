@@ -23,7 +23,6 @@ EXCLUDES = '''
 tests/third_party
 site
 node_modules
-docs
 Makefile
 .git
 '''.split()
