@@ -42,8 +42,8 @@ var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : 
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
 Module['ready'] = new Promise(function(resolve, reject) {
-  readyPromiseResolve=resolve;
-  readyPromiseReject=reject;
+  readyPromiseResolve = resolve;
+  readyPromiseReject = reject;
 });
 #endif
 
