@@ -948,7 +948,7 @@ class SettingsManager(object):
     # work if the setting already exists; this actually adds a new setting.
     @classmethod
     def add_new_setting(cls, key, value):
-      assert key not in cls.attrs
+      assert key not in cls.attrs, key
       cls.attrs[key] = value
 
     @classmethod

@@ -1338,13 +1338,6 @@ var EMIT_EMSCRIPTEN_LICENSE = 0;
 // LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
-// Ports-related flags.
-
-// Specify the SDL version that is being linked against.
-// 1, the default, is 1.3, which is implemented in JS
-// 2 is a port of the SDL C code on emscripten-ports
-var USE_SDL = 1;
-
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should

@@ -81,4 +81,4 @@ def show():
 
 
 def add_settings(settings):
-  settings.add_new_setting('USE_SDL_MIXER', 1)
+  settings.add_new_setting('USE_SDL_IMAGE', 1)
