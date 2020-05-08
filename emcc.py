@@ -95,7 +95,7 @@ UNSUPPORTED_LLD_FLAGS = {
     # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
     # in order to aid build systems that want to pass these flags.
     '-soname': True,
-    '--allow-shlib-undefined',
+    '--allow-shlib-undefined': False,
     '-rpath': True,
     '-rpath-link': True
 }
