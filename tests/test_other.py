@@ -10770,5 +10770,5 @@ int main() {
   # Tests that if a JS library function is missing, the linker will print out which function depended on the
   # missing function.
   def test_chained_js_error_diagnostics(self):
-    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_chained_js_error_diagnostics.c'),'--js-library', path_from_root('tests', 'test_chained_js_error_diagnostics.js')])
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_chained_js_error_diagnostics.c'), '--js-library', path_from_root('tests', 'test_chained_js_error_diagnostics.js')])
     self.assertContained("error: undefined symbol: nonexistent_function (referenced by bar__deps: ['nonexistent_function'], referenced by foo__deps: ['bar'], referenced by top-level compiled C/C++ code)", err)
