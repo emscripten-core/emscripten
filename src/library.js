@@ -744,7 +744,11 @@ LibraryManager.library = {
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['$ENV', '_getExecutableName'],
+  __buildEnvironment__deps: ['$ENV', '_getExecutableName'
+#if MINIMAL_RUNTIME
+    , '$writeAsciiToMemory'
+#endif
+  ],
   __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -3855,7 +3859,11 @@ LibraryManager.library = {
   // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
   $GAI_ERRNO_MESSAGES: {},
 
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
+  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'
+#if MINIMAL_RUNTIME
+    , '$writeAsciiToMemory'
+#endif
+  ],
   gai_strerror: function(val) {
     var buflen = 256;
 
@@ -3897,7 +3905,11 @@ LibraryManager.library = {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols'],
+  setprotoent__deps: ['$Protocols'
+#if MINIMAL_RUNTIME
+    , '$writeAsciiToMemory'
+#endif
+  ],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 

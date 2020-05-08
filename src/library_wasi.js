@@ -84,6 +84,9 @@ var WasiLibrary = {
   },
 
   args_get__sig: 'iii',
+#if MINIMAL_RUNTIME && MAIN_READS_PARAMS
+  args_get__deps: ['$writeAsciiToMemory'],
+#endif
   args_get: function(argv, argv_buf) {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
