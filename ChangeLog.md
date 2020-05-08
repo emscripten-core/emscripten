@@ -20,6 +20,10 @@ Current Trunk
 
 1.39.15: 05/06/2020
 -------------------
+- Change the factory function created by using the `MODULARIZE` build option to
+  return a Promise instead of a module instance, and remove the `then` method
+  from the instance (#10697). This fixes the bug where using `await` on the instance in
+  an async function would cause an infinite loop (#5820).
 - Add `--extern-pre-js` and `--extern-post-js` emcc flags. Files provided there
   are prepended/appended to the final JavaScript output, *after* all other
   work has been done, including optimization, optional `MODULARIZE`-ation,
