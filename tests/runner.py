@@ -841,6 +841,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return self.assertContained(text1, text2)
 
   def assertContained(self, values, string, additional_info=''):
+    print('assertContained %s %s' % (values, string))
     if type(values) not in [list, tuple]:
       values = [values]
     values = list(map(asstr, values))

@@ -282,8 +282,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-    #      regression check: -o js should create "js", with bitcode content
-    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
+    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
       print('args:', args)
       if '/dev/null' in args and WINDOWS:
         print('skip because windows')
@@ -295,7 +294,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         print('(no output)')
         continue
       syms = Building.llvm_nm(target)
-      self.assertContained('main', syms.defs)
+      self.assertIn('main', syms.defs)
       if self.is_wasm_backend():
         # wasm backend will also have '__original_main' or such
         self.assertEqual(len(syms.defs), 2)
