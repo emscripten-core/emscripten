@@ -10578,9 +10578,15 @@ int main() {
       return shared.Building.is_bitcode('-')
 
   def test_stdout_link(self):
-    # linking to stdout `-` doesn't work, and just produces a file on disk called `-`
-    run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
-    self.assertTrue(self.is_object_file('-'))
+    # linking to stdout `-` doesn't work, we have no way to pass such an output filename
+    # through post-link tools such as binaryen.
+    err = self.expect_fail([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
+    self.assertContained('invalid output name: `-`', err)
+    self.assertNotExists('-')
+
+    err = self.expect_fail([PYTHON, EMCC, '-o', '-foo', path_from_root('tests', 'hello_world.cpp')])
+    self.assertContained('invalid output name: `-foo`', err)
+    self.assertNotExists('-foo')
 
   def test_output_to_nowhere(self):
     nowhere = 'NULL' if WINDOWS else '/dev/null'

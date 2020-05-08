@@ -464,6 +464,8 @@ def find_output_arg(args):
       specified_target = arg[2:]
     else:
       outargs.append(arg)
+  if specified_target and specified_target.startswith('-'):
+    exit_with_error('invalid output name: `%s`' % specified_target)
   return specified_target, outargs
 
 
