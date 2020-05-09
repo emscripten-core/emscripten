@@ -10581,11 +10581,11 @@ int main() {
     # linking to stdout `-` doesn't work, we have no way to pass such an output filename
     # through post-link tools such as binaryen.
     err = self.expect_fail([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
-    self.assertContained('invalid output name: `-`', err)
+    self.assertContained('invalid output filename: `-`', err)
     self.assertNotExists('-')
 
     err = self.expect_fail([PYTHON, EMCC, '-o', '-foo', path_from_root('tests', 'hello_world.cpp')])
-    self.assertContained('invalid output name: `-foo`', err)
+    self.assertContained('invalid output filename: `-foo`', err)
     self.assertNotExists('-foo')
 
   def test_output_to_nowhere(self):

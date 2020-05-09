@@ -57,13 +57,15 @@ except ImportError:
 
 logger = logging.getLogger('emcc')
 
+DEV_NULL = '/dev/null' if not WINDOWS else 'NUL'
+
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
 ASSEMBLY_CPP_ENDINGS = ('.S',)
-SPECIAL_ENDINGLESS_FILENAMES = ('/dev/null' if not WINDOWS else 'NUL',)
+SPECIAL_ENDINGLESS_FILENAMES = (DEV_NULL,)
 
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ASSEMBLY_CPP_ENDINGS
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
@@ -464,8 +466,6 @@ def find_output_arg(args):
       specified_target = arg[2:]
     else:
       outargs.append(arg)
-  if specified_target and specified_target.startswith('-'):
-    exit_with_error('invalid output name: `%s`' % specified_target)
   return specified_target, outargs
 
 
@@ -2259,6 +2259,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
       return 0
 
+    if specified_target and specified_target.startswith('-'):
+      exit_with_error('invalid output filename: `%s`' % specified_target)
+
     using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
     link_flags = filter_link_flags(link_flags, using_lld)
 
@@ -2440,6 +2443,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # exit block 'post-link'
       log_time('post-link')
+
+    if target == DEV_NULL:
+      # TODO(sbc): In theory we should really run the whole pipeline even if the output is
+      # /dev/null, but that will take some refactoring
+      return 0
 
     with ToolchainProfiler.profile_block('emscript'):
       # Emscripten
