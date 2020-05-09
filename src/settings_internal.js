@@ -210,5 +210,6 @@ var STACK_BASE = 0;
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = 1;
 
-// Provide a Promise as a result from the MODULARIZE factory function.
-var MODULARIZE_PROMISE = 1;
+// Provide and export a .ready() Promise. This is currently used by default with
+// MODULARIZE, and returned from the factory function.
+var EXPORT_READY_PROMISE = 1;

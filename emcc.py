@@ -1326,7 +1326,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # creation.
       if shared.Settings.MINIMAL_RUNTIME and final_suffix == '.html' and \
          not shared.Settings.USE_PTHREADS:
-        shared.Settings.MODULARIZE_PROMISE = 0
+        shared.Settings.EXPORT_READY_PROMISE = 0
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -3409,7 +3409,7 @@ def modularize():
   src = open(final).read()
 
   return_value = shared.Settings.EXPORT_NAME + '.ready'
-  if not shared.Settings.MODULARIZE_PROMISE:
+  if not shared.Settings.EXPORT_READY_PROMISE:
     return_value = '{}'
 
   src = '''
