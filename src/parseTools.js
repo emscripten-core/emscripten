@@ -1708,3 +1708,23 @@ function sendI64Argument(low, high) {
     return low + ', ' + high;
   }
 }
+
+// Add assertions to catch common errors when using the Promise object we
+// create on Module.ready() and return from MODULARIZE Module() invocations.
+function addReadyPromiseAssertions(promise) {
+  // Warn on someone doing
+  //
+  //  var instance = Module();
+  //  ...
+  //  instance._main();
+  var properties = keys(EXPORTED_FUNCTIONS);
+  // Also warn on onRuntimeInitialized which might be a common pattern with
+  // older MODULARIZE-using codebases.
+  properties.push('onRuntimeInitialized');
+  return properties.map(function(property) {
+    return "if (!Object.getOwnPropertyDescriptor(" + promise + ", '" + property + "')) {" +
+           "  Object.defineProperty(" + promise + ", '" + property + "', { configurable: true, get: function() { abort('You are getting " + property + " on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js') } });" +
+           "  Object.defineProperty(" + promise + ", '" + property + "', { configurable: true, set: function() { abort('You are setting " + property + " on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js') } });" +
+           "}";
+  }).join('\n');
+}
