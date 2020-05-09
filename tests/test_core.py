@@ -3156,6 +3156,10 @@ Var: 42
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
+    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+    # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
+    # this if this issues is fixed.
+    self.emcc_args.append('-nostdlib++')
 
     def post(filename):
       js = open(filename).read()

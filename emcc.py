@@ -2078,6 +2078,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         clang_compiler = CC
 
       def is_link_flag(flag):
+        if flag.startswith('-nostdlib'):
+          return True
         return flag.startswith(('-l', '-L', '-Wl,'))
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
@@ -2296,7 +2298,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
         extra_files_to_link = system_libs.get_ports(shared.Settings)
         if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-          link_as_cxx = use_cxx or shared.Settings.LINK_AS_CXX
+          link_as_cxx = (use_cxx or shared.Settings.LINK_AS_CXX) and "-nostdlib++" not in newargs
           extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, link_as_cxx, forced=forced_stdlibs)
         linker_inputs += extra_files_to_link
 
