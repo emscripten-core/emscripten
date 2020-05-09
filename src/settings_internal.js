@@ -17,9 +17,6 @@ var MODULE_EXPORTS = [];
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 
-// stores the suffix of the output file
-var TARGET_SUFFIX = '';
-
 // Indicates that the syscalls (which we see statically) indicate that they need
 // full filesystem support. Otherwise, when just a small subset are used, we can
 // get away without including the full filesystem - in particular, if open() is
@@ -212,3 +209,6 @@ var STACK_BASE = 0;
 // enabled, but if `--no-entry` is passed, or if `_main` is not part of 
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = 1;
+
+// Provide a Promise as a result from the MODULARIZE factory function.
+var MODULARIZE_PROMISE = 1;

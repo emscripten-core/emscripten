@@ -1708,7 +1708,3 @@ function sendI64Argument(low, high) {
     return low + ', ' + high;
   }
 }
-
-function emittingHTML() {
-  return TARGET_SUFFIX.toLowerCase() === '.html';
-}

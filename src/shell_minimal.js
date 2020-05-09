@@ -15,7 +15,7 @@ var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
 #endif // SIDE_MODULE
 
-#if MODULARIZE && !emittingHTML() // when we emit HTML, it will instantiate a singleton for us, and it does not need the promise.
+#if MODULARIZE && MODULARIZE_PROMISE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
 Module['ready'] = new Promise(function(resolve, reject) {
@@ -140,7 +140,7 @@ function err(text) {
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
-#if MODULARIZE && !emittingHTML()
+#if MODULARIZE && MODULARIZE_PROMISE
   readyPromiseResolve(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && hasExportedFunction('_main')

@@ -822,7 +822,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     target = 'a.out.js'
 
   shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
-  shared.Settings.TARGET_SUFFIX = suffix(target)
 
   final_suffix = suffix(target)
 
@@ -1321,6 +1320,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+      # in MINIMAL_RUNTIME we may not need to emit the Promise code, as the
+      # HTML output creates a singleton instance, and it does so without the
+      # Promise. However, in Pthreads mode the Promise is used for worker
+      # creation.
+      if shared.Settings.MINIMAL_RUNTIME and final_suffix == '.html' and \
+         not shared.Settings.USE_PTHREADS:
+        shared.Settings.MODULARIZE_PROMISE = 0
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -3403,11 +3409,7 @@ def modularize():
   src = open(final).read()
 
   return_value = shared.Settings.EXPORT_NAME + '.ready'
-  # in MINIMAL_RUNTIME, when we emit HTML then the HTML creates a singleton
-  # instance of the modularized code. in that case, we do not need to return
-  # the promise
-  #
-  if shared.Settings.MINIMAL_RUNTIME and shared.Settings.TARGET_SUFFIX == '.html':
+  if not shared.Settings.MODULARIZE_PROMISE:
     return_value = '{}'
 
   src = '''
