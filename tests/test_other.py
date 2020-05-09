@@ -282,8 +282,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-    #      regression check: -o js should create "js", with bitcode content
-    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
+    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
       print('args:', args)
       if '/dev/null' in args and WINDOWS:
         print('skip because windows')
@@ -295,7 +294,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         print('(no output)')
         continue
       syms = Building.llvm_nm(target)
-      self.assertContained('main', syms.defs)
+      self.assertIn('main', syms.defs)
       if self.is_wasm_backend():
         # wasm backend will also have '__original_main' or such
         self.assertEqual(len(syms.defs), 2)
@@ -10474,6 +10473,11 @@ Module.arguments has been replaced with plain arguments_
     self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
     self.assertBinaryEqual('hello1.o', 'hello2.o')
 
+  def test_empty_output_extension(self):
+    # Default to JS output when no extension is present
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Werror', '-o', 'hello'])
+    self.assertContained('hello, world!', run_js('hello'))
+
   def test_backwards_deps_in_archive(self):
     # Test that JS dependencies from deps_info.json work for code linked via
     # static archives using -l<name>
@@ -10574,9 +10578,15 @@ int main() {
       return shared.Building.is_bitcode('-')
 
   def test_stdout_link(self):
-    # linking to stdout `-` doesn't work, and just produces a file on disk called `-`
-    run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
-    self.assertTrue(self.is_object_file('-'))
+    # linking to stdout `-` doesn't work, we have no way to pass such an output filename
+    # through post-link tools such as binaryen.
+    err = self.expect_fail([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
+    self.assertContained('invalid output filename: `-`', err)
+    self.assertNotExists('-')
+
+    err = self.expect_fail([PYTHON, EMCC, '-o', '-foo', path_from_root('tests', 'hello_world.cpp')])
+    self.assertContained('invalid output filename: `-foo`', err)
+    self.assertNotExists('-foo')
 
   def test_output_to_nowhere(self):
     nowhere = 'NULL' if WINDOWS else '/dev/null'
