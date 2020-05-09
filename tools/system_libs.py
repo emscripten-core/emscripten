@@ -1663,6 +1663,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.JS_MATH:
     libs_to_link = [(system_libs_map['libjsmath'].get_path(), True)] + libs_to_link
 
+  # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
+  # Building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
+  # shouldn't add any extra `--no-whole-archive` or we will undo the intent of Building.link_ldd.
+  if shared.Settings.LINKABLE and shared.Settings.WASM_BACKEND:
+    return [l[0] for l in libs_to_link]
+
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
   ret = []
