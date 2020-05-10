@@ -51,6 +51,7 @@ commands:
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
             echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> ~/.emscripten
+            echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
             echo "WASM_ENGINES = []" >> ~/.emscripten
@@ -59,9 +60,6 @@ commands:
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
-            # Remove any system libs the emsdk installed: we want to rebuild
-            # them all from source here, to check whether new changes work.
-            rm -Rf ~/.emscripten_cache
       - run:
           name: embuilder build ALL
           command: |
@@ -94,7 +92,7 @@ commands:
           # Must be relative path from root
           paths:
             - emsdk-master/
-            - .emscripten_cache/
+            - cache/
             - .emscripten_ports/
             - .emscripten
             - vms
@@ -314,9 +312,6 @@ jobs:
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
-            # Remove any system libs the emsdk installed: we want to rebuild
-            # them all from source here, to check whether new changes work.
-            rm -Rf ~/.emscripten_cache
       - run:
           name: embuilder build ALL
           command: |
@@ -333,7 +328,7 @@ jobs:
           # Must be relative path from root
           paths:
             - emsdk-master/
-            - .emscripten_cache/
+            - cache/
             - .emscripten_ports/
             - .emscripten
   build-docs:
