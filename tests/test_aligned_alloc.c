@@ -16,7 +16,9 @@ int main()
 		for(int alignment = sizeof(void*); alignment <= 64; alignment *= 2)
 			assert((uintptr_t)aligned_alloc(alignment, 64) % alignment == 0);
 	void *ptr;
-	assert(aligned_alloc(3, 64) == 0);
+	ptr = aligned_alloc(3, 64);
+	assert(ptr == NULL);
 	assert(posix_memalign(&ptr, 3, 64) == EINVAL);
+	assert(ptr == NULL);
 	return 0;
 }

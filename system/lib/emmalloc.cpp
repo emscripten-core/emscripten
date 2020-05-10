@@ -837,7 +837,7 @@ void * EMMALLOC_EXPORT memalign(size_t alignment, size_t size)
 
 void * EMMALLOC_EXPORT aligned_alloc(size_t alignment, size_t size)
 {
-  if ((alignment % sizeof(void *)) || (size % alignment))
+  if ((alignment % sizeof(void *) != 0) || (size % alignment) != 0)
     return 0;
   return emmalloc_memalign(alignment, size);
 }
@@ -1159,7 +1159,7 @@ void *emmalloc_realloc_uninitialized(void *ptr, size_t size)
 int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size)
 {
   assert(memptr);
-  if (alignment % sizeof(void *))
+  if (alignment % sizeof(void *) != 0)
     return 22/* EINVAL*/;
   *memptr = emmalloc_memalign(alignment, size);
   return *memptr ?  0 : 12/*ENOMEM*/;
