@@ -18,12 +18,18 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 - Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
-  environment variable or `--cache` commandline flag.
+  environment variable.
 - Remove `--cache` command line arg.  The `CACHE` config setting and the
   `EM_CACHE` environment variable can be used to control this.
 - Compiling to a file with no suffix will now generate an executable (JS) rather
   than an object file.  This means simple cases like `emcc -o foo foo.c` do the
   expected thing and generate an executable.
+- System libraries such as libc and libc++ are now included by default at
+  link time rather than selectively included based on the symbols used in the
+  input object files.  For small programs that don't use any system libraries
+  this might result in slightly slower link times with the old fastcomp
+  backend.  In order to exclude these libraries build with `-nostdlib` and/or
+  `-nostdlib++`.
 
 1.39.15: 05/06/2020
 -------------------

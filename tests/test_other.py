@@ -787,9 +787,11 @@ f.close()
 
   # Regression test for issue #4522: Incorrect CC vs CXX detection
   def test_incorrect_c_detection(self):
+    # This auto-detection only works for the compile phase.
+    # For linking you need to use `em++` or pass `-x c++`
     create_test_file('test.c', 'foo\n')
     for compiler in [EMCC, EMXX]:
-      run_process([PYTHON, compiler, '--bind', '--embed-file', 'test.c', path_from_root('tests', 'hello_world.cpp')])
+      run_process([PYTHON, compiler, '-c', '--bind', '--embed-file', 'test.c', path_from_root('tests', 'hello_world.cpp')])
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
@@ -4755,7 +4757,7 @@ main()
     # partial list, but ok since we grab them as needed
     'parial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
     # fail! not enough stdlibs
-    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
+    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++,libc,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
     # force all the needed stdlibs, so this works even though we ignore the input file
     'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
   })
@@ -4763,8 +4765,8 @@ main()
     with env_modify(env):
       run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
       if fail:
-        proc = run_process(NODE_JS + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
-        self.assertNotEqual(proc.returncode, 0)
+        output = self.expect_fail(NODE_JS + ['a.out.js'], stdout=PIPE)
+        self.assertContained('missing function', output)
       else:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
