@@ -197,15 +197,6 @@ var EXCEPTION_HANDLING = 0;
 // Enabled when building C++ code (for example via em++ or via -c c++)
 var USE_CXX = 0;
 
-// When set we link against C++ libraries, even when running `emcc`.
-// This is set be default for historical reasons but hopefully we can switch
-// to 0 at some point which matches the behaviour of gcc/clang.
-// See https://github.com/emscripten-core/emscripten/issues/11121.
-// It will continue to be a setting because some liberaries require C++ suport
-// even when using in C programs.  For example, regal port will set this to true
-// because even though it exposes a C API it itself is written in C++.
-var LINK_AS_CXX = 1;
-
 // Used internally when running the JS compiler simply to generate list of all
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
 // JS library symbols.

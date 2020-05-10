@@ -2298,7 +2298,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
         extra_files_to_link = system_libs.get_ports(shared.Settings)
         if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-          link_as_cxx = (use_cxx or shared.Settings.LINK_AS_CXX) and "-nostdlib++" not in newargs
+          # TODO(sbc): Only set link_as_cxx if use_cxx
+          link_as_cxx = '-nostdlib++' not in newargs
           extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, link_as_cxx, forced=forced_stdlibs)
         linker_inputs += extra_files_to_link
 
