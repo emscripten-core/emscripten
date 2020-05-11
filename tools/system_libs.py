@@ -713,6 +713,25 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
              '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
              '-Wno-empty-body']
 
+  def get_cflags(self):
+    cflags = super(libc, self).get_cflags()
+    if shared.Settings.PRINTF_LONG_DOUBLE:
+      cflags += ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
+    return cflags
+
+  def get_base_name(self):
+    name = super(libc, self).get_base_name()
+    if shared.Settings.PRINTF_LONG_DOUBLE:
+      name += '-pld'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    vary_on = super(libc, cls).vary_on()
+    if shared.Settings.PRINTF_LONG_DOUBLE:
+      vary_on += ['pld']
+    return vary_on
+
   def get_files(self):
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
