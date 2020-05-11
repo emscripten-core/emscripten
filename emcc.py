@@ -1524,14 +1524,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
 
     if shared.Settings.ALLOW_MEMORY_GROWTH:
-      # ALLOW_MEMORY_GROWTH is not compatible with ABORTING_MALLOC: with growth
-      # we don't abort, we try to behave like a standard system would, trying
-      # to grow and returning 0 from malloc when we fail.
-      shared.Settings.ABORTING_MALLOC = 0
-      if 'ABORTING_MALLOC=1' in settings_changes:
-        # historically we just silently ignored things here, but to make this
-        # less confusing, show an error
-        exit_with_error('ALLOW_MEMORY_GROWTH is not compatible with ABORTING_MALLOC: with growth we try to behave like a standard system would, trying to grow and returning 0 otherwise')
+      # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
+      # the behavior of trying to grow and returning 0 from malloc on failure, like
+      # a standard system would. However, if the user sets the flag it
+      # overrides that.
+      if 'ABORTING_MALLOC=1' not in settings_changes:
+        shared.Settings.ABORTING_MALLOC = 0
 
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:

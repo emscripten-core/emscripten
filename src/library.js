@@ -515,7 +515,7 @@ LibraryManager.library = {
 #if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
-#if ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH
+#if ABORTING_MALLOC
   , '$abortOnCannotGrowMemory'
 #endif
 #if ALLOW_MEMORY_GROWTH
@@ -571,7 +571,11 @@ LibraryManager.library = {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
 #endif
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory(requestedSize);
+#else
       return false;
+#endif
     }
 #if USE_ASAN
     // One byte of ASan's shadow memory shadows 8 bytes of real memory. Shadow memory area has a fixed size,
@@ -581,7 +585,11 @@ LibraryManager.library = {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
 #endif
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory(requestedSize);
+#else
       return false;
+#endif
     }
 #endif
 
@@ -627,7 +635,11 @@ LibraryManager.library = {
 #if ASSERTIONS
     err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
 #endif
+#if ABORTING_MALLOC
+    abortOnCannotGrowMemory(requestedSize);
+#else
     return false;
+#endif
 #endif // ALLOW_MEMORY_GROWTH
   },
 
