@@ -24,6 +24,49 @@ Current Trunk
   function is added which is always async.
 - Pass linker flags dirctly to wasm-ld by default.  We still filter out certain
   flags explcitly.  If there are other flags that it would be useful for us
+- Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
+  environment variable.
+- Remove `--cache` command line arg.  The `CACHE` config setting and the
+  `EM_CACHE` environment variable can be used to control this.
+- Compiling to a file with no suffix will now generate an executable (JS) rather
+  than an object file.  This means simple cases like `emcc -o foo foo.c` do the
+  expected thing and generate an executable.
+- System libraries such as libc and libc++ are now included by default at
+  link time rather than selectively included based on the symbols used in the
+  input object files.  For small programs that don't use any system libraries
+  this might result in slightly slower link times with the old fastcomp
+  backend.  In order to exclude these libraries build with `-nostdlib` and/or
+  `-nostdlib++`.
+
+1.39.15: 05/06/2020
+-------------------
+- Change the factory function created by using the `MODULARIZE` build option to
+  return a Promise instead of the module instance. If you use `MODULARIZE` you
+  will need to wait on the returned Promise, using `await` or its `then`
+  callback, to get the module instance (#10697).
+- Add `--extern-pre-js` and `--extern-post-js` emcc flags. Files provided there
+  are prepended/appended to the final JavaScript output, *after* all other
+  work has been done, including optimization, optional `MODULARIZE`-ation,
+  instrumentation like `SAFE_HEAP`, etc. They are the same as prepending/
+  appending those files after `emcc` finishes running, and are just a convenient
+  way to do that. (For comparison, `--pre-js` and `--post-js` optimize that code
+  together with everything else, keep it in the same scope if running
+  `MODULARIZE`, etc.).
+- Stop defining `FE_INEXACT` and other floating point exception macros in libc,
+  since we don't support them. That also prevents musl from including code using
+  pragmas that don't make sense for wasm. Ifdef out other uses of those pragmas
+  as well, as tip of tree LLVM now fails to compile them on wasm. (#11087)
+- Update libcxx and libcxxabi to LLVM 10 release branch (#11038).
+- Remove `BINARYEN_PASSES` setting (#11057). We still have
+  `BINARYEN_EXTRA_PASSES` (the removed setting completely overrides the set
+  of passes from the command line, which doesn't make much sense as some of
+  them are mandatory like setting the sbrk ptr).
+- Remove `MODULARIZE_INSTANCE` build option (#11037). This was a seldom used
+  option that was complicating the logic for `MODULARIZE`. Module instances can
+  be created by using `MODULARIZE` and calling the factory function explicitly.
+  See the new `--extern-post-js` option added in this release, which can help
+  code that used `MODULARIZE_INSTANCE` (you can add an extern post js which
+  does `Module = Module();` for example).
 
 1.39.14: 05/01/2020
 -------------------
@@ -43,9 +86,8 @@ Current Trunk
   compiler options.
 - Allow spaces in a path to Python interpreter when running emscripten from Unix
   shell (#11005).
-- Remove `BINARYEN_PASSES` settings.  We still have `BINARYEN_EXTRA_PASSES`, but
-  completely overriding the set of passes from the command line didn't make much
-  sense.
+- Support atexit() in standalone mode (#10995). This also fixes stdio stream
+  flushing on exit in that mode.
 
 v1.39.13: 04/17/2020
 --------------------

@@ -58,7 +58,7 @@ else:
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
-import parallel_runner
+import parallel_testsuite
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
@@ -665,10 +665,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = all_sources + libraries
-      for i in range(len(all_files)):
-        if '.' not in all_files[i]:
-          shutil.move(all_files[i], all_files[i] + '.bc')
-          all_files[i] += '.bc'
       args = [PYTHON, compiler] + self.get_emcc_args(main_file=True) + \
           ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
@@ -1724,11 +1720,11 @@ def build_library(name,
                   env_init={},
                   native=False,
                   cflags=[]):
-  """Build a library into a .bc file. We build the .bc file once and cache it
-  for all our tests. (We cache in memory since the test directory is destroyed
-  and recreated for each test. Note that we cache separately for different
-  compilers).  This cache is just during the test runner. There is a different
-  concept of caching as well, see |Cache|.
+  """Build a library and cache the result.  We build the library file
+  once and cache it for all our tests. (We cache in memory since the test
+  directory is destroyed and recreated for each test. Note that we cache
+  separately for different compilers).  This cache is just during the test
+  runner. There is a different concept of caching as well, see |Cache|.
   """
 
   if type(generated_libs) is not list:
@@ -1980,9 +1976,9 @@ def flattened_tests(loaded_tests):
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other')
   has_multiple_tests = len(tests) > 1
-  has_multiple_cores = parallel_runner.num_cores() > 1
+  has_multiple_cores = parallel_testsuite.num_cores() > 1
   if suite_supported and has_multiple_tests and has_multiple_cores:
-    return parallel_runner.ParallelTestSuite(len(tests))
+    return parallel_testsuite.ParallelTestSuite(len(tests))
   return unittest.TestSuite()
 
 

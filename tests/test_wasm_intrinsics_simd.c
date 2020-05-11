@@ -413,9 +413,15 @@ v128_t TESTFN i8x16_sub_saturate_s(v128_t x, v128_t y) {
 v128_t TESTFN i8x16_sub_saturate_u(v128_t x, v128_t y) {
   return wasm_u8x16_sub_saturate(x, y);
 }
+
+#ifdef __wasm_unimplemented_simd128__
+
 v128_t TESTFN i8x16_mul(v128_t x, v128_t y) {
   return wasm_i8x16_mul(x, y);
 }
+
+#endif // __wasm_unimplemented_simd128__
+
 v128_t TESTFN i8x16_min_s(v128_t x, v128_t y) {
   return wasm_i8x16_min(x, y);
 }
@@ -1371,6 +1377,9 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     ),
     u8x16(0, 0, 254, 0, 0, 123, 0, 12, 61, 167, 158, 100, 17, 0, 0, 0)
   );
+
+#ifdef __wasm_unimplemented_simd128__
+
   expect_vec(
     i8x16_mul(
       (v128_t)i8x16(0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73),
@@ -1378,6 +1387,9 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     ),
     i8x16(0, 230, 255, 0, 255, 6, 106, 237, 230, 52, 223, 76, 0, 6, 127, 126)
   );
+
+#endif // __wasm_unimplemented_simd128__
+
   expect_vec(
     i8x16_min_s(
       (v128_t)i8x16(0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73),

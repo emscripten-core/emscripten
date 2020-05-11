@@ -143,7 +143,7 @@ function JSify(data, functionsOnly) {
       // what we just added to the library.
     }
 
-    function addFromLibrary(ident) {
+    function addFromLibrary(ident, dependent) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
 
@@ -176,6 +176,7 @@ function JSify(data, functionsOnly) {
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !(finalName in WEAK_DECLARES) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
+          if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
             if (WASM_BACKEND && !LLD_REPORT_UNDEFINED) {
@@ -231,6 +232,10 @@ function JSify(data, functionsOnly) {
       var snippet = original;
       var redirectedIdent = null;
       var deps = LibraryManager.library[ident + '__deps'] || [];
+      if (!Array.isArray(deps)) {
+        error('JS library directive ' + ident + '__deps=' + deps.toString() + ' is of type ' + typeof deps + ', but it should be an array!');
+        return;
+      }
       deps.forEach(function(dep) {
         if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #ifdefs in src/library*.js)');
       });
@@ -301,7 +306,11 @@ function JSify(data, functionsOnly) {
         });
       });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
-      var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
+      var identDependents = ident + "__deps: ['" + deps.join("','")+"']";
+      function addDependency(dep) {
+        return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
+      }
+      var depsText = (deps ? '\n' + deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -380,7 +389,7 @@ function JSify(data, functionsOnly) {
         delete LibraryManager.library[shortident + '__deps'];
       }
     }
-    item.JS = addFromLibrary(shortident);
+    item.JS = addFromLibrary(shortident, 'top-level compiled C/C++ code');
   }
 
   // Final combiner

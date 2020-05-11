@@ -284,6 +284,7 @@ def parse_config_file():
     'WASMTIME',
     'WASM_ENGINES',
     'FROZEN_CACHE',
+    'CACHE',
   )
 
   # Only propagate certain settings from the config file.
@@ -641,7 +642,7 @@ def check_vanilla():
     # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
     # must use wasm (or at least try to). to know that, we have to run llc to
     # see which backends it has. we cache this result.
-    temp_cache = cache.Cache(use_subdir=False)
+    temp_cache = cache.Cache(CACHE, use_subdir=False)
 
     def has_vanilla_targets():
       logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
@@ -1558,8 +1559,6 @@ class Building(object):
         cmd.append('--no-gc-sections')
         cmd.append('--export-dynamic')
 
-    expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
-
     if Settings.LINKABLE:
       cmd.append('--export-all')
     else:
@@ -1569,8 +1568,6 @@ class Building(object):
       if external_symbol_list:
         # Filter out symbols external/JS symbols
         c_exports = [e for e in c_exports if e not in external_symbol_list]
-        if expect_main and Settings.IGNORE_MISSING_MAIN:
-          c_exports.remove('main')
       for export in c_exports:
         cmd += ['--export', export]
 
@@ -1588,7 +1585,7 @@ class Building(object):
       use_start_function = Settings.STANDALONE_WASM
 
       if not use_start_function:
-        if expect_main and not Settings.IGNORE_MISSING_MAIN:
+        if Settings.EXPECT_MAIN and not Settings.IGNORE_MISSING_MAIN:
           cmd += ['--entry=main']
         else:
           cmd += ['--no-entry']
@@ -1672,7 +1669,7 @@ class Building(object):
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
-        logger.debug('adding object %s to link' % (f))
+        logger.debug('adding object %s to link (forced: %d)' % (f, force_add))
         # Update resolved_symbols table with newly resolved symbols
         resolved_symbols.update(provided)
         # Update unresolved_symbols table by adding newly unresolved symbols and
@@ -1695,7 +1692,8 @@ class Building(object):
         for content in contents:
           if content in added_contents:
             continue
-          # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
+          # Link in the .o if it provides symbols, *or* this is a singleton archive (which is
+          # apparently an exception in gcc ld)
           if consider_object(content, force_add=force_add):
             added_contents.add(content)
             loop_again = True
@@ -2653,6 +2651,7 @@ class Building(object):
       'EGL': 'library_egl.js',
       'GL': 'library_webgl.js',
       'GLESv2': 'library_webgl.js',
+      # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
       'GLEW': 'library_glew.js',
       'glfw': 'library_glfw.js',
       'glfw3': 'library_glfw.js',
@@ -2794,7 +2793,7 @@ class Building(object):
 
 def reconfigure_cache():
   global Cache
-  Cache = cache.Cache()
+  Cache = cache.Cache(CACHE)
 
 
 # Placeholder strings used for SINGLE_FILE
@@ -3388,6 +3387,7 @@ JS_ENGINES = []
 WASMER = None
 WASMTIME = None
 WASM_ENGINES = []
+CACHE = None
 FROZEN_CACHE = False
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
@@ -3411,6 +3411,8 @@ NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+if not CACHE:
+  CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.
@@ -3506,5 +3508,5 @@ verify_settings()
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
 # compatibility with existing emcc, etc. scripts
-Cache = cache.Cache()
+Cache = cache.Cache(CACHE)
 chunkify = cache.chunkify

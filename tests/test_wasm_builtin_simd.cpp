@@ -359,9 +359,15 @@ i8x16 TESTFN i8x16_sub_saturate_s(i8x16 x, i8x16 y) {
 i8x16 TESTFN i8x16_sub_saturate_u(i8x16 x, i8x16 y) {
   return __builtin_wasm_sub_saturate_u_i8x16(x, y);
 }
+
+#ifdef __wasm_unimplemented_simd128__
+
 i8x16 TESTFN i8x16_mul(i8x16 x, i8x16 y) {
   return x * y;
 }
+
+#endif // __wasm_unimplemented_simd128__
+
 // Skip {min,max}_{s,u} because they do not have short builtin equivalents
 i8x16 TESTFN i8x16_avgr_u(i8x16 x, i8x16 y) {
   return __builtin_wasm_avgr_u_i8x16(x, y);
@@ -1152,6 +1158,9 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     ),
     ((i8x16){0, 0, 254, 0, 0, 123, 0, 12, 61, 167, 158, 100, 17, 0, 0, 0})
   );
+
+#ifdef __wasm_unimplemented_simd128__
+
   expect_vec(
     i8x16_mul(
       (i8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
@@ -1159,6 +1168,9 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     ),
     ((i8x16){0, 230, 255, 0, 255, 6, 106, 237, 230, 52, 223, 76, 0, 6, 127, 126})
   );
+
+#endif // __wasm_unimplemented_simd128__
+
   expect_vec(
     i8x16_avgr_u(
       (i8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},

@@ -10,29 +10,29 @@
 #define GL_HALF_FLOAT_OES 0x8D61
 
 // 3. https://www.khronos.org/registry/webgl/extensions/WEBGL_lose_context/
-GL_APICALL EMSCRIPTEN_RESULT GL_APIENTRY emscripten_webgl_loseContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE contextHandle);
-GL_APICALL EMSCRIPTEN_RESULT GL_APIENTRY emscripten_webgl_restoreContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE contextHandle);
+WEBGL_APICALL EMSCRIPTEN_RESULT GL_APIENTRY emscripten_webgl_loseContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE contextHandle);
+WEBGL_APICALL EMSCRIPTEN_RESULT GL_APIENTRY emscripten_webgl_restoreContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE contextHandle);
 
 // 4. https://www.khronos.org/registry/webgl/extensions/OES_standard_derivatives/
 #define GL_FRAGMENT_SHADER_DERIVATIVE_HINT_OES 0x8B8B
 
 // 5. https://www.khronos.org/registry/webgl/extensions/OES_vertex_array_object/
 #define GL_VERTEX_ARRAY_BINDING_OES 0x85B5
-GL_APICALL void GL_APIENTRY emscripten_glBindVertexArrayOES(GLuint array);
-GL_APICALL void GL_APIENTRY emscripten_glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays);
-GL_APICALL void GL_APIENTRY emscripten_glGenVertexArraysOES(GLsizei n, GLuint *arrays);
-GL_APICALL GLboolean GL_APIENTRY emscripten_glIsVertexArrayOES(GLuint array);
-GL_APICALL void GL_APIENTRY glBindVertexArrayOES(GLuint array);
-GL_APICALL void GL_APIENTRY glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays);
-GL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays);
-GL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array);
+WEBGL_APICALL void GL_APIENTRY emscripten_glBindVertexArrayOES(GLuint array);
+WEBGL_APICALL void GL_APIENTRY emscripten_glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGenVertexArraysOES(GLsizei n, GLuint *arrays);
+WEBGL_APICALL GLboolean GL_APIENTRY emscripten_glIsVertexArrayOES(GLuint array);
+WEBGL_APICALL void GL_APIENTRY glBindVertexArrayOES(GLuint array);
+WEBGL_APICALL void GL_APIENTRY glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays);
+WEBGL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays);
+WEBGL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array);
 
 // 6. https://www.khronos.org/registry/webgl/extensions/WEBGL_debug_renderer_info/
 #define GL_UNMASKED_VENDOR_WEBGL 0x9245
 #define GL_UNMASKED_RENDERER_WEBGL 0x9246
 
 // 7. https://www.khronos.org/registry/webgl/extensions/WEBGL_debug_shaders/
-GL_APICALL void GL_APIENTRY emscripten_webgl_getTranslatedShaderSource(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *source);
+WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getTranslatedShaderSource(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *source);
 
 // 8. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_s3tc/
 #define GL_COMPRESSED_RGB_S3TC_DXT1_EXT 0x83F0
@@ -88,17 +88,17 @@ GL_APICALL void GL_APIENTRY emscripten_webgl_getTranslatedShaderSource(GLuint sh
 #define GL_DRAW_BUFFER15_WEBGL 0x8834
 #define GL_MAX_COLOR_ATTACHMENTS_WEBGL 0x8CDF
 #define GL_MAX_DRAW_BUFFERS_WEBGL 0x8824
-GL_APICALL void GL_APIENTRY emscripten_glDrawBuffersWEBGL(GLsizei n, const GLenum *buffers);
-GL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *buffers);
+WEBGL_APICALL void GL_APIENTRY emscripten_glDrawBuffersWEBGL(GLsizei n, const GLenum *buffers);
+WEBGL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *buffers);
 
 // 19. https://www.khronos.org/registry/webgl/extensions/ANGLE_instanced_arrays/
 #define GL_VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE 0x88FE
-GL_APICALL void GL_APIENTRY emscripten_glDrawArraysInstancedANGLE(GLenum mode, GLint first, GLsizei count, GLsizei primcount);
-GL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstancedANGLE(GLenum mode, GLsizei count, GLenum type, GLintptr offset, GLsizei primcount);
-GL_APICALL void GL_APIENTRY emscripten_glVertexAttribDivisorANGLE(GLuint index, GLuint divisor);
-GL_APICALL void GL_APIENTRY glDrawArraysInstancedANGLE(GLenum mode, GLint first, GLsizei count, GLsizei primcount);
-GL_APICALL void GL_APIENTRY glDrawElementsInstancedANGLE(GLenum mode, GLsizei count, GLenum type, GLintptr offset, GLsizei primcount);
-GL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint divisor);
+WEBGL_APICALL void GL_APIENTRY emscripten_glDrawArraysInstancedANGLE(GLenum mode, GLint first, GLsizei count, GLsizei primcount);
+WEBGL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstancedANGLE(GLenum mode, GLsizei count, GLenum type, GLintptr offset, GLsizei primcount);
+WEBGL_APICALL void GL_APIENTRY emscripten_glVertexAttribDivisorANGLE(GLuint index, GLuint divisor);
+WEBGL_APICALL void GL_APIENTRY glDrawArraysInstancedANGLE(GLenum mode, GLint first, GLsizei count, GLsizei primcount);
+WEBGL_APICALL void GL_APIENTRY glDrawElementsInstancedANGLE(GLenum mode, GLsizei count, GLenum type, GLintptr offset, GLsizei primcount);
+WEBGL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint divisor);
 
 // 20. https://www.khronos.org/registry/webgl/extensions/OES_texture_float_linear/
 // <no symbols exposed>
@@ -152,28 +152,28 @@ GL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint divi
 #define GL_TIME_ELAPSED_EXT 0x88BF
 #define GL_TIMESTAMP_EXT 0x8E28
 #define GL_GPU_DISJOINT_EXT 0x8FBB
-GL_APICALL void GL_APIENTRY emscripten_glGenQueriesEXT(GLsizei n, GLuint *ids);
-GL_APICALL void GL_APIENTRY emscripten_glDeleteQueriesEXT(GLsizei n, const GLuint *ids);
-GL_APICALL GLboolean GL_APIENTRY emscripten_glIsQueryEXT(GLuint id);
-GL_APICALL void GL_APIENTRY emscripten_glBeginQueryEXT(GLenum target, GLuint id);
-GL_APICALL void GL_APIENTRY emscripten_glEndQueryEXT(GLenum target);
-GL_APICALL void GL_APIENTRY emscripten_glQueryCounterEXT(GLuint id, GLenum target);
-GL_APICALL void GL_APIENTRY emscripten_glGetQueryivEXT(GLenum target, GLenum pname, GLint *params);
-GL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectivEXT(GLuint id, GLenum pname, GLint *params);
-GL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectuivEXT(GLuint id, GLenum pname, GLuint *params);
-GL_APICALL void GL_APIENTRY emscripten_glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 *params);
-GL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 *params);
-GL_APICALL void GL_APIENTRY glGenQueriesEXT(GLsizei n, GLuint *ids);
-GL_APICALL void GL_APIENTRY glDeleteQueriesEXT(GLsizei n, const GLuint *ids);
-GL_APICALL GLboolean GL_APIENTRY glIsQueryEXT(GLuint id);
-GL_APICALL void GL_APIENTRY glBeginQueryEXT(GLenum target, GLuint id);
-GL_APICALL void GL_APIENTRY glEndQueryEXT(GLenum target);
-GL_APICALL void GL_APIENTRY glQueryCounterEXT(GLuint id, GLenum target);
-GL_APICALL void GL_APIENTRY glGetQueryivEXT(GLenum target, GLenum pname, GLint *params);
-GL_APICALL void GL_APIENTRY glGetQueryObjectivEXT(GLuint id, GLenum pname, GLint *params);
-GL_APICALL void GL_APIENTRY glGetQueryObjectuivEXT(GLuint id, GLenum pname, GLuint *params);
-GL_APICALL void GL_APIENTRY glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 *params);
-GL_APICALL void GL_APIENTRY glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 *params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGenQueriesEXT(GLsizei n, GLuint *ids);
+WEBGL_APICALL void GL_APIENTRY emscripten_glDeleteQueriesEXT(GLsizei n, const GLuint *ids);
+WEBGL_APICALL GLboolean GL_APIENTRY emscripten_glIsQueryEXT(GLuint id);
+WEBGL_APICALL void GL_APIENTRY emscripten_glBeginQueryEXT(GLenum target, GLuint id);
+WEBGL_APICALL void GL_APIENTRY emscripten_glEndQueryEXT(GLenum target);
+WEBGL_APICALL void GL_APIENTRY emscripten_glQueryCounterEXT(GLuint id, GLenum target);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryivEXT(GLenum target, GLenum pname, GLint *params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectivEXT(GLuint id, GLenum pname, GLint *params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectuivEXT(GLuint id, GLenum pname, GLuint *params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 *params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 *params);
+WEBGL_APICALL void GL_APIENTRY glGenQueriesEXT(GLsizei n, GLuint *ids);
+WEBGL_APICALL void GL_APIENTRY glDeleteQueriesEXT(GLsizei n, const GLuint *ids);
+WEBGL_APICALL GLboolean GL_APIENTRY glIsQueryEXT(GLuint id);
+WEBGL_APICALL void GL_APIENTRY glBeginQueryEXT(GLenum target, GLuint id);
+WEBGL_APICALL void GL_APIENTRY glEndQueryEXT(GLenum target);
+WEBGL_APICALL void GL_APIENTRY glQueryCounterEXT(GLuint id, GLenum target);
+WEBGL_APICALL void GL_APIENTRY glGetQueryivEXT(GLenum target, GLenum pname, GLint *params);
+WEBGL_APICALL void GL_APIENTRY glGetQueryObjectivEXT(GLuint id, GLenum pname, GLint *params);
+WEBGL_APICALL void GL_APIENTRY glGetQueryObjectuivEXT(GLuint id, GLenum pname, GLuint *params);
+WEBGL_APICALL void GL_APIENTRY glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 *params);
+WEBGL_APICALL void GL_APIENTRY glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 *params);
 
 
 // 29. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_etc/
@@ -217,7 +217,7 @@ GL_APICALL void GL_APIENTRY glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GL
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR 0x93DB
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR 0x93DC
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR 0x93DD
-void emscripten_webgl_getSupportedAstcProfiles(GLsizei bufSize, GLsizei *length, GLchar *buf);
+WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getSupportedAstcProfiles(GLsizei bufSize, GLsizei *length, GLchar *buf);
 
 // 31. https://www.khronos.org/registry/webgl/extensions/EXT_color_buffer_float/
 // <no symbols exposed>

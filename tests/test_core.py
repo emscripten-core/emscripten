@@ -2169,6 +2169,16 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
+  @parameterized({
+    'nogrow': (['-s', 'ALLOW_MEMORY_GROWTH=0'],),
+    'grow': (['-s', 'ALLOW_MEMORY_GROWTH=1'],)
+  })
+  def test_aborting_new(self, args):
+    # test that C++ new properly errors if we fail to malloc when growth is
+    # enabled, with or without growth
+    self.emcc_args += ['-Wno-almost-asm', '-s', 'MAXIMUM_MEMORY=18MB'] + args
+    self.do_run_in_out_file_test('tests', 'core', 'test_aborting_new')
+
   @no_asmjs()
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
@@ -3146,6 +3156,10 @@ Var: 42
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
+    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+    # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
+    # this if this issues is fixed.
+    self.emcc_args.append('-nostdlib++')
 
     def post(filename):
       js = open(filename).read()
@@ -3162,7 +3176,7 @@ Var: 42
       if self.is_wasm_backend():
         self.assertLess(len(exports), 56)
       else:
-        self.assertLess(len(exports), 32)
+        self.assertLess(len(exports), 33)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
@@ -6003,7 +6017,6 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @wasm_simd
-  @unittest.skip("Disabled to allow SIMD opcode renumbering to roll")
   def test_wasm_builtin_simd(self, js_engines):
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
@@ -6014,7 +6027,6 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
-  @unittest.skip("Disabled to allow SIMD opcode renumbering to roll")
   def test_wasm_intrinsics_simd(self, js_engines):
     def run():
       self.do_run(
@@ -6088,7 +6100,7 @@ return malloc(size);
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=self.get_library(os.path.join('third_party', 'lua'), [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                libraries=self.get_library(os.path.join('third_party', 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
                 includes=[path_from_root('tests', 'lua')],
                 output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -7568,26 +7580,20 @@ err = err = function(){};
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
-    base_args = self.emcc_args + [
+    self.emcc_args += [
       '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
       '--closure', '1',
-      '-g1'
+      '-g1',
+      '-s',
+      'MODULARIZE=1',
     ]
 
-    for instance in (0, 1):
-      print("instance: %d" % instance)
-      if instance:
-        self.emcc_args = base_args + ['-s', 'MODULARIZE_INSTANCE=1']
-      else:
-        self.emcc_args = base_args + ['-s', 'MODULARIZE=1']
+    def post(filename):
+      with open(filename, 'a') as f:
+        f.write('\n\n')
+        f.write('var TheModule = Module();\n')
 
-      def post(filename):
-        with open(filename, 'a') as f:
-          f.write('\n\n')
-          if not instance:
-            f.write('var TheModule = Module();\n')
-
-      self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
+    self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
 
   @no_emterpreter
   @no_wasm('wasmifying destroys debug info and stack tracability')
@@ -8440,11 +8446,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
         wrong = 'node'
       # test with the right env
       self.set_setting('ENVIRONMENT', right)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
       # test with the wrong env
       self.set_setting('ENVIRONMENT', wrong)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       try:
         test()
         raise Exception('unexpected success')
@@ -8452,7 +8458,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         self.assertContained('not compiled for this environment', str(e))
       # test with a combined env
       self.set_setting('ENVIRONMENT', right + ',' + wrong)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
 
   def test_dfe(self):
