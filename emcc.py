@@ -78,6 +78,7 @@ ASSEMBLY_ENDINGS = ('.ll', '.s')
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
 WASM_ENDINGS = ('.wasm',)
 
+# Supported LLD flags which we will pass through to the linker.
 SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
     '-(', '-)',
@@ -85,7 +86,8 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive'
 )
 
-# Maps to true if the flag takes an argument
+# Unsupported LLD flags which we will ignore.
+# Maps to true if the flag takes an argument.
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
     '-bind_at_load': False,
@@ -95,6 +97,7 @@ UNSUPPORTED_LLD_FLAGS = {
     # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
     # in order to aid build systems that want to pass these flags.
     '-soname': True,
+    '--allow-shlib-undefined': False,
     '-rpath': True,
     '-rpath-link': True
 }
