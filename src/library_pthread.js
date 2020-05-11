@@ -199,7 +199,7 @@ var LibraryPThread = {
         PThread.runExitHandlers();
 
         _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}});
-        registerPthreadPt(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
+        registerPthreadPtr(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
         threadInfoStruct = 0;
         if (ENVIRONMENT_IS_PTHREAD) {
           // Note: in theory we would like to return any offscreen canvases back to the main thread,
@@ -215,7 +215,7 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
       _emscripten_futex_wake(threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
       threadInfoStruct = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
-      registerPthreadPt(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
+      registerPthreadPtr(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
       postMessage({ 'cmd': 'cancelDone' });
     },
 
