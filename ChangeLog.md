@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- `emscripten_async_queue_on_thread` has been renamed to
+  `emscripten_dispatch_to_thread` which no longer implies that it is async -
+  the operation is in fact only async if it is sent to another thread, while it
+  is sync if on the same one. A new `emscripten_dispatch_to_thread_async`
+  function is added which is always async.
 - Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
   environment variable.
 - Remove `--cache` command line arg.  The `CACHE` config setting and the
