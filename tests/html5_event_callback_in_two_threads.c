@@ -42,7 +42,7 @@ EM_BOOL keydown_callback_on_main_browser_thread(int eventType, const EmscriptenK
 #if __EMSCRIPTEN_PTHREADS__
   EmscriptenKeyboardEvent *duplicatedEventStruct = malloc(sizeof(*e));
   memcpy(duplicatedEventStruct, e, sizeof(*e));
-  emscripten_async_queue_on_thread(application_main_thread_id, EM_FUNC_SIG_IIII, keydown_callback_on_application_main_thread, duplicatedEventStruct, eventType, duplicatedEventStruct, userData);
+  emscripten_dispatch_to_thread(application_main_thread_id, EM_FUNC_SIG_IIII, keydown_callback_on_application_main_thread, duplicatedEventStruct, eventType, duplicatedEventStruct, userData);
 #else
   keydown_callback_on_application_main_thread(eventType, e, userData);
 #endif

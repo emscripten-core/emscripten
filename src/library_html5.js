@@ -185,7 +185,7 @@ var LibraryJSEvents = {
       {{{ makeSetValue('varargs', 0, 'eventTypeId', 'i32') }}};
       {{{ makeSetValue('varargs', 4, 'eventData', 'i32') }}};
       {{{ makeSetValue('varargs', 8, 'userData', 'i32') }}};
-      _emscripten_async_queue_on_thread_(targetThread, {{{ cDefine('EM_FUNC_SIG_IIII') }}}, eventHandlerFunc, eventData, varargs);
+      __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_FUNC_SIG_IIII') }}}, eventHandlerFunc, eventData, varargs);
       stackRestore(stackTop);
     },
 #endif
@@ -2878,7 +2878,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', '_emscripten_call_on_thread'
 #if MINIMAL_RUNTIME && !WASM_BACKEND
   , '$stackSave', '$stackAlloc', '$stackRestore'
 #endif
@@ -2897,7 +2897,7 @@ var LibraryJSEvents = {
     // these two threads will deadlock. At the moment, we'd like to consider that this kind of deadlock would be an Emscripten runtime bug, although if
     // emscripten_set_canvas_element_size() was documented to require running an event in the queue of thread that owns the OffscreenCanvas, then that might be ok.
     // (safer this way however)
-    _emscripten_async_queue_on_thread_(targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
+    __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
     stackRestore(stackTop);
   },
 

@@ -282,8 +282,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-    #      regression check: -o js should create "js", with bitcode content
-    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
+    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
       print('args:', args)
       if '/dev/null' in args and WINDOWS:
         print('skip because windows')
@@ -295,7 +294,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         print('(no output)')
         continue
       syms = Building.llvm_nm(target)
-      self.assertContained('main', syms.defs)
+      self.assertIn('main', syms.defs)
       if self.is_wasm_backend():
         # wasm backend will also have '__original_main' or such
         self.assertEqual(len(syms.defs), 2)
@@ -788,9 +787,11 @@ f.close()
 
   # Regression test for issue #4522: Incorrect CC vs CXX detection
   def test_incorrect_c_detection(self):
+    # This auto-detection only works for the compile phase.
+    # For linking you need to use `em++` or pass `-x c++`
     create_test_file('test.c', 'foo\n')
     for compiler in [EMCC, EMXX]:
-      run_process([PYTHON, compiler, '--bind', '--embed-file', 'test.c', path_from_root('tests', 'hello_world.cpp')])
+      run_process([PYTHON, compiler, '-c', '--bind', '--embed-file', 'test.c', path_from_root('tests', 'hello_world.cpp')])
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
@@ -2021,6 +2022,30 @@ int f() {
     ''')
     run_process([PYTHON, EMCC, 'main.cpp', '--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
     self.assertContained('prepre\npre-run\nhello from main\n', run_js('a.out.js'))
+
+  def test_extern_prepost(self):
+    create_test_file('extern-pre.js', '''
+      // I am an external pre.
+    ''')
+    create_test_file('extern-post.js', '''
+      // I am an external post.
+    ''')
+    run_process([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c'), '--extern-pre-js', 'extern-pre.js', '--extern-post-js', 'extern-post.js'])
+    # the files should be included, and externally - not as part of optimized
+    # code, so they are the very first and last things, and they are not
+    # minified.
+    with open('a.out.js') as output:
+      js = output.read()
+      pre = js.index('// I am an external pre.')
+      post = js.index('// I am an external post.')
+      # ignore some slack - newlines and other things. we just care about the
+      # big picture here
+      SLACK = 50
+      self.assertLess(pre, post)
+      self.assertLess(pre, SLACK)
+      self.assertGreater(post, len(js) - SLACK)
+      # make sure the slack is tiny compared to the whole program
+      self.assertGreater(len(js), 100 * SLACK)
 
   @no_wasm_backend('depends on bc output')
   def test_save_bc(self):
@@ -4732,7 +4757,7 @@ main()
     # partial list, but ok since we grab them as needed
     'parial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
     # fail! not enough stdlibs
-    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
+    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++,libc,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
     # force all the needed stdlibs, so this works even though we ignore the input file
     'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
   })
@@ -4740,8 +4765,8 @@ main()
     with env_modify(env):
       run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
       if fail:
-        proc = run_process(NODE_JS + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
-        self.assertNotEqual(proc.returncode, 0)
+        output = self.expect_fail(NODE_JS + ['a.out.js'], stdout=PIPE)
+        self.assertContained('missing function', output)
       else:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -10409,6 +10434,12 @@ Module.arguments has been replaced with plain arguments_
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--print-map'], stderr=PIPE).stderr
     self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
 
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-rpath=foo'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `-rpath=foo`', out)
+
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-rpath-link,foo'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `-rpath-link`', out)
+
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
                        '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)
@@ -10443,6 +10474,11 @@ Module.arguments has been replaced with plain arguments_
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'], stderr=PIPE).stderr
     self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
     self.assertBinaryEqual('hello1.o', 'hello2.o')
+
+  def test_empty_output_extension(self):
+    # Default to JS output when no extension is present
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Werror', '-o', 'hello'])
+    self.assertContained('hello, world!', run_js('hello'))
 
   def test_backwards_deps_in_archive(self):
     # Test that JS dependencies from deps_info.json work for code linked via
@@ -10544,9 +10580,15 @@ int main() {
       return shared.Building.is_bitcode('-')
 
   def test_stdout_link(self):
-    # linking to stdout `-` doesn't work, and just produces a file on disk called `-`
-    run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
-    self.assertTrue(self.is_object_file('-'))
+    # linking to stdout `-` doesn't work, we have no way to pass such an output filename
+    # through post-link tools such as binaryen.
+    err = self.expect_fail([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
+    self.assertContained('invalid output filename: `-`', err)
+    self.assertNotExists('-')
+
+    err = self.expect_fail([PYTHON, EMCC, '-o', '-foo', path_from_root('tests', 'hello_world.cpp')])
+    self.assertContained('invalid output filename: `-foo`', err)
+    self.assertNotExists('-foo')
 
   def test_output_to_nowhere(self):
     nowhere = 'NULL' if WINDOWS else '/dev/null'
@@ -10731,3 +10773,14 @@ int main() {
     src = path_from_root('tests', 'other', 'test_export_global_address.c')
     output = path_from_root('tests', 'other', 'test_export_global_address.out')
     self.do_run_from_file(src, output)
+
+  @no_fastcomp('wasm-ld only')
+  def test_linker_version(self):
+    out = run_process([PYTHON, EMCC, '-Wl,--version'], stdout=PIPE).stdout
+    self.assertContained('LLD ', out)
+
+  # Tests that if a JS library function is missing, the linker will print out which function depended on the
+  # missing function.
+  def test_chained_js_error_diagnostics(self):
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_chained_js_error_diagnostics.c'), '--js-library', path_from_root('tests', 'test_chained_js_error_diagnostics.js')])
+    self.assertContained("error: undefined symbol: nonexistent_function (referenced by bar__deps: ['nonexistent_function'], referenced by foo__deps: ['bar'], referenced by top-level compiled C/C++ code)", err)

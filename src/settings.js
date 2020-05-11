@@ -93,6 +93,9 @@ var INVOKE_RUN = 1;
 // like flushing the stdio streams.
 // Set this to 1 if you do want atexit()s or stdio streams to be flushed
 // on exit.
+// This setting is controlled automatically in STANDALONE_WASM mode:
+//  - For a command (has a main function) this is always 1
+//  - For a reactor (no a main function) this is always 0
 var EXIT_RUNTIME = 0;
 
 // How to represent the initial memory content.
@@ -1026,29 +1029,40 @@ var DETERMINISTIC = 0;
 
 // By default we emit all code in a straightforward way into the output
 // .js file. That means that if you load that in a script tag in a web
-// page, it will use the global scope. With MODULARIZE set, we will instead emit
+// page, it will use the global scope. With `MODULARIZE` set, we instead emit
+// the code wrapped in a function that returns a promise. The promise is
+// resolved with the module instance when it is safe to run the compiled code,
+// similar to the `onRuntimeInitialized` callback. You do not need to use the
+// `onRuntimeInitialized` callback when using `MODULARIZE`.
+// 
+// The default name of the function is `Module`, but can be changed using the
+// `EXPORT_NAME` option. We recommend renaming it to a more typical name for a
+// factory function, e.g. `createModule`.
 //
-//   var EXPORT_NAME = function(Module) {
-//     Module = Module || {};
-//     // .. all the emitted code from emscripten ..
-//     return Module;
-//   };
 //
-// where EXPORT_NAME is from the option of the same name (so, by default
-// it will be var Module = ..., and so you should change EXPORT_NAME if
-// you want more than one module in the same web page).
+// You use the factory function like so:
 //
-// You can then use this by something like
+//   const module = await EXPORT_NAME();
+//   
+// or:
 //
-//   var instance = EXPORT_NAME();
+//   let module;
+//   EXPORT_NAME().then(instance => {
+//     module = instance;
+//   });
+//   
 //
-// or
+// The factory function accepts 1 parameter, an object with default values for
+// the module instance:
 //
-//   var instance = EXPORT_NAME({ option: value, ... });
+//   const module = await EXPORT_NAME({ option: value, ... });
 //
 // Note the parentheses - we are calling EXPORT_NAME in order to instantiate
-// the module. (This allows, in particular, for you to create multiple
-// instantiations, etc.)
+// the module. This allows you to create multiple instances of the module.
+//
+// Note that in MODULARIZE mode we do *not* look for a global `Module` object
+// for default values. Default values must be passed as a parameter to the
+// factory function.
 //
 // The default .html shell file provided in MINIMAL_RUNTIME mode shows
 // an example to how the module is instantiated from within the html file.
@@ -1059,28 +1073,14 @@ var DETERMINISTIC = 0;
 // https://github.com/emscripten-core/emscripten/issues/7950)
 //
 // If you add --pre-js or --post-js files, they will be included inside
-// the module with the rest of the emitted code. That way, they can be
-// optimized together with it. (If you want something outside of the module,
-// that is, literally before or after all the code including the extra
-// MODULARIZE code, you can do that by modifying the JS yourself after
-// emscripten runs. While --pre-js and --post-js happen to do that in
-// non-modularize mode, their big feature is that they add code to be
-// optimized with the rest of the emitted code, allowing better dead code
-// elimination and minification.)
+// the factory function with the rest of the emitted code in order to be
+// optimized together with it.
 //
-// Modularize also provides a promise-like API,
-//
-//   var instance = EXPORT_NAME().then(function(Module) { .. });
-//
-// The callback is called when it is safe to run compiled code, similar
-// to the onRuntimeInitialized callback (i.e., it waits for all
-// necessary async events). It receives the instance as a parameter,
-// for convenience.
-//
-// Note that in MODULARIZE mode we do *not* look at the global `Module`
-// object, so if you define things there they will be ignored. The reason
-// is that you will be constructing the instances manually, and can
-// provide Module there, or something else, as you want.
+// If you want to include code outside all of the generated code, including the
+// factory function, you can use --extern-pre-js or --extern-post-js. While
+// --pre-js and --post-js happen to do that in non-MODULARIZE mode, their
+// intended usage is to add code that is optimized with the rest of the emitted
+// code, allowing better dead code elimination and minification.
 var MODULARIZE = 0;
 
 // If we separate out asm.js with the --separate-asm option,
@@ -1116,15 +1116,6 @@ var ASM_JS = 1;
 // optimizer sees 5.0 as just 5).
 // [fastcomp-only]
 var FINALIZE_ASM_JS = 1;
-
-// If 1, then all exports from the asm/wasm module will be accessed indirectly,
-// which allow the module to be swapped later, simply by replacing
-// Module['asm'].
-//
-// Note: It is very important that the replacement module be built with the same
-// optimizations and so forth, as we depend on them being a drop-in replacement
-// for each other (same globals on the heap at the same locations, etc.)
-var SWAPPABLE_ASM_MODULE = 0;
 
 // see emcc --separate-asm
 // [fastcomp-only]
@@ -1834,5 +1825,6 @@ var LEGACY_SETTINGS = [
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
   ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
-  ['BINARYEN_PASSES', [""], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
+  ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
+  ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
 ];

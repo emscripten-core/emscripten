@@ -98,7 +98,7 @@ this.onmessage = function(e) {
 #endif
 #else
       Module['wasmModule'] = e.data.wasmModule;
-#endif
+#endif // MINIMAL_RUNTIME
 
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
@@ -125,7 +125,7 @@ this.onmessage = function(e) {
       }
 #endif
 
-#endif
+#endif // WASM
 
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
@@ -133,7 +133,9 @@ this.onmessage = function(e) {
 
 #if MODULARIZE && EXPORT_ES6
       import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
-        Module = {{{ EXPORT_NAME }}}.default(Module);
+        return {{{ EXPORT_NAME }}}.default(Module);
+      }).then(function(instance) {
+        Module = instance;
         postMessage({ 'cmd': 'loaded' });
       });
 #else
@@ -146,13 +148,19 @@ this.onmessage = function(e) {
       }
 #if MODULARIZE
 #if MINIMAL_RUNTIME
-      Module = {{{ EXPORT_NAME }}}(imports);
+      {{{ EXPORT_NAME }}}(imports).then(function (instance) {
+        Module = instance;
+        postMessage({ 'cmd': 'loaded' });
+      });
 #else
-      Module = {{{ EXPORT_NAME }}}(Module);
+      {{{ EXPORT_NAME }}}(Module).then(function (instance) {
+        Module = instance;
+        postMessage({ 'cmd': 'loaded' });
+      });
 #endif
 #endif
 
-#if !MINIMAL_RUNTIME || !WASM
+#if !MODULARIZE && (!MINIMAL_RUNTIME || !WASM)
       // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
       // regular runtime and asm.js are loaded synchronously, so in those cases
       // we are now loaded, and can post back to main thread.
@@ -177,7 +185,7 @@ this.onmessage = function(e) {
       threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['__register_pthread_ptr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['registerPthreadPtr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;

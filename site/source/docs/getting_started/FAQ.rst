@@ -262,24 +262,13 @@ Here is an example of how to use it:
 
 The crucial thing is that ``Module`` exists, and has the property ``onRuntimeInitialized``, before the script containing emscripten output (``my_project.js`` in this example) is loaded.
 
-Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. That will put all of the generated JavaScript in a function, which you can call to create an instance. The instance has a promise-like `.then()` method, so if you build with say ``-s MODULARIZE=1 -s 'EXPORT_NAME="MyCode"'`` (see details in settings.js), then you can do something like this:
+Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. That puts all of the generated JavaScript into a factory function, which you can call to create an instance of your module. The factory function returns a Promise that resolves with the module instance. The promise is resolved once it's safe to call the compiled code, i.e. after the compiled code has been downloaded and instantiated. For example, if you build with ``-s MODULARIZE=1 -s 'EXPORT_NAME="createMyModule"'`` (see details in settings.js), then you can do this:
 
 ::
 
-    MyCode().then(function(Module) {
-      // this is reached when everything is ready, and you can call methods on Module
+    createMyModule().then((myModule) => {
+      // this is reached when everything is ready, and you can call methods on myModule
     });
-    
-.. note:: Be careful with using ``Module.then()`` inside ``Promise.resolve()`` or ``await`` statements. ``Module.then()`` resolves with ``Module`` which still has ``then``, so the ``await`` statement loops indefinitely. If you need to use ``Module.then()`` with ``await`` statement, you can use this workaround:
-
-    ::
-
-         await Module.then(m => {
-           delete m['then'];
-           resolve(m);
-         });
-
-    For more information read `this issue <https://github.com/emscripten-core/emscripten/pull/10697>`_.
 
 .. _faq-NO_EXIT_RUNTIME:
 
