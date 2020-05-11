@@ -1688,7 +1688,6 @@
                 "type",
                 "hasDynamicOffset",
                 "multisampled",
-                "textureDimension",
                 "viewDimension",
                 "textureComponentType",
                 "storageTextureFormat"
@@ -1702,8 +1701,6 @@
                 "nextInChain",
                 "buffer",
                 "offset",
-                "rowPitch",
-                "imageHeight",
                 "bytesPerRow",
                 "rowsPerImage"
             ],
@@ -1822,9 +1819,7 @@
             ],
             "WGPUShaderModuleDescriptor": [
                 "nextInChain",
-                "label",
-                "codeSize",
-                "code"
+                "label"
             ],
             "WGPUShaderModuleSPIRVDescriptor": [
                 "chain",
@@ -1878,16 +1873,12 @@
                 "nextInChain",
                 "label",
                 "layout",
-                "bindingCount",
-                "bindings",
                 "entryCount",
                 "entries"
             ],
             "WGPUBindGroupLayoutDescriptor": [
                 "nextInChain",
                 "label",
-                "bindingCount",
-                "bindings",
                 "entryCount",
                 "entries"
             ],

@@ -76,8 +76,6 @@
 
     // Must be in sync with webgpu.h.
     PresentMode: {
-        Immediate: 0,
-        Mailbox: 1,
         Fifo: 2,
     },
     SType: {
@@ -250,7 +248,7 @@ var LibraryWebGPU = {
       'sampler',
       'comparison-sampler',
       'sampled-texture',
-      'storage-texture',
+      undefined, // WGPUBindingType_StorageTexture (deprecated)
       'readonly-storage-texture',
       'writeonly-storage-texture',
     ],
@@ -335,11 +333,6 @@ var LibraryWebGPU = {
     LoadOp: [
       'clear',
       'load',
-    ],
-    PresentMode: [
-      'immediate',
-      'mailbox',
-      'fifo',
     ],
     PrimitiveTopology: [
       'point-list',
