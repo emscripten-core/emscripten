@@ -341,7 +341,7 @@ int _emscripten_call_on_thread(int force_async, pthread_t target_thread, EM_FUNC
 // otherwise.
 #define emscripten_dispatch_to_thread(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(0, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
 
-// Similar to emscripten_queue_on_thread_maybe_async, but always runs the
+// Similar to emscripten_dispatch_to_thread, but always runs the
 // function asynchronously, even if on the same thread. This is less efficient
 // but may be simpler to reason about in some cases.
 #define emscripten_dispatch_to_thread_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(1, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)

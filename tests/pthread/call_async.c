@@ -23,7 +23,7 @@ void finish() {
 
 int main() {
   assert(state == 0);
-  // This maybe_async call will be synchronous since we are on the right
+  // This dispatch_to_thread call will be synchronous since we are on the right
   // thread already.
   int called_now = emscripten_dispatch_to_thread(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &increment, 0);
   assert(called_now);
