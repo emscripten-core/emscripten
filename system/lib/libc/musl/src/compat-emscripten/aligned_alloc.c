@@ -5,6 +5,8 @@
 void * __attribute__((weak)) aligned_alloc(size_t alignment, size_t size)
 {
   void *ptr;
+  if ((alignment % sizeof(void *) != 0) || (size % alignment) != 0)
+    return 0;
   int ret = posix_memalign(&ptr, alignment, size);
   return (ret == 0) ? ptr : 0;
 }
