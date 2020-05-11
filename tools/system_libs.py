@@ -713,25 +713,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
              '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
              '-Wno-empty-body']
 
-  def get_cflags(self):
-    cflags = super(libc, self).get_cflags()
-    if shared.Settings.PRINTF_LONG_DOUBLE:
-      cflags += ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
-    return cflags
-
-  def get_base_name(self):
-    name = super(libc, self).get_base_name()
-    if shared.Settings.PRINTF_LONG_DOUBLE:
-      name += '-pld'
-    return name
-
-  @classmethod
-  def vary_on(cls):
-    vary_on = super(libc, cls).vary_on()
-    if shared.Settings.PRINTF_LONG_DOUBLE:
-      vary_on += ['pld']
-    return vary_on
-
   def get_files(self):
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
@@ -831,6 +812,17 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['extras.c', 'wasi-helpers.c'])
 
     return libc_files
+
+
+class libprintf_long_double(libc):
+  name = 'libprintf_long_double'
+
+  cflags = ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
+
+  def get_files(self):
+    return files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
+        filenames=['vfprintf.c'])
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -1656,6 +1648,10 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
   # libc math.
   if shared.Settings.JS_MATH:
     libs_to_link = [(system_libs_map['libjsmath'].get_path(), True)] + libs_to_link
+
+  # to override the normal libc printf, we must come before it
+  if shared.Settings.PRINTF_LONG_DOUBLE:
+    libs_to_link = [(system_libs_map['libprintf_long_double'].get_path(), True)] + libs_to_link
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # Building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
