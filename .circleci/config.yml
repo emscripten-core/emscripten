@@ -47,6 +47,8 @@ commands:
             # we are trying to test.
             rm -Rf emscripten
             echo "import os" >> ~/.emscripten
+            # We use an out-of-tree cache directory so it can be part of the
+            # persisted workspace (see below).
             echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
             # test v8 with --wasm-staging which enables new features. we use v8
             # as a "bleeding edge" shell here, basically, with node being the
@@ -310,6 +312,8 @@ jobs:
             # we are trying to test.
             rm -Rf emscripten
             cd -
+            # We use an out-of-tree cache directory so it can be part of the
+            # persisted workspace (see below).
             echo "import os" >> ~/.emscripten
             echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
             echo "final .emscripten:"
