@@ -1523,6 +1523,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
 
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
+      # ALLOW_MEMORY_GROWTH is not compatible with ABORTING_MALLOC: with growth
+      # we don't abort, we try to behave like a standard system would, trying
+      # to grow and returning 0 from malloc when we fail.
+      shared.Settings.ABORTING_MALLOC = 0
+      if 'ABORTING_MALLOC=1' in settings_changes:
+        # historically we just silently ignored things here, but to make this
+        # less confusing, show an error
+        exit_with_error('ALLOW_MEMORY_GROWTH is not compatible with ABORTING_MALLOC: with growth we try to behave like a standard system would, trying to grow and returning 0 otherwise')
+
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:
         exit_with_error('USE_PTHREADS=2 is not longer supported')

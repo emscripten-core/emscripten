@@ -132,6 +132,9 @@ var MALLOC = "dlmalloc";
 // how big that initial allocation (INITIAL_MEMORY) must be.
 // If you set this to 0, then you get the standard malloc behavior of
 // returning NULL (0) when it fails.
+// Setting ALLOW_MEMORY_GROWTH turns this off, as in that mode we only support
+// the behavior of trying to grow and returning 0 from malloc on failure, like
+// a standard system would.
 var ABORTING_MALLOC = 1;
 
 // If 1, generated a version of memcpy() and memset() that unroll their
