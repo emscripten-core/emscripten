@@ -10067,6 +10067,7 @@ int main () {
 0.000051 => -5.123719300544352710023893104250e-05
 '''),
   })
+  @no_fastcomp('float128 is wasm backend only')
   def test_long_double_printing(self, args, expected):
     create_test_file('src.cpp', r'''
 #include <stdio.h>
