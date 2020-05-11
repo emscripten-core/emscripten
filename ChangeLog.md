@@ -22,8 +22,6 @@ Current Trunk
   the operation is in fact only async if it is sent to another thread, while it
   is sync if on the same one. A new `emscripten_dispatch_to_thread_async`
   function is added which is always async.
-- Pass linker flags dirctly to wasm-ld by default.  We still filter out certain
-  flags explcitly.  If there are other flags that it would be useful for us
 - Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
   environment variable.
 - Remove `--cache` command line arg.  The `CACHE` config setting and the
