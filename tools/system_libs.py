@@ -824,6 +824,9 @@ class libprintf_long_double(libc):
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
         filenames=['vfprintf.c'])
 
+  def can_build(self):
+    return super(libprintf_long_double, self).can_build() and shared.Settings.WASM_BACKEND
+
 
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
