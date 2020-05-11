@@ -47,6 +47,9 @@ commands:
             # we are trying to test.
             rm -Rf emscripten
             echo "import os" >> ~/.emscripten
+            # We use an out-of-tree cache directory so it can be part of the
+            # persisted workspace (see below).
+            echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
             # test v8 with --wasm-staging which enables new features. we use v8
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
@@ -59,9 +62,6 @@ commands:
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
-            # Remove any system libs the emsdk installed: we want to rebuild
-            # them all from source here, to check whether new changes work.
-            rm -Rf ~/.emscripten_cache
       - run:
           name: embuilder build ALL
           command: |
@@ -94,7 +94,7 @@ commands:
           # Must be relative path from root
           paths:
             - emsdk-master/
-            - .emscripten_cache/
+            - cache/
             - .emscripten_ports/
             - .emscripten
             - vms
@@ -312,11 +312,12 @@ jobs:
             # we are trying to test.
             rm -Rf emscripten
             cd -
+            # We use an out-of-tree cache directory so it can be part of the
+            # persisted workspace (see below).
+            echo "import os" >> ~/.emscripten
+            echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
             echo "final .emscripten:"
             cat ~/.emscripten
-            # Remove any system libs the emsdk installed: we want to rebuild
-            # them all from source here, to check whether new changes work.
-            rm -Rf ~/.emscripten_cache
       - run:
           name: embuilder build ALL
           command: |
@@ -333,7 +334,7 @@ jobs:
           # Must be relative path from root
           paths:
             - emsdk-master/
-            - .emscripten_cache/
+            - cache/
             - .emscripten_ports/
             - .emscripten
   build-docs:
