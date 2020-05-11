@@ -68,7 +68,6 @@ commands:
             $PYTHON_BIN ./embuilder.py build ALL
             $PYTHON_BIN tests/runner.py test_hello_world
       - run:
-
           name: embuilder (LTO)
           command: |
             $PYTHON_BIN ./embuilder.py build MINIMAL --lto
