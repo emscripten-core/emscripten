@@ -890,8 +890,10 @@ int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   // 'async' runs are fire and forget, where the caller detaches itself from the call object after
   // returning here, and it is the callee's responsibility to free up the memory after the call has
   // been performed.
+  // Note that the call here might not be async if on the same thread, but for
+  // consistency use the same convention of calleeDelete.
   q->calleeDelete = 1;
-  // The maybe_async() function will not be async on the same thread; force
+  // The called function will not be async if we are on the same thread; force
   // async if the user asked for that.
   if (forceAsync) {
     EM_ASM({
