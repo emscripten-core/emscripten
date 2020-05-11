@@ -8064,6 +8064,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
   @node_pthreads
+  def test_pthread_c11_threads(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('TOTAL_MEMORY', '64mb')
+    self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_c11_threads.c')
+
+  @node_pthreads
   def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', '2')

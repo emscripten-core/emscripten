@@ -757,7 +757,16 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
-        filenames=['pthread_self.c'])
+        filenames=[
+          'pthread_self.c',
+          # C11 thread library functions
+          'thrd_create.c',
+          'thrd_exit.c',
+          'thrd_join.c',
+          'thrd_sleep.c',
+          'thrd_yield.c',
+          'call_once.c',
+        ])
 
     if self.is_mt:
       libc_files += files_in_path(
