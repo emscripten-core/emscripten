@@ -6183,7 +6183,7 @@ int main() {
       ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0']),
     ]:
       for growth in [0, 1]:
-        for aborting in [0, 1]:
+        for aborting_args in [[], ['-s', 'ABORTING_MALLOC=0'], ['-s', 'ABORTING_MALLOC=1']]:
           create_test_file('main.cpp', r'''
 #include <stdio.h>
 #include <stdlib.h>
@@ -6224,18 +6224,18 @@ int main() {
   printf("managed another malloc!\n");
 }
 ''' % (pre_fail, post_fail))
-          args = [PYTHON, EMCC, 'main.cpp'] + opts
+          args = [PYTHON, EMCC, 'main.cpp'] + opts + aborting_args
           args += ['-s', 'TEST_MEMORY_GROWTH_FAILS=1'] # In this test, force memory growing to fail
           if growth:
             args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
-          if not aborting:
-            args += ['-s', 'ABORTING_MALLOC=0']
+          # growth disables aborting by default, but it can be overridden
+          aborting = 'ABORTING_MALLOC=1' in aborting_args or (not aborting_args and not growth)
           print('test_failing_alloc', args, pre_fail)
           run_process(args)
           # growth also disables aborting
-          can_manage_another = (not aborting) or growth
+          can_manage_another = not aborting
           split = '-DSPLIT' in args
-          print('can manage another:', can_manage_another, 'split:', split)
+          print('can manage another:', can_manage_another, 'split:', split, 'aborting:', aborting)
           output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if can_manage_another else None)
           if can_manage_another:
             self.assertContained('an allocation failed!\n', output)

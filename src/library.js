@@ -459,7 +459,7 @@ LibraryManager.library = {
     return {{{ DYNAMICTOP_PTR }}};
   },
 
-#if ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH
+#if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
 #if WASM

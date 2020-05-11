@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- `ALLOW_MEMORY_GROWTH` used to silently disable `ABORTING_MALLOC`. It now
+  just changes the default, which means you can pass `-s ABORTING_MALLOC=1` to
+  override the default, which was not possible before. (If you pass the flag
+  and don't want that behavior, stop passing the flag.) (#11131)
 - `emscripten_async_queue_on_thread` has been renamed to
   `emscripten_dispatch_to_thread` which no longer implies that it is async -
   the operation is in fact only async if it is sent to another thread, while it
