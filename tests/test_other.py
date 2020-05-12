@@ -10055,6 +10055,35 @@ int main () {
     self.assertGreater(lf, both - 100)
     self.assertLess(lf, both - 50)
 
+  @parameterized({
+    'normal': ([], '''\
+0.000051 => -5.123719529365189373493194580078e-05
+0.000051 => -5.123719300544352718866300544498e-05
+0.000051 => -5.123719300544352718866300544498e-05
+'''),
+    'full_long_double': (['-s', 'PRINTF_LONG_DOUBLE'], '''\
+0.000051 => -5.123719529365189373493194580078e-05
+0.000051 => -5.123719300544352718866300544498e-05
+0.000051 => -5.123719300544352710023893104250e-05
+'''),
+  })
+  @no_fastcomp('float128 is wasm backend only')
+  def test_long_double_printing(self, args, expected):
+    create_test_file('src.cpp', r'''
+#include <stdio.h>
+
+int main(void) {
+    float f = 5.123456789e-5;
+    double d = 5.123456789e-5;
+    long double ld = 5.123456789e-5;
+    printf("%f => %.30e\n", f, f  / (f - 1));
+    printf("%f => %.30e\n", d, d / (d - 1));
+    printf("%Lf => %.30Le\n", ld, ld / (ld - 1));
+}
+    ''')
+    run_process([PYTHON, EMCC, 'src.cpp'] + args)
+    self.assertContained(expected, run_js('a.out.js'))
+
   # Tests that passing -s MALLOC=none will not include system malloc() to the build.
   def test_malloc_none(self):
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])

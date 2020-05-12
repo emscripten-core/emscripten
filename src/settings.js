@@ -1786,6 +1786,12 @@ var LLD_REPORT_UNDEFINED = 0;
 // programs. This which matches the behaviour of gcc/g++ and clang/clang++.
 var DEFAULT_TO_CXX = 1;
 
+// While LLVM's wasm32 has long double = float128, we don't support printing
+// that at full precision by default. Instead we print as 64-bit doubles, which
+// saves libc code size. You can flip this option on to get a libc with full
+// long double printing precision.
+var PRINTF_LONG_DOUBLE = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
