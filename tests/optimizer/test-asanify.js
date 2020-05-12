@@ -25,3 +25,12 @@ foo = HEAPU8[1337] = 42;
 HEAP16[bar(HEAPF64[5])];
 HEAPF32[x] = HEAP32[y];
 
+// ignore js impls (which we use before the wasm is compiled)
+function _asan_js_load_1(ptr) {
+  return HEAP8[ptr];
+}
+
+// but do handle everything else
+function somethingElse() {
+  return HEAP8[ptr];
+}

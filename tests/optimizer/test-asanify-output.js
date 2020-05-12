@@ -35,3 +35,11 @@ foo = _asan_js_store_1u(1337, 42);
 _asan_js_load_2(bar(_asan_js_load_d(5)));
 
 _asan_js_store_f(x, _asan_js_load_4(y));
+
+function _asan_js_load_1(ptr) {
+ return HEAP8[ptr];
+}
+
+function somethingElse() {
+ return _asan_js_load_1(ptr);
+}
