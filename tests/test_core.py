@@ -2266,6 +2266,7 @@ Success!''')
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
+  @no_asan('local count too large for VMs')
   @no_wasm2js('extremely deep nesting, hits stack limit on some VMs')
   def test_indirectbr_many(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr_many')
@@ -6115,6 +6116,7 @@ return malloc(size);
                 includes=[path_from_root('tests', 'lua')],
                 output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
+  @no_asan('issues with freetype itself')
   @needs_make('configure script')
   @is_slow_test
   def test_freetype(self):
@@ -6241,6 +6243,7 @@ return malloc(size);
                 libraries=self.get_bullet_library(use_cmake),
                 includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
 
+  @no_asan('issues with freetype itself')
   @needs_make('depends on freetype')
   @is_slow_test
   def test_poppler(self):
@@ -6597,6 +6600,7 @@ return malloc(size);
       '''
     self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
 
+  @no_asan('autodebug logging interferes with asan')
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
@@ -8069,6 +8073,7 @@ extern "C" {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_asan('asyncify stack operations confuse asan')
   @no_fastcomp('Fibers are not implemented for fastcomp')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY', 1)
@@ -8129,6 +8134,7 @@ extern "C" {
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
+  @no_asan('asyncify stack operations confuse asan')
   @no_fastcomp('wasm-backend specific feature')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY', 1)
@@ -8141,6 +8147,7 @@ extern "C" {
     self.set_setting('ASSERTIONS', 1)
     self.do_run_in_out_file_test('tests', 'core', 'asyncify_assertions')
 
+  @no_asan('asyncify stack operations confuse asan')
   @no_fastcomp('wasm-backend specific feature')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
@@ -8226,6 +8233,7 @@ extern "C" {
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
+  @no_asan('no wasm2js support yet in asan')
   def test_wasm2js(self):
     if self.get_setting('WASM') == 0:
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8258,6 +8266,7 @@ extern "C" {
     self.assertContained('hello, world!', run_js('do_wasm2js.js'))
 
   @no_fastcomp('wasm-backend specific feature')
+  @no_asan('no wasm2js support yet in asan')
   def test_wasm2js_fallback(self):
     if self.get_setting('WASM') == 0:
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8859,6 +8868,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics')
 
+  @no_asan('incompatibility with atomics')
   @no_fastcomp('new wasm backend atomics')
   @node_pthreads
   def test_emscripten_atomics(self, js_engines):
