@@ -1830,14 +1830,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.USE_ASAN = 1
 
         shared.Settings.EXPORTED_FUNCTIONS += [
-          '_asan_js_load_1', '_asan_js_load_1u',
-          '_asan_js_load_2', '_asan_js_load_2u',
-          '_asan_js_load_4', '_asan_js_load_4u',
-          '_asan_js_load_f', '_asan_js_load_d',
-          '_asan_js_store_1', '_asan_js_store_1u',
-          '_asan_js_store_2', '_asan_js_store_2u',
-          '_asan_js_store_4', '_asan_js_store_4u',
-          '_asan_js_store_f', '_asan_js_store_d',
+          '_asan_c_load_1', '_asan_c_load_1u',
+          '_asan_c_load_2', '_asan_c_load_2u',
+          '_asan_c_load_4', '_asan_c_load_4u',
+          '_asan_c_load_f', '_asan_c_load_d',
+          '_asan_c_store_1', '_asan_c_store_1u',
+          '_asan_c_store_2', '_asan_c_store_2u',
+          '_asan_c_store_4', '_asan_c_store_4u',
+          '_asan_c_store_f', '_asan_c_store_d',
         ]
 
         shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
