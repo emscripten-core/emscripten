@@ -1358,6 +1358,8 @@ class libasan_rt_wasm(SanitizerLibrary):
 class libasan_js(Library):
   name = 'libasan_js'
 
+  cflags = ['-fsanitize=address']
+
   src_dir = ['system', 'lib']
   src_files = ['asan_js.c']
 

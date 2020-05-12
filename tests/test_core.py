@@ -8723,7 +8723,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       'AddressSanitizer: stack-buffer-overflow'
     ], ['-fno-builtin-memset']),
     'stack_buffer_overflow_js': ('test_asan_stack_buffer_overflow_js.c', [
-      'AddressSanitizer: stack-buffer-overflowz'
+      'AddressSanitizer: stack-buffer-overflow'
     ], ['-fno-builtin-memset']),
     'bitfield_unround_size': ('test_asan_bitfield_unround_size.c', [
       'AddressSanitizer: stack-buffer-overflow'
