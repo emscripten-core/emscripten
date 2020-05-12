@@ -1109,6 +1109,108 @@ function unsignPointers(ast) {
   });
 }
 
+// Replace direct HEAP* loads/stores with calls into C, in which ASan checks
+// are applied. That lets ASan cover JS too.
+function asanify(ast) {
+  function isHEAPAccess(node) {
+    return node.type === 'MemberExpression' &&
+           node.object.type === 'Identifier' &&
+           isEmscriptenHEAP(node.object.name);
+  }
+
+// recursive?
+  recursiveWalk(ast, {
+    AssignmentExpression(node, c) {
+      var target = node.left;
+      var value = node.right;
+      c(value);
+      if (isHEAPAccess(target)) {
+        // Instrument a store.
+        var ptr = target.property;
+        switch (target.object.name) {
+          case 'HEAP8': {
+            makeCallExpression(node, '_asan_js_store_1', [ptr, value]);
+            break;
+          }
+          case 'HEAPU8': {
+            makeCallExpression(node, '_asan_js_store_1u', [ptr, value]);
+            break;
+          }
+          case 'HEAP16': {
+            makeCallExpression(node, '_asan_js_store_2', [ptr, value]);
+            break;
+          }
+          case 'HEAPU16': {
+            makeCallExpression(node, '_asan_js_store_2u', [ptr, value]);
+            break;
+          }
+          case 'HEAP32': {
+            makeCallExpression(node, '_asan_js_store_4', [ptr, value]);
+            break;
+          }
+          case 'HEAPU32': {
+            makeCallExpression(node, '_asan_js_store_4u', [ptr, value]);
+            break;
+          }
+          case 'HEAPF32': {
+            makeCallExpression(node, '_asan_js_store_f', [ptr, value]);
+            break;
+          }
+          case 'HEAPF64': {
+            makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
+            break;
+          }
+          default: {}
+        }
+      } else {
+        c(target);
+      }
+    },
+    MemberExpression(node, c) {
+      c(node.property);
+      if (isHEAPAccess(node)) {
+        // Instrument a load.
+        var ptr = node.property;
+        switch (node.object.name) {
+          case 'HEAP8': {
+            makeCallExpression(node, '_asan_js_load_1', [ptr]);
+            break;
+          }
+          case 'HEAPU8': {
+            makeCallExpression(node, '_asan_js_load_1u', [ptr]);
+            break;
+          }
+          case 'HEAP16': {
+            makeCallExpression(node, '_asan_js_load_2', [ptr]);
+            break;
+          }
+          case 'HEAPU16': {
+            makeCallExpression(node, '_asan_js_load_2u', [ptr]);
+            break;
+          }
+          case 'HEAP32': {
+            makeCallExpression(node, '_asan_js_load_4', [ptr]);
+            break;
+          }
+          case 'HEAPU32': {
+            makeCallExpression(node, '_asan_js_load_4u', [ptr]);
+            break;
+          }
+          case 'HEAPF32': {
+            makeCallExpression(node, '_asan_js_load_f', [ptr]);
+            break;
+          }
+          case 'HEAPF64': {
+            makeCallExpression(node, '_asan_js_load_d', [ptr]);
+            break;
+          }
+          default: {}
+        }
+      }
+    }
+  });
+}
+
 function reattachComments(ast, comments) {
   var symbols = [];
 
@@ -1203,6 +1305,7 @@ var registry = {
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
+  asanify: asanify
 };
 
 passes.forEach(function(pass) {
