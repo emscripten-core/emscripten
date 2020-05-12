@@ -6159,6 +6159,7 @@ return malloc(size);
                 ['font.ttf', 'ea', '40', '32', '0'],
                 no_build=True)
 
+  @no_asan('local count too large for VMs')
   def test_sqlite(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
