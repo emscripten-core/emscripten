@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- `ALLOW_MEMORY_GROWTH` used to silently disable `ABORTING_MALLOC`. It now
+  just changes the default, which means you can pass `-s ABORTING_MALLOC=1` to
+  override the default, which was not possible before. (If you pass the flag
+  and don't want that behavior, stop passing the flag.) (#11131)
 - Change the factory function created by using the `MODULARIZE` build option to
   return a Promise instead of the module instance. If you use `MODULARIZE` you
   will need to wait on the returned Promise, using `await` or its `then`
