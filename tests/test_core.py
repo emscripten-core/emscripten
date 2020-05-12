@@ -8817,6 +8817,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_undefined_main(self):
     if self.get_setting('LLD_REPORT_UNDEFINED'):
       self.skipTest('LLD_REPORT_UNDEFINED does not allow implicit undefined main')
+    if self.get_setting('STRICT'):
+      self.skipTest('STRICT does not allow implicit undefined main')
     # By default in emscripten we allow main to be undefined.  Its used when
     # building library code that has no main.
     # TODO(sbc): Simplify the code by making this an opt-in feature.
@@ -8868,7 +8870,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
 
   def test_auto_detect_main(self):
-    if not self.get_setting('LLD_REPORT_UNDEFINED'):
+    if not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
       self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
       # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
@@ -8975,7 +8977,8 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
-strict = make_run('strict', emcc_args=['-O2'], settings={'DEFAULT_TO_CXX': 0})
+# Add DEFAULT_TO_CXX=0
+strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter
@@ -8989,7 +8992,6 @@ if shared.Settings.WASM_BACKEND:
 
   # Experimental modes (not tested by CI)
   lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
-  strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

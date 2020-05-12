@@ -12,7 +12,7 @@ int main()
   EM_ASM(
     FS.writeFile('testfile', 'a=1\nb=2\n');
     var stream = FS.open('testfile', 'a');
-    fd = FS.write(stream, new Uint8Array([99, 61, 51]) /* c=3 */, 0, 3);
+    var fd = FS.write(stream, new Uint8Array([99, 61, 51]) /* c=3 */, 0, 3);
 
     // check invalid whence
     var ex;
