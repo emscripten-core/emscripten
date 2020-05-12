@@ -1588,11 +1588,11 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     # JS math must come before anything else, so that it overrides the normal
     # libc math.
     if shared.Settings.JS_MATH:
-      libs_to_link = [(system_libs_map['libjsmath'].get_path(), True)] + libs_to_link
+      add_library(system_libs_map['libjsmath'])
 
     # to override the normal libc printf, we must come before it
     if shared.Settings.PRINTF_LONG_DOUBLE:
-      libs_to_link = [(system_libs_map['libprintf_long_double'].get_path(), True)] + libs_to_link
+      add_library(system_libs_map['libprintf_long_double'])
 
     add_library(system_libs_map['libc'])
     add_library(system_libs_map['libcompiler_rt'])
