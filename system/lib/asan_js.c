@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 The Emscripten Authors.  All rights reserved.
+ * Copyright 2020 The Emscripten Authors.  All rights reserved.
  * Emscripten is available under two separate licenses, the MIT license and the
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
@@ -11,8 +11,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
-extern "C" {
 
 // Note that we receive *shifted* values here. That is,
 //
@@ -88,6 +86,4 @@ float asan_c_store_f(uintptr_t shifted, float val) {
 double asan_c_store_d(uintptr_t shifted, double val) {
   double* ptr = (double*)(shifted << 3);
   return *ptr = val;
-}
-
 }

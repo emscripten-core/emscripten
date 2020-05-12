@@ -1355,6 +1355,13 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
+class libasan_js(Library):
+  name = 'libasan_js'
+
+  src_dir = ['system', 'lib']
+  src_files = ['asan_js.c']
+
+
 # This library is used when STANDALONE_WASM is set. In that mode, we don't
 # want to depend on JS, and so this library contains implementations of
 # things that we'd normally do in JS. That includes some general things
@@ -1627,6 +1634,7 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       force_include.add('libasan_rt_wasm')
       add_library(system_libs_map['libasan_rt_wasm'])
       add_library(system_libs_map['libubsan_rt_wasm'])
+      add_library(system_libs_map['libasan_js'])
 
     if shared.Settings.USE_LSAN or shared.Settings.USE_ASAN:
       add_library(system_libs_map['liblsan_common_rt_wasm'])
