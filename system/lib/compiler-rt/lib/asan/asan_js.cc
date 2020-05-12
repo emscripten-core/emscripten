@@ -8,19 +8,22 @@
 // Helper functions for JavaScript: JS calls these to do memory operations, and
 // we get ASan coverage that way (as we can't see direct typed array view access
 // in JS).
-//
-// Note that we check for alignment here, in order to not change behavior, as in
-// JS an unaligned operation would fail.
 
-#include <emscripten.h>
 #include <stddef.h>
 #include <stdint.h>
 
 extern "C" {
 
-EM_JS(void, abort_on_bad_alignment, (void* ptr, int size), {
-  abort("unaligned pointer access on " + ptr + " of size " + size);
-});
+// Note that we receive *shifted* values here. That is,
+//
+//  HEAP32[x >> 2]
+//
+// is turned into
+//
+//  asan_js_load_4(x >> 2);
+//
+// and therefore we must shift to get the actual pointer. Doing it this way
+// lets us behave the same as JS would wrt shifts and alignment.
 
 int32_t asan_js_load_1(int8_t* ptr) {
   return *ptr;
@@ -28,28 +31,28 @@ int32_t asan_js_load_1(int8_t* ptr) {
 uint32_t asan_js_load_1u(uint8_t* ptr) {
   return *ptr;
 }
-int32_t asan_js_load_2(int16_t* ptr) {
-  if (size_t(ptr) & 1) abort_on_bad_alignment(ptr, 2);
+int32_t asan_js_load_2(uintptr_t shifted) {
+  int16_t* ptr = (int16_t*)(shifted << 1);
   return *ptr;
 }
-uint32_t asan_js_load_2u(uint16_t* ptr) {
-  if (size_t(ptr) & 1) abort_on_bad_alignment(ptr, 2);
+uint32_t asan_js_load_2u(uintptr_t shifted) {
+  uint16_t* ptr = (uint16_t*)(shifted << 1);
   return *ptr;
 }
-int32_t asan_js_load_4(int32_t* ptr) {
-  if (size_t(ptr) & 3) abort_on_bad_alignment(ptr, 4);
+int32_t asan_js_load_4(uintptr_t shifted) {
+  int32_t* ptr = (int32_t*)(shifted << 2);
   return *ptr;
 }
-uint32_t asan_js_load_4u(uint32_t* ptr) {
-  if (size_t(ptr) & 3) abort_on_bad_alignment(ptr, 4);
+uint32_t asan_js_load_4u(uintptr_t shifted) {
+  uint32_t* ptr = (uint32_t*)(shifted << 2);
   return *ptr;
 }
-float asan_js_load_f(float* ptr) {
-  if (size_t(ptr) & 3) abort_on_bad_alignment(ptr, 4);
+float asan_js_load_f(uintptr_t shifted) {
+  float* ptr = (float*)(shifted << 2);
   return *ptr;
 }
-double asan_js_load_d(double* ptr) {
-  if (size_t(ptr) & 7) abort_on_bad_alignment(ptr, 8);
+double asan_js_load_d(uintptr_t shifted) {
+  double* ptr = (double*)(shifted << 3);
   return *ptr;
 }
 
@@ -62,28 +65,28 @@ int32_t asan_js_store_1(int8_t* ptr, int8_t val) {
 uint32_t asan_js_store_1u(uint8_t* ptr, uint8_t val) {
   return *ptr = val;
 }
-int32_t asan_js_store_2(int16_t* ptr, int16_t val) {
-  if (size_t(ptr) & 1) abort_on_bad_alignment(ptr, 2);
+int32_t asan_js_store_2(uintptr_t shifted, int16_t val) {
+  int16_t* ptr = (int16_t*)(shifted << 1);
   return *ptr = val;
 }
-uint32_t asan_js_store_2u(uint16_t* ptr, uint16_t val) {
-  if (size_t(ptr) & 1) abort_on_bad_alignment(ptr, 2);
+uint32_t asan_js_store_2u(uintptr_t shifted, uint16_t val) {
+  uint16_t* ptr = (uint16_t*)(shifted << 1);
   return *ptr = val;
 }
-int32_t asan_js_store_4(int32_t* ptr, int32_t val) {
-  if (size_t(ptr) & 3) abort_on_bad_alignment(ptr, 4);
+int32_t asan_js_store_4(uintptr_t shifted, int32_t val) {
+  int32_t* ptr = (int32_t*)(shifted << 2);
   return *ptr = val;
 }
-uint32_t asan_js_store_4u(uint32_t* ptr, uint32_t val) {
-  if (size_t(ptr) & 3) abort_on_bad_alignment(ptr, 4);
+uint32_t asan_js_store_4u(uintptr_t shifted, uint32_t val) {
+  uint32_t* ptr = (uint32_t*)(shifted << 2);
   return *ptr = val;
 }
-float asan_js_store_f(float* ptr, float val) {
-  if (size_t(ptr) & 3) abort_on_bad_alignment(ptr, 4);
+float asan_js_store_f(uintptr_t shifted, float val) {
+  float* ptr = (float*)(shifted << 2);
   return *ptr = val;
 }
-double asan_js_store_d(double* ptr, double val) {
-  if (size_t(ptr) & 7) abort_on_bad_alignment(ptr, 8);
+double asan_js_store_d(uintptr_t shifted, double val) {
+  double* ptr = (double*)(shifted << 3);
   return *ptr = val;
 }
 

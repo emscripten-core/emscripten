@@ -157,3 +157,35 @@ function ftfault() {
   abort('Function table mask error');
 }
 #endif
+
+#if USE_ASAN
+// C versions of asan_{load|store}_* will be used from compiled code, which have
+// ASan instrumentation on them. However, until the wasm module is ready, we
+// must access things directly.
+
+/** @suppress{duplicate} */
+function _asan_load_1(ptr) {
+  return HEAP8[ptr];
+}
+/** @suppress{duplicate} */
+function _asan_load_1u(ptr) {
+  return HEAPU8[ptr];
+}
+/** @suppress{duplicate} */
+function _asan_load_2(ptr) {
+  return HEAP16[ptr];
+}
+/** @suppress{duplicate} */
+function _asan_load_2u(ptr) {
+  return HEAPU16[ptr];
+}
+/** @suppress{duplicate} */
+function _asan_load_4(ptr) {
+  return HEAP32[ptr];
+}
+/** @suppress{duplicate} */
+function _asan_load_5u(ptr) {
+  return HEAPU32[ptr];
+}
+
+#endif
