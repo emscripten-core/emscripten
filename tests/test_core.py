@@ -1845,11 +1845,12 @@ int main() {
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
-    # test EXPORT_ALL
-    self.set_setting('EXPORTED_FUNCTIONS', [])
-    self.set_setting('EXPORT_ALL', 1)
-    self.set_setting('LINKABLE', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
+    if '-fsanitize=address' not in self.emcc_args:
+      # test EXPORT_ALL
+      self.set_setting('EXPORTED_FUNCTIONS', [])
+      self.set_setting('EXPORT_ALL', 1)
+      self.set_setting('LINKABLE', 1)
+      self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
@@ -2045,6 +2046,8 @@ int main(int argc, char **argv) {
   def test_em_js(self, args):
     if 'MAIN_MODULE' in args and self.get_setting('WASM') == 0:
       self.skipTest('main module support for non-wasm')
+    if '-fsanitize=address' in self.emcc_args:
+      self.skipTest('no dynamic library support in asan yet')
     self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=["_main","_malloc"]']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
@@ -2173,6 +2176,7 @@ int main(int argc, char **argv) {
     'nogrow': (['-s', 'ALLOW_MEMORY_GROWTH=0'],),
     'grow': (['-s', 'ALLOW_MEMORY_GROWTH=1'],)
   })
+  @no_asan('requires more memory when growing')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
@@ -8229,6 +8233,7 @@ extern "C" {
         self.assertTrue(f.read()[-1] != b'\0')
 
   @no_fastcomp('wasm-backend specific feature')
+  @no_asan('no wasm2js support yet in asan')
   def test_maybe_wasm2js(self):
     if self.get_setting('WASM') == 0:
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
