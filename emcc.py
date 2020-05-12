@@ -3323,6 +3323,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.CAN_ADDRESS_2GB:
     final = shared.Building.use_unsigned_pointers_in_js(final)
 
+  if shared.Settings.USE_ASAN:
+    final = shared.Building.instrument_js_for_asan(final)
+
   if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
