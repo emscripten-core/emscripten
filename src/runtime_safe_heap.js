@@ -190,7 +190,7 @@ function _asan_js_load_4(ptr) {
 }
 /** @suppress{duplicate} */
 function _asan_js_load_4u(ptr) {
-  if (runtimeInitialized) return _asan_c_load_4u(ptr);
+  if (runtimeInitialized) return _asan_c_load_4u(ptr) >>> 0;
   return HEAPU32[ptr];
 }
 /** @suppress{duplicate} */
@@ -231,7 +231,7 @@ function _asan_js_store_4(ptr, val) {
 }
 /** @suppress{duplicate} */
 function _asan_js_store_4u(ptr, val) {
-  if (runtimeInitialized) return _asan_c_store_4u(ptr, val);
+  if (runtimeInitialized) return _asan_c_store_4u(ptr, val) >>> 0;
   return HEAPU32[ptr] = val;
 }
 /** @suppress{duplicate} */
