@@ -155,6 +155,12 @@ def also_with_noderawfs(func):
   return decorated
 
 
+def can_do_standalone(self):
+  return self.is_wasm_backend() and self.get_setting('WASM') and \
+         not self.get_setting('SAFE_STACK') and \
+         '-fsanitize=address' not in self.emcc_args
+
+
 # Also run the test with -s STANDALONE. If we have wasm runtimes, also run in
 # them (regardless we also check that the js+wasm combo works in js vms).
 def also_with_standalone_wasm(func):
@@ -162,7 +168,7 @@ def also_with_standalone_wasm(func):
     func(self)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
-    if self.is_wasm_backend() and self.get_setting('WASM'):
+    if can_do_standalone(self):
       print('standalone')
       self.set_setting('STANDALONE_WASM', 1)
       func(self)
@@ -178,7 +184,7 @@ def also_with_impure_standalone_wasm(func):
     func(self)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
-    if self.is_wasm_backend() and self.get_setting('WASM'):
+    if can_do_standalone(self):
       print('standalone (impure; no wasm runtimes)')
       self.set_setting('STANDALONE_WASM', 1)
       wasm_engines = shared.WASM_ENGINES
@@ -199,7 +205,7 @@ def also_with_only_standalone_wasm(func):
     func(self)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
-    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+    if can_do_standalone(self):
       print('standalone (only; no js runtimes)')
       self.set_setting('STANDALONE_WASM', 1)
       js_engines = shared.JS_ENGINES
@@ -650,6 +656,7 @@ class TestCoreBase(RunnerCore):
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
 
+  @no_asan('asan errors on corner cases we check')
   def test_aligned_alloc(self):
     self.do_run(open(path_from_root('tests', 'test_aligned_alloc.c')).read(), '', assert_returncode=0)
 
