@@ -3412,7 +3412,7 @@ V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 if not CACHE:
-  CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+  CACHE = path_from_root('cache')
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.

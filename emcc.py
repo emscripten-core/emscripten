@@ -78,6 +78,7 @@ ASSEMBLY_ENDINGS = ('.ll', '.s')
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
 WASM_ENDINGS = ('.wasm',)
 
+# Supported LLD flags which we will pass through to the linker.
 SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
     '-(', '-)',
@@ -85,7 +86,8 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive'
 )
 
-# Maps to true if the flag takes an argument
+# Unsupported LLD flags which we will ignore.
+# Maps to true if the flag takes an argument.
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
     '-bind_at_load': False,
@@ -95,6 +97,7 @@ UNSUPPORTED_LLD_FLAGS = {
     # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
     # in order to aid build systems that want to pass these flags.
     '-soname': True,
+    '--allow-shlib-undefined': False,
     '-rpath': True,
     '-rpath-link': True
 }
@@ -1326,6 +1329,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+      # in MINIMAL_RUNTIME we may not need to emit the Promise code, as the
+      # HTML output creates a singleton instance, and it does so without the
+      # Promise. However, in Pthreads mode the Promise is used for worker
+      # creation.
+      if shared.Settings.MINIMAL_RUNTIME and final_suffix == '.html' and \
+         not shared.Settings.USE_PTHREADS:
+        shared.Settings.EXPORT_READY_PROMISE = 0
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1536,9 +1546,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs += ['-pthread']
         # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
         # manually export them
+
         shared.Settings.EXPORTED_FUNCTIONS += [
           '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
-          '__register_pthread_ptr', '_pthread_self',
+          'registerPthreadPtr', '_pthread_self',
           '___emscripten_pthread_data_constructor', '_emscripten_futex_wake']
 
       # set location of worker.js
@@ -3419,17 +3430,22 @@ def modularize():
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
 
+  return_value = shared.Settings.EXPORT_NAME + '.ready'
+  if not shared.Settings.EXPORT_READY_PROMISE:
+    return_value = '{}'
+
   src = '''
 function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
-  return %(EXPORT_NAME)s.ready;
+  return %(return_value)s
 }
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,
+    'return_value': return_value
   }
 
   if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS:

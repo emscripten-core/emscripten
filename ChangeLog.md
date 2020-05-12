@@ -17,6 +17,23 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Change the factory function created by using the `MODULARIZE` build option to
+  return a Promise instead of the module instance. If you use `MODULARIZE` you
+  will need to wait on the returned Promise, using `await` or its `then`
+  callback, to get the module instance (#10697). This fixes some long-standing
+  bugs with that option which have been reported multiple times, but is a
+  breaking change - sorry about that. See detailed examples for the
+  current usage in `src/settings.js` on `MODULARIZE`.
+- A new `PRINTF_LONG_DOUBLE` option allows printf to print long doubles at full
+  float128 precision. (#11130)
+- `emscripten_async_queue_on_thread` has been renamed to
+  `emscripten_dispatch_to_thread` which no longer implies that it is async -
+  the operation is in fact only async if it is sent to another thread, while it
+  is sync if on the same one. A new `emscripten_dispatch_to_thread_async`
+  function is added which is always async.
+- The emscripten cache now lives in a directory called `cache` at the root
+  of the emscripten tree by default.  The `CACHE` config setting and the
+  `EM_CACHE` environment variable can be used to override this (#11126).
 - Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
   environment variable.
 - Remove `--cache` command line arg.  The `CACHE` config setting and the
@@ -33,10 +50,6 @@ Current Trunk
 
 1.39.15: 05/06/2020
 -------------------
-- Change the factory function created by using the `MODULARIZE` build option to
-  return a Promise instead of the module instance. If you use `MODULARIZE` you
-  will need to wait on the returned Promise, using `await` or its `then`
-  callback, to get the module instance (#10697).
 - Add `--extern-pre-js` and `--extern-post-js` emcc flags. Files provided there
   are prepended/appended to the final JavaScript output, *after* all other
   work has been done, including optimization, optional `MODULARIZE`-ation,
