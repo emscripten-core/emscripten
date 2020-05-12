@@ -43,3 +43,7 @@ function _asan_js_load_1(ptr) {
 function somethingElse() {
  return _asan_js_load_1(ptr);
 }
+
+HEAP8.length;
+
+_asan_js_load_1(length);

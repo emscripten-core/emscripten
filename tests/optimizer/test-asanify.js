@@ -34,3 +34,7 @@ function _asan_js_load_1(ptr) {
 function somethingElse() {
   return HEAP8[ptr];
 }
+
+// ignore a.X
+HEAP8.length;
+HEAP8[length];

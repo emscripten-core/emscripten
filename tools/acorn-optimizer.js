@@ -1115,6 +1115,7 @@ function asanify(ast) {
   function isHEAPAccess(node) {
     return node.type === 'MemberExpression' &&
            node.object.type === 'Identifier' &&
+           node.computed && // notice a[X] but not a.X
            isEmscriptenHEAP(node.object.name);
   }
 
@@ -1175,7 +1176,9 @@ function asanify(ast) {
     },
     MemberExpression(node, c) {
       c(node.property);
-      if (isHEAPAccess(node)) {
+      if (!isHEAPAccess(node)) {
+        c(node.object);
+      } else {
         // Instrument a load.
         var ptr = node.property;
         switch (node.object.name) {
