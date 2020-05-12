@@ -1363,6 +1363,9 @@ class libasan_js(Library):
   src_dir = ['system', 'lib']
   src_files = ['asan_js.c']
 
+  def can_build(self):
+    return super(libasan_js, self).can_build() and shared.Settings.WASM_BACKEND
+
 
 # This library is used when STANDALONE_WASM is set. In that mode, we don't
 # want to depend on JS, and so this library contains implementations of
