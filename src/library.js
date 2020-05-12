@@ -463,15 +463,19 @@ LibraryManager.library = {
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
 #if WASM
+#if ALLOW_MEMORY_GROWTH
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). If you want malloc to return NULL (0) instead of this abort, do not link with -s ABORTING_MALLOC=1 (that is, the default when growth is enabled is to not abort, but you have overridden that)');
+#else // ALLOW_MEMORY_GROWTH
     abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s INITIAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
-#else
+#endif // ALLOW_MEMORY_GROWTH
+#else / /WASM
     abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s INITIAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.INITIAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
-#endif
-#else
+#endif // WASM
+#else // ASSERTIONS
     abort('OOM');
-#endif
+#endif // ASSERTIONS
   },
-#endif
+#endif // ABORTING_MALLOC
 
 #if TEST_MEMORY_GROWTH_FAILS
   $emscripten_realloc_buffer: function(size) {

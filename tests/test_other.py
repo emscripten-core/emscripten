@@ -6248,9 +6248,14 @@ int main() {
           else:
             # we should see an abort
             self.assertContained('abort(Cannot enlarge memory arrays', output)
-            self.assertContained(('higher than the current value 16777216,', 'higher than the current value 33554432,'), output)
-            self.assertContained('compile with  -s ALLOW_MEMORY_GROWTH=1 ', output)
-            self.assertContained('compile with  -s ABORTING_MALLOC=0 ', output)
+            if growth:
+              # when growth is enabled, the default is to not abort, so just explain that
+              self.assertContained('If you want malloc to return NULL (0) instead of this abort, do not link with -s ABORTING_MALLOC=1', output)
+            else:
+              # when growth is not enabled, suggest 3 possible solutions (start with more memory, allow growth, or don't abort)
+              self.assertContained(('higher than the current value 16777216,', 'higher than the current value 33554432,'), output)
+              self.assertContained('compile with  -s ALLOW_MEMORY_GROWTH=1 ', output)
+              self.assertContained('compile with  -s ABORTING_MALLOC=0 ', output)
 
   def test_failing_growth_2gb(self):
     create_test_file('test.cpp', r'''
