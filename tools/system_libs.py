@@ -1585,6 +1585,15 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
 
     sanitize = shared.Settings.USE_LSAN or shared.Settings.USE_ASAN or shared.Settings.UBSAN_RUNTIME
 
+    # JS math must come before anything else, so that it overrides the normal
+    # libc math.
+    if shared.Settings.JS_MATH:
+      libs_to_link = [(system_libs_map['libjsmath'].get_path(), True)] + libs_to_link
+
+    # to override the normal libc printf, we must come before it
+    if shared.Settings.PRINTF_LONG_DOUBLE:
+      libs_to_link = [(system_libs_map['libprintf_long_double'].get_path(), True)] + libs_to_link
+
     add_library(system_libs_map['libc'])
     add_library(system_libs_map['libcompiler_rt'])
     if not shared.Settings.WASM_BACKEND and not shared.Settings.MINIMAL_RUNTIME:
@@ -1646,15 +1655,6 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
   # is first then it would "win", breaking exception throwing from those string
   # header methods. To avoid that, we link libc++abi last.
   libs_to_link.sort(key=lambda x: x[0].endswith('libc++abi.bc'))
-
-  # JS math must come before anything else, so that it overrides the normal
-  # libc math.
-  if shared.Settings.JS_MATH:
-    libs_to_link = [(system_libs_map['libjsmath'].get_path(), True)] + libs_to_link
-
-  # to override the normal libc printf, we must come before it
-  if shared.Settings.PRINTF_LONG_DOUBLE:
-    libs_to_link = [(system_libs_map['libprintf_long_double'].get_path(), True)] + libs_to_link
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # Building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
