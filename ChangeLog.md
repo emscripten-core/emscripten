@@ -24,6 +24,8 @@ Current Trunk
   bugs with that option which have been reported multiple times, but is a
   breaking change - sorry about that. See detailed examples for the
   current usage in `src/settings.js` on `MODULARIZE`.
+- A new `PRINTF_LONG_DOUBLE` option allows printf to print long doubles at full
+  float128 precision. (#11130)
 - `emscripten_async_queue_on_thread` has been renamed to
   `emscripten_dispatch_to_thread` which no longer implies that it is async -
   the operation is in fact only async if it is sent to another thread, while it
