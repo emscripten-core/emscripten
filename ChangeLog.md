@@ -24,13 +24,27 @@ Current Trunk
   bugs with that option which have been reported multiple times, but is a
   breaking change - sorry about that. See detailed examples for the
   current usage in `src/settings.js` on `MODULARIZE`.
+- `emscripten_async_queue_on_thread` has been renamed to
+  `emscripten_dispatch_to_thread` which no longer implies that it is async -
+  the operation is in fact only async if it is sent to another thread, while it
+  is sync if on the same one. A new `emscripten_dispatch_to_thread_async`
+  function is added which is always async.
+- The emscripten cache now lives in a directory called `cache` at the root
+  of the emscripten tree by default.  The `CACHE` config setting and the
+  `EM_CACHE` environment variable can be used to override this (#11126).
 - Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
-  environment variable or `--cache` commandline flag.
+  environment variable.
 - Remove `--cache` command line arg.  The `CACHE` config setting and the
   `EM_CACHE` environment variable can be used to control this.
 - Compiling to a file with no suffix will now generate an executable (JS) rather
   than an object file.  This means simple cases like `emcc -o foo foo.c` do the
   expected thing and generate an executable.
+- System libraries such as libc and libc++ are now included by default at
+  link time rather than selectively included based on the symbols used in the
+  input object files.  For small programs that don't use any system libraries
+  this might result in slightly slower link times with the old fastcomp
+  backend.  In order to exclude these libraries build with `-nostdlib` and/or
+  `-nostdlib++`.
 
 1.39.15: 05/06/2020
 -------------------

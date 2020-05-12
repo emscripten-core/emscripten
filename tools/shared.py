@@ -1669,7 +1669,7 @@ class Building(object):
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
-        logger.debug('adding object %s to link' % (f))
+        logger.debug('adding object %s to link (forced: %d)' % (f, force_add))
         # Update resolved_symbols table with newly resolved symbols
         resolved_symbols.update(provided)
         # Update unresolved_symbols table by adding newly unresolved symbols and
@@ -1692,7 +1692,8 @@ class Building(object):
         for content in contents:
           if content in added_contents:
             continue
-          # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
+          # Link in the .o if it provides symbols, *or* this is a singleton archive (which is
+          # apparently an exception in gcc ld)
           if consider_object(content, force_add=force_add):
             added_contents.add(content)
             loop_again = True
@@ -3411,7 +3412,7 @@ V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 if not CACHE:
-  CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+  CACHE = path_from_root('cache')
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.

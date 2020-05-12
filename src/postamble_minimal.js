@@ -56,12 +56,12 @@ function initRuntime(asm) {
 #endif
   Module['HEAPU32'] = HEAPU32;
   Module['dynCall_ii'] = dynCall_ii;
-  Module['__register_pthread_ptr'] = __register_pthread_ptr;
+  Module['registerPthreadPtr'] = registerPthreadPtr;
   Module['_pthread_self'] = _pthread_self;
 
   if (ENVIRONMENT_IS_PTHREAD) return;
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-  __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+  registerPthreadPtr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
   _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
 #endif
 

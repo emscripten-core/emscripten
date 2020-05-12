@@ -78,6 +78,7 @@ ASSEMBLY_ENDINGS = ('.ll', '.s')
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
 WASM_ENDINGS = ('.wasm',)
 
+# Supported LLD flags which we will pass through to the linker.
 SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
     '-(', '-)',
@@ -85,7 +86,8 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive'
 )
 
-# Maps to true if the flag takes an argument
+# Unsupported LLD flags which we will ignore.
+# Maps to true if the flag takes an argument.
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
     '-bind_at_load': False,
@@ -95,6 +97,7 @@ UNSUPPORTED_LLD_FLAGS = {
     # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
     # in order to aid build systems that want to pass these flags.
     '-soname': True,
+    '--allow-shlib-undefined': False,
     '-rpath': True,
     '-rpath-link': True
 }
@@ -1543,9 +1546,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs += ['-pthread']
         # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
         # manually export them
+
         shared.Settings.EXPORTED_FUNCTIONS += [
           '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
-          '__register_pthread_ptr', '_pthread_self',
+          'registerPthreadPtr', '_pthread_self',
           '___emscripten_pthread_data_constructor', '_emscripten_futex_wake']
 
       # set location of worker.js
@@ -2085,6 +2089,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         clang_compiler = CC
 
       def is_link_flag(flag):
+        if flag.startswith('-nostdlib'):
+          return True
         return flag.startswith(('-l', '-L', '-Wl,'))
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
@@ -2303,7 +2309,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
         extra_files_to_link = system_libs.get_ports(shared.Settings)
         if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-          extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
+          # TODO(sbc): Only set link_as_cxx if use_cxx
+          link_as_cxx = '-nostdlib++' not in newargs
+          extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, link_as_cxx, forced=forced_stdlibs)
         linker_inputs += extra_files_to_link
 
     # exit block 'calculate system libraries'
