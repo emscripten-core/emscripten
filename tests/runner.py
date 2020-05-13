@@ -403,6 +403,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.skipTest('no dlfcn with memory growth (without wasm)')
     if self.get_setting('WASM_BACKEND') and not self.get_setting('WASM'):
       self.skipTest('no dynamic library support in wasm2js yet')
+    if '-fsanitize=address' in self.emcc_args:
+      self.skipTest('no dynamic library support in asan yet')
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or \
