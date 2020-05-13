@@ -43,8 +43,10 @@ void abort_message(const char* format, ...)
     // Show a very concise error message in a non-debug build, just where we
     // are, and the format string. This is often fully sufficient, e.g.,
     // for an error like
-    // "__cxa_guard_acquire detected recursive initialization", and it avoids
-    // linking in vfprintf stdio support.
+    //   "__cxa_guard_acquire detected recursive initialization"
+    // and it avoids linking in vfprintf stdio support. Note that we also
+    // always have a good stack trace in a js+wasm environment, so these
+    // errors should be fairly clear anyhow.
     emscripten_console_error("abort_message");
     emscripten_console_error(format);
 #else
