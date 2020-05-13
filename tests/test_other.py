@@ -6185,7 +6185,7 @@ int main() {
       ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0']),
     ]:
       for growth in [0, 1]:
-        for aborting in [0, 1]:
+        for aborting_args in [[], ['-s', 'ABORTING_MALLOC=0'], ['-s', 'ABORTING_MALLOC=1']]:
           create_test_file('main.cpp', r'''
 #include <stdio.h>
 #include <stdlib.h>
@@ -6226,18 +6226,18 @@ int main() {
   printf("managed another malloc!\n");
 }
 ''' % (pre_fail, post_fail))
-          args = [PYTHON, EMCC, 'main.cpp'] + opts
+          args = [PYTHON, EMCC, 'main.cpp'] + opts + aborting_args
           args += ['-s', 'TEST_MEMORY_GROWTH_FAILS=1'] # In this test, force memory growing to fail
           if growth:
             args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
-          if not aborting:
-            args += ['-s', 'ABORTING_MALLOC=0']
+          # growth disables aborting by default, but it can be overridden
+          aborting = 'ABORTING_MALLOC=1' in aborting_args or (not aborting_args and not growth)
           print('test_failing_alloc', args, pre_fail)
           run_process(args)
           # growth also disables aborting
-          can_manage_another = (not aborting) or growth
+          can_manage_another = not aborting
           split = '-DSPLIT' in args
-          print('can manage another:', can_manage_another, 'split:', split)
+          print('can manage another:', can_manage_another, 'split:', split, 'aborting:', aborting)
           output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if can_manage_another else None)
           if can_manage_another:
             self.assertContained('an allocation failed!\n', output)
@@ -6250,9 +6250,14 @@ int main() {
           else:
             # we should see an abort
             self.assertContained('abort(Cannot enlarge memory arrays', output)
-            self.assertContained(('higher than the current value 16777216,', 'higher than the current value 33554432,'), output)
-            self.assertContained('compile with  -s ALLOW_MEMORY_GROWTH=1 ', output)
-            self.assertContained('compile with  -s ABORTING_MALLOC=0 ', output)
+            if growth:
+              # when growth is enabled, the default is to not abort, so just explain that
+              self.assertContained('If you want malloc to return NULL (0) instead of this abort, do not link with -s ABORTING_MALLOC=1', output)
+            else:
+              # when growth is not enabled, suggest 3 possible solutions (start with more memory, allow growth, or don't abort)
+              self.assertContained(('higher than the current value 16777216,', 'higher than the current value 33554432,'), output)
+              self.assertContained('compile with  -s ALLOW_MEMORY_GROWTH=1 ', output)
+              self.assertContained('compile with  -s ABORTING_MALLOC=0 ', output)
 
   def test_failing_growth_2gb(self):
     create_test_file('test.cpp', r'''

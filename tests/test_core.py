@@ -1857,7 +1857,8 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
     if '-fsanitize=address' not in self.emcc_args:
-      # test EXPORT_ALL
+      # test EXPORT_ALL (this is not compatible with asan, which doesn't
+      # support dynamic linking at all or the LINKING flag)
       self.set_setting('EXPORTED_FUNCTIONS', [])
       self.set_setting('EXPORT_ALL', 1)
       self.set_setting('LINKABLE', 1)
@@ -5389,14 +5390,10 @@ main( int argv, char ** argc ) {
 
   def test_fs_mmap(self):
     orig_compiler_opts = self.emcc_args[:]
-    create_test_file('pre.js', '''
-      // ignore leaked mmaps
-      Module['ASAN_OPTIONS'] = 'detect_leaks=0';
-    ''')
     for fs in ['MEMFS', 'NODEFS']:
       src = path_from_root('tests', 'fs', 'test_mmap.c')
       out = path_from_root('tests', 'fs', 'test_mmap.out')
-      self.emcc_args = orig_compiler_opts + ['-D' + fs, '--pre-js', 'pre.js']
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
       self.do_run_from_file(src, out)
@@ -8858,6 +8855,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_undefined_main(self):
     if self.get_setting('LLD_REPORT_UNDEFINED'):
       self.skipTest('LLD_REPORT_UNDEFINED does not allow implicit undefined main')
+    if self.get_setting('STRICT'):
+      self.skipTest('STRICT does not allow implicit undefined main')
     # By default in emscripten we allow main to be undefined.  Its used when
     # building library code that has no main.
     # TODO(sbc): Simplify the code by making this an opt-in feature.
@@ -8910,7 +8909,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
 
   def test_auto_detect_main(self):
-    if not self.get_setting('LLD_REPORT_UNDEFINED'):
+    if not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
       self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
       # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
@@ -9017,7 +9016,8 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
-strict = make_run('strict', emcc_args=['-O2'], settings={'DEFAULT_TO_CXX': 0})
+# Add DEFAULT_TO_CXX=0
+strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter
@@ -9031,7 +9031,6 @@ if shared.Settings.WASM_BACKEND:
 
   # Experimental modes (not tested by CI)
   lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
-  strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
