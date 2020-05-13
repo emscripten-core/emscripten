@@ -12,7 +12,6 @@ __isLeapYear
 __memory_base
 __table_base
 _abort
-_emscripten_console_error
 _emscripten_get_heap_size
 _emscripten_memcpy_big
 _emscripten_resize_heap
@@ -23,6 +22,7 @@ _fd_write
 _getenv
 _llvm_stackrestore
 _llvm_stacksave
+_llvm_trap
 _strftime
 _strftime_l
 abort
