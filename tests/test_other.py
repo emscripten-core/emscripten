@@ -8394,6 +8394,17 @@ int main() {
   def test_metadce_mem(self, filename, *args):
     self.run_metadce_test(filename, *args)
 
+  @parameterized({
+    'O3':                 ('libcxxabi_message.cpp', ['-O3'],
+                           [], [], 128), # noqa
+    # argc/argv support code etc. is in the wasm
+    'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
+                           [], [], 216), # noqa
+  })
+  @no_fastcomp()
+  def test_metadce_libcxxabi_message(self, filename, *args):
+    self.run_metadce_test(filename, *args)
+
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
     exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
