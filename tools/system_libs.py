@@ -824,6 +824,8 @@ class libc_environ(libc):
       return files_in_path(
           path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
+    else:
+      return []
 
 
 class libprintf_long_double(libc):
