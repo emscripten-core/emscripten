@@ -157,8 +157,8 @@ def also_with_noderawfs(func):
 
 def can_do_standalone(self):
   return self.is_wasm_backend() and self.get_setting('WASM') and \
-         not self.get_setting('SAFE_STACK') and \
-         '-fsanitize=address' not in self.emcc_args
+      not self.get_setting('SAFE_STACK') and \
+      '-fsanitize=address' not in self.emcc_args
 
 
 # Also run the test with -s STANDALONE. If we have wasm runtimes, also run in
