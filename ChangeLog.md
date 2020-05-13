@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Simplify Fetch C API error handling: we used to check if the error code was
+  0 and switch that to 404, but that only really helps `file://` URLs, which
+  are not very useful for testing anyhow for other reasons (like not working
+  in chrome), and it made things more complex. The behavior has been changed
+  to be simpler and just leave the browser's error code as it is.
 - `ALLOW_MEMORY_GROWTH` used to silently disable `ABORTING_MALLOC`. It now
   just changes the default, which means you can pass `-s ABORTING_MALLOC=1` to
   override the default, which was not possible before. (If you pass the flag
