@@ -749,8 +749,8 @@ var LibraryEmbind = {
             for (var i = 0; i <= length; ++i) {
                 var currentBytePtr = value + 4 + i * charSize;
                 if (HEAP[currentBytePtr >> shift] == 0 || i == length) {
-                    var maxRead = (currentBytePtr - decodeStartPtr) / charSize;
-                    var stringSegment = decodeString(decodeStartPtr, maxRead);
+                    var maxReadBytes = currentBytePtr - decodeStartPtr;
+                    var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
                     if (str === undefined) {
                         str = stringSegment;
                     } else {
