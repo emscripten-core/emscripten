@@ -244,6 +244,7 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
+  'strict'
 ]
 
 if shared.Settings.WASM_BACKEND:

@@ -1647,14 +1647,10 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     else:
       add_library(system_libs_map['libsockets'])
 
-  libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
-
-  # libc++abi and libc++ *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
-  # exceptions, but since the string methods in the headers are *weakly* linked, then
-  # we might have exception-supporting versions of them from elsewhere, and if libc++abi
-  # is first then it would "win", breaking exception throwing from those string
-  # header methods. To avoid that, we link libc++abi last.
-  libs_to_link.sort(key=lambda x: x[0].endswith('libc++abi.bc'))
+  if not shared.Settings.WASM_BACKEND:
+    # With fastcomp, some libraries are basically big object files (.bc) and these need to come
+    # before any archive files, since back references to archive files don't work.
+    libs_to_link.sort(key=lambda x: x[0].endswith('.a'))
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # Building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
