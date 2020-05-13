@@ -882,6 +882,7 @@ base align: 0, 0, 0, 0'''])
 
     test()
 
+  @no_asan('stack size is too low for asan to work properly')
   def test_stack_placement(self):
     self.set_setting('TOTAL_STACK', 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')

@@ -2048,8 +2048,3 @@ if __name__ == '__main__':
     logger.warning('KeyboardInterrupt')
     sys.exit(1)
 
-'''
-test_pthreads_create - invalid atomic opcode
-
-test_stack_placement - invalid index into ftable
-'''
