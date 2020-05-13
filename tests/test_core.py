@@ -6097,6 +6097,7 @@ return malloc(size);
   def test_simd_shift_right(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
 
+  @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
     self.emcc_args += ['-I' + path_from_root('third_party')]
 
@@ -6514,6 +6515,7 @@ return malloc(size);
         generated = open('src.cpp.o.js').read() # noqa
         exec(open(src_checker).read())
 
+  @no_asan('call stack exceeded on some versions of node')
   @is_slow_test
   def test_fuzz(self):
     self.emcc_args += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
