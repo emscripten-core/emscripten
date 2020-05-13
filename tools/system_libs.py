@@ -1650,7 +1650,7 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       add_library(system_libs_map['libprintf_long_double'])
 
     add_library(system_libs_map['libc'])
-    if shared.Settings.SUPPORT_POSIX_ENV:
+    if shared.Settings.SUPPORT_POSIX_ENV and shared.Settings.WASM_BACKEND:
       add_library(system_libs_map['libc_environ'])
     add_library(system_libs_map['libcompiler_rt'])
     if not shared.Settings.WASM_BACKEND and not shared.Settings.MINIMAL_RUNTIME:
