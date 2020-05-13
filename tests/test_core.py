@@ -155,6 +155,12 @@ def also_with_noderawfs(func):
   return decorated
 
 
+def can_do_standalone(self):
+  return self.is_wasm_backend() and self.get_setting('WASM') and \
+         not self.get_setting('SAFE_STACK') and \
+         '-fsanitize=address' not in self.emcc_args
+
+
 # Also run the test with -s STANDALONE. If we have wasm runtimes, also run in
 # them (regardless we also check that the js+wasm combo works in js vms).
 def also_with_standalone_wasm(func):
@@ -162,7 +168,7 @@ def also_with_standalone_wasm(func):
     func(self)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
-    if self.is_wasm_backend() and self.get_setting('WASM'):
+    if can_do_standalone(self):
       print('standalone')
       self.set_setting('STANDALONE_WASM', 1)
       func(self)
@@ -178,7 +184,7 @@ def also_with_impure_standalone_wasm(func):
     func(self)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
-    if self.is_wasm_backend() and self.get_setting('WASM'):
+    if can_do_standalone(self):
       print('standalone (impure; no wasm runtimes)')
       self.set_setting('STANDALONE_WASM', 1)
       wasm_engines = shared.WASM_ENGINES
@@ -199,7 +205,7 @@ def also_with_only_standalone_wasm(func):
     func(self)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
-    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+    if can_do_standalone(self):
       print('standalone (only; no js runtimes)')
       self.set_setting('STANDALONE_WASM', 1)
       js_engines = shared.JS_ENGINES
@@ -650,6 +656,7 @@ class TestCoreBase(RunnerCore):
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
 
+  @no_asan('asan errors on corner cases we check')
   def test_aligned_alloc(self):
     self.do_run(open(path_from_root('tests', 'test_aligned_alloc.c')).read(), '', assert_returncode=0)
 
@@ -875,6 +882,7 @@ base align: 0, 0, 0, 0'''])
 
     test()
 
+  @no_asan('stack size is too low for asan to work properly')
   def test_stack_placement(self):
     self.set_setting('TOTAL_STACK', 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
@@ -1845,11 +1853,12 @@ int main() {
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
-    # test EXPORT_ALL
-    self.set_setting('EXPORTED_FUNCTIONS', [])
-    self.set_setting('EXPORT_ALL', 1)
-    self.set_setting('LINKABLE', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
+    if '-fsanitize=address' not in self.emcc_args:
+      # test EXPORT_ALL
+      self.set_setting('EXPORTED_FUNCTIONS', [])
+      self.set_setting('EXPORT_ALL', 1)
+      self.set_setting('LINKABLE', 1)
+      self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
@@ -2045,6 +2054,8 @@ int main(int argc, char **argv) {
   def test_em_js(self, args):
     if 'MAIN_MODULE' in args and self.get_setting('WASM') == 0:
       self.skipTest('main module support for non-wasm')
+    if '-fsanitize=address' in self.emcc_args:
+      self.skipTest('no dynamic library support in asan yet')
     self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=["_main","_malloc"]']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
@@ -2173,6 +2184,7 @@ int main(int argc, char **argv) {
     'nogrow': (['-s', 'ALLOW_MEMORY_GROWTH=0'],),
     'grow': (['-s', 'ALLOW_MEMORY_GROWTH=1'],)
   })
+  @no_asan('requires more memory when growing')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
@@ -2255,6 +2267,7 @@ Success!''')
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
+  @no_asan('local count too large for VMs')
   @no_wasm2js('extremely deep nesting, hits stack limit on some VMs')
   def test_indirectbr_many(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr_many')
@@ -5373,10 +5386,14 @@ main( int argv, char ** argc ) {
 
   def test_fs_mmap(self):
     orig_compiler_opts = self.emcc_args[:]
+    create_test_file('pre.js', '''
+      // ignore leaked mmaps
+      Module['ASAN_OPTIONS'] = 'detect_leaks=0';
+    ''')
     for fs in ['MEMFS', 'NODEFS']:
       src = path_from_root('tests', 'fs', 'test_mmap.c')
       out = path_from_root('tests', 'fs', 'test_mmap.out')
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      self.emcc_args = orig_compiler_opts + ['-D' + fs, '--pre-js', 'pre.js']
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
       self.do_run_from_file(src, out)
@@ -6085,6 +6102,7 @@ return malloc(size);
   def test_simd_shift_right(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
 
+  @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
     self.emcc_args += ['-I' + path_from_root('third_party')]
 
@@ -6104,6 +6122,7 @@ return malloc(size);
                 includes=[path_from_root('tests', 'lua')],
                 output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
+  @no_asan('issues with freetype itself')
   @needs_make('configure script')
   @is_slow_test
   def test_freetype(self):
@@ -6146,6 +6165,7 @@ return malloc(size);
                 ['font.ttf', 'ea', '40', '32', '0'],
                 no_build=True)
 
+  @no_asan('local count too large for VMs')
   def test_sqlite(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
@@ -6230,6 +6250,7 @@ return malloc(size);
                 libraries=self.get_bullet_library(use_cmake),
                 includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
 
+  @no_asan('issues with freetype itself')
   @needs_make('depends on freetype')
   @is_slow_test
   def test_poppler(self):
@@ -6499,6 +6520,7 @@ return malloc(size);
         generated = open('src.cpp.o.js').read() # noqa
         exec(open(src_checker).read())
 
+  @no_asan('call stack exceeded on some versions of node')
   @is_slow_test
   def test_fuzz(self):
     self.emcc_args += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
@@ -6586,6 +6608,7 @@ return malloc(size);
       '''
     self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
 
+  @no_asan('autodebug logging interferes with asan')
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
@@ -8058,6 +8081,7 @@ extern "C" {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_asan('asyncify stack operations confuse asan')
   @no_fastcomp('Fibers are not implemented for fastcomp')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY', 1)
@@ -8118,6 +8142,7 @@ extern "C" {
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
+  @no_asan('asyncify stack operations confuse asan')
   @no_fastcomp('wasm-backend specific feature')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY', 1)
@@ -8130,6 +8155,7 @@ extern "C" {
     self.set_setting('ASSERTIONS', 1)
     self.do_run_in_out_file_test('tests', 'core', 'asyncify_assertions')
 
+  @no_asan('asyncify stack operations confuse asan')
   @no_fastcomp('wasm-backend specific feature')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
@@ -8215,6 +8241,7 @@ extern "C" {
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
+  @no_asan('no wasm2js support yet in asan')
   def test_wasm2js(self):
     if self.get_setting('WASM') == 0:
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8229,6 +8256,7 @@ extern "C" {
         self.assertTrue(f.read()[-1] != b'\0')
 
   @no_fastcomp('wasm-backend specific feature')
+  @no_asan('no wasm2js support yet in asan')
   def test_maybe_wasm2js(self):
     if self.get_setting('WASM') == 0:
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8246,6 +8274,7 @@ extern "C" {
     self.assertContained('hello, world!', run_js('do_wasm2js.js'))
 
   @no_fastcomp('wasm-backend specific feature')
+  @no_asan('no wasm2js support yet in asan')
   def test_wasm2js_fallback(self):
     if self.get_setting('WASM') == 0:
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8850,6 +8879,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics')
 
+  @no_asan('incompatibility with atomics')
   @no_fastcomp('new wasm backend atomics')
   @node_pthreads
   def test_emscripten_atomics(self, js_engines):
