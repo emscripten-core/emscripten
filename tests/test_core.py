@@ -5390,8 +5390,6 @@ main( int argv, char ** argc ) {
       Module['ASAN_OPTIONS'] = 'detect_leaks=0';
     ''')
     for fs in ['MEMFS', 'NODEFS']:
-      if fs == 'NODEFS' and '-fsanitize=address' in self.emcc_args:
-        continue  # FIXME investigate
       src = path_from_root('tests', 'fs', 'test_mmap.c')
       out = path_from_root('tests', 'fs', 'test_mmap.out')
       self.emcc_args = orig_compiler_opts + ['-D' + fs, '--pre-js', 'pre.js']
