@@ -799,16 +799,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
         filenames=['getpagesize.c'])
 
-    if shared.Settings.WASM_BACKEND:
-      # See libc_extras below
-      # Include all the getenv stuff with the wasm backend. With fastcomp we
-      # still use JS because libc is a .bc file and we don't want to have a
-      # global constructor there for __environ, which would mean it is always
-      # included.
-      libc_files += files_in_path(
-          path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
-          filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
-
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
         filenames=['sched_yield.c'])
@@ -818,6 +808,22 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['extras.c', 'wasi-helpers.c'])
 
     return libc_files
+
+
+class libc_environ(libc):
+  name = 'libc_environ'
+  cflags = ['-Os', '-fno-builtin']
+
+  def get_files(self):
+    if shared.Settings.WASM_BACKEND:
+      # See libc_extras below
+      # Include all the getenv stuff with the wasm backend. With fastcomp we
+      # still use JS because libc is a .bc file and we don't want to have a
+      # global constructor there for __environ, which would mean it is always
+      # included.
+      return files_in_path(
+          path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
+          filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
 
 class libprintf_long_double(libc):
@@ -1642,6 +1648,8 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       add_library(system_libs_map['libprintf_long_double'])
 
     add_library(system_libs_map['libc'])
+    if shared.Settings.SUPPORT_POSIX_ENV:
+      add_library(system_libs_map['libc_environ'])
     add_library(system_libs_map['libcompiler_rt'])
     if not shared.Settings.WASM_BACKEND and not shared.Settings.MINIMAL_RUNTIME:
       add_library(system_libs_map['libc-extras'])

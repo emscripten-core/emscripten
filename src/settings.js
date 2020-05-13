@@ -1623,6 +1623,12 @@ var MIN_CHROME_VERSION = 75;
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
 
+// If 1, the POSIX getenv(), setenv(), environ() etc. functions are supported.
+// If 0, this POSIX abstraction will not be available.
+// Set this to 0 to save code size when building without a need for process
+// environment variables support.
+var SUPPORT_POSIX_ENV = 1;
+
 // If true, uses minimal sized runtime without POSIX features, Module,
 // preRun/preInit/etc., Emscripten built-in XHR loading or library_browser.js.
 // Enable this setting to target the smallest code size possible.  Set

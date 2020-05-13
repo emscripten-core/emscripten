@@ -10480,3 +10480,8 @@ int main() {
     self.build('#include <stdio.h>\nint main() { puts("foo called"); return 0; }', self.get_dir(), 'foo.c')
     err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
     self.assertContained('native function `main` called after runtime exit', err)
+
+  # Tests that environment support is not present when building with -s SUPPORT_POSIX_ENV=0
+  def test_no_environ(self):
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'env', 'src-mini.c'), '-s', 'SUPPORT_POSIX_ENV=0'])
+    self.assertContained("undefined symbol: environ", err)
