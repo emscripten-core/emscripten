@@ -28,6 +28,10 @@ extern "C" void android_set_abort_message(const char* msg);
 #   endif
 #endif
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/html5.h>
+#endif
+
 void abort_message(const char* format, ...)
 {
     // write message to stderr
@@ -35,11 +39,21 @@ void abort_message(const char* format, ...)
 #ifdef __APPLE__
     fprintf(stderr, "libc++abi.dylib: ");
 #endif
+#if defined(__EMSCRIPTEN__) && defined(NDEBUG)
+    // Show a very concise error message in a non-debug build, just where we
+    // are, and the format string. This is often fully sufficient, e.g.,
+    // for an error like
+    // "__cxa_guard_acquire detected recursive initialization", and it avoids
+    // linking in vfprintf stdio support.
+    emscripten_console_error("abort_message");
+    emscripten_console_error(format);
+#else
     va_list list;
     va_start(list, format);
     vfprintf(stderr, format, list);
     va_end(list);
     fprintf(stderr, "\n");
+#endif // EMSCRIPTEN
 #endif
 
 #if defined(__APPLE__) && defined(HAVE_CRASHREPORTERCLIENT_H)

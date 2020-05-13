@@ -142,6 +142,18 @@ int emscripten_resize_heap(size_t size) {
   return 0;
 }
 
+void emscripten_console_log(const char *utf8String) {
+  puts(utf8String);
+}
+
+void emscripten_console_warn(const char *utf8String) {
+  fprintf(stderr, "%s\n", utf8String);
+}
+
+void emscripten_console_error(const char *utf8String) {
+  emscripten_console_warn(utf8String);
+}
+
 // C++ ABI
 
 // Emscripten disables exception catching by default, but not throwing. That

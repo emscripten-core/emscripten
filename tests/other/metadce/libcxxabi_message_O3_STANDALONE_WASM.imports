@@ -1,0 +1,4 @@
+fd_close
+fd_seek
+fd_write
+proc_exit
