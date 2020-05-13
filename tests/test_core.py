@@ -225,6 +225,8 @@ def node_pthreads(f):
       self.skipTest('node pthreads only supported on wasm backend')
     if not self.get_setting('WASM'):
       self.skipTest("pthreads doesn't work in non-wasm yet")
+    if '-fsanitize=address' in self.emcc_args:
+      self.skipTest('asan ends up using atomics that are not yet supported in node 12')
     f(self, js_engines=[NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']])
   return decorated
 
@@ -889,6 +891,7 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
 
+  @no_asan('asan does not support main modules')
   @no_wasm2js('MAIN_MODULE support')
   def test_stack_placement_pic(self):
     if not self.is_wasm_backend() and self.get_setting('ALLOW_MEMORY_GROWTH'):
@@ -5912,6 +5915,7 @@ int main(void) {
       ]:
         self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
+  @no_asan('asan also changes malloc, and that ends up linking in new twice')
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
     src = open(path_from_root('tests', 'new.cpp')).read().replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
@@ -5926,6 +5930,7 @@ return malloc(size);
 '''
     self.do_run(src, 'new 4!\n*1,0*')
 
+  @no_asan('asan also changes malloc, and that ends up linking in new twice')
   def test_dlmalloc_partial_2(self):
     if 'SAFE_HEAP' in str(self.emcc_args):
       self.skipTest('we do unsafe stuff here')
@@ -6287,6 +6292,8 @@ return malloc(size);
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
+    if '-fsanitize=address' in self.emcc_args:
+      self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
 
     def line_splitter(data):
       out = ''
