@@ -10655,7 +10655,7 @@ int main() {
     with open(path_from_root('tests', 'other', 'standalone_syscalls', 'test.out')) as f:
       expected = f.read()
       for engine in WASM_ENGINES:
-        self.assertEqual(run_js('test.wasm', engine), expected)
+        self.assertContained(expected, run_js('test.wasm', engine))
 
   @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self):
