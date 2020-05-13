@@ -1,6 +1,7 @@
 __map_file
 __sys_munmap
 abort
+emscripten_console_error
 emscripten_memcpy_big
 emscripten_resize_heap
 environ_get
