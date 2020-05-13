@@ -12,6 +12,7 @@ __isLeapYear
 __memory_base
 __table_base
 _abort
+_emscripten_console_error
 _emscripten_get_heap_size
 _emscripten_memcpy_big
 _emscripten_resize_heap
