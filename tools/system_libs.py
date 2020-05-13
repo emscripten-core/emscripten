@@ -701,8 +701,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   # custom standard library. The same for other libc/libm builds.
   cflags = ['-Os', '-fno-builtin']
 
-  # Disable certain warnings for code pattern that are contains in upstream
-  # musl
+  # Disable certain warnings for code patterns that are contained in upstream musl
   cflags += ['-Wno-ignored-attributes',
              '-Wno-dangling-else',
              '-Wno-unknown-pragmas',
