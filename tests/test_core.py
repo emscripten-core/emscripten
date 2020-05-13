@@ -1857,7 +1857,8 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
     if '-fsanitize=address' not in self.emcc_args:
-      # test EXPORT_ALL
+      # test EXPORT_ALL (this is not compatible with asan, which doesn't
+      # support dynamic linking at all or the LINKING flag)
       self.set_setting('EXPORTED_FUNCTIONS', [])
       self.set_setting('EXPORT_ALL', 1)
       self.set_setting('LINKABLE', 1)
@@ -5389,14 +5390,10 @@ main( int argv, char ** argc ) {
 
   def test_fs_mmap(self):
     orig_compiler_opts = self.emcc_args[:]
-    create_test_file('pre.js', '''
-      // ignore leaked mmaps
-      Module['ASAN_OPTIONS'] = 'detect_leaks=0';
-    ''')
     for fs in ['MEMFS', 'NODEFS']:
       src = path_from_root('tests', 'fs', 'test_mmap.c')
       out = path_from_root('tests', 'fs', 'test_mmap.out')
-      self.emcc_args = orig_compiler_opts + ['-D' + fs, '--pre-js', 'pre.js']
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
       self.do_run_from_file(src, out)
