@@ -82,7 +82,6 @@ $__uselocale
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$abort_message
 $arg_n
 $bool\20std::__2::__ptr_in_range<char>\28char\20const*\2c\20char\20const*\2c\20char\20const*\29
 $bool\20std::__2::equal<std::__2::__wrap_iter<char*>\2c\20std::__2::__wrap_iter<char*>\2c\20std::__2::__equal_to<char\2c\20char>\20>\28std::__2::__wrap_iter<char*>\2c\20std::__2::__wrap_iter<char*>\2c\20std::__2::__wrap_iter<char*>\2c\20std::__2::__equal_to<char\2c\20char>\29

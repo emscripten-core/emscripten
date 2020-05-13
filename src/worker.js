@@ -307,7 +307,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
 
   var nodeWorkerThreads = require('worker_threads');
 
-  Worker = nodeWorkerThreads.Worker;
+  global.Worker = nodeWorkerThreads.Worker;
 
   var parentPort = nodeWorkerThreads.parentPort;
 

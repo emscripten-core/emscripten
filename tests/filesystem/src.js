@@ -1,7 +1,7 @@
 var dummy_device = FS.makedev(64, 0);
 FS.registerDevice(dummy_device, {});
 
-FS.mkdir('/forbidden', 0000);
+FS.mkdir('/forbidden', 0o000);
 FS.mkdir('/forbidden/test');
 FS.mkdir('/abc');
 FS.mkdir('/abc/123');

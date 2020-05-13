@@ -196,7 +196,7 @@ if (ENVIRONMENT_IS_NODE) {
     console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
     throw e;
   }
-  Worker = nodeWorkerThreads.Worker;
+  global.Worker = nodeWorkerThreads.Worker;
 #endif
 
 #if WASM == 2
@@ -337,7 +337,7 @@ if (ENVIRONMENT_IS_NODE) {
   // Polyfill the performance object, which emscripten pthreads support
   // depends on for good timing.
   if (typeof performance === 'undefined') {
-    performance = require('perf_hooks').performance;
+    global.performance = require('perf_hooks').performance;
   }
 }
 #endif
