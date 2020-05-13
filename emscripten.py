@@ -703,6 +703,7 @@ def update_settings_glue(metadata, DEBUG):
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
+  shared.Settings.WEAK_DECLARES = metadata.get('weakDeclares', [])
 
   if metadata['asmConsts']:
     # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
@@ -821,6 +822,7 @@ def apply_memory(js):
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
   shared.Settings.DYNAMIC_BASE = memory.dynamic_base
+  shared.Settings.STACK_BASE = memory.stack_base
 
   return js
 
@@ -921,11 +923,10 @@ def report_missing_symbols(all_implemented, pre):
     diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
 
   # Handle main specially, unless IGNORE_MISSING_MAIN is set
-  if not shared.Settings.IGNORE_MISSING_MAIN:
-    if '_main' in shared.Settings.EXPORTED_FUNCTIONS and '_main' not in all_implemented:
-      # For compatibility with the output of wasm-ld we use the same wording here in our
-      # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
-      exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
+  if shared.Settings.EXPECT_MAIN and '_main' not in all_implemented and not shared.Settings.IGNORE_MISSING_MAIN:
+    # For compatibility with the output of wasm-ld we use the same wording here in our
+    # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
+    exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
 
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
@@ -1726,7 +1727,10 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
     receiving += 'exportAsmFunctions(asm);'
   else:
-    if not shared.Settings.SWAPPABLE_ASM_MODULE:
+    # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
+    # so we need to support delayed assignment.
+    delay_assignment = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
+    if not delay_assignment:
       if runtime_assertions:
         # assert on the runtime being in a valid state when calling into compiled code. The only
         # exceptions are some support code.
@@ -1839,7 +1843,14 @@ Module['%(full)s'] = function() {
 
 def create_named_globals(metadata):
   if not shared.Settings.RELOCATABLE:
-    return ''
+    named_globals = []
+    for k, v in metadata['namedGlobals'].items():
+      # We keep __data_end alive internally so that wasm-emscripten-finalize knows where the
+      # static data region ends.  Don't export this to JS like other user-exported global
+      # address.
+      if k not in ['__data_end']:
+        named_globals.append("Module['_%s'] = %s;" % (k, v))
+    return '\n'.join(named_globals)
 
   named_globals = '''
 var NAMED_GLOBALS = {
@@ -1864,7 +1875,7 @@ for (var named in NAMED_GLOBALS) {
   })(named);
 }
 '''
-  named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
+  named_globals += ''.join(["Module['%s'] = Module['%s'];\n" % (k, v) for k, v in metadata['aliases'].items()])
   return named_globals
 
 
@@ -2327,6 +2338,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # (which matches what llvm+lld has given us)
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST:
     args.append('-g')
+  if shared.Settings.WASM_BIGINT:
+    args.append('--bigint')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     args.append('--no-legalize-javascript-ffi')
   if not shared.Settings.MEM_INIT_IN_WASM:
@@ -2628,7 +2641,10 @@ def create_receiving_wasm(exports, initializers):
   if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
 
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
+  # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
+  # so we need to support delayed assignment.
+  delay_assignment = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
+  if not delay_assignment:
     if runtime_assertions:
       # assert on the runtime being in a valid state when calling into compiled code. The only
       # exceptions are some support code
@@ -2760,6 +2776,10 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in shared.Settings.EXPORTED_FUNCTIONS]
   shared.Building.user_requested_exports += unexpected_exports
+
+  # With the wasm backend the set of implemented functions is identical to the set of exports
+  # Set this key here simply so that the shared code that handle it.
+  metadata['implementedFunctions'] = [asmjs_mangle(x) for x in metadata['exports']]
 
   return metadata
 

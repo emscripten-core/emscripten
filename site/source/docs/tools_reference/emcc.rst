@@ -242,7 +242,20 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-post-js:
 
 ``--post-js <file>``
-  Like `--pre-js``, but emits a file *after* the emitted code.
+  Like ``--pre-js``, but emits a file *after* the emitted code.
+
+``--extern-pre-js <file>``
+  Specify a file whose contents are prepended to the JavaScript output. This
+  file is prepended to the final JavaScript output, *after* all other
+  work has been done, including optimization, optional ``MODULARIZE``-ation,
+  instrumentation like ``SAFE_HEAP``, etc. This is the same as prepending
+  this file after ``emcc`` finishes running, and is just a convenient
+  way to do that. (For comparison, ``--pre-js`` and ``--post-js`` optimize the
+  code together with everything else, keep it in the same scope if running
+  `MODULARIZE`, etc.).
+
+``--extern-post-js <file>``
+  Like ``--extern-pre-js``, but appends to the end.
 
 .. _emcc-embed-file:
 
@@ -458,10 +471,6 @@ Environment variables
 *emcc* is affected by several environment variables, as listed below:
 
   - ``EMMAKEN_JUST_CONFIGURE``
-  - ``EMMAKEN_JUST_CONFIGURE_RECURSE``
-  - ``CONFIGURE_CC``
-  - ``EMMAKEN_CXX``
-  - ``EMMAKEN_CXX``
   - ``EMMAKEN_COMPILER``
   - ``EMMAKEN_CFLAGS``
   - ``EMCC_DEBUG``

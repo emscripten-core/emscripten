@@ -13,7 +13,7 @@ int main() {
   printf("%d %d %d %d %s\n", c[0] & 0xff, c[1] & 0xff, c[2] & 0xff, c[3] & 0xff,
          c);
   emscripten_run_script(
-      "cheez = _malloc(100);"
+      "var cheez = _malloc(100);"
       "Module.stringToUTF8(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez, 100);"
       "out([UTF8ToString(cheez), Module.getValue(cheez, "
       "'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, "

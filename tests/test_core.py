@@ -74,6 +74,16 @@ def bleeding_edge_wasm_backend(f):
   return decorated
 
 
+def also_with_wasm_bigint(f):
+  def decorated(self):
+    self.set_setting('WASM_BIGINT', 0)
+    f(self, None)
+    if self.is_wasm_backend() and self.get_setting('WASM'):
+      self.set_setting('WASM_BIGINT', 1)
+      f(self, [NODE_JS + ['--experimental-wasm-bigint']])
+  return decorated
+
+
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
 # default. in some tests we know that cross-VM differences may happen and
 # so are worth testing, and they should be marked with this decorator
@@ -290,8 +300,9 @@ class TestCoreBase(RunnerCore):
 
   # whether the test mode supports duplicate function elimination in js
   def supports_js_dfe(self):
-    # wasm does this when optimizing anyhow
-    if self.is_wasm():
+    # wasm does this when optimizing anyhow, and the wasm backend always
+    # optimizes the wasm even if it does wasm2js later
+    if self.is_wasm() or self.is_wasm_backend():
       return False
     supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
     for opt_level in supported_opt_levels:
@@ -305,26 +316,6 @@ class TestCoreBase(RunnerCore):
       self.emcc_args += ['--closure', '1']
       return True
     return False
-
-  def do_run_in_out_file_test(self, *path, **kwargs):
-    test_path = path_from_root(*path)
-
-    def find_files(*ext_list):
-      ret = None
-      count = 0
-      for ext in ext_list:
-        if os.path.isfile(test_path + ext):
-          ret = test_path + ext
-          count += 1
-      assert count > 0, ("No file found at {} with extension {}"
-                         .format(test_path, ext_list))
-      assert count <= 1, ("Test file {} found with multiple valid extensions {}"
-                          .format(test_path, ext_list))
-      return ret
-
-    src = find_files('.c', '.cpp')
-    output = find_files('.out', '.txt')
-    self.do_run_from_file(src, output, **kwargs)
 
   def verify_in_strict_mode(self, filename):
     with open(filename) as infile:
@@ -438,6 +429,14 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_varargs',
                                  args='waka fleefl asdfasdfasdfasdf'
                                       .split(' '))
+
+  @no_fastcomp('wasm bigint')
+  @no_wasm2js('wasm_bigint')
+  def test_i64_invoke_bigint(self):
+    self.set_setting('WASM_BIGINT', 1)
+    self.emcc_args += ['-fexceptions']
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_invoke_bigint',
+                                 js_engines=[NODE_JS + ['--experimental-wasm-bigint']])
 
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy')
@@ -780,7 +779,8 @@ class TestCoreBase(RunnerCore):
   def test_math_lgamma(self):
     self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=None)
 
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
+    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm() and \
+       not self.is_wasm_backend():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=None)
@@ -1241,12 +1241,11 @@ int main() {
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_custom(self):
+  @with_both_exception_handling
+  def test_exceptions_custom(self, js_engines):
     self.set_setting('EXCEPTION_DEBUG', 1)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.maybe_closure()
     src = '''
     #include <iostream>
@@ -1294,7 +1293,7 @@ int main() {
     }
     '''
 
-    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
+    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...', js_engines=js_engines)
 
   @with_both_exception_handling
   def test_exceptions_2(self, js_engines):
@@ -1306,10 +1305,8 @@ int main() {
       self.set_setting('SAFE_HEAP', safe)
       self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_3(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-
+  @with_both_exception_handling
+  def test_exceptions_3(self, js_engines):
     src = r'''
 #include <iostream>
 #include <stdexcept>
@@ -1339,11 +1336,11 @@ int main(int argc, char **argv)
 '''
 
     print('0')
-    self.do_run(src, 'Caught C string: a c string\nDone.', ['0'])
+    self.do_run(src, 'Caught C string: a c string\nDone.', ['0'], js_engines=js_engines)
     print('1')
-    self.do_run(None, 'Caught exception: std::exception\nDone.', ['1'], no_build=True)
+    self.do_run(None, 'Caught exception: std::exception\nDone.', ['1'], no_build=True, js_engines=js_engines)
     print('2')
-    self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
+    self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True, js_engines=js_engines)
 
   def test_exceptions_white_list(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
@@ -1415,70 +1412,68 @@ int main(int argc, char **argv)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_uncaught')
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_uncaught(self):
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      # needs to flush stdio streams
-      self.set_setting('EXIT_RUNTIME', 1)
-      src = r'''
-        #include <stdio.h>
-        #include <exception>
-        struct X {
-          ~X() {
-            printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
-          }
-        };
-        int main() {
+  @with_both_exception_handling
+  def test_exceptions_uncaught(self, js_engines):
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME', 1)
+    src = r'''
+      #include <stdio.h>
+      #include <exception>
+      struct X {
+        ~X() {
           printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
-          try {
-            X x;
-            throw 1;
-          } catch(...) {
-            printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
-          }
+        }
+      };
+      int main() {
+        printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        try {
+          X x;
+          throw 1;
+        } catch(...) {
           printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
-          return 0;
         }
-      '''
-      self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n')
+        printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        return 0;
+      }
+    '''
+    self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n', js_engines=js_engines)
 
-      src = r'''
-        #include <fstream>
-        #include <iostream>
-        int main() {
-          std::ofstream os("test");
-          os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exception from
-                                       // std::basic_ostream::sentry::~sentry
-          std::cout << "success";
-        }
-      '''
-      self.do_run(src, 'success')
+    src = r'''
+      #include <fstream>
+      #include <iostream>
+      int main() {
+        std::ofstream os("test");
+        os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exception from
+                                     // std::basic_ostream::sentry::~sentry
+        std::cout << "success";
+      }
+    '''
+    self.do_run(src, 'success', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_uncaught_2(self):
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      # needs to flush stdio streams
-      self.set_setting('EXIT_RUNTIME', 1)
-      src = r'''
-        #include <iostream>
-        #include <exception>
+  @with_both_exception_handling
+  def test_exceptions_uncaught_2(self, js_engines):
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME', 1)
+    src = r'''
+      #include <iostream>
+      #include <exception>
 
-        int main() {
+      int main() {
+        try {
+            throw std::exception();
+        } catch(std::exception) {
           try {
-              throw std::exception();
-          } catch(std::exception) {
-            try {
-              throw;
-            } catch(std::exception) {}
-          }
-
-          if (std::uncaught_exception())
-            std::cout << "ERROR: uncaught_exception still set.";
-          else
-            std::cout << "OK";
+            throw;
+          } catch(std::exception) {}
         }
-      '''
-      self.do_run(src, 'OK\n')
+
+        if (std::uncaught_exception())
+          std::cout << "ERROR: uncaught_exception still set.";
+        else
+          std::cout << "OK";
+      }
+    '''
+    self.do_run(src, 'OK\n', js_engines=js_engines)
 
   @with_both_exception_handling
   def test_exceptions_typed(self, js_engines):
@@ -1488,16 +1483,13 @@ int main(int argc, char **argv)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_virtual_inheritance(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_virtual_inheritance(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance', js_engines=js_engines)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance')
-
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_convert(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert')
+  @with_both_exception_handling
+  def test_exceptions_convert(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert', js_engines=js_engines)
 
   # TODO Make setjmp-longjmp also use Wasm exception handling
   @with_both_exception_handling
@@ -1514,55 +1506,45 @@ int main(int argc, char **argv)
   def test_exceptions_alias(self, js_engines):
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_rethrow(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow')
+  @with_both_exception_handling
+  def test_exceptions_rethrow(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_resume(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_resume(self, js_engines):
     self.set_setting('EXCEPTION_DEBUG', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_destroy_virtual(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual')
+  @with_both_exception_handling
+  def test_exceptions_destroy_virtual(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_refcount(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount')
+  @with_both_exception_handling
+  def test_exceptions_refcount(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_primary(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary')
+  @with_both_exception_handling
+  def test_exceptions_primary(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_simplify_cfg(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg')
+  @with_both_exception_handling
+  def test_exceptions_simplify_cfg(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_libcxx(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx')
+  @with_both_exception_handling
+  def test_exceptions_libcxx(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx', js_engines=js_engines)
 
   @with_both_exception_handling
   def test_exceptions_multiple_inherit(self, js_engines):
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_exceptions_multiple_inherit_rethrow(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow')
+  @with_both_exception_handling
+  def test_exceptions_multiple_inherit_rethrow(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow', js_engines=js_engines)
 
-  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
-  def test_bad_typeid(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-
+  @with_both_exception_handling
+  def test_bad_typeid(self, js_engines):
     self.do_run(r'''
 // exception example
 #include <iostream>       // std::cerr
@@ -1583,7 +1565,7 @@ int main () {
   }
   return 0;
 }
-''', 'exception caught: std::bad_typeid')
+''', 'exception caught: std::bad_typeid', js_engines=js_engines)
 
   def test_iostream_ctors(self):
     # iostream stuff must be globally constructed before user global
@@ -1604,6 +1586,7 @@ int main() {
 
   @also_with_standalone_wasm
   def test_ctors_no_main(self):
+    self.emcc_args.append('--no-entry')
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
   def test_class(self):
@@ -2186,6 +2169,16 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
+  @parameterized({
+    'nogrow': (['-s', 'ALLOW_MEMORY_GROWTH=0'],),
+    'grow': (['-s', 'ALLOW_MEMORY_GROWTH=1'],)
+  })
+  def test_aborting_new(self, args):
+    # test that C++ new properly errors if we fail to malloc when growth is
+    # enabled, with or without growth
+    self.emcc_args += ['-Wno-almost-asm', '-s', 'MAXIMUM_MEMORY=18MB'] + args
+    self.do_run_in_out_file_test('tests', 'core', 'test_aborting_new')
+
   @no_asmjs()
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
@@ -2473,11 +2466,16 @@ The current type of b is: 9
     # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
+  @also_with_standalone_wasm
   def test_atexit(self):
-    # Confirms they are called in reverse order
-    # needs atexits
+    # Confirms they are called in the proper reverse order
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
+
+  def test_atexit_threads(self):
+    # also tests thread exit (__cxa_thread_atexit)
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_atexit_threads')
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
@@ -3158,6 +3156,10 @@ Var: 42
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
+    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+    # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
+    # this if this issues is fixed.
+    self.emcc_args.append('-nostdlib++')
 
     def post(filename):
       js = open(filename).read()
@@ -3174,7 +3176,7 @@ Var: 42
       if self.is_wasm_backend():
         self.assertLess(len(exports), 56)
       else:
-        self.assertLess(len(exports), 32)
+        self.assertLess(len(exports), 33)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
@@ -3521,9 +3523,10 @@ pre 9
 out!
 ''', force_c=True)
 
+  # TODO: make this work. need to forward tempRet0 across modules
   # TODO Enable @with_both_exception_handling (the test is not working now)
   @needs_dlfcn
-  def zzztest_dlfcn_exceptions(self): # TODO: make this work. need to forward tempRet0 across modules
+  def zzztest_dlfcn_exceptions(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.prep_dlfcn_lib()
@@ -3732,7 +3735,7 @@ ok
     if need_reverse:
       # test the reverse as well
       print('flip')
-      self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False, **kwargs)
+      self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'], force_c, need_reverse=False, **kwargs)
 
   def do_basic_dylink_test(self, need_reverse=True):
     self.dylink_test(r'''
@@ -3765,6 +3768,11 @@ ok
     if not self.is_wasm():
       self.skipTest('wasm only')
     self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  def test_dylink_safe_heap(self):
+    self.set_setting('SAFE_HEAP', 1)
     self.do_basic_dylink_test()
 
   @needs_dlfcn
@@ -4101,7 +4109,8 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
 
   @needs_dlfcn
-  def test_dylink_i64_c(self):
+  @also_with_wasm_bigint
+  def test_dylink_i64_c(self, js_engines):
     self.dylink_test(r'''
       #include <cstdio>
       #include <cinttypes>
@@ -4149,7 +4158,7 @@ res64 - external 64\n''', header='''
       #include <cstdint>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''')
+    ''', js_engines=js_engines)
 
   @needs_dlfcn
   def test_dylink_class(self):
@@ -4463,11 +4472,9 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
-  # TODO Enable @with_both_exception_handling (wasm-ld error)
   @needs_dlfcn
-  def test_dylink_raii_exceptions(self):
-    self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
-
+  @with_both_exception_handling
+  def test_dylink_raii_exceptions(self, js_engines):
     self.dylink_test(main=r'''
       #include <stdio.h>
       extern int side();
@@ -4494,7 +4501,8 @@ res64 - external 64\n''', header='''
         volatile ifdi p = func_with_special_sig;
         return p(2.18281, 3.14159, 42);
       }
-    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
+    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'],
+      js_engines=js_engines)
 
   @needs_dlfcn
   @no_wasm_backend('wasm backend resolves symbols greedily on startup')
@@ -4574,7 +4582,7 @@ res64 - external 64\n''', header='''
   @no_wasm_backend('possible https://github.com/emscripten-core/emscripten/issues/9038')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
-      self.do_run(src + 'int main() { return _main(); }', expected_output)
+      self.do_run(src + 'int main() { return test_main(); }', expected_output)
     self._test_dylink_dso_needed(do_run)
 
   @needs_dlfcn
@@ -5243,10 +5251,11 @@ main( int argv, char ** argc ) {
                        ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
-  def test_utf8_textdecoder(self):
+  @also_with_wasm_bigint
+  def test_utf8_textdecoder(self, js_engines):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
+    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.', js_engines=js_engines)
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
@@ -5558,18 +5567,19 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'sleep.out')).read()
     self.do_run(src, expected)
 
-  def test_unistd_io(self):
+  @also_with_wasm_bigint
+  def test_unistd_io(self, js_engines):
     self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
-    self.clear()
     orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'io.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'io.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
+      self.clear()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+      self.do_run(src, expected, js_engines=js_engines)
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):
@@ -5649,15 +5659,13 @@ PORT: 3979
     self.emcc_args += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
 
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
+    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm() \
+       and not self.is_wasm_backend():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
-    # TODO
-    # elif self.is_wasm_backend():
-    #   print('pthreads')
-    #   self.set_setting('USE_PTHREADS', 1)
-    #   self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
+
+    # TODO: test with USE_PTHREADS in wasm backend as well
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
@@ -5675,12 +5683,6 @@ PORT: 3979
     self.do_run_in_out_file_test('tests', 'core', 'test_main_module_static_align')
 
   # libc++ tests
-
-  def assertBinaryEqual(self, file1, file2):
-    self.assertEqual(os.path.getsize(file1),
-                     os.path.getsize(file2))
-    self.assertEqual(open(file1, 'rb').read(),
-                     open(file2, 'rb').read())
 
   def test_iostream_and_determinism(self):
     src = '''
@@ -6098,7 +6100,7 @@ return malloc(size);
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=self.get_library(os.path.join('third_party', 'lua'), [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                libraries=self.get_library(os.path.join('third_party', 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
                 includes=[path_from_root('tests', 'lua')],
                 output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -6174,7 +6176,14 @@ return malloc(size);
 
   @needs_make('mingw32-make')
   @is_slow_test
-  def test_zlib(self):
+  @parameterized({
+    'cmake': (True,),
+    'configure': (False,)
+  })
+  def test_zlib(self, use_cmake):
+    if WINDOWS and not use_cmake:
+      self.skipTest("Windows cannot run configure sh scripts")
+
     self.maybe_closure()
 
     if self.run_name == 'asm2g':
@@ -6182,10 +6191,9 @@ return malloc(size);
     if self.run_name == 'asm2f':
       return self.skipTest('asm2f affects cflags in a way that changes zlib compile flag reporting, so the stdout is different')
 
-    use_cmake_configure = WINDOWS
-    if use_cmake_configure:
+    if use_cmake:
       make_args = []
-      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.']
+      configure = [PYTHON, path_from_root('emcmake.py'), 'cmake', '.']
     else:
       make_args = ['libz.a']
       configure = ['sh', './configure']
@@ -6198,30 +6206,29 @@ return malloc(size);
 
   @needs_make('make')
   @is_slow_test
-  def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  @parameterized({
+    'cmake': (True,),
+    'autoconf': (False,)
+  })
+  # Called thus so it runs late in the alphabetical cycle... it is long
+  def test_bullet(self, use_cmake):
+    if WINDOWS and not use_cmake:
+      self.skipTest("Windows cannot run configure sh scripts")
+
     self.set_setting('DEAD_FUNCTIONS', ['__ZSt9terminatev'])
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
-
     asserts = self.get_setting('ASSERTIONS')
 
-    for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
-      print('cmake', use_cmake)
-      # Windows cannot run configure sh scripts.
-      if WINDOWS and not use_cmake:
-        continue
+    # extra testing for ASSERTIONS == 2
+    self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
 
-      # extra testing for ASSERTIONS == 2
-      self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
-
-      def test():
-        self.do_run(open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
-                    [open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
-                     open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
-                     open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
-                     open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
-                    libraries=self.get_bullet_library(use_cmake),
-                    includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
-      test()
+    self.do_run(open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
+                [open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
+                 open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
+                 open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
+                 open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
+                libraries=self.get_bullet_library(use_cmake),
+                includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
 
   @needs_make('depends on freetype')
   @is_slow_test
@@ -6397,11 +6404,11 @@ return malloc(size);
     self.set_setting('EXIT_RUNTIME', 1)
 
     # These tests don't end up linking with libc due to a behaviour in emcc
-    # where the llvm-link step is skipped when the the input is a single
+    # where the llvm-link step is skipped when the input is a single
     # object file.  Since most of them `printf` (which comes from JS) but
     # depends on `strlen` (which comes from musl) these tests almost all
     # have an undefined `strlen`, which happens to not get called.
-    # TODO(sbc): Remove the specical case from emcc what bypasses llvm-link
+    # TODO(sbc): Remove the special case from emcc what bypasses llvm-link
     # and then remove this line?
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
     self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
@@ -6409,8 +6416,8 @@ return malloc(size);
 
     emcc_args = self.emcc_args
 
-    # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = [
+    # The following tests link to libc, whereas others link with -nostdlib
+    needs_stdlib = [
       'muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star',
       'legalizer_ta2', 'quotedlabel', 'alignedunaligned', 'sillybitcast',
       'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2',
@@ -6459,14 +6466,6 @@ return malloc(size);
       if self.is_wasm() and basename in skip_wasm:
         continue
 
-      if basename in need_no_leave_inputs_raw:
-        leave_inputs = '0'
-        self.set_setting('FILESYSTEM', 1)
-      else:
-        leave_inputs = '1'
-        # no libc is linked in; with FILESYSTEM=0 we have a chance at printfing anyhow
-        self.set_setting('FILESYSTEM', 0)
-
       if '_noasm' in shortname and self.get_setting('ASM_JS'):
         print('case "%s" not relevant for asm.js' % shortname)
         continue
@@ -6482,12 +6481,17 @@ return malloc(size);
         output = 'hello, world!'
 
       if output.rstrip() != 'skip':
-        self.emcc_args = emcc_args
+        self.emcc_args = list(emcc_args)
+        if basename in needs_stdlib:
+          self.set_setting('FILESYSTEM', 1)
+        else:
+          self.emcc_args.append('-nostdlib')
+          # no libc is linked in; with FILESYSTEM=0 we have a chance at printfing anyhow
+          self.set_setting('FILESYSTEM', 0)
         if os.path.exists(shortname + '.emcc'):
           self.emcc_args += json.loads(open(shortname + '.emcc').read())
 
-        with env_modify({'EMCC_LEAVE_INPUTS_RAW': leave_inputs}):
-          self.do_ll_run(path_from_root('tests', 'cases', name), output, assert_returncode=None)
+        self.do_ll_run(path_from_root('tests', 'cases', name), output, assert_returncode=None)
 
       # Optional source checking, a python script that gets a global generated with the source
       src_checker = path_from_root('tests', 'cases', shortname + '.py')
@@ -6881,6 +6885,9 @@ return malloc(size);
       self.do_run(open(src).read(), 'Unable to grow wasm table', assert_returncode=None)
       print('- with table growth')
       self.set_setting('ALLOW_TABLE_GROWTH', 1)
+      self.emcc_args += ['-DGROWTH']
+      # enable costly assertions to verify correct table behavior
+      self.set_setting('ASSERTIONS', 2)
       self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
     else:
       self.do_run(open(src).read(), 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.', assert_returncode=None)
@@ -6931,9 +6938,8 @@ return malloc(size);
     self.emcc_args += extra_args
     self.set_setting('DEMANGLE_SUPPORT', 1)
     self.set_setting('ASSERTIONS', 1)
-    # when optimizing function names are not preserved by default.
-    if '-O' in str(self.emcc_args):
-      self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
+    # ensure function names are preserved
+    self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
     # in the emterpreter, we interpret code execution and control flow,
     # so there is nothing on the browser-visible stack for meaningful
     # stack traces. enabling profiling makes the emterpreter call through
@@ -7086,7 +7092,7 @@ return malloc(size);
 class std_string {
 public:
   std_string(): ptr(nullptr) { std::cout << "std_string()\n"; }
-  std_string(const char* s): ptr(s) { std::cout << "std_string(const char* s) " << std::endl; }
+  std_string(const char* s): ptr(s) { std::cout << "std_string(const char* s)" << std::endl; }
   std_string(const std_string& s): ptr(s.ptr) { std::cout << "std_string(const std_string& s) " << std::endl; }
   const char* data() const { return ptr; }
 private:
@@ -7102,7 +7108,7 @@ int main() {
   std::cout << txtTestString.data() << std::endl;
   return 0;
 }
-      ''', '''std_string(const char* s) 
+      ''', '''std_string(const char* s)
 someweirdtext
 212121
 212121
@@ -7329,8 +7335,6 @@ err = err = function(){};
   @no_wasm2js('TODO: source maps in wasm2js')
   @no_emterpreter
   def test_source_map(self):
-    if not jsrun.check_engine(NODE_JS):
-      self.skipTest('sourcemapper requires Node to run')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
 
@@ -7576,35 +7580,26 @@ err = err = function(){};
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
-    base_args = self.emcc_args + [
+    self.emcc_args += [
       '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
       '--closure', '1',
-      '-g1'
+      '-g1',
+      '-s',
+      'MODULARIZE=1',
     ]
 
-    for instance in (0, 1):
-      print("instance: %d" % instance)
-      if instance:
-        self.emcc_args = base_args + ['-s', 'MODULARIZE_INSTANCE=1']
-      else:
-        self.emcc_args = base_args + ['-s', 'MODULARIZE=1']
+    def post(filename):
+      with open(filename, 'a') as f:
+        f.write('\n\n')
+        f.write('var TheModule = Module();\n')
 
-      def post(filename):
-        with open(filename, 'a') as f:
-          f.write('\n\n')
-          if not instance:
-            f.write('var TheModule = Module();\n')
-
-      self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
+    self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
 
   @no_emterpreter
   @no_wasm('wasmifying destroys debug info and stack tracability')
   @no_wasm2js('no source maps support yet')
   def test_exception_source_map(self):
     self.emcc_args.append('-g4')
-    if not jsrun.check_engine(NODE_JS):
-      self.skipTest('sourcemapper requires Node to run')
-
     src = '''
       #include <stdio.h>
 
@@ -7855,6 +7850,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_wasm_backend('EMTERPRETIFY')
   def test_async_emterpretify(self):
+    self.emcc_args.append('-Wno-emterpreter')
     self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
@@ -8078,6 +8074,7 @@ extern "C" {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
+    self.emcc_args.append('-Wno-emterpreter')
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
@@ -8114,6 +8111,7 @@ extern "C" {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_emterpretify(self):
+    self.emcc_args.append('-Wno-emterpreter')
     self.set_setting('EMTERPRETIFY', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     print('async')
@@ -8448,11 +8446,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
         wrong = 'node'
       # test with the right env
       self.set_setting('ENVIRONMENT', right)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
       # test with the wrong env
       self.set_setting('ENVIRONMENT', wrong)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       try:
         test()
         raise Exception('unexpected success')
@@ -8460,7 +8458,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         self.assertContained('not compiled for this environment', str(e))
       # test with a combined env
       self.set_setting('ENVIRONMENT', right + ',' + wrong)
-      print('  ', self.get_setting('ENVIRONMENT'))
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
 
   def test_dfe(self):
@@ -8817,6 +8815,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_standalone_wasm
   def test_undefined_main(self):
+    if self.get_setting('LLD_REPORT_UNDEFINED'):
+      self.skipTest('LLD_REPORT_UNDEFINED does not allow implicit undefined main')
+    if self.get_setting('STRICT'):
+      self.skipTest('STRICT does not allow implicit undefined main')
     # By default in emscripten we allow main to be undefined.  Its used when
     # building library code that has no main.
     # TODO(sbc): Simplify the code by making this an opt-in feature.
@@ -8868,12 +8870,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
 
   def test_auto_detect_main(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
+    if not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
+      self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
-    # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
-    self.set_setting('IGNORE_MISSING_MAIN', 0)
-    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
-    self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
+      # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
+      self.set_setting('IGNORE_MISSING_MAIN', 0)
+      err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
+      self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
 
     # We can fix the error either by adding --no-entry or by setting EXPORTED_FUNCTIONS to empty
     self.emcc_args.append('--no-entry')
@@ -8974,16 +8977,21 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
+# Add DEFAULT_TO_CXX=0
+strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter
-  asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
+  asm2i = make_run('asm2i', emcc_args=['-O2', '-Wno-emterpreter'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
 if shared.Settings.WASM_BACKEND:
   lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
   asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
   asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
                    settings={'ALLOW_MEMORY_GROWTH': 1})
+
+  # Experimental modes (not tested by CI)
+  lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

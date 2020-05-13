@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "google-closure-compiler": "20200224.0.0",
-    "html-minifier-terser": "5.0.2"
+    "html-minifier-terser": "5.0.2",
+    "source-map": "0.5.6"
   }
 }

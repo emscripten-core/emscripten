@@ -72,10 +72,12 @@ var LibraryManager = {
       'library_int53.js'
     ];
 
-    if (!DISABLE_EXCEPTION_THROWING) {
-      libraries.push('library_exceptions.js');
-    } else {
-      libraries.push('library_exceptions_stub.js');
+    if (!EXCEPTION_HANDLING) {
+      if (!DISABLE_EXCEPTION_THROWING) {
+        libraries.push('library_exceptions.js');
+      } else {
+        libraries.push('library_exceptions_stub.js');
+      }
     }
 
     if (MINIMAL_RUNTIME) {
@@ -158,7 +160,7 @@ var LibraryManager = {
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) {
-      libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+      libraries = ['library_formatString.js'];
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times

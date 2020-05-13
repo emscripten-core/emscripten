@@ -58,9 +58,9 @@ else:
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
-import parallel_runner
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
+import parallel_testsuite
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
+from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
 
@@ -244,6 +244,7 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
+  'strict'
 ]
 
 if shared.Settings.WASM_BACKEND:
@@ -331,7 +332,10 @@ class RunnerMeta(type):
       return func(self, *args)
 
     # Add suffix to the function name so that it displays correctly.
-    resulting_test.__name__ = '%s_%s' % (name, suffix)
+    if suffix:
+      resulting_test.__name__ = '%s_%s' % (name, suffix)
+    else:
+      resulting_test.__name__ = name
 
     # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
     # We add the suffix to it as well.
@@ -620,18 +624,24 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       os.chdir(self.get_dir())
 
     suffix = '.o.js' if js_outfile else '.o.wasm'
+    all_sources = [filename] + additional_files
+    if any(os.path.splitext(s)[1] in ('.cc', '.cxx', '.cpp') for s in all_sources):
+      compiler = EMXX
+    else:
+      compiler = EMCC
+
     if build_ll_hook:
       # "slow", old path: build to bc, then build to JS
 
       # C++ => LLVM binary
 
-      for f in [filename] + additional_files:
+      for f in all_sources:
         try:
           # Make sure we notice if compilation steps failed
           os.remove(f + '.o')
         except OSError:
           pass
-        args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
+        args = [PYTHON, compiler] + self.get_emcc_args(main_file=True) + \
                ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -655,12 +665,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       Building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
     else:
       # "fast", new path: just call emcc and go straight to JS
-      all_files = [filename] + additional_files + libraries
-      for i in range(len(all_files)):
-        if '.' not in all_files[i]:
-          shutil.move(all_files[i], all_files[i] + '.bc')
-          all_files[i] += '.bc'
-      args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
+      all_files = all_sources + libraries
+      args = [PYTHON, compiler] + self.get_emcc_args(main_file=True) + \
           ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
@@ -818,7 +824,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     for x in values:
       if x == y:
         return # success
-    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'),
+    diff_lines = difflib.unified_diff(x.splitlines(), y.splitlines(),
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
     if EMTEST_VERBOSE:
@@ -866,6 +872,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.assertContained(value, string)
     else:
       self.assertNotContained(value, string)
+
+  def assertBinaryEqual(self, file1, file2):
+    self.assertEqual(os.path.getsize(file1),
+                     os.path.getsize(file2))
+    self.assertEqual(open(file1, 'rb').read(),
+                     open(file2, 'rb').read())
 
   library_cache = {}
 
@@ -999,7 +1011,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
         static const char *afunc_prev;
 
+        extern "C" {
         EMSCRIPTEN_KEEPALIVE void afunc(const char *s);
+        }
+
         void afunc(const char *s) {
           printf("a: %s (prev: %s)\n", s, afunc_prev);
           afunc_prev = s;
@@ -1017,8 +1032,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     create_test_file('libb.cpp', r'''
         #include <emscripten.h>
 
+        extern "C" {
         void afunc(const char *s);
         EMSCRIPTEN_KEEPALIVE void bfunc();
+        }
+
         void bfunc() {
           afunc("b");
         }
@@ -1027,8 +1045,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     create_test_file('libc.cpp', r'''
         #include <emscripten.h>
 
+        extern "C" {
         void afunc(const char *s);
         EMSCRIPTEN_KEEPALIVE void cfunc();
+        }
+
         void cfunc() {
           afunc("c");
         }
@@ -1057,10 +1078,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.set_setting('MAIN_MODULE', 1)
     self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
     do_run(r'''
+      extern "C" {
       void bfunc();
       void cfunc();
+      }
 
-      int _main() {
+      int test_main() {
         bfunc();
         cfunc();
         return 0;
@@ -1069,25 +1092,26 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
 
     self.set_setting('RUNTIME_LINKED_LIBS', [])
-    self.emcc_args += ['--embed-file', '.@/']
+    for libname in ['liba', 'libb', 'libc']:
+      self.emcc_args += ['--embed-file', libname + so]
     do_run(r'''
       #include <assert.h>
       #include <dlfcn.h>
       #include <stddef.h>
 
-      int _main() {
+      int test_main() {
         void *bdso, *cdso;
         void (*bfunc)(), (*cfunc)();
 
-        // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currenlty working
+        // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currently working
         bdso = dlopen("libb%(so)s", RTLD_GLOBAL);
         assert(bdso != NULL);
         cdso = dlopen("libc%(so)s", RTLD_GLOBAL);
         assert(cdso != NULL);
 
-        bfunc = (void (*)())dlsym(bdso, "_Z5bfuncv");
+        bfunc = (void (*)())dlsym(bdso, "bfunc");
         assert(bfunc != NULL);
-        cfunc = (void (*)())dlsym(cdso, "_Z5cfuncv");
+        cfunc = (void (*)())dlsym(cdso, "cfunc");
         assert(cfunc != NULL);
 
         bfunc();
@@ -1113,6 +1137,26 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     logger.debug('do_run_from_file: %s' % src)
     self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
+  def do_run_in_out_file_test(self, *path, **kwargs):
+    test_path = path_from_root(*path)
+
+    def find_files(*ext_list):
+      ret = None
+      count = 0
+      for ext in ext_list:
+        if os.path.isfile(test_path + ext):
+          ret = test_path + ext
+          count += 1
+      assert count > 0, ("No file found at {} with extension {}"
+                         .format(test_path, ext_list))
+      assert count <= 1, ("Test file {} found with multiple valid extensions {}"
+                          .format(test_path, ext_list))
+      return ret
+
+    src = find_files('.c', '.cpp')
+    output = find_files('.out', '.txt')
+    self.do_run_from_file(src, output, **kwargs)
+
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              no_build=False, main_file=None, additional_files=[],
@@ -1122,7 +1166,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              check_for_error=True):
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
-      Building.COMPILER = to_cc(Building.COMPILER)
 
     if no_build:
       if src:
@@ -1678,11 +1721,11 @@ def build_library(name,
                   env_init={},
                   native=False,
                   cflags=[]):
-  """Build a library into a .bc file. We build the .bc file once and cache it
-  for all our tests. (We cache in memory since the test directory is destroyed
-  and recreated for each test. Note that we cache separately for different
-  compilers).  This cache is just during the test runner. There is a different
-  concept of caching as well, see |Cache|.
+  """Build a library and cache the result.  We build the library file
+  once and cache it for all our tests. (We cache in memory since the test
+  directory is destroyed and recreated for each test. Note that we cache
+  separately for different compilers).  This cache is just during the test
+  runner. There is a different concept of caching as well, see |Cache|.
   """
 
   if type(generated_libs) is not list:
@@ -1934,9 +1977,9 @@ def flattened_tests(loaded_tests):
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other')
   has_multiple_tests = len(tests) > 1
-  has_multiple_cores = parallel_runner.num_cores() > 1
+  has_multiple_cores = parallel_testsuite.num_cores() > 1
   if suite_supported and has_multiple_tests and has_multiple_cores:
-    return parallel_runner.ParallelTestSuite()
+    return parallel_testsuite.ParallelTestSuite(len(tests))
   return unittest.TestSuite()
 
 

@@ -516,16 +516,18 @@ fi
         return 0;
       }
       ''')
-    cache_dir_name = self.in_dir('emscripten_cache')
-    tasks = []
-    num_times_libc_was_built = 0
-    for i in range(3):
-      p = run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
-      tasks += [p]
-    for p in tasks:
-      print('stdout:\n', p.stdout)
-      if 'generating system library: libc' in p.stdout:
-        num_times_libc_was_built += 1
+    cache_dir_name = self.in_dir('test_cache')
+    with env_modify({'EM_CACHE': cache_dir_name}):
+      tasks = []
+      num_times_libc_was_built = 0
+      for i in range(3):
+        p = run_process([PYTHON, EMCC, 'test.c', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        tasks += [p]
+      for p in tasks:
+        print('stdout:\n', p.stdout)
+        if 'generating system library: libc' in p.stdout:
+          num_times_libc_was_built += 1
+
     # The cache directory must exist after the build
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc
@@ -535,27 +537,6 @@ fi
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
-
-  def test_emcc_cache_flag(self):
-    restore_and_set_up()
-
-    cache_dir_name = self.in_dir('emscripten_cache')
-    self.assertFalse(os.path.exists(cache_dir_name))
-    create_test_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
-    run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
-    # The cache directory must exist after the build
-    self.assertTrue(os.path.exists(cache_dir_name))
-    # The cache directory must contain a built libc'
-    if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm-obj', 'libc.a')))
-    else:
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
   def test_emconfig(self):
     restore_and_set_up()
@@ -574,7 +555,7 @@ fi
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
     with chdir(temp_dir):
-      self.do([PYTHON, EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
+      run_process([PYTHON, EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = run_js('a.out.js')
 
     self.assertContained('hello, world!', result)
@@ -866,4 +847,4 @@ fi
     self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
 
     make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'unexpected binaryen version: 70 (expected 90)')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'unexpected binaryen version: 70 (expected ')

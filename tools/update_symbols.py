@@ -27,9 +27,7 @@ from tools import shared, cache
 from tools.system_libs import Library
 
 # Libraries that need .symbols file
-target_libs = ['libal', 'libc', 'libc-extras', 'libcompiler_rt', 'libc-wasm',
-               'libc++', 'libc++abi', 'libgl', 'libhtml5', 'libpthread',
-               'libunwind']
+target_libs = ['libal', 'libgl', 'libhtml5']
 
 
 def get_symbols_dir():

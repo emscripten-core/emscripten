@@ -129,7 +129,7 @@ if (typeof print === 'undefined') {
 }
 // *** Environment setup code ***
 
-var uglify = require('../tools/eliminator/node_modules/uglify-js');
+var uglify = require('../third_party/uglify-js');
 var fs = require('fs');
 var path = require('path');
 

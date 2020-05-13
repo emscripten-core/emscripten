@@ -15,10 +15,6 @@ You can also use this for cmake and other configure-like
 stages. What happens is that all compilations done during
 this command are to native code, not JS, so that configure
 tests will work properly.
-
-Relevant defines:
-
-  CONFIGURE_CC - see emcc
 '''
 
 from __future__ import print_function

@@ -61,17 +61,23 @@ var LibraryGL = {
   },
 
 #if MIN_WEBGL_VERSION == 1
-  _webgl_acquireInstancedArraysExtension: function(ctx) {
+  _webgl_enable_ANGLE_instanced_arrays: function(ctx) {
     // Extension available in WebGL 1 from Firefox 26 and Google Chrome 30 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('ANGLE_instanced_arrays');
     if (ext) {
       ctx['vertexAttribDivisor'] = function(index, divisor) { ext['vertexAttribDivisorANGLE'](index, divisor); };
       ctx['drawArraysInstanced'] = function(mode, first, count, primcount) { ext['drawArraysInstancedANGLE'](mode, first, count, primcount); };
       ctx['drawElementsInstanced'] = function(mode, count, type, indices, primcount) { ext['drawElementsInstancedANGLE'](mode, count, type, indices, primcount); };
+      return 1;
     }
   },
 
-  _webgl_acquireVertexArrayObjectExtension: function(ctx) {
+  emscripten_webgl_enable_ANGLE_instanced_arrays__deps: ['_webgl_enable_ANGLE_instanced_arrays'],
+  emscripten_webgl_enable_ANGLE_instanced_arrays: function(ctx) {
+    return __webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx);
+  },
+
+  _webgl_enable_OES_vertex_array_object: function(ctx) {
     // Extension available in WebGL 1 from Firefox 25 and WebKit 536.28/desktop Safari 6.0.3 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('OES_vertex_array_object');
     if (ext) {
@@ -79,22 +85,43 @@ var LibraryGL = {
       ctx['deleteVertexArray'] = function(vao) { ext['deleteVertexArrayOES'](vao); };
       ctx['bindVertexArray'] = function(vao) { ext['bindVertexArrayOES'](vao); };
       ctx['isVertexArray'] = function(vao) { return ext['isVertexArrayOES'](vao); };
+      return 1;
     }
   },
 
-  _webgl_acquireDrawBuffersExtension: function(ctx) {
+  emscripten_webgl_enable_OES_vertex_array_object__deps: ['_webgl_enable_OES_vertex_array_object'],
+  emscripten_webgl_enable_OES_vertex_array_object: function(ctx) {
+    return __webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx);
+  },
+
+  _webgl_enable_WEBGL_draw_buffers: function(ctx) {
     // Extension available in WebGL 1 from Firefox 28 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('WEBGL_draw_buffers');
     if (ext) {
       ctx['drawBuffers'] = function(n, bufs) { ext['drawBuffersWEBGL'](n, bufs); };
+      return 1;
     }
+  },
+
+  emscripten_webgl_enable_WEBGL_draw_buffers__deps: ['_webgl_enable_WEBGL_draw_buffers'],
+  emscripten_webgl_enable_WEBGL_draw_buffers: function(ctx) {
+    return __webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx);
   },
 #endif
 
   $GL__postset: 'var GLctx; GL.init()',
-#if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS && MIN_WEBGL_VERSION == 1
+#if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
-  $GL__deps: ['_webgl_acquireInstancedArraysExtension', '_webgl_acquireVertexArrayObjectExtension', '_webgl_acquireDrawBuffersExtension'],
+  $GL__deps: [
+#if MIN_WEBGL_VERSION == 1
+    '_webgl_enable_ANGLE_instanced_arrays',
+    '_webgl_enable_OES_vertex_array_object',
+    '_webgl_enable_WEBGL_draw_buffers',
+#endif
+#if MAX_WEBGL_VERSION >= 2
+    '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+#endif
+    ],
 #endif
   $GL: {
 #if GL_DEBUG
@@ -1029,11 +1056,14 @@ var LibraryGL = {
 #endif
 
 #if MIN_WEBGL_VERSION == 1
-      if (context.version < 2) {
-        __webgl_acquireInstancedArraysExtension(GLctx);
-        __webgl_acquireVertexArrayObjectExtension(GLctx);
-        __webgl_acquireDrawBuffersExtension(GLctx);
-      }
+      // Extensions that are only available in WebGL 1 (the calls will be no-ops if called on a WebGL 2 context active)
+      __webgl_enable_ANGLE_instanced_arrays(GLctx);
+      __webgl_enable_OES_vertex_array_object(GLctx);
+      __webgl_enable_WEBGL_draw_buffers(GLctx);
+#endif
+#if MAX_WEBGL_VERSION >= 2
+      // Extensions that are available from WebGL >= 2 (no-op if called on a WebGL 1 context active)
+      __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
@@ -1300,13 +1330,22 @@ var LibraryGL = {
               case 0x8894: // ARRAY_BUFFER_BINDING
               case 0x8B8D: // CURRENT_PROGRAM
               case 0x8895: // ELEMENT_ARRAY_BUFFER_BINDING
-              case 0x8CA6: // FRAMEBUFFER_BINDING
+              case 0x8CA6: // FRAMEBUFFER_BINDING or DRAW_FRAMEBUFFER_BINDING
               case 0x8CA7: // RENDERBUFFER_BINDING
               case 0x8069: // TEXTURE_BINDING_2D
               case 0x85B5: // WebGL 2 GL_VERTEX_ARRAY_BINDING, or WebGL 1 extension OES_vertex_array_object GL_VERTEX_ARRAY_BINDING_OES
 #if MAX_WEBGL_VERSION >= 2
-              case 0x8919: // GL_SAMPLER_BINDING
-              case 0x8E25: // GL_TRANSFORM_FEEDBACK_BINDING
+              case 0x8F36: // COPY_READ_BUFFER_BINDING or COPY_READ_BUFFER
+              case 0x8F37: // COPY_WRITE_BUFFER_BINDING or COPY_WRITE_BUFFER
+              case 0x88ED: // PIXEL_PACK_BUFFER_BINDING
+              case 0x88EF: // PIXEL_UNPACK_BUFFER_BINDING
+              case 0x8CAA: // READ_FRAMEBUFFER_BINDING
+              case 0x8919: // SAMPLER_BINDING
+              case 0x8C1D: // TEXTURE_BINDING_2D_ARRAY
+              case 0x806A: // TEXTURE_BINDING_3D
+              case 0x8E25: // TRANSFORM_FEEDBACK_BINDING
+              case 0x8C8F: // TRANSFORM_FEEDBACK_BUFFER_BINDING
+              case 0x8A28: // UNIFORM_BUFFER_BINDING
 #endif
               case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
                 ret = 0;
