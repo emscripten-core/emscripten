@@ -8391,10 +8391,10 @@ int main() {
 
   @parameterized({
     'O3':                 ('libcxxabi_message.cpp', ['-O3'],
-                           [], [],  947), # noqa
+                           [], [], 128), # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 7804), # noqa
+                           [], [], 216), # noqa
   })
   @no_fastcomp()
   def test_metadce_libcxxabi_message(self, filename, *args):

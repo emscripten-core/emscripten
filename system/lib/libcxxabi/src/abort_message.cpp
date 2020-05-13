@@ -28,10 +28,6 @@ extern "C" void android_set_abort_message(const char* msg);
 #   endif
 #endif
 
-#if defined(__EMSCRIPTEN__)
-#include <emscripten/html5.h>
-#endif
-
 void abort_message(const char* format, ...)
 {
     // write message to stderr
@@ -40,15 +36,12 @@ void abort_message(const char* format, ...)
     fprintf(stderr, "libc++abi.dylib: ");
 #endif
 #if defined(__EMSCRIPTEN__) && defined(NDEBUG)
-    // Show a very concise error message in a non-debug build, just where we
-    // are, and the format string. This is often fully sufficient, e.g.,
-    // for an error like
-    //   "__cxa_guard_acquire detected recursive initialization"
-    // and it avoids linking in vfprintf stdio support. Note that we also
-    // always have a good stack trace in a js+wasm environment, so these
-    // errors should be fairly clear anyhow.
-    emscripten_console_error("abort_message");
-    emscripten_console_error(format);
+    // Just trap in a non-debug build. These internal libcxxabi assertions are
+    // very rare, and it's not worth linking in vfprintf stdio support or
+    // even minimal logging for them, as we'll have a proper call stack, which
+    // will show a call into "abort_message", and can help debugging. (In a
+    // debug build that won't be inlined.)
+    __builtin_trap();
 #else
     va_list list;
     va_start(list, format);
