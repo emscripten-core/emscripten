@@ -413,7 +413,7 @@ def apply_settings(changes):
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
     if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
-               'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
+               'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE', 'PROXIED_MAIN_TOTAL_STACK'):
       value = str(shared.expand_byte_size_suffixes(value))
 
     if value[0] == '@':

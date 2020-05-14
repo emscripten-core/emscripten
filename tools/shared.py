@@ -809,8 +809,8 @@ def expand_byte_size_suffixes(value):
   if not match:
     try:
       return int(value)
-    except ValueError:
-      raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
+    except ValueError as e:
+      raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB (was " + str(value) + ')')
   value, suffix = match.groups()
   return int(value) * SIZE_SUFFIXES[suffix.lower()]
 

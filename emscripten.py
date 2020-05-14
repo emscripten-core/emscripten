@@ -2360,6 +2360,9 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
   if shared.Settings.WASM_BACKEND and shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
+  # emscripten_stack_get_free() in stack API needs Binaryen to emit a stackGetFree wasm function.
+  if 'library_stack.js' in shared.Settings.SYSTEM_JS_LIBRARIES:
+    args.append('--add-stack-limit-global')
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
   # When we dynamically link our JS loader adds functions from wasm modules to

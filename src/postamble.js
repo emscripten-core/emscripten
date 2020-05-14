@@ -195,7 +195,7 @@ function callMain(args) {
     var start = Date.now();
 #endif
 
-#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+#if WASM_BACKEND && (STACK_OVERFLOW_CHECK >= 2 || LibraryManager.has('library_stack.js'))
     Module['___set_stack_limit'](STACK_MAX);
 #endif
 

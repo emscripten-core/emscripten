@@ -4929,7 +4929,7 @@ window.close = function() {
 
   @requires_threads
   @no_fastcomp('offset converter is not supported on fastcomp')
-  def test_offset_converter(self, *args):
+  def test_offset_converter(self):
     try:
       self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
     except Exception as e:
@@ -4938,8 +4938,14 @@ window.close = function() {
       raise e
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
-  def test_emscripten_unwind_to_js_event_loop(self, *args):
+  def test_emscripten_unwind_to_js_event_loop(self):
     self.btest(path_from_root('tests', 'browser', 'test_emscripten_unwind_to_js_event_loop.c'), '1', args=['-s', 'NO_EXIT_RUNTIME=1'])
+
+  # Tests the <emscripten/stack.h> API in a pthread
+  def test_emscripten_stack_in_pthread(self):
+    args = ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PROXIED_MAIN_TOTAL_STACK=4MB', '-lstack.js']
+    self.btest(path_from_root('tests', 'core', 'stack_get_free.c'), '0', args=args)
+    self.btest(path_from_root('tests', 'core', 'stack_get_free.c'), '0', args=['-O3'] + args)
 
   @no_fastcomp('wasm-backend specific feature')
   def test_wasm2js_fallback(self):

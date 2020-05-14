@@ -559,6 +559,10 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
 
+  __proxy_main_thread_stack_size: function() {
+    return {{{ PROXIED_MAIN_TOTAL_STACK }}};
+  },
+
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_getschedparam', 'pthread_self', 'memalign', '$resetPrototype'],
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
@@ -1339,7 +1343,7 @@ var LibraryPThread = {
     STACKTOP += 16;
 #endif
 
-#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+#if WASM_BACKEND && (STACK_OVERFLOW_CHECK >= 2 || LibraryManager.has('library_stack.js'))
     ___set_stack_limit(STACK_MAX);
 #endif
 #if STACK_OVERFLOW_CHECK

@@ -110,7 +110,14 @@ var MEM_INIT_METHOD = 0;
 // value must be large enough for the program's requirements. If
 // assertions are on, we will assert on not exceeding this, otherwise,
 // it will fail silently.
+// When running with -s PROXY_TO_PTHREAD=1, this specifies the stack size of
+// the main browser thread (i.e. the code that is processing all the proxied
+// call requests), and not the stack size of the main application thread.
 var TOTAL_STACK = 5*1024*1024;
+
+// When running with -s PROXY_TO_PTHRERAD=1, this specifies the stack size
+// of the main application thread to use.
+var PROXIED_MAIN_TOTAL_STACK = 5*1024*1024;
 
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
