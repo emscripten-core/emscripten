@@ -355,6 +355,7 @@ mergeInto(LibraryManager.library, {
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
       mmap: function(stream, address, length, position, prot, flags) {
+        // We don't currently support location hints for the address of the mapping
         assert(address === 0);
 
         if (!FS.isFile(stream.node.mode)) {
@@ -364,7 +365,7 @@ mergeInto(LibraryManager.library, {
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if ( !(flags & {{{ cDefine('MAP_PRIVATE') }}}) && contents.buffer === HEAP8.buffer ) {
+        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}}) && contents.buffer === buffer) {
           // We can't emulate MAP_SHARED when the file is not backed by the buffer
           // we're mapping to (e.g. the HEAP buffer).
           allocated = false;
