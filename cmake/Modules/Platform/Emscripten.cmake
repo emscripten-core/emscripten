@@ -100,6 +100,19 @@ if ("${CMAKE_RANLIB}" STREQUAL "")
   set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
 endif()
 
+if ("${CMAKE_C_COMPILER_AR}" STREQUAL "")
+  set(CMAKE_C_COMPILER_AR "${CMAKE_AR}" CACHE FILEPATH "Emscripten ar")
+endif()
+if ("${CMAKE_CXX_COMPILER_AR}" STREQUAL "")
+  set(CMAKE_CXX_COMPILER_AR "${CMAKE_AR}" CACHE FILEPATH "Emscripten ar")
+endif()
+if ("${CMAKE_C_COMPILER_RANLIB}" STREQUAL "")
+  set(CMAKE_C_COMPILER_RANLIB "${CMAKE_RANLIB}" CACHE FILEPATH "Emscripten ranlib")
+endif()
+if ("${CMAKE_CXX_COMPILER_RANLIB}" STREQUAL "")
+  set(CMAKE_CXX_COMPILER_RANLIB "${CMAKE_RANLIB}" CACHE FILEPATH "Emscripten ranlib")
+endif()
+
 # Don't allow CMake to autodetect the compiler, since it does not understand
 # Emscripten.
 # Pass -DEMSCRIPTEN_FORCE_COMPILERS=OFF to disable (sensible mostly only for
