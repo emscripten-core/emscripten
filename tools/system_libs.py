@@ -701,17 +701,18 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   # custom standard library. The same for other libc/libm builds.
   cflags = ['-Os', '-fno-builtin']
 
-  # Hide several musl warnings that produce a lot of spam to unit test build
-  # server logs.  TODO: When updating musl the next time, feel free to recheck
-  # which of their warnings might have been fixed, and which ones of these could
-  # be cleaned up.
-  cflags += ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
-             '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
-             '-Wno-dangling-else', '-Wno-unknown-pragmas',
-             '-Wno-shift-op-parentheses', '-Wno-string-plus-int',
-             '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses',
-             '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
-             '-Wno-empty-body']
+  # Disable certain warnings for code patterns that are contained in upstream musl
+  cflags += ['-Wno-ignored-attributes',
+             '-Wno-dangling-else',
+             '-Wno-unknown-pragmas',
+             '-Wno-shift-op-parentheses',
+             '-Wno-string-plus-int',
+             '-Wno-pointer-sign']
+
+  if not shared.Settings.WASM_BACKEND:
+    # These are needed with the old fastcomp backend.
+    cflags += ['-Wno-logical-op-parentheses',
+               '-Wno-bitwise-op-parentheses']
 
   def get_files(self):
     libc_files = []
