@@ -288,6 +288,7 @@ non_core_test_modes = [
 if shared.Settings.WASM_BACKEND:
   non_core_test_modes += [
     'asan',
+    'asan2',
     'lsan',
     'wasm2ss',
   ]

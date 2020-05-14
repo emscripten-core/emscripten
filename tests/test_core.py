@@ -1239,6 +1239,7 @@ int main() {
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
   @no_emterpreter
+  @no_asan('minimal_runtime does not provide enough runtime support, like when the runtime is ready or not')
   def test_exceptions_minimal_runtime(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.maybe_closure()
@@ -5283,6 +5284,7 @@ main( int argv, char ** argc ) {
       self.do_run(open(path_from_root('tests', 'utf8_invalid.cpp')).read(), 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
+  @no_asan('minimal_runtime does not provide enough runtime support, like when the runtime is ready or not')
   @no_emterpreter
   def test_minimal_runtime_utf8_invalid(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
@@ -8536,6 +8538,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
   @no_emterpreter
+  @no_asan('minimal_runtime does not provide enough runtime support, like when the runtime is ready or not')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8579,6 +8582,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests global initializer with -s MINIMAL_RUNTIME=1
   @no_emterpreter
+  @no_asan('minimal_runtime does not provide enough runtime support, like when the runtime is ready or not')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
@@ -8903,6 +8907,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
 
   # Tests the emscripten_get_exported_function() API.
+  @no_asan('minimal_runtime does not provide enough runtime support, like when the runtime is ready or not')
   def test_minimal_runtime_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
     self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
@@ -9027,6 +9032,7 @@ if not shared.Settings.WASM_BACKEND:
 if shared.Settings.WASM_BACKEND:
   lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
   asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
+  asan2 = make_run('asan2', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
   asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
                    settings={'ALLOW_MEMORY_GROWTH': 1})
 

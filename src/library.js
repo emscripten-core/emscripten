@@ -449,6 +449,8 @@ LibraryManager.library = {
     return -1;
   },
 
+  // TODO: turn this into __builtin_wasm_memory_size in the .h, once we
+  // remove fastcomp and can assume WASM_BACKEND
   emscripten_get_heap_size: function() {
     return HEAPU8.length;
   },
