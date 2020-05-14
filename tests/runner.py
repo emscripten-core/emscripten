@@ -68,6 +68,11 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 
+def delete_contents(pathname):
+  for entry in os.listdir(pathname):
+    try_delete(os.path.join(pathname, entry))
+
+
 sys.path.append(path_from_root('third_party/websockify'))
 
 logger = logging.getLogger(__file__)
@@ -80,8 +85,10 @@ EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
 
-# Also suppot the old name: EM_SAVE_DIR
-EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
+# TODO(sbc): Remove this check for the legacy name once its been around for a while.
+assert 'EM_SAVE_DIR' not in os.environ, "Please use EMTEST_SAVE_DIR instead of EM_SAVE_DIR"
+
+EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
 
 # generally js engines are equivalent, testing 1 is enough. set this
 # to force testing on all js engines, good to find js engine bugs
@@ -433,7 +440,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
-    self.save_dir = EMTEST_SAVE_DIR
     self.env = {}
     self.temp_files_before_run = []
 
@@ -446,21 +452,28 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.save_dir:
+    if EMTEST_SAVE_DIR:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      ensure_dir(self.working_dir)
+      if EMTEST_SAVE_DIR != 2 and os.path.exists(self.working_dir):
+        # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
+        # expect this.  EMTEST_SAVE_DIR=2 can be used to keep the old contents for the new test
+        # run. This can be useful when iterating on a given test with extra files you want to keep
+        # around in the output directory.
+        delete_contents(self.working_dir)
+      else:
+        ensure_dir(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
 
-    if not self.save_dir:
+    if not EMTEST_SAVE_DIR:
       self.has_prev_ll = False
       for temp_file in os.listdir(TEMP_DIR):
         if temp_file.endswith('.ll'):
           self.has_prev_ll = True
 
   def tearDown(self):
-    if not self.save_dir:
+    if not EMTEST_SAVE_DIR:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
       try_delete(self.get_dir())
