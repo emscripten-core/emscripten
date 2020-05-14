@@ -827,6 +827,9 @@ class libc_environ(libc):
     else:
       return []
 
+  def can_build(self):
+    return shared.Settings.WASM_BACKEND
+
 
 class libprintf_long_double(libc):
   name = 'libprintf_long_double'
