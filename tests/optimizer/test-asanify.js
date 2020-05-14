@@ -25,7 +25,14 @@ foo = HEAPU8[1337] = 42;
 HEAP16[bar(HEAPF64[5])];
 HEAPF32[x] = HEAP32[y];
 
-// ignore js impls (which we use before the wasm is compiled)
+// Ignore the special asan functions themselves. that is, any JS memory access
+// will turn into a function call to _asan_js_load_1 etc., which then does
+// the memory access for it. It either calls into wasm to get the proper
+// asan-instrumented operation, or before the wasm is ready to be called into,
+// we must do the access in JS, unsafely. We should not instrument a heap
+// access in these functions, as then we'd get infinite recursion - this is
+// where we do actually need to still do a HEAP8[..] etc. operation without
+// any ASan instrumentation.
 function _asan_js_load_1(ptr) {
   return HEAP8[ptr];
 }
