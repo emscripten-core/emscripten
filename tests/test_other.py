@@ -2059,7 +2059,7 @@ int f() {
     assert 'hello, world!' in run_js('two.js')
 
   def test_js_optimizer(self):
-    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers']
+    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers', 'asanify']
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'eliminateDeadGlobals.js'), open(path_from_root('tests', 'optimizer', 'eliminateDeadGlobals-output.js')).read(),
        ['eliminateDeadGlobals']),
@@ -2163,6 +2163,8 @@ int f() {
        ['growableHeap']),
       (path_from_root('tests', 'optimizer', 'test-unsignPointers.js'), open(path_from_root('tests', 'optimizer', 'test-unsignPointers-output.js')).read(),
        ['unsignPointers']),
+      (path_from_root('tests', 'optimizer', 'test-asanify.js'), open(path_from_root('tests', 'optimizer', 'test-asanify-output.js')).read(),
+       ['asanify']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals-output.js')).read(),
        ['minifyGlobals']),
     ]:

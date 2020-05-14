@@ -1836,6 +1836,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if 'address' in sanitize:
         shared.Settings.USE_ASAN = 1
 
+        shared.Settings.EXPORTED_FUNCTIONS += [
+          '_asan_c_load_1', '_asan_c_load_1u',
+          '_asan_c_load_2', '_asan_c_load_2u',
+          '_asan_c_load_4', '_asan_c_load_4u',
+          '_asan_c_load_f', '_asan_c_load_d',
+          '_asan_c_store_1', '_asan_c_store_1u',
+          '_asan_c_store_2', '_asan_c_store_2u',
+          '_asan_c_store_4', '_asan_c_store_4u',
+          '_asan_c_store_f', '_asan_c_store_d',
+        ]
+
         shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
         shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
         assert shared.Settings.INITIAL_MEMORY < 2**32
@@ -3329,6 +3340,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # a little, keep them signed, and just unsign them here if we need that.
   if shared.Settings.CAN_ADDRESS_2GB:
     final = shared.Building.use_unsigned_pointers_in_js(final)
+
+  if shared.Settings.USE_ASAN:
+    final = shared.Building.instrument_js_for_asan(final)
 
   if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
     # minify the JS
