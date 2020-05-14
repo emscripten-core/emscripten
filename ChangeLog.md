@@ -17,19 +17,31 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Address Sanitizer support now includes JavaScript as well, that is, memory
+  access of HEAP* arrays is checked by ASan. That allows errors to be found if
+  JS glue code does something wrong like forget to shift a pointer. To use this,
+  just build with ASan normally, `-fsanitize=address` at link (#11147).
+- Fix embind string conversions in multithreaded builds (#10844).
 - `ALLOW_MEMORY_GROWTH` used to silently disable `ABORTING_MALLOC`. It now
   just changes the default, which means you can pass `-s ABORTING_MALLOC=1` to
   override the default, which was not possible before. (If you pass the flag
   and don't want that behavior, stop passing the flag.) (#11131)
 - Change the factory function created by using the `MODULARIZE` build option to
-  return a Promise instead of the module instance. If you use `MODULARIZE` you
-  will need to wait on the returned Promise, using `await` or its `then`
-  callback, to get the module instance (#10697). This fixes some long-standing
-  bugs with that option which have been reported multiple times, but is a
-  breaking change - sorry about that. To reduce the risk of confusing breakage,
-  in a build with `ASSERTIONS` we will show a clear warning on common errors.
-  For more, see detailed examples for the current usage in `src/settings.js` on
-  `MODULARIZE`.
+  return a Promise instead of the module instance. That is, beforehand
+
+        Module()
+
+  would return an instance (which was perhaps not ready yet if startup was
+  async). In the new model, that returns a Promise which you can do `.then` or
+  `await` on to get notified when the instance is ready, and the callback
+  receives the instance. Note that both before and after this change
+  doing `Module()` creates and runs an instance, so the only change is
+  the return value from that call.
+  This fixes some long-standing bugs with that option which have been reported
+  multiple times, but is a breaking change - sorry about that. To reduce the
+  risk of confusing breakage, in a build with `ASSERTIONS` we will show a clear
+  warning on common errors. For more, see detailed examples for the current
+  usage in `src/settings.js` on `MODULARIZE`. (#10697)
 - A new `PRINTF_LONG_DOUBLE` option allows printf to print long doubles at full
   float128 precision. (#11130)
 - `emscripten_async_queue_on_thread` has been renamed to
