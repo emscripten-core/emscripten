@@ -1861,7 +1861,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('ASan does not support dynamic linking')
 
         if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.ASSERTIONS:
-          exit_with_error('ASan requires ASSERTIONS with MINIMAL_RUNTIME (otherwise not enough runtime info is kept around for it to run)')
+          exit_with_error('ASan is not yet compatible with MINIMAL_RUNTIME (not enough runtime info, like if it is ready or not)')
 
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
