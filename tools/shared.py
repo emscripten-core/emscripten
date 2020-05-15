@@ -1582,9 +1582,12 @@ class Building(object):
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.INITIAL_MEMORY,
       ]
-      use_start_function = Settings.STANDALONE_WASM
 
-      if not use_start_function:
+      if Settings.STANDALONE_WASM:
+        # when Settings.EXPECT_MAIN is set we fall back to wasm-ld default of _start
+        if not Settings.EXPECT_MAIN:
+          cmd += ['--entry=_initialize']
+      else:
         if Settings.EXPECT_MAIN and not Settings.IGNORE_MISSING_MAIN:
           cmd += ['--entry=main']
         else:

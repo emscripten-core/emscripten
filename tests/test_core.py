@@ -1595,7 +1595,9 @@ int main() {
 }
 ''', 'bugfree code')
 
-  @also_with_standalone_wasm
+  # Marked as impure since the WASI reactor modules (modules without main)
+  # are not yet suppored by the wasm engines we test against.
+  @also_with_impure_standalone_wasm
   def test_ctors_no_main(self):
     self.emcc_args.append('--no-entry')
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
@@ -8852,7 +8854,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       }
     ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
-  @also_with_standalone_wasm
   def test_undefined_main(self):
     if self.get_setting('LLD_REPORT_UNDEFINED'):
       self.skipTest('LLD_REPORT_UNDEFINED does not allow implicit undefined main')

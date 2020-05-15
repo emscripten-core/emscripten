@@ -884,6 +884,24 @@ class crt1(MuslInternalLibrary):
     return super(crt1, self).can_build() and shared.Settings.WASM_BACKEND
 
 
+class crt1_reactor(MuslInternalLibrary):
+  name = 'crt1_reactor'
+  cflags = ['-O2']
+  src_dir = ['system', 'lib', 'libc']
+  src_files = ['crt1_reactor.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
+    return super(crt1_reactor, self).can_use() and shared.Settings.STANDALONE_WASM
+
+  def can_build(self):
+    return super(crt1_reactor, self).can_build() and shared.Settings.WASM_BACKEND
+
+
 class libc_extras(NoBCLibrary, MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
   constructor it contains can be DCE'd.  Such tricks are not needed wih the
@@ -1557,7 +1575,10 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     libs_to_link.append((lib.get_path(), need_whole_archive))
 
   if shared.Settings.STANDALONE_WASM:
-    add_library(system_libs_map['crt1'])
+    if shared.Settings.EXPECT_MAIN:
+      add_library(system_libs_map['crt1'])
+    else:
+      add_library(system_libs_map['crt1_reactor'])
 
   for forced in force_include:
     add_library(system_libs_map[forced])
