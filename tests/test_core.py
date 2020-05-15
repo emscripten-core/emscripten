@@ -8926,6 +8926,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXPORTED_FUNCTIONS', [])
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
+  # Tests the operation of API found in #include <emscripten/math.h>
+  def test_emscripten_math(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_math')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
