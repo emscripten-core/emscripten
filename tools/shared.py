@@ -2587,6 +2587,11 @@ class Building(object):
     return Building.acorn_optimizer(js_file, ['unsignPointers'])
 
   @staticmethod
+  def instrument_js_for_asan(js_file):
+    logger.debug('instrumenting JS memory accesses for ASan')
+    return Building.acorn_optimizer(js_file, ['asanify'])
+
+  @staticmethod
   def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
     logger.debug('handle_final_wasm_symbols')
     args = []

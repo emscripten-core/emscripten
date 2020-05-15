@@ -1342,9 +1342,6 @@ var LibraryPThread = {
 #if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limit(STACK_MAX);
 #endif
-#if STACK_OVERFLOW_CHECK
-    writeStackCookie();
-#endif
 
 #if WASM_BACKEND
     // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
@@ -1352,6 +1349,12 @@ var LibraryPThread = {
 #else
     // In old asm.js backend, use a dedicated function to establish the stack frame.
     asmJsEstablishStackFrame(stackTop, stackMax);
+#endif
+
+#if STACK_OVERFLOW_CHECK
+    // Write the stack cookie last, after we have set up the proper bounds and
+    // current position of the stack.
+    writeStackCookie();
 #endif
   },
 
