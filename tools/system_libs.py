@@ -810,7 +810,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
-        filenames=['extras.c', 'wasi-helpers.c'])
+        filenames=['extras.c', 'wasi-helpers.c', 'emscripten_setjmp.c'])
 
     return libc_files
 

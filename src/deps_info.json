@@ -110,6 +110,6 @@
   "_embind_register_enum_value": ["free"],
   "setjmp": ["setThrew", "realloc"],
   "longjmp": ["setThrew", "realloc"],
-  "emscripten_longjmp_jmpbuf": ["setThrew", "realloc"],
-  "saveSetjmp": ["setThrew", "realloc"]
+  "siglongjmp": ["setThrew", "realloc"],
+  "emscripten_longjmp_jmpbuf": ["setThrew", "realloc"]
 }
