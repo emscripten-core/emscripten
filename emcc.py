@@ -1899,7 +1899,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           passes += ['--instrument-locals']
           passes += ['--log-execution']
           passes += ['--instrument-memory']
-          passes += ['--legalize-js-interface']
+          if shared.Settings.LEGALIZE_JS_FFI:
+            # legalize it again now, as the instrumentation may need it
+            passes += ['--legalize-js-interface']
         if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
           # note that this pass must run before asyncify, as if it runs afterwards we only
           # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
