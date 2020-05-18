@@ -5251,20 +5251,25 @@ LibraryManager.library = {
 #endif
   },
 
+  // Receives a Web Audio context plus a set of elements to listen for user
+  // input events on, and registers a context resume() for them. This lets
+  // audio work properly in an automatic way, as browsers won't let audio run
+  // without user interaction.
+  // If @elements is not provided, we default to the document and canvas
+  // elements, which handle common use cases.
   $autoResumeAudioContext__deps: ['$listenOnce'],
-  $autoResumeAudioContext: function(ctx) {
-    var canvas = document.getElementById('canvas');
+  $autoResumeAudioContext: function(ctx, elements) {
+    if (!elements) {
+      elements = [document, document.getElementById('canvas')];
+    }
     ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
-      // Browsers will only allow audio to play after a user interaction. Listen
-      // for a mouse click etc.
-      listenOnce(document, event, function() {
-        if (ctx.state === 'suspended') ctx.resume();
+      elements.forEach(function(element) {
+        if (element) {
+          listenOnce(element, event, function() {
+            if (ctx.state === 'suspended') ctx.resume();
+          });
+        }
       });
-      if (canvas) {
-        listenOnce(canvas, event, function() {
-          if (ctx.state === 'suspended') ctx.resume();
-        });
-      }
     });
   },
 };
