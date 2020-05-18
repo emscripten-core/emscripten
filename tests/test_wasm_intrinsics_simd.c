@@ -10,8 +10,6 @@ v128_t TESTFN i8x16_load(void *ptr) {
   return wasm_v128_load(ptr);
 }
 
-#ifdef __wasm_unimplemented_simd128__
-
 v128_t TESTFN v8x16_load_splat(void *ptr) {
   return wasm_v8x16_load_splat(ptr);
 }
@@ -42,8 +40,6 @@ v128_t TESTFN i64x2_load32x2_s(void *ptr) {
 v128_t TESTFN i64x2_load32x2_u(void *ptr) {
   return wasm_u64x2_load_32x2(ptr);
 }
-
-#endif // __wasm_unimplemented_simd128__
 
 void TESTFN i8x16_store(void *ptr, v128_t vec) {
   wasm_v128_store(ptr, vec);
@@ -106,13 +102,9 @@ v128_t TESTFN i64x2_shuffle_reverse(v128_t vec) {
   return wasm_v64x2_shuffle(vec, vec, 1, 0);
 }
 
-#ifdef __wasm_unimplemented_simd128__
-
 v128_t TESTFN v8x16_swizzle(v128_t x, v128_t y) {
   return wasm_v8x16_swizzle(x, y);
 }
-
-#endif // __wasm_unimplemented_simd128__
 
 v128_t TESTFN i8x16_splat(int32_t x) {
   return wasm_i8x16_splat(x);
@@ -363,13 +355,9 @@ v128_t TESTFN v128_xor(v128_t x, v128_t y) {
   return wasm_v128_xor(x, y);
 }
 
-#ifdef __wasm_unimplemented_simd128__
-
 v128_t TESTFN v128_andnot(v128_t x, v128_t y) {
   return wasm_v128_andnot(x, y);
 }
-
-#endif // __wasm_unimplemented_simd128__
 
 v128_t TESTFN v128_bitselect(v128_t x, v128_t y, v128_t cond) {
   return wasm_v128_bitselect(x, y, cond);
@@ -810,8 +798,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
                i8x16(7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7));
   }
 
-#ifdef __wasm_unimplemented_simd128__
-
   {
     char vec[8] = {0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0};
     void *ptr = &vec;
@@ -852,8 +838,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     );
   }
 
-#endif // __wasm_unimplemented_simd128__
-
   expect_vec(i8x16_const(), u8x16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16));
   expect_vec(i16x8_const(), u16x8(1, 2, 3, 4, 5, 6, 7, 8));
   expect_vec(i32x4_const(), u32x4(1, 2, 3, 4));
@@ -882,8 +866,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   expect_vec(i32x4_shuffle_reverse((v128_t)i32x4(1, 2, 3, 4)), i32x4(4, 3, 2, 1));
   expect_vec(i64x2_shuffle_reverse((v128_t)i64x2(1, 2)), i64x2(2, 1));
 
-#ifdef  __wasm_unimplemented_simd128__
-
   expect_vec(
     v8x16_swizzle(
       (v128_t)i8x16(0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
@@ -893,8 +875,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     i8x16(0xf0, 0xf4, 0xf8, 0xfc, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0xff, 0xfd, 0xfc, 0xf8, 0xf4, 0xf0)
   );
-
-#endif // __wasm_unimplemented_simd128__
 
   // i8x16 lane accesses
   expect_vec(i8x16_splat(5), i8x16(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5));
@@ -1275,16 +1255,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     v128_xor((v128_t)i32x4(0, 0, -1, -1), (v128_t)i32x4(0, -1, 0, -1)),
     i32x4(0, -1, -1, 0)
   );
-
-#ifdef __wasm_unimplemented_simd128__
-
   expect_vec(
     v128_andnot((v128_t)i32x4(0, 0, -1, -1), (v128_t)i32x4(0, -1, 0, -1)),
-    i32x4(0, -1, -1, 0)
+    i32x4(0, 0, -1, 0)
   );
-
-#endif // __wasm_unimplemented_simd128__
-
   expect_vec(
     v128_bitselect(
       (v128_t)i32x4(0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA),

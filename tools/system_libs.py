@@ -255,9 +255,6 @@ class Library(object):
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
-  # The C compile executable to use. You can override this to shared.EMXX for C++.
-  emcc = shared.EMCC
-
   # A list of flags to pass to emcc.
   # The flags for the parent class is automatically inherited.
   cflags = ['-Werror']
@@ -382,7 +379,14 @@ class Library(object):
     cflags = self.get_cflags()
     for src in self.get_files():
       o = self.in_temp(shared.unsuffixed_basename(src) + '.o')
-      commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
+      ext = os.path.splitext(src)[1]
+      if ext in ('.s', '.c'):
+        cmd = [shared.PYTHON, shared.EMCC]
+      else:
+        cmd = [shared.PYTHON, shared.EMXX]
+      if ext != '.s':
+        cmd += cflags
+      commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
     run_build_commands(commands)
     return objects
@@ -661,10 +665,6 @@ class AsanInstrumentedLibrary(Library):
     return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
 
 
-class CXXLibrary(Library):
-  emcc = shared.EMXX
-
-
 class NoBCLibrary(Library):
   # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every
   # object in the library.  While the optimizer will readily optimize out most of the unused
@@ -688,6 +688,7 @@ class libcompiler_rt(Library):
     filelist = shared.path_from_root('system', 'lib', 'compiler-rt', 'filelist.txt')
     src_files = open(filelist).read().splitlines()
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c'))
+    src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   else:
     src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
@@ -883,6 +884,24 @@ class crt1(MuslInternalLibrary):
     return super(crt1, self).can_build() and shared.Settings.WASM_BACKEND
 
 
+class crt1_reactor(MuslInternalLibrary):
+  name = 'crt1_reactor'
+  cflags = ['-O2']
+  src_dir = ['system', 'lib', 'libc']
+  src_files = ['crt1_reactor.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
+    return super(crt1_reactor, self).can_use() and shared.Settings.STANDALONE_WASM
+
+  def can_build(self):
+    return super(crt1_reactor, self).can_build() and shared.Settings.WASM_BACKEND
+
+
 class libc_extras(NoBCLibrary, MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
   constructor it contains can be DCE'd.  Such tricks are not needed wih the
@@ -897,7 +916,7 @@ class libc_extras(NoBCLibrary, MuslInternalLibrary):
     return super(libc_extras, self).can_build() and not shared.Settings.WASM_BACKEND
 
 
-class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
+class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
@@ -950,7 +969,7 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
         filenames=filenames)
 
 
-class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
+class libcxx(NoBCLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++'
 
   cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
@@ -998,7 +1017,7 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   ]
 
 
-class libunwind(CXXLibrary, NoExceptLibrary, MTLibrary):
+class libunwind(NoExceptLibrary, MTLibrary):
   name = 'libunwind'
   cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
   src_dir = ['system', 'lib', 'libunwind', 'src']
@@ -1169,7 +1188,7 @@ class libgl(MTLibrary):
     )
 
 
-class libembind(CXXLibrary):
+class libembind(Library):
   name = 'libembind'
   never_force = True
 
@@ -1201,7 +1220,7 @@ class libembind(CXXLibrary):
     return super(libembind, cls).get_default_variation(with_rtti=shared.Settings.USE_RTTI, **kwargs)
 
 
-class libfetch(CXXLibrary, MTLibrary):
+class libfetch(MTLibrary):
   name = 'libfetch'
   never_force = True
 
@@ -1209,7 +1228,7 @@ class libfetch(CXXLibrary, MTLibrary):
     return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
 
 
-class libasmfs(CXXLibrary, MTLibrary):
+class libasmfs(MTLibrary):
   name = 'libasmfs'
   never_force = True
 
@@ -1556,7 +1575,10 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     libs_to_link.append((lib.get_path(), need_whole_archive))
 
   if shared.Settings.STANDALONE_WASM:
-    add_library(system_libs_map['crt1'])
+    if shared.Settings.EXPECT_MAIN:
+      add_library(system_libs_map['crt1'])
+    else:
+      add_library(system_libs_map['crt1_reactor'])
 
   for forced in force_include:
     add_library(system_libs_map[forced])

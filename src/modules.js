@@ -63,6 +63,7 @@ var LibraryManager = {
     var libraries = [
       'library.js',
       'library_formatString.js',
+      'library_math.js',
       'library_path.js',
       'library_signals.js',
       'library_syscall.js',
@@ -160,7 +161,7 @@ var LibraryManager = {
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) {
-      libraries = ['library_formatString.js'];
+      libraries = ['library_formatString.js', 'library_stack_trace.js'];
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times

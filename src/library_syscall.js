@@ -249,7 +249,7 @@ var SyscallsLibrary = {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var info = FS.getStream(fd);
       if (!info) return -{{{ cDefine('EBADF') }}};
-      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
+      var res = FS.mmap(info, addr, len, off, prot, flags);
       ptr = res.ptr;
       allocated = res.allocated;
 #else // no filesystem support; report lack of support

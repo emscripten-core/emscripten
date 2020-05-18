@@ -156,7 +156,11 @@ function callMain(args) {
 #endif
 
 #if STANDALONE_WASM
+#if EXPECT_MAIN
   var entryFunction = Module['__start'];
+#else
+  var entryFunction = Module['__initialize'];
+#endif
 #else
   var entryFunction = Module['_main'];
 #endif

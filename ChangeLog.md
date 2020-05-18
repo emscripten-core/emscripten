@@ -17,6 +17,13 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
+  longer takes a target memory.  Its safer/cleaner/smaller to assume the target
+  is the global memory buffer.
+
+1.39.16: 05/15/2020
+-------------------
+- Add Math C API for direct access to JavaScript Math object (#11151).
 - Address Sanitizer support now includes JavaScript as well, that is, memory
   access of HEAP* arrays is checked by ASan. That allows errors to be found if
   JS glue code does something wrong like forget to shift a pointer. To use this,
