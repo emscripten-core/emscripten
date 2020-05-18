@@ -989,7 +989,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                  '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
                  '-install_name', '-compatibility_version',
                  '-current_version', '-I', '-L', '-include-pch',
-                 '-Xlinker'):
+                 '-Xlinker', '-Xclang'):
         skip = True
 
       if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:

@@ -10854,3 +10854,7 @@ int main() {
   def test_chained_js_error_diagnostics(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_chained_js_error_diagnostics.c'), '--js-library', path_from_root('tests', 'test_chained_js_error_diagnostics.js')])
     self.assertContained("error: undefined symbol: nonexistent_function (referenced by bar__deps: ['nonexistent_function'], referenced by foo__deps: ['bar'], referenced by top-level compiled C/C++ code)", err)
+
+  def test_xclang_flag(self):
+    create_test_file('foo.h', ' ')
+    run_process([PYTHON, EMCC, '-c', '-o', 'out.o', '-Xclang', '-include', '-Xclang', 'foo.h', path_from_root('tests', 'hello_world.c')])
