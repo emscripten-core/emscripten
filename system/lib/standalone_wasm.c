@@ -45,16 +45,6 @@ struct timespec wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp) {
                            .tv_nsec = timestamp % NSEC_PER_SEC};
 }
 
-int clock_gettime(clockid_t clk_id, struct timespec *tp) {
-  __wasi_timestamp_t now;
-  __wasi_errno_t error = __wasi_clock_time_get(clk_id, 0, &now);
-  if (error != __WASI_ERRNO_SUCCESS) {
-    return __wasi_syscall_ret(error);
-  }
-  *tp = wasi_timestamp_to_timespec(now);
-  return 0;
-}
-
 int clock_getres(clockid_t clk_id, struct timespec *tp) {
   __wasi_timestamp_t res;
   __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
