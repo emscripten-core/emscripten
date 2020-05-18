@@ -1480,6 +1480,13 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
   # TODO: Move all __deps from src/library*.js to deps_info.json, and use that single source of info
   #       both here and in the JS compiler.
   deps_info = json.loads(open(shared.path_from_root('src', 'deps_info.json')).read())
+
+  if not shared.Settings.WASM_BACKEND:
+    # fastcomp links differently than wasm-ld, and needs to be told explicitly
+    # about some dependencies
+    deps_info['setjmp'] += ['testSetjmp', 'saveSetjmp']
+    deps_info['longjmp'] += ['testSetjmp', 'saveSetjmp']
+
   added = set()
 
   def add_back_deps(need):
