@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
+  longer takes a target memory.  Its safer/cleaner/smaller to assume the target
+  is the global memory buffer.
 
 1.39.16: 05/15/2020
 -------------------
