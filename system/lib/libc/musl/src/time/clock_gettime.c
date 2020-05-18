@@ -33,7 +33,7 @@ int __clock_gettime(clockid_t clk, struct timespec *ts) {
 	if (__wasi_syscall_ret(__wasi_clock_time_get(clk, 1, &timestamp))) {
 		return -1;
 	}
-  *ts = wasi_timestamp_to_timespec(timestamp);
+  *ts = __wasi_timestamp_to_timespec(timestamp);
 	return 0;
 }
 #else // __EMSCRIPTEN__
