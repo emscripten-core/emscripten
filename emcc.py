@@ -1738,6 +1738,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.STANDALONE_WASM = 1
       js_target = misc_temp_files.get(suffix='.js').name
 
+    if shared.Settings.STANDALONE_WASM:
+      if not shared.Settings.WASM_BACKEND:
+        exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
+      if shared.Settings.USE_PTHREADS:
+        exit_with_error('STANDALONE_WASM does not support pthreads yet')
+      # the wasm must be runnable without the JS, so there cannot be anything that
+      # requires JS legalization
+      shared.Settings.LEGALIZE_JS_FFI = 0
+
+    if shared.Settings.WASM_BIGINT:
+      shared.Settings.LEGALIZE_JS_FFI = 0
+
     if shared.Settings.WASM:
       if shared.Settings.SINGLE_FILE:
         # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
@@ -1879,7 +1891,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           passes += ['--instrument-locals']
           passes += ['--log-execution']
           passes += ['--instrument-memory']
-          passes += ['--legalize-js-interface']
+          if shared.Settings.LEGALIZE_JS_FFI:
+            # legalize it again now, as the instrumentation may need it
+            passes += ['--legalize-js-interface']
         if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
           # note that this pass must run before asyncify, as if it runs afterwards we only
           # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
@@ -2010,18 +2024,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       cflags.append('-D__EMSCRIPTEN_TRACING__=1')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
-
-    if shared.Settings.STANDALONE_WASM:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
-      if shared.Settings.USE_PTHREADS:
-        exit_with_error('STANDALONE_WASM does not support pthreads yet')
-      # the wasm must be runnable without the JS, so there cannot be anything that
-      # requires JS legalization
-      shared.Settings.LEGALIZE_JS_FFI = 0
-
-    if shared.Settings.WASM_BIGINT:
-      shared.Settings.LEGALIZE_JS_FFI = 0
 
     if shared.Settings.WASM_BACKEND:
       if shared.Settings.SIMD:
