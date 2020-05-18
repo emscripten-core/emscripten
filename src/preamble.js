@@ -151,21 +151,6 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
-#if EMTERPRETIFY_ASYNC
-  if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state) {
-#if ASSERTIONS
-    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
-    assert(!EmterpreterAsync.restartFunc, 'Cannot have multiple async ccalls in flight at once');
-#endif
-    return new Promise(function(resolve) {
-      EmterpreterAsync.restartFunc = func;
-      EmterpreterAsync.asyncFinalizers.push(function(ret) {
-        if (stack !== 0) stackRestore(stack);
-        resolve(convertReturnValue(ret));
-      });
-    });
-  }
-#endif
 #if ASYNCIFY && WASM_BACKEND
   var asyncMode = opts && opts.async;
   var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
@@ -192,7 +177,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
+#if ASYNCIFY && WASM_BACKEND
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -392,12 +377,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
   // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
-}
-#endif
-
-#if EMTERPRETIFY
-function abortStackOverflowEmterpreter() {
-  abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
 }
 #endif
 
@@ -699,10 +678,6 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
-#if EMTERPRETIFY_ASYNC && ASSERTIONS
-var abortDecorators = [];
-#endif
-
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -725,11 +700,6 @@ function abort(what) {
   what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
   var output = 'abort(' + what + ') at ' + stackTrace();
-#if EMTERPRETIFY_ASYNC
-  abortDecorators.forEach(function(decorator) {
-    output = decorator(output, what);
-  });
-#endif
   what = output;
 #endif // ASSERTIONS
 

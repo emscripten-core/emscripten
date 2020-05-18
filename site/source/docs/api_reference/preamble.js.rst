@@ -70,7 +70,7 @@ Calling compiled C functions from JavaScript
   :returns: The result of the function call as a native JavaScript value (as in ``returnType``) or, if the ``async`` option is set, a JavaScript Promise of the result.
   :opts: An optional options object. It can contain the following properties:
 
-      - ``async``: If ``true``, implies that the ccall will perform an async operation. This assumes you are using the Emterpreter-Async option for your code.
+      - ``async``: If ``true``, implies that the ccall will perform an async operation. This assumes you are build with asyncify support.
 
   .. note:: Async calls currently don't support promise error handling.
 

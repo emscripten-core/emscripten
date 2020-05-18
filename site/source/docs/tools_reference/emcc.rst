@@ -182,7 +182,7 @@ Options that are modified or new in *emcc* are listed below:
 
   You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
-  .. note:: Some options might override this flag (e.g. ``EMTERPRETIFY``, ``DEAD_FUNCTIONS``, ``SAFE_HEAP`` and ``SPLIT_MEMORY`` override the value with ``js-opts=1``), because they depend on the js-optimizer.
+  .. note:: Some options might override this flag (e.g. ``DEAD_FUNCTIONS``, ``SAFE_HEAP`` and ``SPLIT_MEMORY`` override the value with ``js-opts=1``), because they depend on the js-optimizer.
 
 .. _emcc-llvm-opts:
 

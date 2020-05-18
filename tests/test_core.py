@@ -24,7 +24,7 @@ if __name__ == '__main__':
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, EMTEST_SKIP_SLOW
+from runner import RunnerCore, path_from_root
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
 
 # decorators for limiting which modes a test can run in
@@ -34,8 +34,6 @@ def asm_simd(f):
   assert callable(f)
 
   def decorated(self):
-    if self.is_emterpreter():
-      self.skipTest('simd not supported in emterpreter yet')
     if self.is_wasm_backend():
       self.skipTest('asm.js simd not compatible with wasm backend yet')
     if self.get_setting('WASM'):
@@ -48,8 +46,6 @@ def asm_simd(f):
 
 def wasm_simd(f):
   def decorated(self):
-    if self.is_emterpreter():
-      self.skipTest('simd not supported in empterpreter yet')
     if not self.is_wasm_backend():
       self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
@@ -111,11 +107,6 @@ def with_both_exception_handling(f):
       self.emcc_args.append('-fwasm-exceptions')
       f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-eh']])
   return decorated
-
-
-def no_emterpreter(f):
-  assert callable(f)
-  return skip_if(f, 'is_emterpreter')
 
 
 def no_wasm(note=''):
@@ -902,7 +893,6 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
 
-  @no_emterpreter
   def test_stack_restore(self):
     if self.get_setting('WASM') or self.is_wasm_backend():
       self.skipTest('generated code not available in wasm')
@@ -1238,7 +1228,6 @@ int main() {
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
-  @no_emterpreter
   def test_exceptions_minimal_runtime(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.maybe_closure()
@@ -1677,11 +1666,6 @@ int main() {
   def test_mathfuncptr(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_mathfuncptr')
 
-    if self.is_emterpreter():
-      print('emterpreter f32')
-      self.set_setting('PRECISE_F32', 1)
-      self.do_run_in_out_file_test('tests', 'core', 'test_mathfuncptr')
-
   def test_funcptrfunc(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_funcptrfunc')
 
@@ -1803,8 +1787,6 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_void')
 
   def test_life(self):
-    if EMTEST_SKIP_SLOW and self.is_emterpreter() and not is_optimizing(self.emcc_args):
-      return self.skipTest('skipping slow tests')
     self.emcc_args += ['-std=c99']
     self.do_run_in_out_file_test('tests', 'life', args=['2'])
 
@@ -2242,7 +2224,6 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_cxx_version')
 
   @no_wasm2js('massive switches can break js engines')
-  @no_emterpreter
   def test_bigswitch(self):
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
@@ -2252,7 +2233,6 @@ int main(int argc, char **argv) {
 ''', args=['34962', '26214', '35040', str(0xbf4)], assert_returncode=None)
 
   @no_wasm2js('massive switches can break js engines')
-  @no_emterpreter
   @is_slow_test
   def test_biggerswitch(self):
     if self.is_wasm_backend():
@@ -5285,7 +5265,6 @@ main( int argv, char ** argc ) {
       self.do_run(open(path_from_root('tests', 'utf8_invalid.cpp')).read(), 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
-  @no_emterpreter
   def test_minimal_runtime_utf8_invalid(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     for decoder_mode in [[], ['-s', 'TEXTDECODER=1']]:
@@ -6019,14 +5998,6 @@ return malloc(size);
       self.set_setting('RELOCATABLE', 0)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 0)
 
-    if self.is_emterpreter():
-      print('emterpreter/async/assertions') # extra coverage
-      self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1']
-      test()
-      print('emterpreter/async/assertions/whitelist')
-      self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
-      test()
-
     if self.is_wasm_backend():
       print('asyncify') # extra coverage
       self.emcc_args += ['-s', 'ASYNCIFY=1']
@@ -6115,9 +6086,6 @@ return malloc(size);
   @needs_make('make')
   def test_lua(self):
     self.emcc_args.remove('-Werror')
-
-    if self.is_emterpreter():
-      self.set_setting('PRECISE_F32', 1)
 
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
@@ -6469,11 +6437,6 @@ return malloc(size);
       'llvm_assume', 'longjmp_tiny', 'longjmp_tiny_invoke', 'longjmp_tiny_invoke_phi',
       'longjmp_tiny_keepem', 'longjmp_tiny_keepem_cond', 'longjmp_tiny_phi', 'longjmp_tiny_phi2',
     ]
-    skip_emterp = [
-      'funcptr', # test writes to memory we store out bytecode! test is invalid
-      # uses simd
-      'i1282vecnback'
-    ]
     skip_wasm = [
       'i1282vecnback', # uses simd
       # casts a function pointer from (i32, i32)* to (i64)*, which happens to work in asm.js but is a general function pointer undefined behavior
@@ -6487,8 +6450,6 @@ return malloc(size);
       # TODO: test only worked in non-fastcomp (well, these cases)
       basename = os.path.basename(shortname)
       if basename in skip_tests:
-        continue
-      if self.is_emterpreter() and basename in skip_emterp:
         continue
       if self.is_wasm() and basename in skip_wasm:
         continue
@@ -6676,7 +6637,7 @@ return malloc(size);
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
     self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
 
-    if '-O2' in self.emcc_args and '-g' not in self.emcc_args or self.is_emterpreter():
+    if '-O2' in self.emcc_args and '-g' not in self.emcc_args:
       print('with closure')
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
@@ -6969,19 +6930,12 @@ return malloc(size);
     self.set_setting('ASSERTIONS', 1)
     # ensure function names are preserved
     self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
-    # in the emterpreter, we interpret code execution and control flow,
-    # so there is nothing on the browser-visible stack for meaningful
-    # stack traces. enabling profiling makes the emterpreter call through
-    # stubs with the full names.
-    if self.is_emterpreter():
-      self.emcc_args += ['--profiling-funcs']
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks', assert_returncode=None)
     if not self.has_changed_setting('ASSERTIONS'):
       print('without assertions, the stack is not printed, but a message suggesting assertions is')
       self.set_setting('ASSERTIONS', 0)
       self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert', assert_returncode=None)
 
-  @no_emterpreter
   def test_demangle_stacks_symbol_map(self):
     self.set_setting('DEMANGLE_SUPPORT', 1)
     if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
@@ -7363,7 +7317,6 @@ err = err = function(){};
   ### Tests for tools
 
   @no_wasm2js('TODO: source maps in wasm2js')
-  @no_emterpreter
   def test_source_map(self):
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
@@ -7625,7 +7578,6 @@ err = err = function(){};
 
     self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
 
-  @no_emterpreter
   @no_wasm('wasmifying destroys debug info and stack tracability')
   @no_wasm2js('no source maps support yet')
   def test_exception_source_map(self):
@@ -7672,11 +7624,6 @@ err = err = function(){};
   def test_emscripten_log(self):
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
-    if self.is_emterpreter():
-      # without this, stack traces are not useful (we jump emterpret=>emterpret)
-      self.emcc_args += ['--profiling-funcs']
-      # even so, we get extra emterpret() calls on the stack
-      self.emcc_args += ['-DEMTERPRETER']
     if self.get_setting('ASM_JS'):
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
       self.banned_js_engines += [SPIDERMONKEY_ENGINE]
@@ -7774,16 +7721,13 @@ Success!
     self.do_run_from_file(path_from_root('tests', 'vswprintf_utf8.c'), path_from_root('tests', 'vswprintf_utf8.out'))
 
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
-  def test_async(self, emterpretify=False):
+  def test_async(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
     if self.is_wasm_backend():
       self.set_setting('ASYNCIFY', 1)
-    elif emterpretify:
-      self.set_setting('EMTERPRETIFY', 1)
-      self.set_setting('EMTERPRETIFY_ASYNC', 1)
     else:
       self.skipTest('fastcomp Asyncify was removed')
 
@@ -7799,14 +7743,14 @@ int main() {
   printf("Hello");
   emscripten_async_call(f, &i, 1);
   printf("World");
-  emscripten_%s(100);
-  printf("%%d\n", i);
+  emscripten_sleep(100);
+  printf("%d\n", i);
 }
-''' % ('sleep_with_yield' if emterpretify else 'sleep')
+'''
 
     self.do_run(src, 'HelloWorld!99')
 
-    if self.is_wasm_backend() or emterpretify:
+    if self.is_wasm_backend():
       print('check bad ccall use')
       src = r'''
 #include <stdio.h>
@@ -7879,202 +7823,6 @@ Module['onRuntimeInitialized'] = function() {
 ''')
       self.do_run(src, 'first\nsecond\n6.4')
 
-  @no_wasm_backend('EMTERPRETIFY')
-  def test_async_emterpretify(self):
-    self.emcc_args.append('-Wno-emterpreter')
-    self.test_async(emterpretify=True)
-
-  def test_async_returnvalue(self):
-    if not self.is_emterpreter():
-      self.skipTest('emterpreter-only test')
-
-    self.set_setting('EMTERPRETIFY_ASYNC', 1)
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
-
-    create_test_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
-  sleep_with_return__deps: ['$EmterpreterAsync'],
-  sleep_with_return: function(ms) {
-    return EmterpreterAsync.handle(function(resume) {
-      var startTime = Date.now();
-      setTimeout(function() {
-        if (ABORT) return; // do this manually; we can't call into Browser.safeSetTimeout, because that is paused/resumed!
-        resume(function() {
-          return Date.now() - startTime;
-        });
-      }, ms);
-    });
-  }
-});
-''')
-
-    src = r'''
-#include <stdio.h>
-#include <assert.h>
-#include <emscripten.h>
-
-extern "C" {
-extern int sleep_with_return(int ms);
-}
-
-int main() {
-  int ms = sleep_with_return(1000);
-  assert(ms >= 900);
-  printf("napped for %d ms\n", ms);
-}
-'''
-    self.emcc_args += ['--js-library', 'lib.js']
-    self.do_run(src, 'napped')
-
-  def test_async_exit(self):
-    if not self.is_emterpreter():
-      self.skipTest('emterpreter-only test')
-
-    self.set_setting('EMTERPRETIFY_ASYNC', 1)
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
-
-    self.do_run(r'''
-#include <stdio.h>
-#include <stdlib.h>
-#include <emscripten.h>
-
-void f()
-{
-    printf("f\n");
-    emscripten_sleep(1);
-    printf("hello\n");
-    static int i = 0;
-    i++;
-    if(i == 5) {
-        printf("exit\n");
-        exit(0);
-        printf("world\n");
-        i = 0;
-    }
-}
-
-int main() {
-    while(1) {
-        f();
-    }
-    return 0;
-}
-''', 'f\nhello\nf\nhello\nf\nhello\nf\nhello\nf\nhello\nexit\n')
-
-  def test_async_abort(self):
-    if not self.is_emterpreter():
-      self.skipTest('emterpreter-only test')
-
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
-
-    self.set_setting('EMTERPRETIFY_ASYNC', 1)
-
-    create_test_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
-  sleep_with_abort__deps: ['$EmterpreterAsync'],
-  sleep_with_abort: function() {
-    EmterpreterAsync.handle(function(resume) {
-      setTimeout(function() {
-        abort();
-        setTimeout(function() {
-          resume();
-        }, 10);
-      }, 10);
-    });
-  }
-});
-''')
-
-    src = r'''
-#include <stdio.h>
-
-extern "C" {
-extern void sleep_with_abort(void);
-}
-
-int main() {
-    printf("Hello\n");
-    sleep_with_abort();
-    printf("ERROR\n");
-    return 0;
-}
-'''
-
-    self.emcc_args += ['--js-library', 'lib.js']
-    self.do_run(src, 'Hello', assert_returncode=None)
-
-  def test_async_invoke_safe_heap(self):
-    if not self.is_emterpreter():
-      self.skipTest('emterpreter-only test')
-
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
-
-    # SAFE_HEAP leads to SAFE_FT_MASK, which appear in dynCall_*
-    # and then if they are interpreted, that messes up reloading
-    # of the stack (we can't run emterpreted code at that time,
-    # we should just see calls and follow them).
-    self.set_setting('EMTERPRETIFY_ASYNC', 1)
-    self.set_setting('SAFE_HEAP', 1)
-    self.set_setting('EXPORTED_FUNCTIONS', ['_async_callback_test'])
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ["ccall"])
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-    self.set_setting('EMTERPRETIFY', 1)
-    self.set_setting('EMTERPRETIFY_ASYNC', 1)
-    self.set_setting('ASSERTIONS', 2)
-
-    create_test_file('post.js', r'''
-var AsyncOperation = {
-  done: false,
-
-  start: function() {
-    // this.done = true; // uncomment this line => no crash
-    Promise.resolve().then(function() {
-      console.log('done!');
-      AsyncOperation.done = true;
-    });
-  }
-};
-
-Module.ccall('async_callback_test', null, [], [], { async: true });
-''')
-
-    src = r'''
-#include <stdio.h>
-#include <emscripten.h>
-
-extern "C" {
-  void call_async_operation() {
-    printf("start\n");
-    EM_ASM({AsyncOperation.start()});
-    printf("mid\n");
-    while (!EM_ASM_INT({return AsyncOperation.done})) {
-      printf("sleep1\n");
-      emscripten_sleep(200);
-      printf("sleep2\n");
-    }
-  }
-
-  // remove throw() => no crash
-  static void nothrow_func() throw()
-  {
-    call_async_operation();
-    printf("async operation OK\n");
-  }
-
-  void async_callback_test() {
-    nothrow_func();
-  }
-}'''
-
-    self.emcc_args += [
-      '--post-js', 'post.js',
-      '--profiling-funcs',
-      '--minify', '0',
-      '--memory-init-file', '0'
-    ]
-    self.do_run(src, 'async operation OK')
-
   @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
   def do_test_coroutine(self, additional_settings):
     # needs to flush stdio streams
@@ -8102,13 +7850,6 @@ extern "C" {
     # test a program not using asyncify, but the pref is set
     self.set_setting('ASYNCIFY', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
-
-  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
-                   'unsupported with Wasm backend')
-  def test_coroutine_emterpretify_async(self):
-    self.emcc_args.append('-Wno-emterpreter')
-    # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
-    self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
   @parameterized({
     'normal': ([], True),
@@ -8138,18 +7879,6 @@ extern "C" {
     except Exception:
       if should_pass:
         raise
-
-  # Test basic emterpreter functionality in all core compilation modes.
-  @no_emterpreter
-  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
-                   'unsupported with Wasm backend')
-  def test_emterpretify(self):
-    self.emcc_args.append('-Wno-emterpreter')
-    self.set_setting('EMTERPRETIFY', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
-    print('async')
-    self.set_setting('EMTERPRETIFY_ASYNC', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   @no_asan('asyncify stack operations confuse asan')
   @no_fastcomp('wasm-backend specific feature')
@@ -8537,7 +8266,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       print(occurances)
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
-  @no_emterpreter
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8546,7 +8274,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
 
   # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
-  @no_emterpreter
   @parameterized({
     'default': ([],),
     'streaming': (['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'],),
@@ -8562,7 +8289,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
-  @no_emterpreter
   @parameterized({
     'fs': (['-s', 'FORCE_FILESYSTEM=1'],),
     'nofs': (['-s', 'NO_FILESYSTEM=1'],),
@@ -8573,14 +8299,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
   # Tests that -s MINIMAL_RUNTIME=1 works well with SAFE_HEAP
-  @no_emterpreter
   def test_minimal_runtime_safe_heap(self):
     self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1', '-s', 'SAFE_HEAP=1']
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
 
   # Tests global initializer with -s MINIMAL_RUNTIME=1
-  @no_emterpreter
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
@@ -9016,10 +8740,6 @@ wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
-
-if not shared.Settings.WASM_BACKEND:
-  # emterpreter
-  asm2i = make_run('asm2i', emcc_args=['-O2', '-Wno-emterpreter'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
 if shared.Settings.WASM_BACKEND:
   lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})

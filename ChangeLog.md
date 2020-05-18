@@ -20,12 +20,15 @@ Current Trunk
 - The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
   longer takes a target memory.  Its safer/cleaner/smaller to assume the target
   is the global memory buffer.
+- Remove emterpreter and ``EMTERPRETIFY`` settings.  Emterpreter has largerly
+  been replaced by asyncify and is fastcomp only so due for removing in
+  the near future anyway.
 
 1.39.16: 05/15/2020
 -------------------
 - Add Math C API for direct access to JavaScript Math object (#11151).
 - Address Sanitizer support now includes JavaScript as well, that is, memory
-  access of HEAP* arrays is checked by ASan. That allows errors to be found if
+  access of HEAP\* arrays is checked by ASan. That allows errors to be found if
   JS glue code does something wrong like forget to shift a pointer. To use this,
   just build with ASan normally, `-fsanitize=address` at link (#11147).
 - Fix embind string conversions in multithreaded builds (#10844).

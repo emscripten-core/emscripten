@@ -396,9 +396,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   # Change this to None to get stderr reporting, for debugging purposes
   stderr_redirect = STDOUT
 
-  def is_emterpreter(self):
-    return self.get_setting('EMTERPRETIFY')
-
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 

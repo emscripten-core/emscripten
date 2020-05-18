@@ -1172,48 +1172,6 @@ var EXPORT_NAME = 'Module';
 // to warnings instead of throwing an exception.
 var DYNAMIC_EXECUTION = 1;
 
-// Runs tools/emterpretify on the compiler output.
-// [fastcomp-only]
-var EMTERPRETIFY = 0;
-
-// If defined, a file to write bytecode to, otherwise the default is to embed it
-// in text JS arrays (which is less efficient).  When emitting HTML, we
-// automatically generate code to load this file and set it to
-// Module.emterpreterFile. If you emit JS, you need to make sure that
-// Module.emterpreterFile contains an ArrayBuffer with the bytecode, when the
-// code loads.  Note: You might need to quote twice in the shell, something like
-// -s 'EMTERPRETIFY_FILE="waka"'
-// [fastcomp-only]
-var EMTERPRETIFY_FILE = '';
-
-// Functions to not emterpret, that is, to run normally at full speed
-// [fastcomp-only]
-var EMTERPRETIFY_BLACKLIST = [];
-
-// If this contains any functions, then only the functions in this list are
-// emterpreted (as if all the rest are blacklisted; this overrides the
-// BLACKLIST)
-// [fastcomp-only]
-var EMTERPRETIFY_WHITELIST = [];
-
-// Allows sync code in the emterpreter, by saving the call stack, doing an async
-// delay, and resuming it
-// [fastcomp-only]
-var EMTERPRETIFY_ASYNC = 0;
-
-// Performs a static analysis to suggest which functions should be run in the
-// emterpreter, as it appears they can be on the stack when a sync function is
-// called in the EMTERPRETIFY_ASYNC option.  After showing the suggested list,
-// compilation will halt. You can apply the provided list as an emcc argument
-// when compiling later.
-// [fastcomp-only]
-var EMTERPRETIFY_ADVISE = 0;
-
-// If you have additional custom synchronous functions, add them to this list
-// and the advise mode will include them in its analysis.
-// [fastcomp-only]
-var EMTERPRETIFY_SYNCLIST = [];
-
 // whether js opts will be run, after the main compiler
 var RUNNING_JS_OPTS = 0;
 

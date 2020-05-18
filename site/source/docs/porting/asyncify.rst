@@ -303,10 +303,10 @@ later callback, when nothing else is on the stack.
 Migrating from older APIs
 #########################
 
-If you have code using the Emterpreter-Async API, or the old Asyncify, then the
-new API is somewhat different, and you may need some minor changes:
+If you have code uses the old Emterpreter-Async API, or the old Asyncify, then
+the new API is somewhat different, and you may need some minor changes:
 
- * The Emterpreter has "yielding" as a concept, but it isn't needed in Asyncify.
+ * The Emterpreter had "yielding" as a concept, but it isn't needed in Asyncify.
    You can replace ``emscripten_sleep_with_yield()`` calls with ``emscripten_sleep()``.
  * The JS API is different. See notes above on ``Asyncify.handleSleep()``, and
    see ``src/library_async.js`` for more examples.

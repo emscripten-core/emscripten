@@ -521,7 +521,6 @@ def create_module_asmjs(function_table_sigs, metadata,
     temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
   else:
     temp_float = ''
-  async_state = '  var asyncState = 0;\n' if shared.Settings.EMTERPRETIFY_ASYNC else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround() else ''
 
   replace_memory = create_replace_memory(metadata)
@@ -530,7 +529,7 @@ def create_module_asmjs(function_table_sigs, metadata,
 
   asm_end = create_asm_end(exports)
 
-  asm_variables = collapse_redundant_vars(memory_views + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs + stack + temp_float + async_state + f0_fround)
+  asm_variables = collapse_redundant_vars(memory_views + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs + stack + temp_float + f0_fround)
   asm_global_initializer = create_global_initializer(metadata['initializers'])
 
   module = [
@@ -954,11 +953,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
   if shared.Settings.USE_PTHREADS:
     funcs += ['asmJsEstablishStackFrame']
 
-  if shared.Settings.EMTERPRETIFY:
-    funcs += ['emterpret']
-    if shared.Settings.EMTERPRETIFY_ASYNC:
-      funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
-
   return sorted(set(funcs))
 
 
@@ -1004,10 +998,6 @@ def include_asm_consts(pre, forwarded_json, metadata):
         # ... over to the negative integers starting at -1.
         proxy_args = ['-1 - code', str(int(sync_proxy))] + args
         pre_asm_const += '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(sync_proxy) + 'return _emscripten_proxy_to_main_thread_js(' + ', '.join(proxy_args) + '); }\n'
-
-    if shared.Settings.EMTERPRETIFY_ASYNC and shared.Settings.ASSERTIONS:
-      # we cannot have an EM_ASM on the stack when saving/loading
-      pre_asm_const += "  assert(typeof EmterpreterAsync !== 'object' || EmterpreterAsync.state !== 2, 'cannot have an EM_ASM on the stack when emterpreter pauses/resumes - the JS is not emterpreted, so we would end up running it again from the start');\n"
 
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(%s) {
@@ -1352,7 +1342,7 @@ def signature_sort_key(sig):
 def asm_backend_uses(metadata, symbol):
   # If doing dynamic linking, we should generate full set of runtime primitives, since we cannot know up front ahead
   # of time what the dynamically linked in modules will need. Also with SAFE_HEAP and Emterpretify, generate full set of views.
-  if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE or shared.Settings.SAFE_HEAP or shared.Settings.EMTERPRETIFY:
+  if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE or shared.Settings.SAFE_HEAP:
     return True
 
   # Allow querying asm_backend_uses(metadata, 'Math.') to find if any of the Math objects are used
@@ -1609,8 +1599,6 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
   basic_funcs = shared.Settings.RUNTIME_FUNCS_TO_IMPORT
   if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.MINIMAL_RUNTIME:
     basic_funcs += ['abortStackOverflow']
-  if shared.Settings.EMTERPRETIFY:
-    basic_funcs += ['abortStackOverflowEmterpreter']
   if shared.Settings.SAFE_HEAP:
     if asm_safe_heap():
       basic_funcs += ['segfault', 'alignfault', 'ftfault']
@@ -1645,9 +1633,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
     else:
       # wasm side modules have a specific convention for these
       basic_vars += ['__memory_base', '__table_base']
-
-  if shared.Settings.EMTERPRETIFY:
-    basic_vars += ['EMTSTACKTOP', 'EMT_STACK_MAX', 'eb']
 
   return basic_vars
 
@@ -1917,35 +1902,6 @@ function asmJsEstablishStackFrame(stackBase, stackMax) {
   STACK_MAX = stackMax;
   tempDoublePtr = STACKTOP;
   STACKTOP = (STACKTOP + 16)|0;
-}
-''')
-
-  if shared.Settings.EMTERPRETIFY:
-    funcs.append('''
-function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
-  pc = pc | 0;
-  assert(0);
-}''')
-
-  if shared.Settings.EMTERPRETIFY_ASYNC:
-    funcs.append('''
-function setAsyncState(x) {
-  x = x | 0;
-  asyncState = x;
-}
-function emtStackSave() {
-  return EMTSTACKTOP|0;
-}
-function emtStackRestore(x) {
-  x = x | 0;
-  EMTSTACKTOP = x;
-}
-function getEmtStackMax() {
-  return EMT_STACK_MAX | 0;
-}
-function setEmtStackMax(x) {
-  x = x | 0;
-  EMT_STACK_MAX = x;
 }
 ''')
 

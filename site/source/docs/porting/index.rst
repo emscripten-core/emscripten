@@ -20,6 +20,5 @@ The topics in this section cover the main integration points that you need to co
   networking
   simd
   asyncify
-  emterpreter
   ../compiling/Building-Projects
 
