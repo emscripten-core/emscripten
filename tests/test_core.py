@@ -8854,21 +8854,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       }
     ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
-  def test_undefined_main(self):
-    if self.get_setting('LLD_REPORT_UNDEFINED'):
-      self.skipTest('LLD_REPORT_UNDEFINED does not allow implicit undefined main')
-    if self.get_setting('STRICT'):
-      self.skipTest('STRICT does not allow implicit undefined main')
-    # By default in emscripten we allow main to be undefined.  Its used when
-    # building library code that has no main.
-    # TODO(sbc): Simplify the code by making this an opt-in feature.
-    # https://github.com/emscripten-core/emscripten/issues/9640
-    src = '''
-    #include <emscripten.h>
-    EMSCRIPTEN_KEEPALIVE void foo() {}
-    '''
-    self.build(src, self.get_dir(), 'test.c')
-
   def test_fpic_static(self):
     self.emcc_args.append('-fPIC')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
@@ -8910,8 +8895,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-lexports.js', '-s', 'MINIMAL_RUNTIME=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
 
-  def test_auto_detect_main(self):
-    if not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
+  # Marked as impure since the WASI reactor modules (modules without main)
+  # are not yet suppored by the wasm engines we test against.
+  @also_with_impure_standalone_wasm
+  def test_undefined_main(self):
+    # Traditionally in emscripten we allow main to be undefined.  This allows programs with a main
+    # and libraries without a main to be compiled identically.
+    # However we are trying to move away from that model to a more explicit opt-out model. See:
+    # https://github.com/emscripten-core/emscripten/issues/9640
+    if not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT') and not self.get_setting('STANDALONE_WASM'):
       self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
       # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
@@ -8919,7 +8911,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
       self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
 
-    # We can fix the error either by adding --no-entry or by setting EXPORTED_FUNCTIONS to empty
+    # If we pass --no-entry or set EXPORTED_FUNCTIONS to empty should never see any errors
     self.emcc_args.append('--no-entry')
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
