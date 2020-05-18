@@ -108,8 +108,8 @@
   "_embind_register_function": ["free"],
   "_embind_register_class": ["free"],
   "_embind_register_enum_value": ["free"],
-  "setjmp": ["setThrew", "realloc"],
-  "longjmp": ["setThrew", "realloc"],
-  "siglongjmp": ["setThrew", "realloc"],
-  "emscripten_longjmp_jmpbuf": ["setThrew", "realloc"]
+  "setjmp": ["setThrew", "realloc", "testSetjmp", "saveSetjmp"],
+  "longjmp": ["setThrew", "realloc", "testSetjmp", "saveSetjmp"],
+  "siglongjmp": ["setThrew", "realloc", "testSetjmp", "saveSetjmp"],
+  "emscripten_longjmp_jmpbuf": ["setThrew", "realloc", "testSetjmp", "saveSetjmp"]
 }

@@ -691,6 +691,7 @@ class libcompiler_rt(Library):
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   else:
     src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
+  src_files.append('emscripten_setjmp.c')
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
@@ -811,7 +812,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
-        filenames=['extras.c', 'wasi-helpers.c', 'emscripten_setjmp.c'])
+        filenames=['extras.c', 'wasi-helpers.c'])
 
     return libc_files
 
@@ -1480,13 +1481,6 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
   # TODO: Move all __deps from src/library*.js to deps_info.json, and use that single source of info
   #       both here and in the JS compiler.
   deps_info = json.loads(open(shared.path_from_root('src', 'deps_info.json')).read())
-
-  if not shared.Settings.WASM_BACKEND:
-    # fastcomp links differently than wasm-ld, and needs to be told explicitly
-    # about some dependencies
-    deps_info['setjmp'] += ['testSetjmp', 'saveSetjmp']
-    deps_info['longjmp'] += ['testSetjmp', 'saveSetjmp']
-
   added = set()
 
   def add_back_deps(need):
