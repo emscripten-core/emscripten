@@ -255,9 +255,6 @@ class Library(object):
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
-  # The C compile executable to use. You can override this to shared.EMXX for C++.
-  emcc = shared.EMCC
-
   # A list of flags to pass to emcc.
   # The flags for the parent class is automatically inherited.
   cflags = ['-Werror']
@@ -382,7 +379,14 @@ class Library(object):
     cflags = self.get_cflags()
     for src in self.get_files():
       o = self.in_temp(shared.unsuffixed_basename(src) + '.o')
-      commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
+      ext = os.path.splitext(src)[1]
+      if ext in ('.s', '.c'):
+        cmd = [shared.PYTHON, shared.EMCC]
+      else:
+        cmd = [shared.PYTHON, shared.EMXX]
+      if ext != '.s':
+        cmd += cflags
+      commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
     run_build_commands(commands)
     return objects
@@ -661,10 +665,6 @@ class AsanInstrumentedLibrary(Library):
     return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
 
 
-class CXXLibrary(Library):
-  emcc = shared.EMXX
-
-
 class NoBCLibrary(Library):
   # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every
   # object in the library.  While the optimizer will readily optimize out most of the unused
@@ -688,6 +688,7 @@ class libcompiler_rt(Library):
     filelist = shared.path_from_root('system', 'lib', 'compiler-rt', 'filelist.txt')
     src_files = open(filelist).read().splitlines()
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c'))
+    src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   else:
     src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
@@ -701,17 +702,18 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   # custom standard library. The same for other libc/libm builds.
   cflags = ['-Os', '-fno-builtin']
 
-  # Hide several musl warnings that produce a lot of spam to unit test build
-  # server logs.  TODO: When updating musl the next time, feel free to recheck
-  # which of their warnings might have been fixed, and which ones of these could
-  # be cleaned up.
-  cflags += ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
-             '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
-             '-Wno-dangling-else', '-Wno-unknown-pragmas',
-             '-Wno-shift-op-parentheses', '-Wno-string-plus-int',
-             '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses',
-             '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
-             '-Wno-empty-body']
+  # Disable certain warnings for code patterns that are contained in upstream musl
+  cflags += ['-Wno-ignored-attributes',
+             '-Wno-dangling-else',
+             '-Wno-unknown-pragmas',
+             '-Wno-shift-op-parentheses',
+             '-Wno-string-plus-int',
+             '-Wno-pointer-sign']
+
+  if not shared.Settings.WASM_BACKEND:
+    # These are needed with the old fastcomp backend.
+    cflags += ['-Wno-logical-op-parentheses',
+               '-Wno-bitwise-op-parentheses']
 
   def get_files(self):
     libc_files = []
@@ -896,7 +898,7 @@ class libc_extras(NoBCLibrary, MuslInternalLibrary):
     return super(libc_extras, self).can_build() and not shared.Settings.WASM_BACKEND
 
 
-class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
+class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
@@ -949,7 +951,7 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
         filenames=filenames)
 
 
-class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
+class libcxx(NoBCLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++'
 
   cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
@@ -997,7 +999,7 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   ]
 
 
-class libunwind(CXXLibrary, NoExceptLibrary, MTLibrary):
+class libunwind(NoExceptLibrary, MTLibrary):
   name = 'libunwind'
   cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
   src_dir = ['system', 'lib', 'libunwind', 'src']
@@ -1168,7 +1170,7 @@ class libgl(MTLibrary):
     )
 
 
-class libembind(CXXLibrary):
+class libembind(Library):
   name = 'libembind'
   never_force = True
 
@@ -1200,7 +1202,7 @@ class libembind(CXXLibrary):
     return super(libembind, cls).get_default_variation(with_rtti=shared.Settings.USE_RTTI, **kwargs)
 
 
-class libfetch(CXXLibrary, MTLibrary):
+class libfetch(MTLibrary):
   name = 'libfetch'
   never_force = True
 
@@ -1208,7 +1210,7 @@ class libfetch(CXXLibrary, MTLibrary):
     return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
 
 
-class libasmfs(CXXLibrary, MTLibrary):
+class libasmfs(MTLibrary):
   name = 'libasmfs'
   never_force = True
 
@@ -1355,6 +1357,18 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
+class libasan_js(Library):
+  name = 'libasan_js'
+
+  cflags = ['-fsanitize=address']
+
+  src_dir = ['system', 'lib']
+  src_files = ['asan_js.c']
+
+  def can_build(self):
+    return super(libasan_js, self).can_build() and shared.Settings.WASM_BACKEND
+
+
 # This library is used when STANDALONE_WASM is set. In that mode, we don't
 # want to depend on JS, and so this library contains implementations of
 # things that we'd normally do in JS. That includes some general things
@@ -1397,7 +1411,7 @@ class libstandalonewasm(MuslInternalLibrary):
   def get_files(self):
     base_files = files_in_path(
         path_components=['system', 'lib'],
-        filenames=['standalone_wasm.c'])
+        filenames=['standalone_wasm.c', 'standalone_wasm_stdio.c'])
     # It is more efficient to use JS methods for time, normally.
     time_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
@@ -1627,6 +1641,7 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       force_include.add('libasan_rt_wasm')
       add_library(system_libs_map['libasan_rt_wasm'])
       add_library(system_libs_map['libubsan_rt_wasm'])
+      add_library(system_libs_map['libasan_js'])
 
     if shared.Settings.USE_LSAN or shared.Settings.USE_ASAN:
       add_library(system_libs_map['liblsan_common_rt_wasm'])

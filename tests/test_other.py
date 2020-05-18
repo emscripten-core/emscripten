@@ -2059,7 +2059,7 @@ int f() {
     assert 'hello, world!' in run_js('two.js')
 
   def test_js_optimizer(self):
-    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers']
+    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers', 'asanify']
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'eliminateDeadGlobals.js'), open(path_from_root('tests', 'optimizer', 'eliminateDeadGlobals-output.js')).read(),
        ['eliminateDeadGlobals']),
@@ -2163,6 +2163,8 @@ int f() {
        ['growableHeap']),
       (path_from_root('tests', 'optimizer', 'test-unsignPointers.js'), open(path_from_root('tests', 'optimizer', 'test-unsignPointers-output.js')).read(),
        ['unsignPointers']),
+      (path_from_root('tests', 'optimizer', 'test-asanify.js'), open(path_from_root('tests', 'optimizer', 'test-asanify-output.js')).read(),
+       ['asanify']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals-output.js')).read(),
        ['minifyGlobals']),
     ]:
@@ -8394,6 +8396,17 @@ int main() {
   def test_metadce_mem(self, filename, *args):
     self.run_metadce_test(filename, *args)
 
+  @parameterized({
+    'O3':                 ('libcxxabi_message.cpp', ['-O3'],
+                           [], [], 128), # noqa
+    # argc/argv support code etc. is in the wasm
+    'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
+                           [], [], 216), # noqa
+  })
+  @no_fastcomp()
+  def test_metadce_libcxxabi_message(self, filename, *args):
+    self.run_metadce_test(filename, *args)
+
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
     exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
@@ -10391,6 +10404,29 @@ Module.wasmBinary has been replaced with plain wasmBinary
 Module.arguments has been replaced with plain arguments_
 ''', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
 
+  def test_assertions_on_ready_promise(self):
+    # check that when assertions are on we give useful error messages for
+    # mistakenly thinking the Promise is an instance. I.e., once you could do
+    # Module()._main to get an instance and the main function, but after
+    # the breaking change in #10697 Module() now returns a promise, and to get
+    # the instance you must use .then() to get a callback with the instance.
+    create_test_file('test.js', r'''
+      try {
+        Module()._main;
+      } catch(e) {
+        console.log(e);
+      }
+      try {
+        Module().onRuntimeInitialized = 42;
+      } catch(e) {
+        console.log(e);
+      }
+    ''')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE', '-s', 'ASSERTIONS', '--extern-post-js', 'test.js'])
+    out = run_js('a.out.js')
+    self.assertContained('You are getting _main on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
+    self.assertContained('You are setting onRuntimeInitialized on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
+
   def test_em_asm_duplicate_strings(self):
     # We had a regression where tow different EM_ASM strings from two diffferent
     # object files were de-duplicated in wasm-emscripten-finalize.  This used to
@@ -10655,7 +10691,7 @@ int main() {
     with open(path_from_root('tests', 'other', 'standalone_syscalls', 'test.out')) as f:
       expected = f.read()
       for engine in WASM_ENGINES:
-        self.assertEqual(run_js('test.wasm', engine), expected)
+        self.assertContained(expected, run_js('test.wasm', engine))
 
   @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self):

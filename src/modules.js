@@ -63,6 +63,7 @@ var LibraryManager = {
     var libraries = [
       'library.js',
       'library_formatString.js',
+      'library_math.js',
       'library_path.js',
       'library_signals.js',
       'library_syscall.js',

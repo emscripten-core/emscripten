@@ -1430,6 +1430,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     if shared.Settings.WASM_BACKEND:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
       # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
       # the STATIC_BUMP value.
       shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
@@ -1835,6 +1836,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if 'address' in sanitize:
         shared.Settings.USE_ASAN = 1
+
+        shared.Settings.EXPORTED_FUNCTIONS += [
+          '_asan_c_load_1', '_asan_c_load_1u',
+          '_asan_c_load_2', '_asan_c_load_2u',
+          '_asan_c_load_4', '_asan_c_load_4u',
+          '_asan_c_load_f', '_asan_c_load_d',
+          '_asan_c_store_1', '_asan_c_store_1u',
+          '_asan_c_store_2', '_asan_c_store_2u',
+          '_asan_c_store_4', '_asan_c_store_4u',
+          '_asan_c_store_f', '_asan_c_store_d',
+        ]
 
         shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
         shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
@@ -2312,8 +2324,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('calculate system libraries'):
       # link in ports and system libraries, if necessary
-      if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
-         not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
+      if not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
         extra_files_to_link = system_libs.get_ports(shared.Settings)
         if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
           # TODO(sbc): Only set link_as_cxx if use_cxx
@@ -3329,6 +3340,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # a little, keep them signed, and just unsign them here if we need that.
   if shared.Settings.CAN_ADDRESS_2GB:
     final = shared.Building.use_unsigned_pointers_in_js(final)
+
+  if shared.Settings.USE_ASAN:
+    final = shared.Building.instrument_js_for_asan(final)
 
   if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
     # minify the JS
