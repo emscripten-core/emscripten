@@ -2901,78 +2901,7 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if SUPPORT_LONGJMP
-  // asm.js-style setjmp/longjmp support for wasm binaryen backend.
-  // In asm.js compilation, various variables including setjmpId will be
-  // generated within 'var asm' in emscripten.py, while in wasm compilation,
-  // wasm side is considered as 'asm' so they are not generated. But
-  // saveSetjmp() needs setjmpId and no other functions in wasm side needs it.
-  // So we declare it here if WASM_BACKEND=1.
-#if WASM_BACKEND == 1
-  $setjmpId: 0,
-#endif
-
-  saveSetjmp__asm: true,
-  saveSetjmp__sig: 'iii',
-#if WASM_BACKEND == 1
-  saveSetjmp__deps: ['realloc', '$setjmpId'],
-#else
-  saveSetjmp__deps: ['realloc'],
-#endif
-  saveSetjmp: function(env, label, table, size) {
-    // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
-    // prevents relooping anyhow, so slowness is to be expected. And typical case
-    // is 1 setjmp per invocation, or less.
-    env = env|0;
-    label = label|0;
-    table = table|0;
-    size = size|0;
-    var i = 0;
-    setjmpId = (setjmpId+1)|0;
-    {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
-    while ((i|0) < (size|0)) {
-      if ({{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}} == 0) {
-        {{{ makeSetValueAsm('table', '(i<<3)', 'setjmpId', 'i32') }}};
-        {{{ makeSetValueAsm('table', '(i<<3)+4', 'label', 'i32') }}};
-        // prepare next slot
-        {{{ makeSetValueAsm('table', '(i<<3)+8', '0', 'i32') }}};
-        {{{ makeSetTempRet0('size') }}};
-        return table | 0;
-      }
-      i = i+1|0;
-    }
-    // grow the table
-    size = (size*2)|0;
-    table = _realloc(table|0, 8*(size+1|0)|0) | 0;
-    table = _saveSetjmp(env|0, label|0, table|0, size|0) | 0;
-    {{{ makeSetTempRet0('size') }}};
-    return table | 0;
-  },
-
-  testSetjmp__asm: true,
-  testSetjmp__sig: 'iii',
-  testSetjmp: function(id, table, size) {
-    id = id|0;
-    table = table|0;
-    size = size|0;
-    var i = 0, curr = 0;
-    while ((i|0) < (size|0)) {
-      curr = {{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}};
-      if ((curr|0) == 0) break;
-      if ((curr|0) == (id|0)) {
-        return {{{ makeGetValueAsm('table', '(i<<3)+4', 'i32') }}};
-      }
-      i = i+1|0;
-    }
-    return 0;
-  },
-
-  setjmp__deps: ['saveSetjmp', 'testSetjmp'],
-  setjmp__inline: function(env) {
-    // Save the label
-    return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
-  },
-
-  longjmp__deps: ['saveSetjmp', 'testSetjmp'
+  longjmp__deps: [
 #if WASM_BACKEND == 0
   , 'setThrew'
 #endif

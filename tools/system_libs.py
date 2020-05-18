@@ -691,6 +691,7 @@ class libcompiler_rt(Library):
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   else:
     src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
+  src_files.append('emscripten_setjmp.c')
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
