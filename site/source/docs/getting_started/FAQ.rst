@@ -104,11 +104,6 @@ What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript
 Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
 
 
-Why do I get ``error while loading shared libraries: libtinfo.so.5``?
-=====================================================================
-
-LLVM and clang link libtinfo dynamically. On some recent Linuxes you may have only ``libtinfo.so.6`` (while our builders target the last Ubuntu LTS). To fix this, you can do something like ``apt-get install libtinfo5`` on Debian or Ubuntu, or on Fedora something like ``dnf install ncurses-compat-libs``.
-
 Why do I get ``machine type must be wasm32`` or ``is not a valid input file`` during linking?
 =============================================================================================
 
