@@ -16,4 +16,6 @@ extern int __wasi_syscall_ret(__wasi_errno_t code);
 // not. If not, also sets errno to EBADF.
 extern int __wasi_fd_is_valid(__wasi_fd_t fd);
 
+extern struct timespec wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp);
+
 #endif // __wasi_emscripten_helpers_h
