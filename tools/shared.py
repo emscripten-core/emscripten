@@ -706,7 +706,7 @@ def emsdk_ldflags(user_args):
   return ldflags
 
 
-def emsdk_cflags():
+def emsdk_cflags(user_args):
   # Disable system C and C++ include directories, and add our own (using
   # -isystem so they are last, like system dirs, which allows projects to
   # override them)
@@ -733,6 +733,9 @@ def emsdk_cflags():
     for path in paths:
       result += ['-Xclang', '-isystem' + path]
     return result
+
+  if '-msse' in user_args:
+    c_opts += ['-D__SSE__=1'] + include_directive([path_from_root('system', 'include', 'SSE')])
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if Settings.USE_CXX:
@@ -772,7 +775,7 @@ def get_cflags(user_args):
   if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
     return c_opts
 
-  return c_opts + emsdk_cflags()
+  return c_opts + emsdk_cflags(user_args)
 
 
 # Utilities
@@ -1244,6 +1247,13 @@ class Building(object):
       return arg[1:-1].replace("\\'", "'")
     else:
       return arg
+
+  @staticmethod
+  def get_native_building_args():
+    if MACOS:
+      return ['--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk']
+    else:
+      return ['']
 
   @staticmethod
   def get_building_env(native=False, doublequote_commands=False, cflags=[]):

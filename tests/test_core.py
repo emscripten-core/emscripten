@@ -6077,6 +6077,20 @@ return malloc(size);
   def test_simd_shift_right(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
 
+  # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
+  @wasm_simd
+  def test_sse1(self, js_engines):
+    src = path_from_root('tests', 'sse', 'test_sse1.cpp')
+    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.Building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_sse1', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
+
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests', 'sse'), '-msse']
+      self.maybe_closure()
+
+      self.do_run(open(src).read(), native_result, js_engines=js_engines)
+
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
     self.emcc_args += ['-I' + path_from_root('third_party')]
