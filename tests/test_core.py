@@ -181,16 +181,20 @@ def also_with_standalone_wasm(func):
 # run them with the JS code though.
 def also_with_impure_standalone_wasm(func):
   def decorated(self):
-    func(self)
+    func(self, shared.JS_ENGINES)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
     if can_do_standalone(self):
       print('standalone (impure; no wasm runtimes)')
       self.set_setting('STANDALONE_WASM', 1)
+      # we will not legalize the JS ffi interface, so we must use BigInt
+      # support in order for JS to have a chance to run this without trapping
+      # when it sees an i64 on the ffi.
+      self.set_setting('WASM_BIGINT', 1)
       wasm_engines = shared.WASM_ENGINES
       try:
         shared.WASM_ENGINES = []
-        func(self)
+        func(self, [NODE_JS + ['--experimental-wasm-bigint']])
       finally:
         shared.WASM_ENGINES = wasm_engines
 
@@ -2148,7 +2152,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   @also_with_impure_standalone_wasm
-  def test_memorygrowth_MAXIMUM_MEMORY(self):
+  def test_memorygrowth_MAXIMUM_MEMORY(self, js_engines):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
     if not self.is_wasm():
@@ -2156,7 +2160,7 @@ int main(int argc, char **argv) {
 
     # check that memory growth does not exceed the wasm mem max limit
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=64Mb', '-s', 'MAXIMUM_MEMORY=100Mb']
-    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max', js_engines=js_engines)
 
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -6615,7 +6619,8 @@ return malloc(size);
   @no_asan('autodebug logging interferes with asan')
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
-  def test_autodebug_wasm(self):
+  @also_with_impure_standalone_wasm
+  def test_autodebug_wasm(self, js_engines):
     # Autodebug does not work with too much shadow memory.
     # Memory consumed by autodebug depends on the size of the WASM linear memory.
     # With a large shadow memory, the JS engine runs out of memory.
@@ -6623,13 +6628,16 @@ return malloc(size);
       self.set_setting('ASAN_SHADOW_SIZE', 16 * 1024 * 1024)
 
     # test that the program both works and also emits some of the logging
-    # (but without the specific numbers, which may change over time)
+    # (but without the specific output, as it is logging the actual locals
+    # used and so forth, which will change between opt modes and updates of
+    # llvm etc.)
     def check(out, err):
       for msg in ['log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val']:
         self.assertIn(msg, out)
       return out + err
-    self.do_run(open(path_from_root('tests', 'core', 'test_hello_world.c')).read(),
-                'hello, world!', output_nicerizer=check)
+
+    self.do_run(open(path_from_root('tests', 'core', 'test_autodebug.c')).read(),
+                'success', output_nicerizer=check, js_engines=js_engines)
 
   ### Integration tests
 
