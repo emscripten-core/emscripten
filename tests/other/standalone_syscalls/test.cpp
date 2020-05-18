@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <emscripten.h>
 #include <emscripten/html5.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -28,4 +29,6 @@ int main() {
   emscripten_console_warn("warn");
   emscripten_console_error("error");
   emscripten_console_log("log2");
+  // check we can call this, but the test doesn't check the output
+  emscripten_get_now();
 }
