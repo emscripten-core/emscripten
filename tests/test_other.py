@@ -8379,7 +8379,7 @@ int main() {
     'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM'],
                            [], [], 6309),         # noqa
     # without main, no support code for argc/argv is emitted either
-    'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-s', 'STANDALONE_WASM'],
+    'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-s', 'STANDALONE_WASM', '--no-entry'],
                            [], [], 6309),         # noqa
     # Growth support code is in JS, no significant change in the wasm
     'O3_grow':            ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
