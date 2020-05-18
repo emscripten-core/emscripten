@@ -989,7 +989,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                  '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
                  '-install_name', '-compatibility_version',
                  '-current_version', '-I', '-L', '-include-pch',
-                 '-Xlinker'):
+                 '-Xlinker', '-Xclang'):
         skip = True
 
       if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
@@ -1430,6 +1430,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     if shared.Settings.WASM_BACKEND:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
       # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
       # the STATIC_BUMP value.
       shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
@@ -2323,8 +2324,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('calculate system libraries'):
       # link in ports and system libraries, if necessary
-      if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
-         not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
+      if not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
         extra_files_to_link = system_libs.get_ports(shared.Settings)
         if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
           # TODO(sbc): Only set link_as_cxx if use_cxx

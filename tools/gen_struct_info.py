@@ -401,7 +401,8 @@ def inspect_code(headers, cpp_opts, structs, defines):
                                                    '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                                    '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
                                                    '-s', 'STRICT=1',
-                                                   '-s', 'SINGLE_FILE=1']
+                                                   '-s', 'SINGLE_FILE=1',
+                                                   '-nostdlib', '-lcompiler_rt']
   if not shared.Settings.WASM_BACKEND:
     # Avoid the binaryen dependency if we are only using fastcomp
     cmd += ['-s', 'WASM=0']
