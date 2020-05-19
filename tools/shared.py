@@ -492,7 +492,6 @@ def check_sanity(force=False):
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    settings_mtime = os.path.getmtime(CONFIG_FILE)
     sanity_file = CONFIG_FILE + '_sanity'
     if os.path.exists(sanity_file):
       sanity_data = open(sanity_file).read()
