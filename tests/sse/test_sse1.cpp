@@ -144,8 +144,8 @@ int main()
 	void_OutFloatPtr_M128(_mm_storel_pi, __m64*, 8, 1);
 	void_OutFloatPtr_M128(_mm_storer_ps, float*, 16, 16);
 	void_OutFloatPtr_M128(_mm_storeu_ps, float*, 16, 1);
-	void_OutFloatPtr_M128(_mm_storeu_si16, float*, 2, 1);
-	void_OutFloatPtr_M128(_mm_storeu_si64, float*, 8, 1);
+	void_OutIntPtr_M128i(_mm_storeu_si16, unsigned short*, 2, 1);
+	void_OutIntPtr_M128i(_mm_storeu_si64, __m64*, 8, 1);
 	void_OutFloatPtr_M128(_mm_stream_ps, float*, 16, 16);
 
 	// SSE1 Swizzle instructions:

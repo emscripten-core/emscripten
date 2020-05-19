@@ -261,13 +261,21 @@ __attribute__((noinline)) double *get_interesting_doubles()
 	return always_true() ? interesting_doubles_ : 0;
 }
 
-__m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
+__m128 ExtractFloatInRandomOrder(float *arr, int i, int n, int prime)
 {
 	return _mm_set_ps(arr[(i*prime)%n], arr[((i+1)*prime)%n], arr[((i+2)*prime)%n], arr[((i+3)*prime)%n]);
 }
 
-#define E1(arr, i, n) ExtractInRandomOrder(arr, i, n, 1)
-#define E2(arr, i, n) ExtractInRandomOrder(arr, i, n, 1787)
+__m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
+{
+	return _mm_set_ps(*(float*)&arr[(i*prime)%n], *(float*)&arr[((i+1)*prime)%n], *(float*)&arr[((i+2)*prime)%n], *(float*)&arr[((i+3)*prime)%n]);
+}
+
+#define E1(arr, i, n) ExtractFloatInRandomOrder(arr, i, n, 1)
+#define E2(arr, i, n) ExtractFloatInRandomOrder(arr, i, n, 1787)
+
+#define E1_Int(arr, i, n) ExtractIntInRandomOrder(arr, i, n, 1)
+#define E2_Int(arr, i, n) ExtractIntInRandomOrder(arr, i, n, 1787)
 
 #define M128i_M128i_M128i(func) \
 	for(int i = 0; i < numInterestingInts / 4; ++i) \
@@ -493,6 +501,7 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 float tempOutFloatStore[16];
 float *getTempOutFloatStore(int alignmentBytes)
 {
+	memset(tempOutFloatStore, 0, sizeof(tempOutFloatStore));
 	uintptr_t addr = (uintptr_t)tempOutFloatStore;
 	addr = (addr + alignmentBytes - 1) & ~(alignmentBytes-1);
 	return (float*)addr;
@@ -529,17 +538,17 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 				printf("%s(p:align=%d, %s) = %s\n", #func, offset, str, str2); \
 			}
 
-#define void_OutIntPtr_M128(func, Ptr_type, numBytesWritten, alignmentBytes) \
+#define void_OutIntPtr_M128i(func, Ptr_type, numBytesWritten, alignmentBytes) \
 	for(int i = 0; i < numInterestingInts / 4; ++i) \
 		for(int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
 			for(int k = 0; k < 4; ++k) \
 			{ \
 				uintptr_t base = (uintptr_t)getTempOutIntStore(16); \
-				__m128 m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+				__m128 m1 = E1_Int(interesting_ints, i*4+k, numInterestingInts); \
 				align1_int *out = (align1_int*)(base + offset); \
 				func((Ptr_type)out, m1); \
 				char str[256]; tostr(&m1, str); \
-				char str2[256]; tostr(out, numBytesWritten/sizeof(int), str2); \
+				char str2[256]; tostr(out, (numBytesWritten+sizeof(int)-1)/sizeof(int), str2); \
 				printf("%s(p:align=%d, %s) = %s\n", #func, offset, str, str2); \
 			}
 
