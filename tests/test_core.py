@@ -25,7 +25,8 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root
-from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
+from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
+from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
 
 # decorators for limiting which modes a test can run in
 
@@ -54,7 +55,8 @@ def wasm_simd(f):
       self.skipTest('wasm2js only supports MVP for now')
     self.set_setting('SIMD', 1)
     self.emcc_args.append('-fno-lax-vector-conversions')
-    f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-simd']])
+    with js_engines_modify([V8_ENGINE + ['--experimental-wasm-simd']]):
+      f(self)
   return decorated
 
 
@@ -66,17 +68,19 @@ def bleeding_edge_wasm_backend(f):
       self.skipTest('only works in d8 for now')
     if self.is_wasm_backend() and not self.get_setting('WASM'):
       self.skipTest('wasm2js only supports MVP for now')
-    f(self, js_engines=[V8_ENGINE])
+    with js_engines_modify([V8_ENGINE]):
+      f(self)
   return decorated
 
 
 def also_with_wasm_bigint(f):
   def decorated(self):
     self.set_setting('WASM_BIGINT', 0)
-    f(self, None)
+    f(self)
     if self.is_wasm_backend() and self.get_setting('WASM'):
       self.set_setting('WASM_BIGINT', 1)
-      f(self, [NODE_JS + ['--experimental-wasm-bigint']])
+      with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+        f(self)
   return decorated
 
 
@@ -99,13 +103,14 @@ def all_engines(f):
 def with_both_exception_handling(f):
   def decorated(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    f(self, None)
+    f(self)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     # Wasm EH is currently supported only in wasm backend and V8
     if self.is_wasm_backend() and V8_ENGINE and \
        V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):
       self.emcc_args.append('-fwasm-exceptions')
-      f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-eh']])
+      with js_engines_modify([V8_ENGINE + ['--experimental-wasm-eh']]):
+        f(self)
   return decorated
 
 
@@ -142,7 +147,8 @@ def also_with_noderawfs(func):
     func(self)
     print('noderawfs')
     self.emcc_args = orig_args + ['-s', 'NODERAWFS=1', '-DNODERAWFS']
-    func(self, js_engines=[NODE_JS])
+    with js_engines_modify([NODE_JS]):
+      func(self)
   return decorated
 
 
@@ -182,15 +188,9 @@ def also_with_impure_standalone_wasm(func):
       # support in order for JS to have a chance to run this without trapping
       # when it sees an i64 on the ffi.
       self.set_setting('WASM_BIGINT', 1)
-      wasm_engines = shared.WASM_ENGINES
-      js_engines = shared.JS_ENGINES
-      try:
-        shared.WASM_ENGINES = []
-        shared.JS_ENGINES = [NODE_JS + ['--experimental-wasm-bigint']]
-        func(self)
-      finally:
-        shared.WASM_ENGINES = wasm_engines
-        shared.JS_ENGINES = js_engines
+      with wasm_engines_modify([]):
+        with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+          func(self)
 
   return decorated
 
@@ -206,13 +206,8 @@ def also_with_only_standalone_wasm(func):
     if can_do_standalone(self):
       print('standalone (only; no js runtimes)')
       self.set_setting('STANDALONE_WASM', 1)
-      js_engines = shared.JS_ENGINES
-      try:
-        shared.JS_ENGINES = []
+      with js_engines_modify([]):
         func(self)
-      finally:
-        shared.JS_ENGINES = js_engines
-
   return decorated
 
 
@@ -225,7 +220,8 @@ def node_pthreads(f):
       self.skipTest("pthreads doesn't work in non-wasm yet")
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('asan ends up using atomics that are not yet supported in node 12')
-    f(self, js_engines=[NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']])
+    with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
+      f(self)
   return decorated
 
 
@@ -1223,12 +1219,12 @@ int main() {
     self.do_run(src, r'''ok.''')
 
   @with_both_exception_handling
-  def test_exceptions(self, js_engines):
+  def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.maybe_closure()
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'), js_engines=js_engines)
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
 
   def test_exceptions_off(self):
     for support_longjmp in [0, 1]:
@@ -1249,7 +1245,7 @@ int main() {
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
   @with_both_exception_handling
-  def test_exceptions_custom(self, js_engines):
+  def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -1300,20 +1296,20 @@ int main() {
     }
     '''
 
-    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...', js_engines=js_engines)
+    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
 
   @with_both_exception_handling
-  def test_exceptions_2(self, js_engines):
+  def test_exceptions_2(self):
     for safe in [0, 1]:
       print(safe)
       if safe and '-fsanitize=address' in self.emcc_args:
         # Can't use safe heap with ASan
         continue
       self.set_setting('SAFE_HEAP', safe)
-      self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2', js_engines=js_engines)
+      self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2')
 
   @with_both_exception_handling
-  def test_exceptions_3(self, js_engines):
+  def test_exceptions_3(self):
     src = r'''
 #include <iostream>
 #include <stdexcept>
@@ -1343,11 +1339,11 @@ int main(int argc, char **argv)
 '''
 
     print('0')
-    self.do_run(src, 'Caught C string: a c string\nDone.', ['0'], js_engines=js_engines)
+    self.do_run(src, 'Caught C string: a c string\nDone.', ['0'])
     print('1')
-    self.do_run(None, 'Caught exception: std::exception\nDone.', ['1'], no_build=True, js_engines=js_engines)
+    self.do_run(None, 'Caught exception: std::exception\nDone.', ['1'], no_build=True)
     print('2')
-    self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True, js_engines=js_engines)
+    self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
   def test_exceptions_white_list(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
@@ -1420,7 +1416,7 @@ int main(int argc, char **argv)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_uncaught')
 
   @with_both_exception_handling
-  def test_exceptions_uncaught(self, js_engines):
+  def test_exceptions_uncaught(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     src = r'''
@@ -1443,7 +1439,7 @@ int main(int argc, char **argv)
         return 0;
       }
     '''
-    self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n', js_engines=js_engines)
+    self.do_run(src, 'exception? no\nexception? yes\nexception? no\nexception? no\n')
 
     src = r'''
       #include <fstream>
@@ -1455,10 +1451,10 @@ int main(int argc, char **argv)
         std::cout << "success";
       }
     '''
-    self.do_run(src, 'success', js_engines=js_engines)
+    self.do_run(src, 'success')
 
   @with_both_exception_handling
-  def test_exceptions_uncaught_2(self, js_engines):
+  def test_exceptions_uncaught_2(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     src = r'''
@@ -1480,78 +1476,78 @@ int main(int argc, char **argv)
           std::cout << "OK";
       }
     '''
-    self.do_run(src, 'OK\n', js_engines=js_engines)
+    self.do_run(src, 'OK\n')
 
   @with_both_exception_handling
-  def test_exceptions_typed(self, js_engines):
+  def test_exceptions_typed(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed', js_engines=js_engines)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed')
 
   @with_both_exception_handling
-  def test_exceptions_virtual_inheritance(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance', js_engines=js_engines)
+  def test_exceptions_virtual_inheritance(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance')
 
   @with_both_exception_handling
-  def test_exceptions_convert(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert', js_engines=js_engines)
+  def test_exceptions_convert(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert')
 
   # TODO Make setjmp-longjmp also use Wasm exception handling
   @with_both_exception_handling
-  def test_exceptions_multi(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multi', js_engines=js_engines)
+  def test_exceptions_multi(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multi')
 
   @with_both_exception_handling
-  def test_exceptions_std(self, js_engines):
+  def test_exceptions_std(self):
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std', js_engines=js_engines)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std')
 
   @with_both_exception_handling
-  def test_exceptions_alias(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias', js_engines=js_engines)
+  def test_exceptions_alias(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias')
 
   @with_both_exception_handling
-  def test_exceptions_rethrow(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow', js_engines=js_engines)
+  def test_exceptions_rethrow(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow')
 
   @with_both_exception_handling
-  def test_exceptions_resume(self, js_engines):
+  def test_exceptions_resume(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume', js_engines=js_engines)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume')
 
   @with_both_exception_handling
-  def test_exceptions_destroy_virtual(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual', js_engines=js_engines)
+  def test_exceptions_destroy_virtual(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual')
 
   @with_both_exception_handling
-  def test_exceptions_refcount(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount', js_engines=js_engines)
+  def test_exceptions_refcount(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount')
 
   @with_both_exception_handling
-  def test_exceptions_primary(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary', js_engines=js_engines)
+  def test_exceptions_primary(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary')
 
   @with_both_exception_handling
-  def test_exceptions_simplify_cfg(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg', js_engines=js_engines)
+  def test_exceptions_simplify_cfg(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg')
 
   @with_both_exception_handling
-  def test_exceptions_libcxx(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx', js_engines=js_engines)
+  def test_exceptions_libcxx(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx')
 
   @with_both_exception_handling
-  def test_exceptions_multiple_inherit(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit', js_engines=js_engines)
+  def test_exceptions_multiple_inherit(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
 
   @with_both_exception_handling
-  def test_exceptions_multiple_inherit_rethrow(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow', js_engines=js_engines)
+  def test_exceptions_multiple_inherit_rethrow(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow')
 
   @with_both_exception_handling
-  def test_bad_typeid(self, js_engines):
+  def test_bad_typeid(self):
     self.do_run(r'''
 // exception example
 #include <iostream>       // std::cerr
@@ -1572,7 +1568,7 @@ int main () {
   }
   return 0;
 }
-''', 'exception caught: std::bad_typeid', js_engines=js_engines)
+''', 'exception caught: std::bad_typeid')
 
   def test_iostream_ctors(self):
     # iostream stuff must be globally constructed before user global
@@ -3657,7 +3653,7 @@ ok
 
   @needs_dlfcn
   @bleeding_edge_wasm_backend
-  def test_dlfcn_feature_in_lib(self, js_engines):
+  def test_dlfcn_feature_in_lib(self):
     self.emcc_args.append('-mnontrapping-fptoint')
 
     self.prep_dlfcn_lib()
@@ -3693,7 +3689,7 @@ ok
         return 0;
       }
       '''
-    self.do_run(src, 'float: 42.\n', js_engines=js_engines)
+    self.do_run(src, 'float: 42.\n')
 
   def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
     if header:
@@ -4116,7 +4112,7 @@ ok
 
   @needs_dlfcn
   @also_with_wasm_bigint
-  def test_dylink_i64_c(self, js_engines):
+  def test_dylink_i64_c(self):
     self.dylink_test(r'''
       #include <cstdio>
       #include <cinttypes>
@@ -4164,7 +4160,7 @@ res64 - external 64\n''', header='''
       #include <cstdint>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''', js_engines=js_engines)
+    ''')
 
   @needs_dlfcn
   def test_dylink_class(self):
@@ -4480,7 +4476,7 @@ res64 - external 64\n''', header='''
 
   @needs_dlfcn
   @with_both_exception_handling
-  def test_dylink_raii_exceptions(self, js_engines):
+  def test_dylink_raii_exceptions(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
       extern int side();
@@ -4507,8 +4503,7 @@ res64 - external 64\n''', header='''
         volatile ifdi p = func_with_special_sig;
         return p(2.18281, 3.14159, 42);
       }
-    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'],
-      js_engines=js_engines)
+    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
   @needs_dlfcn
   @no_wasm_backend('wasm backend resolves symbols greedily on startup')
@@ -5258,10 +5253,10 @@ main( int argv, char ** argc ) {
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
   @also_with_wasm_bigint
-  def test_utf8_textdecoder(self, js_engines):
+  def test_utf8_textdecoder(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.', js_engines=js_engines)
+    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
@@ -5321,21 +5316,21 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   @is_slow_test
-  def test_fs_nodefs_rw(self, js_engines=[NODE_JS]):
+  def test_fs_nodefs_rw(self):
     self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG', 1)
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c')).read()
-    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+    self.do_run(src, 'success', force_c=True)
     if '-g' not in self.emcc_args:
       print('closure')
       self.emcc_args += ['--closure', '1']
-      self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+      self.do_run(src, 'success', force_c=True)
 
   @also_with_noderawfs
-  def test_fs_nodefs_cloexec(self, js_engines=[NODE_JS]):
+  def test_fs_nodefs_cloexec(self):
     self.emcc_args += ['-lnodefs.js']
     src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c')).read()
-    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+    self.do_run(src, 'success', force_c=True)
 
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
@@ -5354,27 +5349,27 @@ main( int argv, char ** argc ) {
     self.do_run_from_file(src, out)
 
   @also_with_noderawfs
-  def test_fs_writeFile(self, js_engines=None):
+  def test_fs_writeFile(self):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cpp')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
-    self.do_run_from_file(src, out, js_engines=js_engines)
+    self.do_run_from_file(src, out)
 
-  def test_fs_write(self, js_engines=None):
+  def test_fs_write(self):
     src = path_from_root('tests', 'fs', 'test_write.cpp')
     out = path_from_root('tests', 'fs', 'test_write.out')
-    self.do_run_from_file(src, out, js_engines=js_engines)
+    self.do_run_from_file(src, out)
 
   @also_with_noderawfs
-  def test_fs_emptyPath(self, js_engines=None):
+  def test_fs_emptyPath(self):
     src = path_from_root('tests', 'fs', 'test_emptyPath.c')
     out = path_from_root('tests', 'fs', 'test_emptyPath.out')
-    self.do_run_from_file(src, out, js_engines=js_engines)
+    self.do_run_from_file(src, out)
 
   @also_with_noderawfs
-  def test_fs_append(self, js_engines=None):
+  def test_fs_append(self):
     src = open(path_from_root('tests', 'fs', 'test_append.c')).read()
-    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+    self.do_run(src, 'success', force_c=True)
 
   def test_fs_mmap(self):
     orig_compiler_opts = self.emcc_args[:]
@@ -5387,7 +5382,7 @@ main( int argv, char ** argc ) {
       self.do_run_from_file(src, out)
 
   @also_with_noderawfs
-  def test_fs_errorstack(self, js_engines=[NODE_JS]):
+  def test_fs_errorstack(self):
     # Enables strict mode, which may catch some strict-mode-only errors
     # so that users can safely work with strict JavaScript if enabled.
     create_test_file('pre.js', '"use strict";')
@@ -5410,17 +5405,17 @@ main( int argv, char ** argc ) {
         );
         return 0;
       }
-    ''', 'at Object.readFile', js_engines=js_engines, assert_returncode=None) # engines has different error stack format
+    ''', 'at Object.readFile', assert_returncode=None) # engines has different error stack format
 
   @also_with_noderawfs
-  def test_fs_llseek(self, js_engines=None):
+  def test_fs_llseek(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
     src = open(path_from_root('tests', 'fs', 'test_llseek.c')).read()
-    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+    self.do_run(src, 'success', force_c=True)
 
-  def test_fs_64bit(self, js_engines=None):
+  def test_fs_64bit(self):
     src = open(path_from_root('tests', 'fs', 'test_64bit.c')).read()
-    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+    self.do_run(src, 'success', force_c=True)
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_access(self):
@@ -5443,10 +5438,10 @@ main( int argv, char ** argc ) {
     self.do_run(src, expected)
 
   @also_with_noderawfs
-  def test_unistd_close(self, js_engines=None):
+  def test_unistd_close(self):
     src = open(path_from_root('tests', 'unistd', 'close.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'close.out')).read()
-    self.do_run(src, expected, js_engines=js_engines)
+    self.do_run(src, expected)
 
   def test_unistd_confstr(self):
     src = open(path_from_root('tests', 'unistd', 'confstr.c')).read()
@@ -5458,15 +5453,15 @@ main( int argv, char ** argc ) {
     self.do_run(src, 'success', force_c=True)
 
   @also_with_noderawfs
-  def test_unistd_pipe(self, js_engines=None):
+  def test_unistd_pipe(self):
     src = open(path_from_root('tests', 'unistd', 'pipe.c')).read()
-    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+    self.do_run(src, 'success', force_c=True)
 
   @also_with_noderawfs
-  def test_unistd_dup(self, js_engines=None):
+  def test_unistd_dup(self):
     src = open(path_from_root('tests', 'unistd', 'dup.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'dup.out')).read()
-    self.do_run(src, expected, js_engines=js_engines)
+    self.do_run(src, expected)
 
   def test_unistd_pathconf(self):
     src = open(path_from_root('tests', 'unistd', 'pathconf.c')).read()
@@ -5573,7 +5568,7 @@ main( int argv, char ** argc ) {
     self.do_run(src, expected)
 
   @also_with_wasm_bigint
-  def test_unistd_io(self, js_engines):
+  def test_unistd_io(self):
     self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
     orig_compiler_opts = self.emcc_args[:]
@@ -5584,7 +5579,7 @@ main( int argv, char ** argc ) {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run(src, expected, js_engines=js_engines)
+      self.do_run(src, expected)
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):
@@ -5830,7 +5825,7 @@ int main(void) {
     output = open(path_from_root('tests', 'raytrace.ppm')).read()
     self.do_run(src, output, ['3', '16'])
 
-  def test_fasta(self, js_engines=None):
+  def test_fasta(self):
     results = [(1, '''GG*ctt**tgagc*'''),
                (20, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
                (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
@@ -5847,15 +5842,15 @@ int main(void) {
           src = orig_src.replace('double', t)
           self.build(src, self.get_dir(), 'fasta.cpp')
           for arg, output in results:
-            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True, js_engines=js_engines)
+            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
           shutil.copyfile('fasta.cpp.o.js', '%d_%s.js' % (precision, t))
 
     test([])
 
   @bleeding_edge_wasm_backend
-  def test_fasta_nontrapping(self, js_engines):
+  def test_fasta_nontrapping(self):
     self.emcc_args += ['-mnontrapping-fptoint']
-    self.test_fasta(js_engines)
+    self.test_fasta()
 
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark', assert_returncode=None)
@@ -6016,22 +6011,20 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @wasm_simd
-  def test_wasm_builtin_simd(self, js_engines):
+  def test_wasm_builtin_simd(self):
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
-    self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(), 'Success!',
-                js_engines=js_engines)
+    self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(), 'Success!')
     self.emcc_args.append('-munimplemented-simd128')
     self.build(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(),
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
-  def test_wasm_intrinsics_simd(self, js_engines):
+  def test_wasm_intrinsics_simd(self):
     def run():
       self.do_run(
           open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
-          'Success!',
-          js_engines=js_engines)
+          'Success!')
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
@@ -8594,10 +8587,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   @node_pthreads
-  def test_pthreads_create(self, js_engines):
+  def test_pthreads_create(self):
     def test():
-      self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create',
-                                   js_engines=js_engines)
+      self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create')
     test()
 
     # with a pool, we can synchronously depend on workers being available
@@ -8612,9 +8604,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('incompatibility with atomics')
   @no_fastcomp('new wasm backend atomics')
   @node_pthreads
-  def test_emscripten_atomics(self, js_engines):
+  def test_emscripten_atomics(self):
     self.set_setting('USE_PTHREADS', '1')
-    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics', js_engines=js_engines)
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics')
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):

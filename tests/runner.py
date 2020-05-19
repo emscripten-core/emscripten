@@ -221,6 +221,28 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
+@contextlib.contextmanager
+def js_engines_modify(replacements):
+  """A context manager that updates shared.JS_ENGINES."""
+  original = shared.JS_ENGINES
+  shared.JS_ENGINES = replacements
+  try:
+    yield
+  finally:
+    shared.JS_ENGINES = original
+
+
+@contextlib.contextmanager
+def wasm_engines_modify(replacements):
+  """A context manager that updates shared.WASM_ENGINES."""
+  original = shared.WASM_ENGINES
+  shared.WASM_ENGINES = replacements
+  try:
+    yield
+  finally:
+    shared.WASM_ENGINES = original
+
+
 def ensure_dir(dirname):
   if not os.path.isdir(dirname):
     os.makedirs(dirname)
