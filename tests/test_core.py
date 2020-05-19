@@ -1591,9 +1591,9 @@ int main() {
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.
   @also_with_impure_standalone_wasm
-  def test_ctors_no_main(self):
+  def test_ctors_no_main(self, js_engines):
     self.emcc_args.append('--no-entry')
-    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
+    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main', js_engines=js_engines)
 
   def test_class(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_class')
