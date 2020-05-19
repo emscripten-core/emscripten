@@ -386,10 +386,9 @@ def inspect_code(headers, cpp_opts, structs, defines):
   os.close(js_file[0])
 
   # Remove dangerous env modifications
-  safe_env = os.environ.copy()
-  for opt in ['EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS']:
-    if opt in safe_env:
-      del safe_env[opt]
+  env = os.environ.copy()
+  env['EMCC_FORCE_STDLIBS'] = 'libcompiler_rt'
+  env['EMCC_ONLY_FORCED_STDLIBS'] = '1'
 
   info = []
   # Compile the program.
@@ -401,8 +400,8 @@ def inspect_code(headers, cpp_opts, structs, defines):
                                                    '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                                    '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
                                                    '-s', 'STRICT=1',
-                                                   '-s', 'SINGLE_FILE=1',
-                                                   '-nostdlib', '-lcompiler_rt']
+                                                   '-s', 'SINGLE_FILE=1']
+
   if not shared.Settings.WASM_BACKEND:
     # Avoid the binaryen dependency if we are only using fastcomp
     cmd += ['-s', 'WASM=0']
@@ -411,7 +410,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
 
   show(cmd)
   try:
-    subprocess.check_call(cmd, env=safe_env)
+    subprocess.check_call(cmd, env=env)
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)

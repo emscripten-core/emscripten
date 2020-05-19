@@ -1590,7 +1590,7 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     add_library(system_libs_map[forced])
 
   if only_forced:
-    if shared.Settings.WASM_BACKEND:
+    if shared.Settings.WASM_BACKEND and not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
       add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
