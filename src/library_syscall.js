@@ -1838,12 +1838,8 @@ for (var x in SyscallsLibrary) {
   var wasi = false;
   if (x in WASI_SYSCALLS) {
     wasi = true;
-  } else {
-    // A syscall is __sys_X (but at least one syscall has an extra _ prefix)
-    var match = /^__sys__?[^_]*$/.exec(x);
-    if (!match) {
-      continue;
-    }
+  } else if (!x.startsWith('__sys_') || isJsLibraryConfigIdentifier(x)) {
+    continue;
   }
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;

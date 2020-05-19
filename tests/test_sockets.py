@@ -170,7 +170,7 @@ class sockets(BrowserCore):
     print('Setting NODE_PATH=' + path_from_root('node_modules'))
     os.environ['NODE_PATH'] = path_from_root('node_modules')
 
-  def test_sockets_echo(self):
+  def test_sockets_echo(self, extra_args=[]):
     sockets_include = '-I' + path_from_root('tests', 'sockets')
 
     # Note: in the WebsockifyServerHarness and CompiledServerHarness tests below, explicitly use consecutive server listen ports,
@@ -193,6 +193,9 @@ class sockets(BrowserCore):
     for harness, datagram in harnesses:
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
+
+  def test_sockets_echo_pthreads(self, extra_args=[]):
+    self.test_sockets_echo(['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   def test_sdl2_sockets_echo(self):
     harness = CompiledServerHarness('sdl2_net_server.c', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'], 49164)
