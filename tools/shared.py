@@ -450,7 +450,13 @@ def set_version_globals():
 
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
+  sanity_file_content = EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version()
+  if CONFIG_FILE:
+    config = open(CONFIG_FILE).read()
+  else:
+    config = EM_CONFIG
+  sanity_file_content += '|%s\n' % hex(abs(hash(config)))
+  return sanity_file_content
 
 
 def perform_sanify_checks():
@@ -482,35 +488,27 @@ def check_sanity(force=False):
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
   with ToolchainProfiler.profile_block('sanity'):
     check_llvm_version()
-    expected = generate_sanity()
-    reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
+    expected = generate_sanity()
 
     settings_mtime = os.path.getmtime(CONFIG_FILE)
     sanity_file = CONFIG_FILE + '_sanity'
-    if Settings.WASM_BACKEND:
-      sanity_file += '_wasm'
     if os.path.exists(sanity_file):
-      sanity_mtime = os.path.getmtime(sanity_file)
-      if sanity_mtime < settings_mtime:
-        reason = 'settings file has changed'
-      else:
-        sanity_data = open(sanity_file).read().rstrip()
-        if sanity_data != expected:
-          reason = 'system change: %s vs %s' % (expected, sanity_data)
-        elif not force:
-          return # all is well
-
-    if reason:
-      if FROZEN_CACHE:
-        logger.info('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
-      else:
-        logger.info('(Emscripten: %s, clearing cache)' % reason)
-        Cache.erase()
-        # the check actually failed, so definitely write out the sanity file, to
-        # avoid others later seeing failures too
-        force = False
+      sanity_data = open(sanity_file).read()
+      if sanity_data != expected:
+        logger.debug('old sanity: %s' % sanity_data)
+        logger.debug('new sanity: %s' % expected)
+        if FROZEN_CACHE:
+          logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
+        else:
+          logger.info('(Emscripten: config changed, clearing cache)')
+          Cache.erase()
+          # the check actually failed, so definitely write out the sanity file, to
+          # avoid others later seeing failures too
+          force = False
+      elif not force:
+        return # all is well
 
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_node_version()
