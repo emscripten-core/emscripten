@@ -359,16 +359,7 @@ i8x16 TESTFN i8x16_sub_saturate_s(i8x16 x, i8x16 y) {
 i8x16 TESTFN i8x16_sub_saturate_u(i8x16 x, i8x16 y) {
   return __builtin_wasm_sub_saturate_u_i8x16(x, y);
 }
-
-#ifdef __wasm_unimplemented_simd128__
-
-i8x16 TESTFN i8x16_mul(i8x16 x, i8x16 y) {
-  return x * y;
-}
-
-#endif // __wasm_unimplemented_simd128__
-
-// Skip {min,max}_{s,u} because they do not have short builtin equivalents
+// TODO: min_s / min_u / max_s / max_u
 i8x16 TESTFN i8x16_avgr_u(i8x16 x, i8x16 y) {
   return __builtin_wasm_avgr_u_i8x16(x, y);
 }
@@ -414,7 +405,7 @@ i16x8 TESTFN i16x8_sub_saturate_u(i16x8 x, i16x8 y) {
 i16x8 TESTFN i16x8_mul(i16x8 x, i16x8 y) {
   return x * y;
 }
-// Skip {min,max}_{s,u} because they do not have short builtin equivalents
+// TODO: min_s / min_u / max_s / max_u
 i16x8 TESTFN i16x8_avgr_u(i16x8 x, i16x8 y) {
   return __builtin_wasm_avgr_u_i16x8(x, y);
 }
@@ -448,7 +439,7 @@ i32x4 TESTFN i32x4_sub(i32x4 x, i32x4 y) {
 i32x4 TESTFN i32x4_mul(i32x4 x, i32x4 y) {
   return x * y;
 }
-// Skip {min,max}_{s,u} because they do not have short builtin equivalents
+// TODO: min_s / min_u / max_s / max_u
 i64x2 TESTFN i64x2_neg(i64x2 vec) {
   return -vec;
 }
@@ -1156,19 +1147,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     ),
     ((i8x16){0, 0, 254, 0, 0, 123, 0, 12, 61, 167, 158, 100, 17, 0, 0, 0})
   );
-
-#ifdef __wasm_unimplemented_simd128__
-
-  expect_vec(
-    i8x16_mul(
-      (i8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
-      (i8x16){3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142}
-    ),
-    ((i8x16){0, 230, 255, 0, 255, 6, 106, 237, 230, 52, 223, 76, 0, 6, 127, 126})
-  );
-
-#endif // __wasm_unimplemented_simd128__
-
   expect_vec(
     i8x16_avgr_u(
       (i8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
