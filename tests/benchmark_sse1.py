@@ -115,7 +115,8 @@ def find_result_in_category(results, category):
 
 def format_comparison(a, b):
 	if a <= b: return "<span style='color:green;font-weight:bold;'> {:10.2f}".format(b/a) + 'x FASTER</span>'
-	else: return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(a/b) + 'x SLOWER</span>'
+	elif b != 0: return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(a/b) + 'x SLOWER</span>'
+	else: return "<span style='color:red;font-weight:bold;'> NaN </span>"
 
 chartNumber = 0
 
