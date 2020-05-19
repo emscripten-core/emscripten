@@ -7,6 +7,7 @@ from __future__ import print_function
 
 from subprocess import PIPE, STDOUT
 import atexit
+import binascii
 import base64
 import difflib
 import json
@@ -455,7 +456,7 @@ def generate_sanity():
     config = open(CONFIG_FILE).read()
   else:
     config = EM_CONFIG
-  sanity_file_content += '|%s\n' % hex(abs(hash(config)))
+  sanity_file_content += '|%#x\n' % binascii.crc32(config.encode())
   return sanity_file_content
 
 
