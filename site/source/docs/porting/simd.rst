@@ -143,7 +143,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_rcp_ps
      - ❌ emulated with full precision div
    * - _mm_rcp_ss
-     - ❌ emulated with a div+shuffle
+     - ❌ emulated with full precision div+shuffle
    * - _mm_sqrt_ps
      - ✅ wasm_f32x4_sqrt
    * - _mm_sqrt_ss
@@ -151,7 +151,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_rsqrt_ps
      - ❌ emulated with full precision div+sqrt
    * - _mm_rsqrt_ss
-     - ❌ emulated with a div+sqrt+shuffle
+     - ❌ emulated with full precision div+sqrt+shuffle
    * - _mm_unpackhi_ps
      - 💡 emulated with a shuffle
    * - _mm_unpacklo_ps
@@ -257,13 +257,13 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_cvtss_f32
      - 💡 scalar get
    * - _mm_malloc
-     - ✅ Allocates 16-byte aligned memory.
+     - ✅ Allocates memory with specified alignment.
    * - _mm_free
      - ✅ Aliases to free().
    * - _MM_GET_EXCEPTION_MASK
      - ✅ Always returns all exceptions masked (0x1f80).
    * - _MM_GET_EXCEPTION_STATE
-     - ❌ Always returns 0.
+     - ❌ Exception state is not tracked. Always returns 0.
    * - _MM_GET_FLUSH_ZERO_MODE
      - ✅ Always returns _MM_FLUSH_ZERO_OFF.
    * - _MM_GET_ROUNDING_MODE
