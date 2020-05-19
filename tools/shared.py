@@ -706,7 +706,7 @@ def emsdk_ldflags(user_args):
   return ldflags
 
 
-def emsdk_cflags(user_args):
+def emsdk_cflags(user_args=[]):
   # Disable system C and C++ include directories, and add our own (using
   # -isystem so they are last, like system dirs, which allows projects to
   # override them)
