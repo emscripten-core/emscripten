@@ -1839,7 +1839,8 @@ for (var x in SyscallsLibrary) {
   if (x in WASI_SYSCALLS) {
     wasi = true;
   } else {
-    var match = /^__sys_[^_]*$/.exec(x);
+    // A syscall is __sys_X (but at least one syscall has an extra _ prefix)
+    var match = /^__sys__?[^_]*$/.exec(x);
     if (!match) {
       continue;
     }
