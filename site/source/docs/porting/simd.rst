@@ -271,9 +271,9 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_getcsr
      - ✅ Always returns _MM_FLUSH_ZERO_OFF|_MM_ROUND_NEAREST|0x1f80.
    * - _MM_SET_EXCEPTION_MASK
-     - ⚫ Not available.
+     - ⚫ Not available. Fixed to all exceptions masked.
    * - _MM_SET_EXCEPTION_STATE
-     - ⚫ Not available.
+     - ⚫ Not available. Fixed to zero/clear state.
    * - _MM_SET_FLUSH_ZERO_MODE
      - ⚫ Not available. Fixed to _MM_FLUSH_ZERO_OFF.
    * - _MM_SET_ROUNDING_MODE
