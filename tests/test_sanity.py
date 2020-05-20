@@ -18,7 +18,7 @@ from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs
-from tools.shared import expected_llvm_version, generate_sanity, Cache, Settings
+from tools.shared import expected_llvm_version, Cache, Settings
 from tools import jsrun, shared, system_libs
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
@@ -50,10 +50,6 @@ def wipe():
 def add_to_config(content):
   with open(CONFIG_FILE, 'a') as f:
     f.write('\n' + content + '\n')
-
-
-def mtime(filename):
-  return os.path.getmtime(filename)
 
 
 def make_fake_wasm_opt(filename, version):
@@ -373,9 +369,8 @@ fi
     assert not os.path.exists(SANITY_FILE) # restore is just the settings, not the sanity
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
-    self.assertExists(SANITY_FILE) # EMCC should have checked sanity successfully
-    assert mtime(SANITY_FILE) > mtime(CONFIG_FILE)
-    assert generate_sanity() == open(SANITY_FILE).read()
+    # EMCC should have checked sanity successfully
+    old_sanity = open(SANITY_FILE).read()
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc run again should not sanity check, because the sanity file is newer
@@ -383,15 +378,15 @@ fi
     self.assertNotContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
-    # correct sanity contents mean we need not check
-    open(SANITY_FILE, 'w').write(generate_sanity())
-    output = self.check_working(EMCC)
-    self.assertNotContained(SANITY_MESSAGE, output)
-
     # incorrect sanity contents mean we *must* check
     open(SANITY_FILE, 'w').write('wakawaka')
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
+
+    # correct sanity contents mean we need not check
+    open(SANITY_FILE, 'w').write(old_sanity)
+    output = self.check_working(EMCC)
+    self.assertNotContained(SANITY_MESSAGE, output)
 
     # but with EMCC_DEBUG=1 we should check
     with env_modify({'EMCC_DEBUG': '1'}):
@@ -412,12 +407,9 @@ fi
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc should also check sanity if the file is outdated
-    time.sleep(0.1)
-    restore_and_set_up()
-    assert mtime(SANITY_FILE) < mtime(CONFIG_FILE)
+    open(CONFIG_FILE, 'a').write('# extra stuff\n')
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
-    assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc should be configurable directly from EM_CONFIG without any config file
