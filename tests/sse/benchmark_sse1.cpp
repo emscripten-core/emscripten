@@ -6,17 +6,19 @@
 #include <xmmintrin.h>
 #include "benchmark_sse1.h"
 
+int dst_int = 0;
+
 int main()
 {
 	printf ("{ \"workload\": %u, \"results\": [\n", N);
 	assert(N%4 == 0); // Don't care about the tail for now.
-	float *src = get_src();//(float*)aligned_alloc(16, N*sizeof(float));
+	float *src = alloc_float_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
 	for(int i = 0; i < N; ++i)
 		src[i] = 1.0f + (float)rand() / (float)RAND_MAX;
-	float *src2 = get_src2();//(float*)aligned_alloc(16, N*sizeof(float));
+	float *src2 = alloc_float_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
 	for(int i = 0; i < N; ++i)
 		src2[i] = 1.0f + (float)rand() / (float)RAND_MAX;
-	float *dst = get_dst();//(float*)aligned_alloc(16, N*sizeof(float));
+	float *dst = alloc_float_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
 
 	float scalarTime;
 	SETCHART("load");
@@ -49,6 +51,10 @@ int main()
 	SS_TEST("_mm_move_ss", _mm_move_ss(_mm_load_ps(src+i), _mm_load_ps(src2+i)));
 	SS_TEST("_mm_movehl_ps", _mm_movehl_ps(_mm_load_ps(src+i), _mm_load_ps(src2+i)));
 	SS_TEST("_mm_movelh_ps", _mm_movelh_ps(_mm_load_ps(src+i), _mm_load_ps(src2+i)));
+
+	SETCHART("movemask");
+	START(); for(int i = 0; i < N; i += 4) { int movemask = ((unsigned int)src[i] >> 31) | (((unsigned int)src[i+1] >> 30) & 2)  | (((unsigned int)src[i+2] >> 29) & 4)  | (((unsigned int)src[i+3] >> 28) & 8); dst_int += movemask; } ENDSCALAR(checksum_dst(&dst_int), "scalar movemask");
+	UNARYOP_INT_TEST("_mm_movemask_ps", _mm_movemask_ps(_mm_load_ps(src+i)));
 
 	SETCHART("store");
 	LS_TEST("_mm_store_ps", _mm_load_ps, 0, _mm_store_ps, float*, 0, 4);

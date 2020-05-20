@@ -196,13 +196,13 @@ _mm_movemask_ps(__m128 __a)
 {
   union {
     __m128 __v;
-    int __x[4];
+    unsigned int __x[4];
   } __attribute__((__packed__, __may_alias__)) __p;
   __p.__v = __a;
-  return (__p.__x[0] < 0 ? 1 : 0)
-       | (__p.__x[1] < 0 ? 2 : 0)
-       | (__p.__x[2] < 0 ? 4 : 0)
-       | (__p.__x[3] < 0 ? 8 : 0);
+  return (__p.__x[0] >> 31)
+    | ((__p.__x[1] >> 30) & 2)
+    | ((__p.__x[2] >> 29) & 4)
+    | ((__p.__x[3] >> 28) & 8);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))

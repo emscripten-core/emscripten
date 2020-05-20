@@ -85,13 +85,8 @@ bool always_true() { return time(NULL) != 0; } // This function always returns t
 #define INLINE __inline__
 #endif
 
-float NOINLINE *get_src() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
-float NOINLINE *get_src2() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
-float NOINLINE *get_dst() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
-
-double NOINLINE *get_src_d() { return always_true() ? (double*)aligned_alloc(16, (N+16)*sizeof(double)) : 0; }
-double NOINLINE *get_src2_d() { return always_true() ? (double*)aligned_alloc(16, (N+16)*sizeof(double)) : 0; }
-double NOINLINE *get_dst_d() { return always_true() ? (double*)aligned_alloc(16, (N+16)*sizeof(double)) : 0; }
+float NOINLINE *alloc_float_buffer() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
+double NOINLINE *alloc_double_buffer() { return always_true() ? (double*)aligned_alloc(16, (N+16)*sizeof(double)) : 0; }
 
 template<typename T>
 T checksum_dst(T *dst)
@@ -143,6 +138,12 @@ double ucastd(uint64_t t) { return *(double*)&t; }
 			o = instr(o); \
 		_mm_store_ps(dst, o); \
 	END(checksum_dst(dst), msg);
+
+#define UNARYOP_INT_TEST(msg, instr) \
+	START(); \
+		for(int i = 0; i < N; i += 4) \
+			dst_int += instr; \
+	END(checksum_dst(&dst_int), msg);
 
 #define BINARYOP_TEST(msg, instr, op0, op1) \
 	START(); \
