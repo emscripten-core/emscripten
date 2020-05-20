@@ -73,7 +73,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_setzero_ps
      - 💡 emulated with wasm_f32x4_const(0)
    * - _mm_load_ps
-     - 🟡 wasm_v128_load. VM must guess type.
+     - 🟡 wasm_v128_load. VM must guess type. Unaligned load on x86 CPUs.
    * - _mm_loadl_pi
      - ❌ scalar loads + shuffle
    * - _mm_loadh_pi
@@ -91,7 +91,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_storeh_pi
      - ❌ shuffle + scalar stores
    * - _mm_store_ps
-     - 🟡 wasm_v128_store. VM must guess type.
+     - 🟡 wasm_v128_store. VM must guess type. Unaligned store on x86 CPUs.
    * - _mm_stream_ps
      - 🟡 wasm_v128_store. VM must guess type.
    * - _mm_prefetch
@@ -103,7 +103,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_storer_ps
      - 💡 Virtual. Shuffle + Simd store.
    * - _mm_store_ps1 (_mm_store1_ps)
-     - 💡 Virtual. Emulated with shuffle.
+     - 🟡 Virtual. Emulated with shuffle. Unaligned store on x86 CPUs.
    * - _mm_store_ss
      - 💡 emulated with scalar store
    * - _mm_storeu_ps
