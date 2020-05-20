@@ -18,7 +18,7 @@ from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs
-from tools.shared import expected_llvm_version, generate_sanity, Cache, Settings
+from tools.shared import expected_llvm_version, Cache, Settings
 from tools import jsrun, shared, system_libs
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
