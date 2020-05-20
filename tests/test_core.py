@@ -5897,15 +5897,12 @@ int main(void) {
 
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   def test_dlmalloc_partial(self):
-    # Wasm backend warns when exception specifications with types are used, so
-    # suppress it
-    self.emcc_args += ['-Wno-wasm-exception-spec']
     # present part of the symbols of dlmalloc, not all
     src = open(path_from_root('tests', 'new.cpp')).read().replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
 #include <new>
 
 void *
-operator new(size_t size) throw(std::bad_alloc)
+operator new(size_t size)
 {
 printf("new %d!\\n", size);
 return malloc(size);
