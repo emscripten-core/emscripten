@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add warning when using python literal as ``EM_CONFIG`` value.  Hopefully
+  nobody is using this and we can remove this feature soon.
 - The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
   longer takes a target memory.  Its safer/cleaner/smaller to assume the target
   is the global memory buffer.
