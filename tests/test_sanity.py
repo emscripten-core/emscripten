@@ -431,7 +431,11 @@ fi
 
   def erase_cache(self):
     Cache.erase()
-    assert not os.path.exists(Cache.dirname)
+    self.assertCacheEmpty()
+
+  def assertCacheEmpty(self):
+    if os.path.exists(Cache.dirname):
+      self.assertEqual(os.listdir(Cache.dirname), [])
 
   def ensure_cache(self):
     self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
@@ -465,9 +469,8 @@ fi
     self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([PYTHON, EMCC, '--clear-cache'])
     self.assertIn(ERASING_MESSAGE, output)
-    self.assertFalse(os.path.exists(Cache.dirname))
-    self.assertFalse(os.path.exists(Cache.root_dirname))
     self.assertIn(SANITY_MESSAGE, output)
+    self.assertCacheEmpty()
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     self.ensure_cache()
@@ -477,7 +480,7 @@ fi
       self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
-      self.assertFalse(os.path.exists(Cache.dirname))
+      self.assertCacheEmpty()
 
   # FROZEN_CACHE prevents cache clears, and prevents building
   def test_FROZEN_CACHE(self):
