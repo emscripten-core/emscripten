@@ -246,7 +246,7 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     # wasm2c doesn't want minimal runtime which the normal emscripten
     # benchmarker defaults to, as we don't have any JS anyhow
-    emcc_args = emcc_args + ['-s', 'STANDALONE_WASM', '-s', 'MINIMAL_RUNTIME=0']
+    emcc_args = emcc_args + ['-s', 'STANDALONE_WASM', '-s', 'MINIMAL_RUNTIME=0'] # WASM2C flag?
 
     super(EmscriptenWasm2CBenchmarker, self).build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
 
