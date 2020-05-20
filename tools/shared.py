@@ -66,6 +66,7 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
+diagnostics.add_warning('deprected')
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
