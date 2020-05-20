@@ -17,8 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Add warning when using python literal as ``EM_CONFIG`` value.  Hopefully
-  nobody is using this and we can remove this feature soon.
+- Add warning when the conents of ``EM_CONIFG`` envrionment variable contains
+  not a filename but a multi-line python literal containing the config data
+  itself.  Hopefully nobody is using this feature and we can remove it in the
+  future.
 - The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
   longer takes a target memory.  Its safer/cleaner/smaller to assume the target
   is the global memory buffer.
