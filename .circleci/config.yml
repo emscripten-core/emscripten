@@ -67,7 +67,7 @@ commands:
           command: |
             # We've had issues in the past with building struct info when the
             # cache is completely empty.  So make sure it works.
-            $PYTHON_BIN ./tools/gen_struct_info.py > out.json
+            EMCC_DEBUG=1 $PYTHON_BIN ./tools/gen_struct_info.py > out.json
             $PYTHON_BIN ./emcc.py --clear-cache
       - run:
           name: embuilder build ALL
