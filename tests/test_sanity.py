@@ -52,10 +52,6 @@ def add_to_config(content):
     f.write('\n' + content + '\n')
 
 
-def mtime(filename):
-  return os.path.getmtime(filename)
-
-
 def make_fake_wasm_opt(filename, version):
   print('make_fake_wasm_opt: %s' % filename)
   ensure_dir(os.path.dirname(filename))
@@ -373,9 +369,8 @@ fi
     assert not os.path.exists(SANITY_FILE) # restore is just the settings, not the sanity
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
-    self.assertExists(SANITY_FILE) # EMCC should have checked sanity successfully
-    assert mtime(SANITY_FILE) > mtime(CONFIG_FILE)
-    assert generate_sanity() == open(SANITY_FILE).read()
+    # EMCC should have checked sanity successfully
+    old_sanity = open(SANITY_FILE).read()
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc run again should not sanity check, because the sanity file is newer
@@ -383,15 +378,15 @@ fi
     self.assertNotContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
-    # correct sanity contents mean we need not check
-    open(SANITY_FILE, 'w').write(generate_sanity())
-    output = self.check_working(EMCC)
-    self.assertNotContained(SANITY_MESSAGE, output)
-
     # incorrect sanity contents mean we *must* check
     open(SANITY_FILE, 'w').write('wakawaka')
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
+
+    # correct sanity contents mean we need not check
+    open(SANITY_FILE, 'w').write(old_sanity)
+    output = self.check_working(EMCC)
+    self.assertNotContained(SANITY_MESSAGE, output)
 
     # but with EMCC_DEBUG=1 we should check
     with env_modify({'EMCC_DEBUG': '1'}):
@@ -412,12 +407,9 @@ fi
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc should also check sanity if the file is outdated
-    time.sleep(0.1)
-    restore_and_set_up()
-    assert mtime(SANITY_FILE) < mtime(CONFIG_FILE)
+    open(CONFIG_FILE, 'a').write('# extra stuff\n')
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
-    assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc should be configurable directly from EM_CONFIG without any config file
