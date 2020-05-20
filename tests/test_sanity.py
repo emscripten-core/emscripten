@@ -412,6 +412,7 @@ fi
     self.assertContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
+  def test_emconfig_literal(self):
     # emcc should be configurable directly from EM_CONFIG without any config file
     restore_and_set_up()
     config = open(CONFIG_FILE, 'r').read()
@@ -423,7 +424,6 @@ fi
       }
     ''')
 
-    wipe()
     with env_modify({'EM_CONFIG': config}):
       run_process([PYTHON, EMCC, 'main.cpp', '-o', 'a.out.js'])
 
