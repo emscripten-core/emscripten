@@ -1,5 +1,8 @@
 .. Porting SIMD code:
 
+.. role:: raw-html(raw)
+    :format: html
+
 =======================================
 Porting SIMD code targeting WebAssembly
 =======================================
@@ -73,11 +76,11 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_setzero_ps
      - 💡 emulated with wasm_f32x4_const(0)
    * - _mm_load_ps
-     - 🟡 wasm_v128_load. VM must guess type. Unaligned load on x86 CPUs.
+     - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
    * - _mm_loadl_pi
-     - ❌ scalar loads + shuffle
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with scalar loads + shuffle.
    * - _mm_loadh_pi
-     - ❌ scalar loads + shuffle
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with scalar loads + shuffle.
    * - _mm_loadr_ps
      - 💡 Virtual. Simd load + shuffle.
    * - _mm_loadu_ps
@@ -91,7 +94,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_storeh_pi
      - ❌ shuffle + scalar stores
    * - _mm_store_ps
-     - 🟡 wasm_v128_store. VM must guess type. Unaligned store on x86 CPUs.
+     - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` Unaligned store on x86 CPUs.
    * - _mm_stream_ps
      - 🟡 wasm_v128_store. VM must guess type.
    * - _mm_prefetch
@@ -103,7 +106,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_storer_ps
      - 💡 Virtual. Shuffle + Simd store.
    * - _mm_store_ps1 (_mm_store1_ps)
-     - 🟡 Virtual. Emulated with shuffle. Unaligned store on x86 CPUs.
+     - 🟡 Virtual. Emulated with shuffle. :raw-html:`<br />` Unaligned store on x86 CPUs.
    * - _mm_store_ss
      - 💡 emulated with scalar store
    * - _mm_storeu_ps
@@ -113,7 +116,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_storeu_si64
      - 💡 emulated with scalar store
    * - _mm_movemask_ps
-     - 💣 emulated with scalar branching
+     - 💣 No Wasm SIMD support. Emulated in scalar. `simd/#131 <https://github.com/WebAssembly/simd/issues/131>`_
    * - _mm_move_ss
      - 💡 emulated with a shuffle
    * - _mm_add_ps
@@ -141,17 +144,17 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_max_ss
      - ⚠️ emulated with a shuffle
    * - _mm_rcp_ps
-     - ❌ emulated with full precision div
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with full precision div. `simd/#3 <https://github.com/WebAssembly/simd/issues/3>`_
    * - _mm_rcp_ss
-     - ❌ emulated with full precision div+shuffle
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with full precision div+shuffle `simd/#3 <https://github.com/WebAssembly/simd/issues/3>`_
    * - _mm_sqrt_ps
      - ✅ wasm_f32x4_sqrt
    * - _mm_sqrt_ss
      - ⚠️ emulated with a shuffle
    * - _mm_rsqrt_ps
-     - ❌ emulated with full precision div+sqrt
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with full precision div+sqrt. `simd/#3 <https://github.com/WebAssembly/simd/issues/3>`_
    * - _mm_rsqrt_ss
-     - ❌ emulated with full precision div+sqrt+shuffle
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with full precision div+sqrt+shuffle. `simd/#3 <https://github.com/WebAssembly/simd/issues/3>`_
    * - _mm_unpackhi_ps
      - 💡 emulated with a shuffle
    * - _mm_unpacklo_ps
@@ -269,7 +272,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _MM_GET_ROUNDING_MODE
      - ✅ Always returns _MM_ROUND_NEAREST.
    * - _mm_getcsr
-     - ✅ Always returns _MM_FLUSH_ZERO_OFF|_MM_ROUND_NEAREST|0x1f80.
+     - ✅ Always returns _MM_FLUSH_ZERO_OFF :raw-html:`<br />` | _MM_ROUND_NEAREST | all exceptions masked (0x1f80).
    * - _MM_SET_EXCEPTION_MASK
      - ⚫ Not available. Fixed to all exceptions masked.
    * - _MM_SET_EXCEPTION_STATE
