@@ -961,9 +961,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # warnings are properly printed during arg parse.
     newargs = diagnostics.capture_warnings(newargs)
 
-    if not shared.CONFIG_FILE:
-      diagnostics.warning('deprected', 'Specifying EM_CONFIG as a python literal is deprected. Please you a file instead.')
-
     for i in range(len(newargs)):
       if newargs[i] in ('-l', '-L', '-I'):
         # Scan for individual -l/-L/-I arguments and concatenate the next arg on
