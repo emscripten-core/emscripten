@@ -2782,6 +2782,40 @@ class Building(object):
   def run_wasm_opt(*args, **kwargs):
     return Building.run_binaryen_command('wasm-opt', *args, **kwargs)
 
+  @staticmethod
+  def do_wasm2c(infile):
+    # look for the wasm2c/ dir alongside the bin dir, or perhaps higher up.
+    WASM2C_DIR = os.path.dirname(Settings.WABT_BIN)
+    while WASM2C_DIR and not os.path.exists(os.path.join(WASM2C_DIR, 'wasm2c')):
+      WASM2C_DIR = os.path.dirname(WASM2C_DIR)
+    if not WASM2C_DIR:
+      exit_with_error('Could not find wabt wasm2c/ dir in the tree under ' + Settings.WABT_BIN)
+    WASM2C_DIR = os.path.join(WASM2C_DIR, 'wasm2c')
+    c_file = unsuffixed(infile) + '.c'
+    h_file = unsuffixed(infile) + '.h'
+    cmd = [os.path.join(Settings.WABT_BIN, 'wasm2c'), infile, '-o', c_file]
+    run_process(cmd)
+    with open(c_file) as read_c:
+      c = read_c.read()
+    SEP = '\n//====================\n\n'
+    # hermeticize the C file, by bundling in the wasm2c/ includes
+    headers = [
+      (WASM2C_DIR, 'wasm-rt.h'),
+      (WASM2C_DIR, 'wasm-rt-impl.h'),
+      (os.path.dirname(h_file), os.path.basename(h_file))
+    ]
+    total = ''
+    for header in headers:
+      with open(os.path.join(header[0], header[1])) as f:
+        total += f.read() + SEP
+    total += c + SEP
+    with open(path_from_root('tools', 'wasm2c', 'main.c')) as main:
+      total += main.read()
+    for header in headers:
+      total = total.replace('#include "%s"\n' % header[1], '/* include of %s */\n' % header[1])
+    with open(c_file, 'w') as out:
+      out.write(total)
+
   save_intermediate_counter = 0
 
   @staticmethod
