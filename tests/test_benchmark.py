@@ -8,6 +8,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import unittest
@@ -246,22 +247,19 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     # wasm2c doesn't want minimal runtime which the normal emscripten
     # benchmarker defaults to, as we don't have any JS anyhow
-    emcc_args = emcc_args + ['-s', 'STANDALONE_WASM', '-s', 'MINIMAL_RUNTIME=0'] # WASM2C flag?
+    emcc_args = emcc_args + [
+      '-s', 'STANDALONE_WASM',
+      '-s', 'MINIMAL_RUNTIME=0',
+      '-s', 'WASM2C'
+    ]
 
     super(EmscriptenWasm2CBenchmarker, self).build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
 
     base = self.filename[:-3]
-    wasm = base + '.wasm'
     c = base + '.c'
-    h = base + '.h'
     native = base + '.exe'
 
-    wabt_dir = os.path.expanduser('~/Dev/wabt/')
-    run_process([os.path.join(wabt_dir, 'build', 'wasm2c'), wasm, '-o', c])
-    run_process(['clang', os.path.join(wabt_dir, 'wasm2c', 'main-emscripten.c'), c,
-                 os.path.join(wabt_dir, 'wasm2c', 'wasm-rt-impl.c'), '-I.',
-                 '-I' + os.path.join(wabt_dir, 'wasm2c'), '-lm',
-                 '-include', h, '-o', native, OPTIMIZATIONS,
+    run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',
                  '-DWASM_RT_MAX_CALL_STACK_DEPTH=8000'])  # for havlak
 
     self.filename = native
@@ -356,8 +354,9 @@ if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   aot_v8 = V8_ENGINE + ['--no-liftoff']
   default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
   benchmarkers += [
-    EmscriptenBenchmarker(default_v8_name, aot_v8),
-    EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+    #EmscriptenBenchmarker(default_v8_name, aot_v8),
+    #EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+    EmscriptenWasm2CBenchmarker('wasm2c')
   ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [

@@ -2792,6 +2792,13 @@ class Building(object):
     h_file = unsuffixed(infile) + '.h'
     cmd = WASM2C + [infile, '-o', c_file]
     run_process(cmd)
+
+    '''
+    // comment with
+    run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',
+                 '-DWASM_RT_MAX_CALL_STACK_DEPTH=8000'])  # for havlak
+    '''
+
     with open(c_file) as read_c:
       c = read_c.read()
     SEP = '\n//====================\n\n'
