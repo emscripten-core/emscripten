@@ -416,6 +416,14 @@ ret (*WASM_RT_ADD_PREFIX(name)) args = NULL;
 
 DECLARE_EXPORT(void, Z_setThrewZ_vii, (u32, u32));
 
+// Stack support should be linked in if it is needed.
+IMPORT_IMPL(__attribute__((weak)) u32, Z_stackSaveZ_iv, (), {
+  abort();
+});
+IMPORT_IMPL(__attribute__((weak))void, Z_stackRestoreZ_vi, (u32 x), {
+  abort();
+});
+
 #define VOID_INVOKE_IMPL(name, typed_args, types, args, dyncall) \
 DECLARE_EXPORT(void, dyncall, types); \
 \
