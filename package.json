@@ -7,6 +7,6 @@
     "google-closure-compiler": "20200224.0.0",
     "html-minifier-terser": "5.0.2",
     "source-map": "0.5.6",
-    "wabt": "^1.0.16"
+    "wasm2c": "1.0.0"
   }
 }
