@@ -1756,11 +1756,7 @@ var PRINTF_LONG_DOUBLE = 0;
 // Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
 // resulting in a .c file that you can compile with a C compiler to get a
 // native executable that works the same as the normal js+wasm.
-// When using this you must specify WABT_BIN, which should be where the wasm2c
-// executable can be found. We will also look for the wasm2c directory near it
-// as we need headers and other support there.
 var WASM2C = 0;
-var WABT_BIN = '';
 
 //===========================================
 // Internal, used for testing only, from here
