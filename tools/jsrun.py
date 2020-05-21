@@ -64,7 +64,7 @@ def make_command(filename, engine=None, args=[]):
     shared.run_process(engine + [c, '-o', executable])
     # we can now run the executable directly, without an engine
     engine = []
-    filename = executable
+    filename = os.path.abspath(executable)
   # Separates engine flags from script flags
   flag_separator = ['--'] if is_d8 or is_jsc else []
   return engine + command_flags + [filename] + shell_option_flags + flag_separator + args
@@ -92,10 +92,14 @@ def check_engine(engine):
 
 def require_engine(engine):
   engine_path = engine[0]
+  # an empty engine means we are running an executable directly somehow; there
+  # is nothing to check here
+  if engine_path == '/':
+    return
   if engine_path not in WORKING_ENGINES:
     check_engine(engine)
   if not WORKING_ENGINES[engine_path]:
-    logging.critical('The JavaScript shell (%s) does not seem to work, check the paths in the config file' % engine)
+    logging.critical('The engine (%s) does not seem to work, check the paths in the config file' % engine)
     sys.exit(1)
 
 
