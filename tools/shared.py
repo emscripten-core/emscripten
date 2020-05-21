@@ -3369,7 +3369,7 @@ elif os.path.exists(emsdk_embedded_config):
 else:
   EM_CONFIG = '~/.emscripten'
 
-PYTHON = os.getenv('EM_PYTHON', sys.executable)
+PYTHON = sys.executable
 EMSCRIPTEN_ROOT = __rootpath__
 
 # The following globals can be overridden by the config file.
