@@ -488,9 +488,15 @@ IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
 #define WASM_CLOCK_REALTIME 0
 #define WASM_CLOCK_MONOTONIC 1
 #define WASM_CLOCK_PROCESS_CPUTIME 2
+#define WASM_CLOCK_CLOCK_THREAD_CPUTIME_ID 3
+
+static int check_clock(u32 clock_id) {
+  return clock_id == WASM_CLOCK_REALTIME || clock_id == WASM_CLOCK_MONOTONIC ||
+         clock_id == WASM_CLOCK_PROCESS_CPUTIME || clock_id == CLOCK_THREAD_CPUTIME_ID;
+}
 
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_time_getZ_iiji, (u32 clock_id, u64 max_lag, u32 out), {
-  if (clock_id != WASM_CLOCK_REALTIME && clock_id != WASM_CLOCK_MONOTONIC && clock_id != WASM_CLOCK_PROCESS_CPUTIME) {
+  if (!check_clock(clock_id)) {
     return WASI_EINVAL;
   }
   // TODO: handle realtime vs monotonic etc.
@@ -502,7 +508,7 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_time_getZ_iiji, (u32 clock_id, 
 });
 
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_res_getZ_iii, (u32 clock_id, u32 out), {
-  if (clock_id != WASM_CLOCK_REALTIME && clock_id != WASM_CLOCK_MONOTONIC && clock_id != WASM_CLOCK_PROCESS_CPUTIME) {
+  if (!check_clock(clock_id)) {
     return WASI_EINVAL;
   }
   // TODO: handle realtime vs monotonic etc. For now just report "milliseconds".
