@@ -2810,7 +2810,8 @@ class Building(object):
         total += f.read() + SEP
     # add the wasm2c output
     with open(c_file) as read_c:
-      total += read_c.read() + SEP
+      c = read_c.read()
+    total += c + SEP
     # add the wasm2c runtime
     with open(os.path.join(WASM2C_DIR, 'wasm-rt-impl.c')) as f:
       total += f.read() + SEP
@@ -2820,6 +2821,44 @@ class Building(object):
     # remove #includes of the headers we bundled
     for header in headers:
       total = total.replace('#include "%s"\n' % header[1], '/* include of %s */\n' % header[1])
+    # generate the necessary invokes
+    invokes = []
+    for sig in re.findall(r"\/\* import\: 'env' 'invoke_(\w+)' \*\/", total):
+      def s_to_c(s):
+        if s == 'v':
+          return 'void'
+        elif s == 'i':
+          return 'u32'
+        elif s == 'j':
+          return 'u64'
+        elif s == 'f':
+          return 'f32'
+        elif s == 'd':
+          return 'f64'
+        else:
+          exit_with_error('invalid sig element:' + str(s))
+
+      def name(i):
+        return 'a' + str(i)
+
+      wabt_sig = sig[0] + 'i' + sig[1:]
+      typed_args = ['u32 fptr'] + [s_to_c(sig[i]) + ' ' + name(i) for i in range(1, len(sig))]
+      types = ['u32'] + [s_to_c(sig[i]) for i in range(1, len(sig))]
+      args = ['fptr'] + [name(i) for i in range(1, len(sig))]
+      invokes.append(
+        '%s_INVOKE_IMPL(%sZ_envZ_invoke_%sZ_%s, (%s), (%s), (%s), Z_dynCall_%sZ_%s);' % (
+          'VOID' if sig[0] == 'v' else 'RETURNING',
+          (s_to_c(sig[0]) + ', ') if sig[0] != 'v' else '',
+          sig,
+          wabt_sig,
+          ', '.join(typed_args),
+          ', '.join(types),
+          ', '.join(args),
+          sig,
+          wabt_sig
+        ))
+    total = total.replace('/* {{{ EMCC_INVOKE_IMPLS }}} */', '\n'.join(invokes))
+    # write out the final file
     with open(c_file, 'w') as out:
       out.write(total)
 

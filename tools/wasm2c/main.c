@@ -470,12 +470,7 @@ IMPORT_IMPL(ret, name, typed_args, { \
   return returned_value; \
 });
 
-VOID_INVOKE_IMPL(Z_envZ_invoke_vZ_vi, (u32 fptr), (u32), (fptr), Z_dynCall_vZ_vi);
-VOID_INVOKE_IMPL(Z_envZ_invoke_viiZ_viii, (u32 fptr, u32 a, u32 b), (u32, u32, u32), (fptr, a, b), Z_dynCall_viiZ_viii);
-VOID_INVOKE_IMPL(Z_envZ_invoke_viiiZ_viiii, (u32 fptr, u32 a, u32 b, u32 c), (u32, u32, u32, u32), (fptr, a, b, c), Z_dynCall_viiiZ_viiii);
-
-RETURNING_INVOKE_IMPL(u32, Z_envZ_invoke_iiiZ_iiii, (u32 fptr, u32 a, u32 b), (u32, u32, u32), (fptr, a, b), Z_dynCall_iiiZ_iiii);
-RETURNING_INVOKE_IMPL(u32, Z_envZ_invoke_iiZ_iii, (u32 fptr, u32 a), (u32, u32), (fptr, a), Z_dynCall_iiZ_iii);
+/* {{{ EMCC_INVOKE_IMPLS }}} */
 
 IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
   if (next_setjmp == 0) {
