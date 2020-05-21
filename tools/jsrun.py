@@ -47,7 +47,6 @@ def make_command(filename, engine=None, args=[]):
   is_jsc = 'jsc' in jsengine
   is_wasmer = 'wasmer' in jsengine
   is_wasmtime = 'wasmtime' in jsengine
-  is_clang = 'clang' in jsengine
   is_clang = engine[0] == shared.CLANG_CC
   # Disable true async compilation (async apis will in fact be synchronous) for now
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
