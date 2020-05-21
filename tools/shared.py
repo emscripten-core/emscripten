@@ -2786,15 +2786,11 @@ class Building(object):
   def do_wasm2c(infile):
     assert Settings.STANDALONE_WASM
     # look for the wasm2c/ dir alongside the bin dir, or perhaps higher up.
-    WASM2C_DIR = os.path.dirname(Settings.WABT_BIN)
-    while WASM2C_DIR and not os.path.exists(os.path.join(WASM2C_DIR, 'wasm2c')):
-      WASM2C_DIR = os.path.dirname(WASM2C_DIR)
-    if not WASM2C_DIR:
-      exit_with_error('Could not find wabt wasm2c/ dir in the tree under ' + Settings.WABT_BIN)
-    WASM2C_DIR = os.path.join(WASM2C_DIR, 'wasm2c')
+    WASM2C = NODE_JS + [path_from_root('node_modules', 'wabt', 'wasm2c.js')]
+    WASM2C_DIR = path_from_root('node_modules', 'wabt', 'wasm2c')
     c_file = unsuffixed(infile) + '.c'
     h_file = unsuffixed(infile) + '.h'
-    cmd = [os.path.join(Settings.WABT_BIN, 'wasm2c'), infile, '-o', c_file]
+    cmd = WASM2C + [infile, '-o', c_file]
     run_process(cmd)
     with open(c_file) as read_c:
       c = read_c.read()

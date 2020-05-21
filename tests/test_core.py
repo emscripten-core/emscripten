@@ -185,7 +185,6 @@ def also_with_standalone_wasm_and_wasm2c(func):
       print('wasm2c')
       self.set_setting('STANDALONE_WASM', 1)
       self.set_setting('WASM2C', 1)
-      self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
       with wasm_engines_modify([]):
         func(self)
 
@@ -232,7 +231,6 @@ def also_with_impure_standalone_wasm_and_wasm2c(func):
         print('wasm2c')
         self.set_setting('STANDALONE_WASM', 1)
         self.set_setting('WASM2C', 1)
-        self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
         # disable js engines too, so we only run the c output
         with js_engines_modify([]):
           func(self)
@@ -269,7 +267,6 @@ def also_with_only_standalone_wasm_and_wasm2c(func):
         print('wasm2c')
         self.set_setting('STANDALONE_WASM', 1)
         self.set_setting('WASM2C', 1)
-        self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
         with wasm_engines_modify([]):
           func(self)
   return decorated
