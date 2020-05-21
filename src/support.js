@@ -24,10 +24,6 @@ var stackAlloc;
 stackSave = stackRestore = stackAlloc = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
 };
-
-function staticAlloc(size) {
-  abort('staticAlloc is no longer available at runtime; instead, perform static allocations at compile time (using makeStaticAlloc)');
-}
 #endif
 
 function dynamicAlloc(size) {
