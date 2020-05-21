@@ -554,6 +554,10 @@ IMPORT_IMPL(u32, Z_envZ_load_val_i64Z_iiii, (u32 loc, u32 low, u32 high), {
   tempRet0 = high;
   return low;
 });
+IMPORT_IMPL(u64, Z_envZ_load_val_i64Z_jij, (u32 loc, u64 value), {
+  printf("load_val_i64 %d,%d,%d\n", loc, (u32)value, (u32)(value >> 32));
+  return value;
+});
 IMPORT_IMPL(f32, Z_envZ_load_val_f32Z_fif, (u32 loc, f32 value), {
   printf("load_val_f32 %d,%f\n", loc, value);
   return value;
@@ -574,6 +578,10 @@ IMPORT_IMPL(u32, Z_envZ_store_val_i64Z_iiii, (u32 loc, u32 low, u32 high), {
   printf("store_val_i64 %d,%d,%d\n", loc, low, high);
   tempRet0 = high;
   return low;
+});
+IMPORT_IMPL(u64, Z_envZ_store_val_i64Z_jij, (u32 loc, u64 value), {
+  printf("store_val_i64 %d,%d,%d\n", loc, (u32)value, (u32)(value >> 32));
+  return value;
 });
 IMPORT_IMPL(f32, Z_envZ_store_val_f32Z_fif, (u32 loc, f32 value), {
   printf("store_val_f32 %d,%f\n", loc, value);

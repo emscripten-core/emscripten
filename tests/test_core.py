@@ -232,7 +232,9 @@ def also_with_impure_standalone_wasm_and_wasm2c(func):
         self.set_setting('STANDALONE_WASM', 1)
         self.set_setting('WASM2C', 1)
         self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
-        func(self)
+        # disable js engines too, so we only run the c output
+        with js_engines_modify([]):
+          func(self)
 
   return decorated
 
@@ -6621,7 +6623,7 @@ return malloc(size);
   @no_asan('autodebug logging interferes with asan')
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
-  @also_with_impure_standalone_wasm
+  @also_with_impure_standalone_wasm_and_wasm2c
   def test_autodebug_wasm(self):
     # Autodebug does not work with too much shadow memory.
     # Memory consumed by autodebug depends on the size of the WASM linear memory.
