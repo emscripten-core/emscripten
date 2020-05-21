@@ -101,10 +101,10 @@ var WasiLibrary = {
   },
 
   $checkWasiClock: function(clk_id) {
-    return clock_id == {{{ __WASM_CLOCK_REALTIME }}} ||
-           clock_id == {{{ __WASM_CLOCK_MONOTONIC }}} ||
-           clock_id == {{{ __WASM_CLOCK_PROCESS_CPUTIME }}} ||
-           clock_id == {{{ __CLOCK_THREAD_CPUTIME_ID }}};
+    return clock_id == {{{ cDefine('__WASI_CLOCKID_REALTIME') }}} ||
+           clock_id == {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} ||
+           clock_id == {{{ cDefine('__WASI_CLOCKID_PROCESS_CPUTIME_ID') }}} ||
+           clock_id == {{{ cDefine('__WASI_CLOCKID_THREAD_CPUTIME_ID') }}};
   },
 
   // TODO: the i64 in the API here must be legalized for this JS code to run,
