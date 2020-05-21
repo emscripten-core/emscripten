@@ -91,6 +91,7 @@ ret (*name) params = _##name;
 #define STUB_IMPORT_IMPL(ret, name, params, returncode) IMPORT_IMPL(ret, name, params, { return returncode; });
 
 #define WASI_DEFAULT_ERROR 63 /* __WASI_ERRNO_PERM */
+#define WASI_EINVAL 28
 
 IMPORT_IMPL(void, Z_wasi_snapshot_preview1Z_proc_exitZ_vi, (u32 x), {
   exit(x);
@@ -476,12 +477,27 @@ IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
   longjmp(setjmp_stack[next_setjmp - 1], 1);
 });
 
+#define WASM_CLOCK_REALTIME 0
+#define WASM_CLOCK_MONOTONIC 1
+
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_time_getZ_iiji, (u32 clock_id, u64 max_lag, u32 out), {
+  if (clock_id != WASM_CLOCK_REALTIME && clock_id != WASM_CLOCK_MONOTONIC) {
+    return WASI_EINVAL;
+  }
   // TODO: handle realtime vs monotonic etc.
   // wasi expects a result in nanoseconds, and we know how to convert clock()
   // to seconds, so compute from there
   const double NSEC_PER_SEC = 1000.0 * 1000.0 * 1000.0;
   wasm_i64_store(out, (u64)(clock() / (CLOCKS_PER_SEC / NSEC_PER_SEC)));
+  return 0;
+});
+
+IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_res_getZ_iii, (u32 clock_id, u32 out), {
+  if (clock_id != WASM_CLOCK_REALTIME && clock_id != WASM_CLOCK_MONOTONIC) {
+    return WASI_EINVAL;
+  }
+  // TODO: handle realtime vs monotonic etc. For now just report "milliseconds".
+  wasm_i64_store(out, 1000 * 1000);
   return 0;
 });
 

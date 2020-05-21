@@ -186,7 +186,8 @@ def also_with_standalone_wasm_and_wasm2c(func):
       self.set_setting('STANDALONE_WASM', 1)
       self.set_setting('WASM2C', 1)
       self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
-      func(self)
+      with wasm_engines_modify([]):
+        func(self)
 
   return decorated
 
@@ -252,6 +253,25 @@ def also_with_only_standalone_wasm(func):
       self.set_setting('STANDALONE_WASM', 1)
       with js_engines_modify([]):
         func(self)
+  return decorated
+
+
+def also_with_only_standalone_wasm_and_wasm2c(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if can_do_standalone(self):
+      with js_engines_modify([]):
+        print('standalone (only; no js runtimes)')
+        self.set_setting('STANDALONE_WASM', 1)
+        func(self)
+        print('wasm2c')
+        self.set_setting('STANDALONE_WASM', 1)
+        self.set_setting('WASM2C', 1)
+        self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
+        with wasm_engines_modify([]):
+          func(self)
   return decorated
 
 
@@ -5637,7 +5657,7 @@ main( int argv, char ** argc ) {
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
-  @also_with_only_standalone_wasm
+  @also_with_only_standalone_wasm_and_wasm2c
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))
