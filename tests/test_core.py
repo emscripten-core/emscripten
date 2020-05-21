@@ -173,7 +173,6 @@ def also_with_standalone_wasm(func):
   return decorated
 
 
-# Also test wasm2c
 def also_with_standalone_wasm_and_wasm2c(func):
   def decorated(self):
     func(self)
@@ -183,7 +182,7 @@ def also_with_standalone_wasm_and_wasm2c(func):
       print('standalone')
       self.set_setting('STANDALONE_WASM', 1)
       func(self)
-      print('standalone-wasm2c')
+      print('wasm2c')
       self.set_setting('STANDALONE_WASM', 1)
       self.set_setting('WASM2C', 1)
       self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
@@ -210,6 +209,30 @@ def also_with_impure_standalone_wasm(func):
       with wasm_engines_modify([]):
         with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
           func(self)
+
+  return decorated
+
+
+def also_with_impure_standalone_wasm_and_wasm2c(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if can_do_standalone(self):
+      print('standalone (impure; no wasm runtimes)')
+      with wasm_engines_modify([]):
+        self.set_setting('STANDALONE_WASM', 1)
+        # we will not legalize the JS ffi interface, so we must use BigInt
+        # support in order for JS to have a chance to run this without trapping
+        # when it sees an i64 on the ffi.
+        self.set_setting('WASM_BIGINT', 1)
+        with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+          func(self)
+        print('wasm2c')
+        self.set_setting('STANDALONE_WASM', 1)
+        self.set_setting('WASM2C', 1)
+        self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
+        func(self)
 
   return decorated
 
@@ -1099,6 +1122,7 @@ base align: 0, 0, 0, 0'''])
   def test_regex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
+  @also_with_impure_standalone_wasm_and_wasm2c
   def test_longjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
 
