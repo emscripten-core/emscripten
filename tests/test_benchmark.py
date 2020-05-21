@@ -45,9 +45,9 @@ IGNORE_COMPILATION = 0
 
 OPTIMIZATIONS = '-O3'
 
-PROFILING = 0
+PROFILING = 1
 
-LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
+LLVM_FEATURE_FLAGS = [] # ['-mnontrapping-fptoint']
 
 
 class Benchmarker(object):
@@ -213,7 +213,7 @@ class EmscriptenBenchmarker(Benchmarker):
     if 'FORCE_FILESYSTEM=1' in cmd:
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
     if PROFILING:
-      cmd += ['--profiling-funcs']
+      cmd += ['--profiling']#-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
@@ -254,6 +254,9 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     ]
 
     super(EmscriptenWasm2CBenchmarker, self).build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
+
+    # move the JS away so there is no chance we run it by mistake
+    shutil.move(self.filename, self.filename + '.old.js')
 
     base = self.filename[:-3]
     c = base + '.c'
