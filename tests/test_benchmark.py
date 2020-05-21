@@ -45,7 +45,7 @@ IGNORE_COMPILATION = 0
 
 OPTIMIZATIONS = '-O3'
 
-PROFILING = 1
+PROFILING = 0
 
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 

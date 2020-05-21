@@ -1237,7 +1237,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       js_engines += wasm_engines
       if self.get_setting('WASM2C'):
         # the "engine" to run wasm2c builds is clang that compiles the c
-        js_engines += [CLANG_CC]
+        js_engines += [[CLANG_CC]]
     if len(js_engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:

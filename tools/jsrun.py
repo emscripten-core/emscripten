@@ -92,9 +92,9 @@ def check_engine(engine):
 
 def require_engine(engine):
   engine_path = engine[0]
-  # an empty engine means we are running an executable directly somehow; there
-  # is nothing to check here
-  if engine_path == '/':
+  # if clang is the "engine", it means we compiled to a native executable;
+  # there is nothing to check here
+  if engine_path == shared.CLANG_CC:
     return
   if engine_path not in WORKING_ENGINES:
     check_engine(engine)
