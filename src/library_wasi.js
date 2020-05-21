@@ -100,18 +100,26 @@ var WasiLibrary = {
     return 0;
   },
 
+  $checkWasiClock: function(clk_id) {
+    return clock_id == {{{ __WASM_CLOCK_REALTIME }}} ||
+           clock_id == {{{ __WASM_CLOCK_MONOTONIC }}} ||
+           clock_id == {{{ __WASM_CLOCK_PROCESS_CPUTIME }}} ||
+           clock_id == {{{ __CLOCK_THREAD_CPUTIME_ID }}};
+  },
+
   // TODO: the i64 in the API here must be legalized for this JS code to run,
   // but the wasm file can't be legalized in standalone mode, which is where
   // this is needed. To get this code to be usable as a JS shim we need to
   // either wait for BigInt support or to legalize on the client.
   clock_time_get__sig: 'iiiii',
-  clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
+  clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo', '$checkWasiClock'],
   clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
     {{{ receiveI64ParamAsI32s('precision') }}}
     var now;
+    // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefine('__WASI_CLOCKID_REALTIME') }}}) {
       now = Date.now();
-    } else if (clk_id === {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
+    } else if (checkWasiClock(clk_id) && _emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
       setErrNo({{{ cDefine('EINVAL') }}});
@@ -125,12 +133,13 @@ var WasiLibrary = {
   },
 
   clock_res_get__sig: 'iii',
-  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
+  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo', '$checkWasiClock'],
   clock_res_get: function(clk_id, pres) {
     var nsec;
+    // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
+    } else if (checkWasiClock(clk_id) && _emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
       setErrNo({{{ cDefine('EINVAL') }}});
