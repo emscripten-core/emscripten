@@ -2784,6 +2784,7 @@ class Building(object):
 
   @staticmethod
   def do_wasm2c(infile):
+    assert Settings.STANDALONE_WASM
     # look for the wasm2c/ dir alongside the bin dir, or perhaps higher up.
     WASM2C_DIR = os.path.dirname(Settings.WABT_BIN)
     while WASM2C_DIR and not os.path.exists(os.path.join(WASM2C_DIR, 'wasm2c')):
@@ -2817,6 +2818,12 @@ class Building(object):
       total = total.replace('#include "%s"\n' % header[1], '/* include of %s */\n' % header[1])
     with open(c_file, 'w') as out:
       out.write(total)
+    ''' in hello world, why this?
+    }function _emscripten_resize_heap(requestedSize) {
+      requestedSize = requestedSize >>> 0;
+      abortOnCannotGrowMemory(requestedSize);
+    }'''
+
 
   save_intermediate_counter = 0
 

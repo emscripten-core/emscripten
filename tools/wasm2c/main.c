@@ -26,11 +26,13 @@
 
 #define TRAP(x) (wasm_rt_trap(WASM_RT_TRAP_##x), 0)
 
-#define MEMACCESS(addr) ((void*)&Z_envZ_memory->data[addr])
+#define MEMACCESS(addr) ((void*)&Z_memory->data[addr])
 
+#undef MEMCHECK
 #define MEMCHECK(a, t)  \
-  if (UNLIKELY((a) + sizeof(t) > Z_envZ_memory->size)) TRAP(OOB)
+  if (UNLIKELY((a) + sizeof(t) > Z_memory->size)) TRAP(OOB)
 
+#undef DEFINE_LOAD
 #define DEFINE_LOAD(name, t1, t2, t3)              \
   static inline t3 name(u64 addr) {   \
     MEMCHECK(addr, t1);                       \
@@ -39,6 +41,7 @@
     return (t3)(t2)result;                         \
   }
 
+#undef DEFINE_STORE
 #define DEFINE_STORE(name, t1, t2)                           \
   static inline void name(u64 addr, t2 value) { \
     MEMCHECK(addr, t1);                                 \
