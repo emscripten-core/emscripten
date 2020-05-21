@@ -173,6 +173,25 @@ def also_with_standalone_wasm(func):
   return decorated
 
 
+# Also test wasm2c
+def also_with_standalone_wasm_and_wasm2c(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if can_do_standalone(self):
+      print('standalone')
+      self.set_setting('STANDALONE_WASM', 1)
+      func(self)
+      print('standalone-wasm2c')
+      self.set_setting('STANDALONE_WASM', 1)
+      self.set_setting('WASM2C', 1)
+      self.set_setting('WABT_BIN', '/home/azakai/Dev/wabt/build')
+      func(self)
+
+  return decorated
+
+
 # Similar to also_with_standalone_wasm, but suitable for tests that cannot
 # run in a wasm VM yet, as they are not 100% standalone. We can still
 # run them with the JS code though.
@@ -353,7 +372,7 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm_and_wasm2c
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
