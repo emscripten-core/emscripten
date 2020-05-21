@@ -2809,6 +2809,8 @@ class Building(object):
       with open(os.path.join(header[0], header[1])) as f:
         total += f.read() + SEP
     total += c + SEP
+    with open(os.path.join(WASM2C_DIR, 'wasm-rt-impl.c')) as f:
+      total += f.read() + SEP
     with open(path_from_root('tools', 'wasm2c', 'main.c')) as main:
       total += main.read()
     for header in headers:

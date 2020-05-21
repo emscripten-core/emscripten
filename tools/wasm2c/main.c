@@ -26,10 +26,10 @@
 
 #define TRAP(x) (wasm_rt_trap(WASM_RT_TRAP_##x), 0)
 
-#define MEMACCESS(addr) ((void*)&Z_memory->data[addr])
+#define MEMACCESS(addr) ((void*)&Z_envZ_memory->data[addr])
 
 #define MEMCHECK(a, t)  \
-  if (UNLIKELY((a) + sizeof(t) > Z_memory->size)) TRAP(OOB)
+  if (UNLIKELY((a) + sizeof(t) > Z_envZ_memory->size)) TRAP(OOB)
 
 #define DEFINE_LOAD(name, t1, t2, t3)              \
   static inline t3 name(u64 addr) {   \
@@ -46,29 +46,29 @@
     memcpy(MEMACCESS(addr), &wrapped, sizeof(t1));          \
   }
 
-DEFINE_LOAD(i32_load, u32, u32, u32);
-DEFINE_LOAD(i64_load, u64, u64, u64);
-DEFINE_LOAD(f32_load, f32, f32, f32);
-DEFINE_LOAD(f64_load, f64, f64, f64);
-DEFINE_LOAD(i32_load8_s, s8, s32, u32);
-DEFINE_LOAD(i64_load8_s, s8, s64, u64);
-DEFINE_LOAD(i32_load8_u, u8, u32, u32);
-DEFINE_LOAD(i64_load8_u, u8, u64, u64);
-DEFINE_LOAD(i32_load16_s, s16, s32, u32);
-DEFINE_LOAD(i64_load16_s, s16, s64, u64);
-DEFINE_LOAD(i32_load16_u, u16, u32, u32);
-DEFINE_LOAD(i64_load16_u, u16, u64, u64);
-DEFINE_LOAD(i64_load32_s, s32, s64, u64);
-DEFINE_LOAD(i64_load32_u, u32, u64, u64);
-DEFINE_STORE(i32_store, u32, u32);
-DEFINE_STORE(i64_store, u64, u64);
-DEFINE_STORE(f32_store, f32, f32);
-DEFINE_STORE(f64_store, f64, f64);
-DEFINE_STORE(i32_store8, u8, u32);
-DEFINE_STORE(i32_store16, u16, u32);
-DEFINE_STORE(i64_store8, u8, u64);
-DEFINE_STORE(i64_store16, u16, u64);
-DEFINE_STORE(i64_store32, u32, u64);
+DEFINE_LOAD(wasm_i32_load, u32, u32, u32);
+DEFINE_LOAD(wasm_i64_load, u64, u64, u64);
+DEFINE_LOAD(wasm_f32_load, f32, f32, f32);
+DEFINE_LOAD(wasm_f64_load, f64, f64, f64);
+DEFINE_LOAD(wasm_i32_load8_s, s8, s32, u32);
+DEFINE_LOAD(wasm_i64_load8_s, s8, s64, u64);
+DEFINE_LOAD(wasm_i32_load8_u, u8, u32, u32);
+DEFINE_LOAD(wasm_i64_load8_u, u8, u64, u64);
+DEFINE_LOAD(wasm_i32_load16_s, s16, s32, u32);
+DEFINE_LOAD(wasm_i64_load16_s, s16, s64, u64);
+DEFINE_LOAD(wasm_i32_load16_u, u16, u32, u32);
+DEFINE_LOAD(wasm_i64_load16_u, u16, u64, u64);
+DEFINE_LOAD(wasm_i64_load32_s, s32, s64, u64);
+DEFINE_LOAD(wasm_i64_load32_u, u32, u64, u64);
+DEFINE_STORE(wasm_i32_store, u32, u32);
+DEFINE_STORE(wasm_i64_store, u64, u64);
+DEFINE_STORE(wasm_f32_store, f32, f32);
+DEFINE_STORE(wasm_f64_store, f64, f64);
+DEFINE_STORE(wasm_i32_store8, u8, u32);
+DEFINE_STORE(wasm_i32_store16, u16, u32);
+DEFINE_STORE(wasm_i64_store8, u8, u64);
+DEFINE_STORE(wasm_i64_store16, u16, u64);
+DEFINE_STORE(wasm_i64_store32, u32, u64);
 
 // Imports
 
@@ -135,8 +135,8 @@ static int get_native_fd(u32 fd) {
 }
 
 IMPORT_IMPL(u32, Z_envZ___sys_openZ_iiii, (u32 path, u32 flags, u32 varargs), {
-  VERBOSE_LOG("  open: %s %d %d\n", MEMACCESS(path), flags, i32_load(varargs));
-  int nfd = open(MEMACCESS(path), flags, i32_load(varargs));
+  VERBOSE_LOG("  open: %s %d %d\n", MEMACCESS(path), flags, wasm_i32_load(varargs));
+  int nfd = open(MEMACCESS(path), flags, wasm_i32_load(varargs));
   VERBOSE_LOG("    => native %d\n", nfd);
   if (nfd >= 0) {
     u32 fd = get_or_allocate_wasm_fd(nfd);
@@ -154,8 +154,8 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_writeZ_iiiii, (u32 fd, u32 iov, u3
   }
   u32 num = 0;
   for (u32 i = 0; i < iovcnt; i++) {
-    u32 ptr = i32_load(iov + i * 8);
-    u32 len = i32_load(iov + i * 8 + 4);
+    u32 ptr = wasm_i32_load(iov + i * 8);
+    u32 len = wasm_i32_load(iov + i * 8 + 4);
     VERBOSE_LOG("    chunk %d %d\n", ptr, len);
     ssize_t result;
     // Use stdio for stdout/stderr to avoid mixing a low-level write() with
@@ -178,7 +178,7 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_writeZ_iiiii, (u32 fd, u32 iov, u3
     num += len;
   }
   VERBOSE_LOG("    success: %d\n", num);
-  i32_store(pnum, num);
+  wasm_i32_store(pnum, num);
   return 0;
 });
 
@@ -190,8 +190,8 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_readZ_iiiii, (u32 fd, u32 iov, u32
   }
   u32 num = 0;
   for (u32 i = 0; i < iovcnt; i++) {
-    u32 ptr = i32_load(iov + i * 8);
-    u32 len = i32_load(iov + i * 8 + 4);
+    u32 ptr = wasm_i32_load(iov + i * 8);
+    u32 len = wasm_i32_load(iov + i * 8 + 4);
     VERBOSE_LOG("    chunk %d %d\n", ptr, len);
     ssize_t result = read(nfd, MEMACCESS(ptr), len);
     if (result < 0) {
@@ -204,7 +204,7 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_readZ_iiiii, (u32 fd, u32 iov, u32
     }
   }
   VERBOSE_LOG("    success: %d\n", num);
-  i32_store(pnum, num);
+  wasm_i32_store(pnum, num);
   return 0;
 });
 
@@ -221,8 +221,8 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_closeZ_ii, (u32 fd), {
 
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_environ_sizes_getZ_iii, (u32 pcount, u32 pbuf_size), {
   // TODO: connect to actual env?
-  i32_store(pcount, 0);
-  i32_store(pbuf_size, 0);
+  wasm_i32_store(pcount, 0);
+  wasm_i32_store(pbuf_size, 0);
   return 0;
 });
 
@@ -251,7 +251,7 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_seekZ_iijii, (u32 fd, u64 offset, 
     VERBOSE_LOG("    error, %d %s\n", errno, strerror(errno));
     return WASI_DEFAULT_ERROR;
   }
-  i64_store(new_offset, off);
+  wasm_i64_store(new_offset, off);
   return 0;
 });
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_seekZ_iiiiii, (u32 a, u32 b, u32 c, u32 d, u32 e), {
@@ -295,25 +295,25 @@ static u32 do_stat(int nfd, u32 buf) {
     return EM_EACCES;
   }
   VERBOSE_LOG("    success, size=%ld\n", nbuf.st_size);
-  i32_store(buf + 0, nbuf.st_dev);
-  i32_store(buf + 4, 0);
-  i32_store(buf + 8, nbuf.st_ino);
-  i32_store(buf + 12, nbuf.st_mode);
-  i32_store(buf + 16, nbuf.st_nlink);
-  i32_store(buf + 20, nbuf.st_uid);
-  i32_store(buf + 24, nbuf.st_gid);
-  i32_store(buf + 28, nbuf.st_rdev);
-  i32_store(buf + 32, 0);
-  i64_store(buf + 40, nbuf.st_size);
-  i32_store(buf + 48, nbuf.st_blksize);
-  i32_store(buf + 52, nbuf.st_blocks);
-  i32_store(buf + 56, nbuf.st_atim.tv_sec);
-  i32_store(buf + 60, nbuf.st_atim.tv_nsec);
-  i32_store(buf + 64, nbuf.st_mtim.tv_sec);
-  i32_store(buf + 68, nbuf.st_mtim.tv_nsec);
-  i32_store(buf + 72, nbuf.st_ctim.tv_sec);
-  i32_store(buf + 76, nbuf.st_ctim.tv_nsec);
-  i64_store(buf + 80, nbuf.st_ino);
+  wasm_i32_store(buf + 0, nbuf.st_dev);
+  wasm_i32_store(buf + 4, 0);
+  wasm_i32_store(buf + 8, nbuf.st_ino);
+  wasm_i32_store(buf + 12, nbuf.st_mode);
+  wasm_i32_store(buf + 16, nbuf.st_nlink);
+  wasm_i32_store(buf + 20, nbuf.st_uid);
+  wasm_i32_store(buf + 24, nbuf.st_gid);
+  wasm_i32_store(buf + 28, nbuf.st_rdev);
+  wasm_i32_store(buf + 32, 0);
+  wasm_i64_store(buf + 40, nbuf.st_size);
+  wasm_i32_store(buf + 48, nbuf.st_blksize);
+  wasm_i32_store(buf + 52, nbuf.st_blocks);
+  wasm_i32_store(buf + 56, nbuf.st_atim.tv_sec);
+  wasm_i32_store(buf + 60, nbuf.st_atim.tv_nsec);
+  wasm_i32_store(buf + 64, nbuf.st_mtim.tv_sec);
+  wasm_i32_store(buf + 68, nbuf.st_mtim.tv_nsec);
+  wasm_i32_store(buf + 72, nbuf.st_ctim.tv_sec);
+  wasm_i32_store(buf + 76, nbuf.st_ctim.tv_nsec);
+  wasm_i64_store(buf + 80, nbuf.st_ino);
   return 0;
 }
 
@@ -372,12 +372,12 @@ static int main_argc;
 static char** main_argv;
 
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_args_sizes_getZ_iii, (u32 pargc, u32 pargv_buf_size), {
-  i32_store(pargc, main_argc);
+  wasm_i32_store(pargc, main_argc);
   u32 buf_size = 0;
   for (u32 i = 0; i < main_argc; i++) {
     buf_size += strlen(main_argv[i]) + 1;
   }
-  i32_store(pargv_buf_size, buf_size);
+  wasm_i32_store(pargv_buf_size, buf_size);
   return 0;
 });
 
@@ -385,7 +385,7 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_args_getZ_iii, (u32 argv, u32 argv_bu
   u32 buf_size = 0;
   for (u32 i = 0; i < main_argc; i++) {
     u32 ptr = argv_buf + buf_size;
-    i32_store(argv + i * 4, ptr);
+    wasm_i32_store(argv + i * 4, ptr);
     char* arg = main_argv[i];
     strcpy(MEMACCESS(ptr), arg);
     buf_size += strlen(arg) + 1;
@@ -478,7 +478,7 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_time_getZ_iiji, (u32 clock_id, 
   // wasi expects a result in nanoseconds, and we know how to convert clock()
   // to seconds, so compute from there
   const double NSEC_PER_SEC = 1000.0 * 1000.0 * 1000.0;
-  i64_store(out, (u64)(clock() / (CLOCKS_PER_SEC / NSEC_PER_SEC)));
+  wasm_i64_store(out, (u64)(clock() / (CLOCKS_PER_SEC / NSEC_PER_SEC)));
   return 0;
 });
 
