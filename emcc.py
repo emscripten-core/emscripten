@@ -3339,8 +3339,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shared.Building.emit_debug_on_side(wasm_binary_target, dwarf_target)
 
   if shared.Settings.WASM2C:
-    # FIXME this assumes the emsdk layout where the binaryen and wabt binaries
-    #       are together
     shared.Building.do_wasm2c(wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations
