@@ -2815,9 +2815,15 @@ class Building(object):
     # add the wasm2c runtime
     with open(os.path.join(WASM2C_DIR, 'wasm-rt-impl.c')) as f:
       total += f.read() + SEP
-    # add the emscripten main
-    with open(path_from_root('tools', 'wasm2c', 'main.c')) as main:
-      total += main.read()
+    # add the support code
+    support_files = ['base']
+    if Settings.AUTODEBUG:
+      support_files.append('autodebug')
+    if Settings.EXPECT_MAIN:
+      support_files.append('main')
+    for support_file in support_files:
+      with open(path_from_root('tools', 'wasm2c', support_file + '.c')) as f:
+        total += f.read()
     # remove #includes of the headers we bundled
     for header in headers:
       total = total.replace('#include "%s"\n' % header[1], '/* include of %s */\n' % header[1])
@@ -2857,7 +2863,7 @@ class Building(object):
           sig,
           wabt_sig
         ))
-    total = total.replace('/* {{{ EMCC_INVOKE_IMPLS }}} */', '\n'.join(invokes))
+    total += '\n'.join(invokes)
     # write out the final file
     with open(c_file, 'w') as out:
       out.write(total)

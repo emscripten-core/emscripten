@@ -1,0 +1,183 @@
+/*
+ * Base of all support for wasm2c code.
+ */
+
+#define __USE_GNU // for O_PATH
+
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <setjmp.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "wasm-rt.h"
+#include "wasm-rt-impl.h"
+
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define LIKELY(x) __builtin_expect(!!(x), 1)
+
+#define TRAP(x) (wasm_rt_trap(WASM_RT_TRAP_##x), 0)
+
+#define MEMACCESS(addr) ((void*)&Z_memory->data[addr])
+
+#undef MEMCHECK
+#define MEMCHECK(a, t)  \
+  if (UNLIKELY((a) + sizeof(t) > Z_memory->size)) TRAP(OOB)
+
+#undef DEFINE_LOAD
+#define DEFINE_LOAD(name, t1, t2, t3)              \
+  static inline t3 name(u64 addr) {   \
+    MEMCHECK(addr, t1);                       \
+    t1 result;                                     \
+    memcpy(&result, MEMACCESS(addr), sizeof(t1)); \
+    return (t3)(t2)result;                         \
+  }
+
+#undef DEFINE_STORE
+#define DEFINE_STORE(name, t1, t2)                           \
+  static inline void name(u64 addr, t2 value) { \
+    MEMCHECK(addr, t1);                                 \
+    t1 wrapped = (t1)value;                                  \
+    memcpy(MEMACCESS(addr), &wrapped, sizeof(t1));          \
+  }
+
+DEFINE_LOAD(wasm_i32_load, u32, u32, u32);
+DEFINE_LOAD(wasm_i64_load, u64, u64, u64);
+DEFINE_LOAD(wasm_f32_load, f32, f32, f32);
+DEFINE_LOAD(wasm_f64_load, f64, f64, f64);
+DEFINE_LOAD(wasm_i32_load8_s, s8, s32, u32);
+DEFINE_LOAD(wasm_i64_load8_s, s8, s64, u64);
+DEFINE_LOAD(wasm_i32_load8_u, u8, u32, u32);
+DEFINE_LOAD(wasm_i64_load8_u, u8, u64, u64);
+DEFINE_LOAD(wasm_i32_load16_s, s16, s32, u32);
+DEFINE_LOAD(wasm_i64_load16_s, s16, s64, u64);
+DEFINE_LOAD(wasm_i32_load16_u, u16, u32, u32);
+DEFINE_LOAD(wasm_i64_load16_u, u16, u64, u64);
+DEFINE_LOAD(wasm_i64_load32_s, s32, s64, u64);
+DEFINE_LOAD(wasm_i64_load32_u, u32, u64, u64);
+DEFINE_STORE(wasm_i32_store, u32, u32);
+DEFINE_STORE(wasm_i64_store, u64, u64);
+DEFINE_STORE(wasm_f32_store, f32, f32);
+DEFINE_STORE(wasm_f64_store, f64, f64);
+DEFINE_STORE(wasm_i32_store8, u8, u32);
+DEFINE_STORE(wasm_i32_store16, u16, u32);
+DEFINE_STORE(wasm_i64_store8, u8, u64);
+DEFINE_STORE(wasm_i64_store16, u16, u64);
+DEFINE_STORE(wasm_i64_store32, u32, u64);
+
+// Imports
+
+#ifdef VERBOSE_LOGGING
+#define VERBOSE_LOG(...) { printf(__VA_ARGS__); }
+#else
+#define VERBOSE_LOG(...)
+#endif
+
+#define IMPORT_IMPL(ret, name, params, body) \
+ret _##name params { \
+  VERBOSE_LOG("[import: " #name "]\n"); \
+  body \
+} \
+ret (*name) params = _##name;
+
+#define STUB_IMPORT_IMPL(ret, name, params, returncode) IMPORT_IMPL(ret, name, params, { return returncode; });
+
+// Maintain a stack of setjmps, each jump taking us back to the last invoke.
+
+#define MAX_SETJMP_STACK 1024
+
+static jmp_buf setjmp_stack[MAX_SETJMP_STACK];
+
+static u32 next_setjmp = 0;
+
+// Declare exports for invokes. We should generate them based on what the
+// wasm needs, but for now have a fixed list here. To get things to link,
+// declare them, so they either link with the existing value in the main
+// wasm2c .c output file, or else they contain NULL but will never be called.
+
+#define DECLARE_EXPORT(ret, name, args) \
+__attribute__((weak)) \
+ret (*WASM_RT_ADD_PREFIX(name)) args = NULL;
+
+DECLARE_EXPORT(void, Z_setThrewZ_vii, (u32, u32));
+
+// Stack support should be linked in if it is needed.
+IMPORT_IMPL(__attribute__((weak)) u32, Z_stackSaveZ_iv, (), {
+  abort();
+});
+IMPORT_IMPL(__attribute__((weak))void, Z_stackRestoreZ_vi, (u32 x), {
+  abort();
+});
+
+#define VOID_INVOKE_IMPL(name, typed_args, types, args, dyncall) \
+DECLARE_EXPORT(void, dyncall, types); \
+\
+IMPORT_IMPL(void, name, typed_args, { \
+  VERBOSE_LOG("invoke " #name "  " #dyncall "\n"); \
+  u32 sp = Z_stackSaveZ_iv(); \
+  if (next_setjmp >= MAX_SETJMP_STACK) { \
+    abort_with_message("too many nested setjmps"); \
+  } \
+  u32 id = next_setjmp++; \
+  int result = setjmp(setjmp_stack[id]); \
+  if (result == 0) { \
+    (* dyncall) args; \
+    /* if we got here, no longjmp or exception happened, we returned normally */ \
+  } else { \
+    /* A longjmp or an exception took us here. */ \
+    Z_stackRestoreZ_vi(sp); \
+    Z_setThrewZ_vii(1, 0); \
+  } \
+  next_setjmp--; \
+});
+
+#define RETURNING_INVOKE_IMPL(ret, name, typed_args, types, args, dyncall) \
+DECLARE_EXPORT(ret, dyncall, types); \
+\
+IMPORT_IMPL(ret, name, typed_args, { \
+  VERBOSE_LOG("invoke " #name "  " #dyncall "\n"); \
+  u32 sp = Z_stackSaveZ_iv(); \
+  if (next_setjmp >= MAX_SETJMP_STACK) { \
+    abort_with_message("too many nested setjmps"); \
+  } \
+  u32 id = next_setjmp++; \
+  int result = setjmp(setjmp_stack[id]); \
+  ret returned_value = 0; \
+  if (result == 0) { \
+    returned_value = (* dyncall) args; \
+    /* if we got here, no longjmp or exception happened, we returned normally */ \
+  } else { \
+    /* A longjmp or an exception took us here. */ \
+    Z_stackRestoreZ_vi(sp); \
+    Z_setThrewZ_vii(1, 0); \
+  } \
+  next_setjmp--; \
+  return returned_value; \
+});
+
+IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
+  if (next_setjmp == 0) {
+    abort_with_message("longjmp without setjmp");
+  }
+  Z_setThrewZ_vii(buf, value ? value : 1);
+  longjmp(setjmp_stack[next_setjmp - 1], 1);
+});
+
+IMPORT_IMPL(void, Z_envZ_emscripten_notify_memory_growthZ_vi, (u32 size), {});
+
+static u32 tempRet0 = 0;
+
+IMPORT_IMPL(u32, Z_envZ_getTempRet0Z_iv, (), {
+  return tempRet0;
+});
+
+IMPORT_IMPL(void, Z_envZ_setTempRet0Z_vi, (u32 x), {
+  tempRet0 = x;
+});
