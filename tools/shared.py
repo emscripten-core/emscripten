@@ -2787,8 +2787,8 @@ class Building(object):
     assert Settings.STANDALONE_WASM
     WASM2C = NODE_JS + [path_from_root('node_modules', 'wasm2c', 'wasm2c.js')]
     WASM2C_DIR = path_from_root('node_modules', 'wasm2c')
-    c_file = unsuffixed(infile) + '.c'
-    h_file = unsuffixed(infile) + '.h'
+    c_file = unsuffixed(infile) + '.wasm.c'
+    h_file = unsuffixed(infile) + '.wasm.h'
     cmd = WASM2C + [infile, '-o', c_file]
     run_process(cmd)
     total = '''\

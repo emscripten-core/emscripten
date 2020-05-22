@@ -266,7 +266,7 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     shutil.move(self.filename, self.filename + '.old.js')
 
     base = self.filename[:-3]
-    c = base + '.c'
+    c = base + '.wasm.c'
     native = base + '.exe'
 
     run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',

@@ -1755,7 +1755,10 @@ var PRINTF_LONG_DOUBLE = 0;
 
 // Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
 // resulting in a .c file that you can compile with a C compiler to get a
-// native executable that works the same as the normal js+wasm.
+// native executable that works the same as the normal js+wasm. This will also
+// emit the wasm2c .h file. The output filenames will be X.wasm.c, X.wasm.h
+// if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
+// which avoids trampling a C file).
 var WASM2C = 0;
 
 //===========================================

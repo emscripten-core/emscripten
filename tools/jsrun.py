@@ -59,7 +59,7 @@ def make_command(filename, engine=None, args=[]):
     filename = shared.unsuffixed(filename) + '.wasm'
   elif is_clang:
     # with wasm2c, the input is a c file, which we must compile first
-    c = shared.unsuffixed(filename) + '.c'
+    c = shared.unsuffixed(filename) + '.wasm.c'
     executable = shared.unsuffixed(filename) + '.exe'
     shared.run_process(engine + [c, '-o', executable])
     # we can now run the executable directly, without an engine
