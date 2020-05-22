@@ -10269,6 +10269,8 @@ int main() {
       for engine in WASM_ENGINES:
         self.assertContained(expected, run_js('test.wasm', engine))
 
+# TODO test wasm2c reactor
+
   @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self):
     def test(args):

@@ -2824,6 +2824,15 @@ class Building(object):
       #       an executable with main, as opposed to a library
       support_files.append('os')
       support_files.append('main')
+    else:
+      support_files.append('reactor')
+      # for a reactor, also append wasmbox_* API definitions
+      with open(h_file, 'a') as f:
+        f.write('''
+// wasmbox_* API
+// TODO: optional prefixing
+extern void wasmbox_init(void);
+''')
     for support_file in support_files:
       with open(path_from_root('tools', 'wasm2c', support_file + '.c')) as f:
         total += f.read()
