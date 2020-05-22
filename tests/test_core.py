@@ -356,9 +356,13 @@ class TestCoreBase(RunnerCore):
   @also_with_standalone_wasm
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    # must not emit this unneeded internal thing
+    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', open('src.c.o.js').read())
 
-    src = open('src.c.o.js').read()
-    assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
+  @sync
+  def test_wasm_synchronous_compilation(self):
+    self.set_setting('STRICT_JS')
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   def test_intvars(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_intvars')
@@ -5190,14 +5194,6 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'stat', 'test_mknod.c')).read()
     self.do_run(src, 'success', force_c=True)
 
-  def add_pre_run(self, code):
-    create_test_file('pre.js', 'Module.preRun = function() { %s }' % code)
-    self.emcc_args += ['--pre-js', 'pre.js']
-
-  def add_post_run(self, code):
-    create_test_file('pre.js', 'Module.postRun = function() { %s }' % code)
-    self.emcc_args += ['--pre-js', 'pre.js']
-
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl')
@@ -7895,6 +7891,7 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
     self.set_setting('ASSERTIONS', 1)
+    self.emcc_args += ['--minify', '0']
     self.do_run_in_out_file_test('tests', 'core', 'asyncify_assertions')
 
   @no_asan('asyncify stack operations confuse asan')

@@ -448,7 +448,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # (['-O2', '-g4'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'same as -g3 for now'),
       (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
       ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
-      (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'asm["_dump"];' in generated, 'dump is now exported'),
+      (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"] =' in generated, 'dump is now exported'),
       (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
       ([], lambda generated: '// Sometimes an existing Module' in generated, 'without opts, comments in shell code'),
       (['-O2'], lambda generated: '// Sometimes an existing Module' not in generated, 'with opts, no comments in shell code'),
@@ -10425,8 +10425,8 @@ int main() {
     out = run_process([PYTHON, EMCC, '-Wl,--version'], stdout=PIPE).stdout
     self.assertContained('LLD ', out)
 
-  # Tests that if a JS library function is missing, the linker will print out which function depended on the
-  # missing function.
+  # Tests that if a JS library function is missing, the linker will print out which function
+  # depended on the missing function.
   def test_chained_js_error_diagnostics(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_chained_js_error_diagnostics.c'), '--js-library', path_from_root('tests', 'test_chained_js_error_diagnostics.js')])
     self.assertContained("error: undefined symbol: nonexistent_function (referenced by bar__deps: ['nonexistent_function'], referenced by foo__deps: ['bar'], referenced by top-level compiled C/C++ code)", err)
@@ -10434,3 +10434,19 @@ int main() {
   def test_xclang_flag(self):
     create_test_file('foo.h', ' ')
     run_process([PYTHON, EMCC, '-c', '-o', 'out.o', '-Xclang', '-include', '-Xclang', 'foo.h', path_from_root('tests', 'hello_world.c')])
+
+  def test_native_call_before_init(self):
+    self.set_setting('ASSERTIONS')
+    self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
+    self.add_pre_run('console.log("calling foo"); Module["_foo"]();')
+    self.build('#include <stdio.h>\nint foo() { puts("foo called"); return 3; }', self.get_dir(), 'foo.c')
+    err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
+    self.assertContained('native function `foo` called before runtime initialization', err)
+
+  def test_native_call_after_exit(self):
+    self.set_setting('ASSERTIONS')
+    self.set_setting('EXIT_RUNTIME')
+    self.add_on_exit('console.log("calling main again"); Module["_main"]();')
+    self.build('#include <stdio.h>\nint main() { puts("foo called"); return 0; }', self.get_dir(), 'foo.c')
+    err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
+    self.assertContained('native function `main` called after runtime exit', err)

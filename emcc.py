@@ -264,6 +264,10 @@ def use_source_map(options):
 
 
 def will_metadce(options):
+  # The metadce JS parsing code does not currently support the JS that gets generated
+  # when assertions are enabled.
+  if shared.Settings.ASSERTIONS:
+    return False
   return shared.Settings.OPT_LEVEL >= 3 or shared.Settings.SHRINK_LEVEL >= 1
 
 
