@@ -266,6 +266,11 @@ __m128 ExtractFloatInRandomOrder(float *arr, int i, int n, int prime)
 	return _mm_set_ps(arr[(i*prime)%n], arr[((i+1)*prime)%n], arr[((i+2)*prime)%n], arr[((i+3)*prime)%n]);
 }
 
+__m128d ExtractDoubleInRandomOrder(double *arr, int i, int n, int prime)
+{
+	return _mm_set_pd(arr[(i*prime)%n], arr[((i+1)*prime)%n]);
+}
+
 __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 {
 	return _mm_set_ps(*(float*)&arr[(i*prime)%n], *(float*)&arr[((i+1)*prime)%n], *(float*)&arr[((i+2)*prime)%n], *(float*)&arr[((i+3)*prime)%n]);
@@ -273,6 +278,9 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 
 #define E1(arr, i, n) ExtractFloatInRandomOrder(arr, i, n, 1)
 #define E2(arr, i, n) ExtractFloatInRandomOrder(arr, i, n, 1787)
+
+#define E1_Double(arr, i, n) ExtractDoubleInRandomOrder(arr, i, n, 1)
+#define E2_Double(arr, i, n) ExtractDoubleInRandomOrder(arr, i, n, 1787)
 
 #define E1_Int(arr, i, n) ExtractIntInRandomOrder(arr, i, n, 1)
 #define E2_Int(arr, i, n) ExtractIntInRandomOrder(arr, i, n, 1787)
@@ -282,20 +290,20 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 		for(int k = 0; k < 4; ++k) \
 			for(int j = 0; j < numInterestingInts / 4; ++j) \
 			{ \
-				__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
-				__m128i m2 = E2(interesting_ints, j*4, numInterestingInts); \
+				__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
+				__m128i m2 = (__m128i)E2_Int(interesting_ints, j*4, numInterestingInts); \
 				__m128i ret = func(m1, m2); \
 				/* a op b */ \
 				char str[256]; tostr(&m1, str); \
 				char str2[256]; tostr(&m2, str2); \
 				char str3[256]; tostr(&ret, str3); \
-				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 				/* b op a */ \
-				ret = func(m2, m1, Tint); \
+				ret = func(m2, m1); \
 				tostr(&m1, str); \
 				tostr(&m2, str2); \
 				tostr(&ret, str3); \
-				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 			}
 
 #define Ret_M128_Tint_body(Ret_type, func, Tint) \
@@ -313,7 +321,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 	for(int i = 0; i < numInterestingInts / 4; ++i) \
 		for(int k = 0; k < 4; ++k) \
 		{ \
-			__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+			__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
 			Ret_type ret = func(m1, Tint); \
 			char str[256]; tostr(&m1, str); \
 			char str2[256]; tostr(&ret, str2); \
@@ -325,7 +333,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 		for(int j = 0; j < numInterestingInts; ++j) \
 			for(int k = 0; k < 4; ++k) \
 			{ \
-				__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+				__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
 				Ret_type ret = func(m1, interesting_ints[j], Tint); \
 				char str[256]; tostr(&m1, str); \
 				char str2[256]; tostr(&ret, str2); \
@@ -337,8 +345,8 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 		for(int k = 0; k < 2; ++k) \
 			for(int j = 0; j < numInterestingDoubles / 2; ++j) \
 			{ \
-				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
-				__m128d m2 = E2(interesting_doubles, j*2, numInterestingDoubles); \
+				__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
+				__m128d m2 = E2_Double(interesting_doubles, j*2, numInterestingDoubles); \
 				Ret_type ret = func(m1, m2, Tint); \
 				/* a op b */ \
 				char str[256]; tostr(&m1, str); \
@@ -358,8 +366,8 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 		for(int k = 0; k < 4; ++k) \
 			for(int j = 0; j < numInterestingInts / 4; ++j) \
 			{ \
-				__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
-				__m128i m2 = E2(interesting_ints, j*4, numInterestingInts); \
+				__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
+				__m128i m2 = (__m128i)E2_Int(interesting_ints, j*4, numInterestingInts); \
 				Ret_type ret = func(m1, m2, Tint); \
 				/* a op b */ \
 				char str[256]; tostr(&m1, str); \
@@ -432,20 +440,35 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 		for(int k = 0; k < 2; ++k) \
 			for(int j = 0; j < numInterestingDoubles / 2; ++j) \
 			{ \
-				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
-				__m128d m2 = E2(interesting_doubles, j*2, numInterestingDoubles); \
+				__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
+				__m128d m2 = E2_Double(interesting_doubles, j*2, numInterestingDoubles); \
 				Ret_type ret = func(m1, m2); \
 				/* a op b */ \
 				char str[256]; tostr(&m1, str); \
 				char str2[256]; tostr(&m2, str2); \
 				char str3[256]; tostr(&ret, str3); \
-				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 				/* b op a */ \
-				ret = func(m2, m1, Tint); \
+				ret = func(m2, m1); \
 				tostr(&m1, str); \
 				tostr(&m2, str2); \
 				tostr(&ret, str3); \
-				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
+			}
+
+#define Ret_M128d_M128(Ret_type, func) \
+	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
+		for(int k = 0; k < 2; ++k) \
+			for(int j = 0; j < numInterestingDoubles / 2; ++j) \
+			{ \
+				__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
+				__m128 m2 = E2(interesting_floats, i*4+k, numInterestingFloats); \
+				Ret_type ret = func(m1, m2); \
+				/* a op b */ \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(&m2, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 			}
 
 #define Ret_M128d_int(Ret_type, func) \
@@ -453,7 +476,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 		for(int k = 0; k < 2; ++k) \
 			for(int j = 0; j < numInterestingInts; ++j) \
 			{ \
-				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
+				__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
 				int m2 = interesting_ints[j]; \
 				Ret_type ret = func(m1, m2); \
 				char str[256]; tostr(&m1, str); \
@@ -468,7 +491,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 			for(int j = 0; j < numInterestingInts; ++j) \
 				for(int l = 0; l < numInterestingInts; ++l) \
 				{ \
-					__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
+					__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
 					int64_t m2 = (int64_t)(((uint64_t)interesting_ints[j]) << 32 | (uint64_t)interesting_ints[l]); \
 					Ret_type ret = func(m1, m2); \
 					char str[256]; tostr(&m1, str); \
@@ -481,7 +504,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
 		for(int k = 0; k < 2; ++k) \
 		{ \
-			__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
+			__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
 			Ret_type ret = func(m1); \
 			char str[256]; tostr(&m1, str); \
 			char str2[256]; tostr(&ret, str2); \
@@ -530,7 +553,7 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 			for(int k = 0; k < 2; ++k) \
 			{ \
 				uintptr_t base = (uintptr_t)getTempOutDoubleStore(16); \
-				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
+				__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
 				align1_double *out = (align1_double*)(base + offset); \
 				func((Ptr_type)out, m1); \
 				char str[256]; tostr(&m1, str); \
@@ -544,7 +567,7 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 			for(int k = 0; k < 4; ++k) \
 			{ \
 				uintptr_t base = (uintptr_t)getTempOutIntStore(16); \
-				__m128 m1 = E1_Int(interesting_ints, i*4+k, numInterestingInts); \
+				__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
 				align1_int *out = (align1_int*)(base + offset); \
 				func((Ptr_type)out, m1); \
 				char str[256]; tostr(&m1, str); \
@@ -587,8 +610,8 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 				for(int k = 0; k < 4; ++k) \
 				{ \
 					uintptr_t base = (uintptr_t)getTempOutIntStore(16); \
-					__m128d m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
-					__m128i m2 = E2(interesting_ints, j*4, numInterestingInts); \
+					__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
+					__m128i m2 = (__m128i)E2_Int(interesting_ints, j*4, numInterestingInts); \
 					align1_int *out = (int*)(base + offset); \
 					func(m1, m2, (Ptr_type)out); \
 					char str[256]; tostr(&m1, str); \
@@ -678,7 +701,7 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 		for(int k = 0; k < 2; ++k) \
 			for(int j = 0; j+numElemsAccessed <= numInterestingDoubles; j += inc) \
 			{ \
-				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
+				__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
 				double *ptr = interesting_doubles + j; \
 				Ret_type ret = func(m1, (Ptr_type)ptr); \
 				char str[256]; tostr(&m1, str); \
@@ -691,7 +714,7 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 	for(int i = 0; i < numInterestingInts / 4; ++i) \
 		for(int k = 0; k < 4; ++k) \
 		{ \
-			__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+			__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
 			Ret_type ret = func(m1); \
 			char str[256]; tostr(&m1, str); \
 			char str2[256]; tostr(&ret, str2); \
