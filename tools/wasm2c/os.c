@@ -235,7 +235,7 @@ IMPORT_IMPL(u32, Z_envZ___sys_fstat64Z_iii, (u32 fd, u32 buf), {
 
 IMPORT_IMPL(u32, Z_envZ___sys_stat64Z_iii, (u32 path, u32 buf), {
   VERBOSE_LOG("  stat64: %s\n", MEMACCESS(path));
-  int nfd = open(MEMACCESS(path), O_PATH);
+  int nfd = open(MEMACCESS(path), O_RDONLY); // could be O_PATH on linux...
   if (nfd < 0) {
     VERBOSE_LOG("    error, %d %s\n", errno, strerror(errno));
     return EM_EACCES;

@@ -2,8 +2,6 @@
  * Base of all support for wasm2c code.
  */
 
-#define __USE_GNU // for O_PATH
-
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
