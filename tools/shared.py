@@ -2799,6 +2799,12 @@ class Building(object):
  */
 '''
     SEP = '\n/* ==================================== */\n'
+
+    def bundle_file(total, filename):
+      with open(filename) as f:
+        total += '// ' + filename + '\n' + f.read() + SEP
+      return total
+
     # hermeticize the C file, by bundling in the wasm2c/ includes
     headers = [
       (WASM2C_DIR, 'wasm-rt.h'),
@@ -2806,15 +2812,13 @@ class Building(object):
       (os.path.dirname(h_file), os.path.basename(h_file))
     ]
     for header in headers:
-      with open(os.path.join(header[0], header[1])) as f:
-        total += f.read() + SEP
+      total = bundle_file(total, os.path.join(header[0], header[1]))
     # add the wasm2c output
     with open(c_file) as read_c:
       c = read_c.read()
     total += c + SEP
     # add the wasm2c runtime
-    with open(os.path.join(WASM2C_DIR, 'wasm-rt-impl.c')) as f:
-      total += f.read() + SEP
+    total = bundle_file(total, os.path.join(WASM2C_DIR, 'wasm-rt-impl.c'))
     # add the support code
     support_files = ['base']
     if Settings.AUTODEBUG:
@@ -2834,8 +2838,7 @@ class Building(object):
 extern void wasmbox_init(void);
 ''')
     for support_file in support_files:
-      with open(path_from_root('tools', 'wasm2c', support_file + '.c')) as f:
-        total += f.read()
+      total = bundle_file(total, path_from_root('tools', 'wasm2c', support_file + '.c'))
     # remove #includes of the headers we bundled
     for header in headers:
       total = total.replace('#include "%s"\n' % header[1], '/* include of %s */\n' % header[1])
