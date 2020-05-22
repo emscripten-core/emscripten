@@ -18,11 +18,6 @@ static void init_fds() {
   next_wasm_fd = 3;
 }
 
-void abort_with_message(const char* message) {
-  fprintf(stderr, "%s\n", message);
-  abort();
-}
-
 static u32 get_or_allocate_wasm_fd(int nfd) {
   // If the native fd is already mapped, return the same wasm fd for it.
   for (int i = 0; i < next_wasm_fd; i++) {

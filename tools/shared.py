@@ -2820,6 +2820,9 @@ class Building(object):
     if Settings.AUTODEBUG:
       support_files.append('autodebug')
     if Settings.EXPECT_MAIN:
+      # TODO: add an option for direct OS access. For now, do that when building
+      #       an executable with main, as opposed to a library
+      support_files.append('os')
       support_files.append('main')
     for support_file in support_files:
       with open(path_from_root('tools', 'wasm2c', support_file + '.c')) as f:

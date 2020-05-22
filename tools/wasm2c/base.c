@@ -89,6 +89,13 @@ ret (*name) params = _##name;
 
 #define STUB_IMPORT_IMPL(ret, name, params, returncode) IMPORT_IMPL(ret, name, params, { return returncode; });
 
+// Generic abort method for a runtime error in the runtime.
+
+static void abort_with_message(const char* message) {
+  fprintf(stderr, "%s\n", message);
+  abort();
+}
+
 // Maintain a stack of setjmps, each jump taking us back to the last invoke.
 
 #define MAX_SETJMP_STACK 1024
