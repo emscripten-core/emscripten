@@ -2122,6 +2122,124 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
+  def compute_line_start_positions(text):
+    line_start_positions = {}
+    line_number = 0
+    line_start_positions[0] = 0
+    for i in range(len(text)):
+      if text[i] == '\n':
+        line_number += 1
+        line_start_positions[line_number] = i+1
+    return line_start_positions
+
+  @staticmethod
+  def points_to_a_function(text, line, column, line_start_positions):
+    start_pos = line_start_positions[line] + column
+    function = 'function '
+    return text[start_pos - len(function):start_pos] == function
+
+  @staticmethod
+  def extract_variable_name(text, line, column, line_start_positions):
+    start_pos = line_start_positions[line] + column
+    end_pos = start_pos
+
+#    print('Searching ' + text[start_pos:start_pos+5])
+    # Closure generated line:column info do not line up, but sometimes they point off by one. Heuristic hack
+    # to skip past characters that are non-variable tokens.
+    offset = start_pos
+    while text[start_pos] in ' .,;()[]{}+-*/:|&^!\t\r\n':
+      start_pos += 1
+    column += start_pos - offset
+    end_pos += start_pos - offset
+
+#    print('2Searching ' + text[start_pos:start_pos+5])
+
+    file_len = len(text)
+    while end_pos < file_len and text[end_pos] in '$_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789':
+      end_pos += 1
+    name = text[start_pos:end_pos]
+    if name == 'function' and text[end_pos] == ' ':
+#      print('Redoing search ' + text[end_pos + 1:end_pos+6])
+      return Building.extract_variable_name(text, line, column + len('function '), line_start_positions)
+    else:
+#      print('Found ' + name)
+      return name
+
+  @staticmethod
+  def generate_symbol_map_from_source_map(input, output, source_map):
+    source_map = json.loads(open(source_map, 'r').read())
+    lines = source_map['mappings'].split(';')
+
+    input_text = open(input, 'r').read()
+    input_line_positions = Building.compute_line_start_positions(input_text)
+
+    output_text = open(output, 'r').read()
+    output_line_positions = Building.compute_line_start_positions(output_text)
+
+    base64DecodeMap = [0] * 256
+    chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+    for i in range(len(chars)):
+      base64DecodeMap[ord(chars[i])] = i
+
+    def decodeVLQ(vlq):
+      outputList = []
+
+      val = 0
+      shift = 0
+      for i in range(len(vlq)):
+        bits = base64DecodeMap[ord(vlq[i])]
+        val |= (bits & 0x1F) << shift
+        if bits & 0x20:
+          shift += 5
+        else:
+          sign = -1 if (val & 1) else 1
+          val >>= 1
+          outputList += [val * sign]
+          val = shift = 0
+      return outputList
+
+    functions_symbol_map = ''
+
+    sm_source_file = 0
+    sm_source_line = 0
+    sm_source_column = 0
+    sm_name_index = 0
+    output_line = 0
+    for l in lines:
+      segments = l.split(',')
+
+      sm_output_column = 0
+#      print('Line ' + str(output_line))
+      for s in segments:
+        segmentArray = decodeVLQ(s)
+#        print('VLQ ' + s + ', output: ' + str(segmentArray))
+
+        if len(segmentArray) > 0:
+          sm_output_column += segmentArray[0]
+          if len(segmentArray) > 1:
+            sm_source_file += segmentArray[1]
+            sm_source_line += segmentArray[2]
+            sm_source_column += segmentArray[3]
+            if len(segmentArray) > 4:
+              sm_name_index += segmentArray[4]
+
+              source_variable_name = Building.extract_variable_name(input_text, sm_source_line, sm_source_column, input_line_positions)
+              minified_output_variable_name = Building.extract_variable_name(output_text, output_line, sm_output_column, output_line_positions)
+ #             print('VLQ ' + s + ', output: ' + str(segmentArray)
+ #               + ', source: ' 
+ #               + str(sm_source_line) + ':' + str(sm_source_column)
+ #               + ' source name: ' + source_variable_name
+ #               + ', output: ' + str(output_line) + ':' + str(sm_output_column) + ', unminified name: "' + source_map['names'][sm_name_index] + '"'
+ #               + ' minified name: "' + minified_output_variable_name + '"')
+
+              if Building.points_to_a_function(input_text, sm_source_line, sm_source_column, input_line_positions):
+                functions_symbol_map += minified_output_variable_name + ':' + source_variable_name + '\n'
+
+      output_line += 1
+
+    return functions_symbol_map
+
+  @staticmethod
   def check_closure_compiler(args, env):
     if not os.path.exists(CLOSURE_COMPILER[-1]):
       exit_with_error('google-closure-compiler executable (%s) does not exist, check the paths in %s.  To install closure compiler, run "npm install" in emscripten root directory.', CLOSURE_COMPILER[-1], EM_CONFIG)
@@ -2134,7 +2252,7 @@ class Building(object):
       exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
 
   @staticmethod
-  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
+  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None, emit_symbol_map=False):
     with ToolchainProfiler.profile_block('closure_compiler'):
       env = env_with_node_in_path()
       user_args = []
@@ -2211,6 +2329,10 @@ class Building(object):
         args += ['--externs', e]
       args += ['--js_output_file', outfile]
 
+      if emit_symbol_map:
+        source_map = replace_suffix(outfile, '.closure_symbols')
+        args += ['--create_source_map', source_map]
+
       if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
         args.append('--jscomp_off=*')
       if pretty:
@@ -2221,12 +2343,13 @@ class Building(object):
 
       proc = run_process(cmd, stderr=PIPE, check=False, env=env)
 
-      # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
-      # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
-      # But it looks like it creates such files on Linux(?) even without setting that command line
-      # flag (and currently we don't), so delete the produced source map file to not leak files in
-      # temp directory.
+      # XXX Closure bug: Closure generates a stray output file even when not requested, so delete
+      # the produced source map file to not leak files in temp directory.
       try_delete(outfile + '.map')
+
+      if emit_symbol_map:
+        symbol_map = Building.generate_symbol_map_from_source_map(filename, outfile, source_map)
+        open(source_map, 'w').write(symbol_map)
 
       # Print Closure diagnostics result up front.
       if proc.returncode != 0:
