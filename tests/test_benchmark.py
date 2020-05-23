@@ -8,7 +8,6 @@ import math
 import os
 import re
 import shutil
-import subprocess
 import sys
 import time
 import unittest
@@ -275,7 +274,7 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     self.filename = native
 
   def run(self, args):
-    return run_process([self.filename] + args, stdout=PIPE, stderr=subprocess.STDOUT, check=False).stdout
+    return run_process([self.filename] + args, stdout=PIPE, stderr=STDOUT, check=False).stdout
 
   def get_output_files(self):
     # return the native code. c size may also be interesting.
