@@ -1,7 +1,12 @@
 #include <stdio.h>
 
-// We could also include the .wasm.h file for
-// these, but let's declare things for the example.
+// We could
+//
+//   #include <lib.wasm.h>
+//
+// for the externs declared here manually, but including that currently
+// requires having wasm-rt.h in the include path, which may be annoying for
+// users - needs to be thought about.
 
 extern void wasmbox_init(void);
 
