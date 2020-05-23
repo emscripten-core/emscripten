@@ -4,14 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if BOOTSTRAPPING_STRUCT_INFO
-// When bootstrapping struct info, this is the entire library.  It is literally
-// just enough to run the bootstrap program that prints out C constants for us,
-// we obviously need to run without any such constants ourselves...
-assert(!LibraryManager.library);
-LibraryManager.library = {};
-#endif
-
 mergeInto(LibraryManager.library, {
   $reallyNegative: function(x) {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
