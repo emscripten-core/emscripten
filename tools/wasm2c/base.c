@@ -102,17 +102,6 @@ static jmp_buf setjmp_stack[MAX_SETJMP_STACK];
 
 static u32 next_setjmp = 0;
 
-// Declare exports for invokes. We should generate them based on what the
-// wasm needs, but for now have a fixed list here. To get things to link,
-// declare them, so they either link with the existing value in the main
-// wasm2c .c output file, or else they contain NULL but will never be called.
-
-#define DECLARE_EXPORT(ret, name, args) \
-__attribute__((weak)) \
-ret (*WASM_RT_ADD_PREFIX(name)) args = NULL;
-
-DECLARE_EXPORT(void, Z_setThrewZ_vii, (u32, u32));
-
 // Stack support should be linked in if it is needed.
 IMPORT_IMPL(__attribute__((weak)) u32, Z_stackSaveZ_iv, (), {
   abort();
@@ -122,8 +111,6 @@ IMPORT_IMPL(__attribute__((weak))void, Z_stackRestoreZ_vi, (u32 x), {
 });
 
 #define VOID_INVOKE_IMPL(name, typed_args, types, args, dyncall) \
-DECLARE_EXPORT(void, dyncall, types); \
-\
 IMPORT_IMPL(void, name, typed_args, { \
   VERBOSE_LOG("invoke " #name "  " #dyncall "\n"); \
   u32 sp = Z_stackSaveZ_iv(); \
@@ -144,8 +131,6 @@ IMPORT_IMPL(void, name, typed_args, { \
 });
 
 #define RETURNING_INVOKE_IMPL(ret, name, typed_args, types, args, dyncall) \
-DECLARE_EXPORT(ret, dyncall, types); \
-\
 IMPORT_IMPL(ret, name, typed_args, { \
   VERBOSE_LOG("invoke " #name "  " #dyncall "\n"); \
   u32 sp = Z_stackSaveZ_iv(); \
@@ -166,6 +151,16 @@ IMPORT_IMPL(ret, name, typed_args, { \
   next_setjmp--; \
   return returned_value; \
 });
+
+// Declare an export that may be needed and may not be. For example if longjmp
+// is included then we need setThrew, but we must declare setThrew so that
+// the C compiler can build us without error if longjmp is not actually used.
+
+#define DECLARE_WEAK_EXPORT(ret, name, args) \
+__attribute__((weak)) \
+ret (*WASM_RT_ADD_PREFIX(name)) args = NULL;
+
+DECLARE_WEAK_EXPORT(void, Z_setThrewZ_vii, (u32, u32));
 
 IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
   if (next_setjmp == 0) {
