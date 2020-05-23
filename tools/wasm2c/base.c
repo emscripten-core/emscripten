@@ -173,3 +173,34 @@ IMPORT_IMPL(u32, Z_envZ_getTempRet0Z_iv, (), {
 IMPORT_IMPL(void, Z_envZ_setTempRet0Z_vi, (u32 x), {
   tempRet0 = x;
 });
+
+// Shared OS support in both sandboxed and unsandboxed mode
+
+#define WASI_DEFAULT_ERROR 63 /* __WASI_ERRNO_PERM */
+#define WASI_EINVAL 28
+
+// Syscalls return a negative error code
+#define EM_EACCES -2
+
+STUB_IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_fdstat_getZ_iii, (u32 a, u32 b), WASI_DEFAULT_ERROR);
+STUB_IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_syncZ_ii, (u32 a), WASI_DEFAULT_ERROR);
+STUB_IMPORT_IMPL(u32, Z_envZ_dlopenZ_iii, (u32 a, u32 b), 1);
+STUB_IMPORT_IMPL(u32, Z_envZ_dlcloseZ_ii, (u32 a), 1);
+STUB_IMPORT_IMPL(u32, Z_envZ_dlsymZ_iii, (u32 a, u32 b), 0);
+STUB_IMPORT_IMPL(u32, Z_envZ_dlerrorZ_iv, (), 0);
+STUB_IMPORT_IMPL(u32, Z_envZ_signalZ_iii, (u32 a, u32 b), -1);
+STUB_IMPORT_IMPL(u32, Z_envZ_systemZ_ii, (u32 a), -1);
+STUB_IMPORT_IMPL(u32, Z_envZ_utimesZ_iii, (u32 a, u32 b), -1);
+STUB_IMPORT_IMPL(u32, Z_envZ___sys_rmdirZ_ii, (u32 a), EM_EACCES);
+STUB_IMPORT_IMPL(u32, Z_envZ___sys_renameZ_iii, (u32 a, u32 b), EM_EACCES);
+STUB_IMPORT_IMPL(u32, Z_envZ___sys_lstat64Z_iii, (u32 a, u32 b), EM_EACCES);
+STUB_IMPORT_IMPL(u32, Z_envZ___sys_dup3Z_iiii, (u32 a, u32 b, u32 c), EM_EACCES);
+STUB_IMPORT_IMPL(u32, Z_envZ___sys_dup2Z_iii, (u32 a, u32 b), EM_EACCES);
+STUB_IMPORT_IMPL(u32, Z_envZ___sys_getcwdZ_iii, (u32 a, u32 b), EM_EACCES);
+STUB_IMPORT_IMPL(u32, Z_envZ___sys_ftruncate64Z_iiiii, (u32 a, u32 b, u32 c, u32 d), EM_EACCES);
+STUB_IMPORT_IMPL(u32, Z_envZ_pthread_mutexattr_initZ_ii, (u32 a), 0);
+STUB_IMPORT_IMPL(u32, Z_envZ_pthread_mutexattr_settypeZ_iii, (u32 a, u32 b), 0);
+STUB_IMPORT_IMPL(u32, Z_envZ_pthread_mutexattr_destroyZ_ii, (u32 a), 0);
+STUB_IMPORT_IMPL(u32, Z_envZ_pthread_createZ_iiiii, (u32 a, u32 b, u32 c, u32 d), -1);
+STUB_IMPORT_IMPL(u32, Z_envZ_pthread_joinZ_iii, (u32 a, u32 b), -1);
+STUB_IMPORT_IMPL(u32, Z_envZ___cxa_thread_atexitZ_iiii, (u32 a, u32 b, u32 c), -1);

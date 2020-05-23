@@ -10269,7 +10269,24 @@ int main() {
       for engine in WASM_ENGINES:
         self.assertContained(expected, run_js('test.wasm', engine))
 
-# TODO test wasm2c reactor
+  @no_fastcomp("uses standalone mode")
+  def test_wasm2c_reactor(self):
+    # test compiling an unsafe library using wasm2c, then using it from a
+    # main program. this shows it is easy to use wasm2c as a sandboxing
+    # mechanism.
+
+    # first compile the library with emcc, getting a .c and .h
+    run_process([PYTHON, EMCC,
+                path_from_root('tests', 'other', 'wasm2c', 'unsafe-library.c'),
+                '-O3', '-o', 'lib.wasm', '-s', 'WASM2C', '--no-entry'])
+    # compile that .c to a native object
+    run_process([CLANG_CC, 'lib.wasm.c', '-c', '-O3', '-o', 'lib.o'])
+    # compile the main program natively normally, and link with the
+    # unsafe library
+    run_process([CLANG_CC,
+                path_from_root('tests', 'other', 'wasm2c', 'my-code.c'),
+                '-O3', 'lib.o', '-o', 'program.exe'])
+    run_process(['program.exe'])
 
   @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self):

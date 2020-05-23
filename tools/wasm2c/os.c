@@ -1,6 +1,3 @@
-#define WASI_DEFAULT_ERROR 63 /* __WASI_ERRNO_PERM */
-#define WASI_EINVAL 28
-
 IMPORT_IMPL(void, Z_wasi_snapshot_preview1Z_proc_exitZ_vi, (u32 x), {
   exit(x);
 });
@@ -164,21 +161,8 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_seekZ_iijii, (u32 fd, u64 offset, 
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_seekZ_iiiiii, (u32 a, u32 b, u32 c, u32 d, u32 e), {
   return Z_wasi_snapshot_preview1Z_fd_seekZ_iijii(a, b + (((u64)c) << 32), d, e);
 });
-STUB_IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_fdstat_getZ_iii, (u32 a, u32 b), WASI_DEFAULT_ERROR);
-STUB_IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_syncZ_ii, (u32 a), WASI_DEFAULT_ERROR);
 
-// TODO: set errno in wasm for everything
-
-STUB_IMPORT_IMPL(u32, Z_envZ_dlopenZ_iii, (u32 a, u32 b), 1);
-STUB_IMPORT_IMPL(u32, Z_envZ_dlcloseZ_ii, (u32 a), 1);
-STUB_IMPORT_IMPL(u32, Z_envZ_dlsymZ_iii, (u32 a, u32 b), 0);
-STUB_IMPORT_IMPL(u32, Z_envZ_dlerrorZ_iv, (), 0);
-STUB_IMPORT_IMPL(u32, Z_envZ_signalZ_iii, (u32 a, u32 b), -1);
-STUB_IMPORT_IMPL(u32, Z_envZ_systemZ_ii, (u32 a), -1);
-STUB_IMPORT_IMPL(u32, Z_envZ_utimesZ_iii, (u32 a, u32 b), -1);
-
-// Syscalls return a negative error code
-#define EM_EACCES -2
+// TODO: set errno in wasm for things that need it
 
 IMPORT_IMPL(u32, Z_envZ___sys_unlinkZ_ii, (u32 path), {
   VERBOSE_LOG("  unlink %s\n", MEMACCESS(path));
@@ -188,12 +172,6 @@ IMPORT_IMPL(u32, Z_envZ___sys_unlinkZ_ii, (u32 path), {
   }
   return 0;
 });
-STUB_IMPORT_IMPL(u32, Z_envZ___sys_rmdirZ_ii, (u32 a), EM_EACCES);
-STUB_IMPORT_IMPL(u32, Z_envZ___sys_renameZ_iii, (u32 a, u32 b), EM_EACCES);
-STUB_IMPORT_IMPL(u32, Z_envZ___sys_lstat64Z_iii, (u32 a, u32 b), EM_EACCES);
-STUB_IMPORT_IMPL(u32, Z_envZ___sys_dup3Z_iiii, (u32 a, u32 b, u32 c), EM_EACCES);
-STUB_IMPORT_IMPL(u32, Z_envZ___sys_dup2Z_iii, (u32 a, u32 b), EM_EACCES);
-STUB_IMPORT_IMPL(u32, Z_envZ___sys_getcwdZ_iii, (u32 a, u32 b), EM_EACCES);
 
 static u32 do_stat(int nfd, u32 buf) {
   struct stat nbuf;
@@ -243,7 +221,6 @@ IMPORT_IMPL(u32, Z_envZ___sys_stat64Z_iii, (u32 path, u32 buf), {
   return do_stat(nfd, buf);
 });
 
-STUB_IMPORT_IMPL(u32, Z_envZ___sys_ftruncate64Z_iiiii, (u32 a, u32 b, u32 c, u32 d), EM_EACCES);
 IMPORT_IMPL(u32, Z_envZ___sys_readZ_iiii, (u32 fd, u32 buf, u32 count), {
   int nfd = get_native_fd(fd);
   VERBOSE_LOG("  read %d (=> %d) %d %d\n", fd, nfd, buf, count);
@@ -270,10 +247,6 @@ IMPORT_IMPL(u32, Z_envZ___sys_accessZ_iii, (u32 pathname, u32 mode), {
   }
   return 0;
 });
-
-STUB_IMPORT_IMPL(u32, Z_envZ_pthread_mutexattr_initZ_ii, (u32 a), 0);
-STUB_IMPORT_IMPL(u32, Z_envZ_pthread_mutexattr_settypeZ_iii, (u32 a, u32 b), 0);
-STUB_IMPORT_IMPL(u32, Z_envZ_pthread_mutexattr_destroyZ_ii, (u32 a), 0);
 
 #define WASM_CLOCK_REALTIME 0
 #define WASM_CLOCK_MONOTONIC 1
@@ -305,7 +278,3 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_res_getZ_iii, (u32 clock_id, u3
   wasm_i64_store(out, 1000 * 1000);
   return 0;
 });
-
-STUB_IMPORT_IMPL(u32, Z_envZ_pthread_createZ_iiiii, (u32 a, u32 b, u32 c, u32 d), -1);
-STUB_IMPORT_IMPL(u32, Z_envZ_pthread_joinZ_iii, (u32 a, u32 b), -1);
-STUB_IMPORT_IMPL(u32, Z_envZ___cxa_thread_atexitZ_iiii, (u32 a, u32 b, u32 c), -1);
