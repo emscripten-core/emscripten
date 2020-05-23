@@ -79,7 +79,7 @@ DEFINE_STORE(wasm_i64_store32, u32, u64);
 #endif
 
 #define IMPORT_IMPL(ret, name, params, body) \
-ret _##name params { \
+static ret _##name params { \
   VERBOSE_LOG("[import: " #name "]\n"); \
   body \
 } \
@@ -101,14 +101,6 @@ static void abort_with_message(const char* message) {
 static jmp_buf setjmp_stack[MAX_SETJMP_STACK];
 
 static u32 next_setjmp = 0;
-
-// Stack support should be linked in if it is needed.
-IMPORT_IMPL(__attribute__((weak)) u32, Z_stackSaveZ_iv, (), {
-  abort();
-});
-IMPORT_IMPL(__attribute__((weak))void, Z_stackRestoreZ_vi, (u32 x), {
-  abort();
-});
 
 #define VOID_INVOKE_IMPL(name, typed_args, types, args, dyncall) \
 IMPORT_IMPL(void, name, typed_args, { \
