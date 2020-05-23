@@ -169,7 +169,6 @@ var LibraryGL = {
 #endif
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
-
     byteSizeByTypeRoot: 0x1400, // GL_BYTE
     byteSizeByType: [
       1, // GL_BYTE
@@ -438,7 +437,7 @@ var LibraryGL = {
 
     postDrawHandleClientVertexAttribBindings: function postDrawHandleClientVertexAttribBindings() {
       if (GL.resetBufferBinding) {
-        GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, GL.buffers[GL.currArrayBuffer]);
+        GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, GL.buffers[GLctx.currentArrayBufferBinding]);
       }
     },
 #endif
@@ -1758,8 +1757,10 @@ var LibraryGL = {
       buffer.name = 0;
       GL.buffers[id] = null;
 
-      if (id == GL.currArrayBuffer) GL.currArrayBuffer = 0;
-      if (id == GL.currElementArrayBuffer) GL.currElementArrayBuffer = 0;
+#if FULL_ES2 || LEGACY_GL_EMULATION
+      if (id == GLctx.currentArrayBufferBinding) GLctx.currentArrayBufferBinding = 0;
+      if (id == GLctx.currElementArrayBufferBinding) GLctx.currElementArrayBufferBinding = 0;
+#endif
 #if MAX_WEBGL_VERSION >= 2
       if (id == GLctx.currentPixelPackBufferBinding) GLctx.currentPixelPackBufferBinding = 0;
       if (id == GLctx.currentPixelUnpackBufferBinding) GLctx.currentPixelUnpackBufferBinding = 0;
@@ -2622,12 +2623,12 @@ var LibraryGL = {
 #endif
 #if FULL_ES2 || LEGACY_GL_EMULATION
     if (target == 0x8892 /*GL_ARRAY_BUFFER*/) {
-      GL.currArrayBuffer = buffer;
+      GLctx.currentArrayBufferBinding = buffer;
 #if LEGACY_GL_EMULATION
       GLImmediate.lastArrayBuffer = buffer;
 #endif
     } else if (target == 0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/) {
-      GL.currElementArrayBuffer = buffer;
+      GLctx.currElementArrayBufferBinding = buffer;
     }
 #endif
 
@@ -3187,7 +3188,7 @@ var LibraryGL = {
 #endif
 #if FULL_ES2 || LEGACY_GL_EMULATION
     var ibo = GLctx.getParameter(0x8895 /*ELEMENT_ARRAY_BUFFER_BINDING*/);
-    GL.currElementArrayBuffer = ibo ? (ibo.name | 0) : 0;
+    GLctx.currElementArrayBufferBinding = ibo ? (ibo.name | 0) : 0;
 #endif
   },
 
@@ -3303,7 +3304,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(cb, index);
 #endif
-    if (!GL.currArrayBuffer) {
+    if (!GLctx.currentArrayBufferBinding) {
       cb.size = size;
       cb.type = type;
       cb.normalized = normalized;
@@ -3366,7 +3367,7 @@ var LibraryGL = {
   glDrawElements: function(mode, count, type, indices) {
 #if FULL_ES2
     var buf;
-    if (!GL.currElementArrayBuffer) {
+    if (!GLctx.currElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
@@ -3386,7 +3387,7 @@ var LibraryGL = {
 #if FULL_ES2
     GL.postDrawHandleClientVertexAttribBindings(count);
 
-    if (!GL.currElementArrayBuffer) {
+    if (!GLctx.currElementArrayBufferBinding) {
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, null);
     }
 #endif
