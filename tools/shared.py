@@ -2829,6 +2829,7 @@ class Building(object):
       support_files.append('os')
       support_files.append('main')
     else:
+      support_files.append('os_sandboxed')
       support_files.append('reactor')
       # for a reactor, also append wasmbox_* API definitions
       with open(h_file, 'a') as f:

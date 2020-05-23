@@ -10286,7 +10286,9 @@ int main() {
     run_process([CLANG_CC,
                 path_from_root('tests', 'other', 'wasm2c', 'my-code.c'),
                 '-O3', 'lib.o', '-o', 'program.exe'])
-    run_process(['program.exe'])
+    output = run_process([os.path.abspath('program.exe')], stdout=PIPE).stdout
+    with open(path_from_root('tests', 'other', 'wasm2c', 'output.txt')) as f:
+      self.assertEqual(output, f.read())
 
   @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self):
