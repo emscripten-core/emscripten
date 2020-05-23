@@ -11,6 +11,20 @@ var LibraryGL = {
   _tempFixedLengthArray__postset: 'for (var i = 0; i < 32; i++) __tempFixedLengthArray.push(new Array(i));',
   _tempFixedLengthArray: [],
 
+  _miniTempFloatBuffers: '= [];',
+  _miniTempFloatBuffers__postset:
+      'var __floatBuf = new Float32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
+    + 'for (var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; i++) {\n'
+    + '__miniTempFloatBuffers[i] = __floatBuf.subarray(0, i+1);\n'
+    + '}\n',
+
+  _miniTempIntBuffers: '= [];',
+  _miniTempIntBuffers__postset:
+      'var __intBuf = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
+    + 'for (var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; i++) {\n'
+    + '__miniTempIntBuffers[i] = __intBuf.subarray(0, i+1);\n'
+    + '}\n',
+
   _heapObjectForWebGLType: function(type) {
     // Micro-optimization for size: Subtract lowest GL enum number (0x1400/* GL_BYTE */) from type to compare
     // smaller values for the heap, for shorter generated code size.
@@ -109,7 +123,7 @@ var LibraryGL = {
   },
 #endif
 
-  $GL__postset: 'var GLctx; GL.init()',
+  $GL__postset: 'var GLctx;',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
   $GL__deps: [
@@ -199,20 +213,6 @@ var LibraryGL = {
 
     unpackAlignment: 4, // default alignment is 4 bytes
 
-    init: function() {
-#if GL_POOL_TEMP_BUFFERS
-      var miniTempFloatBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
-      for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
-        GL.miniTempBufferFloatViews[i] = miniTempFloatBuffer.subarray(0, i+1);
-      }
-
-      var miniTempIntBuffer = new Int32Array(GL.MINI_TEMP_BUFFER_SIZE);
-      for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
-        GL.miniTempBufferIntViews[i] = miniTempIntBuffer.subarray(0, i+1);
-      }
-#endif
-    },
-
     // Records a GL error condition that occurred, stored until user calls glGetError() to fetch it. As per GLES2 spec, only the first error
     // is remembered, and subsequent errors are discarded until the user has cleared the stored error by a call to glGetError().
     recordError: function recordError(errorCode) {
@@ -230,13 +230,6 @@ var LibraryGL = {
       }
       return ret;
     },
-
-#if GL_POOL_TEMP_BUFFERS
-    // Mini temp buffer
-    MINI_TEMP_BUFFER_SIZE: 256,
-    miniTempBufferFloatViews: [0], // index i has the view of size i+1
-    miniTempBufferIntViews: [0], // index i has the view of size i+1
-#endif
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
     // When user GL code wants to render from client-side memory, we need to upload the vertex data to a temp VBO
@@ -2219,11 +2212,18 @@ var LibraryGL = {
   },
 
   glUniform1iv__sig: 'viii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniform1iv__deps: ['_miniTempIntBuffers'],
+#endif
   glUniform1iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1iv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1iv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniform1iv(GL.uniforms[location], HEAP32, value>>2, count);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2233,9 +2233,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferIntViews[count-1];
+      var view = __miniTempIntBuffers[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
       }
@@ -2248,14 +2248,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform1iv(GL.uniforms[location], view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniform2iv__sig: 'viii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniform2iv__deps: ['_miniTempIntBuffers'],
+#endif
   glUniform2iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2iv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2iv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniform2iv(GL.uniforms[location], HEAP32, value>>2, count*2);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2265,9 +2273,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (2*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferIntViews[2*count-1];
+      var view = __miniTempIntBuffers[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2281,14 +2289,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform2iv(GL.uniforms[location], view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniform3iv__sig: 'viii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniform3iv__deps: ['_miniTempIntBuffers'],
+#endif
   glUniform3iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3iv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3iv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*3);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2298,9 +2314,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (3*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferIntViews[3*count-1];
+      var view = __miniTempIntBuffers[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2315,14 +2331,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform3iv(GL.uniforms[location], view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniform4iv__sig: 'viii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniform4iv__deps: ['_miniTempIntBuffers'],
+#endif
   glUniform4iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4iv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4iv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniform4iv(GL.uniforms[location], HEAP32, value>>2, count*4);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2332,9 +2356,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferIntViews[4*count-1];
+      var view = __miniTempIntBuffers[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2350,14 +2374,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform4iv(GL.uniforms[location], view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniform1fv__sig: 'viii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniform1fv__deps: ['_miniTempFloatBuffers'],
+#endif
   glUniform1fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform1fv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniform1fv(GL.uniforms[location], HEAPF32, value>>2, count);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2367,9 +2399,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferFloatViews[count-1];
+      var view = __miniTempFloatBuffers[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
       }
@@ -2382,14 +2414,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform1fv(GL.uniforms[location], view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniform2fv__sig: 'viii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniform2fv__deps: ['_miniTempFloatBuffers'],
+#endif
   glUniform2fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform2fv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniform2fv(GL.uniforms[location], HEAPF32, value>>2, count*2);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2399,9 +2439,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (2*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferFloatViews[2*count-1];
+      var view = __miniTempFloatBuffers[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2415,14 +2455,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform2fv(GL.uniforms[location], view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniform3fv__sig: 'viii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniform3fv__deps: ['_miniTempFloatBuffers'],
+#endif
   glUniform3fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniform3fv(GL.uniforms[location], HEAPF32, value>>2, count*3);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2432,9 +2480,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (3*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferFloatViews[3*count-1];
+      var view = __miniTempFloatBuffers[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2449,14 +2497,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform3fv(GL.uniforms[location], view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniform4fv__sig: 'viii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniform4fv__deps: ['_miniTempFloatBuffers'],
+#endif
   glUniform4fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform4fv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniform4fv(GL.uniforms[location], HEAPF32, value>>2, count*4);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2466,9 +2522,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferFloatViews[4*count-1];
+      var view = __miniTempFloatBuffers[4*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value >>= 2;
@@ -2488,14 +2544,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform4fv(GL.uniforms[location], view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniformMatrix2fv__sig: 'viiii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniformMatrix2fv__deps: ['_miniTempFloatBuffers'],
+#endif
   glUniformMatrix2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2fv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*4);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2505,9 +2569,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferFloatViews[4*count-1];
+      var view = __miniTempFloatBuffers[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2523,14 +2587,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniformMatrix3fv__sig: 'viiii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniformMatrix3fv__deps: ['_miniTempFloatBuffers'],
+#endif
   glUniformMatrix3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3fv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*9);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2540,9 +2612,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (9*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 9 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferFloatViews[9*count-1];
+      var view = __miniTempFloatBuffers[9*count-1];
       for (var i = 0; i < 9*count; i += 9) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2563,14 +2635,22 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glUniformMatrix4fv__sig: 'viiii',
+#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+  glUniformMatrix4fv__deps: ['_miniTempFloatBuffers'],
+#endif
   glUniformMatrix4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4fv must be aligned to four bytes!');
 #endif
+
+#if MIN_WEBGL_VERSION == 2
+    GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*16);
+#else
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -2580,9 +2660,9 @@ var LibraryGL = {
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (16*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 16 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferFloatViews[16*count-1];
+      var view = __miniTempFloatBuffers[16*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value >>= 2;
@@ -2614,6 +2694,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, view);
+#endif // MIN_WEBGL_VERSION == 2
   },
 
   glBindBuffer__sig: 'vii',

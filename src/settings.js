@@ -511,6 +511,10 @@ var GL_SUPPORT_EXPLICIT_SWAP_CONTROL = 0;
 // you can turn it off.
 var GL_POOL_TEMP_BUFFERS = 1;
 
+// Specifies the size of the GL temp buffer pool, in bytes. Must be a multiple
+// of 9 and 16.
+var GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16; // == 288
+
 // Some old Android WeChat (Chromium 37?) browser has a WebGL bug that it ignores
 // the offset of a typed array view pointing to an ArrayBuffer. Set this to
 // 1 to enable a polyfill that works around the issue when it appears. This
