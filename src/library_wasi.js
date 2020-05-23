@@ -100,7 +100,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  $checkWasiClock: function(clk_id) {
+  $checkWasiClock: function(clock_id) {
     return clock_id == {{{ cDefine('__WASI_CLOCKID_REALTIME') }}} ||
            clock_id == {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} ||
            clock_id == {{{ cDefine('__WASI_CLOCKID_PROCESS_CPUTIME_ID') }}} ||
