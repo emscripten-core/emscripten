@@ -631,7 +631,7 @@ var LibraryJSEvents = {
 #endif
       if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, wheelEvent, userData)) e.preventDefault();
     };
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     // The 'mousewheel' event as implemented in Safari 6.0.5
     var mouseWheelHandlerFunc = function(ev) {
       var e = ev || event;
@@ -656,7 +656,7 @@ var LibraryJSEvents = {
 #endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
       handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
 #else
       handlerFunc: wheelHandlerFunc,
@@ -674,7 +674,7 @@ var LibraryJSEvents = {
     if (typeof target.onwheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     } else if (typeof target.onmousewheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "mousewheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
