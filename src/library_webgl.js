@@ -128,10 +128,21 @@ var LibraryGL = {
     debug: true,
 #endif
 
-    counter: 1, // 0 is reserved as 'null' in gl
+/* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
+   to save code size.
+   (but still documented here to keep track of what is supposed to be present)
 #if GL_TRACK_ERRORS
     lastError: 0,
 #endif
+    currentContext: null,
+
+#if FULL_ES2 || LEGACY_GL_EMULATION
+    currArrayBuffer: 0,
+    currElementArrayBuffer: 0,
+#endif
+*/
+
+    counter: 1, // 0 is reserved as 'null' in gl
     buffers: [],
     mappedBuffers: {},
     programs: [],
@@ -146,7 +157,6 @@ var LibraryGL = {
 #else            // without pthreads, it's just an integer ID
     contexts: [],
 #endif
-    currentContext: null,
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
     timerQueriesEXT: [],
 #if MAX_WEBGL_VERSION >= 2
@@ -157,8 +167,6 @@ var LibraryGL = {
 #endif
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
-    currArrayBuffer: 0,
-    currElementArrayBuffer: 0,
 
     byteSizeByTypeRoot: 0x1400, // GL_BYTE
     byteSizeByType: [
