@@ -8,21 +8,21 @@ var LibraryGL = {
 
   // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
   // create a set of short fixed-length arrays to avoid having to generate any garbage when calling those functions.
-  _tempFixedLengthArray__postset: 'for (var i = 0; i < 32; i++) __tempFixedLengthArray.push(new Array(i));',
+  _tempFixedLengthArray__postset: 'for (var ____n = 0; ____n < 32; ++____n) __tempFixedLengthArray.push(new Array(____n));',
   _tempFixedLengthArray: [],
 
-  _miniTempFloatBuffers: '= [];',
+  _miniTempFloatBuffers: [],
   _miniTempFloatBuffers__postset:
       'var __floatBuf = new Float32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
-    + 'for (var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; i++) {\n'
-    + '__miniTempFloatBuffers[i] = __floatBuf.subarray(0, i+1);\n'
+    + 'for (var ____i = 0; ____i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++____i) {\n'
+    + '__miniTempFloatBuffers[____i] = __floatBuf.subarray(0, ____i+1);\n'
     + '}\n',
 
-  _miniTempIntBuffers: '= [];',
+  _miniTempIntBuffers: [],
   _miniTempIntBuffers__postset:
       'var __intBuf = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
-    + 'for (var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; i++) {\n'
-    + '__miniTempIntBuffers[i] = __intBuf.subarray(0, i+1);\n'
+    + 'for (var ____j = 0; ____j < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++____j) {\n'
+    + '__miniTempIntBuffers[____j] = __intBuf.subarray(0, ____j+1);\n'
     + '}\n',
 
   _heapObjectForWebGLType: function(type) {
