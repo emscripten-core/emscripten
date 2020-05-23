@@ -3,6 +3,108 @@ var fs = require('fs');
 var assert = require('assert');
 var path = require('path');
 
+function calculateLineStartPositions(filename) {
+  var fileSizeInBytes = fs.statSync(filename)['size'];
+  var f = fs.readFileSync(filename);
+  console.log('File ' + filename + ', size ' + fileSizeInBytes);
+  var lineStartPositions = [0];
+  for(var i = 0; i < fileSizeInBytes; ++i) {
+    var byte = f.readUInt8(i);
+    console.log(byte);
+    if (byte == 0x0A) {
+      lineStartPositions.push(i+1);
+    }
+  }
+  console.dir(lineStartPositions);
+  return lineStartPositions;
+}
+
+function mapLineColTo1DPos(line, col, lineStartPositions) {
+  console.log(line);
+  assert(line >= 0);
+  assert(line < lineStartPositions.length);
+  return lineStartPositions[line] + col;
+}
+
+function readSourceMap(sourceMapFile, mangledFileLineStartPositions) {
+  var sourceMapJson = JSON.parse(fs.readFileSync(sourceMapFile).toString());
+  var lines = sourceMapJson['mappings'].split(';');
+
+  var base64DecodeMap = {};
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  for(var i = 0; i < chars.length; ++i) {
+    base64DecodeMap[chars[i]] = i
+  }
+
+  function decodeVLQ(vlq) {
+    var outputList = [];
+    var val = 0, shift = 0;
+
+    for(var i = 0; i < vlq.length; ++i) {
+      var bits = base64DecodeMap[vlq[i]];
+      val |= (bits & 0x1F) << shift;
+      if (bits & 0x20) {
+        shift += 5;
+      } else {
+        var sign = (val & 1) ? -1 : 1;
+        val >>= 1;
+        outputList.push(val * sign);
+        val = shift = 0;
+      }
+    }
+    return outputList;
+  }
+
+  var sourceMap = [];
+
+  var smSourceFile = 0;
+  var smSourceLine = 0;
+  var smSourceColumn = 0;
+  var smNameIndex = 0;
+  var outputLine = 0;
+  for(var l in lines) {
+    var line = lines[l];
+    var segments = line.split(',');
+
+    var smOutputColumn = 0;
+    for(var s in segments) {
+      var segment = segments[s];
+      var segmentArray = decodeVLQ(segment);
+
+//      console.dir(segmentArray);
+      if (segmentArray.length > 0) {
+        smOutputColumn += segmentArray[0];
+        if (segmentArray.length > 1) {
+          smSourceFile += segmentArray[1];
+          smSourceLine += segmentArray[2];
+          smSourceColumn += segmentArray[3];
+          if (segmentArray.length > 4) {
+            smNameIndex += segmentArray[4];
+
+            sourceMap.push([mapLineColTo1DPos(outputLine, smOutputColumn, mangledFileLineStartPositions), sourceMapJson['sources'][smSourceFile], smSourceLine, smSourceColumn, sourceMapJson['names'][smNameIndex]]);
+/*
+            sourceVariableName = Building.extract_variable_name(input_text, sm_source_line, sm_source_column, input_line_positions)
+            minified_output_variable_name = Building.extract_variable_name(output_text, output_line, sm_output_column, output_line_positions)
+#             print('VLQ ' + s + ', output: ' + str(segmentArray)
+#               + ', source: ' 
+#               + str(sm_source_line) + ':' + str(sm_source_column)
+#               + ' source name: ' + source_variable_name
+#               + ', output: ' + str(output_line) + ':' + str(sm_output_column) + ', unminified name: "' + source_map['names'][sm_name_index] + '"'
+#               + ' minified name: "' + minified_output_variable_name + '"')
+
+            if Building.points_to_a_function(input_text, sm_source_line, sm_source_column, input_line_positions):
+              functions_symbol_map += minified_output_variable_name + ':' + source_variable_name + '\n'
+*/
+          }
+        }
+      }
+    }
+    ++outputLine;
+  }
+
+  return sourceMap;
+}
+
 function dump(node) {
   console.log(JSON.stringify(node, null, ' '));
 }
@@ -68,7 +170,33 @@ function recordSourceFile(nodeSizes, filename) {
 }
 
 var inputFile;
+var sourceMap;
+var sourceLineStartPositions;
 var fileSizeInBytes;
+
+function demangleName(node, functionName) {
+  var s = 0;
+  var e = sourceMap.length-1;
+  console.log('a');
+  while(s < e) {
+    var mid = ((s+e)/2)|0;
+    console.log('s: ' + s + ', e: ' + e + ', mid: ' + mid + ', node.start: ' + node.start + ', midpos: ' + sourceMap[mid][0]);
+    if (sourceMap[mid][0] < node.start) {
+      s = mid+1;
+    } else if (sourceMap[mid][0] > node.start) {
+      e = mid;
+    } else if (sourceMap[mid][0] == node.start) {
+      return sourceMap[mid][4];
+    } else {
+      console.dir(sourceMap[mid]);
+      assert(false);
+    }
+  }
+  console.log('b');
+//  console.dir(sourceMap);
+//  console.dir(sourceMap[s]);
+  return sourceMap[s][4];
+}
 
 function isLargeEnoughNodeToExpand(node) {
   return nodeSize(node) >= 0.10*fileSizeInBytes;
@@ -147,11 +275,20 @@ function collectNodeSizes(nodeArray, parentPrefix) {
       }
     }
 
+    // Try to demangle the name with source maps.
+    if (sourceMap && (childType == 'function' || childType == 'var')) {
+      var demangledName = demangleName(node, childName);
+      if (demangledName) {
+        childName = childName + ' (' + demangledName + ')';
+      }
+    }
+
     sizes[parentPrefix + childName] = {
       'type': childType,
       'name': parentPrefix + childName,
       'prefix': parentPrefix,
       'selfName': childName,
+      'demangledName': demangledName,
       'size': childSize - countNodeSizes(childSizes)
     }
     mergeKeyValues(sizes, childSizes);
@@ -414,10 +551,26 @@ function readSymbolMap(filename) {
 
 var sources = process['argv'].slice(2);
 
-var idx = sources.indexOf('--symbols');
-if (idx != -1) {
-  var symbolMap = readSymbolMap(sources[idx+1]);
-  sources.splice(idx, 2);
+function readParam(param) {
+  var idx = sources.indexOf(param);
+  if (idx != -1) {
+    var value = sources[idx+1];
+    sources.splice(idx, 2);
+    return value;
+  }
+}
+
+var symbolMap = readParam('--symbols');
+var sourceMap = readParam('--sourceMap');
+
+if (symbolMap) {
+  symbolMap = readSymbolMap(symbolMap);
+}
+
+if (sourceMap) {
+  var mangledFileLineStartPositions = calculateLineStartPositions(sources[0]);
+  console.dir(mangledFileLineStartPositions);
+  sourceMap = readSourceMap(sourceMap, mangledFileLineStartPositions);
 }
 
 var codeSizes = {};
@@ -427,6 +580,7 @@ for(var s in sources) {
   var sizes;
   if (src.toLowerCase().endsWith('.js')) {
 	  sizes = extractJavaScriptCodeSize(src);
+    sourceMap = null; // Assume --sourceMap applies to the first .js file input
   } else if (src.endsWith('.wasm')) {
     sizes = extractWasmCodeSize(src);
   }

@@ -2252,7 +2252,7 @@ class Building(object):
       exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
 
   @staticmethod
-  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None, emit_symbol_map=False):
+  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None, emit_source_map=False):
     with ToolchainProfiler.profile_block('closure_compiler'):
       env = env_with_node_in_path()
       user_args = []
@@ -2329,8 +2329,8 @@ class Building(object):
         args += ['--externs', e]
       args += ['--js_output_file', outfile]
 
-      if emit_symbol_map:
-        source_map = replace_suffix(outfile, '.closure_symbols')
+      if emit_source_map:
+        source_map = replace_suffix(outfile, '.closure_source_map')
         args += ['--create_source_map', source_map]
 
       if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
@@ -2347,9 +2347,9 @@ class Building(object):
       # the produced source map file to not leak files in temp directory.
       try_delete(outfile + '.map')
 
-      if emit_symbol_map:
-        symbol_map = Building.generate_symbol_map_from_source_map(filename, outfile, source_map)
-        open(source_map, 'w').write(symbol_map)
+#      if emit_symbol_map:
+#        symbol_map = Building.generate_symbol_map_from_source_map(filename, outfile, source_map)
+#        open(source_map, 'w').write(symbol_map)
 
       # Print Closure diagnostics result up front.
       if proc.returncode != 0:
@@ -2360,6 +2360,8 @@ class Building(object):
         elif Settings.CLOSURE_WARNINGS == 'warn':
           logger.warn('Closure compiler completed with warnings:\n')
 
+      logger.fatal(open(filename, 'r').read())
+      logger.warning(open(outfile, 'r').read())
       # Print input file (long wall of text!)
       if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
         input_file = open(filename, 'r').read().splitlines()
