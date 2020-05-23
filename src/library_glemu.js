@@ -2266,7 +2266,7 @@ var LibraryGLEmulation = {
         prepare: function prepare() {
           // Calculate the array buffer
           var arrayBuffer;
-          if (!GL.currArrayBuffer) {
+          if (!GLctx.currentArrayBufferBinding) {
             var start = GLImmediate.firstVertex*GLImmediate.stride;
             var end = GLImmediate.lastVertex*GLImmediate.stride;
 #if ASSERTIONS
@@ -2275,7 +2275,7 @@ var LibraryGLEmulation = {
             arrayBuffer = GL.getTempVertexBuffer(end);
             // TODO: consider using the last buffer we bound, if it was larger. downside is larger buffer, but we might avoid rebinding and preparing
           } else {
-            arrayBuffer = GL.currArrayBuffer;
+            arrayBuffer = GLctx.currentArrayBufferBinding;
           }
 
 #if GL_UNSAFE_OPTS
@@ -2290,7 +2290,7 @@ var LibraryGLEmulation = {
                         !GLImmediate.matricesModified;
           if (!canSkip && lastRenderer) lastRenderer.cleanup();
 #endif
-          if (!GL.currArrayBuffer) {
+          if (!GLctx.currentArrayBufferBinding) {
             // Bind the array buffer and upload data after cleaning up the previous renderer
 
             if (arrayBuffer != GLImmediate.lastArrayBuffer) {
@@ -2332,7 +2332,7 @@ var LibraryGLEmulation = {
 #endif
 
 #if GL_FFP_ONLY
-          if (!GL.currArrayBuffer) {
+          if (!GLctx.currentArrayBufferBinding) {
             GLctx.vertexAttribPointer(GLImmediate.VERTEX, posAttr.size, posAttr.type, false, GLImmediate.stride, posAttr.offset);
             if (this.hasNormal) {
               var normalAttr = clientAttributes[GLImmediate.NORMAL];
@@ -2354,7 +2354,7 @@ var LibraryGLEmulation = {
           if (this.hasTextures) {
             for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
 #if GL_FFP_ONLY
-              if (!GL.currArrayBuffer) {
+              if (!GLctx.currentArrayBufferBinding) {
                 var attribLoc = GLImmediate.TEXTURE0+i;
                 var texAttr = clientAttributes[attribLoc];
                 if (texAttr.size) {
@@ -2394,7 +2394,7 @@ var LibraryGLEmulation = {
             GL.validateVertexAttribPointer(colorAttr.size, colorAttr.type, GLImmediate.stride, colorAttr.offset);
 #endif
 #if GL_FFP_ONLY
-            if (!GL.currArrayBuffer) {
+            if (!GLctx.currentArrayBufferBinding) {
               GLctx.vertexAttribPointer(GLImmediate.COLOR, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
             }
 #else
@@ -2442,7 +2442,7 @@ var LibraryGLEmulation = {
             GLctx.useProgram(null);
             GLImmediate.fixedFunctionProgram = 0;
           }
-          if (!GL.currArrayBuffer) {
+          if (!GLctx.currentArrayBufferBinding) {
             GLctx.bindBuffer(GLctx.ARRAY_BUFFER, null);
             GLImmediate.lastArrayBuffer = null;
           }
@@ -2695,7 +2695,7 @@ var LibraryGLEmulation = {
         GLImmediate.vertexPointer = start;
       } else {
         // case (2): fast path, all data is interleaved to a single vertex array so we can get away with a single VBO upload.
-        if (GL.currArrayBuffer) {
+        if (GLctx.currentArrayBufferBinding) {
           GLImmediate.vertexPointer = 0;
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
@@ -2735,10 +2735,10 @@ var LibraryGLEmulation = {
       var numIndexes = 0;
       if (numProvidedIndexes) {
         numIndexes = numProvidedIndexes;
-        if (!GL.currArrayBuffer && GLImmediate.firstVertex > GLImmediate.lastVertex) {
+        if (!GLctx.currentArrayBufferBinding && GLImmediate.firstVertex > GLImmediate.lastVertex) {
           // Figure out the first and last vertex from the index data
 #if ASSERTIONS
-          assert(!GL.currElementArrayBuffer); // If we are going to upload array buffer data, we need to find which range to
+          assert(!GLctx.currentElementArrayBufferBinding); // If we are going to upload array buffer data, we need to find which range to
                                               // upload based on the indices. If they are in a buffer on the GPU, that is very
                                               // inconvenient! So if you do not have an array buffer, you should also not have
                                               // an element array buffer. But best is to use both buffers!
@@ -2749,7 +2749,7 @@ var LibraryGLEmulation = {
             GLImmediate.lastVertex = Math.max(GLImmediate.lastVertex, currIndex+1);
           }
         }
-        if (!GL.currElementArrayBuffer) {
+        if (!GLctx.currentElementArrayBufferBinding) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
 #if ASSERTIONS
           assert(numProvidedIndexes << 1 <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
@@ -2788,7 +2788,7 @@ var LibraryGLEmulation = {
       }
 
       if (emulatedElementArrayBuffer) {
-        GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
+        GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GLctx.currentElementArrayBufferBinding] || null);
       }
 
 #if !GL_UNSAFE_OPTS
@@ -3130,7 +3130,7 @@ var LibraryGLEmulation = {
   glVertexPointer: function(size, type, stride, pointer) {
     GLImmediate.setClientAttribute(GLImmediate.VERTEX, size, type, stride, pointer);
 #if GL_FFP_ONLY
-    if (GL.currArrayBuffer) {
+    if (GLctx.currentArrayBufferBinding) {
       GLctx.vertexAttribPointer(GLImmediate.VERTEX, size, type, false, stride, pointer);
     }
 #endif
@@ -3138,7 +3138,7 @@ var LibraryGLEmulation = {
   glTexCoordPointer: function(size, type, stride, pointer) {
     GLImmediate.setClientAttribute(GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture, size, type, stride, pointer);
 #if GL_FFP_ONLY
-    if (GL.currArrayBuffer) {
+    if (GLctx.currentArrayBufferBinding) {
       var loc = GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture;
       GLctx.vertexAttribPointer(loc, size, type, false, stride, pointer);
     }
@@ -3147,7 +3147,7 @@ var LibraryGLEmulation = {
   glNormalPointer: function(type, stride, pointer) {
     GLImmediate.setClientAttribute(GLImmediate.NORMAL, 3, type, stride, pointer);
 #if GL_FFP_ONLY
-    if (GL.currArrayBuffer) {
+    if (GLctx.currentArrayBufferBinding) {
       GLctx.vertexAttribPointer(GLImmediate.NORMAL, 3, type, true, stride, pointer);
     }
 #endif
@@ -3155,7 +3155,7 @@ var LibraryGLEmulation = {
   glColorPointer: function(size, type, stride, pointer) {
     GLImmediate.setClientAttribute(GLImmediate.COLOR, size, type, stride, pointer);
 #if GL_FFP_ONLY
-    if (GL.currArrayBuffer) {
+    if (GLctx.currentArrayBufferBinding) {
       GLctx.vertexAttribPointer(GLImmediate.COLOR, size, type, true, stride, pointer);
     }
 #endif
@@ -3176,7 +3176,7 @@ var LibraryGLEmulation = {
     }
     GLImmediate.prepareClientAttributes(count, false);
     GLImmediate.mode = mode;
-    if (!GL.currArrayBuffer) {
+    if (!GLctx.currentArrayBufferBinding) {
       GLImmediate.vertexData = {{{ makeHEAPView('F32', 'GLImmediate.vertexPointer', 'GLImmediate.vertexPointer + (first+count)*GLImmediate.stride') }}}; // XXX assuming float
       GLImmediate.firstVertex = first;
       GLImmediate.lastVertex = first + count;
@@ -3186,19 +3186,19 @@ var LibraryGLEmulation = {
   },
 
   glDrawElements: function(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
-    if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
+    if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GLctx.currentElementArrayBufferBinding) {
       GLctx.drawElements(mode, count, type, indices);
       return;
     }
 #if ASSERTIONS
-    if (!GL.currElementArrayBuffer) {
+    if (!GLctx.currentElementArrayBufferBinding) {
       assert(type == GLctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
     }
     console.log("DrawElements doesn't actually prepareClientAttributes properly.");
 #endif
     GLImmediate.prepareClientAttributes(count, false);
     GLImmediate.mode = mode;
-    if (!GL.currArrayBuffer) {
+    if (!GLctx.currentArrayBufferBinding) {
       GLImmediate.firstVertex = end ? start : HEAP8.length; // if we don't know the start, set an invalid value and we will calculate it later from the indices
       GLImmediate.lastVertex = end ? end+1 : 0;
       GLImmediate.vertexData = HEAPF32.subarray(GLImmediate.vertexPointer >> 2, end ? (GLImmediate.vertexPointer + (end+1)*GLImmediate.stride) >> 2 : undefined); // XXX assuming float

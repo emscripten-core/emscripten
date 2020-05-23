@@ -1759,7 +1759,7 @@ var LibraryGL = {
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
       if (id == GLctx.currentArrayBufferBinding) GLctx.currentArrayBufferBinding = 0;
-      if (id == GLctx.currElementArrayBufferBinding) GLctx.currElementArrayBufferBinding = 0;
+      if (id == GLctx.currentElementArrayBufferBinding) GLctx.currentElementArrayBufferBinding = 0;
 #endif
 #if MAX_WEBGL_VERSION >= 2
       if (id == GLctx.currentPixelPackBufferBinding) GLctx.currentPixelPackBufferBinding = 0;
@@ -2628,7 +2628,7 @@ var LibraryGL = {
       GLImmediate.lastArrayBuffer = buffer;
 #endif
     } else if (target == 0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/) {
-      GLctx.currElementArrayBufferBinding = buffer;
+      GLctx.currentElementArrayBufferBinding = buffer;
     }
 #endif
 
@@ -3188,7 +3188,7 @@ var LibraryGL = {
 #endif
 #if FULL_ES2 || LEGACY_GL_EMULATION
     var ibo = GLctx.getParameter(0x8895 /*ELEMENT_ARRAY_BUFFER_BINDING*/);
-    GLctx.currElementArrayBufferBinding = ibo ? (ibo.name | 0) : 0;
+    GLctx.currentElementArrayBufferBinding = ibo ? (ibo.name | 0) : 0;
 #endif
   },
 
@@ -3367,7 +3367,7 @@ var LibraryGL = {
   glDrawElements: function(mode, count, type, indices) {
 #if FULL_ES2
     var buf;
-    if (!GLctx.currElementArrayBufferBinding) {
+    if (!GLctx.currentElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
@@ -3387,7 +3387,7 @@ var LibraryGL = {
 #if FULL_ES2
     GL.postDrawHandleClientVertexAttribBindings(count);
 
-    if (!GLctx.currElementArrayBufferBinding) {
+    if (!GLctx.currentElementArrayBufferBinding) {
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, null);
     }
 #endif
