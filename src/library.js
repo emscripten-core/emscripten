@@ -4581,32 +4581,26 @@ LibraryManager.library = {
     return STACK_BASE;
   },
 
+  _readAsmConstArgsArray: '=[]',
+  $readAsmConstArgs__deps: ['_readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
-    if (!readAsmConstArgs.array) {
-      readAsmConstArgs.array = [];
-    }
-    var args = readAsmConstArgs.array;
-    args.length = 0;
+#if ASSERTIONS
+    // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
+    assert(Array.isArray( __readAsmConstArgsArray));
+    // Input buffer must be a pre-existing varargs buffer, so already aligned to 4 bytes.
+    assert(buf % 4 == 0);
+#endif
+    __readAsmConstArgsArray.length = 0;
     var ch;
+    buf >>= 2; // Align buf up front to index Int32Array (HEAP32)
     while (ch = HEAPU8[sigPtr++]) {
-      if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
-        buf = (buf + 7) & ~7;
-        args.push(HEAPF64[(buf >> 3)]);
-        buf += 8;
-      } else
 #if ASSERTIONS
-      if (ch === 105 /*'i'*/)
+      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
-      {
-        buf = (buf + 3) & ~3;
-        args.push(HEAP32[(buf >> 2)]);
-        buf += 4;
-      }
-#if ASSERTIONS
-      else abort("unexpected char in asm const signature " + ch);
-#endif
+      __readAsmConstArgsArray.push(ch < 105 ? HEAPF64[++buf >> 1] : HEAP32[buf]);
+      ++buf;
     }
-    return args;
+    return __readAsmConstArgsArray;
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS
