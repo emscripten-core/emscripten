@@ -133,7 +133,9 @@ var LibraryGL = {
     lastError: 0,
 #endif
     buffers: [],
+#if FULL_ES3
     mappedBuffers: {},
+#endif
     programs: [],
     framebuffers: [],
     renderbuffers: [],
