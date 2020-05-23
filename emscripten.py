@@ -1695,16 +1695,8 @@ def create_the_global(metadata):
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
-RUNTIME_ASSERTIONS = '''
-  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');'''
-
-
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
   receiving = ''
-  runtime_assertions = ''
-  if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
-    runtime_assertions = RUNTIME_ASSERTIONS
 
   module_exports = exported_implemented_functions + function_tables(function_table_data)
   shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
@@ -1716,20 +1708,6 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
     # so we need to support delayed assignment.
     delay_assignment = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
     if not delay_assignment:
-      if runtime_assertions:
-        # assert on the runtime being in a valid state when calling into compiled code. The only
-        # exceptions are some support code.
-        receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
-        wrappers = []
-        for name in receiving_functions:
-          wrappers.append('''\
-  var real_%(name)s = asm["%(name)s"];
-  asm["%(name)s"] = function() {%(runtime_assertions)s
-    return real_%(name)s.apply(null, arguments);
-  };
-  ''' % {'name': name, 'runtime_assertions': runtime_assertions})
-        receiving += '\n'.join(wrappers)
-
       imported_exports = [s for s in module_exports if s not in initializers]
 
       if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
@@ -1746,19 +1724,10 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
           # var _main = asm["_main"];
           receiving += '\n'.join(['var ' + s + ' = asm["' + s + '"];' for s in imported_exports]) + '\n'
         else:
-          receiving += '\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"];' for s in module_exports]) + '\n'
+          receiving += '\n'.join(make_export_wrappers(module_exports, delay_assignment))
     else:
       receiving += 'Module["asm"] = asm;\n'
-      wrappers = []
-      for name in module_exports:
-        wrappers.append('''\
-/** @type {function(...*):?}\n*/
-var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
-  return Module["asm"]["%(name)s"].apply(null, arguments)
-};
-''' % {'name': name, 'runtime_assertions': runtime_assertions})
-
-      receiving += '\n'.join(wrappers)
+      receiving += '\n'.join(make_export_wrappers(module_exports, delay_assignment))
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
     for table in function_table_data.values():
@@ -2584,6 +2553,43 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
+def make_export_wrappers(exports, delay_assignment):
+  wrappers = []
+  for name in exports:
+    if shared.Settings.WASM_BACKEND:
+      mangled = asmjs_mangle(name)
+    else:
+      mangled = name
+    if shared.Settings.ASSERTIONS:
+      # With assertions enabled we create a wrapper that are calls get routed through, for
+      # the lifetime of the program.
+      if delay_assignment:
+        wrappers.append('''\
+/** @type {function(...*):?} */
+var %(mangled)s = Module["%(mangled)s"] = createExportWrapper("%(name)s");
+''' % {'mangled': mangled, 'name': name})
+      else:
+        wrappers.append('''\
+/** @type {function(...*):?} */
+var %(mangled)s = Module["%(mangled)s"] = createExportWrapper("%(name)s", asm);
+''' % {'mangled': mangled, 'name': name})
+    elif delay_assignment:
+      # With assertions disabled the wrapper will replace the global var and Module var on
+      # first use.
+      wrappers.append('''\
+/** @type {function(...*):?} */
+var %(mangled)s = Module["%(mangled)s"] = function() {
+  return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(name)s"]).apply(null, arguments);
+};
+''' % {'mangled': mangled, 'name': name})
+    else:
+      wrappers.append('''\
+/** @type {function(...*):?} */
+var %(mangled)s = Module["%(mangled)s"] = asm["%(name)s"]
+''' % {'mangled': mangled, 'name': name})
+  return wrappers
+
+
 def create_receiving_wasm(exports, initializers):
   # When not declaring asm exports this section is empty and we instead programatically export
   # symbols on the global object by calling exportAsmFunctions after initialization
@@ -2593,24 +2599,11 @@ def create_receiving_wasm(exports, initializers):
   exports_that_are_not_initializers = [x for x in exports if x not in initializers]
 
   receiving = []
-  runtime_assertions = ''
-  if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
-    runtime_assertions = RUNTIME_ASSERTIONS
 
   # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
   # so we need to support delayed assignment.
   delay_assignment = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
   if not delay_assignment:
-    if runtime_assertions:
-      # assert on the runtime being in a valid state when calling into compiled code. The only
-      # exceptions are some support code
-      for e in exports:
-        receiving.append('''\
-var real_%(mangled)s = asm["%(e)s"];
-asm["%(e)s"] = function() {%(assertions)s
-  return real_%(mangled)s.apply(null, arguments);
-};
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
     if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
       # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
       # var _main;
@@ -2624,34 +2617,19 @@ asm["%(e)s"] = function() {%(assertions)s
         # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
         # var _main = asm["_main"];
         if shared.Settings.USE_PTHREADS and shared.Settings.MODULARIZE:
-          # TODO: As a temp solution, multithreaded MODULARIZEd MINIMAL_RUNTIME builds export all symbols like regular runtime does.
-          # Fix this by migrating worker.js code to reside inside the Module so it is in the same scope as the rest of the JS code, or
-          # by defining an export syntax to MINIMAL_RUNTIME that multithreaded MODULARIZEd builds can export on.
+          # TODO: As a temp solution, multithreaded MODULARIZED MINIMAL_RUNTIME builds export all
+          # symbols like regular runtime does.
+          # Fix this by migrating worker.js code to reside inside the Module so it is in the same
+          # scope as the rest of the JS code, or by defining an export syntax to MINIMAL_RUNTIME
+          # that multithreaded MODULARIZEd builds can export on.
           receiving += [asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports_that_are_not_initializers]
         else:
           receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
       else:
-        receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
+        receiving += make_export_wrappers(exports, delay_assignment)
   else:
     receiving.append('Module["asm"] = asm;')
-    for e in exports:
-      if runtime_assertions:
-        # With assertions on, don't hot-swap implementation.
-        receiving.append('''\
-/** @type {function(...*):?} */
-var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
-  return Module["asm"]["%(e)s"].apply(null, arguments)
-};
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
-      else:
-        # With assertions off, hot-swap implementation to avoid garbage via
-        # arguments keyword.
-        receiving.append('''\
-/** @type {function(...*):?} */
-var %(mangled)s = Module["%(mangled)s"] = function() {
-  return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
-};
-''' % {'mangled': asmjs_mangle(e), 'e': e})
+    receiving += make_export_wrappers(exports, delay_assignment)
 
   return '\n'.join(receiving) + '\n'
 
