@@ -474,7 +474,11 @@ var LibraryJSEvents = {
     // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
       // https://github.com/emscripten-core/emscripten/pull/4997
     // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
-    if (e.type !== 'wheel' && e.type !== 'mousewheel') {
+    if (e.type !== 'wheel'
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
+     && e.type !== 'mousewheel'
+#endif
+     ) {
       JSEvents.previousScreenX = e.screenX;
       JSEvents.previousScreenY = e.screenY;
     }
