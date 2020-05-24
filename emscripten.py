@@ -497,9 +497,9 @@ def create_global_initializer(initializers):
   if 'globalCtors' not in global_initializer_funcs(initializers):
     return ''
 
-  global_initializer = '''  function globalCtors() {
-    %s
-  }''' % '\n    '.join(i + '();' for i in initializers)
+  global_initializer = '''function globalCtors() {
+  %s
+}''' % '\n    '.join(i + '();' for i in initializers)
 
   return global_initializer
 
