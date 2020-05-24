@@ -6,6 +6,10 @@
 
 var LibraryJSEvents = {
   $JSEvents: {
+
+/* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
+   to save code size.
+   (but still documented here to keep track of what is supposed to be present)
     // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
     keyEvent: 0,
     mouseEvent: 0,
@@ -31,6 +35,14 @@ var LibraryJSEvents = {
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
+
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    // If positive, we are currently executing in a JS event handler.
+    inEventHandler: 0,
+    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
+    currentEventHandler: null,
+#endif
+*/
 
     removeAllEventListeners: function() {
       for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
@@ -109,11 +121,6 @@ var LibraryJSEvents = {
         call.targetFunction.apply(null, call.argsList);
       }
     },
-
-    // If positive, we are currently executing in a JS event handler.
-    inEventHandler: 0,
-    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
-    currentEventHandler: null,
 #endif
 
     // Stores objects representing each currently registered JS event handler.
