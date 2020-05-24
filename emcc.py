@@ -46,6 +46,8 @@ from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
+from tools import wasm2c
+
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
@@ -3342,7 +3344,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shared.Building.emit_debug_on_side(wasm_binary_target, dwarf_target)
 
   if shared.Settings.WASM2C:
-    shared.Building.do_wasm2c(wasm_binary_target)
+    wasm2c.do_wasm2c(wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
