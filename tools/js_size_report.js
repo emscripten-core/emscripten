@@ -6,23 +6,33 @@ var path = require('path');
 function calculateLineStartPositions(filename) {
   var fileSizeInBytes = fs.statSync(filename)['size'];
   var f = fs.readFileSync(filename);
-  console.log('File ' + filename + ', size ' + fileSizeInBytes);
+  //console.log('File ' + filename + ', size ' + fileSizeInBytes);
   var lineStartPositions = [0];
   for(var i = 0; i < fileSizeInBytes; ++i) {
     var byte = f.readUInt8(i);
-    console.log(byte);
     if (byte == 0x0A) {
       lineStartPositions.push(i+1);
     }
   }
-  console.dir(lineStartPositions);
+//  console.dir(lineStartPositions);
   return lineStartPositions;
 }
 
 function mapLineColTo1DPos(line, col, lineStartPositions) {
-  console.log(line);
+//  console.log(line);
   assert(line >= 0);
-  assert(line < lineStartPositions.length);
+  if (line >= lineStartPositions.length) {
+    console.error('Input file does not have a line:col ' + (line+1) + ':' + (col+1) + ', but only ' + lineStartPositions.length + ' lines!');
+    line = lineStartPositions.length - 1;
+  }
+
+  if (line < lineStartPositions.length - 1) {
+    var numColumnsOnThisLine = lineStartPositions[line+1] - lineStartPositions[line];
+    if (col >= numColumnsOnThisLine) {
+      console.error('Input file does not have a line:col ' + (line+1) + ':' + (col+1) + ', but given line only has ' + numColumnsOnThisLine + ' columns!');
+      col = numColumnsOnThisLine - 1;
+    }
+  }
   return lineStartPositions[line] + col;
 }
 
@@ -123,15 +133,25 @@ function getSizeExcludingChildren(node) {
   return totalSize;
 }
 
-function getNodeName(node) {
-  if (node.type == 'ExpressionStatement' && node.expression.type == 'AssignmentExpression'  && node.expression.left.type == 'Identifier') {
+function getNodeNameExact(node) {
+  assert(node);
+  assert(!Array.isArray(node));
+  if (['Identifier'].indexOf(node.type) != -1) {
+    assert(node.name && typeof node.name === 'string');
+    return node.name;
+  }
+}
+
+function peekAheadGetNodeName(node) {
+  if (node.type == 'ExpressionStatement' && node.expression.type == 'AssignmentExpression'
+    && node.expression.left.type == 'Identifier') {
     return node.expression.left.name;
   }
   if (node.type == 'Property') {
     return node.key.name || node.value.name;
   }
   if (node.type == 'FunctionExpression' || node.type == 'FunctionDeclaration') {
-    return node.id.name;
+    return node.id && node.id.name;
   }
   if (node.type == 'VariableDeclaration') {
     return node.declarations[0].id.name;
@@ -174,13 +194,13 @@ var sourceMap;
 var sourceLineStartPositions;
 var fileSizeInBytes;
 
-function demangleName(node, functionName) {
+function unminifyName(node, functionName, sourceMap) {
   var s = 0;
   var e = sourceMap.length-1;
-  console.log('a');
+//  console.log('a');
   while(s < e) {
     var mid = ((s+e)/2)|0;
-    console.log('s: ' + s + ', e: ' + e + ', mid: ' + mid + ', node.start: ' + node.start + ', midpos: ' + sourceMap[mid][0]);
+//    console.log('s: ' + s + ', e: ' + e + ', mid: ' + mid + ', node.start: ' + node.start + ', midpos: ' + sourceMap[mid][0]);
     if (sourceMap[mid][0] < node.start) {
       s = mid+1;
     } else if (sourceMap[mid][0] > node.start) {
@@ -189,20 +209,23 @@ function demangleName(node, functionName) {
       return sourceMap[mid][4];
     } else {
       console.dir(sourceMap[mid]);
+      console.dir(node);
+      console.dir(typeof node);
       assert(false);
     }
   }
-  console.log('b');
+//  console.log('b');
 //  console.dir(sourceMap);
 //  console.dir(sourceMap[s]);
-  return sourceMap[s][4];
+//  return null;
+//  return sourceMap[s][4];
 }
 
 function isLargeEnoughNodeToExpand(node) {
   return nodeSize(node) >= 0.10*fileSizeInBytes;
 }
 
-function collectNodeSizes(nodeArray, parentPrefix) {
+function findListOfChildNodes(nodeArray) {
   while (!Array.isArray(nodeArray)) {
     if (nodeArray.type == 'BlockStatement') nodeArray = nodeArray.body;
     if (nodeArray.type == 'FunctionExpression') {
@@ -215,13 +238,18 @@ function collectNodeSizes(nodeArray, parentPrefix) {
     console.dir(nodeArray);
     console.log(inputFile.substring(nodeArray.start, nodeArray.end));
     console.log(inputFile.substring(nodeArray.start - 50, nodeArray.end + 50));
+    assert(false);
   }
-  assert(Array.isArray(nodeArray));
+  return nodeArray;
+}
+
+function collectNodeSizes(nodeOrNodeArray, parentPrefix) {
+  var childNodes = findListOfChildNodes(nodeOrNodeArray);
   var sizes = {};
-  for(var i in nodeArray) {
-    var node = nodeArray[i];
+  for(var i in childNodes) {
+    var node = childNodes[i];
     var childSize = nodeSize(node);
-    var childName = getNodeName(node);
+    var childName = peekAheadGetNodeName(node);
     var childType = null;
 
     var childSizes = null;
@@ -277,7 +305,7 @@ function collectNodeSizes(nodeArray, parentPrefix) {
 
     // Try to demangle the name with source maps.
     if (sourceMap && (childType == 'function' || childType == 'var')) {
-      var demangledName = demangleName(node, childName);
+      var demangledName = demangleName(node, childName, sourceMap);
       if (demangledName) {
         childName = childName + ' (' + demangledName + ')';
       }
@@ -294,6 +322,206 @@ function collectNodeSizes(nodeArray, parentPrefix) {
     mergeKeyValues(sizes, childSizes);
   }
   return sizes;
+}
+
+function getChildNodes(node) {
+  assert(node);
+  assert(!Array.isArray(node));
+  //if (Array.isArray(node)) return node;
+  var children = [];
+  function addChild(child) {
+    assert(child);
+    assert(!Array.isArray(child));
+    children.push(child);
+  }
+  function maybeChild(child) {
+    if (child) {
+      assert(!Array.isArray(child));
+      children.push(child);
+    }
+  }
+  function addChildArray(childArray) {
+    assert(Array.isArray(childArray));
+    children = children.concat(childArray);
+  }
+
+  if (['BlockStatement', 'Program'].indexOf(node.type) != -1) {
+    addChildArray(node.body);
+  }
+  else if (['IfStatement'].indexOf(node.type) != -1) {
+    addChild(node.test);
+    addChild(node.consequent);
+    maybeChild(node.alternate);
+  }
+  else if (['BinaryStatement', 'BinaryExpression', 'LogicalExpression', 'AssignmentExpression'].indexOf(node.type) != -1) {
+    addChild(node.left);
+    addChild(node.right);
+  }
+  else if (['MemberExpression'].indexOf(node.type) != -1) {
+    addChild(node.object);
+    addChild(node.property);
+  }
+  else if (['Property'].indexOf(node.type) != -1) {
+    addChild(node.key);
+    addChild(node.value);
+  }
+  else if (['TryStatement'].indexOf(node.type) != -1) {
+    addChild(node.block);
+    addChild(node.handler);
+  }
+  else if (['CatchClause'].indexOf(node.type) != -1) {
+    addChild(node.param);
+    addChild(node.body);
+  }
+  else if (['FunctionDeclaration'].indexOf(node.type) != -1) {
+    addChild(node.id);
+    addChild(node.body);
+    addChildArray(node.params);
+  }
+  else if (['FunctionExpression'].indexOf(node.type) != -1) {
+    maybeChild(node.id);
+    addChild(node.body);
+    addChildArray(node.params);
+  }
+  else if (['ThrowStatement', 'ReturnStatement'].indexOf(node.type) != -1) {
+    maybeChild(node.argument);
+  }
+  else if (['UnaryExpression', 'UpdateExpression'].indexOf(node.type) != -1) {
+    addChild(node.argument);
+  }
+  else if (['CallExpression', 'NewExpression'].indexOf(node.type) != -1) {
+    addChild(node.callee);
+    addChildArray(node.arguments);
+  }
+  else if (['VariableDeclaration'].indexOf(node.type) != -1) {
+    addChildArray(node.declarations);
+  }
+  else if (['ArrayExpression'].indexOf(node.type) != -1) {
+    addChildArray(node.elements);
+  }
+  else if (['VariableDeclarator'].indexOf(node.type) != -1) {
+    addChild(node.id);
+    maybeChild(node.init);
+  }
+  else if (['ObjectExpression'].indexOf(node.type) != -1) {
+    addChildArray(node.properties);
+  }
+  else if (['ExpressionStatement'].indexOf(node.type) != -1) {
+    addChild(node.expression);
+  }
+  else if (['BreakStatement'].indexOf(node.type) != -1) {
+    maybeChild(node.label);
+  }
+  else if (['LabeledStatement'].indexOf(node.type) != -1) {
+    addChild(node.body);
+    addChild(node.label);
+  }
+  else if (['SwitchStatement'].indexOf(node.type) != -1) {
+    addChild(node.discriminant);
+    addChildArray(node.cases);
+  }
+  else if (['SwitchCase'].indexOf(node.type) != -1) {
+    addChildArray(node.consequent);
+    maybeChild(node.test);
+  }
+  else if (['SequenceExpression'].indexOf(node.type) != -1) {
+    addChildArray(node.expressions);
+  }
+  else if (['ConditionalExpression'].indexOf(node.type) != -1) {
+    addChild(node.test);
+    addChild(node.consequent);
+    addChild(node.alternate);
+  }
+  else if (['ForStatement'].indexOf(node.type) != -1) {
+    maybeChild(node.init);
+    maybeChild(node.test);
+    maybeChild(node.update);
+    addChild(node.body);
+  }
+  else if (['ForInStatement'].indexOf(node.type) != -1) {
+    addChild(node.left);
+    addChild(node.right);
+    addChild(node.body);
+  }
+  else if (['Identifier', 'Literal', 'ThisExpression', 'EmptyStatement'].indexOf(node.type) != -1) {
+    // no children
+  } else {
+    console.error('----NODE----');
+    console.error(node);
+    console.error('----ENDNODE----');
+    assert(false);
+  }
+  return children;
+}
+
+function walkNodesForSymbolMap(nodeArray, minifiedParentPrefix, unminifiedParentPrefix, sourceMap) {
+  var symbolMap = {};
+  //var childNodes = findListOfChildNodes(nodeOrNodeArray);
+  //var childNodes = getChildNodes(nodeOrNodeArray);
+  assert(Array.isArray(nodeArray));
+  for(var i in nodeArray) {
+    var node = nodeArray[i];
+    var minifiedName = getNodeNameExact(node);
+
+    // Try to demangle the name with source map.
+    var unminifiedName = unminifyName(node, minifiedName, sourceMap);
+
+    if (minifiedName && unminifiedName && unminifiedName != minifiedName) {
+//      console.log(minifiedParentPrefix + minifiedName + ':' + unminifiedParentPrefix + unminifiedName);
+      symbolMap[minifiedParentPrefix + minifiedName] = unminifiedParentPrefix + unminifiedName;
+    }
+
+    var childNodeOrNodeArray = null;
+/*
+    if (node.type == 'ExpressionStatement' && node.expression.type == 'AssignmentExpression'
+      && (node.expression.right.type == 'FunctionExpression' || node.expression.right.type == 'CallExpression')) {
+      var target = node.expression.right.type == 'FunctionExpression' ? node.expression.right.body : node.expression.right.callee;
+      if (target.type == 'BlockStatement') {
+        childNodeOrNodeArray = target;
+      }
+    } else if (node.type == 'Property') {
+      if (node.value.type == 'FunctionExpression') {
+        childNodeOrNodeArray = node.value.body;
+      }
+    } else if (node.type == 'VariableDeclaration') {
+      if (node.declarations[0].init && node.declarations[0].init.type == 'FunctionExpression') {
+        childNodeOrNodeArray = node.declarations[0].init.body;
+      } else if (node.declarations[0].init && node.declarations[0].init.type == 'CallExpression' && node.declarations[0].init.callee.type == 'FunctionExpression') {
+        childNodeOrNodeArray = node.declarations[0].init.callee;
+      } else if (node.declarations[0].init && node.declarations[0].init.type == 'ObjectExpression') {
+        childNodeOrNodeArray = node.declarations[0].init.properties;
+        parentChildDelimiter = '.';
+      }
+    } else if (node.type == 'FunctionExpression' || node.type == 'FunctionDeclaration') {
+        childNodeOrNodeArray = node.body;
+    }
+*/
+    var childNodeArray = getChildNodes(node);
+    if (childNodeArray) {
+      var minifiedChildPrefix = minifiedName ? minifiedParentPrefix + minifiedName + '/' : minifiedParentPrefix;
+      var unminifiedChildPrefix = minifiedName && unminifiedName ? unminifiedParentPrefix + unminifiedName + '/' : unminifiedParentPrefix;
+      if (node.type == 'MemberExpression') {
+        minifiedChildPrefix[minifiedChildPrefix-1] = '.';
+        unminifiedChildPrefix[unminifiedChildPrefix-1] = '.';
+      }
+      mergeKeyValues(symbolMap, walkNodesForSymbolMap(childNodeArray, minifiedChildPrefix, unminifiedChildPrefix, sourceMap));
+    }
+  }
+  return symbolMap;
+}
+
+function createSymbolMapFromSourceMap(sourceMap, sourceFile) {
+  var lineStartPositions = calculateLineStartPositions(sourceFile);
+//  console.dir(lineStartPositions);
+  var sourceMap = readSourceMap(sourceMap, lineStartPositions);
+//  console.dir(sourceMap);
+  sourceFile = fs.readFileSync(sourceFile).toString();
+  var ast = acorn.parse(sourceFile, { ecmaVersion: 6 });
+  var symbolMap = walkNodesForSymbolMap(ast.body, '', '', sourceMap);
+  //console.dir(symbolMap);
+  for(var i in symbolMap) {
+    console.log(i + ':' + symbolMap[i]);
+  }
 }
 
 function extractJavaScriptCodeSize(sourceFile) {
@@ -422,20 +650,35 @@ function extractWasmFunctionNames(wasm, cursor, sectionEndCursor) {
   return Object.keys(functionNames).length > 0 ? functionNames : null;
 }
 
-function labelWasmFunctionsWithNames(sizes, wasmFunctionNames, numImports) {
-  var labeledSizes = {};
+function renumberFunctionNames(sizes, numImports) {
+  var renumberedSymbols = {};
   for(var name in sizes) {
     var symbol = sizes[name];
     if (symbol.type == 'function') {
-      var functionNameIndex = (name|0) + numImports;
-      var wasmName = wasmFunctionNames[functionNameIndex] || name;
-      labeledSizes[wasmName] = sizes[name];
-      labeledSizes[wasmName].name = wasmName;
+      var renumberedName = (name|0) + numImports;
+      renumberedSymbols[renumberedName] = sizes[name];
+      renumberedSymbols[renumberedName].name = renumberedName;
     } else {
-      labeledSizes[name] = symbol;
+      renumberedSymbols[name] = symbol;
     }
   }
-  return labeledSizes;
+  return renumberedSymbols;
+}
+
+function labelWasmFunctionsWithNames(sizes, wasmFunctionNames) {
+  var labeledSymbols = {};
+  for(var name in sizes) {
+    var symbol = sizes[name];
+    if (symbol.type == 'function') {
+      var functionNameIndex = (name|0);
+      var wasmName = wasmFunctionNames[functionNameIndex] || name;
+      labeledSymbols[wasmName] = sizes[name];
+      labeledSymbols[wasmName].name = wasmName;
+    } else {
+      labeledSymbols[name] = symbol;
+    }
+  }
+  return labeledSymbols;
 }
 
 function extractNumWasmFunctionImports(wasm, cursor) {
@@ -520,8 +763,12 @@ function extractWasmCodeSize(sourceFile) {
     throw 'Failed to parse sections in Wasm file!';
   }
 
+  if (numImports > 0) {
+    // Reorder wasm function names list to account for imports
+    sizes = renumberFunctionNames(sizes, numImports);
+  }
   if (wasmFunctionNames) {
-    sizes = labelWasmFunctionsWithNames(sizes, wasmFunctionNames, numImports);
+    sizes = labelWasmFunctionsWithNames(sizes, wasmFunctionNames);
   }
 
   if (unaccountedBytes > 0) {
@@ -540,16 +787,28 @@ function extractWasmCodeSize(sourceFile) {
 function readSymbolMap(filename) {
   var symbolMap = {};
 
+  function splitInTwo(s, delim) {
+    var idx = s.indexOf(delim);
+    return [s.substr(0, idx), s.substr(idx+1)];
+  }
   var symbolFile = fs.readFileSync(filename).toString();
   var symbols = symbolFile.split('\n');
   for(var i in symbols) {
-    var mangledUnmangled = symbols[i].split(':');
-    symbolMap[mangledUnmangled[0]] = mangledUnmangled[1];
+    var [mangled, unmangled] = splitInTwo(symbols[i], ':');
+    symbolMap[mangled] = unmangled;
   }
   return symbolMap;
 }
 
 var sources = process['argv'].slice(2);
+
+function readBool(param) {
+  var idx = sources.indexOf(param);
+  if (idx != -1) {
+    sources.splice(idx, 1);
+    return true;
+  }
+}
 
 function readParam(param) {
   var idx = sources.indexOf(param);
@@ -561,16 +820,10 @@ function readParam(param) {
 }
 
 var symbolMap = readParam('--symbols');
-var sourceMap = readParam('--sourceMap');
+var sourceMap = readParam('--createSymbolMapFromSourceMap');
 
 if (symbolMap) {
   symbolMap = readSymbolMap(symbolMap);
-}
-
-if (sourceMap) {
-  var mangledFileLineStartPositions = calculateLineStartPositions(sources[0]);
-  console.dir(mangledFileLineStartPositions);
-  sourceMap = readSourceMap(sourceMap, mangledFileLineStartPositions);
 }
 
 var codeSizes = {};
@@ -579,6 +832,10 @@ for(var s in sources) {
   var src = sources[s];
   var sizes;
   if (src.toLowerCase().endsWith('.js')) {
+    if (sourceMap) {
+      symbolMap = createSymbolMapFromSourceMap(sourceMap, src);
+      return;
+    }
 	  sizes = extractJavaScriptCodeSize(src);
     sourceMap = null; // Assume --sourceMap applies to the first .js file input
   } else if (src.endsWith('.wasm')) {
