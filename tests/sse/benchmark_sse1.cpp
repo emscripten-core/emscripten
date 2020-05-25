@@ -12,13 +12,13 @@ int main()
 {
 	printf ("{ \"workload\": %u, \"results\": [\n", N);
 	assert(N%4 == 0); // Don't care about the tail for now.
-	float *src = alloc_float_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
+	float *src = alloc_float_buffer();
 	for(int i = 0; i < N; ++i)
 		src[i] = 1.0f + (float)rand() / (float)RAND_MAX;
-	float *src2 = alloc_float_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
+	float *src2 = alloc_float_buffer();
 	for(int i = 0; i < N; ++i)
 		src2[i] = 1.0f + (float)rand() / (float)RAND_MAX;
-	float *dst = alloc_float_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
+	float *dst = alloc_float_buffer();
 
 	float scalarTime;
 	SETCHART("load");

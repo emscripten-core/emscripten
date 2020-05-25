@@ -57,7 +57,6 @@ bool comma=false;
 		double nsecs = (double)ticks * 1000.0 * 1000.0 * 1000.0 / ticks_per_sec() / N; \
 		printf("%s{ \"chart\": \"%s\", \"category\": \"%s\", \"scalar\": %f, \"simd\": %f }\n", comma?",":"", chartName, name, scalarTime, nsecs); \
 		comma = true; \
-		/*printf(name ": %f msecs (%.3fx of scalar)%s\n", msecs, msecs/scalarTime);*/ \
 		printf("%s", (result) != 0 ? "Error!" : ""); \
 	} while(0)
 

@@ -128,7 +128,9 @@ _mm_prefetch(const void *__p, int __i)
 static __inline__ void __attribute__((__always_inline__))
 _mm_sfence(void)
 {
-  __sync_synchronize(); // Emscripten/SharedArrayBuffer has only a full barrier instruction, which gives a stronger guarantee.
+  // Wasm/SharedArrayBuffer memory model is sequentially consistent.
+  // Perhaps a future version of the spec can provide a related fence.
+  __sync_synchronize();
 }
 
 #define _MM_SHUFFLE(w, z, y, x) (((w) << 6) | ((z) << 4) | ((y) << 2) | (x))
@@ -194,6 +196,8 @@ _mm_storeu_si64(void *__p, __m128i __a)
 static __inline__ int __attribute__((__always_inline__))
 _mm_movemask_ps(__m128 __a)
 {
+  // TODO: Use .bitmask instruction when available:
+  // https://github.com/WebAssembly/simd/pull/201
   union {
     __m128 __v;
     unsigned int __x[4];
