@@ -62,6 +62,7 @@ var LibraryManager = {
     // Core system libraries (always linked against)
     var libraries = [
       'library.js',
+      'library_stack.js',
       'library_formatString.js',
       'library_math.js',
       'library_path.js',
@@ -161,7 +162,12 @@ var LibraryManager = {
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) {
-      libraries = ['library_formatString.js', 'library_stack_trace.js'];
+      libraries = [
+        'library_bootstrap.js',
+        'library_stack.js',
+        'library_formatString.js',
+        'library_stack_trace.js'
+      ];
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times
@@ -480,9 +486,6 @@ function exportRuntime() {
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
-    if (!MINIMAL_RUNTIME) {
-      runtimeElements.push('abortStackOverflow');
-    }
   }
 
   if (USE_PTHREADS) {

@@ -170,13 +170,18 @@ def parse_fastcomp_output(backend_output, DEBUG):
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
 
-  # In MINIMAL_RUNTIME stackSave() and stackRestore are JS library functions. If LLVM backend generated
+  # stackSave() and stackRestore() are JS library functions. If fastcomp generated
   # calls to invoke_*() functions that save and restore the stack, we must include the stack functions
-  # explicitly into the build. (In traditional runtime the stack functions are always present, so this
-  # tracking is not needed)
-  if shared.Settings.MINIMAL_RUNTIME and (len(metadata['invokeFuncs']) > 0 or shared.Settings.LINKABLE):
-    shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore']
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
+  # explicitly into the build.
+  # In traditional runtime we always require these functions.  For example stackAlloc is used
+  # allocate argv on the stack before calling main.
+  if shared.Settings.MINIMAL_RUNTIME:
+    if len(metadata['invokeFuncs']) > 0 or shared.Settings.LINKABLE:
+      shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
+  else:
+    shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore', 'stackAlloc']
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore', '$stackAlloc']
 
   return funcs, metadata, mem_init
 
@@ -492,9 +497,9 @@ def create_global_initializer(initializers):
   if 'globalCtors' not in global_initializer_funcs(initializers):
     return ''
 
-  global_initializer = '''  function globalCtors() {
-    %s
-  }''' % '\n    '.join(i + '();' for i in initializers)
+  global_initializer = '''function globalCtors() {
+  %s
+}''' % '\n    '.join(i + '();' for i in initializers)
 
   return global_initializer
 
@@ -948,8 +953,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
 
   if shared.Settings.ALLOW_MEMORY_GROWTH:
     funcs.append('_emscripten_replace_memory')
-  if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
   if shared.Settings.USE_PTHREADS:
     funcs += ['asmJsEstablishStackFrame']
 
@@ -1597,7 +1600,7 @@ def setup_function_pointers(function_table_sigs):
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
   basic_funcs = shared.Settings.RUNTIME_FUNCS_TO_IMPORT
-  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.MINIMAL_RUNTIME:
+  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.MINIMAL_RUNTIME and shared.Settings.SIDE_MODULE:
     basic_funcs += ['abortStackOverflow']
   if shared.Settings.SAFE_HEAP:
     if asm_safe_heap():
@@ -1638,8 +1641,7 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
 
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata):
-  asm_runtime_funcs = create_asm_runtime_funcs()
-  all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data)
+  all_exported = exported_implemented_functions + function_tables(function_table_data)
   # In asm.js + emulated function pointers, export all the table because we use
   # JS to add the asm.js module's functions to the table (which is external
   # in this mode). In wasm, we don't need that since wasm modules can
@@ -1662,13 +1664,6 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
     for k, v in metadata['functionPointers'].items():
       exports.append(quote('fp$' + str(k)) + ': ' + str(v))
   return '{ ' + ', '.join(exports) + ' }'
-
-
-def create_asm_runtime_funcs():
-  funcs = []
-  if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
-  return funcs
 
 
 def function_tables(function_table_data):
@@ -1834,33 +1829,7 @@ for (var named in NAMED_GLOBALS) {
 
 
 def create_runtime_funcs_asmjs(exports, metadata):
-  if shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2:
-    stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
-  else:
-    stack_check = ''
-
-  funcs = ['''
-function stackAlloc(size) {
-  size = size|0;
-  var ret = 0;
-  ret = STACKTOP;
-  STACKTOP = (STACKTOP + size)|0;
-  STACKTOP = (STACKTOP + 15)&-16;
-  %s
-  return ret|0;
-}
-function stackSave() {
-  return STACKTOP|0;
-}
-function stackRestore(top) {
-  top = top|0;
-  STACKTOP = top;
-}
-''' % stack_check]
-
-  if shared.Settings.MINIMAL_RUNTIME:
-    # MINIMAL_RUNTIME moves stack functions to library.
-    funcs = []
+  funcs = []
 
   if shared.Settings.USE_PTHREADS:
     funcs.append('''
