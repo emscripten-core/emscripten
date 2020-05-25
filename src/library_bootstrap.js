@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-// When bootstrapping struct info, we can't use the full libray because
+// When bootstrapping struct info, we can't use the full library because
 // it itself depends on the struct info information.
 
 #if !BOOTSTRAPPING_STRUCT_INFO
-assert(false)
+assert(false, "library_bootstrap.js only designed for use with BOOTSTRAPPING_STRUCT_INFO")
 #endif
 
 assert(!LibraryManager.library);

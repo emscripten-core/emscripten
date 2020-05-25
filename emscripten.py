@@ -173,8 +173,8 @@ def parse_fastcomp_output(backend_output, DEBUG):
   # stackSave() and stackRestore() are JS library functions. If fastcomp generated
   # calls to invoke_*() functions that save and restore the stack, we must include the stack functions
   # explicitly into the build.
-  # In traditional runtime we alwasy require these functions.  For example stackAlloc is used
-  # allocate argv on the stack before calling main>
+  # In traditional runtime we always require these functions.  For example stackAlloc is used
+  # allocate argv on the stack before calling main.
   if shared.Settings.MINIMAL_RUNTIME:
     if len(metadata['invokeFuncs']) > 0 or shared.Settings.LINKABLE:
       shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore']
