@@ -6,7 +6,8 @@
 import os
 import re
 
-from tools.shared import Settings, path_from_root, unsuffixed, NODE_JS, run_process
+from tools.shared import Settings, path_from_root, unsuffixed, NODE_JS, run_process, exit_with_error
+
 
 def do_wasm2c(infile):
   assert Settings.STANDALONE_WASM
