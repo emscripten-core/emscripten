@@ -23,6 +23,19 @@ typedef float __m64 __attribute__((__vector_size__(8), __aligned__(8)));
 typedef __f32x4 __m128;
 typedef __i32x4 __m128i;
 
+#define __f32x4_shuffle(__a, __b, __c0, __c1, __c2, __c3)                   \
+  ((v128_t)(__builtin_shufflevector((__f32x4)(__a), (__f32x4)(__b), __c0,   \
+                                    __c1, __c2, __c3)))
+
+// This is defined as a macro because __builtin_shufflevector requires its
+// mask argument to be a compile-time constant.
+#define _mm_shuffle_ps(__a, __b, __mask) __extension__ ({ \
+  ((__m128)__f32x4_shuffle(__a, __b, \
+                           (((__mask) >> 0) & 0x3) + 0, \
+                           (((__mask) >> 2) & 0x3) + 0, \
+                           (((__mask) >> 4) & 0x3) + 4, \
+                           (((__mask) >> 6) & 0x3) + 4)); })
+
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_set_ps(float __z, float __y, float __x, float __w)
 {
@@ -64,20 +77,20 @@ _mm_load_ps(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  return (__m128)__builtin_shufflevector((__m128)wasm_f32x4_make(((float*)__p)[0], ((float*)__p)[1], 0.f, 0.f), __a, 0, 1, 6, 7);
+  return (__m128)__f32x4_shuffle(wasm_f32x4_make(((float*)__p)[0], ((float*)__p)[1], 0.f, 0.f), __a, 0, 1, 6, 7);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_loadh_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  return (__m128)__builtin_shufflevector(__a, (__m128)wasm_f32x4_make(((float*)__p)[0], ((float*)__p)[1], 0.f, 0.f), 0, 1, 4, 5);
+  return (__m128)__f32x4_shuffle(__a, wasm_f32x4_make(((float*)__p)[0], ((float*)__p)[1], 0.f, 0.f), 0, 1, 4, 5);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_loadr_ps(const float *__p)
 {
   __m128 __v = _mm_load_ps(__p);
-  return __builtin_shufflevector(__v, __v, 3, 2, 1, 0);
+  return (__m128)__f32x4_shuffle(__v, __v, 3, 2, 1, 0);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -144,15 +157,6 @@ _mm_sfence(void)
 }
 
 #define _MM_SHUFFLE(w, z, y, x) (((w) << 6) | ((z) << 4) | ((y) << 2) | (x))
-
-// This is defined as a macro because __builtin_shufflevector requires its
-// mask argument to be a compile-time constant.
-#define _mm_shuffle_ps(a, b, mask) \
-  ((__m128)__builtin_shufflevector((__f32x4)(a), (__f32x4)(b), \
-                                  (((mask) >> 0) & 0x3) + 0, \
-                                  (((mask) >> 2) & 0x3) + 0, \
-                                  (((mask) >> 4) & 0x3) + 4, \
-                                  (((mask) >> 6) & 0x3) + 4))
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_storer_ps(float *__p, __m128 __a)
@@ -222,7 +226,7 @@ _mm_movemask_ps(__m128 __a)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_move_ss(__m128 __a, __m128 __b)
 {
-  return __builtin_shufflevector(__a, __b, 4, 1, 2, 3);
+  return (__m128)__f32x4_shuffle(__a, __b, 4, 1, 2, 3);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -334,25 +338,25 @@ _mm_rsqrt_ss(__m128 __a)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_unpackhi_ps(__m128 __a, __m128 __b)
 {
-  return __builtin_shufflevector(__a, __b, 2, 6, 3, 7);
+  return (__m128)__f32x4_shuffle(__a, __b, 2, 6, 3, 7);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_unpacklo_ps(__m128 __a, __m128 __b)
 {
-  return __builtin_shufflevector(__a, __b, 0, 4, 1, 5);
+  return (__m128)__f32x4_shuffle(__a, __b, 0, 4, 1, 5);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_movehl_ps(__m128 __a, __m128 __b)
 {
-  return __builtin_shufflevector(__a, __b, 6, 7, 2, 3);
+  return (__m128)__f32x4_shuffle(__a, __b, 6, 7, 2, 3);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_movelh_ps(__m128 __a, __m128 __b)
 {
-  return __builtin_shufflevector(__a, __b, 0, 1, 4, 5);
+  return (__m128)__f32x4_shuffle(__a, __b, 0, 1, 4, 5);
 }
 
 #define _MM_TRANSPOSE4_PS(row0, row1, row2, row3) \

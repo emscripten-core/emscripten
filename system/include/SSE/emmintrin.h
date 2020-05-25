@@ -1501,7 +1501,7 @@ _mm_unpackhi_epi32(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpackhi_epi64(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector(__a, __b, 2, 3, 4+2, 4+3);
+  return (__m128i)__builtin_shufflevector((__i32x4)__a, (__i32x4)__b, 2, 3, 4+2, 4+3);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -1525,13 +1525,13 @@ _mm_unpacklo_epi32(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpacklo_epi64(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector(__a, __b, 0, 1, 4+0, 4+1);
+  return (__m128i)__builtin_shufflevector((__i32x4)__a, (__i32x4)__b, 0, 1, 4+0, 4+1);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_move_epi64(__m128i __a)
 {
-  return __builtin_shufflevector(__a, (__m128i){ 0 }, 0, 1, 4+0, 4+1);
+  return __builtin_shufflevector((__i32x4)__a, (__i32x4)wasm_i32x4_const(0), 0, 1, 4+0, 4+1);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -1557,9 +1557,10 @@ _mm_movemask_pd(__m128d __a)
   return (src.x[0] >> 63) | ((src.x[1] >> 63) << 1);
 }
 
-#define _mm_shuffle_pd(a, b, i) __extension__ ({ \
-  __builtin_shufflevector((__m128d)(a), (__m128d)(b), \
-                          (i) & 1, (((i) & 2) >> 1) + 2); })
+#define _mm_shuffle_pd(__a, __b, __i) __extension__ ({ \
+  __builtin_shufflevector((__m128d)(__a), (__m128d)(__b), \
+                          (__i) & 1, \
+                          (((__i) & 2) >> 1) + 2); })
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_castpd_ps(__m128d __a)
