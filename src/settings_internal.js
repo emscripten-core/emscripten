@@ -28,6 +28,9 @@ var SYSCALLS_REQUIRE_FILESYSTEM = 1;
 // the features section.
 var BINARYEN_FEATURES = [];
 
+// Tracks whether to enable Wasm SIMD support in Binaryen.
+var BINARYEN_SIMD = 0;
+
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for
 // runtime logging that can help in debugging.
 var AUTODEBUG = 0;

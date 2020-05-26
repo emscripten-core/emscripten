@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm SIMD. (#11180)
 - The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
   longer takes a target memory.  Its safer/cleaner/smaller to assume the target
   is the global memory buffer.

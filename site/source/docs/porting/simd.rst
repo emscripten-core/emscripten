@@ -16,27 +16,15 @@ Separate documentation for the intrinsics header is a work in progress, but its 
 
 WebAssembly SIMD is not supported when using the Fastcomp backend.
 
-==================================
-Porting SIMD code targeting asm.js
-==================================
-
-Emscripten utilizes a polyfill of the `SIMD.js specification <https://tc39.github.io/ecmascript_simd/>`_ to enable support for building SIMD code. Note that no modern JS engine supports SIMD.js natively, so using Emscripten's SIMD.js support will almost always be slower than building without SIMD. As such, Emscripten's SIMD.js support should be considered deprecated and may be removed in a future release.
-
-There are two different ways to generate code using the SIMD.js polyfill:
-
-- The easiest way is to utilize LLVM autovectorization support. This does not require any code changes and it is the most straightforward option to try for codebases that have not explicitly been written to target SIMD. To enable autovectorization, pass the linker flag -s SIMD=1 both when compiling and linking output files.
-
-- Emscripten supports the GCC/Clang compiler specific `SIMD Vector Extensions <https://gcc.gnu.org/onlinedocs/gcc/Vector-Extensions.html>`_. These constructs do not require any changes to the command line build flags, but any code that utilizes the vector built-ins will always unconditionally emit SIMD.js vector instructions.
-
 ======================================
 Limitations and behavioral differences
 ======================================
 
-When porting native SIMD code, it should be noted that because of portability concerns, neither the WebAssembly SIMD proposal nor SIMD.js expose the full native instruction sets. In particular the following changes exist:
+When porting native SIMD code, it should be noted that because of portability concerns, the WebAssembly SIMD proposal does not expose the full native instruction sets. In particular the following changes exist:
 
  - Emscripten does not support x86 or any other native inline SIMD assembly or building .s assembly files, so all code should be written to use SIMD intrinsic functions or compiler vector extensions.
 
- - WebAssembly SIMD and SIMD.js do not have control over managing floating point rounding modes or handling denormals.
+ - WebAssembly SIMD does not have control over managing floating point rounding modes or handling denormals.
 
  - Cache line prefetch instructions are not available, and calls to these functions will compile, but be treated as no-ops.
 
