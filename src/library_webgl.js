@@ -144,7 +144,9 @@ var LibraryGL = {
 
     counter: 1, // 0 is reserved as 'null' in gl
     buffers: [],
+#if FULL_ES3
     mappedBuffers: {},
+#endif
     programs: [],
     framebuffers: [],
     renderbuffers: [],
