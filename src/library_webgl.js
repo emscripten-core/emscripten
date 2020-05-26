@@ -2153,21 +2153,6 @@ var LibraryGL = {
     {{{ makeSetValue('pointer', '0', 'GLctx.getVertexAttribOffset(index, pname)', 'i32') }}};
   },
 
-  glGetActiveUniform__sig: 'viiiiiii',
-  glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
-#if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniform', 'program');
-#endif
-    program = GL.programs[program];
-    var info = GLctx.getActiveUniform(program, index);
-    if (!info) return; // If an error occurs, nothing will be written to length, size, type and name.
-
-    var numBytesWrittenExclNull = (bufSize > 0 && name) ? stringToUTF8(info.name, name, bufSize) : 0;
-    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
-    if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
-  },
-
   glUniform1f__sig: 'vif',
   glUniform1f: function(location, v0) {
 #if GL_ASSERTIONS
@@ -2709,19 +2694,30 @@ var LibraryGL = {
     return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
   },
 
-  glGetActiveAttrib__sig: 'viiiiiii',
-  glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
+  _glGetActiveAttribOrUniform: function(funcName, program, index, bufSize, length, size, type, name) {
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.programs, program, 'glGetActiveAttrib', 'program');
+    GL.validateGLObjectID(GL.programs, program, funcName, 'program');
 #endif
     program = GL.programs[program];
-    var info = GLctx.getActiveAttrib(program, index);
-    if (!info) return; // If an error occurs, nothing will be written to length, size and type and name.
+    var info = GLctx[funcName](program, index);
+    if (info) { // If an error occurs, nothing will be written to length, size and type and name.
+      var numBytesWrittenExclNull = name && stringToUTF8(info.name, name, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
+      if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+      if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+    }
+  },
 
-    var numBytesWrittenExclNull = (bufSize > 0 && name) ? stringToUTF8(info.name, name, bufSize) : 0;
-    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
-    if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+  glGetActiveAttrib__sig: 'viiiiiii',
+  glGetActiveAttrib__deps: ['_glGetActiveAttribOrUniform'],
+  glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
+    __glGetActiveAttribOrUniform('getActiveAttrib', program, index, bufSize, length, size, type, name);
+  },
+
+  glGetActiveUniform__sig: 'viiiiiii',
+  glGetActiveUniform__deps: ['_glGetActiveAttribOrUniform'],
+  glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
+    __glGetActiveAttribOrUniform('getActiveUniform', program, index, bufSize, length, size, type, name);
   },
 
   glCreateShader__sig: 'ii',
