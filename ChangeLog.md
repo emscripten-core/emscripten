@@ -18,10 +18,10 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 - Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm SIMD. (#11180)
-- The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
-  longer takes a target memory.  Its safer/cleaner/smaller to assume the target
+- The mmap method of JavaScript filesystem drivers (based on library_fs.js) no
+  longer takes a target memory.  It's safer/cleaner/smaller to assume the target
   is the global memory buffer.
-- Remove emterpreter and ``EMTERPRETIFY`` settings.  Emterpreter has largerly
+- Remove emterpreter and ``EMTERPRETIFY`` settings.  Emterpreter has largely
   been replaced by asyncify and is fastcomp only so due for removing in
   the near future anyway.
 
@@ -231,7 +231,7 @@ v1.39.9: 03/05/2020
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
-- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+- Add a check in Asyncify builds with `ASSERTIONS` that we do not have
   compiled code on the stack when starting to rewind, which is dangerous.
 - Implement libc system() for node.js (#10547).
 - Standalone mode improvements, time (#10530, #10536), sysconf (#10535),

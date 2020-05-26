@@ -66,8 +66,8 @@ In this mode (``-s LEGACY_GL_EMULATION=1``), there are a few extra flags that ca
 - ``-s GL_FFP_ONLY=1`` tells the GL emulation layer that your code will not use the programmable pipeline/shaders at all. This allows the GL emulation code to perform extra optimizations when it knows that it is safe to do so.
 - Add the ``Module.GL_MAX_TEXTURE_IMAGE_UNITS`` integer to your shell **.html** file to signal the maximum number of texture units used by the code. This ensures that the GL emulation layer does not waste clock cycles iterating over unused texture units when examining which Fixed Function Pipeline (FFP) emulation shader to run.
 
-What if my codebase depends on an desktop OpenGL feature that is currently unsupported?
----------------------------------------------------------------------------------------
+What if my codebase depends on a desktop OpenGL feature that is currently unsupported?
+--------------------------------------------------------------------------------------
 
 You can consider building the codebase against the `Regal <https://github.com/p3/regal>`_ Desktop OpenGL emulation library, which aims to support Desktop OpenGL features on top of OpenGL ES 2.0. This may work better or worse than Emscripten's GL emulation depending on the project.
 

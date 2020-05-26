@@ -3156,7 +3156,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if shared.Settings.LEGALIZE_JS_FFI != 1:
       cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
-      cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
+      cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, and can contain special fastcomp-wasm support
     if shared.Settings.USE_PTHREADS:
       cmd += ['--enable-threads']
     if intermediate_debug_info:
