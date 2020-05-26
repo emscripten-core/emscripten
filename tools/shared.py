@@ -2348,11 +2348,12 @@ class Building(object):
       try_delete(outfile + '.map')
 
       if emit_symbol_map:
+        logger.warning(open(source_map, 'r').read())
         symbol_map_data = subprocess.check_output(NODE_JS + [path_from_root('tools', 'js_size_report.js'), '--createSymbolMapFromSourceMap', source_map, outfile])
         try_delete(source_map)
- #       logger.fatal('-----')
- #       logger.fatal(symbol_map_data.decode('utf-8'))
- #       logger.fatal('-----')
+        logger.fatal('-----')
+        logger.fatal(symbol_map_data.decode('utf-8'))
+        logger.fatal('-----')
         symbol_map = replace_suffix(outfile, '.closure_symbol_map')
         open(symbol_map, 'wb').write(symbol_map_data)
 #        open()
@@ -2368,8 +2369,8 @@ class Building(object):
         elif Settings.CLOSURE_WARNINGS == 'warn':
           logger.warn('Closure compiler completed with warnings:\n')
 
-#      logger.fatal(open(filename, 'r').read())
-#      logger.warning(open(outfile, 'r').read())
+      logger.warning(open(filename, 'r').read())
+      logger.fatal(open(outfile, 'r').read())
       # Print input file (long wall of text!)
       if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
         input_file = open(filename, 'r').read().splitlines()
