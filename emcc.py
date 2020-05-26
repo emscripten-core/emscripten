@@ -2033,8 +2033,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
 
     if shared.Settings.WASM_BACKEND:
-      if shared.Settings.SIMD:
-        newargs.append('-msimd128')
       if shared.Settings.USE_PTHREADS:
         newargs.append('-pthread')
     else:
@@ -3062,11 +3060,9 @@ def parse_args(newargs):
       else:
         shared.generate_config(optarg)
       should_exit = True
-    # Record SIMD setting because it controls whether the autovectorizer runs
+    # Record SIMD setting for Binaryen
     elif newargs[i] == '-msimd128':
-      settings_changes.append('SIMD=1')
-    elif newargs[i] == '-mno-simd128':
-      settings_changes.append('SIMD=0')
+      settings_changes.append('BINARYEN_SIMD=1')
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')

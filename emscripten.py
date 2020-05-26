@@ -244,7 +244,7 @@ def compiler_glue(metadata, temp_files, DEBUG):
 
   update_settings_glue(metadata, DEBUG)
 
-  assert not metadata['simd'], 'Obsolete SIMD.js is used'
+  assert not metadata['simd'], 'Obsolete SIMD.js was used'
 
   glue, forwarded_data = compile_settings(temp_files)
 

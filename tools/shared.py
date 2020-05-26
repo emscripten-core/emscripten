@@ -2699,7 +2699,7 @@ class Building(object):
     ret = ['--mvp-features']
     if Settings.USE_PTHREADS:
       ret += ['--enable-threads']
-    if Settings.SIMD:
+    if Settings.BINARYEN_SIMD:
       ret += ['--enable-simd']
     ret += Settings.BINARYEN_FEATURES
     return ret
