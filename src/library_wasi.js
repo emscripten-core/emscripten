@@ -144,7 +144,7 @@ var WasiLibrary = {
     // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (checkWasiClock(clk_id) && _emscripten_get_now_is_monotonic) {
+    } else if (_emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
       return {{{ cDefine('ENOSYS') }}};
