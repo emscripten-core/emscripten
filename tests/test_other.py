@@ -2111,10 +2111,6 @@ int f() {
        ['asm', 'ensureLabelSet']),
       (path_from_root('tests', 'optimizer', '3154.js'), open(path_from_root('tests', 'optimizer', '3154-output.js')).read(),
        ['asm', 'eliminate', 'registerize', 'asmLastOpts', 'last']),
-      (path_from_root('tests', 'optimizer', 'simd.js'), open(path_from_root('tests', 'optimizer', 'simd-output.js')).read(),
-       ['asm', 'eliminate']), # eliminate, just enough to trigger asm normalization/denormalization
-      (path_from_root('tests', 'optimizer', 'simd.js'), open(path_from_root('tests', 'optimizer', 'simd-output-memSafe.js')).read(),
-       ['asm', 'eliminateMemSafe']),
       (path_from_root('tests', 'optimizer', 'safeLabelSetting.js'), open(path_from_root('tests', 'optimizer', 'safeLabelSetting-output.js')).read(),
        ['asm', 'safeLabelSetting']), # eliminate, just enough to trigger asm normalization/denormalization
       (path_from_root('tests', 'optimizer', 'null_if.js'), [open(path_from_root('tests', 'optimizer', 'null_if-output.js')).read(), open(path_from_root('tests', 'optimizer', 'null_if-output2.js')).read()],
@@ -3132,24 +3128,10 @@ myreade(){
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
 
-  def check_simd(self, expected_simds, expected_out):
-    if SPIDERMONKEY_ENGINE in JS_ENGINES:
-      out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
-      self.validate_asmjs(out)
-    else:
-      out = run_js('a.out.js')
-    self.assertContained(expected_out, out)
-
-    src = open('a.out.js').read()
-    asm = src[src.find('// EMSCRIPTEN_START_FUNCS'):src.find('// EMSCRIPTEN_END_FUNCS')]
-    simds = asm.count('SIMD_')
-    assert simds >= expected_simds, 'expecting to see at least %d SIMD* uses, but seeing %d' % (expected_simds, simds)
-
   @unittest.skip("autovectorization of this stopped in LLVM 6.0")
   def test_autovectorize_linpack(self):
     # TODO: investigate when SIMD arrives in wasm
-    run_process([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling', '-s', 'WASM=0'])
-    self.check_simd(30, 'Unrolled Single  Precision')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-msimd128', '-DSP', '--profiling'])
 
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
@@ -8325,7 +8307,7 @@ int main() {
   def test_include_system_header_in_c(self):
     for std in [[], ['-std=c89']]: # Test oldest C standard, and the default C standard
       for directory, headers in [
-        ('emscripten', ['dom_pk_codes.h', 'em_asm.h', 'emscripten.h', 'fetch.h', 'html5.h', 'key_codes.h', 'threading.h', 'trace.h', 'vector.h', 'vr.h']), # This directory has also bind.h, val.h and wire.h, which require C++11
+        ('emscripten', ['dom_pk_codes.h', 'em_asm.h', 'emscripten.h', 'fetch.h', 'html5.h', 'key_codes.h', 'threading.h', 'trace.h', 'vr.h']), # This directory has also bind.h, val.h and wire.h, which require C++11
         ('AL', ['al.h', 'alc.h']),
         ('EGL', ['egl.h', 'eglplatform.h']),
         ('GL', ['freeglut_std.h', 'gl.h', 'glew.h', 'glfw.h', 'glu.h', 'glut.h']),
