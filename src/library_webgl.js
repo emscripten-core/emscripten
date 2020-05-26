@@ -144,7 +144,9 @@ var LibraryGL = {
 
     counter: 1, // 0 is reserved as 'null' in gl
     buffers: [],
+#if FULL_ES3
     mappedBuffers: {},
+#endif
     programs: [],
     framebuffers: [],
     renderbuffers: [],
@@ -167,7 +169,6 @@ var LibraryGL = {
 #endif
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
-
     byteSizeByTypeRoot: 0x1400, // GL_BYTE
     byteSizeByType: [
       1, // GL_BYTE
@@ -436,7 +437,7 @@ var LibraryGL = {
 
     postDrawHandleClientVertexAttribBindings: function postDrawHandleClientVertexAttribBindings() {
       if (GL.resetBufferBinding) {
-        GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, GL.buffers[GL.currArrayBuffer]);
+        GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, GL.buffers[GLctx.currentArrayBufferBinding]);
       }
     },
 #endif
@@ -1756,8 +1757,10 @@ var LibraryGL = {
       buffer.name = 0;
       GL.buffers[id] = null;
 
-      if (id == GL.currArrayBuffer) GL.currArrayBuffer = 0;
-      if (id == GL.currElementArrayBuffer) GL.currElementArrayBuffer = 0;
+#if FULL_ES2 || LEGACY_GL_EMULATION
+      if (id == GLctx.currentArrayBufferBinding) GLctx.currentArrayBufferBinding = 0;
+      if (id == GLctx.currentElementArrayBufferBinding) GLctx.currentElementArrayBufferBinding = 0;
+#endif
 #if MAX_WEBGL_VERSION >= 2
       if (id == GLctx.currentPixelPackBufferBinding) GLctx.currentPixelPackBufferBinding = 0;
       if (id == GLctx.currentPixelUnpackBufferBinding) GLctx.currentPixelUnpackBufferBinding = 0;
@@ -2149,21 +2152,6 @@ var LibraryGL = {
     }
 #endif
     {{{ makeSetValue('pointer', '0', 'GLctx.getVertexAttribOffset(index, pname)', 'i32') }}};
-  },
-
-  glGetActiveUniform__sig: 'viiiiiii',
-  glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
-#if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniform', 'program');
-#endif
-    program = GL.programs[program];
-    var info = GLctx.getActiveUniform(program, index);
-    if (!info) return; // If an error occurs, nothing will be written to length, size, type and name.
-
-    var numBytesWrittenExclNull = (bufSize > 0 && name) ? stringToUTF8(info.name, name, bufSize) : 0;
-    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
-    if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
 
   glUniform1f__sig: 'vif',
@@ -2635,12 +2623,12 @@ var LibraryGL = {
 #endif
 #if FULL_ES2 || LEGACY_GL_EMULATION
     if (target == 0x8892 /*GL_ARRAY_BUFFER*/) {
-      GL.currArrayBuffer = buffer;
+      GLctx.currentArrayBufferBinding = buffer;
 #if LEGACY_GL_EMULATION
       GLImmediate.lastArrayBuffer = buffer;
 #endif
     } else if (target == 0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/) {
-      GL.currElementArrayBuffer = buffer;
+      GLctx.currentElementArrayBufferBinding = buffer;
     }
 #endif
 
@@ -2707,19 +2695,30 @@ var LibraryGL = {
     return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
   },
 
-  glGetActiveAttrib__sig: 'viiiiiii',
-  glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
+  _glGetActiveAttribOrUniform: function(funcName, program, index, bufSize, length, size, type, name) {
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.programs, program, 'glGetActiveAttrib', 'program');
+    GL.validateGLObjectID(GL.programs, program, funcName, 'program');
 #endif
     program = GL.programs[program];
-    var info = GLctx.getActiveAttrib(program, index);
-    if (!info) return; // If an error occurs, nothing will be written to length, size and type and name.
+    var info = GLctx[funcName](program, index);
+    if (info) { // If an error occurs, nothing will be written to length, size and type and name.
+      var numBytesWrittenExclNull = name && stringToUTF8(info.name, name, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
+      if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+      if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+    }
+  },
 
-    var numBytesWrittenExclNull = (bufSize > 0 && name) ? stringToUTF8(info.name, name, bufSize) : 0;
-    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
-    if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+  glGetActiveAttrib__sig: 'viiiiiii',
+  glGetActiveAttrib__deps: ['_glGetActiveAttribOrUniform'],
+  glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
+    __glGetActiveAttribOrUniform('getActiveAttrib', program, index, bufSize, length, size, type, name);
+  },
+
+  glGetActiveUniform__sig: 'viiiiiii',
+  glGetActiveUniform__deps: ['_glGetActiveAttribOrUniform'],
+  glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
+    __glGetActiveAttribOrUniform('getActiveUniform', program, index, bufSize, length, size, type, name);
   },
 
   glCreateShader__sig: 'ii',
@@ -3189,7 +3188,7 @@ var LibraryGL = {
 #endif
 #if FULL_ES2 || LEGACY_GL_EMULATION
     var ibo = GLctx.getParameter(0x8895 /*ELEMENT_ARRAY_BUFFER_BINDING*/);
-    GL.currElementArrayBuffer = ibo ? (ibo.name | 0) : 0;
+    GLctx.currentElementArrayBufferBinding = ibo ? (ibo.name | 0) : 0;
 #endif
   },
 
@@ -3305,7 +3304,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(cb, index);
 #endif
-    if (!GL.currArrayBuffer) {
+    if (!GLctx.currentArrayBufferBinding) {
       cb.size = size;
       cb.type = type;
       cb.normalized = normalized;
@@ -3368,7 +3367,7 @@ var LibraryGL = {
   glDrawElements: function(mode, count, type, indices) {
 #if FULL_ES2
     var buf;
-    if (!GL.currElementArrayBuffer) {
+    if (!GLctx.currentElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
@@ -3388,7 +3387,7 @@ var LibraryGL = {
 #if FULL_ES2
     GL.postDrawHandleClientVertexAttribBindings(count);
 
-    if (!GL.currElementArrayBuffer) {
+    if (!GLctx.currentElementArrayBufferBinding) {
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, null);
     }
 #endif
