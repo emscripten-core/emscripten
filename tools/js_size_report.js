@@ -3,6 +3,10 @@ var fs = require('fs');
 var assert = require('assert');
 var path = require('path');
 
+// Global state reused by various functions during a run:
+var currentInputJsFile;
+var currentInputJsFileSizeInBytes;
+
 function calculateLineStartPositions(filename) {
   var fileSizeInBytes = fs.statSync(filename)['size'];
   var f = fs.readFileSync(filename);
@@ -125,7 +129,7 @@ function getSizeIncludingChildren(node) {
 
 function getSizeExcludingChildren(node) {
   var totalSize = getSizeIncludingChildren(node);
-  var childNodes = getChildNodes(node);
+  var childNodes = getChildNodesWithCode(node);
   for(var i in childNodes) {
     totalSize -= getSizeIncludingChildren(childNodes[i]);
   }
@@ -152,8 +156,13 @@ function peekAheadGetNodeName(node) {
   if (node.type == 'FunctionExpression' || node.type == 'FunctionDeclaration') {
     return node.id && node.id.name;
   }
+//  if (node.type == 'VariableDeclarator') {
+//    return node.id && node.id.name;
+//  }
   if (node.type == 'VariableDeclaration') {
-    return node.declarations[0].id.name;
+//    if (node.declarations.length == 1) {
+      return node.declarations[0].id.name;
+//    }
   }
 }
 
@@ -188,11 +197,6 @@ function recordSourceFile(nodeSizes, filename) {
   }
 }
 
-var inputFile;
-var sourceMap;
-var sourceLineStartPositions;
-var fileSizeInBytes;
-
 function unminifyNameWithSourceMap(node, functionName, sourceMap) {
   var s = 0;
   var e = sourceMap.length-1;
@@ -226,7 +230,7 @@ function unminifyNameWithSymbolMap(name, symbolMap) {
 }
 
 function isLargeEnoughNodeToExpand(node) {
-  return getSizeIncludingChildren(node) >= 0.10*fileSizeInBytes;
+  return getSizeIncludingChildren(node) - getSizeExcludingChildren(node) > (0.35*currentInputJsFileSizeInBytes)|0;
 }
 
 function findListOfChildNodes(nodeArray) {
@@ -240,13 +244,14 @@ function findListOfChildNodes(nodeArray) {
   }
   if (!Array.isArray(nodeArray)) {
     console.dir(nodeArray);
-    console.log(inputFile.substring(nodeArray.start, nodeArray.end));
-    console.log(inputFile.substring(nodeArray.start - 50, nodeArray.end + 50));
+    console.log(currentInputJsFile.substring(nodeArray.start, nodeArray.end));
+    console.log(currentInputJsFile.substring(nodeArray.start - 50, nodeArray.end + 50));
     assert(false);
   }
   return nodeArray;
 }
 
+/*
 function collectNodeSizes(nodeOrNodeArray, parentPrefix) {
   var childNodes = findListOfChildNodes(nodeOrNodeArray);
   var sizes = {};
@@ -299,7 +304,7 @@ function collectNodeSizes(nodeOrNodeArray, parentPrefix) {
         childType = 'function';
     } else if (parentPrefix == '') {
       childType = 'code';
-      var childCode = inputFile.substring(node.start, node.end).trim();
+      var childCode = currentInputJsFile.substring(node.start, node.end).trim();
       if (childCode.length > 32) {
         childName = '"' + childCode.substring(0, 29).replace(/\n/g, ' ') + '..."';
       } else {
@@ -327,32 +332,60 @@ function collectNodeSizes(nodeOrNodeArray, parentPrefix) {
   }
   return sizes;
 }
+*/
 
-function findUniqueNameFromChildren(node, childNodes) {
+// Given a node and a list of its childNodes, attempts to assign
+// a unique name & type for that node by performing a lookahed into the descendants
+// of the node. If there multiple ways to name the node, returns false.
+// If the node cannot be named, returns null. Otherwise returns
+// the name as a string.
+function findUniqueNameAndTypeFromChildren(node, childNodes) {
   var oneChildName = null;
+  var oneChildType = null;
   for(var i in childNodes) {
     var child = childNodes[i];
     //var childName = getNodeNameExact(child);
     var childName = peekAheadGetNodeName(child);
+    var childType = null;
 //    console.log('childName: ' + childName);
-    if (!childName) {
-      childName = findUniqueNameFromChildren(child, getChildNodes(child));
+    if (childName) {
+      childType = getNodeType(child);
+    } else {
+      [childName, childType] = findUniqueNameAndTypeFromChildren(child, getChildNodesWithCode(child));
   //    console.log('deep childName ' + childName);
     }
     if (childName === false) {
   //    console.log('Child has multiple names - return false!');
-      return false;
+      return [false, null];
     }
     if (childName) {
       if (oneChildName) {
   //    console.log('Found second child name ' + childName + ' (first was ' + oneChildName + ') - return false');
-        return false;
+        return [false, null];
       }
       oneChildName = childName;
+      oneChildType = childType;
   //    console.log('Found first child name ' + oneChildName);
     }
   }
-  return oneChildName;
+  return [oneChildName, oneChildType];
+}
+
+function hasAnyDescendantThatCanBeNamed(nodeArray) {
+  for(var i in nodeArray) {
+    var node = nodeArray[i];
+    var nodeName = peekAheadGetNodeName(node);
+    if (nodeName) {
+      return true;
+    }
+    var childNodes = getChildNodesWithCode(node);
+    console.dir(node);
+    console.dir(childNodes);
+    var [uniqueName, uniqueType] = findUniqueNameAndTypeFromChildren(node, childNodes);
+    if (uniqueName || uniqueName === false) {
+      return true;
+    }
+  }
 }
 
 function collectNodeSizes2(nodeArray, parentPrefix, symbolMap) {
@@ -361,35 +394,42 @@ function collectNodeSizes2(nodeArray, parentPrefix, symbolMap) {
     var node = nodeArray[i];
     var nodeType = getNodeType(node);
 //    console.dir(node);
-    var childNodes = getChildNodes(node);
+    var childNodes = getChildNodesWithCode(node);
 
     var nodeSize = getSizeIncludingChildren(node);
-//    var childName = peekAheadGetNodeName(node);
     var nodeName = peekAheadGetNodeName(node);
-    var shouldBreakDown = isLargeEnoughNodeToExpand(node);
+    console.log(nodeName);
+    var shouldBreakDown = isLargeEnoughNodeToExpand(node) && hasAnyDescendantThatCanBeNamed(childNodes);
+    console.log('shouldBreakDown: ' + shouldBreakDown + ', isLargeEnoughNodeToExpand(node):' + isLargeEnoughNodeToExpand(node) + ', hasAnyDescendantThatCanBeNamed(childNodes):' + hasAnyDescendantThatCanBeNamed(childNodes));
 
     if (!nodeName) {
-      var uniqueName = findUniqueNameFromChildren(node, childNodes);
-//      console.log('uniqueName: ' + uniqueName);
+      var [uniqueName, uniqueType] = findUniqueNameAndTypeFromChildren(node, childNodes);
+      console.log('uniqueName: ' + uniqueName + ', shouldBreakDown: ' + shouldBreakDown);
       if (uniqueName !== false) {
         shouldBreakDown = false;
       }
-      if (uniqueName) nodeName = uniqueName;
+      if (uniqueName) {
+        nodeName = uniqueName;
+        nodeType = uniqueType;
+      }
     }
     var childSizes = null;
 
-    console.dir(node);
-    console.log('nodeSize: ' + nodeSize + ', nodeName: ' + nodeName + ', nodeType: ' + nodeType + ', uniqueName: ' + uniqueName + ', shouldBreakDown: ' + shouldBreakDown);
+/*
+//    console.dir(node);
+//    console.log('nodeSize: ' + nodeSize + ', nodeName: ' + nodeName + ', nodeType: ' + nodeType + ', uniqueName: ' + uniqueName + ', shouldBreakDown: ' + shouldBreakDown);
     if (!shouldBreakDown && !nodeName) {
-      var uniqueName = findUniqueNameFromChildren(node, childNodes);
+      var [uniqueName, uniqueType] = findUniqueNameAndTypeFromChildren(node, childNodes);
       if (uniqueName === false) {
         shouldBreakDown = true;
+        console.log('shouldBreakDown = true');
       } else {
         nodeName = uniqueName;
       }
     }
-
+*/
     if (shouldBreakDown) {
+      console.log('breaking down');
       var childPrefix = nodeName ? parentPrefix + nodeName + '/' : parentPrefix;
       childSizes = collectNodeSizes2(childNodes, childPrefix, symbolMap);
       mergeKeyValues(nodeSizes, childSizes);
@@ -437,7 +477,7 @@ function collectNodeSizes2(nodeArray, parentPrefix, symbolMap) {
         childType = 'function';
     } else if (parentPrefix == '') {
       childType = 'code';
-      var childCode = inputFile.substring(node.start, node.end).trim();
+      var childCode = currentInputJsFile.substring(node.start, node.end).trim();
       if (childCode.length > 32) {
         childName = '"' + childCode.substring(0, 29).replace(/\n/g, ' ') + '..."';
       } else {
@@ -454,7 +494,7 @@ function collectNodeSizes2(nodeArray, parentPrefix, symbolMap) {
     }
 */
     if (!nodeName && nodeType == 'code') {
-      var code = inputFile.substring(node.start, node.end).trim();
+      var code = currentInputJsFile.substring(node.start, node.end).trim();
       if (code.length > 32) {
         nodeName = '"' + code.substring(0, 29).replace(/\n/g, ' ') + '..."';
       } else {
@@ -464,16 +504,17 @@ function collectNodeSizes2(nodeArray, parentPrefix, symbolMap) {
     if (nodeName) {
       var unminifiedName = unminifyNameWithSymbolMap(nodeName, symbolMap);
 //    console.log('parentPrefix: ' + parentPrefix + ', unminifiedName: ' + unminifiedName);
-      console.log(parentPrefix + unminifiedName + ' = ');
-      console.dir(node);
+//      console.log(parentPrefix + unminifiedName + ' = ');
       nodeSizes[parentPrefix + unminifiedName] = {
         'type': nodeType,
         'name': parentPrefix + unminifiedName,
         'prefix': parentPrefix,
         'selfName': unminifiedName,
         'minifiedName': nodeName,
-        'size': nodeSize
+        'size': nodeSize,
+        'node': node
       };
+      console.dir(nodeSizes[parentPrefix + unminifiedName]);
     }
 //    mergeKeyValues(sizes, childSizes);
   }
@@ -490,7 +531,8 @@ function getNodeType(node) {
   }
 }
 
-function getChildNodes(node) {
+// Finds the list of child AST nodes of the given node, that can contain other code (and are relevant for size computation) 
+function getChildNodesWithCode(node) {
   assert(node);
   assert(!Array.isArray(node));
   //if (Array.isArray(node)) return node;
@@ -536,18 +578,18 @@ function getChildNodes(node) {
     addChild(node.handler);
   }
   else if (['CatchClause'].indexOf(node.type) != -1) {
-    addChild(node.param);
+//    addChild(node.param);
     addChild(node.body);
   }
   else if (['FunctionDeclaration'].indexOf(node.type) != -1) {
-    addChild(node.id);
+//    addChild(node.id);
     addChild(node.body);
-    addChildArray(node.params);
+//    addChildArray(node.params);
   }
   else if (['FunctionExpression'].indexOf(node.type) != -1) {
-    maybeChild(node.id);
+//    maybeChild(node.id);
     addChild(node.body);
-    addChildArray(node.params);
+//    addChildArray(node.params);
   }
   else if (['ThrowStatement', 'ReturnStatement'].indexOf(node.type) != -1) {
     maybeChild(node.argument);
@@ -566,7 +608,7 @@ function getChildNodes(node) {
     addChildArray(node.elements);
   }
   else if (['VariableDeclarator'].indexOf(node.type) != -1) {
-    addChild(node.id);
+//    addChild(node.id);
     maybeChild(node.init);
   }
   else if (['ObjectExpression'].indexOf(node.type) != -1) {
@@ -576,11 +618,11 @@ function getChildNodes(node) {
     addChild(node.expression);
   }
   else if (['BreakStatement'].indexOf(node.type) != -1) {
-    maybeChild(node.label);
+//    maybeChild(node.label);
   }
   else if (['LabeledStatement'].indexOf(node.type) != -1) {
     addChild(node.body);
-    addChild(node.label);
+//    addChild(node.label);
   }
   else if (['SwitchStatement'].indexOf(node.type) != -1) {
     addChild(node.discriminant);
@@ -666,11 +708,12 @@ function walkNodesForSymbolMap(nodeArray, minifiedParentPrefix, unminifiedParent
         childNodeOrNodeArray = node.body;
     }
 */
-    var childNodeArray = getChildNodes(node);
+    var childNodeArray = getChildNodesWithCode(node);
     if (childNodeArray) {
       var minifiedChildPrefix = minifiedName ? minifiedParentPrefix + minifiedName + '/' : minifiedParentPrefix;
       var unminifiedChildPrefix = minifiedName && unminifiedName ? unminifiedParentPrefix + unminifiedName + '/' : unminifiedParentPrefix;
-      if (node.type == 'MemberExpression') {
+      console.dir(node);
+      if (node.type == 'MemberExpression' || node.type == 'ObjectExpression' || node.type == 'Property') {
         minifiedChildPrefix[minifiedChildPrefix-1] = '.';
         unminifiedChildPrefix[unminifiedChildPrefix-1] = '.';
       }
@@ -689,15 +732,13 @@ function createSymbolMapFromSourceMap(sourceMap, sourceFile) {
   var ast = acorn.parse(sourceFile, { ecmaVersion: 6 });
   var symbolMap = walkNodesForSymbolMap(ast.body, '', '', sourceMap);
   //console.dir(symbolMap);
-  for(var i in symbolMap) {
-    console.log(i + ':' + symbolMap[i]);
-  }
+  return symbolMap;
 }
 
 function extractJavaScriptCodeSize(sourceFile, symbolMap) {
-  fileSizeInBytes = fs.statSync(sourceFile)['size'];
-  inputFile = fs.readFileSync(sourceFile).toString();
-  var ast = acorn.parse(inputFile, { ecmaVersion: 6 });
+  currentInputJsFileSizeInBytes = fs.statSync(sourceFile)['size'];
+  currentInputJsFile = fs.readFileSync(sourceFile).toString();
+  var ast = acorn.parse(currentInputJsFile, { ecmaVersion: 6 });
 
   var nodeSizes = collectNodeSizes2(ast.body, '', symbolMap);
   var totalAccountedFor = 0;
@@ -708,7 +749,7 @@ function extractJavaScriptCodeSize(sourceFile, symbolMap) {
     }
   }
 
-  var whitespaceBytes = fileSizeInBytes - countNodeSizes(nodeSizes);
+  var whitespaceBytes = currentInputJsFileSizeInBytes - countNodeSizes(nodeSizes);
   /*
   var topLevelCodeBytes = countNodeCodeSizes(nodeSizes);
   if (topLevelCodeBytes > 0) {
@@ -736,7 +777,7 @@ function extractJavaScriptCodeSize(sourceFile, symbolMap) {
   return nodeSizes;
 
 //  console.log('---');
-//  console.log('File ' + sourceFile + ': total size ' + fileSizeInBytes + ' bytes.');
+//  console.log('File ' + sourceFile + ': total size ' + currentInputJsFileSizeInBytes + ' bytes.');
 //  console.log('Total accounted above: ' + totalAccountedFor);
 }
 
@@ -970,73 +1011,162 @@ function readSymbolMap(filename) {
   return symbolMap;
 }
 
-var sources = process['argv'].slice(2);
-
-function readBool(param) {
-  var idx = sources.indexOf(param);
+function extractBoolCmdLineInput(args, param) {
+  var idx = args.indexOf(param);
   if (idx != -1) {
-    sources.splice(idx, 1);
+    args.splice(idx, 1);
     return true;
   }
 }
 
-function readParam(param) {
-  var idx = sources.indexOf(param);
+function extractStringCmdLineInput(args, param) {
+  var idx = args.indexOf(param);
   if (idx != -1) {
-    var value = sources[idx+1];
-    sources.splice(idx, 2);
+    var value = args[idx+1];
+    args.splice(idx, 2);
     return value;
   }
 }
 
-var symbolMap = readParam('--symbols');
-var sourceMap = readParam('--createSymbolMapFromSourceMap');
+function run(args, printOutput) {
+  var outputJson = extractBoolCmdLineInput(args, '--outputJson');
+  var symbolMap = extractStringCmdLineInput(args, '--symbols');
+  var sourceMap = extractStringCmdLineInput(args, '--createSymbolMapFromSourceMap');
 
-if (symbolMap) {
-  symbolMap = readSymbolMap(symbolMap);
-} else {
-  symbolMap = {};
-}
+  var sources = args;
 
-var codeSizes = {};
+  symbolMap = symbolMap ? readSymbolMap(symbolMap) : {};
 
-for(var s in sources) {
-  var src = sources[s];
-  var sizes;
-  if (src.toLowerCase().endsWith('.js')) {
-    if (sourceMap) {
-      symbolMap = createSymbolMapFromSourceMap(sourceMap, src);
-      return;
+  // Doing Source Map -> Symbol Map translation?
+  if (sourceMap) {
+    assert(source.length == 1); // Must present exactly one input JS file when doing source map -> symbol map translation
+    var symbolMap = createSymbolMapFromSourceMap(sourceMap, src);
+
+    if (printOutput) {
+      if (outputJson) {
+        console.log(JSON.stringify(symbolMap));
+      } else {
+        for(var i in symbolMap) {
+          console.log(i + ':' + symbolMap[i]);
+        }
+      }
     }
-	  sizes = extractJavaScriptCodeSize(src, symbolMap);
-    sourceMap = null; // Assume --sourceMap applies to the first .js file input
-  } else if (src.endsWith('.wasm')) {
-    sizes = extractWasmCodeSize(src);
+    return symbolMap;
   }
-  mergeKeyValues(codeSizes, sizes);
-}
+  // ... if not, then proceed with a regular JS size analysis run:
 
-codeSizes = Object.values(codeSizes).sort((a, b) => {
-  return b.size - a.size;
-})
-
-function printedNodeType(nodeType) {
-  if (nodeType == 'var' || nodeType == 'function' || nodeType == 'section') return nodeType + ' ';
-  else return '';
-}
-
-function demangleSymbol(node, symbolMap) {
-  if (symbolMap) {
-    var demangledName = symbolMap[node.name] || symbolMap[node.selfName];
-    if (demangledName) return node.prefix + demangledName;
+  var codeSizes = {};
+  for(var s in sources) {
+    var src = sources[s];
+    if (src.toLowerCase().endsWith('.js')) {
+      mergeKeyValues(codeSizes, extractJavaScriptCodeSize(src, symbolMap));
+    } else if (src.endsWith('.wasm')) {
+      mergeKeyValues(codeSizes, extractWasmCodeSize(src));
+    }
   }
-  return node.name;
+
+  codeSizes = Object.values(codeSizes).sort((a, b) => {
+    return b.size - a.size;
+  })
+
+  function printedNodeType(nodeType) {
+    if (nodeType == 'var' || nodeType == 'function' || nodeType == 'section') return nodeType + ' ';
+    else return '';
+  }
+
+  function demangleSymbol(node, symbolMap) {
+    if (symbolMap) {
+      var demangledName = symbolMap[node.name] || symbolMap[node.selfName];
+      if (demangledName) return node.prefix + demangledName;
+    }
+    return node.name;
+  }
+
+  if (printOutput) {
+    if (outputJson) {
+      console.log(JSON.stringify(codeSizes));
+    } else {
+      console.log('--- Code sizes:');
+      for(var i in codeSizes) {
+        var node = codeSizes[i];
+      //  if (node.type) {
+          console.log(node.file + '/' + node.type + ' ' + demangleSymbol(node, symbolMap) + ': ' + node.size);
+      //  }
+      }
+    }
+  }
+  return codeSizes;
 }
 
-console.log('--- Code sizes:');
-for(var i in codeSizes) {
-  var node = codeSizes[i];
-//  if (node.type) {
-    console.log(node.file + '/' + node.type + ' ' + demangleSymbol(node, symbolMap) + ': ' + node.size);
-//  }
+function jsonContains(text, actual, expected) {
+  console.log(text);
+  console.log('---- actual result: ----');
+  console.dir(actual);
+
+  function findObjectByName(arr, obj) {
+    for(var i in arr) {
+      if (arr[i].name == obj.name) {
+        return arr[i];
+      }
+    }
+  }
+
+  for(var i in expected) {
+    var e = expected[i];
+    var a = findObjectByName(actual, e);
+    if (!a) {
+      throw new Error('Could not find a key with name ' + e.name + '!');
+    }
+    for(var j in e) {
+      if (!a[j]) {
+        throw new Error('Actual result did not have a key by name ' + j + '! (searching for ' + e + ')');
+      }
+      if (a[j] != e[j]) {
+        console.log('ACTUAL: ');
+        console.dir(a);
+        if (a.node) {
+          console.dir(a.node);
+        }
+        console.log('EXPECTED: ');
+        console.dir(e);
+        throw new Error('Actual result did not agree on value of key "' + j + '"! (actual: ' + a[j] + ', expected: ' + e[j] + ')');
+      }
+    }
+  }
+  return true;
+}
+
+function runTests() {
+  console.log('Running tests:');
+  var testCases = [
+    ['var foo;', [{ name: 'foo', type: 'var', size: 8}]],
+//    ['var foo=4,bar=2;', [{ name: 'foo', type: 'var', size: 5}, { name: 'foo', type: 'var', size: 5}]], // TODO
+    ['var foo = "var foo";', [{ name: 'foo', type: 'var', size: 20}]],
+    ['function foo(){}', [{ name: 'foo', type: 'function', size: 16}]],
+    ['function longFunctionName(){var x=4;}', [{ name: 'longFunctionName', type: 'function', size: 37}]],
+    ['function foo(){var longVariableName=4;}', [{ name: 'foo', type: 'function', size: 14}, {name: 'foo/longVariableName', type: 'var', size: 25}]],
+    // TODO: Fix the above to instead be
+//    ['function foo(){var longVariableName=4;}', [{ name: 'foo', type: 'function', size: 16}, {name: 'foo/longVariableName', type: 'var', size: 23}]],
+    ['var foo; foo.bar = function func(){"thisIsAFunctionAssignedToAMember";}', [{ name: 'func', type: 'function', size: 62}]],
+    // TODO: Fix the above to instead be
+//    ['var foo; foo.bar = function func(){"thisIsAFunctionAssignedToAMember";}', [{ name: 'func', type: 'function', size: 52}]],
+    ['var y = { b: 1, a: function foo() { var z = 4; } };', [{ name: 'y/a/foo', type: 'function', size: 29}]],
+
+    ['var WebAssembly = { Instance: function(module, info) { var exports = (function instantiate() { function asmFunc() { function memcpy() {}} return asmFunc() })(asmLibraryArg, wasmMemory, wasmTable); } }',
+      [{ name: 'WebAssembly.Instance', type: 'function', size: 29}]],    
+  ];
+  for(var i in testCases) {
+    [test, expected] = testCases[i];
+    var testFile = 'generatedTestCase.js';
+    fs.writeFileSync(testFile, test);
+    assert(jsonContains(test, run([testFile]), expected));
+  }
+}
+
+var args = process['argv'].slice(2);
+
+if (extractBoolCmdLineInput(args, '--runTests')) {
+  runTests();
+} else {
+  run(args);
 }
