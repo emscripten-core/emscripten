@@ -164,7 +164,7 @@ def parse_fastcomp_output(backend_output, DEBUG):
     metadata['externUses'] += ['Float32Array']
 
   # If we are generating references to Math.fround() from here in emscripten.py, declare it used as well.
-  if provide_fround() or metadata['simd']:
+  if provide_fround():
     metadata['externUses'] += ['Math.fround']
 
   # functions marked llvm.used in the code are exports requested by the user
@@ -244,8 +244,7 @@ def compiler_glue(metadata, temp_files, DEBUG):
 
   update_settings_glue(metadata, DEBUG)
 
-  assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
-  assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
+  assert not metadata['simd'], 'Obsolete SIMD.js is used'
 
   glue, forwarded_data = compile_settings(temp_files)
 
@@ -699,12 +698,6 @@ def update_settings_glue(metadata, DEBUG):
 
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
 
-  if metadata['simd']:
-    shared.Settings.SIMD = 1
-    if shared.Settings.ASM_JS != 2:
-      diagnostics.warning('almost-asm', 'disabling asm.js validation due to use of SIMD')
-      shared.Settings.ASM_JS = 2
-
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
   shared.Settings.WEAK_DECLARES = metadata.get('weakDeclares', [])
@@ -844,9 +837,6 @@ def apply_script_source(js):
 
 
 def memory_and_global_initializers(pre, metadata, mem_init):
-  if shared.Settings.SIMD == 1:
-    pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
-
   staticbump = shared.Settings.STATIC_BUMP
 
   pthread = ''
@@ -1367,7 +1357,6 @@ def create_asm_global_funcs(bg_funcs, metadata):
       asm_global_funcs += '  var ' + math.replace('.', '_') + '=global' + access_quote(math) + ';\n'
 
   asm_global_funcs += ''.join(['  var ' + unminified + '=env' + access_quote(math_fix(minified)) + ';\n' for (minified, unminified) in bg_funcs])
-  asm_global_funcs += global_simd_funcs(access_quote, metadata)
   if shared.Settings.USE_PTHREADS:
     asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
   return asm_global_funcs
@@ -1382,138 +1371,13 @@ def create_asm_global_vars(bg_vars):
   return asm_global_vars
 
 
-def global_simd_funcs(access_quote, metadata):
-  # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
-  if not (metadata['simd'] or shared.Settings.SIMD):
-    return ''
-
-  def string_contains_any(s, str_list):
-    return any(sub in s for sub in str_list)
-
-  nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
-  nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
-  nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
-  nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
-
-  simd = make_simd_types(metadata)
-
-  simd_func_text = ''
-  simd_func_text += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simd['types']])
-
-  def generate_symbols(types, funcs):
-    symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in types for g in funcs]
-    symbols = [x for x in symbols if not string_contains_any(x, nonexisting_simd_symbols)]
-    return ''.join(symbols)
-
-  simd_func_text += generate_symbols(simd['int_types'], simd['int_funcs'])
-  simd_func_text += generate_symbols(simd['float_types'], simd['float_funcs'])
-  simd_func_text += generate_symbols(simd['bool_types'], simd['bool_funcs'])
-
-  # SIMD conversions (not bitcasts) between same lane sizes:
-  def add_simd_cast(dst, src):
-    return '  var SIMD_' + dst + '_from' + src + '=SIMD_' + dst + '.from' + src + ';\n'
-
-  def add_simd_casts(t1, t2):
-    return add_simd_cast(t1, t2) + add_simd_cast(t2, t1)
-
-  # Bug: Skip importing conversions for int<->uint for now, they don't validate
-  # as asm.js. https://bugzilla.mozilla.org/show_bug.cgi?id=1313512
-  # This is not an issue when building SSEx code, because it doesn't use these.
-  # (but it will be an issue if using SIMD.js intrinsics from vector.h to
-  # explicitly call these)
-  # if metadata['simdInt8x16'] and metadata['simdUint8x16']:
-  #   simd_func_text += add_simd_casts('Int8x16', 'Uint8x16')
-  # if metadata['simdInt16x8'] and metadata['simdUint16x8']:
-  #   simd_func_text += add_simd_casts('Int16x8', 'Uint16x8')
-  # if metadata['simdInt32x4'] and metadata['simdUint32x4']:
-  #   simd_func_text += add_simd_casts('Int32x4', 'Uint32x4')
-
-  if metadata['simdInt32x4'] and metadata['simdFloat32x4']:
-    simd_func_text += add_simd_casts('Int32x4', 'Float32x4')
-  if metadata['simdUint32x4'] and metadata['simdFloat32x4']:
-    simd_func_text += add_simd_casts('Uint32x4', 'Float32x4')
-  if metadata['simdInt32x4'] and metadata['simdFloat64x2']:
-    simd_func_text += add_simd_cast('Int32x4', 'Float64x2') # Unofficial, needed for emscripten_int32x4_fromFloat64x2
-  if metadata['simdUint32x4'] and metadata['simdFloat64x2']:
-    simd_func_text += add_simd_cast('Uint32x4', 'Float64x2') # Unofficial, needed for emscripten_uint32x4_fromFloat64x2
-
-  # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
-  if metadata['simdFloat64x2']:
-    simd_func_text += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n'
-  return simd_func_text
-
-
-def make_simd_types(metadata):
-  simd_float_types = []
-  simd_int_types = []
-  simd_bool_types = []
-  simd_funcs = ['splat', 'check', 'extractLane', 'replaceLane']
-  simd_intfloat_funcs = ['add', 'sub', 'neg', 'mul',
-                         'equal', 'lessThan', 'greaterThan',
-                         'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
-                         'select', 'swizzle', 'shuffle',
-                         'load', 'store', 'load1', 'store1', 'load2', 'store2']
-  simd_intbool_funcs = ['and', 'xor', 'or', 'not']
-  if metadata['simdUint8x16']:
-    simd_int_types += ['Uint8x16']
-    simd_intfloat_funcs += ['fromUint8x16Bits']
-  if metadata['simdInt8x16']:
-    simd_int_types += ['Int8x16']
-    simd_intfloat_funcs += ['fromInt8x16Bits']
-  if metadata['simdUint16x8']:
-    simd_int_types += ['Uint16x8']
-    simd_intfloat_funcs += ['fromUint16x8Bits']
-  if metadata['simdInt16x8']:
-    simd_int_types += ['Int16x8']
-    simd_intfloat_funcs += ['fromInt16x8Bits']
-  if metadata['simdUint32x4']:
-    simd_int_types += ['Uint32x4']
-    simd_intfloat_funcs += ['fromUint32x4Bits']
-  if metadata['simdInt32x4'] or shared.Settings.SIMD:
-    # Always import Int32x4 when building with -s SIMD=1, since memcpy is SIMD optimized.
-    simd_int_types += ['Int32x4']
-    simd_intfloat_funcs += ['fromInt32x4Bits']
-  if metadata['simdFloat32x4']:
-    simd_float_types += ['Float32x4']
-    simd_intfloat_funcs += ['fromFloat32x4Bits']
-  if metadata['simdFloat64x2']:
-    simd_float_types += ['Float64x2']
-    simd_intfloat_funcs += ['fromFloat64x2Bits']
-  if metadata['simdBool8x16']:
-    simd_bool_types += ['Bool8x16']
-  if metadata['simdBool16x8']:
-    simd_bool_types += ['Bool16x8']
-  if metadata['simdBool32x4']:
-    simd_bool_types += ['Bool32x4']
-  if metadata['simdBool64x2']:
-    simd_bool_types += ['Bool64x2']
-
-  simd_float_funcs = simd_funcs + simd_intfloat_funcs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                                         'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
-  simd_int_funcs = simd_funcs + simd_intfloat_funcs + simd_intbool_funcs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
-  simd_bool_funcs = simd_funcs + simd_intbool_funcs + ['anyTrue', 'allTrue']
-  simd_types = simd_float_types + simd_int_types + simd_bool_types
-  return {
-    'types': simd_types,
-    'float_types': simd_float_types,
-    'int_types': simd_int_types,
-    'bool_types': simd_bool_types,
-    'funcs': simd_funcs,
-    'float_funcs': simd_float_funcs,
-    'int_funcs': simd_int_funcs,
-    'bool_funcs': simd_bool_funcs,
-    'intfloat_funcs': simd_intfloat_funcs,
-    'intbool_funcs': simd_intbool_funcs,
-  }
-
-
 def asm_safe_heap():
   """optimized safe heap in asm, when we can"""
   return shared.Settings.SAFE_HEAP and not shared.Settings.SAFE_HEAP_LOG and not shared.Settings.RELOCATABLE
 
 
 def provide_fround():
-  return shared.Settings.PRECISE_F32 or shared.Settings.SIMD
+  return shared.Settings.PRECISE_F32
 
 
 def create_asm_setup(debug_tables, function_table_data, invoke_function_names, metadata):
@@ -1684,9 +1548,6 @@ def create_the_global(metadata):
     if asm_backend_uses(metadata, f):
       fundamentals += [f]
 
-  if metadata['simd'] or shared.Settings.SIMD:
-    # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
-    fundamentals += ['SIMD']
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
@@ -2636,7 +2497,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'declares': [],
     'implementedFunctions': [],
     'externs': [],
-    'simd': False,
+    'simd': False, # Obsolete, always False
     'maxGlobalAlign': 0,
     'staticBump': 0,
     'tableSize': 0,

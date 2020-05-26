@@ -1799,10 +1799,7 @@ class Building(object):
     # opts += ['-debug-pass=Arguments']
     # TODO: move vectorization logic to clang/LLVM?
     if not Settings.WASM_BACKEND:
-      if not Settings.SIMD:
-        opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
-      else:
-        opts += ['-force-vector-width=4']
+      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
 
     target = out or (filename + '.opt.bc')
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]

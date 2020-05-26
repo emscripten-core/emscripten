@@ -3132,24 +3132,10 @@ myreade(){
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
 
-  def check_simd(self, expected_simds, expected_out):
-    if SPIDERMONKEY_ENGINE in JS_ENGINES:
-      out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
-      self.validate_asmjs(out)
-    else:
-      out = run_js('a.out.js')
-    self.assertContained(expected_out, out)
-
-    src = open('a.out.js').read()
-    asm = src[src.find('// EMSCRIPTEN_START_FUNCS'):src.find('// EMSCRIPTEN_END_FUNCS')]
-    simds = asm.count('SIMD_')
-    assert simds >= expected_simds, 'expecting to see at least %d SIMD* uses, but seeing %d' % (expected_simds, simds)
-
   @unittest.skip("autovectorization of this stopped in LLVM 6.0")
   def test_autovectorize_linpack(self):
     # TODO: investigate when SIMD arrives in wasm
     run_process([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling', '-s', 'WASM=0'])
-    self.check_simd(30, 'Unrolled Single  Precision')
 
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
