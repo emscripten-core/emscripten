@@ -2854,16 +2854,6 @@ class JS(object):
       if settings:
         assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(0)'
-    elif sig == 'F':
-      return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
-    elif sig == 'D':
-      return 'SIMD_Float64x2_check(SIMD_Float64x2(0,0,0,0))'
-    elif sig == 'B':
-      return 'SIMD_Int8x16_check(SIMD_Int8x16(0,0,0,0))'
-    elif sig == 'S':
-      return 'SIMD_Int16x8_check(SIMD_Int16x8(0,0,0,0))'
-    elif sig == 'I':
-      return 'SIMD_Int32x4_check(SIMD_Int32x4(0,0,0,0))'
     else:
       return '+0'
 
@@ -2891,16 +2881,6 @@ class JS(object):
       if settings:
         assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(' + value + ')'
-    elif sig == 'F':
-      return 'SIMD_Float32x4_check(' + value + ')'
-    elif sig == 'D':
-      return 'SIMD_Float64x2_check(' + value + ')'
-    elif sig == 'B':
-      return 'SIMD_Int8x16_check(' + value + ')'
-    elif sig == 'S':
-      return 'SIMD_Int16x8_check(' + value + ')'
-    elif sig == 'I':
-      return 'SIMD_Int32x4_check(' + value + ')'
     else:
       return value
 
