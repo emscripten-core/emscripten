@@ -34,7 +34,6 @@ import multiprocessing
 import operator
 import os
 import random
-import re
 import shlex
 import shutil
 import string
