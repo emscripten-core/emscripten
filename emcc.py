@@ -3062,7 +3062,7 @@ def parse_args(newargs):
       should_exit = True
     # Record SIMD setting for Binaryen
     elif newargs[i] == '-msimd128':
-      settings_changes.append('BINARYEN_SIMD=1')
+      shared.Settings.BINARYEN_SIMD = 1
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
