@@ -2738,10 +2738,11 @@ var LibraryGLEmulation = {
         if (!GLctx.currentArrayBufferBinding && GLImmediate.firstVertex > GLImmediate.lastVertex) {
           // Figure out the first and last vertex from the index data
 #if ASSERTIONS
-          assert(!GLctx.currentElementArrayBufferBinding); // If we are going to upload array buffer data, we need to find which range to
-                                              // upload based on the indices. If they are in a buffer on the GPU, that is very
-                                              // inconvenient! So if you do not have an array buffer, you should also not have
-                                              // an element array buffer. But best is to use both buffers!
+          // If we are going to upload array buffer data, we need to find which range to
+          // upload based on the indices. If they are in a buffer on the GPU, that is very
+          // inconvenient! So if you do not have an array buffer, you should also not have
+          // an element array buffer. But best is to use both buffers!
+          assert(!GLctx.currentElementArrayBufferBinding);
 #endif
           for (var i = 0; i < numProvidedIndexes; i++) {
             var currIndex = {{{ makeGetValue('ptr', 'i*2', 'i16', null, 1) }}};
