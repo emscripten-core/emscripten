@@ -29,6 +29,7 @@ if (!Math.fround) {
 if (!Math.fround) Math.fround = function(x) { return x };
 #endif
 #endif
+#endif
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/clz32
 #if POLYFILL_OLD_MATH_FUNCTIONS || MIN_CHROME_VERSION < 38 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 31 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // || MIN_NODE_VERSION < 0.12
