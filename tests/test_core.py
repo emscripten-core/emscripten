@@ -67,6 +67,7 @@ def also_with_wasm_bigint(f):
       self.set_setting('WASM_BIGINT', 1)
       with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
         f(self)
+  return decorated
 
 
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
