@@ -6378,7 +6378,6 @@ return malloc(size);
       'longjmp_tiny_keepem', 'longjmp_tiny_keepem_cond', 'longjmp_tiny_phi', 'longjmp_tiny_phi2',
     ]
     skip_wasm = [
-      'i1282vecnback', # uses simd
       # casts a function pointer from (i32, i32)* to (i64)*, which happens to work in asm.js but is a general function pointer undefined behavior
       'call_inttoptr_i64',
     ]
