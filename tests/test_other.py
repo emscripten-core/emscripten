@@ -3135,7 +3135,7 @@ myreade(){
   @unittest.skip("autovectorization of this stopped in LLVM 6.0")
   def test_autovectorize_linpack(self):
     # TODO: investigate when SIMD arrives in wasm
-    run_process([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling', '-s', 'WASM=0'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-msimd128', '-DSP', '--profiling'])
 
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
