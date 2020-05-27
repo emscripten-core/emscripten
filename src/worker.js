@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2015 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 // Pthread Web Worker startup routine:
 // This is the entry point file that is loaded first by each Web Worker
