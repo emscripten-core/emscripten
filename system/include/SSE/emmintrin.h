@@ -186,7 +186,7 @@ static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpunord_pd(__m128d __a, __m128d __b)
 {
   return (__m128d)wasm_v128_or(wasm_f64x2_ne((v128_t)__a, (v128_t)__a),
-                      wasm_f64x2_ne((v128_t)__b, (v128_t)__b));
+                               wasm_f64x2_ne((v128_t)__b, (v128_t)__b));
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -294,6 +294,8 @@ _mm_cmpnge_sd(__m128d __a, __m128d __b)
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comieq_sd(__m128d __a, __m128d __b)
 {
+  // TODO: Benchmark whether wasm_f64x2_extract_lane(__a, 0) == wasm_f64x2_extract_lane(__b, 0);
+  // will result in better or worse codegen.
   return ((__f64x2)__a)[0] == ((__f64x2)__b)[0];
 }
 
@@ -366,7 +368,7 @@ _mm_ucomineq_sd(__m128d __a, __m128d __b)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_cvtpd_ps(__m128d __a)
 {
-  return (__m128) { (float)__a[0], (float)__a[1], 0, 0 };
+  return (__m128)wasm_f32x4_make((float)__a[0], (float)__a[1], 0, 0);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -1339,21 +1341,14 @@ static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_stream_si32(int *__p, int __a)
 {
   // No cache hinting available.
-  /* TODO: Add a build flag EMSCRIPTEN_SIMD_REQUIRE_ELEMENT_ALIGNMENT or something similar to avoid this.
-    Then could just do *__p = __a; */
-  struct __unaligned {
-    int __v;
-  } __attribute__((__packed__, __may_alias__));
-  ((struct __unaligned *)__p)->__v = __a;
+  *__p = __a;
 }
 
-typedef long long __attribute__((aligned(1))) align1_int64;
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_stream_si64(long long *__p, long long __a)
 {
   // No cache hinting available.
-  emscripten_align1_int *__q = (emscripten_align1_int*)__p;
-  memcpy(__q, &__a, sizeof(long long));
+  *__p = __a;
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))

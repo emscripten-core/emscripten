@@ -39,7 +39,7 @@ SIMD-related bug reports are tracked in the `Emscripten bug tracker with the lab
 Compiling SIMD code targeting x86 SSE instruction set
 =====================================================
 
-Emscripten supports compiling existing x86 SSE utilizing codebases by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
+Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
 
 Currently only the SSE1 and SSE2 instruction sets are supported.
 
