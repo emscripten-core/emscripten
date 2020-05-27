@@ -31,20 +31,6 @@ from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_
 # decorators for limiting which modes a test can run in
 
 
-def asm_simd(f):
-  assert callable(f)
-
-  def decorated(self):
-    if self.is_wasm_backend():
-      self.skipTest('asm.js simd not compatible with wasm backend yet')
-    if self.get_setting('WASM'):
-      self.skipTest('asm.js simd not compatible with asm2wasm')
-    self.emcc_args.append('-Wno-almost-asm')
-    self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
-    f(self)
-  return decorated
-
-
 def wasm_simd(f):
   def decorated(self):
     if not self.is_wasm_backend():
@@ -53,7 +39,7 @@ def wasm_simd(f):
       self.skipTest('wasm simd only supported in d8 for now')
     if self.is_wasm_backend() and not self.get_setting('WASM'):
       self.skipTest('wasm2js only supports MVP for now')
-    self.set_setting('SIMD', 1)
+    self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
     with js_engines_modify([V8_ENGINE + ['--experimental-wasm-simd']]):
       f(self)
@@ -356,9 +342,13 @@ class TestCoreBase(RunnerCore):
   @also_with_standalone_wasm
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    # must not emit this unneeded internal thing
+    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', open('src.c.o.js').read())
 
-    src = open('src.c.o.js').read()
-    assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
+  @sync
+  def test_wasm_synchronous_compilation(self):
+    self.set_setting('STRICT_JS')
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   def test_intvars(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_intvars')
@@ -5190,14 +5180,6 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'stat', 'test_mknod.c')).read()
     self.do_run(src, 'success', force_c=True)
 
-  def add_pre_run(self, code):
-    create_test_file('pre.js', 'Module.preRun = function() { %s }' % code)
-    self.emcc_args += ['--pre-js', 'pre.js']
-
-  def add_post_run(self, code):
-    create_test_file('pre.js', 'Module.postRun = function() { %s }' % code)
-    self.emcc_args += ['--pre-js', 'pre.js']
-
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl')
@@ -6035,48 +6017,6 @@ return malloc(size);
     self.build(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
-  @asm_simd
-  def test_simd(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd')
-
-  @asm_simd
-  def test_simd2(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd2')
-
-  @asm_simd
-  def test_simd5(self):
-    # test_simd5 is to test shufflevector of SIMD path
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd5')
-
-  @asm_simd
-  def test_simd_float64x2(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_float64x2')
-
-  @asm_simd
-  def test_simd_float32x4(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_float32x4')
-
-  @asm_simd
-  def test_simd_int32x4(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int32x4')
-
-  @asm_simd
-  def test_simd_int16x8(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int16x8')
-
-  @asm_simd
-  def test_simd_int8x16(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int8x16')
-
-  # Tests that the vector SIToFP instruction generates an appropriate Int->Float type conversion operator and not a bitcasting/reinterpreting conversion
-  @asm_simd
-  def test_simd_sitofp(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_sitofp')
-
-  @asm_simd
-  def test_simd_shift_right(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
-
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
   def test_sse1(self):
@@ -6452,7 +6392,6 @@ return malloc(size);
       'longjmp_tiny_keepem', 'longjmp_tiny_keepem_cond', 'longjmp_tiny_phi', 'longjmp_tiny_phi2',
     ]
     skip_wasm = [
-      'i1282vecnback', # uses simd
       # casts a function pointer from (i32, i32)* to (i64)*, which happens to work in asm.js but is a general function pointer undefined behavior
       'call_inttoptr_i64',
     ]

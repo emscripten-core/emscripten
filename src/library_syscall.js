@@ -1838,11 +1838,8 @@ for (var x in SyscallsLibrary) {
   var wasi = false;
   if (x in WASI_SYSCALLS) {
     wasi = true;
-  } else {
-    var match = /^__sys_[^_]*$/.exec(x);
-    if (!match) {
-      continue;
-    }
+  } else if (!x.startsWith('__sys_') || isJsLibraryConfigIdentifier(x)) {
+    continue;
   }
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;

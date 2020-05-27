@@ -34,7 +34,6 @@ import multiprocessing
 import operator
 import os
 import random
-import re
 import shlex
 import shutil
 import string
@@ -559,8 +558,17 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def in_dir(self, *pathelems):
     return os.path.join(self.get_dir(), *pathelems)
 
-  def get_stdout_path(self):
-    return os.path.join(self.get_dir(), 'stdout')
+  def add_pre_run(self, code):
+    create_test_file('prerun.js', 'Module.preRun = function() { %s }' % code)
+    self.emcc_args += ['--pre-js', 'prerun.js']
+
+  def add_post_run(self, code):
+    create_test_file('postrun.js', 'Module.postRun = function() { %s }' % code)
+    self.emcc_args += ['--pre-js', 'postrun.js']
+
+  def add_on_exit(self, code):
+    create_test_file('onexit.js', 'Module.onExit = function() { %s }' % code)
+    self.emcc_args += ['--pre-js', 'onexit.js']
 
   def prep_ll_file(self, output_file, input_file, force_recompile=False, build_ll_hook=None):
     # force_recompile = force_recompile or os.path.getsize(filename + '.ll') > 50000
@@ -717,23 +725,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
-    m = re.search(r"asm.js type error: '(\w+)' is not a (standard|supported) SIMD type", err)
-    if m:
-      # Bug numbers for missing SIMD types:
-      bugs = {
-        'Int8x16': 1136226,
-        'Int16x8': 1136226,
-        'Uint8x16': 1244117,
-        'Uint16x8': 1244117,
-        'Uint32x4': 1240796,
-        'Float64x2': 1124205,
-      }
-      simd = m.group(1)
-      if simd in bugs:
-        print(("\nWARNING: ignoring asm.js type error from {} due to implementation not yet available in SpiderMonkey." +
-               " See https://bugzilla.mozilla.org/show_bug.cgi?id={}\n").format(simd, bugs[simd]), file=sys.stderr)
-        err = err.replace(m.group(0), '')
-
     # check for asm.js validation
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print("[was asm.js'ified]", file=sys.stderr)
