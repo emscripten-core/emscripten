@@ -1407,6 +1407,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # We add these to the user's flags (newargs), but not when building .s or .S assembly files
     cflags = shared.get_cflags(newargs)
 
+    newargs = [x for x in newargs if x not in ['-msse']]
+
     if not shared.Settings.STRICT:
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
