@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2019 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
 #if POLYFILL_OLD_MATH_FUNCTIONS || MIN_CHROME_VERSION < 28 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 20 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000 // || MIN_NODE_VERSION < 0.12

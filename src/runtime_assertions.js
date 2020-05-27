@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2019 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 #if ASSERTIONS
 // Endianness check (note: assumes compiler arch was little-endian)

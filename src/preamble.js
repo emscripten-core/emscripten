@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 // === Preamble library stuff ===
 

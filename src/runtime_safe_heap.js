@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2019 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 #if SAFE_HEAP || !MINIMAL_RUNTIME
 // In MINIMAL_RUNTIME, setValue() and getValue() are only available when building with safe heap enabled, for heap safety checking.

@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2019 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 #if SEPARATE_ASM && ASSERTIONS && WASM == 0 && MODULARIZE
 if (!({{{ASM_MODULE_NAME}}})) throw 'Must load asm.js Module in to variable {{{ASM_MODULE_NAME}}} before adding compiled output .js script to the DOM';

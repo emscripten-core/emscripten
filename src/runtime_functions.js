@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2020 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 #if !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
 var jsCallStartIndex = 1;

@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2020 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 // runtime_strings_extra.js: Strings related runtime functions that are available only in regular runtime.
 

@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
  * @license
  * Copyright 2020 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 #if RUNTIME_DEBUG
 var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
