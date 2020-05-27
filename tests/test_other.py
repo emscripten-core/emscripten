@@ -9854,6 +9854,26 @@ int main(void) {
   def test_mmap_memorygrowth(self):
     self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
 
+  def test_files_and_module_assignment(self):
+    # a pre-js can set Module to a new object or otherwise undo file preloading/
+    # embedding changes to Module.preRun. we show an error to avoid confusion
+    create_test_file('pre1.js', 'Module = {};')
+    create_test_file('src.cpp', r'''
+      #include <stdio.h>
+      int main() {
+        printf("file exists: %d\n", !!fopen("src.cpp", "rb"));
+      }
+    ''')
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre1.js', '--embed-file', 'src.cpp'])
+    result = run_js('a.out.js', assert_returncode=None, stderr=PIPE, full_output=True)
+    self.assertContained('Module.preRun should exist because file support used it; did a pre-js delete it?', result)
+
+    # likewise, error if the user deletes Module.preRun
+    create_test_file('pre2.js', 'Module = { preRun: [] };')
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre2.js', '--embed-file', 'src.cpp'])
+    result = run_js('a.out.js', assert_returncode=None, stderr=PIPE, full_output=True)
+    self.assertContained('All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?', result)
+
   @no_fastcomp('fastcomp defines this in the backend itself, so it is always on there')
   def test_EMSCRIPTEN_and_STRICT(self):
     # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
