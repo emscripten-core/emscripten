@@ -6025,11 +6025,10 @@ return malloc(size);
     native_result = run_process('./test_sse1', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
 
     orig_args = self.emcc_args
-    for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests', 'sse'), '-msse']
-      self.maybe_closure()
+    self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse']
+    self.maybe_closure()
 
-      self.do_run(open(src).read(), native_result)
+    self.do_run(open(src).read(), native_result)
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
