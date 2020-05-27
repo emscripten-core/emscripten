@@ -2051,12 +2051,12 @@ var LibraryJSEvents = {
         // Verify that browser does not recycle touch objects with old stale data, but reports new ones each time.
         assert(!touch.onTarget);
 #endif
-        touch.isChanged = 1/*true*/;
+        touch.isChanged = 1;
         touches[touch.identifier] = touch;
       }
       et = e.targetTouches;
       for(var i = 0; i < et.length; ++i) {
-        touches[et[i].identifier].onTarget = 1/*true*/;
+        touches[et[i].identifier].onTarget = 1;
       }
 
 #if USE_PTHREADS
