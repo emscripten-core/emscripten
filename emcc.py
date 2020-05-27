@@ -2523,7 +2523,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.use_preload_plugins:
           file_args.append('--use-preload-plugins')
         file_code = run_process([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
-        options.pre_js = file_code + options.pre_js
+        # emit file loading code after user pre-js-es, as those can define the
+        # Module object which the file code depends on.
+        # ./emcc a.cpp --embed-file waka --pre-js a.js (set Module to {})
+        options.pre_js += '\n' + file_code
 
       # Apply pre and postjs files
       if options.pre_js or options.post_js:
