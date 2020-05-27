@@ -427,17 +427,22 @@ var LibraryJSEvents = {
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
   _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '$specialHTMLTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientX, 'e.clientX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientY, 'e.clientY', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.altKey, 'e.altKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.metaKey, 'e.metaKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.button, 'e.button', 'i16') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
-    var movementX = e["movementX"]
+#if ASSERTIONS
+    assert(eventStruct % 4 == 0);
+#endif
+    var idx = eventStruct >> 2;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenX / 4 }}}] = e.screenX;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientX / 4 }}}] = e.clientX;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientY / 4 }}}] = e.clientY;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey / 4 }}}] = e.ctrlKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey / 4 }}}] = e.shiftKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey / 4 }}}] = e.altKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey / 4 }}}] = e.metaKey;
+    HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.button / 2 }}}] = e.button;
+    HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.buttons / 2 }}}] = e.buttons;
+
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementX / 4 }}}] = e["movementX"]
 #if MIN_FIREFOX_VERSION <= 40
       //     https://caniuse.com/#feat=mdn-api_mouseevent_movementx
       || e["mozMovementX"]
@@ -449,7 +454,8 @@ var LibraryJSEvents = {
       || (e.screenX-JSEvents.previousScreenX)
 #endif
       ;
-    var movementY = e["movementY"]
+
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementY / 4 }}}] = e["movementY"]
 #if MIN_FIREFOX_VERSION <= 40
       || e["mozMovementY"]
 #endif
@@ -461,20 +467,19 @@ var LibraryJSEvents = {
 #endif
       ;
 
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'movementX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'movementY', 'i32') }}};
-
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
       var rect = __getBoundingClientRect(Module['canvas']);
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = e.clientX - rect.left;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = e.clientY - rect.top;
     } else { // Canvas is not initialized, return 0.
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, '0', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = 0;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = 0;
     }
 #endif
     var rect = __getBoundingClientRect(target);
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - rect.left;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - rect.top;
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
 
