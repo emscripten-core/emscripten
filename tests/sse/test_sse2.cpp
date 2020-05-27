@@ -289,7 +289,7 @@ void test_store()
 	void_OutDoublePtr_M128d(_mm_stream_pd, double*, 16, 16);
 	void_OutIntPtr_M128i(_mm_stream_si128, __m128i*, 16, 16);
 	void_OutIntPtr_int(_mm_stream_si32, int*, 4, 1);
-	void_OutIntPtr_int64(_mm_stream_si64, int64_t*, 8, 1);
+	void_OutIntPtr_int64(_mm_stream_si64, long long*, 8, 1);
 }
 
 void test_swizzle()
