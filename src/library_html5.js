@@ -27,10 +27,12 @@ var LibraryJSEvents = {
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
 
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 8 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
     // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
     // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
     previousScreenX: null,
     previousScreenY: null,
+#endif
 
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
@@ -450,7 +452,7 @@ var LibraryJSEvents = {
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementX"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenX-JSEvents.previousScreenX)
 #endif
       ;
@@ -462,7 +464,7 @@ var LibraryJSEvents = {
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementY"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenY-JSEvents.previousScreenY)
 #endif
       ;
@@ -483,17 +485,20 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
 
-    // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
-      // https://github.com/emscripten-core/emscripten/pull/4997
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_CHROME_VERSION <= 76
+    // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera <= 76,
+    // so there we should not record previous screen coordinates on wheel events.
     // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
-    if (e.type !== 'wheel'
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
-     && e.type !== 'mousewheel'
+    // https://github.com/emscripten-core/emscripten/pull/4997
+    if (e.type !== 'wheel') {
 #endif
-     ) {
       JSEvents.previousScreenX = e.screenX;
       JSEvents.previousScreenY = e.screenY;
+#if MIN_CHROME_VERSION <= 76
     }
+#endif
+#endif
   },
 
   _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_findEventTarget'],
