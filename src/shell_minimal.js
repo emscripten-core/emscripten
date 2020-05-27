@@ -1,9 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE
 /**
-d
  * @license
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 #if SIDE_MODULE == 0
 #if USE_CLOSURE_COMPILER
