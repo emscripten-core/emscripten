@@ -7897,8 +7897,7 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    # 'noexcept' disabled to allow LLVM to roll
-    # 'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
+    'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
     # exceptions increases code size significantly
     'except':   (['-O2', '-fexceptions'],    [], ['waka'], 279827), # noqa
     # exceptions does not pull in demangling by default, which increases code size
@@ -7906,6 +7905,7 @@ int main() {
                   '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 408028), # noqa
   })
   @no_fastcomp()
+  @unittest.skip("Temporarily disabled to allow LLVM to roll")
   def test_metadce_cxx(self, *args):
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
