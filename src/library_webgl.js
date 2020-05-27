@@ -1244,6 +1244,65 @@ var LibraryGL = {
     return ret;
   },
 
+  emscripten_webgl_getParameter_d: function(param) {
+    return GLctx.getParameter(param);
+  },
+
+  emscripten_webgl_getParameter_object: function(param) {
+    var obj = GLctx.getParameter(param);
+    return obj && obj.name;
+  },
+
+  emscripten_webgl_getParameter_iv: function(param, dst, dstLength) {
+    var ret = GLctx.getParameter(param);
+    var len = ret && ret.length;
+    var writeLength = dstLength < len ? dstLength : len;
+    for(var i = 0; i < writeLength; ++i) {
+      HEAP32[(dst + i) >> 2] = ret[i];
+    }
+    return len;
+  },
+
+  emscripten_webgl_getParameter_fv: function(param, dst, dstLength) {
+    var ret = GLctx.getParameter(param);
+    var len = ret && ret.length;
+    var writeLength = dstLength < len ? dstLength : len;
+    for(var i = 0; i < writeLength; ++i) {
+      HEAPF32[(dst + i) >> 2] = ret[i];
+    }
+    return len;
+  },
+
+  emscripten_webgl_getParameter_utf8: function(param) {
+    return stringToNewUTF8(GLctx.getParameter(param));
+  },
+
+  emscripten_webgl_getParameter_i64v__deps: ['$writeI53ToI64'],
+  emscripten_webgl_getParameter_i64v: function(param, dst) {
+    writeI53ToI64(dst, GLctx.getParameter(param));
+  },
+
+  emscripten_webgl_getSupportedExtensions__deps: ['$stringToNewUTF8'],
+  emscripten_webgl_getSupportedExtensions: function(dst, dstLength) {
+    return stringToNewUTF8(GLctx.getSupportedExtensions().join(' '));
+  },
+
+  emscripten_webgl_getProgramParameter_d: function(program, param) {
+    return GLctx.getProgramParameter(GL.programs[program], param);
+  }
+
+  emscripten_webgl_getProgramInfoLog_utf8: function(program,) {
+    return GLctx.getProgramInfoLog(GL.programs[program]);
+  }
+
+  emscripten_webgl_getShaderParameter_d: function(shader, param) {
+    return GLctx.getShaderParameter(GL.shaders[shader], param);
+  }
+
+  emscripten_webgl_getShaderInfoLog_utf8: function(shader) {
+    return GLctx.getShaderInfoLog(GL.shaders[shader]);
+  }
+
   $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGet: function(name_, p, type) {
     // Guard against user passing a null pointer.
