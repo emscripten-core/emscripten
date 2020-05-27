@@ -97,7 +97,7 @@ UNSUPPORTED_LLD_FLAGS = {
     # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
     # in order to aid build systems that want to pass these flags.
     '-soname': True,
-    '--allow-shlib-undefined': False,
+    '-allow-shlib-undefined': False,
     '-rpath': True,
     '-rpath-link': True
 }
@@ -550,7 +550,8 @@ def filter_link_flags(flags, using_lld):
   def is_supported(f):
     if using_lld:
       for flag, takes_arg in UNSUPPORTED_LLD_FLAGS.items():
-        if f.startswith(flag):
+        # lld allows various flags to have either a single -foo or double --foo
+        if f.startswith(flag) or f.startswith('-' + flag):
           diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
           return False, takes_arg
       return True, False

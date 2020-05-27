@@ -10082,6 +10082,12 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
                        '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)
 
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-allow-shlib-undefined'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `-allow-shlib-undefined`', out)
+
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--allow-shlib-undefined'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `--allow-shlib-undefined`', out)
+
   @no_fastcomp('lld-specific')
   def test_linker_flags_pass_through(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--waka'])
