@@ -149,14 +149,14 @@ void tostr_approx(__m128 *m, char *outstr, bool approximate)
 	sprintf(outstr, "[%s,%s,%s,%s]", s[3], s[2], s[1], s[0]);
 }
 
-#ifdef __SSE2__
-
 void tostr(__m128i *m, char *outstr)
 {
 	union { __m128i m; uint32_t val[4]; } u;
 	u.m = *m;
 	sprintf(outstr, "[0x%08X,0x%08X,0x%08X,0x%08X]", u.val[3], u.val[2], u.val[1], u.val[0]);
 }
+
+#ifdef __SSE2__
 
 void tostr(__m128d *m, char *outstr)
 {
@@ -266,10 +266,12 @@ __m128 ExtractFloatInRandomOrder(float *arr, int i, int n, int prime)
 	return _mm_set_ps(arr[(i*prime)%n], arr[((i+1)*prime)%n], arr[((i+2)*prime)%n], arr[((i+3)*prime)%n]);
 }
 
+#ifdef __SSE2__
 __m128d ExtractDoubleInRandomOrder(double *arr, int i, int n, int prime)
 {
 	return _mm_set_pd(arr[(i*prime)%n], arr[((i+1)*prime)%n]);
 }
+#endif
 
 __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 {

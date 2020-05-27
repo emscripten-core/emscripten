@@ -115,8 +115,7 @@ _mm_load_ss(const float *__p)
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_storel_pi(__m64 *__p, __m128 __a)
 {
-  __f64x2 __f = (__f64x2)__a;
-  *__p = (__m64) { __f[0], __f[1] };
+  *__p = (__m64) { __a[0], __a[1] };
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
