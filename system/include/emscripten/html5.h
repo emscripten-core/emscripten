@@ -108,19 +108,19 @@ extern "C" {
 #define EM_HTML5_LONG_STRING_LEN_BYTES 128
 
 typedef struct EmscriptenKeyboardEvent {
-  EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
-  EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
   unsigned long location;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
   EM_BOOL altKey;
   EM_BOOL metaKey;
   EM_BOOL repeat;
-  EM_UTF8 locale[EM_HTML5_SHORT_STRING_LEN_BYTES];
-  EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
   unsigned long charCode;
   unsigned long keyCode;
   unsigned long which;
+  EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 locale[EM_HTML5_SHORT_STRING_LEN_BYTES];
 } EmscriptenKeyboardEvent;
 
 
