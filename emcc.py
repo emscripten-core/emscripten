@@ -264,6 +264,10 @@ def use_source_map(options):
 
 
 def will_metadce(options):
+  # The metadce JS parsing code does not currently support the JS that gets generated
+  # when assertions are enabled.
+  if shared.Settings.ASSERTIONS:
+    return False
   return shared.Settings.OPT_LEVEL >= 3 or shared.Settings.SHRINK_LEVEL >= 1
 
 
@@ -961,9 +965,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # warnings are properly printed during arg parse.
     newargs = diagnostics.capture_warnings(newargs)
 
-    if not shared.CONFIG_FILE:
-      diagnostics.warning('deprected', 'Specifying EM_CONFIG as a python literal is deprected. Please you a file instead.')
-
     for i in range(len(newargs)):
       if newargs[i] in ('-l', '-L', '-I'):
         # Scan for individual -l/-L/-I arguments and concatenate the next arg on
@@ -1420,11 +1421,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       link_to_object = True
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
-      if shared.Settings.MINIMAL_RUNTIME:
-        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
-        shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
-      else:
-        shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie', 'abortStackOverflow']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
@@ -1848,6 +1846,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
       if shared.Settings.USE_PTHREADS:
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
+      if shared.Settings.MINIMAL_RUNTIME:
+        exit_with_error('MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
@@ -2033,8 +2033,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
 
     if shared.Settings.WASM_BACKEND:
-      if shared.Settings.SIMD:
-        newargs.append('-msimd128')
       if shared.Settings.USE_PTHREADS:
         newargs.append('-pthread')
     else:
@@ -3062,11 +3060,9 @@ def parse_args(newargs):
       else:
         shared.generate_config(optarg)
       should_exit = True
-    # Record SIMD setting because it controls whether the autovectorizer runs
+    # Record SIMD setting for Binaryen
     elif newargs[i] == '-msimd128':
-      settings_changes.append('SIMD=1')
-    elif newargs[i] == '-mno-simd128':
-      settings_changes.append('SIMD=0')
+      shared.Settings.BINARYEN_SIMD = 1
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
@@ -3160,7 +3156,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if shared.Settings.LEGALIZE_JS_FFI != 1:
       cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
-      cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
+      cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, and can contain special fastcomp-wasm support
     if shared.Settings.USE_PTHREADS:
       cmd += ['--enable-threads']
     if intermediate_debug_info:

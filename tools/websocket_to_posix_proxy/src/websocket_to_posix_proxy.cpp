@@ -1656,7 +1656,7 @@ void ProcessWebSocketMessage(int client_fd, uint8_t *payload, uint64_t numBytes)
     return;
   }
   SocketCallHeader *header = (SocketCallHeader*)payload;
-  if (header->function == POSIX_SOCKET_MSG_RECV || header->function == POSIX_SOCKET_MSG_RECVFROM || header->function == POSIX_SOCKET_MSG_RECVMSG || header->function == POSIX_SOCKET_MSG_CONNECT || header->function == POSIX_SOCKET_MSG_LISTEN)
+  if (header->function == POSIX_SOCKET_MSG_RECV || header->function == POSIX_SOCKET_MSG_RECVFROM || header->function == POSIX_SOCKET_MSG_RECVMSG || header->function == POSIX_SOCKET_MSG_CONNECT || header->function == POSIX_SOCKET_MSG_ACCEPT)
   {
     // Synchonous/blocking recv()s can halt indefinitely until a message is actually received. An application might
     // be send()ing messages in one thread while using another thread to wait for recv(). Therefore run these potentially

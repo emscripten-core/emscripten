@@ -6,6 +6,10 @@
 
 var LibraryJSEvents = {
   $JSEvents: {
+
+/* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
+   to save code size.
+   (but still documented here to keep track of what is supposed to be present)
     // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
     keyEvent: 0,
     mouseEvent: 0,
@@ -31,6 +35,14 @@ var LibraryJSEvents = {
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
+
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    // If positive, we are currently executing in a JS event handler.
+    inEventHandler: 0,
+    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
+    currentEventHandler: null,
+#endif
+*/
 
     removeAllEventListeners: function() {
       for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
@@ -109,11 +121,6 @@ var LibraryJSEvents = {
         call.targetFunction.apply(null, call.argsList);
       }
     },
-
-    // If positive, we are currently executing in a JS event handler.
-    inEventHandler: 0,
-    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
-    currentEventHandler: null,
 #endif
 
     // Stores objects representing each currently registered JS event handler.
@@ -474,7 +481,11 @@ var LibraryJSEvents = {
     // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
       // https://github.com/emscripten-core/emscripten/pull/4997
     // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
-    if (e.type !== 'wheel' && e.type !== 'mousewheel') {
+    if (e.type !== 'wheel'
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
+     && e.type !== 'mousewheel'
+#endif
+     ) {
       JSEvents.previousScreenX = e.screenX;
       JSEvents.previousScreenY = e.screenY;
     }
@@ -631,7 +642,7 @@ var LibraryJSEvents = {
 #endif
       if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, wheelEvent, userData)) e.preventDefault();
     };
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     // The 'mousewheel' event as implemented in Safari 6.0.5
     var mouseWheelHandlerFunc = function(ev) {
       var e = ev || event;
@@ -656,7 +667,7 @@ var LibraryJSEvents = {
 #endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
       handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
 #else
       handlerFunc: wheelHandlerFunc,
@@ -674,7 +685,7 @@ var LibraryJSEvents = {
     if (typeof target.onwheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     } else if (typeof target.onmousewheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "mousewheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
