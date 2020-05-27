@@ -2347,19 +2347,6 @@ class Building(object):
       # the produced source map file to not leak files in temp directory.
       try_delete(outfile + '.map')
 
-      if emit_symbol_map:
-        logger.warning(open(source_map, 'r').read())
-        symbol_map_data = subprocess.check_output(NODE_JS + [path_from_root('tools', 'js_size_report.js'), '--createSymbolMapFromSourceMap', source_map, outfile])
-        try_delete(source_map)
-        logger.fatal('-----')
-        logger.fatal(symbol_map_data.decode('utf-8'))
-        logger.fatal('-----')
-        symbol_map = replace_suffix(outfile, '.closure_symbol_map')
-        open(symbol_map, 'wb').write(symbol_map_data)
-#        open()
-#        symbol_map = Building.generate_symbol_map_from_source_map(filename, outfile, source_map)
-#        open(source_map, 'w').write(symbol_map)
-
       # Print Closure diagnostics result up front.
       if proc.returncode != 0:
         logger.error('Closure compiler run failed:\n')
@@ -2398,6 +2385,17 @@ class Building(object):
 
         if Settings.CLOSURE_WARNINGS == 'error':
           exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
+
+      # Convert the source map to a symbol map if we are generating symbol maps.
+      if emit_symbol_map:
+        logger.warning(open(source_map, 'r').read())
+        symbol_map_data = subprocess.check_output(NODE_JS + [path_from_root('tools', 'js_size_report.js'), '--createSymbolMapFromSourceMap', source_map, outfile])
+        try_delete(source_map)
+        logger.fatal('-----')
+        logger.fatal(symbol_map_data.decode('utf-8'))
+        logger.fatal('-----')
+        symbol_map = replace_suffix(outfile, '.closure_symbol_map')
+        open(symbol_map, 'wb').write(symbol_map_data)
 
       # closure compiler will automatically preserve @license blocks, but we
       # have an explicit flag for that (EMIT_EMSCRIPTEN_LICENSE), which we
