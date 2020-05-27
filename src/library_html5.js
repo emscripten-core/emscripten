@@ -2029,23 +2029,34 @@ var LibraryJSEvents = {
 
     target = __findEventTarget(target);
 
-    var touchEventHandlerFunc = function(ev) {
-      var e = ev || event;
-
+    var touchEventHandlerFunc = function(e) {
+#if ASSERTIONS
+      assert(e);
+#endif
       var touches = {};
-      for(var i = 0; i < e.touches.length; ++i) {
-        var touch = e.touches[i];
-        touch.changed = false;
+      var et = e.touches;
+      for(var i = 0; i < et.length; ++i) {
+        var touch = et[i];
+#if ASSERTIONS
+        // Verify that browser does not recycle touch objects with old stale data, but reports new ones each time.
+        assert(!touch.isChanged);
+        assert(!touch.onTarget);
+#endif
         touches[touch.identifier] = touch;
       }
-      for(var i = 0; i < e.changedTouches.length; ++i) {
-        var touch = e.changedTouches[i];
+      et = e.changedTouches;
+      for(var i = 0; i < et.length; ++i) {
+        var touch = et[i];
+#if ASSERTIONS
+        // Verify that browser does not recycle touch objects with old stale data, but reports new ones each time.
+        assert(!touch.onTarget);
+#endif
+        touch.isChanged = 1/*true*/;
         touches[touch.identifier] = touch;
-        touch.changed = true;
       }
-      for(var i = 0; i < e.targetTouches.length; ++i) {
-        var touch = e.targetTouches[i];
-        touches[touch.identifier].onTarget = true;
+      et = e.targetTouches;
+      for(var i = 0; i < et.length; ++i) {
+        touches[et[i].identifier].onTarget = 1/*true*/;
       }
 
 #if USE_PTHREADS
@@ -2053,12 +2064,12 @@ var LibraryJSEvents = {
 #else
       var touchEvent = JSEvents.touchEvent;
 #endif
-      var ptr = touchEvent;
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
-      ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
+      var idx = touchEvent>>2; // Pre-shift the ptr to index to HEAP32 to save code size
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey / 4}}}] = e.ctrlKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey / 4}}}] = e.shiftKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey / 4}}}] = e.altKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey / 4}}}] = e.metaKey;
+      idx += {{{ C_STRUCTS.EmscriptenTouchEvent.touches / 4 }}}; // Advance to the start of the touch array.
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
       var canvasRect = Module['canvas'] ? __getBoundingClientRect(Module['canvas']) : undefined;
 #endif
@@ -2066,30 +2077,25 @@ var LibraryJSEvents = {
       var numTouches = 0;
       for(var i in touches) {
         var t = touches[i];
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.identifier, 't.identifier', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenX, 't.screenX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenY, 't.screenY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientX, 't.clientX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientY, 't.clientY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageX, 't.pageX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageY, 't.pageY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.isChanged, 't.changed', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.onTarget, 't.onTarget', 'i32') }}};
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4}}}] = t.clientX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4}}}] = t.clientY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4}}}] = t.pageX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4}}}] = t.pageY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged / 4}}}] = t.isChanged;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget / 4}}}] = t.onTarget;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4}}}] = t.clientX - targetRect.left;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4}}}] = t.clientY - targetRect.top;
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-        if (canvasRect) {
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - canvasRect.left', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - canvasRect.top', 'i32') }}};
-        } else {
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, '0', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, '0', 'i32') }}};            
-        }
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4}}}] = canvasRect ? t.clientX - canvasRect.left : 0;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4}}}] = canvasRect ? t.clientY - canvasRect.top : 0;
 #endif
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetX, 't.clientX - targetRect.left', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetY, 't.clientY - targetRect.top', 'i32') }}};
 
-        ptr += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
+        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ / 4 }}};
 
-        if (++numTouches >= 32) {
+        if (++numTouches > 31) {
           break;
         }
       }
