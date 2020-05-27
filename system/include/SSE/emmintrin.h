@@ -1526,7 +1526,7 @@ _mm_unpacklo_epi64(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_move_epi64(__m128i __a)
 {
-  return __builtin_shufflevector((__i32x4)__a, (__i32x4)wasm_i32x4_const(0), 0, 1, 4+0, 4+1);
+  return __builtin_shufflevector((__i32x4)__a, (__i32x4)wasm_i32x4_const(0, 0, 0, 0), 0, 1, 4+0, 4+1);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
