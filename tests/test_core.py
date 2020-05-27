@@ -5884,7 +5884,7 @@ int main(void) {
 #include <new>
 
 void *
-operator new(size_t size)
+operator new(size_t size) throw(std::bad_alloc)
 {
 printf("new %d!\\n", size);
 return malloc(size);
