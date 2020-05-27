@@ -6,6 +6,7 @@
 
 from . import shared
 
+
 def add_files_pre_js(user_pre_js, files_pre_js):
   # the normal thing is to just combine the pre-js content
   if not shared.Settings.ASSERTIONS:
