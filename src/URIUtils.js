@@ -1,8 +1,10 @@
+#if 0
 /**
  * @license
  * Copyright 2017 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 function hasPrefix(str, prefix) {
   return String.prototype.startsWith ?

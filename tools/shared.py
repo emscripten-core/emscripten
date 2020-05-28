@@ -2823,7 +2823,7 @@ class JS(object):
   emscripten_license = '''\
 /**
  * @license
- * Copyright 2010 Emscripten authors
+ * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
 '''

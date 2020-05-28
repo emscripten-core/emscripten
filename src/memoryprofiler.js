@@ -1,8 +1,10 @@
+#if 0
 /**
  * @license
  * Copyright 2015 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 #if MEMORYPROFILER
 

@@ -1,4 +1,4 @@
-#if EMIT_EMSCRIPTEN_LICENSE
+#if 0
 /**
  * @license
  * Copyright 2015 The Emscripten Authors

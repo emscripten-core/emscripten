@@ -1,8 +1,10 @@
+#if 0
 /**
  * @license
  * Copyright 2019 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
   read_ = function shell_read(url) {
 #if SUPPORT_BASE64_EMBEDDING
