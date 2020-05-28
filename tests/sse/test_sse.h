@@ -41,7 +41,7 @@ double interesting_doubles_[] = { -INFINITY, -FLT_MAX, -2.5, -1.5, -1.4, -1.0, -
                                 // Disabled for now, NaNs propagate differently in native vs Wasm when both input arguments
                                 // are a NaN with different payloads (native seems to take the second arg, V8 Wasm SIMD
                                 // implementation takes either first or second, depending on the OS one runs on?)
-//                                , ucastd(0xFFFFFFFFFFFFFFFFULL)
+                                , 42.0 /*ucastd(0xFFFFFFFFFFFFFFFFULL)*/
                                 };
 
 uint32_t interesting_ints_[] = { 0, 1, 2, 3, 0x01020304, 0x10203040, 0x7FFFFFFF, 0xFFFFFFFF, 0xFFFFFFFE, 0x12345678, 0x9ABCDEF1, 0x80000000,
