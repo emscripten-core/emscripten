@@ -10,6 +10,7 @@ var LibraryWebSocket = {
     socketEvent: null
   },
 
+  emscripten_websocket_get_ready_state__deps: ['$WS'],
   emscripten_websocket_get_ready_state__proxy: 'sync',
   emscripten_websocket_get_ready_state__sig: 'iii',
   emscripten_websocket_get_ready_state: function(socketId, readyState) {
@@ -25,6 +26,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_get_buffered_amount__deps: ['$WS'],
   emscripten_websocket_get_buffered_amount__proxy: 'sync',
   emscripten_websocket_get_buffered_amount__sig: 'iii',
   emscripten_websocket_get_buffered_amount: function(socketId, bufferedAmount) {
@@ -40,6 +42,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_get_extensions__deps: ['$WS'],
   emscripten_websocket_get_extensions__proxy: 'sync',
   emscripten_websocket_get_extensions__sig: 'iiii',
   emscripten_websocket_get_extensions: function(socketId, extensions, extensionsLength) {
@@ -53,6 +56,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_get_extensions_length__deps: ['$WS'],
   emscripten_websocket_get_extensions_length__proxy: 'sync',
   emscripten_websocket_get_extensions_length__sig: 'iii',
   emscripten_websocket_get_extensions_length: function(socketId, extensionsLength) {
@@ -66,6 +70,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_get_protocol__deps: ['$WS'],
   emscripten_websocket_get_protocol__proxy: 'sync',
   emscripten_websocket_get_protocol__sig: 'iiii',
   emscripten_websocket_get_protocol: function(socketId, protocol, protocolLength) {
@@ -79,6 +84,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_get_protocol_length__deps: ['$WS'],
   emscripten_websocket_get_protocol_length__proxy: 'sync',
   emscripten_websocket_get_protocol_length__sig: 'iii',
   emscripten_websocket_get_protocol_length: function(socketId, protocolLength) {
@@ -92,6 +98,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_get_url__deps: ['$WS'],
   emscripten_websocket_get_url__proxy: 'sync',
   emscripten_websocket_get_url__sig: 'iiii',
   emscripten_websocket_get_url: function(socketId, url, urlLength) {
@@ -105,6 +112,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_get_url_length__deps: ['$WS'],
   emscripten_websocket_get_url_length__proxy: 'sync',
   emscripten_websocket_get_url_length__sig: 'iii',
   emscripten_websocket_get_url_length: function(socketId, urlLength) {
@@ -119,6 +127,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_set_onopen_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onopen_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onopen_callback_on_thread__sig: 'iiiii',
   emscripten_websocket_set_onopen_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
@@ -149,6 +158,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_set_onerror_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onerror_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onerror_callback_on_thread__sig: 'iiiii',
   emscripten_websocket_set_onerror_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
@@ -175,6 +185,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_set_onclose_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onclose_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onclose_callback_on_thread__sig: 'iiiii',
   emscripten_websocket_set_onclose_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
@@ -204,6 +215,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onmessage_callback_on_thread__sig: 'iiiii',
   emscripten_websocket_set_onmessage_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
@@ -291,6 +303,7 @@ var LibraryWebSocket = {
     return socketId;
   },
 
+  emscripten_websocket_send_utf8_text__deps: ['$WS'],
   emscripten_websocket_send_utf8_text__proxy: 'sync',
   emscripten_websocket_send_utf8_text__sig: 'iii',
   emscripten_websocket_send_utf8_text: function(socketId, textData) {
@@ -314,6 +327,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_send_binary__deps: ['$WS'],
   emscripten_websocket_send_binary__proxy: 'sync',
   emscripten_websocket_send_binary__sig: 'iiii',
   emscripten_websocket_send_binary: function(socketId, binaryData, dataLength) {
@@ -345,6 +359,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_close__deps: ['$WS'],
   emscripten_websocket_close__proxy: 'sync',
   emscripten_websocket_close__sig: 'iiii',
   emscripten_websocket_close: function(socketId, code, reason) {
@@ -365,6 +380,7 @@ var LibraryWebSocket = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_websocket_delete__deps: ['$WS'],
   emscripten_websocket_delete__proxy: 'sync',
   emscripten_websocket_delete__sig: 'ii',
   emscripten_websocket_delete: function(socketId) {
@@ -390,6 +406,7 @@ var LibraryWebSocket = {
     return typeof WebSocket !== 'undefined';
   },
 
+  emscripten_websocket_deinitialize__deps: ['$WS'],
   emscripten_websocket_deinitialize__proxy: 'sync',
   emscripten_websocket_deinitialize__sig: 'v',
   emscripten_websocket_deinitialize__deps: ['emscripten_websocket_delete'],
