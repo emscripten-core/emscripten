@@ -31,20 +31,6 @@ from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_
 # decorators for limiting which modes a test can run in
 
 
-def asm_simd(f):
-  assert callable(f)
-
-  def decorated(self):
-    if self.is_wasm_backend():
-      self.skipTest('asm.js simd not compatible with wasm backend yet')
-    if self.get_setting('WASM'):
-      self.skipTest('asm.js simd not compatible with asm2wasm')
-    self.emcc_args.append('-Wno-almost-asm')
-    self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
-    f(self)
-  return decorated
-
-
 def wasm_simd(f):
   def decorated(self):
     if not self.is_wasm_backend():
@@ -53,7 +39,7 @@ def wasm_simd(f):
       self.skipTest('wasm simd only supported in d8 for now')
     if self.is_wasm_backend() and not self.get_setting('WASM'):
       self.skipTest('wasm2js only supports MVP for now')
-    self.set_setting('SIMD', 1)
+    self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
     with js_engines_modify([V8_ENGINE + ['--experimental-wasm-simd']]):
       f(self)
@@ -168,7 +154,12 @@ def also_with_standalone_wasm(func):
     if can_do_standalone(self):
       print('standalone')
       self.set_setting('STANDALONE_WASM', 1)
-      func(self)
+      # we will not legalize the JS ffi interface, so we must use BigInt
+      # support in order for JS to have a chance to run this without trapping
+      # when it sees an i64 on the ffi.
+      self.set_setting('WASM_BIGINT', 1)
+      with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+        func(self)
 
   return decorated
 
@@ -181,12 +172,16 @@ def also_with_standalone_wasm_and_wasm2c(func):
     if can_do_standalone(self):
       print('standalone')
       self.set_setting('STANDALONE_WASM', 1)
-      func(self)
-      print('wasm2c')
-      self.set_setting('STANDALONE_WASM', 1)
-      self.set_setting('WASM2C', 1)
-      with wasm_engines_modify([]):
+      # we will not legalize the JS ffi interface, so we must use BigInt
+      # support in order for JS to have a chance to run this without trapping
+      # when it sees an i64 on the ffi.
+      self.set_setting('WASM_BIGINT', 1)
+      with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
         func(self)
+        print('wasm2c')
+        self.set_setting('WASM2C', 1)
+        with wasm_engines_modify([]):
+          func(self)
 
   return decorated
 
@@ -5649,7 +5644,7 @@ main( int argv, char ** argc ) {
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
-  @also_with_only_standalone_wasm_and_wasm2c
+  @also_with_standalone_wasm_and_wasm2c
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -5959,7 +5954,7 @@ int main(void) {
 #include <new>
 
 void *
-operator new(size_t size)
+operator new(size_t size) throw(std::bad_alloc)
 {
 printf("new %d!\\n", size);
 return malloc(size);
@@ -6092,47 +6087,18 @@ return malloc(size);
     self.build(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
-  @asm_simd
-  def test_simd(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd')
+  # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
+  @wasm_simd
+  def test_sse1(self):
+    src = path_from_root('tests', 'sse', 'test_sse1.cpp')
+    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.Building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_sse1', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
 
-  @asm_simd
-  def test_simd2(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd2')
+    orig_args = self.emcc_args
+    self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse']
+    self.maybe_closure()
 
-  @asm_simd
-  def test_simd5(self):
-    # test_simd5 is to test shufflevector of SIMD path
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd5')
-
-  @asm_simd
-  def test_simd_float64x2(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_float64x2')
-
-  @asm_simd
-  def test_simd_float32x4(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_float32x4')
-
-  @asm_simd
-  def test_simd_int32x4(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int32x4')
-
-  @asm_simd
-  def test_simd_int16x8(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int16x8')
-
-  @asm_simd
-  def test_simd_int8x16(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int8x16')
-
-  # Tests that the vector SIToFP instruction generates an appropriate Int->Float type conversion operator and not a bitcasting/reinterpreting conversion
-  @asm_simd
-  def test_simd_sitofp(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_sitofp')
-
-  @asm_simd
-  def test_simd_shift_right(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
+    self.do_run(open(src).read(), native_result)
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
@@ -6495,7 +6461,6 @@ return malloc(size);
       'longjmp_tiny_keepem', 'longjmp_tiny_keepem_cond', 'longjmp_tiny_phi', 'longjmp_tiny_phi2',
     ]
     skip_wasm = [
-      'i1282vecnback', # uses simd
       # casts a function pointer from (i32, i32)* to (i64)*, which happens to work in asm.js but is a general function pointer undefined behavior
       'call_inttoptr_i64',
     ]
@@ -7952,7 +7917,6 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
     self.set_setting('ASSERTIONS', 1)
-    self.emcc_args += ['--minify', '0']
     self.do_run_in_out_file_test('tests', 'core', 'asyncify_assertions')
 
   @no_asan('asyncify stack operations confuse asan')

@@ -706,7 +706,7 @@ def emsdk_ldflags(user_args):
   return ldflags
 
 
-def emsdk_cflags():
+def emsdk_cflags(user_args=[]):
   # Disable system C and C++ include directories, and add our own (using
   # -isystem so they are last, like system dirs, which allows projects to
   # override them)
@@ -733,6 +733,9 @@ def emsdk_cflags():
     for path in paths:
       result += ['-Xclang', '-isystem' + path]
     return result
+
+  if '-msse' in user_args:
+    c_opts += ['-D__SSE__=1'] + include_directive([path_from_root('system', 'include', 'SSE')])
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if Settings.USE_CXX:
@@ -772,7 +775,7 @@ def get_cflags(user_args):
   if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
     return c_opts
 
-  return c_opts + emsdk_cflags()
+  return c_opts + emsdk_cflags(user_args)
 
 
 # Utilities
@@ -1244,6 +1247,13 @@ class Building(object):
       return arg[1:-1].replace("\\'", "'")
     else:
       return arg
+
+  @staticmethod
+  def get_native_building_args():
+    if MACOS:
+      return ['--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk']
+    else:
+      return ['']
 
   @staticmethod
   def get_building_env(native=False, doublequote_commands=False, cflags=[]):
@@ -1799,10 +1809,7 @@ class Building(object):
     # opts += ['-debug-pass=Arguments']
     # TODO: move vectorization logic to clang/LLVM?
     if not Settings.WASM_BACKEND:
-      if not Settings.SIMD:
-        opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
-      else:
-        opts += ['-force-vector-width=4']
+      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
 
     target = out or (filename + '.opt.bc')
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
@@ -2702,7 +2709,7 @@ class Building(object):
     ret = ['--mvp-features']
     if Settings.USE_PTHREADS:
       ret += ['--enable-threads']
-    if Settings.SIMD:
+    if Settings.BINARYEN_SIMD:
       ret += ['--enable-simd']
     ret += Settings.BINARYEN_FEATURES
     return ret
@@ -2857,16 +2864,6 @@ class JS(object):
       if settings:
         assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(0)'
-    elif sig == 'F':
-      return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
-    elif sig == 'D':
-      return 'SIMD_Float64x2_check(SIMD_Float64x2(0,0,0,0))'
-    elif sig == 'B':
-      return 'SIMD_Int8x16_check(SIMD_Int8x16(0,0,0,0))'
-    elif sig == 'S':
-      return 'SIMD_Int16x8_check(SIMD_Int16x8(0,0,0,0))'
-    elif sig == 'I':
-      return 'SIMD_Int32x4_check(SIMD_Int32x4(0,0,0,0))'
     else:
       return '+0'
 
@@ -2894,16 +2891,6 @@ class JS(object):
       if settings:
         assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(' + value + ')'
-    elif sig == 'F':
-      return 'SIMD_Float32x4_check(' + value + ')'
-    elif sig == 'D':
-      return 'SIMD_Float64x2_check(' + value + ')'
-    elif sig == 'B':
-      return 'SIMD_Int8x16_check(' + value + ')'
-    elif sig == 'S':
-      return 'SIMD_Int16x8_check(' + value + ')'
-    elif sig == 'I':
-      return 'SIMD_Int32x4_check(' + value + ')'
     else:
       return value
 

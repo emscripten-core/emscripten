@@ -17,12 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
-  longer takes a target memory.  Its safer/cleaner/smaller to assume the target
+- Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm SIMD. (#11180)
+- The mmap method of JavaScript filesystem drivers (based on library_fs.js) no
+  longer takes a target memory.  It's safer/cleaner/smaller to assume the target
   is the global memory buffer.
-- Remove emterpreter and ``EMTERPRETIFY`` settings.  Emterpreter has largerly
+- Remove emterpreter and ``EMTERPRETIFY`` settings.  Emterpreter has largely
   been replaced by asyncify and is fastcomp only so due for removing in
   the near future anyway.
+- Upgrade various musl string functions to 1.2 to fix aliasing issues. (#11215)
 
 1.39.16: 05/15/2020
 -------------------
@@ -230,7 +232,7 @@ v1.39.9: 03/05/2020
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
-- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+- Add a check in Asyncify builds with `ASSERTIONS` that we do not have
   compiled code on the stack when starting to rewind, which is dangerous.
 - Implement libc system() for node.js (#10547).
 - Standalone mode improvements, time (#10530, #10536), sysconf (#10535),
@@ -458,6 +460,12 @@ v1.38.41: 08/07/2019
    print for parse error reporting. (#9088)
  - Internal API update: one can now specialize embind's (un)marshalling for a
    group of types via SFINAE, instead of a single type. (#9089)
+ - Options passed on the `Module` object during startup, like `Module.arguments`,
+   are now copied to a local (in order to avoid writing `Module.*` everywhere,
+   which wastes space). You can still provide them as always, but you can't
+   modify `Module.arguments` and other things *after* startup (which is now
+   after we've finished processing them). In a build with assertions enabled you
+   will get an error if you access those properties after startup. (#9072)
 
 v1.38.40: 07/24/2019
 --------------------

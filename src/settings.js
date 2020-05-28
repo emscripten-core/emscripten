@@ -286,14 +286,6 @@ var WARN_UNALIGNED = 0;
 // behavior with WebAssembly.
 var PRECISE_F32 = 0;
 
-// Whether to allow autovectorized SIMD code
-// (https://github.com/johnmccutchan/ecmascript_simd).  SIMD intrinsics are
-// always compiled to SIMD code, so you only need this option if you also want
-// the autovectorizer to run.  Note that SIMD support in browsers is not yet
-// there (as of Sep 2, 2014), so you will be running in a polyfill, which is not
-// fast.
-var SIMD = 0;
-
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
 
@@ -1225,6 +1217,14 @@ var WASM = 1;
 // environments the expectation is to create the memory in the wasm itself.
 // Doing so prevents some possible JS optimizations, so we only do it behind
 // this flag.
+//
+// When this flag is set we do not legalize the JS interface, since the wasm is
+// meant to run in a wasm VM, which can handle i64s directly. If we legalized it
+// the wasm VM would not recognize the API. However, this means that the
+// optional JS emitted won't run if you use a JS API with an i64. You can use
+// the WASM_BIGINT option to avoid that problem by using BigInts for i64s which
+// means we don't need to legalize for JS (but this requires a new enough JS
+// VM).
 var STANDALONE_WASM = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You
