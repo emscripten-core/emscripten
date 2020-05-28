@@ -37,10 +37,11 @@ float interesting_floats_[] = { -INFINITY, -FLT_MAX, -2.5f, -1.5f, -1.4f, -1.0f,
 
 double interesting_doubles_[] = { -INFINITY, -FLT_MAX, -2.5, -1.5, -1.4, -1.0, -0.5, -0.2, -FLT_MIN, -0.0, 0.0, 
                                 1.401298464e-45, FLT_MIN, 0.3, 0.5, 0.8, 1.0, 1.5, 2.5, 3.5, 3.6, FLT_MAX, INFINITY, NAN,
-                                ucastd(0x0102030405060708ULL), ucastd(0x8000000000000000ULL), ucastd(0x7FFFFFFFFFFFFFFFULL)
+                                ucastd(0x0102030405060708ULL), ucastd(0x8000000000000000ULL)
                                 // Disabled for now, NaNs propagate differently in native vs Wasm when both input arguments
                                 // are a NaN with different payloads (native seems to take the second arg, V8 Wasm SIMD
                                 // implementation takes either first or second, depending on the OS one runs on?)
+                                , 42.0 /*ucastd(0x7FFFFFFFFFFFFFFFULL)*/
                                 , 42.0 /*ucastd(0xFFFFFFFFFFFFFFFFULL)*/
                                 };
 
