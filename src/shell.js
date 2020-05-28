@@ -1,4 +1,4 @@
-#if 0
+#if EMIT_EMSCRIPTEN_LICENSE && WASM_BACKEND
 /**
  * @license
  * Copyright 2010 The Emscripten Authors

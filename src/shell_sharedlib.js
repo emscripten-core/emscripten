@@ -1,8 +1,10 @@
+#if EMIT_EMSCRIPTEN_LICENSE && WASM_BACKEND
 /**
  * @license
  * Copyright 2011 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
+#endif
 
 // Capture the output of this into a variable, if you want
 (function(fb, parentModule) {

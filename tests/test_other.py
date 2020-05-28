@@ -9245,9 +9245,14 @@ int main () {
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.js') as f:
       js = f.read()
-    self.assertContainedIf('Copyright 2010 The Emscripten Authors', js, expect_license)
-    self.assertContainedIf('SPDX-License-Identifier: MIT', js, expect_license)
-    self.assertEqual(js.count('Copyright 2010 The Emscripten Authors'), 1 if expect_license else 0)
+    licenses_found = re.findall('Copyright [0-9]* The Emscripten Authors', js)
+    if expect_license and len(licenses_found) == 0:
+      self.fail('Unable to find license block in output file!')
+    if not expect_license and len(licenses_found) > 0:
+      print(js)
+      self.fail('Found a license block in the output file, but it should not have been there!')
+    assert(len(licenses_found) <= 1)
+
     self.assertEqual(js.count('SPDX-License-Identifier: MIT'), 1 if expect_license else 0)
 
   # This test verifies that the generated exports from asm.js/wasm module only reference the
