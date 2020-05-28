@@ -9243,6 +9243,7 @@ int main () {
     'O2_closure_emit': (True, False, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1']), # noqa
     'O2_closure_js_emit': (True, False, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1', '-s', 'WASM=0']), # noqa
   })
+  @no_fastcomp('EMIT_EMSCRIPTEN_LICENSE is upstream only')
   def test_emscripten_license(self, expect_license, allow_multiple, args):
     # fastcomp does not support the new license flag
     if not self.is_wasm_backend():
