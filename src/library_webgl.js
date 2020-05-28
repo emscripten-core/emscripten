@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+// Specifies the size of the GL temp buffer pool, in bytes. Must be a multiple
+// of 9 and 16.
+{{{ GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 }}} // = 288
+
 var LibraryGL = {
 
   // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
