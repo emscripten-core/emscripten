@@ -7855,8 +7855,7 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    # 'noexcept' disabled to allow LLVM to roll
-    # 'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
+    'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
     # exceptions increases code size significantly
     'except':   (['-O2', '-fexceptions'],    [], ['waka'], 279827), # noqa
     # exceptions does not pull in demangling by default, which increases code size
@@ -9274,7 +9273,6 @@ int main () {
         test(['-s', 'WASM=0'], closure, opt)
         test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  @unittest.skip("Disabled to allow LLVM to roll")
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1',
