@@ -3924,6 +3924,9 @@ int main()
     ''', [[3, 2], 1, 1])
 
   def test_symbol_map(self):
+    UNMINIFIED_HEAP8 = 'var HEAP8 = new global.Int8Array'
+    UNMINIFIED_MIDDLE = 'function middle'
+
     for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1, 2]:
         print(opts, wasm)
@@ -3972,6 +3975,19 @@ EM_ASM({ _middle() });
           wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
           for func_start in ('(func $middle', '(func $_middle'):
             self.assertNotContained(func_start, wat)
+        # check we don't minify unnecessarily with wasm2js when emitting a
+        # symbol map
+        if self.is_wasm_backend() and wasm == 0 and '-O' in str(opts):
+          with open('a.out.js') as f:
+            js = f.read()
+          self.assertNotContained(UNMINIFIED_HEAP8, js)
+          self.assertNotContained(UNMINIFIED_MIDDLE, js)
+          # verify those patterns would exist with more debug info
+          run_process(cmd + ['--profiling-funcs'])
+          with open('a.out.js') as f:
+            js = f.read()
+          self.assertContained(UNMINIFIED_HEAP8, js)
+          self.assertContained(UNMINIFIED_MIDDLE, js)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if

@@ -3309,7 +3309,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                       opt_level=shared.Settings.OPT_LEVEL,
                                       minify_whitespace=optimizer.minify_whitespace,
                                       use_closure_compiler=options.use_closure_compiler,
-                                      debug_info=intermediate_debug_info,
+                                      debug_info=debug_info,
                                       symbols_file=symbols_file)
     if shared.Settings.WASM == 2:
       shutil.copyfile(wasm2js, wasm2js_template)
