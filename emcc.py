@@ -1258,6 +1258,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.verify_settings()
 
+    if not shared.Settings.WASM_BACKEND:
+      diagnostics.warning('fastcomp', 'the fastomp compiler will soon be deprecated.  Please switch to the upstream llvm backend as soon as possible and open issues if you have trouble doing so')
+
     if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
       shared.Settings.EXPECT_MAIN = 0
 

@@ -275,7 +275,7 @@ core_test_modes = [
   'strict'
 ]
 
-if shared.Settings.WASM_BACKEND:
+if Settings.WASM_BACKEND:
   core_test_modes += [
     'wasm2js0',
     'wasm2js1',
@@ -306,7 +306,7 @@ non_core_test_modes = [
   'benchmark',
 ]
 
-if shared.Settings.WASM_BACKEND:
+if Settings.WASM_BACKEND:
   non_core_test_modes += [
     'asan',
     'lsan',
@@ -458,6 +458,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
+    if not Settings.WASM_BACKEND:
+      self.emcc_args.append('-Wno-fastcomp')
     self.env = {}
     self.temp_files_before_run = []
 
