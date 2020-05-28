@@ -5617,48 +5617,6 @@ Descriptor desc;
     src = open('a.out.js').read()
     assert ' = f0;' in src or ' = f0,' in src
 
-  @no_wasm_backend('depends on merging asmjs')
-  @parameterized({
-    '': (['hello_world.cpp', True]),
-    'full': (['hello_libcxx.cpp', False]),
-  })
-  def test_merge_pair(self, filename, full):
-    run_process([PYTHON, EMCC, path_from_root('tests', filename), '-O1', '-profiling', '-o', 'left.js', '-s', 'WASM=0'])
-    src = open('left.js').read()
-    create_test_file('right.js', src.replace('function _main() {', 'function _main() { out("replaced"); '))
-
-    self.assertContained('hello, world!', run_js('left.js'))
-    self.assertContained('hello, world!', run_js('right.js'))
-    self.assertNotContained('replaced', run_js('left.js'))
-    self.assertContained('replaced', run_js('right.js'))
-
-    n = src.count('function _')
-
-    def has(i, check=None):
-      print('merge_pair.py : %d' % i)
-      run_process([PYTHON, path_from_root('tools', 'merge_pair.py'), 'left.js', 'right.js', str(i), 'out.js'])
-      out = run_js('out.js')
-      if check is True:
-        self.assertContained('replaced', out)
-      if check is False:
-        self.assertNotContained('replaced', out)
-      return 'replaced' in run_js('out.js')
-
-    # same as left
-    has(0, check=False)
-    # same as right
-    has(n, check=True)
-    # same as right, big number is still ok
-    has(n + 5, check=True)
-
-    if full:
-      change = -1
-      for i in range(n):
-        if has(i):
-          change = i
-          break
-      assert change > 0 and change <= n
-
   def test_emmake_emconfigure(self):
     def check(what, args, fail=True, expect=''):
       args = [PYTHON, path_from_root(what)] + args
