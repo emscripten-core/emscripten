@@ -422,9 +422,9 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 
 #include "runtime_sab_polyfill.js"
 
-// In standalone mode, the wasm creates the memory, and the user can't provide it.
 #if STANDALONE_WASM
 #if ASSERTIONS
+// In standalone mode, the wasm creates the memory, and the user can't provide it.
 assert(!Module['wasmMemory']);
 #endif // ASSERTIONS
 #else // !STANDALONE_WASM
