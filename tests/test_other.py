@@ -3975,8 +3975,8 @@ EM_ASM({ _middle() });
           wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
           for func_start in ('(func $middle', '(func $_middle'):
             self.assertNotContained(func_start, wat)
-        # check we don't minify unnecessarily with wasm2js when emitting a
-        # symbol map
+        # check we don't keep unnecessary debug info with wasm2js when emitting
+        # a symbol map
         if self.is_wasm_backend() and wasm == 0 and '-O' in str(opts):
           with open('a.out.js') as f:
             js = f.read()
