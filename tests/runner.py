@@ -474,7 +474,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
       if os.path.exists(self.working_dir):
         if EMTEST_SAVE_DIR == 2:
-          print('Not clearing existig test directory')
+          print('Not clearing existing test directory')
         else:
           print('Clearing existing test directory')
           # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
@@ -2011,7 +2011,6 @@ def suite_for_module(module, tests):
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:
       return parallel_testsuite.ParallelTestSuite(len(tests))
-  print('Using single-threads tested processing')
   return unittest.TestSuite()
 
 
