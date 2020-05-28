@@ -249,24 +249,6 @@ def also_with_only_standalone_wasm(func):
   return decorated
 
 
-def also_with_only_standalone_wasm_and_wasm2c(func):
-  def decorated(self):
-    func(self)
-    # Standalone mode is only supported in the wasm backend, and not in all
-    # modes there.
-    if can_do_standalone(self):
-      with js_engines_modify([]):
-        print('standalone (only; no js runtimes)')
-        self.set_setting('STANDALONE_WASM', 1)
-        func(self)
-        print('wasm2c')
-        self.set_setting('STANDALONE_WASM', 1)
-        self.set_setting('WASM2C', 1)
-        with wasm_engines_modify([]):
-          func(self)
-  return decorated
-
-
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
