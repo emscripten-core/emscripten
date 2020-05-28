@@ -1993,20 +1993,23 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
-  def maybe_add_license(filename=None, code=None):
-    # EMIT_EMSCRIPTEN_LICENSE is not supported in fastcomp since the JS
-    # optimization pipeline there is much more complex, and fastcomp is
-    # deprecated anyhow
-    if Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND:
-      if filename:
-        with open(filename) as f:
-          code = f.read()
-      code = JS.emscripten_license + code
-      if filename:
-        with open(filename, 'w') as f:
-          f.write(code)
-      else:
+  def maybe_add_license(filename=None, code=None, passes=[]):
+    # if this is happening after we ran some passes with 'noPrint', which
+    # means we don't print any JS, then no license is needed.
+    if 'noPrint' not in passes:
+      # EMIT_EMSCRIPTEN_LICENSE is not supported in fastcomp since the JS
+      # optimization pipeline there is much more complex, and fastcomp is
+      # deprecated anyhow
+      if Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND:
+        if filename:
+          with open(filename) as f:
+            code = f.read()
         code = JS.emscripten_license + code
+        if filename:
+          with open(filename, 'w') as f:
+            f.write(code)
+        else:
+          code = JS.emscripten_license + code
     if filename:
       return filename
     else:
@@ -2023,7 +2026,7 @@ class Building(object):
       safe_move(ret, output_filename)
       ret = output_filename
     if not no_license:
-      ret = Building.maybe_add_license(filename=ret)
+      ret = Building.maybe_add_license(filename=ret, passes=passes)
     return ret
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
@@ -2047,10 +2050,10 @@ class Building(object):
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
       check_call(cmd, stdout=open(next, 'w'))
-      next = Building.maybe_add_license(filename=next)
+      next = Building.maybe_add_license(filename=next, passes=passes)
       return next
     output = check_call(cmd, stdout=PIPE).stdout
-    output = Building.maybe_add_license(code=output)
+    output = Building.maybe_add_license(code=output, passes=passes)
     return output
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
@@ -2277,11 +2280,16 @@ class Building(object):
       # don't have a way to tell closure about. remove the comment here if we
       # don't want it (closure will aggregate all such comments into a single
       # big one at the top of the file)
-      if not(Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND):
+      if Settings.WASM_BACKEND:
         with open(outfile) as f:
           code = f.read()
         if code.startswith('/*'):
+          # remove the combined closure comment (which can contain multiple
+          # license copies)
           code = code[code.find('*/') + 2:]
+          # if we want license info, add it
+          if Settings.EMIT_EMSCRIPTEN_LICENSE:
+            code = JS.emscripten_license + code
           with open(outfile, 'w') as f:
             f.write(code)
 
@@ -2823,7 +2831,7 @@ class JS(object):
   emscripten_license = '''\
 /**
  * @license
- * Copyright 2010 Emscripten authors
+ * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
 '''

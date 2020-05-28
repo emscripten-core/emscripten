@@ -1290,7 +1290,12 @@ var EMIT_PRODUCERS_SECTION = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
-// Emits emscripten license info in the JS output.
+// Emits emscripten license info in the JS output. Note that this does not
+// affect builds that do not optimize JS (-O0 and -O1) as in those modes we
+// do not do any processing to remove comments at all, and the license headers
+// are just comments. In -O2 and above we remove all comments by default, which
+// includes license comments (and you can set this flag to preserve them if
+// you want, optionally).
 // [upstream-only]
 var EMIT_EMSCRIPTEN_LICENSE = 0;
 
