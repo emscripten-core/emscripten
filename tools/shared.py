@@ -285,6 +285,7 @@ def parse_config_file():
     'WASM_ENGINES',
     'FROZEN_CACHE',
     'CACHE',
+    'PORTS',
   )
 
   # Only propagate certain settings from the config file.
@@ -3377,6 +3378,7 @@ WASMER = None
 WASMTIME = None
 WASM_ENGINES = []
 CACHE = None
+PORTS = None
 FROZEN_CACHE = False
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
@@ -3402,6 +3404,8 @@ JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 if not CACHE:
   CACHE = path_from_root('cache')
+if not PORTS:
+  PORTS = os.path.join(CACHE, 'ports')
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.

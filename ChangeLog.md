@@ -17,11 +17,18 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm SIMD. (#11180)
+- The default location for downloaded ports is now a directory called "ports"
+  within the cache directory.  In practice these means by default they live
+  in `cache/ports` inside the emscripten source directory.  This can be
+  controlled by setting the location of the cache directory, or for even more
+  fine grained control the `EM_PORTS` environment variable and the `PORTS`
+  config setting can be used.
+- Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm
+  SIMD. (#11180)
 - The mmap method of JavaScript filesystem drivers (based on library_fs.js) no
   longer takes a target memory.  It's safer/cleaner/smaller to assume the target
   is the global memory buffer.
-- Remove emterpreter and ``EMTERPRETIFY`` settings.  Emterpreter has largely
+- Remove emterpreter and `EMTERPRETIFY` settings.  Emterpreter has largely
   been replaced by asyncify and is fastcomp only so due for removing in
   the near future anyway.
 - Upgrade various musl string functions to 1.2 to fix aliasing issues. (#11215)

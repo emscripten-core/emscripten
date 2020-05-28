@@ -105,7 +105,6 @@ commands:
           paths:
             - emsdk-master/
             - cache/
-            - .emscripten_ports/
             - .emscripten
             - vms
             - .jsvu
@@ -345,7 +344,6 @@ jobs:
           paths:
             - emsdk-master/
             - cache/
-            - .emscripten_ports/
             - .emscripten
   build-docs:
     executor: bionic
