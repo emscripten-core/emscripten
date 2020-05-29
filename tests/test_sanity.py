@@ -22,7 +22,7 @@ from tools.shared import expected_llvm_version, Cache, Settings
 from tools import jsrun, shared, system_libs
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
-commands = [[PYTHON, EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
+commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
 
 def restore():
@@ -151,8 +151,6 @@ class sanity(RunnerCore):
     print('Running: ' + ' '.join(command))
     if type(command) is not list:
       command = [command]
-    if command[0] == EMCC:
-      command = [PYTHON] + command
 
     return run_process(command, stdout=PIPE, stderr=STDOUT, check=False).stdout
 
@@ -226,7 +224,7 @@ class sanity(RunnerCore):
       # The guessed config should be ok
       # XXX This depends on your local system! it is possible `which` guesses wrong
       # try_delete('a.out.js')
-      # output = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).output
+      # output = run_process([EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).output
       # self.assertContained('hello, world!', run_js('a.out.js'), output)
 
       # Second run, with bad EM_CONFIG
@@ -425,7 +423,7 @@ fi
 
     wipe()
     with env_modify({'EM_CONFIG': config}):
-      run_process([PYTHON, EMCC, 'main.cpp', '-o', 'a.out.js'])
+      run_process([EMCC, 'main.cpp', '-o', 'a.out.js'])
 
     self.assertContained('hello from emcc with no config file', run_js('a.out.js'))
 
@@ -438,7 +436,7 @@ fi
       self.assertEqual(os.listdir(Cache.dirname), [])
 
   def ensure_cache(self):
-    self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
+    self.do([EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
 
   def test_emcc_caching(self):
     BUILDING_MESSAGE = 'generating system library: X'
@@ -467,7 +465,7 @@ fi
     self.ensure_cache()
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
-    output = self.do([PYTHON, EMCC, '--clear-cache'])
+    output = self.do([EMCC, '--clear-cache'])
     self.assertIn(ERASING_MESSAGE, output)
     self.assertIn(SANITY_MESSAGE, output)
     self.assertCacheEmpty()
@@ -478,7 +476,7 @@ fi
     make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten)')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
-      output = self.do([PYTHON, EMCC])
+      output = self.do([EMCC])
       self.assertIn(ERASING_MESSAGE, output)
       self.assertCacheEmpty()
 
@@ -491,11 +489,11 @@ fi
     self.assertTrue(os.path.exists(Cache.root_dirname))
     # changing config file should not clear cache
     add_to_config('FROZEN_CACHE = True')
-    self.do([PYTHON, EMCC])
+    self.do([EMCC])
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     # building libraries is disallowed
-    output = self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
+    output = self.do([EMBUILDER, 'build', 'libemmalloc'])
     self.assertIn('FROZEN_CACHE disallows building system libs', output)
 
   # Test that if multiple processes attempt to access or build stuff to the
@@ -516,7 +514,7 @@ fi
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = run_process([PYTHON, EMCC, 'test.c', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        p = run_process([EMCC, 'test.c', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)
@@ -550,7 +548,7 @@ fi
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
     with chdir(temp_dir):
-      run_process([PYTHON, EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
+      run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = run_js('a.out.js')
 
     self.assertContained('hello, world!', result)
@@ -569,7 +567,7 @@ fi
 
     # listing ports
 
-    out = self.do([PYTHON, EMCC, '--show-ports'])
+    out = self.do([EMCC, '--show-ports'])
     assert 'Available ports:' in out, out
     assert 'SDL2' in out, out
     assert 'SDL2_image' in out, out
@@ -582,12 +580,12 @@ fi
     PORTS_DIR = system_libs.Ports.get_dir()
 
     for i in [0, 1]:
-      self.do([PYTHON, EMCC, '--clear-cache'])
+      self.do([EMCC, '--clear-cache'])
       print(i)
       if i == 0:
         try_delete(PORTS_DIR)
       else:
-        self.do([PYTHON, EMCC, '--clear-ports'])
+        self.do([EMCC, '--clear-ports'])
       assert not os.path.exists(PORTS_DIR)
 
       # Building a file that doesn't need ports should not trigger anything
@@ -814,11 +812,11 @@ fi
 
   def test_embuilder_force(self):
     restore_and_set_up()
-    self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
+    self.do([EMBUILDER, 'build', 'libemmalloc'])
     # Second time it should not generate anything
-    self.assertNotContained('generating system library', self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc']))
+    self.assertNotContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc']))
     # Unless --force is specified
-    self.assertContained('generating system library', self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc', '--force']))
+    self.assertContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc', '--force']))
 
   def test_embuilder_wasm_backend(self):
     if not Settings.WASM_BACKEND:
@@ -826,11 +824,11 @@ fi
     restore_and_set_up()
     root_cache = os.path.expanduser('~/.emscripten_cache')
     # the --lto flag makes us build wasm-bc
-    self.do([PYTHON, EMCC, '--clear-cache'])
-    run_process([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
+    self.do([EMCC, '--clear-cache'])
+    run_process([EMBUILDER, 'build', 'libemmalloc'])
     self.assertExists(os.path.join(root_cache, 'wasm-obj'))
-    self.do([PYTHON, EMCC, '--clear-cache'])
-    run_process([PYTHON, EMBUILDER, 'build', 'libemmalloc', '--lto'])
+    self.do([EMCC, '--clear-cache'])
+    run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
     self.assertExists(os.path.join(root_cache, 'wasm-bc'))
 
   def test_binaryen_version(self):
