@@ -548,3 +548,7 @@ var workerResponded = false, workerCallbackId = -1;
 })();
 
 #endif
+
+#if STANDALONE_WASM && ASSERTIONS && !WASM_BIGINT
+err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
+#endif
