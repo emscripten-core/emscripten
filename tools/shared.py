@@ -1283,11 +1283,6 @@ class Building(object):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
     # point CC etc. to the em* tools.
-    # on windows, we must specify python explicitly. on other platforms, we prefer
-    # not to, as some configure scripts expect e.g. CC to be a literal executable
-    # (but "python emcc.py" is not a file that exists).
-    # note that we point to emcc etc. here, without a suffix, instead of to
-    # emcc.py etc.
     env['CC'] = quote(EMCC)
     env['CXX'] = quote(EMXX)
     env['AR'] = quote(EMAR)

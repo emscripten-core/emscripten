@@ -43,7 +43,10 @@ import tools.tempfiles
 import tools.duplicate_function_eliminator
 
 scons_path = Building.which('scons')
-emcmake = path_from_root('emcmake')
+emmake = shared.bat_suffix(path_from_root('emmake'))
+emcmake = shared.bat_suffix(path_from_root('emcmake'))
+emconfigure = shared.bat_suffix(path_from_root('emconfigure'))
+emconfig = shared.bat_suffix(path_from_root('em-config'))
 
 
 class temp_directory(object):
@@ -585,7 +588,7 @@ f.close()
   def test_emsize(self):
     with open(path_from_root('tests', 'other', 'test_emsize.out')) as expected_output:
       expected = expected_output.read()
-      cmd = [path_from_root('emsize.py'), path_from_root('tests', 'other', 'test_emsize.js')]
+      cmd = [path_from_root('emsize'), path_from_root('tests', 'other', 'test_emsize.js')]
       for command in [cmd, cmd + ['-format=sysv']]:
         output = run_process(cmd, stdout=PIPE).stdout
         self.assertContained(expected, output)
@@ -2448,7 +2451,6 @@ int f() {
       self.assertNotContained('FAIL', output)
 
   def test_emconfig(self):
-    emconfig = path_from_root('em-config')
     output = run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, LLVM_ROOT)
     # EMSCRIPTEN_ROOT is kind of special since it should always report the locaton of em-config
@@ -5632,40 +5634,40 @@ Descriptor desc;
 
   def test_emmake_emconfigure(self):
     def check(what, args, fail=True, expect=''):
-      args = [path_from_root(what)] + args
+      args = [what] + args
       print(what, args, fail, expect)
       output = run_process(args, stdout=PIPE, stderr=PIPE, check=False)
       assert ('is a helper for' in output.stderr) == fail
       assert ('Typical usage' in output.stderr) == fail
       self.assertContained(expect, output.stdout)
-    check('emmake', [])
-    check('emconfigure', [])
-    check('emmake', ['--version'])
-    check('emconfigure', ['--version'])
-    check('emmake', ['make'], fail=False)
-    check('emconfigure', ['configure'], fail=False)
-    check('emconfigure', ['./configure'], fail=False)
-    check('emcmake', ['cmake'], fail=False)
+    check(emmake, [])
+    check(emconfigure, [])
+    check(emmake, ['--version'])
+    check(emconfigure, ['--version'])
+    check(emmake, ['make'], fail=False)
+    check(emconfigure, ['configure'], fail=False)
+    check(emconfigure, ['./configure'], fail=False)
+    check(emcmake, ['cmake'], fail=False)
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('CROSS_COMPILE'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
-    check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check(emconfigure, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check(emmake, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('NM'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check(emconfigure, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
   @no_windows('This test is broken, https://github.com/emscripten-core/emscripten/issues/8872')
   def test_emmake_python(self):
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
     # not confuse by setting those vars to something containing `python X` as the script checks for
     # the existence of an executable.
-    result = run_process([path_from_root('emmake'), PYTHON, path_from_root('tests', 'emmake', 'make.py')], stdout=PIPE, stderr=PIPE)
+    result = run_process([emmake, PYTHON, path_from_root('tests', 'emmake', 'make.py')], stdout=PIPE, stderr=PIPE)
     print(result.stdout, result.stderr)
 
   def test_sdl2_config(self):
@@ -5679,7 +5681,7 @@ print(os.environ.get('NM'))
       out = run_process([PYTHON, path_from_root('system', 'bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
       print('via emmake')
-      out = run_process([path_from_root('emmake'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = run_process([emmake, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
 
   def test_module_onexit(self):
