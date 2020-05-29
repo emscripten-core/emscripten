@@ -99,7 +99,8 @@ UNSUPPORTED_LLD_FLAGS = {
     '-soname': True,
     '-allow-shlib-undefined': False,
     '-rpath': True,
-    '-rpath-link': True
+    '-rpath-link': True,
+    '-version-script': True,
 }
 
 LIB_PREFIXES = ('', 'lib')
