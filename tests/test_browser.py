@@ -260,12 +260,36 @@ If manually bisecting:
       (absolute_src_path + "@/directory/file.txt", "directory/file.txt"),
       ("some@@file.txt@other.txt", "other.txt"),
       ("some@@file.txt@some@@otherfile.txt", "some@otherfile.txt")]
+    
+    # used for test cases, where .js, .wasm and .data files are in a subdirectory
+    ensure_dir('sub')
+    create_test_file(os.path.join('sub', 'page_sub.html'), '''
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <script src="sub2/page.js"></script>
+          <script>
+            Module['onRuntimeInitialized'] = function() {
+              //new Module.page();
+            };
+            console.log("tested")
+          </script>
+        </head>
+        <body></bod>
+      </html>
+      ''')
 
     for srcpath, dstpath in test_cases:
       print('Testing', srcpath, dstpath)
       make_main(dstpath)
       self.compile_btest(['main.cpp', '--preload-file', srcpath, '-o', 'page.html'])
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+      
+      # test again with the .js, .wasm, .data files being in a sub-directory
+      ensure_dir(os.path.join('sub', 'sub2'))
+      self.compile_btest(['main.cpp', '--preload-file', srcpath, '-o', 'sub/sub2/page.js'])
+      self.run_browser('sub/page_sub.html', 'You should see |load me right before|.', '/report_result?1')
+      
     # Test that '--no-heap-copy' works.
     if WINDOWS:
       # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
@@ -2747,6 +2771,15 @@ Module["preRun"].push(function () {
       else:
         shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
       shutil.move('test.data', os.path.join('sub', 'test.data'))
+      self.run_browser('page.html', None, '/report_result?1')
+      
+      # alternatively, use preload-file
+      self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--preload-file', 'data.txt', '-o', 'page.html', '-s', '-s', 'WASM=' + str(wasm)])
+      if wasm:
+        shutil.move('page.wasm', os.path.join('sub', 'page.wasm'))
+      else:
+        shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
+      shutil.move('page.data', os.path.join('sub', 'page.data'))
       self.run_browser('page.html', None, '/report_result?1')
 
       # alternatively, put locateFile in the HTML
