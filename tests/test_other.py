@@ -7879,7 +7879,6 @@ int main() {
                   '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 408028), # noqa
   })
   @no_fastcomp()
-  @unittest.skip("Temporarily disabled to allow LLVM to roll")
   def test_metadce_cxx(self, *args):
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
@@ -9290,7 +9289,6 @@ int main () {
         test(['-s', 'WASM=0'], closure, opt)
         test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  @unittest.skip("Disabled to allow LLVM to roll")
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1',
