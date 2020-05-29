@@ -1258,7 +1258,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.verify_settings()
 
-    if not shared.Settings.WASM_BACKEND:
+    # We allow this warning to be supressed by the environment so that we can run the test
+    # suite against fastcomp while supressing this warning.
+    if not shared.Settings.WASM_BACKEND and 'EMCC_ALLOW_FASTCOMP' not in os.environ:
       diagnostics.warning('fastcomp', 'the fastomp compiler is deprecated.  Please switch to the upstream llvm backend as soon as possible and open issues if you have trouble doing so')
 
     if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:

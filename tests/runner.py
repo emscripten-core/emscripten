@@ -458,10 +458,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
-    if not Settings.WASM_BACKEND:
-      self.emcc_args.append('-Wno-fastcomp')
     self.env = {}
     self.temp_files_before_run = []
+
+    if not Settings.WASM_BACKEND:
+      os.environ['EMCC_ALLOW_FASTCOMP'] = '1'
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
