@@ -646,6 +646,7 @@ def check_vanilla():
     temp_cache = cache.Cache(CACHE, use_subdir=False)
 
     def has_vanilla_targets():
+      logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
       targets = get_llc_targets()
       return has_wasm_target(targets) and not has_asm_js_target(targets)
 
@@ -3474,7 +3475,6 @@ EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 apply_configuration()
