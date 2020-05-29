@@ -745,7 +745,15 @@ def emsdk_cflags(user_args=[]):
       result += ['-Xclang', '-isystem' + path]
     return result
 
-  if '-msse' in user_args or '-msse2' in user_args:
+  def array_contains_any_of(hay, needles):
+    for n in needles:
+      if n in hay:
+        return True
+
+  simd_feature_tower = ['-msse', '-msse2', '-msse3']
+
+  if array_contains_any_of(user_args, simd_feature_tower):
+    c_opts += include_directive([path_from_root('system', 'include', 'SSE')])
     c_opts += ['-D__SSE__=1']
 
     if '-msse2' in user_args:
