@@ -903,7 +903,9 @@ int getaddrinfo(const char *node, const char *service, const struct addrinfo *hi
 
   wait_for_call_result(b);
   int ret = b->data->ret;
+#ifdef POSIX_SOCKET_DEBUG
   emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "getaddrinfo finished, ret=%d\n", ret);
+#endif
   if (ret == 0)
   {
     if (res)
@@ -911,7 +913,9 @@ int getaddrinfo(const char *node, const char *service, const struct addrinfo *hi
       Result *r = (Result*)b->data;
       uint8_t *raiAddr = (uint8_t*)&r->addr[0];
       addrinfo *results = (addrinfo*)malloc(sizeof(addrinfo)*r->addrCount);
+#ifdef POSIX_SOCKET_DEBUG
       emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "%d results\n", r->addrCount);
+#endif
       for(size_t i = 0; i < r->addrCount; ++i)
       {
         ResAddrinfo *rai = (ResAddrinfo*)raiAddr;
