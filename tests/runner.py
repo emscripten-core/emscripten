@@ -472,13 +472,18 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if EMTEST_SAVE_DIR:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      if EMTEST_SAVE_DIR != 2 and os.path.exists(self.working_dir):
-        # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
-        # expect this.  EMTEST_SAVE_DIR=2 can be used to keep the old contents for the new test
-        # run. This can be useful when iterating on a given test with extra files you want to keep
-        # around in the output directory.
-        delete_contents(self.working_dir)
+      if os.path.exists(self.working_dir):
+        if EMTEST_SAVE_DIR == 2:
+          print('Not clearing existing test directory')
+        else:
+          print('Clearing existing test directory')
+          # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
+          # expect this.  EMTEST_SAVE_DIR=2 can be used to keep the old contents for the new test
+          # run. This can be useful when iterating on a given test with extra files you want to keep
+          # around in the output directory.
+          delete_contents(self.working_dir)
       else:
+        print('Creating new test output directory')
         ensure_dir(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
@@ -2001,10 +2006,11 @@ def flattened_tests(loaded_tests):
 
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other')
-  has_multiple_tests = len(tests) > 1
-  has_multiple_cores = parallel_testsuite.num_cores() > 1
-  if suite_supported and has_multiple_tests and has_multiple_cores:
-    return parallel_testsuite.ParallelTestSuite(len(tests))
+  if not EMTEST_SAVE_DIR:
+    has_multiple_tests = len(tests) > 1
+    has_multiple_cores = parallel_testsuite.num_cores() > 1
+    if suite_supported and has_multiple_tests and has_multiple_cores:
+      return parallel_testsuite.ParallelTestSuite(len(tests))
   return unittest.TestSuite()
 
 

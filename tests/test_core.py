@@ -154,7 +154,12 @@ def also_with_standalone_wasm(func):
     if can_do_standalone(self):
       print('standalone')
       self.set_setting('STANDALONE_WASM', 1)
-      func(self)
+      # we will not legalize the JS ffi interface, so we must use BigInt
+      # support in order for JS to have a chance to run this without trapping
+      # when it sees an i64 on the ffi.
+      self.set_setting('WASM_BIGINT', 1)
+      with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+        func(self)
 
   return decorated
 
@@ -5574,7 +5579,7 @@ main( int argv, char ** argc ) {
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
-  @also_with_only_standalone_wasm
+  @also_with_standalone_wasm
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))

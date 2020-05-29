@@ -1796,7 +1796,7 @@ class Ports(object):
 
   @staticmethod
   def get_dir():
-    dirname = os.environ.get('EM_PORTS') or os.path.expanduser(os.path.join('~', '.emscripten_ports'))
+    dirname = shared.PORTS
     shared.safe_ensure_dirs(dirname)
     return dirname
 
