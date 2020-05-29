@@ -2803,6 +2803,10 @@ class JS(object):
 
   @staticmethod
   def handle_license(js_target):
+    if not Settings.WASM_BACKEND:
+      # EMIT_EMSCRIPTEN_LICENSE is only supported in upstream (it would break
+      # source maps support in fastcomp, and perhaps other things)
+      return
     # ensure we emit the license if and only if we need to, and exactly once
     with open(js_target) as f:
       js = f.read()
