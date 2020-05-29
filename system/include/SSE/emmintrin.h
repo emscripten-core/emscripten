@@ -473,11 +473,7 @@ _mm_load_pd(double const *__dp)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_load1_pd(double const *__dp)
 {
-  struct __mm_load1_pd_struct {
-    double __u;
-  } __attribute__((__packed__, __may_alias__));
-  double __u = ((struct __mm_load1_pd_struct*)__dp)->__u;
-  return (__m128d){ __u, __u };
+  return (__m128d)wasm_f64x2_splat(*__dp);
 }
 
 #define        _mm_load_pd1(dp)        _mm_load1_pd(dp)

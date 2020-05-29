@@ -291,7 +291,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
 
 Any code referencing these intrinsics will not compile.
 
-The following table highlights the performance landscape that can be expected from different SSE1 instrinsics. Refer to  `Intel Intrinsics Guide on SSE2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE2>`_.
+The following table highlights the performance landscape that can be expected from different SSE2 instrinsics. Refer to `Intel Intrinsics Guide on SSE2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE2>`_.
 
 .. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h>
    :widths: 20 30
@@ -480,7 +480,7 @@ The following table highlights the performance landscape that can be expected fr
    * - _mm_load_pd
      - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
    * - _mm_load1_pd (_mm_load_pd1)
-     - 🟡 Virtual. Simd load + shuffle.
+     - 🟡 Virtual. Scalar load + splat.
    * - _mm_load_sd
      - ❌ emulated with wasm_f64x2_make
    * - _mm_load_si128
@@ -734,3 +734,42 @@ The following table highlights the performance landscape that can be expected fr
  - _mm_add_si64, _mm_movepi64_pi64, _mm_movpi64_epi64, _mm_mul_su32, _mm_sub_si64, _mm_cvtpd_pi32, _mm_cvtpi32_pd, _mm_cvttpd_pi32
 
 Any code referencing these intrinsics will not compile.
+
+The following table highlights the performance landscape that can be expected from different SSE3 instrinsics. Refer to `Intel Intrinsics Guide on SSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE3>`_.
+
+.. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_lddqu_si128
+     - ✅ wasm_v128_load.
+   * - _mm_addsub_ps
+     - ⚠️ emulated with a SIMD add+mul+const
+   * - _mm_hadd_ps
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_hsub_ps
+     - ⚠️ emulated with a SIMD sub+two shuffles
+   * - _mm_movehdup_ps
+     - 💡 emulated with a general shuffle
+   * - _mm_moveldup_ps
+     - 💡 emulated with a general shuffle
+   * - _mm_addsub_pd
+     - ⚠️ emulated with a SIMD add+mul+const
+   * - _mm_hadd_pd
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_hsub_pd
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_loaddup_pd
+     - 🟡 Scalar load + splat.
+   * - _mm_movedup_pd
+     - 💡 emulated with a general shuffle
+   * - _MM_GET_DENORMALS_ZERO_MODE
+     - ✅ Always returns _MM_DENORMALS_ZERO_ON. I.e. denormals are available.
+   * - _MM_SET_DENORMALS_ZERO_MODE
+     - ⚫ Not available. Fixed to _MM_DENORMALS_ZERO_ON.
+   * - _mm_monitor
+     - ⚫ Not available.
+   * - _mm_mwait
+     - ⚫ Not available.

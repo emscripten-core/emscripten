@@ -1,8 +1,9 @@
-// Copyright 2014 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
-
+/*
+ * Copyright 2020 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
 #include <xmmintrin.h>
 #include "benchmark_sse.h"
 
@@ -150,5 +151,7 @@ int main()
 	BINARYOP_TEST("_mm_unpackhi_ps", _mm_unpackhi_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[2] = dst[1]; dst[1] = dst[0]; dst[0] = src2[0]; dst[3] = src2[1]; } ENDSCALAR(checksum_dst(dst), "scalar unpacklo_ps");
 	BINARYOP_TEST("_mm_unpacklo_ps", _mm_unpacklo_ps, _mm_load_ps(src), _mm_load_ps(src2));
+
+	// Benchmarks end:
 	printf("]}\n");
 }

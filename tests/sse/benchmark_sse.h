@@ -36,7 +36,7 @@ float hmax(__m128 m)
 
 #include "../tick.h"
 
-const int N = 16*1024*1024;
+const int N = 8*1024*1024;
 
 tick_t scalarTotalTicks = 0;
 tick_t simdTotalTicks = 0;
@@ -84,6 +84,8 @@ bool always_true() { return time(NULL) != 0; } // This function always returns t
 #define INLINE __inline__
 #endif
 
+// Slightly awkward way to allocate so that compiler will definitely not see this memory area as compile-time optimizable:
+int NOINLINE *alloc_int_buffer() { return always_true() ? (int*)aligned_alloc(16, (N+16)*sizeof(int)) : 0; }
 float NOINLINE *alloc_float_buffer() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
 double NOINLINE *alloc_double_buffer() { return always_true() ? (double*)aligned_alloc(16, (N+16)*sizeof(double)) : 0; }
 
@@ -109,6 +111,18 @@ double ucastd(uint64_t t) { return *(double*)&t; }
 		for(int i = 0; i < N; i += num_elems_stride) \
 			store_instr((store_ptr_type)dst+store_offset+i, load_instr(src+load_offset+i)); \
 	END(checksum_dst(dst), msg);
+
+#define LS_TEST_D(msg, load_instr, load_offset, store_instr, store_ptr_type, store_offset, num_elems_stride) \
+	START(); \
+		for(int i = 0; i < N; i += num_elems_stride) \
+			store_instr((store_ptr_type)dst_dbl+store_offset+i, load_instr(src_dbl+load_offset+i)); \
+	END(checksum_dst(dst_dbl), msg);
+
+#define LS_TEST_I(msg, load_instr, load_offset, store_instr, store_offset, num_elems_stride) \
+	START(); \
+		for(int i = 0; i < N; i += num_elems_stride) \
+			store_instr((__m128i*)(dst_int+store_offset+i), load_instr((__m128i*)(src_int+load_offset+i))); \
+	END(checksum_dst(dst_int), msg);
 
 // loadh/l - store test
 #define LSH_TEST(msg, reg, load_instr, load_ptr_type, load_offset, store_instr, store_ptr_type, store_offset, num_elems_stride) \
@@ -150,22 +164,22 @@ double ucastd(uint64_t t) { return *(double*)&t; }
 		__m128 o1 = op1; \
 		for(int i = 0; i < N; i += 4) \
 			o0 = instr(o0, o1); \
-		_mm_store_ps(dst, o0); \
-	END(checksum_dst(dst), msg);
+		_mm_store_ps(dst_dbl, o0); \
+	END(checksum_dst(dst_dbl), msg);
 
 #define SS_TEST_D(msg, set_instr) \
 	START(); \
 		for(int i = 0; i < N; i += 2) \
-			_mm_store_pd((double*)dst+i, set_instr); \
-	END(checksum_dst(dst), msg);
+			_mm_store_pd((double*)dst_dbl+i, set_instr); \
+	END(checksum_dst(dst_dbl), msg);
 
 #define UNARYOP_TEST_D(msg, instr, op0) \
 	START(); \
 		__m128d o = op0; \
 		for(int i = 0; i < N; i += 2) \
 			o = instr(o); \
-		_mm_store_pd(dst, o); \
-	END(checksum_dst(dst), msg);
+		_mm_store_pd(dst_dbl, o); \
+	END(checksum_dst(dst_dbl), msg);
 
 #define BINARYOP_TEST_D(msg, instr, op0, op1) \
 	START(); \
@@ -173,8 +187,8 @@ double ucastd(uint64_t t) { return *(double*)&t; }
 		__m128d o1 = op1; \
 		for(int i = 0; i < N; i += 2) \
 			o0 = instr(o0, o1); \
-		_mm_store_pd(dst, o0); \
-	END(checksum_dst(dst), msg);
+		_mm_store_pd(dst_dbl, o0); \
+	END(checksum_dst(dst_dbl), msg);
 
 #define Max(a,b) ((a) >= (b) ? (a) : (b))
 #define Min(a,b) ((a) <= (b) ? (a) : (b))

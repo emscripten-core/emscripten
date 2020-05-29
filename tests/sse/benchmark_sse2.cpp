@@ -1,8 +1,9 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
-
+/*
+ * Copyright 2020 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
 #include <emmintrin.h>
 #include "benchmark_sse.h"
 
@@ -14,13 +15,13 @@ int main()
 
 	printf ("{ \"workload\": %u, \"results\": [\n", N);
 	assert(N%2 == 0); // Don't care about the tail for now.
-	double *src = alloc_double_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
+	double *src = alloc_double_buffer();
 	for(int i = 0; i < N; ++i)
 		src[i] = 1.0 + (double)rand() / RAND_MAX;
-	double *src2 = alloc_double_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
+	double *src2 = alloc_double_buffer();
 	for(int i = 0; i < N; ++i)
 		src2[i] = 1.0 + (double)rand() / RAND_MAX;
-	double *dst = alloc_double_buffer();//(float*)aligned_alloc(16, N*sizeof(float));
+	double *dst = alloc_double_buffer();
 
 	float scalarTime;
 	SETCHART("load");
@@ -228,19 +229,7 @@ int main()
 	// _mm_unpacklo_epi8
 	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[2] = dst[1]; dst[1] = dst[0]; dst[0] = src2[0]; dst[3] = src2[1]; } ENDSCALAR(checksum_dst(dst), "scalar unpacklo_pd");
 	BINARYOP_TEST_D("_mm_unpacklo_pd", _mm_unpacklo_pd, _mm_load_pd(src), _mm_load_pd(src2));
+
+	// Benchmarks end:
 	printf("]}\n");
-/*
-	printf("Finished!\n");
-	printf("Total time spent in scalar intrinsics: %f msecs.\n", (double)scalarTotalTicks * 1000.0 / ticks_per_sec());
-	printf("Total time spent in SSE1 intrinsics: %f msecs.\n", (double)simdTotalTicks * 1000.0 / ticks_per_sec());
-	if (scalarTotalTicks > simdTotalTicks)
-		printf("SSE1 was %.3fx faster than scalar!\n", (double)scalarTotalTicks / simdTotalTicks);
-	else
-		printf("SSE1 was %.3fx slower than scalar!\n", (double)simdTotalTicks / scalarTotalTicks);
-*/
-#ifdef __EMSCRIPTEN__
-	fprintf(stderr,"User Agent: %s\n", emscripten_run_script_string("navigator.userAgent"));
-	printf("/*Test finished! Now please close Firefox to continue with benchmark_sse2.py.*/\n");
-#endif
-	exit(0);
 }

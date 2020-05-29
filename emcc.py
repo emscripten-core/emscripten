@@ -1414,8 +1414,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # We add these to the user's flags (newargs), but not when building .s or .S assembly files
     cflags = shared.get_cflags(newargs)
 
-    # SSEx is implemented on top of SIMD128 instruction set. Convert -msse flag to -msimd128
-    sse_args = ['-msse', '-msse2']
+    # SSEx is implemented on top of SIMD128 instruction set. Convert SSEx flags to -msimd128
+    sse_args = ['-msse', '-msse2', '-msse3']
     if len([x for x in newargs if x in sse_args]) > 0:
       newargs.append('-msimd128')
     newargs = [x for x in newargs if x not in sse_args]
