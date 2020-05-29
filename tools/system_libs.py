@@ -86,6 +86,9 @@ def run_one_command(cmd):
   for opt in ['EMMAKEN_CFLAGS']:
     if opt in safe_env:
       del safe_env[opt]
+  # Disable certain warnings when we build ports/system libraries we don't want to
+  # show them a million times.
+  cmd.append('-Wno-fastcomp')
   shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
 
 

@@ -275,7 +275,7 @@ core_test_modes = [
   'strict'
 ]
 
-if shared.Settings.WASM_BACKEND:
+if Settings.WASM_BACKEND:
   core_test_modes += [
     'wasm2js0',
     'wasm2js1',
@@ -306,7 +306,7 @@ non_core_test_modes = [
   'benchmark',
 ]
 
-if shared.Settings.WASM_BACKEND:
+if Settings.WASM_BACKEND:
   non_core_test_modes += [
     'asan',
     'lsan',
@@ -460,6 +460,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.emcc_args = ['-Werror']
     self.env = {}
     self.temp_files_before_run = []
+
+    if not Settings.WASM_BACKEND:
+      os.environ['EMCC_ALLOW_FASTCOMP'] = '1'
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
