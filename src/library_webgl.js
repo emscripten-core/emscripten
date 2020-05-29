@@ -15,18 +15,18 @@ var LibraryGL = {
   _tempFixedLengthArray__postset: 'for (var i = 0; i < 32; ++i) __tempFixedLengthArray.push(new Array(i));',
   _tempFixedLengthArray: [],
 
-  _miniTempFloatBuffers: [],
-  _miniTempFloatBuffers__postset:
-      'var __temp_webgl_float_buf = new Float32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
+  _miniTempWebGLFloatBuffers: [],
+  _miniTempWebGLFloatBuffers__postset:
+      'var __miniTempWebGLFloatBuffersStorage = new Float32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
     + 'for (/**@suppress{duplicate}*/var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++i) {\n'
-    + '__miniTempFloatBuffers[i] = __temp_webgl_float_buf.subarray(0, i+1);\n'
+    + '__miniTempWebGLFloatBuffers[i] = __miniTempWebGLFloatBuffersStorage.subarray(0, i+1);\n'
     + '}\n',
 
-  _miniTempIntBuffers: [],
-  _miniTempIntBuffers__postset:
-      'var __temp_webgl_int_buf = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
+  _miniTempWebGLIntBuffers: [],
+  _miniTempWebGLIntBuffers__postset:
+      'var __miniTempWebGLIntBuffersStorage = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
     + 'for (/**@suppress{duplicate}*/var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++i) {\n'
-    + '__miniTempIntBuffers[i] = __temp_webgl_int_buf.subarray(0, i+1);\n'
+    + '__miniTempWebGLIntBuffers[i] = __miniTempWebGLIntBuffersStorage.subarray(0, i+1);\n'
     + '}\n',
 
   _heapObjectForWebGLType: function(type) {
@@ -2217,7 +2217,7 @@ var LibraryGL = {
 
   glUniform1iv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform1iv__deps: ['_miniTempIntBuffers'],
+  glUniform1iv__deps: ['_miniTempWebGLIntBuffers'],
 #endif
   glUniform1iv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2239,7 +2239,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempIntBuffers[count-1];
+      var view = __miniTempWebGLIntBuffers[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
       }
@@ -2257,7 +2257,7 @@ var LibraryGL = {
 
   glUniform2iv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform2iv__deps: ['_miniTempIntBuffers'],
+  glUniform2iv__deps: ['_miniTempWebGLIntBuffers'],
 #endif
   glUniform2iv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2279,7 +2279,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempIntBuffers[2*count-1];
+      var view = __miniTempWebGLIntBuffers[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2298,7 +2298,7 @@ var LibraryGL = {
 
   glUniform3iv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform3iv__deps: ['_miniTempIntBuffers'],
+  glUniform3iv__deps: ['_miniTempWebGLIntBuffers'],
 #endif
   glUniform3iv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2320,7 +2320,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempIntBuffers[3*count-1];
+      var view = __miniTempWebGLIntBuffers[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2340,7 +2340,7 @@ var LibraryGL = {
 
   glUniform4iv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform4iv__deps: ['_miniTempIntBuffers'],
+  glUniform4iv__deps: ['_miniTempWebGLIntBuffers'],
 #endif
   glUniform4iv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2362,7 +2362,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempIntBuffers[4*count-1];
+      var view = __miniTempWebGLIntBuffers[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2383,7 +2383,7 @@ var LibraryGL = {
 
   glUniform1fv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform1fv__deps: ['_miniTempFloatBuffers'],
+  glUniform1fv__deps: ['_miniTempWebGLFloatBuffers'],
 #endif
   glUniform1fv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2405,7 +2405,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempFloatBuffers[count-1];
+      var view = __miniTempWebGLFloatBuffers[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
       }
@@ -2423,7 +2423,7 @@ var LibraryGL = {
 
   glUniform2fv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform2fv__deps: ['_miniTempFloatBuffers'],
+  glUniform2fv__deps: ['_miniTempWebGLFloatBuffers'],
 #endif
   glUniform2fv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2445,7 +2445,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempFloatBuffers[2*count-1];
+      var view = __miniTempWebGLFloatBuffers[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2464,7 +2464,7 @@ var LibraryGL = {
 
   glUniform3fv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform3fv__deps: ['_miniTempFloatBuffers'],
+  glUniform3fv__deps: ['_miniTempWebGLFloatBuffers'],
 #endif
   glUniform3fv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2486,7 +2486,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempFloatBuffers[3*count-1];
+      var view = __miniTempWebGLFloatBuffers[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2506,7 +2506,7 @@ var LibraryGL = {
 
   glUniform4fv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform4fv__deps: ['_miniTempFloatBuffers'],
+  glUniform4fv__deps: ['_miniTempWebGLFloatBuffers'],
 #endif
   glUniform4fv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2528,7 +2528,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempFloatBuffers[4*count-1];
+      var view = __miniTempWebGLFloatBuffers[4*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value >>= 2;
@@ -2553,7 +2553,7 @@ var LibraryGL = {
 
   glUniformMatrix2fv__sig: 'viiii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniformMatrix2fv__deps: ['_miniTempFloatBuffers'],
+  glUniformMatrix2fv__deps: ['_miniTempWebGLFloatBuffers'],
 #endif
   glUniformMatrix2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -2575,7 +2575,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempFloatBuffers[4*count-1];
+      var view = __miniTempWebGLFloatBuffers[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2596,7 +2596,7 @@ var LibraryGL = {
 
   glUniformMatrix3fv__sig: 'viiii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniformMatrix3fv__deps: ['_miniTempFloatBuffers'],
+  glUniformMatrix3fv__deps: ['_miniTempWebGLFloatBuffers'],
 #endif
   glUniformMatrix3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -2618,7 +2618,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 9 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempFloatBuffers[9*count-1];
+      var view = __miniTempWebGLFloatBuffers[9*count-1];
       for (var i = 0; i < 9*count; i += 9) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2644,7 +2644,7 @@ var LibraryGL = {
 
   glUniformMatrix4fv__sig: 'viiii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniformMatrix4fv__deps: ['_miniTempFloatBuffers'],
+  glUniformMatrix4fv__deps: ['_miniTempWebGLFloatBuffers'],
 #endif
   glUniformMatrix4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -2666,7 +2666,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 16 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempFloatBuffers[16*count-1];
+      var view = __miniTempWebGLFloatBuffers[16*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value >>= 2;
