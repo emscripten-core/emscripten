@@ -9230,21 +9230,17 @@ int main () {
     self.assertTextDataIdentical('hello, world!\n', ret)
 
   @parameterized({
-    # -O0 and -O1 do not optimize out JS comments, and license headers are just
-    # JS comments (so even multiple copies can be emitted).
-    # -O2+ will remove all comments, but preserve the license if that was asked
-    # for, and only one will exist.
-    'O0': (True, True, ['-O0']), # noqa
-    'O1': (True, True, ['-O1']), # noqa
-    'O2': (False, False,['-O2']), # noqa
-    'O2_emit': (True, False, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE']), # noqa
-    'O2_js_emit': (True, False, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '-s', 'WASM=0']), # noqa
-    'O2_closure': (False, False, ['-O2', '--closure', '1']), # noqa
-    'O2_closure_emit': (True, False, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1']), # noqa
-    'O2_closure_js_emit': (True, False, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1', '-s', 'WASM=0']), # noqa
+    'O0': (False, ['-O0']), # noqa
+    'O0_emit': (True, ['-O0', '-s', 'EMIT_EMSCRIPTEN_LICENSE']), # noqa
+    'O2': (False, ['-O2']), # noqa
+    'O2_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE']), # noqa
+    'O2_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '-s', 'WASM=0']), # noqa
+    'O2_closure': (False, ['-O2', '--closure', '1']), # noqa
+    'O2_closure_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1']), # noqa
+    'O2_closure_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1', '-s', 'WASM=0']), # noqa
   })
   @no_fastcomp('EMIT_EMSCRIPTEN_LICENSE is upstream only')
-  def test_emscripten_license(self, expect_license, allow_multiple, args):
+  def test_emscripten_license(self, expect_license, args):
     # fastcomp does not support the new license flag
     if not self.is_wasm_backend():
       expect_license = False
@@ -9255,9 +9251,8 @@ int main () {
     if expect_license and licenses_found == 0:
       self.fail('Unable to find license block in output file!')
     if not expect_license and licenses_found > 0:
-      print(js)
       self.fail('Found a license block in the output file, but it should not have been there!')
-    if expect_license and not allow_multiple and licenses_found > 1:
+    if expect_license and licenses_found > 1:
       self.fail('Found too many license blocks in the output file!')
 
   # This test verifies that the generated exports from asm.js/wasm module only reference the

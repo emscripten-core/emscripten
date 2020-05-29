@@ -1994,29 +1994,6 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
-  def maybe_add_license(filename=None, code=None, passes=[]):
-    # if this is happening after we ran some passes with 'noPrint', which
-    # means we don't print any JS, then no license is needed.
-    if 'noPrint' not in passes:
-      # EMIT_EMSCRIPTEN_LICENSE is not supported in fastcomp since the JS
-      # optimization pipeline there is much more complex, and fastcomp is
-      # deprecated anyhow
-      if Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND:
-        if filename:
-          with open(filename) as f:
-            code = f.read()
-        code = JS.emscripten_license + code
-        if filename:
-          with open(filename, 'w') as f:
-            f.write(code)
-        else:
-          code = JS.emscripten_license + code
-    if filename:
-      return filename
-    else:
-      return code
-
-  @staticmethod
   def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[], no_license=False):
     from . import js_optimizer
     try:
@@ -2026,8 +2003,6 @@ class Building(object):
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
-    if not no_license:
-      ret = Building.maybe_add_license(filename=ret, passes=passes)
     return ret
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
@@ -2051,10 +2026,8 @@ class Building(object):
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
       check_call(cmd, stdout=open(next, 'w'))
-      next = Building.maybe_add_license(filename=next, passes=passes)
       return next
     output = check_call(cmd, stdout=PIPE).stdout
-    output = Building.maybe_add_license(code=output, passes=passes)
     return output
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
@@ -2275,24 +2248,6 @@ class Building(object):
 
         if Settings.CLOSURE_WARNINGS == 'error':
           exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
-
-      # closure compiler will automatically preserve @license blocks, but we
-      # have an explicit flag for that (EMIT_EMSCRIPTEN_LICENSE), which we
-      # don't have a way to tell closure about. remove the comment here if we
-      # don't want it (closure will aggregate all such comments into a single
-      # big one at the top of the file)
-      if Settings.WASM_BACKEND:
-        with open(outfile) as f:
-          code = f.read()
-        if code.startswith('/*'):
-          # remove the combined closure comment (which can contain multiple
-          # license copies)
-          code = code[code.find('*/') + 2:]
-          # if we want license info, add it
-          if Settings.EMIT_EMSCRIPTEN_LICENSE:
-            code = JS.emscripten_license + code
-          with open(outfile, 'w') as f:
-            f.write(code)
 
       return outfile
 
@@ -2523,9 +2478,7 @@ class Building(object):
         temp = configuration.get_temp_files().get('.js').name
         with open(temp, 'w') as f:
           f.write(wasm2js_js)
-        # pass no_license since we are only optimizing a subset of the JS. if
-        # a license is needed, the js as a whole will have it anyhow.
-        temp = Building.js_optimizer(temp, passes, no_license=True)
+        temp = Building.js_optimizer(temp, passes)
         with open(temp) as f:
           wasm2js_js = f.read()
     # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
@@ -2836,6 +2789,32 @@ class JS(object):
  * SPDX-License-Identifier: MIT
  */
 '''
+
+  # handle the above form, and also what closure can emit which is stuff like
+  #  /*
+  #
+  #   Copyright 2019 The Emscripten Authors
+  #   SPDX-License-Identifier: MIT
+  #
+  #   Copyright 2017 The Emscripten Authors
+  #   SPDX-License-Identifier: MIT
+  #  */
+  emscripten_license_regex = '''\
+\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/
+'''
+
+  @staticmethod
+  def handle_license(js_target):
+    # ensure we emit the license if and only if we need to, and exactly once
+    with open(js_target) as f:
+      js = f.read()
+    # first, remove the license as there may be more than once
+    processed_js = re.sub(JS.emscripten_license_regex, '', js)
+    if Settings.EMIT_EMSCRIPTEN_LICENSE:
+      processed_js = JS.emscripten_license + processed_js
+    if processed_js != js:
+      with open(js_target, 'w') as f:
+        f.write(processed_js)
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent

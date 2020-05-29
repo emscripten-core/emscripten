@@ -2776,6 +2776,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           f.write(fix_windows_newlines(options.extern_post_js))
         save_intermediate('extern-pre-post')
 
+      shared.JS.handle_license(final)
+
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
 
