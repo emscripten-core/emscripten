@@ -1787,7 +1787,7 @@ class Ports(object):
       # this must only be called on a standard build command
       assert cmd[0] in (shared.EMCC, shared.EMXX)
       # add standard cflags, but also allow the cmd to override them
-      return cmd[:1] + get_cflags() + cmd[2:]
+      return cmd[:1] + get_cflags() + cmd[1:]
     run_build_commands([add_args(c) for c in commands])
 
   @staticmethod

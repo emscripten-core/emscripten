@@ -6845,7 +6845,7 @@ high = 1234
         print('  checking emcc.py...')
         run_process([python, path_from_root('emcc.py'), '--version'], stdout=PIPE)
         print('  checking em++.py...')
-        run_process([python, path_from_root('emxx.py'), '--version'], stdout=PIPE)
+        run_process([python, path_from_root('em++.py'), '--version'], stdout=PIPE)
 
     run('python')
     run('python2')
