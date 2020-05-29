@@ -850,9 +850,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             pass
 
     if run_via_emxx:
-      compiler = [shared.PYTHON, shared.EMXX]
+      compiler = [shared.EMXX]
     else:
-      compiler = [shared.PYTHON, shared.EMCC]
+      compiler = [shared.EMCC]
 
     cmd = compiler + [a for a in args if a != '--tracing']
     # configure tests want a more shell-like style, where we emit return codes on exit()

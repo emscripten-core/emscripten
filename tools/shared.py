@@ -552,6 +552,10 @@ def exe_suffix(cmd):
   return cmd + '.exe' if WINDOWS else cmd
 
 
+def bat_suffix(cmd):
+  return cmd + '.bat' if WINDOWS else cmd
+
+
 def replace_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
   return os.path.splitext(filename)[0] + new_suffix
@@ -642,7 +646,6 @@ def check_vanilla():
     temp_cache = cache.Cache(CACHE, use_subdir=False)
 
     def has_vanilla_targets():
-      logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
       targets = get_llc_targets()
       return has_wasm_target(targets) and not has_asm_js_target(targets)
 
@@ -1257,9 +1260,12 @@ class Building(object):
 
   @staticmethod
   def get_building_env(native=False, doublequote_commands=False, cflags=[]):
-    def nop(arg):
-      return arg
-    quote = Building.doublequote_spaces if doublequote_commands else nop
+    def quote(arg):
+      if WINDOWS and doublequote_commands:
+        return Building.doublequote_spaces(arg)
+      else:
+        return arg
+
     env = os.environ.copy()
     if native:
       env['CC'] = quote(CLANG_CC)
@@ -1279,13 +1285,13 @@ class Building(object):
     # (but "python emcc.py" is not a file that exists).
     # note that we point to emcc etc. here, without a suffix, instead of to
     # emcc.py etc.
-    env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
-    env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
-    env['LD'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CC'] = quote(EMCC)
+    env['CXX'] = quote(EMXX)
+    env['AR'] = quote(EMAR)
+    env['LD'] = quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
+    env['LDSHARED'] = quote(EMCC)
+    env['RANLIB'] = quote(EMRANLIB)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     if cflags:
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
@@ -1903,13 +1909,13 @@ class Building(object):
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    run_process([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
+    run_process([EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
     response_filename = response_file.create_response_file(filenames, TEMP_DIR)
-    cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
+    cmd = [EMAR, action, output_filename] + ['@' + response_filename]
     try:
       run_process(cmd, stdout=stdout, stderr=stderr, env=env)
     finally:
@@ -3463,15 +3469,10 @@ LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfd
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
-EMSCRIPTEN = path_from_root('emscripten.py')
-EMCC = path_from_root('emcc.py')
-EMXX = path_from_root('em++.py')
-EMAR = path_from_root('emar.py')
-EMRANLIB = path_from_root('emranlib.py')
-EMCONFIG = path_from_root('em-config.py')
-EMLINK = path_from_root('emlink.py')
-EMCONFIGURE = path_from_root('emconfigure.py')
-EMMAKE = path_from_root('emmake.py')
+EMCC = bat_suffix(path_from_root('emcc'))
+EMXX = bat_suffix(path_from_root('em++'))
+EMAR = bat_suffix(path_from_root('emar'))
+EMRANLIB = bat_suffix(path_from_root('emranlib'))
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
