@@ -268,12 +268,6 @@ If manually bisecting:
       <html lang="en">
         <head>
           <script src="sub2/page.js"></script>
-          <script>
-            Module['onRuntimeInitialized'] = function() {
-              //new Module.page();
-            };
-            console.log("tested")
-          </script>
         </head>
         <body></bod>
       </html>
