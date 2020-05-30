@@ -3413,10 +3413,10 @@ if not CACHE:
   if root_is_writable():
     CACHE = path_from_root('cache')
   else:
-    # Use the legacy method ot putting the cache in the user's home directory
+    # Use the legacy method of putting the cache in the user's home directory
     # if the emscripten root is not writable.
-    # TODO(sbc): Remove this once write-only installations and transitioned to
-    # shipping CACHE in thier embedded config files.
+    # TODO(sbc): Remove this once write-only installations are transitioned to
+    # settings CACHE as part of thier embedded config files.
     CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 if not PORTS:
   PORTS = os.path.join(CACHE, 'ports')
