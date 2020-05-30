@@ -301,12 +301,12 @@ def parse_config_file():
   # Certain keys are mandatory
   for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
     if key not in config:
-      exit_with_error('%s is not defined in %s', key, hint_config_file_location())
+      exit_with_error('%s is not defined in %s', key, config_file_location())
     if not globals()[key]:
-      exit_with_error('%s is set to empty value in %s', key, hint_config_file_location())
+      exit_with_error('%s is set to empty value in %s', key, config_file_location())
 
   if not NODE_JS:
-    exit_with_error('NODE_JS is not defined in %s', hint_config_file_location())
+    exit_with_error('NODE_JS is not defined in %s', config_file_location())
 
   # EM_CONFIG stuff
   if not JS_ENGINES:
@@ -321,18 +321,18 @@ def parse_config_file():
       CLOSURE_COMPILER = [NODE_JS, '--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
-    logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
+    logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
     JAVA = 'java'
 
 
-# Returns a suggestion where current .emscripten config file might be located
-# (if EM_CONFIG env. var is used without a file, this hints to "default"
-# location at ~/.emscripten)
-def hint_config_file_location():
-  if CONFIG_FILE:
-    return CONFIG_FILE
-  else:
-    return '~/.emscripten'
+# Returns the location of the emscripten config file.
+def config_file_location():
+  # Handle the case where there is no config file at all (i.e. If EM_CONFIG is passed as python code
+  # direclty on the command line).
+  if not CONFIG_FILE:
+    return '<inline config>'
+
+  return CONFIG_FILE
 
 
 def listify(x):
@@ -615,7 +615,7 @@ class Configuration(object):
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
+        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config_file_location())
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
