@@ -773,3 +773,49 @@ The following table highlights the performance landscape that can be expected fr
      - ⚫ Not available.
    * - _mm_mwait
      - ⚫ Not available.
+
+The following table highlights the performance landscape that can be expected from different SSSE3 instrinsics. Refer to `Intel Intrinsics Guide on SSSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSSE3>`_.
+
+.. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_abs_epi8
+     - ⚠️ emulated with a SIMD shift+xor+add
+   * - _mm_abs_epi16
+     - ⚠️ emulated with a SIMD shift+xor+add
+   * - _mm_abs_epi32
+     - ⚠️ emulated with a SIMD shift+xor+add
+   * - _mm_alignr_epi8
+     - ⚠️ emulated with a SIMD or+two shifts
+   * - _mm_hadd_epi16
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_hadd_epi32
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_hadds_epi16
+     - ⚠️ emulated with a SIMD adds+two shuffles
+   * - _mm_hsub_epi16
+     - ⚠️ emulated with a SIMD sub+two shuffles
+   * - _mm_hsub_epi32
+     - ⚠️ emulated with a SIMD sub+two shuffles
+   * - _mm_hsubs_epi16
+     - ⚠️ emulated with a SIMD subs+two shuffles
+   * - _mm_maddubs_epi16
+     - ❌ scalarized
+   * - _mm_mulhrs_epi16
+     - ❌ scalarized (TODO: emulatable in SIMD?)
+   * - _mm_shuffle_epi8
+     - ❌ scalarized (TODO: use wasm_v8x16_swizzle when available)
+   * - _mm_sign_epi8
+     - ⚠️ emulated with a SIMD complex shuffle+cmp+xor+andnot
+   * - _mm_sign_epi16
+     - ⚠️ emulated with a SIMD shr+cmp+xor+andnot
+   * - _mm_sign_epi32
+     - ⚠️ emulated with a SIMD shr+cmp+xor+andnot
+
+⚫ The SSSE3 functions that deal with 64-bit wide MMX registers are not available:
+ -  _mm_abs_pi8, _mm_abs_pi16, _mm_abs_pi32, _mm_alignr_pi8, _mm_hadd_pi16, _mm_hadd_pi32, _mm_hadds_pi16, _mm_hsub_pi16, _mm_hsub_pi32, _mm_hsubs_pi16, _mm_maddubs_pi16, _mm_mulhrs_pi16, _mm_shuffle_pi8, _mm_sign_pi8, _mm_sign_pi16 and _mm_sign_pi32
+
+Any code referencing these intrinsics will not compile.

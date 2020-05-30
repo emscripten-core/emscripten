@@ -750,7 +750,7 @@ def emsdk_cflags(user_args=[]):
       if n in hay:
         return True
 
-  simd_feature_tower = ['-msse', '-msse2', '-msse3']
+  simd_feature_tower = ['-msse', '-msse2', '-msse3', '-mssse3']
 
   if array_contains_any_of(user_args, simd_feature_tower):
     c_opts += include_directive([path_from_root('system', 'include', 'SSE')])
@@ -758,6 +758,9 @@ def emsdk_cflags(user_args=[]):
 
     if '-msse2' in user_args:
       c_opts += ['-D__SSE2__=1']
+
+  if array_contains_any_of(user_args, simd_feature_tower[3:]):
+    c_opts += ['-D__SSSE3__=1']
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if Settings.USE_CXX:

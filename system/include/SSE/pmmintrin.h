@@ -7,11 +7,11 @@
 #ifndef __emscripten_pmmintrin_h__
 #define __emscripten_pmmintrin_h__
 
-#include <emmintrin.h>
-
 #ifndef __SSE3__
 #error "SSE3 instruction set not enabled"
 #endif
+
+#include <emmintrin.h>
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_lddqu_si128(__m128i const *__p)

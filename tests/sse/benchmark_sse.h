@@ -105,75 +105,78 @@ uint64_t dcastu(double f) { return *(uint64_t*)&f; }
 float ucastf(uint32_t t) { return *(float*)&t; }
 double ucastd(uint64_t t) { return *(double*)&t; }
 
-// load-store test
-#define LS_TEST(msg, load_instr, load_offset, store_instr, store_ptr_type, store_offset, num_elems_stride) \
+#define LOAD_STORE_F(msg, load_instr, load_offset, store_instr, store_ptr_type, store_offset, num_elems_stride) \
 	START(); \
 		for(int i = 0; i < N; i += num_elems_stride) \
-			store_instr((store_ptr_type)dst+store_offset+i, load_instr(src+load_offset+i)); \
-	END(checksum_dst(dst), msg);
+			store_instr((store_ptr_type)dst_flt+store_offset+i, load_instr(src_flt+load_offset+i)); \
+	END(checksum_dst(dst_flt), msg);
 
-#define LS_TEST_D(msg, load_instr, load_offset, store_instr, store_ptr_type, store_offset, num_elems_stride) \
+#define LOAD_STORE_D(msg, load_instr, load_offset, store_instr, store_ptr_type, store_offset, num_elems_stride) \
 	START(); \
 		for(int i = 0; i < N; i += num_elems_stride) \
 			store_instr((store_ptr_type)dst_dbl+store_offset+i, load_instr(src_dbl+load_offset+i)); \
 	END(checksum_dst(dst_dbl), msg);
 
-#define LS_TEST_I(msg, load_instr, load_offset, store_instr, store_offset, num_elems_stride) \
+#define LOAD_STORE_I(msg, load_instr, load_offset, store_instr, store_offset, num_elems_stride) \
 	START(); \
 		for(int i = 0; i < N; i += num_elems_stride) \
 			store_instr((__m128i*)(dst_int+store_offset+i), load_instr((__m128i*)(src_int+load_offset+i))); \
 	END(checksum_dst(dst_int), msg);
 
-// loadh/l - store test
-#define LSH_TEST(msg, reg, load_instr, load_ptr_type, load_offset, store_instr, store_ptr_type, store_offset, num_elems_stride) \
+// load M64*, store M128
+#define LOAD_STORE_M64(msg, reg, load_instr, load_ptr_type, load_offset, store_instr, store_ptr_type, store_offset, num_elems_stride) \
 	START(); \
 		for(int i = 0; i < N; i += num_elems_stride) \
-			store_instr((store_ptr_type)dst+store_offset+i, load_instr(reg, (load_ptr_type)(src+load_offset+i))); \
-	END(checksum_dst(dst), msg);
+			store_instr((store_ptr_type)dst_flt+store_offset+i, load_instr(reg, (load_ptr_type)(src_flt+load_offset+i))); \
+	END(checksum_dst(dst_flt), msg);
 
-#define LS64_TEST(msg, load_instr, load_offset, store_instr, store_offset, num_elems_stride) \
+#define LOAD_STORE_64_F(msg, load_instr, load_offset, store_instr, store_offset, num_elems_stride) \
 	START(); \
 		for(int i = 0; i < N; i += num_elems_stride) \
-			store_instr((__m64*)(dst+store_offset+i), load_instr(src+load_offset+i)); \
-	END(checksum_dst(dst), msg);
+			store_instr((__m64*)(dst_flt+store_offset+i), load_instr(src_flt+load_offset+i)); \
+	END(checksum_dst(dst_flt), msg);
 
-// set-store test
-#define SS_TEST(msg, set_instr) \
+#define LOAD_STORE_64_D(msg, load_instr, load_offset, store_instr, store_offset, num_elems_stride) \
+	START(); \
+		for(int i = 0; i < N; i += num_elems_stride) \
+			store_instr((__m64*)(dst_dbl+store_offset+i), load_instr(src_dbl+load_offset+i)); \
+	END(checksum_dst(dst_dbl), msg);
+
+#define SET_STORE_F(msg, set_instr) \
 	START(); \
 		for(int i = 0; i < N; i += 4) \
-			_mm_store_ps((float*)dst+i, set_instr); \
-	END(checksum_dst(dst), msg);
+			_mm_store_ps(dst_flt+i, set_instr); \
+	END(checksum_dst(dst_flt), msg);
 
-#define UNARYOP_TEST(msg, instr, op0) \
+#define SET_STORE_D(msg, set_instr) \
+	START(); \
+		for(int i = 0; i < N; i += 4) \
+			_mm_store_pd(dst_dbl+i, set_instr); \
+	END(checksum_dst(dst_dbl), msg);
+
+#define UNARYOP_F_F(msg, instr, op0) \
 	START(); \
 		__m128 o = op0; \
 		for(int i = 0; i < N; i += 4) \
 			o = instr(o); \
-		_mm_store_ps(dst, o); \
-	END(checksum_dst(dst), msg);
+		_mm_store_ps(dst_flt, o); \
+	END(checksum_dst(dst_flt), msg);
 
-#define UNARYOP_INT_TEST(msg, instr) \
+#define UNARYOP_I_I(msg, instr, op0) \
+	START(); \
+		__m128 o = op0; \
+		for(int i = 0; i < N; i += 4) \
+			o = instr(o); \
+		_mm_store_si128((__m128i*)dst_int, o); \
+	END(checksum_dst(dst_int), msg);
+
+#define UNARYOP_i_F(msg, instr) \
 	START(); \
 		for(int i = 0; i < N; i += 4) \
-			dst_int += instr; \
-	END(checksum_dst(&dst_int), msg);
+			dst_int_scalar += instr; \
+	END(dst_int_scalar, msg);
 
-#define BINARYOP_TEST(msg, instr, op0, op1) \
-	START(); \
-		__m128 o0 = op0; \
-		__m128 o1 = op1; \
-		for(int i = 0; i < N; i += 4) \
-			o0 = instr(o0, o1); \
-		_mm_store_ps(dst_dbl, o0); \
-	END(checksum_dst(dst_dbl), msg);
-
-#define SS_TEST_D(msg, set_instr) \
-	START(); \
-		for(int i = 0; i < N; i += 2) \
-			_mm_store_pd((double*)dst_dbl+i, set_instr); \
-	END(checksum_dst(dst_dbl), msg);
-
-#define UNARYOP_TEST_D(msg, instr, op0) \
+#define UNARYOP_D_D(msg, instr, op0) \
 	START(); \
 		__m128d o = op0; \
 		for(int i = 0; i < N; i += 2) \
@@ -181,7 +184,25 @@ double ucastd(uint64_t t) { return *(double*)&t; }
 		_mm_store_pd(dst_dbl, o); \
 	END(checksum_dst(dst_dbl), msg);
 
-#define BINARYOP_TEST_D(msg, instr, op0, op1) \
+#define BINARYOP_F_FF(msg, instr, op0, op1) \
+	START(); \
+		__m128 o0 = op0; \
+		__m128 o1 = op1; \
+		for(int i = 0; i < N; i += 4) \
+			o0 = instr(o0, o1); \
+		_mm_store_ps(dst_flt, o0); \
+	END(checksum_dst(dst_flt), msg);
+
+#define BINARYOP_I_II(msg, instr, op0, op1) \
+	START(); \
+		__m128 o0 = op0; \
+		__m128 o1 = op1; \
+		for(int i = 0; i < N; i += 4) \
+			o0 = instr(o0, o1); \
+		_mm_store_si128((__m128i*)dst_int, o0); \
+	END(checksum_dst(dst_int), msg);
+
+#define BINARYOP_D_DD(msg, instr, op0, op1) \
 	START(); \
 		__m128d o0 = op0; \
 		__m128d o1 = op1; \

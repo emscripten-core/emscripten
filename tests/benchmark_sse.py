@@ -24,7 +24,7 @@ system_info = Popen([PYTHON, path_from_root('emrun'), '--system_info'], stdout=P
 native_info = Popen(['clang', '-v'], stdout=PIPE, stderr=PIPE).communicate()
 
 # Emscripten info
-emscripten_info = Popen([PYTHON, EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
+emscripten_info = Popen([EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
 
 def run_benchmark(benchmark_file, results_file, build_args):
     # Run native build
@@ -43,7 +43,7 @@ def run_benchmark(benchmark_file, results_file, build_args):
 
     # Run emscripten build
     out_file = os.path.join(temp_dir, 'benchmark_sse_html.js')
-    cmd = [PYTHON, EMCC, benchmark_file, '-O3', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file] + build_args
+    cmd = [EMCC, benchmark_file, '-O3', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file] + build_args
     print 'Building Emscripten version of the benchmark:'
     print ' '.join(cmd)
     build = Popen(cmd)
@@ -289,5 +289,7 @@ if __name__ == '__main__':
         run_benchmark(path_from_root('tests', 'sse', 'benchmark_sse2.cpp'), 'results_sse2.html', ['-msse2'])
     elif suite == 'sse3':
         run_benchmark(path_from_root('tests', 'sse', 'benchmark_sse3.cpp'), 'results_sse3.html', ['-msse3'])
+    elif suite == 'ssse3':
+        run_benchmark(path_from_root('tests', 'sse', 'benchmark_ssse3.cpp'), 'results_ssse3.html', ['-mssse3'])
     else:
         raise Exception('Usage: python tests/benchmark_sse.py sse1|sse2|sse3')
