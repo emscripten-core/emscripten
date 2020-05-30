@@ -11,6 +11,7 @@ import sys
 import unittest
 import tempfile
 import time
+import signal
 
 from tools.tempfiles import try_delete
 
@@ -22,6 +23,7 @@ except ImportError:
 
 
 def g_testing_thread(work_queue, result_queue, temp_dir):
+  signal.signal(signal.SIGINT, signal.SIG_IGN)
   for test in iter(lambda: get_from_queue(work_queue), None):
     result = BufferedParallelTestResult()
     test.set_temp_dir(temp_dir)
@@ -48,8 +50,14 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
   def run(self, result):
     test_queue = self.create_test_queue()
-    self.init_processes(test_queue)
-    results = self.collect_results()
+    try:
+      self.init_processes(test_queue)
+      results = self.collect_results()
+    finally:
+      for p in self.processes:
+        p.terminate()
+        p.join()
+      self.processes.clear()
     return self.combine_results(result, results)
 
   def create_test_queue(self):
