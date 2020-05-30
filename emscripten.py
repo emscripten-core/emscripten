@@ -2457,7 +2457,6 @@ def create_receiving_wasm(exports, initializers):
       else:
         receiving += make_export_wrappers(exports, delay_assignment)
   else:
-    receiving.append('Module["asm"] = asm;')
     receiving += make_export_wrappers(exports, delay_assignment)
 
   return '\n'.join(receiving) + '\n'
