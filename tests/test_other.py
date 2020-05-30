@@ -8373,9 +8373,6 @@ end
     create_test_file('file1', ' ')
     run_process([EMAR, 'cr', 'file1.a', 'file1', 'file1'])
 
-  # Temporarily disabled to allow this llvm change to roll
-  # https://reviews.llvm.org/D69665
-  @no_windows('Temporarily disabled under windows')
   def test_emar_response_file(self):
     # Test that special character such as single quotes in filenames survive being
     # sent via response file
@@ -8589,13 +8586,9 @@ int main() {
 ''')
     stderr = self.expect_fail([EMCC, 'src.cpp', '-O2'])
     # wasm backend output doesn't have spaces in the EM_ASM function bodies
-    # TODO(sbc): remove second option once binaryen#2408 rolls
     self.assertContained(('''
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
-''', '''
-  0: function() {var x = !<->5.;}
-                          ^
 ''', '''
   1024: function() {var x = !<->5.;}
                              ^
