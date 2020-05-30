@@ -6,8 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-Module['asm'] = asm;
-
 {{{ exportRuntime() }}}
 
 #if MEM_INIT_IN_WASM == 0

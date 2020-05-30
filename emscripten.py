@@ -1582,7 +1582,6 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
         else:
           receiving += '\n'.join(make_export_wrappers(module_exports, delay_assignment))
     else:
-      receiving += 'Module["asm"] = asm;\n'
       receiving += '\n'.join(make_export_wrappers(module_exports, delay_assignment))
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
