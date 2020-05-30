@@ -480,7 +480,7 @@ The following table highlights the performance landscape that can be expected fr
    * - _mm_load_pd
      - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
    * - _mm_load1_pd (_mm_load_pd1)
-     - 🟡 Virtual. Scalar load + splat.
+     - 🟡 Virtual. v64x2.load_splat, VM must guess type.
    * - _mm_load_sd
      - ❌ emulated with wasm_f64x2_make
    * - _mm_load_si128

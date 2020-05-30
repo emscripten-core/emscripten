@@ -211,7 +211,7 @@ void test_probability()
 void test_set()
 {
 /*
-	// SSE2 Set functions:
+	// TODO: SSE2 Set functions:
 	_mm_set_epi16
 	_mm_set_epi32
 	_mm_set_epi64
