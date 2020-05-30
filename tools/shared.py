@@ -143,6 +143,10 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 
+def root_is_writable():
+  return os.access(__rootpath__, os.W_OK)
+
+
 # This is a workaround for https://bugs.python.org/issue9400
 class Py2CalledProcessError(subprocess.CalledProcessError):
   def __init__(self, returncode, cmd, output=None, stderr=None):
@@ -3406,7 +3410,14 @@ V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 if not CACHE:
-  CACHE = path_from_root('cache')
+  if root_is_writable():
+    CACHE = path_from_root('cache')
+  else:
+    # Use the legacy method ot putting the cache in the user's home directory
+    # if the emscripten root is not writable.
+    # TODO(sbc): Remove this once write-only installations and transitioned to
+    # shipping CACHE in thier embedded config files.
+    CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 if not PORTS:
   PORTS = os.path.join(CACHE, 'ports')
 
