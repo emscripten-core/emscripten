@@ -8374,6 +8374,9 @@ end
     create_test_file('file1', ' ')
     run_process([EMAR, 'cr', 'file1.a', 'file1', 'file1'])
 
+  # Temporarily disabled to allow this llvm change to roll
+  # https://reviews.llvm.org/D69665
+  @no_windows('Temporarily disabled under windows')
   def test_emar_response_file(self):
     # Test that special character such as single quotes in filenames survive being
     # sent via response file
