@@ -47,6 +47,7 @@ emmake = shared.bat_suffix(path_from_root('emmake'))
 emcmake = shared.bat_suffix(path_from_root('emcmake'))
 emconfigure = shared.bat_suffix(path_from_root('emconfigure'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
+emsize = shared.bat_suffix(path_from_root('emsize'))
 
 
 class temp_directory(object):
@@ -588,7 +589,7 @@ f.close()
   def test_emsize(self):
     with open(path_from_root('tests', 'other', 'test_emsize.out')) as expected_output:
       expected = expected_output.read()
-      cmd = [path_from_root('emsize'), path_from_root('tests', 'other', 'test_emsize.js')]
+      cmd = [emsize, path_from_root('tests', 'other', 'test_emsize.js')]
       for command in [cmd, cmd + ['-format=sysv']]:
         output = run_process(cmd, stdout=PIPE).stdout
         self.assertContained(expected, output)
