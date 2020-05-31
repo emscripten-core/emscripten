@@ -3416,8 +3416,8 @@ function(%(EXPORT_NAME)s) {
 var %(EXPORT_NAME)s = (function() {
   %(lines)s
 })();
-''' % { 'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-        'lines': '\n  '.join(lines) }
+''' % {'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+       'lines': '\n  '.join(lines)}
 
   final = final + '.modular.js'
   with open(final, 'w') as f:
