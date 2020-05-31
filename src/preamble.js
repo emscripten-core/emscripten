@@ -1053,6 +1053,16 @@ function createWasm() {
     var module;
     var binary;
     try {
+      // First, get a module.
+#if MODULARIZE
+      // After the first compilation cache the module, so we don't compile it each
+      // time the modularize factory is called. (Note that we could do this in
+      // async as well, but racing could lead to multiple compilations there
+      // anyhow.)
+      if (compiledModule) {
+        module = compiledModule;
+      } else {
+#endif // MODULARIZE
       binary = getBinary();
 #if NODE_CODE_CACHING
       if (ENVIRONMENT_IS_NODE) {
@@ -1089,6 +1099,12 @@ function createWasm() {
 #else // NODE_CODE_CACHING
       module = new WebAssembly.Module(binary);
 #endif // NODE_CODE_CACHING
+#if MODULARIZE
+      compiledModule = module;
+      }
+#endif
+
+      // Next, get an instance.
       instance = new WebAssembly.Instance(module, info);
 #if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary, module);

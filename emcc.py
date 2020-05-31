@@ -3406,18 +3406,18 @@ function(%(EXPORT_NAME)s) {
       script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       if shared.Settings.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
+    lines = ['var _scriptDir = %s;' % script_url, script_url_node]
+    if not shared.Settings.WASM_ASYNC_COMPILATION:
+      # when we do sync compilation we can cache the compiled module to save
+      # time on later factory invocations
+      lines.append('var compiledModule;')
+    lines.append('return (%s);' % src)
     src = '''
 var %(EXPORT_NAME)s = (function() {
-  var _scriptDir = %(script_url)s;
-  %(script_url_node)s
-  return (%(src)s);
+  %(lines)s
 })();
-''' % {
-      'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-      'script_url': script_url,
-      'script_url_node': script_url_node,
-      'src': src
-    }
+''' % { 'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+        'lines': '\n  '.join(lines) }
 
   final = final + '.modular.js'
   with open(final, 'w') as f:
