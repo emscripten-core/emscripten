@@ -6,6 +6,11 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if !WASM_BACKEND && !WASM
+// asm.js startup is synchronous
+Module['asm'] = asm;
+#endif
+
 {{{ exportRuntime() }}}
 
 #if MEM_INIT_IN_WASM == 0
