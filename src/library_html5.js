@@ -2747,6 +2747,8 @@ var LibraryJSEvents = {
   },
 
   emscripten_supports_offscreencanvas: function() {
+    // TODO: Add a new build mode, e.g. OFFSCREENCANVAS_SUPPORT=2, which
+    // necessitates OffscreenCanvas support at build time, and "return 1;" here in that build mode.
 #if OFFSCREENCANVAS_SUPPORT
     return typeof OffscreenCanvas !== 'undefined';
 #else

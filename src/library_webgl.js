@@ -1244,65 +1244,6 @@ var LibraryGL = {
     return ret;
   },
 
-  emscripten_webgl_getParameter_d: function(param) {
-    return GLctx.getParameter(param);
-  },
-
-  emscripten_webgl_getParameter_object: function(param) {
-    var obj = GLctx.getParameter(param);
-    return obj && obj.name;
-  },
-
-  emscripten_webgl_getParameter_iv: function(param, dst, dstLength) {
-    var ret = GLctx.getParameter(param);
-    var len = ret && ret.length;
-    var writeLength = dstLength < len ? dstLength : len;
-    for(var i = 0; i < writeLength; ++i) {
-      HEAP32[(dst + i) >> 2] = ret[i];
-    }
-    return len;
-  },
-
-  emscripten_webgl_getParameter_fv: function(param, dst, dstLength) {
-    var ret = GLctx.getParameter(param);
-    var len = ret && ret.length;
-    var writeLength = dstLength < len ? dstLength : len;
-    for(var i = 0; i < writeLength; ++i) {
-      HEAPF32[(dst + i) >> 2] = ret[i];
-    }
-    return len;
-  },
-
-  emscripten_webgl_getParameter_utf8: function(param) {
-    return stringToNewUTF8(GLctx.getParameter(param));
-  },
-
-  emscripten_webgl_getParameter_i64v__deps: ['$writeI53ToI64'],
-  emscripten_webgl_getParameter_i64v: function(param, dst) {
-    writeI53ToI64(dst, GLctx.getParameter(param));
-  },
-
-  emscripten_webgl_getSupportedExtensions__deps: ['$stringToNewUTF8'],
-  emscripten_webgl_getSupportedExtensions: function(dst, dstLength) {
-    return stringToNewUTF8(GLctx.getSupportedExtensions().join(' '));
-  },
-
-  emscripten_webgl_getProgramParameter_d: function(program, param) {
-    return GLctx.getProgramParameter(GL.programs[program], param);
-  }
-
-  emscripten_webgl_getProgramInfoLog_utf8: function(program,) {
-    return GLctx.getProgramInfoLog(GL.programs[program]);
-  }
-
-  emscripten_webgl_getShaderParameter_d: function(shader, param) {
-    return GLctx.getShaderParameter(GL.shaders[shader], param);
-  }
-
-  emscripten_webgl_getShaderInfoLog_utf8: function(shader) {
-    return GLctx.getShaderInfoLog(GL.shaders[shader]);
-  }
-
   $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGet: function(name_, p, type) {
     // Guard against user passing a null pointer.
@@ -1856,21 +1797,20 @@ var LibraryGL = {
         break;
     }
 #endif
+
+    if (data) {
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      if (data) {
+      if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
         GLctx.bufferData(target, HEAPU8, usage, data, size);
       } else {
-        GLctx.bufferData(target, size, usage);
-      }
-    } else {
 #endif
-      // N.b. here first form specifies a heap subarray, second form an integer size, so the ?: code here is polymorphic. It is advised to avoid
-      // randomly mixing both uses in calling code, to avoid any potential JS engine JIT issues.
-      GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
+        GLctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
 #if MAX_WEBGL_VERSION >= 2
-    }
+      }
 #endif
+    } else {
+      GLctx.bufferData(target, size, usage);
+    }
   },
 
   glBufferSubData__sig: 'viiii',
@@ -2088,14 +2028,18 @@ var LibraryGL = {
       switch (type) {
         case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+#if GL_ASSERTIONS
         default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+#endif
       }
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
           case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+#if GL_ASSERTIONS
           default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+#endif
         }
       }
     }
@@ -2161,7 +2105,9 @@ var LibraryGL = {
         case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
         case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
+#if GL_ASSERTIONS
         default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
+#endif
       }
     } else {
       for (var i = 0; i < data.length; i++) {
@@ -2169,7 +2115,9 @@ var LibraryGL = {
           case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
+#if GL_ASSERTIONS
           default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
+#endif
         }
       }
     }
@@ -3784,6 +3732,92 @@ var LibraryGL = {
     return 1;
   },
 #endif
+
+  _write_array: function(arr, dst, dstLength, heapType) {
+#if ASSERTIONS
+    assert(arr);
+    assert(typeof arr.length !== 'undefined');
+#endif
+    var len = arr.length;
+    var writeLength = dstLength < len ? dstLength : len;
+    var heap = heapType ? HEAPF32 : HEAP32;
+    for(var i = 0; i < writeLength; ++i) {
+      heap[(dst + i) >> 2] = ret[i];
+    }
+    return len;
+  },
+
+  emscripten_webgl_get_supported_extensions__deps: ['$stringToNewUTF8'],
+  emscripten_webgl_get_supported_extensions: function() {
+    return stringToNewUTF8(GLctx.getSupportedExtensions().join(' '));
+  },
+
+  emscripten_webgl_get_program_parameter_d: function(program, param) {
+    return GLctx.getProgramParameter(GL.programs[program], param);
+  },
+
+  emscripten_webgl_get_program_info_log_utf8: function(program) {
+    return GLctx.getProgramInfoLog(GL.programs[program]);
+  },
+
+  emscripten_webgl_get_shader_parameter_d: function(shader, param) {
+    return GLctx.getShaderParameter(GL.shaders[shader], param);
+  },
+
+  emscripten_webgl_get_shader_info_log_utf8: function(shader) {
+    return GLctx.getShaderInfoLog(GL.shaders[shader]);
+  },
+
+  emscripten_webgl_get_shader_source_utf8: function(shader) {
+    return GLctx.getShaderSource(GL.shaders[shader]);
+  },
+
+  emscripten_webgl_get_vertex_attrib_d: function(index, param) {
+    return GLctx.getVertexAttrib(index, param);
+  },
+
+  emscripten_webgl_get_vertex_attrib_o: function(index, param) {
+    var obj = GLctx.getVertexAttrib(index, param);
+    return obj && obj.name;
+  },
+
+  emscripten_webgl_get_vertex_attrib_v__deps: ['_write_array'],
+  emscripten_webgl_get_vertex_attrib_v: function(index, param, dst, dstLength, dstType) {
+    return __write_array(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType);
+  },
+
+  emscripten_webgl_get_uniform_d: function(program, location) {
+    return GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
+  },
+
+  emscripten_webgl_get_uniform_v__deps: ['_write_array'],
+  emscripten_webgl_get_uniform_v: function(program, location, dst, dstLength, dstType) {
+    return __write_array(GLctx.getUniform(GL.programs[program], GL.uniforms[location]), dst, dstLength, dstType);
+  },
+
+  emscripten_webgl_get_parameter_v__deps: ['_write_array'],
+  emscripten_webgl_get_parameter_v: function(param, dst, dstLength, dstType) {
+    return __write_array(GLctx.getParameter(param), dst, dstLength, dstType);
+  },
+
+  emscripten_webgl_get_parameter_d: function(param) {
+    return GLctx.getParameter(param);
+  },
+
+  emscripten_webgl_get_parameter_o: function(param) {
+    var obj = GLctx.getParameter(param);
+    return obj && obj.name;
+  },
+
+  emscripten_webgl_get_parameter_utf8__deps: ['$stringToNewUTF8'],
+  emscripten_webgl_get_parameter_utf8: function(param) {
+    return stringToNewUTF8(GLctx.getParameter(param));
+  },
+
+  emscripten_webgl_get_parameter_i64v__deps: ['$writeI53ToI64'],
+  emscripten_webgl_get_parameter_i64v: function(param, dst) {
+    writeI53ToI64(dst, GLctx.getParameter(param));
+  },
 
   // signatures of simple pass-through functions, see later
 

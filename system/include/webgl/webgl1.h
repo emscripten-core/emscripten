@@ -147,6 +147,23 @@ WEBGL_APICALL void GL_APIENTRY emscripten_glVertexAttrib4fv (GLuint index, const
 WEBGL_APICALL void GL_APIENTRY emscripten_glVertexAttribPointer (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
 WEBGL_APICALL void GL_APIENTRY emscripten_glViewport (GLint x, GLint y, GLsizei width, GLsizei height);
 
+char  *emscripten_webgl_get_supported_extensions(void);
+double emscripten_webgl_get_program_parameter_d(GLint program, GLenum param);
+char  *emscripten_webgl_get_program_info_log_utf8(GLint program);
+double emscripten_webgl_get_shader_parameter_d(GLint shader, GLenum param);
+char  *emscripten_webgl_get_shader_info_log_utf8(GLint shader);
+char  *emscripten_webgl_get_shader_source_utf8(GLint shader);
+double emscripten_webgl_get_vertex_attrib_d(GLint index, GLenum param);
+GLint emscripten_webgl_get_vertex_attrib_o(GLint index, GLenum param);
+GLint emscripten_webgl_get_vertex_attrib_v(GLint index, GLenum param, void *dst, GLint dstLength, int dstType);
+double emscripten_webgl_get_uniform_d(GLint program, GLint location);
+GLint emscripten_webgl_get_uniform_v(GLint program, GLint location, void *dst, GLint dstLength, int dstType);
+GLint emscripten_webgl_get_parameter_v(GLenum param, void *dst, GLint dstLength, int dstType);
+double emscripten_webgl_get_parameter_d(GLenum param);
+GLint emscripten_webgl_get_parameter_o(GLenum param);
+char *emscripten_webgl_get_parameter_utf8(GLenum param);
+void emscripten_webgl_get_parameter_i64v(GLenum param, GLint64 *dst);
+
 #ifdef EMSCRIPTEN_WEBGL_TRACE
 #define GL_FUNCTION_TRACE(func) printf(#func "\n")
 #else
