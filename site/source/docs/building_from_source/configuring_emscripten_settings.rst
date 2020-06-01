@@ -4,7 +4,10 @@
 Configuring Emscripten Settings when Manually Building from Source
 ==================================================================
 
-The compiler settings used by Emscripten are defined in the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. These settings include paths to the tools (LLVM, Clang, Java, etc.) and the compiler's temporary directory for intermediate build files.
+The compiler settings used by Emscripten are defined in the :ref:`compiler
+configuration file (.emscripten) <compiler-configuration-file>`. These settings
+include paths to the tools (LLVM, Clang, Java, etc.) and the compiler's
+temporary directory for intermediate build files.
 
 This article explains how to create and update the file when you are building Emscripten :ref:`manually <installing-from-source>` from source.
 
@@ -31,14 +34,17 @@ The file will probably not include the link to :term:`Fastcomp` (``LLVM_ROOT``) 
 Locating the compiler configuration file (.emscripten)
 =======================================================
 
-The settings file is created in the user's home directory: 
+The settings file (``.emscripten``) is created by default within the emscripten directory:
 
-	- On Linux and macOS this file is named **~/.emscripten**, where ~ is the user's home directory.
+In cases where the emscripten directory is read-only the users home directoy
+will be used:
 
-		.. note:: Files with the "." prefix are hidden by default. You may need to change your view settings to find the file.
+  - On Linux and macOS this file is named **~/.emscripten**, where ~ is the
+    user's home directory.
 
+    .. note:: Files with the "." prefix are hidden by default. You may need to change your view settings to find the file.
 
-	- On Windows the file can be found at a path like: **C:/Users/yourusername_000/.emscripten**.
+  - On Windows the file can be found at a path like: **C:/Users/yourusername_000/.emscripten**.
 
 
 Compiler configuration file-format

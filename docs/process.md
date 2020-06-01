@@ -199,17 +199,21 @@ the wasm backend):
 (If you are packaging the older fastcomp backend instead of the wasm backend,
 you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
 
-You also need to set up the `~/.emscripten` file for your users. Emscripten
+You also need to set up a `.emscripten` config file for your users. Emscripten
 will try to do so on first run if such a file does not exist; the simplest
 thing is to look at those contents, edit the paths as needed if anything is
 wrong, and then use that file. (You can also look at how the emsdk generates
-the `.emscripten` file, which it does at the `activate step.) Some of the
+the `.emscripten` file, which it does at the `activate` step.) Some of the
 key values in that file include:
 
  * `LLVM_ROOT`: The path to the LLVM binaries.
  * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` under there; note that
     despite the name this differs from `LLVM_ROOT` which points directly to the binaries).
  * `NODE_JS`: The path to Node.js, which is needed internally.
+
+Shipping this config file inside the emscripten directory is the simplest
+way to ensure it won't interfere with any config file that user might have
+in thier home directory.
 
 ## Ports
 

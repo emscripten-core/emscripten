@@ -3336,6 +3336,8 @@ emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
 emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
 user_home_config = os.path.expanduser('~/.emscripten')
 
+EMSCRIPTEN_ROOT = __rootpath__
+
 if '--em-config' in sys.argv:
   EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
   # And now remove it from sys.argv
@@ -3372,7 +3374,6 @@ else:
   sys.exit(0)
 
 PYTHON = sys.executable
-EMSCRIPTEN_ROOT = __rootpath__
 
 # The following globals can be overridden by the config file.
 # See parse_config_file below.
