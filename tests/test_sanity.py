@@ -118,18 +118,19 @@ class sanity(RunnerCore):
     # Unlike the other test suites we explicitly don't want to be skipping
     # the sanity checks here
     del os.environ['EMCC_SKIP_SANITY_CHECK']
+
+    assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
     shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
 
     print()
     print('Running sanity checks.')
-    print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
+    print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (CONFIG_FILE, CONFIG_FILE))
     print()
     print('>>> the original settings file is:')
-    print(open(path_from_root('.emscripten')).read())
+    print(open(CONFIG_FILE)).read())
     print('<<<')
     print()
 
-    assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
     assert 'EMCC_DEBUG' not in os.environ, 'do not run sanity checks in debug mode!'
     assert 'EMCC_WASM_BACKEND' not in os.environ, 'do not force wasm backend either way in sanity checks!'
 
