@@ -43,7 +43,7 @@ print native_results[0]
 
 # Run emscripten build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_html.js')
-cmd = [EMCC, path_from_root('tests', 'sse', 'benchmark_sse1.cpp'), '-O3', '-msse', '-s', 'SIMD=1', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file]
+cmd = [EMCC, path_from_root('tests', 'sse', 'benchmark_sse1.cpp'), '-O3', '-msse', '-msimd128', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file]
 print 'Building Emscripten version of the benchmark:'
 print ' '.join(cmd)
 build = Popen(cmd)

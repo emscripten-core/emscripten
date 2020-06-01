@@ -745,6 +745,9 @@ def emsdk_cflags(user_args=[]):
     return result
 
   if '-msse' in user_args:
+    if not Settings.BINARYEN_SIMD:
+      exit_with_error('-msse requires -msimd128')
+
     c_opts += ['-D__SSE__=1'] + include_directive([path_from_root('system', 'include', 'SSE')])
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
