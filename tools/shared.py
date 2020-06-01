@@ -3415,8 +3415,10 @@ if not CACHE:
   else:
     # Use the legacy method of putting the cache in the user's home directory
     # if the emscripten root is not writable.
-    # TODO(sbc): Remove this once write-only installations are transitioned to
-    # settings CACHE as part of thier embedded config files.
+    # This is useful mostly for read-only installation and perhaps could
+    # be removed in the future since such installations should probably be
+    # setting a specific cache location.
+    logger.debug('Using home-directory for emscripten cache due to read-only root')
     CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 if not PORTS:
   PORTS = os.path.join(CACHE, 'ports')
