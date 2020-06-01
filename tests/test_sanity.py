@@ -125,7 +125,7 @@ class sanity(RunnerCore):
     print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
     print()
     print('>>> the original settings file is:')
-    print(open(os.path.expanduser('~/.emscripten')).read())
+    print(open(path_from_root('.emscripten')).read())
     print('<<<')
     print()
 
@@ -212,8 +212,6 @@ class sanity(RunnerCore):
       assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
       config_file = open(CONFIG_FILE).read()
       template_file = open(path_from_root('tools', 'settings_template.py')).read()
-      self.assertNotContained('~/.emscripten', config_file)
-      self.assertContained('~/.emscripten', template_file)
       self.assertNotContained('{{{', config_file)
       self.assertNotContained('}}}', config_file)
       self.assertContained('{{{', template_file)
