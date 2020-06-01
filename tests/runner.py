@@ -67,6 +67,7 @@ from tools import jsrun, shared, line_endings
 if 'EM_CONFIG' in os.environ:
   del os.environ['EM_CONFIG']
 
+
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
