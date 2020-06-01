@@ -127,7 +127,7 @@ class sanity(RunnerCore):
     print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (CONFIG_FILE, CONFIG_FILE))
     print()
     print('>>> the original settings file is:')
-    print(open(CONFIG_FILE)).read())
+    print(open(CONFIG_FILE).read())
     print('<<<')
     print()
 
