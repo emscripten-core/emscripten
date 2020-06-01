@@ -41,7 +41,7 @@ commands:
             cd ~/emsdk-master
             ./emsdk update-tags
             ./emsdk install tot-upstream
-            ./emsdk activate tot-upstream
+            ./emsdk activate --no-embedded tot-upstream
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
@@ -105,7 +105,6 @@ commands:
           paths:
             - emsdk-master/
             - cache/
-            - .emscripten_ports/
             - .emscripten
             - vms
             - .jsvu
@@ -316,7 +315,7 @@ jobs:
             cd ~/emsdk-master
             ./emsdk update-tags
             ./emsdk install tot-fastcomp
-            ./emsdk activate tot-fastcomp
+            ./emsdk activate --no-embedded tot-fastcomp
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
@@ -345,7 +344,6 @@ jobs:
           paths:
             - emsdk-master/
             - cache/
-            - .emscripten_ports/
             - .emscripten
   build-docs:
     executor: bionic

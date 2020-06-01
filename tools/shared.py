@@ -67,6 +67,7 @@ diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('fastcomp')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
@@ -140,6 +141,10 @@ class WindowsPopen(object):
 
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
+
+
+def root_is_writable():
+  return os.access(__rootpath__, os.W_OK)
 
 
 # This is a workaround for https://bugs.python.org/issue9400
@@ -285,6 +290,7 @@ def parse_config_file():
     'WASM_ENGINES',
     'FROZEN_CACHE',
     'CACHE',
+    'PORTS',
   )
 
   # Only propagate certain settings from the config file.
@@ -550,6 +556,10 @@ def build_clang_tool_path(tool):
 
 def exe_suffix(cmd):
   return cmd + '.exe' if WINDOWS else cmd
+
+
+def bat_suffix(cmd):
+  return cmd + '.bat' if WINDOWS else cmd
 
 
 def replace_suffix(filename, new_suffix):
@@ -1257,9 +1267,12 @@ class Building(object):
 
   @staticmethod
   def get_building_env(native=False, doublequote_commands=False, cflags=[]):
-    def nop(arg):
-      return arg
-    quote = Building.doublequote_spaces if doublequote_commands else nop
+    def quote(arg):
+      if WINDOWS and doublequote_commands:
+        return Building.doublequote_spaces(arg)
+      else:
+        return arg
+
     env = os.environ.copy()
     if native:
       env['CC'] = quote(CLANG_CC)
@@ -1274,18 +1287,13 @@ class Building(object):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
     # point CC etc. to the em* tools.
-    # on windows, we must specify python explicitly. on other platforms, we prefer
-    # not to, as some configure scripts expect e.g. CC to be a literal executable
-    # (but "python emcc.py" is not a file that exists).
-    # note that we point to emcc etc. here, without a suffix, instead of to
-    # emcc.py etc.
-    env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
-    env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
-    env['LD'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CC'] = quote(EMCC)
+    env['CXX'] = quote(EMXX)
+    env['AR'] = quote(EMAR)
+    env['LD'] = quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
+    env['LDSHARED'] = quote(EMCC)
+    env['RANLIB'] = quote(EMRANLIB)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     if cflags:
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
@@ -1903,13 +1911,13 @@ class Building(object):
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    run_process([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
+    run_process([EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
     response_filename = response_file.create_response_file(filenames, TEMP_DIR)
-    cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
+    cmd = [EMAR, action, output_filename] + ['@' + response_filename]
     try:
       run_process(cmd, stdout=stdout, stderr=stderr, env=env)
     finally:
@@ -3377,6 +3385,7 @@ WASMER = None
 WASMTIME = None
 WASM_ENGINES = []
 CACHE = None
+PORTS = None
 FROZEN_CACHE = False
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
@@ -3401,7 +3410,18 @@ V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 if not CACHE:
-  CACHE = path_from_root('cache')
+  if root_is_writable():
+    CACHE = path_from_root('cache')
+  else:
+    # Use the legacy method of putting the cache in the user's home directory
+    # if the emscripten root is not writable.
+    # This is useful mostly for read-only installation and perhaps could
+    # be removed in the future since such installations should probably be
+    # setting a specific cache location.
+    logger.debug('Using home-directory for emscripten cache due to read-only root')
+    CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+if not PORTS:
+  PORTS = os.path.join(CACHE, 'ports')
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.
@@ -3463,17 +3483,11 @@ LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfd
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
-EMSCRIPTEN = path_from_root('emscripten.py')
-EMCC = path_from_root('emcc.py')
-EMXX = path_from_root('em++.py')
-EMAR = path_from_root('emar.py')
-EMRANLIB = path_from_root('emranlib.py')
-EMCONFIG = path_from_root('em-config.py')
-EMLINK = path_from_root('emlink.py')
-EMCONFIGURE = path_from_root('emconfigure.py')
-EMMAKE = path_from_root('emmake.py')
+EMCC = bat_suffix(path_from_root('emcc'))
+EMXX = bat_suffix(path_from_root('em++'))
+EMAR = bat_suffix(path_from_root('emar'))
+EMRANLIB = bat_suffix(path_from_root('emranlib'))
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 apply_configuration()

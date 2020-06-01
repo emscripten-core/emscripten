@@ -101,7 +101,8 @@ UNSUPPORTED_LLD_FLAGS = {
     '-soname': True,
     '-allow-shlib-undefined': False,
     '-rpath': True,
-    '-rpath-link': True
+    '-rpath-link': True,
+    '-version-script': True,
 }
 
 LIB_PREFIXES = ('', 'lib')
@@ -852,9 +853,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             pass
 
     if run_via_emxx:
-      compiler = [shared.PYTHON, shared.EMXX]
+      compiler = [shared.EMXX]
     else:
-      compiler = [shared.PYTHON, shared.EMCC]
+      compiler = [shared.EMCC]
 
     cmd = compiler + [a for a in args if a != '--tracing']
     # configure tests want a more shell-like style, where we emit return codes on exit()
@@ -1259,6 +1260,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     apply_settings(settings_changes)
 
     shared.verify_settings()
+
+    # We allow this warning to be supressed by the environment so that we can run the test
+    # suite against fastcomp while supressing this warning.
+    if not shared.Settings.WASM_BACKEND and 'EMCC_ALLOW_FASTCOMP' not in os.environ:
+      diagnostics.warning('fastcomp', 'the fastomp compiler is deprecated.  Please switch to the upstream llvm backend as soon as possible and open issues if you have trouble doing so')
 
     if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
       shared.Settings.EXPECT_MAIN = 0
@@ -3311,7 +3317,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                       opt_level=shared.Settings.OPT_LEVEL,
                                       minify_whitespace=optimizer.minify_whitespace,
                                       use_closure_compiler=options.use_closure_compiler,
-                                      debug_info=intermediate_debug_info,
+                                      debug_info=debug_info,
                                       symbols_file=symbols_file)
     if shared.Settings.WASM == 2:
       shutil.copyfile(wasm2js, wasm2js_template)
