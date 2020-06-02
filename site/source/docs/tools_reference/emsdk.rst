@@ -85,7 +85,7 @@ Emscripten Compiler Configuration File (.emscripten)
 The *Compiler Configuration File* stores the :term:`active <Active Tool/SDK>` configuration on behalf of the *emsdk*. The active configuration defines the specific set of tools that are used by default if Emscripten in called on the :ref:`Emscripten Command Prompt <emcmdprompt>`.
 
 The configuration file is named **.emscripten**. It is emsdk-specific, so it
-wont conflict with any config file the user might have in thier home directory.
+won't conflict with any config file the user might have in their home directory.
 
 The file should generally not be updated directly unless you're :ref:`building Emscripten from source <installing-from-source>`. Instead use the *emsdk* to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
 

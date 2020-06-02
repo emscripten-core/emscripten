@@ -213,7 +213,7 @@ key values in that file include:
 
 Shipping this config file inside the emscripten directory is the simplest
 way to ensure it won't interfere with any config file that user might have
-in thier home directory.
+in their home directory.
 
 ## Ports
 

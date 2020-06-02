@@ -351,8 +351,8 @@ Options that are modified or new in *emcc* are listed below:
   If using this in combination with ``--clear-cache``, be sure to specify
   this argument first.
 
-  The Emscripten cache defaults ``emscripten/cache`` but can be overridden
-  use ``EM_CACHE`` environment variable or ``CACHE`` config setting.
+  The Emscripten cache defaults to ``emscripten/cache`` but can be overridden
+  using the ``EM_CACHE`` environment variable or ``CACHE`` config setting.
 
 .. _emcc-clear-cache:
 
@@ -434,7 +434,7 @@ Options that are modified or new in *emcc* are listed below:
 ``--em-config``
   Specifies the location of the **.emscripten** configuration file.  If not
   specified emscripten will search for ``.emscripten`` first in the emscripten
-  dirctory itself, and then in the users home directory (``~/.emscripten``).
+  directory itself, and then in the user's home directory (``~/.emscripten``).
   This can be overridden using the ``EM_CONFIG`` environment variable.
 
 ``--default-obj-ext .ext``

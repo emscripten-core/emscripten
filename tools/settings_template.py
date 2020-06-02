@@ -1,5 +1,5 @@
 # This file will be edited (the {{{ }}} things), and written to `.emscripten`
-# when emscripten is direct uses and no config file is found.
+# when emscripten is first used and no config file is found.
 
 # Note: If you put paths relative to the home directory, do not forget
 # os.path.expanduser
