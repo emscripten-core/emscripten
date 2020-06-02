@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- On first use, emscripten creates a sample config file.  This config file
+  is now created in the emscripten directory by default.  The traditional
+  `~/.emscripten` config file in the `$HOME` directory is still supported and
+  the sample config will still be written there in the case that the emscripten
+  root is read-only.
 - The default location for downloaded ports is now a directory called "ports"
   within the cache directory.  In practice these means by default they live
   in `cache/ports` inside the emscripten source directory.  This can be

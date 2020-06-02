@@ -24,7 +24,7 @@ Building Fastcomp
 
 To build the Fastcomp code from source:
 
--  Create a directory to store the build. It doesn't matter where, because Emscripten gets the information from the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. We show how to update this file later in these instructions:
+-  Create a directory to store the build. It doesn't matter where, because Emscripten gets the information from the :ref:`compiler configuration file (.emscripten) <compiler-configuration-file>`. We show how to update this file later in these instructions:
 
   ::
 
@@ -83,7 +83,7 @@ To build the Fastcomp code from source:
 
 -
 
-  The final step is to update the :ref:`~/.emscripten <compiler-configuration-file>` file, specifying the location of *fastcomp* in the ``LLVM_ROOT`` variable.
+  The final step is to update the :ref:`.emscripten <compiler-configuration-file>` file, specifying the location of *fastcomp* in the ``LLVM_ROOT`` variable.
 
   .. note:: If you're building the **whole** of Emscripten from source, following the platform-specific instructions in :ref:`installing-from-source`, you won't yet have Emscripten installed. In this case, skip this step and return to those instructions.
 

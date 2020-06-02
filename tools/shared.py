@@ -3298,9 +3298,9 @@ def make_fetch_worker(source_file, output_file):
   open(output_file, 'w').write(fetch_worker_src)
 
 
-# =================================================================================================
+# ============================================================================
 # End declarations.
-# =================================================================================================
+# ============================================================================
 
 # Everything below this point is top level code that get run when importing this
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
@@ -3317,7 +3317,7 @@ def make_fetch_worker(source_file, output_file):
 # 3. Local .emscripten file, if found
 # 4. Local .emscripten file, as used by `emsdk --embedded` (two levels above,
 #    see below)
-# 5. Fall back users home directory (~/.emscripten).
+# 5. User home directory config (~/.emscripten), if found.
 
 embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
@@ -3334,6 +3334,9 @@ embedded_config = path_from_root('.emscripten')
 # See: https://github.com/emscripten-core/emsdk/pull/367
 emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
 emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
+user_home_config = os.path.expanduser('~/.emscripten')
+
+EMSCRIPTEN_ROOT = __rootpath__
 
 if '--em-config' in sys.argv:
   EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
@@ -3361,11 +3364,16 @@ elif os.path.exists(embedded_config):
   EM_CONFIG = embedded_config
 elif os.path.exists(emsdk_embedded_config):
   EM_CONFIG = emsdk_embedded_config
+elif os.path.exists(user_home_config):
+  EM_CONFIG = user_home_config
 else:
-  EM_CONFIG = '~/.emscripten'
+  if root_is_writable():
+    generate_config(embedded_config, first_time=True)
+  else:
+    generate_config(user_home_config, first_time=True)
+  sys.exit(0)
 
 PYTHON = sys.executable
-EMSCRIPTEN_ROOT = __rootpath__
 
 # The following globals can be overridden by the config file.
 # See parse_config_file below.
@@ -3400,8 +3408,7 @@ else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
   logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
   if not os.path.exists(CONFIG_FILE):
-    generate_config(EM_CONFIG, first_time=True)
-    sys.exit(0)
+    exit_with_error('emscripten config file not found: ' + CONFIG_FILE)
 
 parse_config_file()
 SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
