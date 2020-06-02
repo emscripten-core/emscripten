@@ -803,11 +803,11 @@ The following table highlights the performance landscape that can be expected fr
    * - _mm_hsubs_epi16
      - ⚠️ emulated with a SIMD subs+two shuffles
    * - _mm_maddubs_epi16
-     - ❌ scalarized
+     - 💣 scalarized
    * - _mm_mulhrs_epi16
-     - ❌ scalarized (TODO: emulatable in SIMD?)
+     - 💣 scalarized (TODO: emulatable in SIMD?)
    * - _mm_shuffle_epi8
-     - ❌ scalarized (TODO: use wasm_v8x16_swizzle when available)
+     - 💣 scalarized (TODO: use wasm_v8x16_swizzle when available)
    * - _mm_sign_epi8
      - ⚠️ emulated with a SIMD complex shuffle+cmp+xor+andnot
    * - _mm_sign_epi16
