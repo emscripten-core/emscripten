@@ -148,12 +148,12 @@ class sanity(RunnerCore):
     super(sanity, self).tearDown()
     print('time:', time.time() - self.start_time)
 
-  def do(self, command):
+  def do(self, command, env=None):
     print('Running: ' + ' '.join(command))
     if type(command) is not list:
       command = [command]
 
-    return run_process(command, stdout=PIPE, stderr=STDOUT, check=False).stdout
+    return run_process(command, stdout=PIPE, stderr=STDOUT, check=False, env=env).stdout
 
   def check_working(self, command, expected=None):
     if type(command) is not list:
@@ -183,16 +183,18 @@ class sanity(RunnerCore):
         with open(os.path.join(temp_bin, name), 'w') as f:
           os.fchmod(f.fileno(), stat.S_IRWXU)
 
+      env = os.environ.copy()
+      if 'EM_CONFIG' in env:
+        del env['EM_CONFIG']
+
       try:
         temp_bin = tempfile.mkdtemp()
-        old_environ_path = os.environ['PATH']
-        os.environ['PATH'] = temp_bin + os.pathsep + old_environ_path
         make_executable('llvm-dis')
         make_executable('node')
         make_executable('python2')
-        output = self.do(command)
+        env['PATH'] = temp_bin + os.pathsep + os.environ['PATH']
+        output = self.do(command, env=env)
       finally:
-        os.environ['PATH'] = old_environ_path
         shutil.rmtree(temp_bin)
 
       default_config = shared.embedded_config
@@ -232,7 +234,7 @@ class sanity(RunnerCore):
         f = open(default_config, 'w')
         f.write(settings)
         f.close()
-        output = self.do(command)
+        output = self.do(command, env=env)
 
         if 'LLVM_ROOT' not in settings:
           self.assertContained('Error in evaluating %s' % default_config, output)
