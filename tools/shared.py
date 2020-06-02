@@ -729,6 +729,7 @@ def emsdk_cflags(user_args=[]):
     path_from_root('system', 'include', 'libc'),
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
+    path_from_root('system', 'include', 'SSE'),
     Cache.get_path('include')
   ]
 
@@ -745,7 +746,6 @@ def emsdk_cflags(user_args=[]):
     return result
 
   if '-msse' in user_args or '-msse2' in user_args:
-    c_opts += include_directive([path_from_root('system', 'include', 'SSE')])
     c_opts += ['-D__SSE__=1']
 
     if '-msse2' in user_args:
