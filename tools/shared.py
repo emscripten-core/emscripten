@@ -751,7 +751,7 @@ def emsdk_cflags(user_args=[]):
         return True
 
   if array_contains_any_of(user_args, SIMD_FEATURE_TOWER):
-    if not '-msimd128' in user_args:
+    if '-msimd128' not in user_args:
       exit_with_error('Passing any of ' + ', '.join(SIMD_FEATURE_TOWER) + ' flags also requires passing -msimd128!')
     c_opts += ['-D__SSE__=1']
 
