@@ -1414,11 +1414,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # We add these to the user's flags (newargs), but not when building .s or .S assembly files
     cflags = shared.get_cflags(newargs)
 
-    # SSEx is implemented on top of SIMD128 instruction set. Convert SSEx flags to -msimd128
-    sse_args = ['-msse', '-msse2', '-msse3', '-mssse3']
-    if len([x for x in newargs if x in sse_args]) > 0:
-      newargs.append('-msimd128')
-    newargs = [x for x in newargs if x not in sse_args]
+    # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
+    # so it won't think about generating native x86 SSE code.
+    newargs = [x for x in newargs if x not in shared.SIMD_FEATURE_TOWER]
 
     if not shared.Settings.STRICT:
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
@@ -3074,7 +3072,7 @@ def parse_args(newargs):
         shared.generate_config(optarg)
       should_exit = True
     # Record SIMD setting for Binaryen
-    elif newargs[i] == '-msimd128':
+    elif newargs[i] == '-msimd128' or newargs[i] in shared.SIMD_FEATURE_TOWER:
       shared.Settings.BINARYEN_SIMD = 1
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
