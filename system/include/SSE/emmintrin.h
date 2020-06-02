@@ -1547,9 +1547,9 @@ _mm_movemask_pd(__m128d __a)
 }
 
 #define _mm_shuffle_pd(__a, __b, __i) __extension__ ({ \
-  (__m128d)wasm_v64x2_shuffle((__a), (__b), \
-                              ((__i) & 1), \
-                              ((((__i) & 2) >> 1) + 2)); })
+  (__m128d) __builtin_shufflevector((__u64x2)(__a), (__u64x2)(__b), \
+                                    (__i) & 1, \
+                                    (((__i) & 2) >> 1) + 2); })
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_castpd_ps(__m128d __a)
