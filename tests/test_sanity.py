@@ -198,8 +198,7 @@ class sanity(RunnerCore):
       default_config = shared.embedded_config
       self.assertContained('Welcome to Emscripten!', output)
       self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
-      self.assertContained('A settings file has been copied to %s, at absolute path: %s' %
-          (default_config, default_config), output)
+      self.assertContained('A settings file has been copied to %s, at absolute path: %s' % (default_config, default_config), output)
       self.assertContained('It contains our best guesses for the important paths, which are:', output)
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
