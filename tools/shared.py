@@ -744,8 +744,12 @@ def emsdk_cflags(user_args=[]):
       result += ['-Xclang', '-isystem' + path]
     return result
 
-  if '-msse' in user_args:
-    c_opts += ['-D__SSE__=1'] + include_directive([path_from_root('system', 'include', 'SSE')])
+  if '-msse' in user_args or '-msse2' in user_args:
+    c_opts += include_directive([path_from_root('system', 'include', 'SSE')])
+    c_opts += ['-D__SSE__=1']
+
+    if '-msse2' in user_args:
+      c_opts += ['-D__SSE2__=1']
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if Settings.USE_CXX:

@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 #include <xmmintrin.h>
-#include "benchmark_sse1.h"
+#include "benchmark_sse.h"
 
 int dst_int = 0;
 
