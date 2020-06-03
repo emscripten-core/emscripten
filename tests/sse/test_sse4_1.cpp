@@ -62,8 +62,8 @@ int main()
 	Ret_M128i(__m128i, _mm_cvtepu8_epi16);
 	Ret_M128i(__m128i, _mm_cvtepu8_epi32);
 	Ret_M128i(__m128i, _mm_cvtepu8_epi64);
-	Ret_M128d_M128d_Tint(__m128d, _mm_dp_pd);
 	testNaNBits = false;
+	Ret_M128d_M128d_Tint(__m128d, _mm_dp_pd);
 	Ret_M128_M128_Tint(__m128, _mm_dp_ps); // _mm_dp_ps emulation does not match NaN bit selection rules (seems to be unspecified)
 	testNaNBits = true;
 	Ret_M128i_Tint(int, _mm_extract_epi32);
