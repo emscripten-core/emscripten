@@ -28,7 +28,9 @@ Current Trunk
   controlled by setting the location of the cache directory, or for even more
   fine grained control the `EM_PORTS` environment variable and the `PORTS`
   config setting can be used.
-- Added support for SSE, SSE2, SSE3 and SSSE3. (#11193, #11243, #11290)
+- Added support for compiling SSE, SSE2, SSE3, SSSE3, SSE4.1 and SSE 4.2 code,
+  emulated on top of Wasm SIMD instruction set. (#11193, #11243,
+  #11290, #11327). Pass -msimd128 -msse<version> to enable targeting SSE.
 - Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm
   SIMD. (#11180)
 - Add warning about fastcomp deprecation (can be disabled via `-Wno-fastcomp`).
