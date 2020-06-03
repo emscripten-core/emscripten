@@ -9259,12 +9259,11 @@ int main () {
     with open('a.out.js') as f:
       js = f.read()
     licenses_found = len(re.findall('Copyright [0-9]* The Emscripten Authors', js))
-    if expect_license and licenses_found == 0:
-      self.fail('Unable to find license block in output file!')
-    if not expect_license and licenses_found > 0:
-      self.fail('Found a license block in the output file, but it should not have been there!')
-    if expect_license and licenses_found > 1:
-      self.fail('Found too many license blocks in the output file!')
+    if expect_license:
+      self.assertNotEqual(licenses_found, 0, 'Unable to find license block in output file!')
+      self.assertEqual(licenses_found, 1, 'Found too many license blocks in the output file!')
+    else:
+      self.assertEqual(licenses_found, 0, 'Found a license block in the output file, but it should not have been there!')
 
   # This test verifies that the generated exports from asm.js/wasm module only reference the
   # unminified exported name exactly once.  (need to contain the export name once for unminified
