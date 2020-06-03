@@ -43,12 +43,8 @@ float interesting_floats_[] = { -INFINITY, -FLT_MAX, -2.5f, -1.5f, -1.4f, -1.0f,
 
 double interesting_doubles_[] = { -INFINITY, -FLT_MAX, -2.5, -1.5, -1.4, -1.0, -0.5, -0.2, -FLT_MIN, -0.0, 0.0, 
                                 1.401298464e-45, FLT_MIN, 0.3, 0.5, 0.8, 1.0, 1.5, 2.5, 3.5, 3.6, FLT_MAX, INFINITY, NAN,
-                                ucastd(0x0102030405060708ULL), ucastd(0x8000000000000000ULL)
-                                // Disabled for now, NaNs propagate differently in native vs Wasm when both input arguments
-                                // are a NaN with different payloads (native seems to take the second arg, V8 Wasm SIMD
-                                // implementation takes either first or second, depending on the OS one runs on?)
-                                , 42.0 /*ucastd(0x7FFFFFFFFFFFFFFFULL)*/
-                                , 42.0 /*ucastd(0xFFFFFFFFFFFFFFFFULL)*/
+                                ucastd(0x0102030405060708ULL), ucastd(0x8000000000000000ULL),
+                                ucastd(0x7FFFFFFFFFFFFFFFULL), ucastd(0xFFFFFFFFFFFFFFFFULL)
                                 };
 
 uint32_t interesting_ints_[] = { 0, 1, 2, 3, 0x01020304, 0x10203040, 0x7FFFFFFF, 0xFFFFFFFF, 0xFFFFFFFE, 0x12345678, 0x9ABCDEF1, 0x80000000,
@@ -94,12 +90,16 @@ void CanonicalizeStringComparisons(char *s)
 	contract_inplace(s, "1.#INF", "inf");
 }
 
+// Global test state that is used per-test to determine whether to validate the state of exact NaN bits
+// in specific functions.
+extern bool testNaNBits;
+
 char *SerializeFloat(float f, char *dstStr, bool approximate = false)
 {
 	if (IsNan(f))
 	{
 		uint32_t u = fcastu(f);
-		int numChars = sprintf(dstStr, "NaN(0x%8X)", (unsigned int)u);
+		int numChars = testNaNBits ? sprintf(dstStr, "NaN(0x%8X)", (unsigned int)u) : sprintf(dstStr, "NaN");
 		return dstStr + numChars;
 	}
 	else
@@ -125,7 +125,7 @@ char *SerializeDouble(double f, char *dstStr)
 	if (IsNan(f))
 	{
 		uint64_t u = dcastu(f);
-		int numChars = sprintf(dstStr, "NaN(0x%08X%08X)", (unsigned int)(u>>32), (unsigned int)u);
+		int numChars = testNaNBits ? sprintf(dstStr, "NaN(0x%08X%08X)", (unsigned int)(u>>32), (unsigned int)u) : sprintf(dstStr, "NaN");
 		return dstStr + numChars;
 	}
 	else
@@ -330,6 +330,17 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 			printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
 		}
 
+#define Ret_M128d_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
+		for(int k = 0; k < 2; ++k) \
+		{ \
+			__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
+			Ret_type ret = func(m1, Tint); \
+			char str[256]; tostr(&m1, str); \
+			char str2[256]; tostr(&ret, str2); \
+			printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
+		}
+
 #define Ret_M128i_Tint_body(Ret_type, func, Tint) \
 	for(int i = 0; i < numInterestingInts / 4; ++i) \
 		for(int k = 0; k < 4; ++k) \
@@ -442,6 +453,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 	F(Ret_type, func, 255);
 
 #define Ret_M128_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128_Tint_body, func)
+#define Ret_M128d_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128d_Tint_body, func)
 #define Ret_M128i_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_Tint_body, func)
 #define Ret_M128i_int_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_int_Tint_body, func)
 #define Ret_M128i_M128i_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_M128i_Tint_body, func)
@@ -468,6 +480,38 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime)
 				tostr(&ret, str3); \
 				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 			}
+
+#define Ret_M128d_M128d_M128d(Ret_type, func) \
+	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
+		for(int k = 0; k < 2; ++k) \
+			for(int j = 0; j < numInterestingDoubles / 2; ++j) \
+				for(int l = 0; l < numInterestingDoubles / 2; ++l) \
+				{ \
+					__m128d m1 = E1_Double(interesting_doubles, i*2+k, numInterestingDoubles); \
+					__m128d m2 = E2_Double(interesting_doubles, j*2, numInterestingDoubles); \
+					__m128d m3 = E1_Double(interesting_doubles, l*2, numInterestingDoubles); \
+					Ret_type ret = func(m1, m2, m3); \
+					/* a, b, c */ \
+					char str[256]; tostr(&m1, str); \
+					char str2[256]; tostr(&m2, str2); \
+					char str3[256]; tostr(&m3, str3); \
+					char str4[256]; tostr(&ret, str4); \
+					printf("%s(%s, %s, %s) = %s\n", #func, str, str2, str3, str4); \
+					/* b, c, a */ \
+					ret = func(m2, m3, m1); \
+					tostr(&m1, str); \
+					tostr(&m2, str2); \
+					tostr(&m3, str3); \
+					tostr(&ret, str4); \
+					printf("%s(%s, %s, %s) = %s\n", #func, str, str2, str3, str4); \
+					/* c, a, b */ \
+					ret = func(m3, m1, m2); \
+					tostr(&m1, str); \
+					tostr(&m2, str2); \
+					tostr(&m3, str3); \
+					tostr(&ret, str4); \
+					printf("%s(%s, %s, %s) = %s\n", #func, str, str2, str3, str4); \
+				}
 
 #define Ret_M128d_M128(Ret_type, func) \
 	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
@@ -734,6 +778,37 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 			printf("%s(%s) = %s\n", #func, str, str2); \
 		}
 
+#define Ret_M128i_M128i(Ret_type, func) \
+	for(int i = 0; i < numInterestingInts / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+			for(int j = 0; j < numInterestingInts / 4; ++j) \
+			{ \
+				__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
+				__m128i m2 = (__m128i)E2_Int(interesting_ints, j*4, numInterestingInts); \
+				Ret_type ret = func(m1, m2); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(&m2, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
+			}
+
+#define Ret_M128i_M128i_M128i(Ret_type, func) \
+	for(int i = 0; i < numInterestingInts / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+			for(int j = 0; j < numInterestingInts / 4; ++j) \
+				for(int l = 0; l < numInterestingInts / 4; ++l) \
+				{ \
+					__m128i m1 = (__m128i)E1_Int(interesting_ints, i*4+k, numInterestingInts); \
+					__m128i m2 = (__m128i)E2_Int(interesting_ints, j*4, numInterestingInts); \
+					__m128i m3 = (__m128i)E1_Int(interesting_ints, l*4, numInterestingInts); \
+					Ret_type ret = func(m1, m2, m3); \
+					char str[256]; tostr(&m1, str); \
+					char str2[256]; tostr(&m2, str2); \
+					char str3[256]; tostr(&m3, str3); \
+					char str4[256]; tostr(&ret, str4); \
+					printf("%s(%s, %s, %s) = %s\n", #func, str, str2, str3, str4); \
+				}
+
 #define Ret_int(Ret_type, func) \
 	for(int i = 0; i < numInterestingInts; ++i) \
 	{ \
@@ -767,6 +842,23 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 				char str3[256]; tostr(&ret, str3); \
 				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 			}
+
+#define Ret_M128_M128_M128(Ret_type, func) \
+	for(int i = 0; i < numInterestingFloats / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+			for(int j = 0; j < numInterestingFloats / 4; ++j) \
+				for(int l = 0; l < numInterestingFloats / 4; ++l) \
+				{ \
+					__m128 m1 = E1(interesting_floats, i*4+k, numInterestingFloats); \
+					__m128 m2 = E2(interesting_floats, j*4, numInterestingFloats); \
+					__m128 m3 = E1(interesting_floats, l*4, numInterestingFloats); \
+					Ret_type ret = func(m1, m2, m3); \
+					char str[256]; tostr(&m1, str); \
+					char str2[256]; tostr(&m2, str2); \
+					char str3[256]; tostr(&m3, str3); \
+					char str4[256]; tostr(&ret, str4); \
+					printf("%s(%s, %s, %s) = %s\n", #func, str, str2, str3, str4); \
+				}
 
 #define Ret_M128_int(Ret_type, func) \
 	for(int i = 0; i < numInterestingFloats / 4; ++i) \

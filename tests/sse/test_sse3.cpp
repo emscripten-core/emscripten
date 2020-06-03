@@ -10,6 +10,8 @@
 #include <pmmintrin.h>
 #include "test_sse.h"
 
+bool testNaNBits = true;
+
 float *interesting_floats = get_interesting_floats();
 int numInterestingFloats = sizeof(interesting_floats_)/sizeof(interesting_floats_[0]);
 uint32_t *interesting_ints = get_interesting_ints();
