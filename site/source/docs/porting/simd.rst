@@ -43,7 +43,7 @@ Emscripten supports compiling existing codebases that use x86 SSE by passing the
 
 Currently only the SSE1 and SSE2 instruction sets are supported.
 
-The following table highlights the availability and expected performance of different SSE1 instrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
+The following table highlights the availability and expected performance of different SSE1 intrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
 For detailed information on each SSE intrinsic function, visit the excellent `Intel Intrinsics Guide on SSE1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE>`_.
 
@@ -291,7 +291,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
 
 Any code referencing these intrinsics will not compile.
 
-The following table highlights the availability and expected performance of different SSE2 instrinsics. Refer to `Intel Intrinsics Guide on SSE2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE2>`_.
+The following table highlights the availability and expected performance of different SSE2 intrinsics. Refer to `Intel Intrinsics Guide on SSE2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE2>`_.
 
 .. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h>
    :widths: 20 30
@@ -735,7 +735,7 @@ The following table highlights the availability and expected performance of diff
 
 Any code referencing these intrinsics will not compile.
 
-The following table highlights the availability and expected performance of different SSE3 instrinsics. Refer to `Intel Intrinsics Guide on SSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE3>`_.
+The following table highlights the availability and expected performance of different SSE3 intrinsics. Refer to `Intel Intrinsics Guide on SSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE3>`_.
 
 .. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h>
    :widths: 20 30
@@ -774,7 +774,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_mwait
      - ⚫ Not available.
 
-The following table highlights the availability and expected performance of different SSSE3 instrinsics. Refer to `Intel Intrinsics Guide on SSSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSSE3>`_.
+The following table highlights the availability and expected performance of different SSSE3 intrinsics. Refer to `Intel Intrinsics Guide on SSSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSSE3>`_.
 
 .. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h>
    :widths: 20 30
@@ -820,7 +820,7 @@ The following table highlights the availability and expected performance of diff
 
 Any code referencing these intrinsics will not compile.
 
-The following table highlights the availability and expected performance of different SSE4.1 instrinsics. Refer to `Intel Intrinsics Guide on SSE4.1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_1>`_.
+The following table highlights the availability and expected performance of different SSE4.1 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_1>`_.
 
 .. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
    :widths: 20 30
@@ -951,7 +951,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_testz_si128
      - ❌ scalarized
 
-The following table highlights the availability and expected performance of different SSE4.2 instrinsics. Refer to `Intel Intrinsics Guide on SSE4.2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_2>`_.
+The following table highlights the availability and expected performance of different SSE4.2 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_2>`_.
 
 .. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
    :widths: 20 30
@@ -966,3 +966,52 @@ The following table highlights the availability and expected performance of diff
  - _mm_cmpestra, _mm_cmpestrc, _mm_cmpestri, _mm_cmpestrm, _mm_cmpestro, _mm_cmpestrs, _mm_cmpestrz, _mm_cmpistra, _mm_cmpistrc, _mm_cmpistri, _mm_cmpistrm, _mm_cmpistro, _mm_cmpistrs, _mm_cmpistrz, _mm_crc32_u16, _mm_crc32_u32, _mm_crc32_u64, _mm_crc32_u8
 
 Any code referencing these intrinsics will not compile.
+
+The following table highlights the availability and expected performance of different AVX intrinsics. Refer to `Intel Intrinsics Guide on AVX <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=AVX>`_.
+
+.. list-table:: x86 AVX intrinsics available via #include <immintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_broadcast_ss
+     - ✅ wasm_v32x4_load_splat
+   * - _mm_cmp_pd
+     - ⚠️ emulated with 1-2 SIMD cmp+and/or
+   * - _mm_cmp_ps
+     - ⚠️ emulated with 1-2 SIMD cmp+and/or
+   * - _mm_cmp_sd
+     - ⚠️ emulated with 1-2 SIMD cmp+and/or+move
+   * - _mm_cmp_ss
+     - ⚠️ emulated with 1-2 SIMD cmp+and/or+move
+   * - _mm_maskload_pd
+     - ⚠️ emulated with SIMD load+shift+and
+   * - _mm_maskload_ps
+     - ⚠️ emulated with SIMD load+shift+and
+   * - _mm_maskstore_pd
+     - ❌ scalarized
+   * - _mm_maskstore_ps
+     - ❌ scalarized
+   * - _mm_permute_pd
+     - 💡 emulated with a general shuffle
+   * - _mm_permute_ps
+     - 💡 emulated with a general shuffle
+   * - _mm_permutevar_pd
+     - 💣 scalarized
+   * - _mm_permutevar_ps
+     - 💣 scalarized
+   * - _mm_testc_pd
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testc_ps
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testnzc_pd
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testnzc_ps
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testz_pd
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testz_ps
+     - 💣 emulated with complex SIMD+scalar sequence
+
+Only the 128-bit wide instructions from AVX instruction set are available. 256-bit wide AVX instructions are not provided.
