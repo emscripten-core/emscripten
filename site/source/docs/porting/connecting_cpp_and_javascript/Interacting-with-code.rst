@@ -196,18 +196,18 @@ Require the library and call its procedures from node:
 
 .. code:: javascript
 
-    var moduleFactory = require('./a.out.js');
+    var factory = require('./a.out.js');
 
-    moduleFactory().then((module) => {
-      module._sayHi(); // direct calling works
-      module.ccall("sayHi"); // using ccall etc. also work
-      console.log(module._daysInWeek()); // values can be returned, etc.
+    factory().then((instance) => {
+      instance._sayHi(); // direct calling works
+      instance.ccall("sayHi"); // using ccall etc. also work
+      console.log(instance._daysInWeek()); // values can be returned, etc.
     });
 
 The ``MODULARIZE`` option makes ``emcc`` emit code in a modular format that is
 easy to import and use with ``require()``: ``require()`` of the module returns
 a factory function that can instantiate the compiled code, returning a
-``Promise`` to tell us when it is ready, and giving us the instantiated
+``Promise`` to tell us when it is ready, and giving us the instance of the
 module as a parameter.
 
 (Note that we use ``call`` here, so we need to add it to the exported runtime
