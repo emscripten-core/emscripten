@@ -210,7 +210,7 @@ a factory function that can instantiate the compiled code, returning a
 ``Promise`` to tell us when it is ready, and giving us the instance of the
 module as a parameter.
 
-(Note that we use ``call`` here, so we need to add it to the exported runtime
+(Note that we use ``ccall`` here, so we need to add it to the exported runtime
 methods, as before.)
 
 .. _interacting-with-code-direct-function-calls:
