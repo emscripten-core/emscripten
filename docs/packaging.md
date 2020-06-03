@@ -4,7 +4,7 @@ Packaging Emscripten
 This document is designed to aid in packaging emscripten.  For example within
 linux distributions, or other downstream SDKs.
 
-Firstly, we provide and install script in `tools/install.py`.  This allows
+Firstly, we provide an install script in `tools/install.py`.  This allows
 just the end-user parts of emscripten to be installed.  For example this avoids
 including the `tests/third_party` directory which is of that biggest parts 
 of the source tree.
@@ -16,16 +16,16 @@ Dependencies
 ------------
 
 One important thing to note here is that emscripten doesn't currently support
-the stable LLVM releases.  It requires the a build of LLVM from top-of-tree,
-or at least very close ot it.  This means that depending on a packaged version
-of LLVM is unlikely to work.
+the stable LLVM releases.  It requires a build of LLVM from top-of-tree, or at
+least very close ot it.  This means that depending on a packaged version of LLVM
+is unlikely to work.
 
 The core
 [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
 file in the `emscripten-releases` repository contains all the information about
-about the varisou repositories that go into an emscripten release. This is the
+about the various repositories that go into an emscripten release. This is the
 repo used by our CI to build and test emscripten.  To find out which revisions
-when into a given release you need to check out the DEPS file that the revision
+went into a given release you need to check out the DEPS file that the revision
 corresponding to that release.  It has lines like these:
 
 ```
@@ -34,11 +34,11 @@ corresponding to that release.  It has lines like these:
   'llvm_project_revision': '33ef687d94604aeb73bedbcf3050524465a3439f',
 ```
 
-These linses specify git hashes of the varisous repositories that make up the
-raleaase.
+These linses specify git hashes of the various repositories that make up the
+ralease.
 
 In principle you can build any git hash in that repo because all updates get
-fully tested before they are commited. You can look at the
+fully tested before they are committed. You can look at the
 [CI UI](https://ci.chromium.org/p/emscripten-releases/g/main/console) to see
 if our CI shows green for any hash, and if so, it should be safe to build.
 
@@ -77,7 +77,7 @@ the wasm backend):
     * wasm-as
     * wasm2js
     * wasm-metadce
-
+\
 (If you are packaging the older fastcomp backend instead of the wasm backend,
 you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
 
@@ -111,12 +111,12 @@ Prebuilt libraries
 ------------------
 
 Ideally a packaged installation can include a fully populated cache directory
-contains pre-built libraries.   If you want to do this you can use `./embuilder
-build ALL` to populate the cache directory.  You can them ship the `cache`
-directory inside the emscripten directory.  When shipping the cache directory on
-a multi-user system where users cannot modify the `cache` you need to be sure
-that all possible configurations of the libraries are build.  Currently that
-means running:
+containing pre-built libraries.   If you want to do this you can use
+`./embuilder build ALL` to populate the cache directory.  You can them ship the
+`cache` directory inside the emscripten directory.  When shipping the cache
+directory on a multi-user system where users cannot modify the `cache` you need
+to be sure that all possible configurations of the libraries are built.
+Currently that means running:
 
 ```
 embuilder build ALL
