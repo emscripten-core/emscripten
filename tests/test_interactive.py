@@ -11,7 +11,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
 
 from runner import BrowserCore, path_from_root
-from tools.shared import Popen, EMCC, WINDOWS, Building
+from tools.shared import Popen, EMCC, WINDOWS, which
 
 
 class interactive(BrowserCore):
@@ -174,7 +174,7 @@ class interactive(BrowserCore):
     self.btest('openal_capture.c', expected='0')
 
   def get_freealut_library(self):
-    if WINDOWS and Building.which('cmake'):
+    if WINDOWS and which('cmake'):
       return self.get_library('freealut', os.path.join('hello_world.bc'), configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
     else:
       return self.get_library('freealut', [os.path.join('examples', '.libs', 'hello_world.bc'), os.path.join('src', '.libs', 'libalut.a')], make_args=['EXEEXT=.bc'])
