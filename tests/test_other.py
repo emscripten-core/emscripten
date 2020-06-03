@@ -10239,12 +10239,17 @@ int main() {
       for engine in WASM_ENGINES:
         self.assertContained(expected, run_js('test.wasm', engine))
 
+  @parameterized({
+    'wasm2js': (['-s', 'WASM=0'], ''),
+    'modularize': (['-s', 'MODULARIZE'], 'Module()'),
+  })
   @no_fastcomp('wasm2js only')
-  def test_promise_polyfill(self):
+  def test_promise_polyfill(self, constant_args, extern_post_js):
     def test(args):
       # legacy browsers may lack Promise, which wasm2js depends on. see what
       # happens when we kill the global Promise function.
-      run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=0'] + args)
+      create_test_file('extern-post.js', extern_post_js)
+      run_process([EMCC, path_from_root('tests', 'hello_world.cpp')] + constant_args + args + ['--extern-post-js', 'extern-post.js'])
       with open('a.out.js') as f:
         js = f.read()
       with open('a.out.js', 'w') as f:
