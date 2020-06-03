@@ -7576,47 +7576,6 @@ err = err = function(){};
     self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
 
   @no_wasm('wasmifying destroys debug info and stack tracability')
-  @no_wasm2js('no source maps support yet')
-  def test_exception_source_map(self):
-    self.emcc_args.append('-g4')
-    src = '''
-      #include <stdio.h>
-
-      __attribute__((noinline)) void foo(int i) {
-          if (i < 10) throw i; // line 5
-      }
-
-      #include <iostream>
-      #include <string>
-
-      int main() {
-        std::string x = "ok"; // add libc++ stuff to make this big, test for #2410
-        int i;
-        scanf("%d", &i);
-        foo(i);
-        std::cout << x << std::endl;
-        return 0;
-      }
-    '''
-
-    def post(filename):
-      map_filename = filename + '.map'
-      self.assertExists(map_filename)
-      mappings = json.loads(jsrun.run_js(
-        path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
-        shared.NODE_JS, [map_filename]))
-      with open(filename) as f:
-        lines = f.readlines()
-      for m in mappings:
-        # -1 to fix 0-start vs 1-start
-        if m['originalLine'] == 5 and '__cxa_throw' in lines[m['generatedLine'] - 1]:
-          return
-      assert False, 'Must label throw statements with line numbers'
-
-    dirname = self.get_dir()
-    self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=post)
-
-  @no_wasm('wasmifying destroys debug info and stack tracability')
   @no_wasm2js('source maps support')
   def test_emscripten_log(self):
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
