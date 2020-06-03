@@ -37,8 +37,8 @@ void test_arithmetic()
 	Ret_M128d_M128d(__m128d, _mm_div_sd);
 	M128i_M128i_M128i(_mm_madd_epi16);
 	M128i_M128i_M128i(_mm_mul_epu32);
-	Ret_M128d_M128d(__m128d, _mm_mul_pd);
 	testNaNBits = false;
+	Ret_M128d_M128d(__m128d, _mm_mul_pd);
 	Ret_M128d_M128d(__m128d, _mm_mul_sd);
 	testNaNBits = true;
 	M128i_M128i_M128i(_mm_mulhi_epi16);
