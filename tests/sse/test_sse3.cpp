@@ -25,9 +25,11 @@ int main()
 	assert(numInterestingInts % 4 == 0);
 	assert(numInterestingDoubles % 4 == 0);	
 
+	testNaNBits = false;
 	Ret_M128d_M128d(__m128d, _mm_addsub_pd);
-	Ret_M128_M128(__m128, _mm_addsub_ps);
 	Ret_M128d_M128d(__m128d, _mm_hadd_pd);
+	testNaNBits = true;
+	Ret_M128_M128(__m128, _mm_addsub_ps);
 	Ret_M128_M128(__m128, _mm_hadd_ps);
 	Ret_M128d_M128d(__m128d, _mm_hsub_pd);
 	Ret_M128_M128(__m128, _mm_hsub_ps);
