@@ -28,10 +28,10 @@ Current Trunk
   controlled by setting the location of the cache directory, or for even more
   fine grained control the `EM_PORTS` environment variable and the `PORTS`
   config setting can be used.
+- Added support for SSE, SSE2, SSE3 and SSSE3. (#11193, #11243, #11290)
 - Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm
   SIMD. (#11180)
 - Add warning about fastcomp deprecation (can be disabled via `-Wno-fastcomp`).
-- Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm SIMD. (#11180)
 - The mmap method of JavaScript filesystem drivers (based on library_fs.js) no
   longer takes a target memory.  It's safer/cleaner/smaller to assume the target
   is the global memory buffer.

@@ -44,7 +44,7 @@ LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 93
-
+SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3']
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -745,11 +745,24 @@ def emsdk_cflags(user_args=[]):
       result += ['-Xclang', '-isystem' + path]
     return result
 
-  if '-msse' in user_args or '-msse2' in user_args:
+  def array_contains_any_of(hay, needles):
+    for n in needles:
+      if n in hay:
+        return True
+
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER):
+    if '-msimd128' not in user_args:
+      exit_with_error('Passing any of ' + ', '.join(SIMD_FEATURE_TOWER) + ' flags also requires passing -msimd128!')
     c_opts += ['-D__SSE__=1']
 
-    if '-msse2' in user_args:
-      c_opts += ['-D__SSE2__=1']
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[1:]):
+    c_opts += ['-D__SSE2__=1']
+
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[2:]):
+    c_opts += ['-D__SSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[3:]):
+    c_opts += ['-D__SSSE3__=1']
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if Settings.USE_CXX:

@@ -543,73 +543,73 @@ _mm_cmpnlt_ss(__m128 __a, __m128 __b)
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comieq_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] == ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) == wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comige_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] >= ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) >= wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comigt_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] > ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) > wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comile_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] <= ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) <= wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comilt_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] < ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) < wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comineq_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] != ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) != wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomieq_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] == ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) == wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomige_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] >= ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) >= wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomigt_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] > ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) > wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomile_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] <= ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) <= wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomilt_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] < ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) < wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomineq_ss(__m128 __a, __m128 __b)
 {
-  return ((__f32x4)__a)[0] != ((__f32x4)__b)[0];
+  return wasm_f32x4_extract_lane(__a, 0) != wasm_f32x4_extract_lane(__b, 0);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -724,4 +724,10 @@ _mm_getcsr()
 #define _MM_GET_ROUNDING_MODE() (_mm_getcsr() & _MM_ROUND_MASK)
 #define _MM_GET_FLUSH_ZERO_MODE() (_mm_getcsr() & _MM_FLUSH_ZERO_MASK)
 
-#endif
+// Unavailable functions:
+// void _MM_SET_EXCEPTION_STATE(unsigned int __a);
+// void _MM_SET_EXCEPTION_MASK(unsigned int __a);
+// void _MM_GET_ROUNDING_MODE(unsigned int __a);
+// void _MM_GET_FLUSH_ZERO_MODE(unsigned int __a);
+
+#endif /* __emscripten_xmmintrin_h__ */

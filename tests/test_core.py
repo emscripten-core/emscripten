@@ -6047,6 +6047,30 @@ return malloc(size);
     self.maybe_closure()
     self.do_run(open(src).read(), native_result)
 
+  # Tests invoking the SIMD API via x86 SSE3 pmmintrin.h header (_mm_x() functions)
+  @wasm_simd
+  def test_sse3(self):
+    src = path_from_root('tests', 'sse', 'test_sse3.cpp')
+    run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.Building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_sse3', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
+
+    orig_args = self.emcc_args
+    self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse3', '-Wno-argument-outside-range']
+    self.maybe_closure()
+    self.do_run(open(src).read(), native_result)
+
+  # Tests invoking the SIMD API via x86 SSSE3 tmmintrin.h header (_mm_x() functions)
+  @wasm_simd
+  def test_ssse3(self):
+    src = path_from_root('tests', 'sse', 'test_ssse3.cpp')
+    run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.Building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_ssse3', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
+
+    orig_args = self.emcc_args
+    self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-mssse3', '-Wno-argument-outside-range']
+    self.maybe_closure()
+    self.do_run(open(src).read(), native_result)
+
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
     self.emcc_args += ['-I' + path_from_root('third_party')]

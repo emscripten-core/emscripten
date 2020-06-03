@@ -294,75 +294,73 @@ _mm_cmpnge_sd(__m128d __a, __m128d __b)
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comieq_sd(__m128d __a, __m128d __b)
 {
-  // TODO: Benchmark whether wasm_f64x2_extract_lane(__a, 0) == wasm_f64x2_extract_lane(__b, 0);
-  // will result in better or worse codegen.
-  return ((__f64x2)__a)[0] == ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) == wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comilt_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] < ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) < wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comile_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] <= ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) <= wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comigt_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] > ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) > wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comige_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] >= ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) >= wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comineq_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] != ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) != wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomieq_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] == ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) == wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomilt_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] < ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) < wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomile_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] <= ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) <= wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomigt_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] > ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) > wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomige_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] >= ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) >= wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomineq_sd(__m128d __a, __m128d __b)
 {
-  return ((__f64x2)__a)[0] != ((__f64x2)__b)[0];
+  return wasm_f64x2_extract_lane(__a, 0) != wasm_f64x2_extract_lane(__b, 0);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -473,11 +471,7 @@ _mm_load_pd(double const *__dp)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_load1_pd(double const *__dp)
 {
-  struct __mm_load1_pd_struct {
-    double __u;
-  } __attribute__((__packed__, __may_alias__));
-  double __u = ((struct __mm_load1_pd_struct*)__dp)->__u;
-  return (__m128d){ __u, __u };
+  return (__m128d)wasm_v64x2_load_splat(__dp);
 }
 
 #define        _mm_load_pd1(dp)        _mm_load1_pd(dp)
@@ -783,7 +777,7 @@ _mm_sad_epu8(__m128i __a, __m128i __b)
     unsigned short x[8];
     __m128i m;
   } dst;
-#define __ABS(a) ((a) < 0 ? -(a) : (a))
+#define __ABS(__a) ((__a) < 0 ? -(__a) : (__a))
   for(int i = 0; i < 8; ++i)
     dst.x[i] = 0;
   for(int i = 0; i < 8; ++i)
@@ -867,27 +861,27 @@ _mm_xor_si128(__m128i __a, __m128i __b)
   return (__m128i)wasm_v128_xor((v128_t)__b, (v128_t)__a);
 }
 
-#define _mm_slli_si128(a, imm) __extension__ ({                         \
-  (__m128i)__builtin_shufflevector((__i8x16)_mm_setzero_si128(),        \
-                                   (__i8x16)(__m128i)(a),               \
-                                   ((imm)&0xF0) ? 0 : 16 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 17 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 18 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 19 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 20 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 21 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 22 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 23 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 24 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 25 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 26 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 27 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 28 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 29 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 30 - ((imm)&0xF), \
-                                   ((imm)&0xF0) ? 0 : 31 - ((imm)&0xF)); })
-#define _mm_bslli_si128(a, imm) \
-  _mm_slli_si128((a), (imm))
+#define _mm_slli_si128(__a, __imm) __extension__ ({               \
+  (__m128i)wasm_v8x16_shuffle(_mm_setzero_si128(),                \
+                             (__a),                               \
+                             ((__imm)&0xF0) ? 0 : 16 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 17 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 18 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 19 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 20 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 21 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 22 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 23 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 24 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 25 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 26 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 27 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 28 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 29 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 30 - ((__imm)&0xF), \
+                             ((__imm)&0xF0) ? 0 : 31 - ((__imm)&0xF)); })
+#define _mm_bslli_si128(__a, __imm) \
+  _mm_slli_si128((__a), (__imm))
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_slli_epi16(__m128i __a, int __count)
@@ -958,28 +952,28 @@ _mm_sra_epi32(__m128i __a, __m128i __count)
   return (__m128i)wasm_i32x4_shr((v128_t)__a, __c);
 }
 
-#define _mm_srli_si128(a, imm) __extension__ ({                          \
-  (__m128i)__builtin_shufflevector((__i8x16)(__m128i)(a),                \
-                                   (__i8x16)_mm_setzero_si128(),         \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 0,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 1,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 2,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 3,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 4,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 5,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 6,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 7,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 8,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 9,  \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 10, \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 11, \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 12, \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 13, \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 14, \
-                                   ((imm)&0xF0) ? 16 : ((imm)&0xF) + 15); })
+#define _mm_srli_si128(__a, __imm) __extension__ ({                     \
+  (__m128i)wasm_v8x16_shuffle((__a),                                    \
+                              _mm_setzero_si128(),                      \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 0,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 1,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 2,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 3,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 4,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 5,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 6,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 7,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 8,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 9,  \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 10, \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 11, \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 12, \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 13, \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 14, \
+                              ((__imm)&0xF0) ? 16 : ((__imm)&0xF) + 15); })
 
-#define _mm_bsrli_si128(a, imm) \
-  _mm_srli_si128((a), (imm))
+#define _mm_bsrli_si128(__a, __imm) \
+  _mm_srli_si128((__a), (__imm))
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srli_epi16(__m128i __a, int __count)
@@ -1453,80 +1447,80 @@ _mm_movemask_epi8(__m128i __a)
   return (int)x;
 }
 
-#define _mm_shuffle_epi32(a, imm) __extension__ ({ \
-  (__m128i)__builtin_shufflevector((__i32x4)(__m128i)(a), \
-                                   (__i32x4)_mm_set1_epi32(0), \
-                                   (imm) & 0x3, ((imm) & 0xc) >> 2, \
-                                   ((imm) & 0x30) >> 4, ((imm) & 0xc0) >> 6); })
+#define _mm_shuffle_epi32(__a, __imm) __extension__ ({ \
+  (__m128i)wasm_v32x4_shuffle((__a), \
+                              _mm_set1_epi32(0), \
+                              ((__imm) & 0x3), (((__imm) & 0xc) >> 2), \
+                              (((__imm) & 0x30) >> 4), (((__imm) & 0xc0) >> 6)); })
 
-#define _mm_shufflelo_epi16(a, imm) __extension__ ({ \
-  (__m128i)__builtin_shufflevector((__i16x8)(__m128i)(a), \
-                                   (__i16x8)_mm_set1_epi16(0), \
-                                   (imm) & 0x3, ((imm) & 0xc) >> 2, \
-                                   ((imm) & 0x30) >> 4, ((imm) & 0xc0) >> 6, \
-                                   4, 5, 6, 7); })
+#define _mm_shufflelo_epi16(__a, __imm) __extension__ ({ \
+  (__m128i)wasm_v16x8_shuffle((__a), \
+                              _mm_set1_epi16(0), \
+                              ((__imm) & 0x3), (((__imm) & 0xc) >> 2), \
+                              (((__imm) & 0x30) >> 4), (((__imm) & 0xc0) >> 6), \
+                              4, 5, 6, 7); })
 
-#define _mm_shufflehi_epi16(a, imm) __extension__ ({ \
-  (__m128i)__builtin_shufflevector((__i16x8)(__m128i)(a), \
-                                   (__i16x8)_mm_set1_epi16(0), \
-                                   0, 1, 2, 3, \
-                                   4 + (((imm) & 0x03) >> 0), \
-                                   4 + (((imm) & 0x0c) >> 2), \
-                                   4 + (((imm) & 0x30) >> 4), \
-                                   4 + (((imm) & 0xc0) >> 6)); })
+#define _mm_shufflehi_epi16(__a, __imm) __extension__ ({ \
+  (__m128i)wasm_v16x8_shuffle((__a), \
+                              _mm_set1_epi16(0), \
+                              0, 1, 2, 3, \
+                              (4 + (((__imm) & 0x03) >> 0)), \
+                              (4 + (((__imm) & 0x0c) >> 2)), \
+                              (4 + (((__imm) & 0x30) >> 4)), \
+                              (4 + (((__imm) & 0xc0) >> 6))); })
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpackhi_epi8(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector((__i8x16)__a, (__i8x16)__b, 8, 16+8, 9, 16+9, 10, 16+10, 11, 16+11, 12, 16+12, 13, 16+13, 14, 16+14, 15, 16+15);
+  return (__m128i)wasm_v8x16_shuffle(__a, __b, 8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpackhi_epi16(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector((__i16x8)__a, (__i16x8)__b, 4, 8+4, 5, 8+5, 6, 8+6, 7, 8+7);
+  return (__m128i)wasm_v16x8_shuffle(__a, __b, 4, 12, 5, 13, 6, 14, 7, 15);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpackhi_epi32(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector((__i32x4)__a, (__i32x4)__b, 2, 4+2, 3, 4+3);
+  return (__m128i)wasm_v32x4_shuffle(__a, __b, 2, 6, 3, 7);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpackhi_epi64(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector((__i32x4)__a, (__i32x4)__b, 2, 3, 4+2, 4+3);
+  return (__m128i)wasm_v64x2_shuffle(__a, __b, 1, 3);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpacklo_epi8(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector((__i8x16)__a, (__i8x16)__b, 0, 16+0, 1, 16+1, 2, 16+2, 3, 16+3, 4, 16+4, 5, 16+5, 6, 16+6, 7, 16+7);
+  return (__m128i)wasm_v8x16_shuffle(__a, __b, 0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpacklo_epi16(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector((__i16x8)__a, (__i16x8)__b, 0, 8+0, 1, 8+1, 2, 8+2, 3, 8+3);
+  return (__m128i)wasm_v16x8_shuffle(__a, __b, 0, 8, 1, 9, 2, 10, 3, 11);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpacklo_epi32(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector((__i32x4)__a, (__i32x4)__b, 0, 4+0, 1, 4+1);
+  return (__m128i)wasm_v32x4_shuffle(__a, __b, 0, 4, 1, 5);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpacklo_epi64(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_shufflevector((__i32x4)__a, (__i32x4)__b, 0, 1, 4+0, 4+1);
+  return (__m128i)wasm_v64x2_shuffle(__a, __b, 0, 2);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_move_epi64(__m128i __a)
 {
-  return __builtin_shufflevector((__i32x4)__a, (__i32x4)wasm_i32x4_const(0, 0, 0, 0), 0, 1, 4+0, 4+1);
+  return wasm_v64x2_shuffle(__a, wasm_i64x2_const(0, 0), 0, 2);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -1553,9 +1547,9 @@ _mm_movemask_pd(__m128d __a)
 }
 
 #define _mm_shuffle_pd(__a, __b, __i) __extension__ ({ \
-  __builtin_shufflevector((__m128d)(__a), (__m128d)(__b), \
-                          (__i) & 1, \
-                          (((__i) & 2) >> 1) + 2); })
+  (__m128d) __builtin_shufflevector((__u64x2)(__a), (__u64x2)(__b), \
+                                    (__i) & 1, \
+                                    (((__i) & 2) >> 1) + 2); })
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_castpd_ps(__m128d __a)
