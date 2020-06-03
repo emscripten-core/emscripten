@@ -745,7 +745,7 @@ def emsdk_ldflags(user_args):
   return ldflags
 
 
-def emsdk_cflags(user_args=[]):
+def emsdk_cflags(user_args, cxx):
   # Disable system C and C++ include directories, and add our own (using
   # -isystem so they are last, like system dirs, which allows projects to
   # override them)
@@ -794,7 +794,7 @@ def emsdk_cflags(user_args=[]):
     c_opts += ['-D__SSSE3__=1']
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  if Settings.USE_CXX:
+  if cxx:
     c_opts += include_directive(cxx_include_paths)
   return c_opts + include_directive(c_include_paths)
 
@@ -803,7 +803,7 @@ def get_asmflags(user_args):
   return ['-target', get_llvm_target()]
 
 
-def get_cflags(user_args):
+def get_cflags(user_args, cxx):
   # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
   # data and other nice fixes.
   c_opts = [# '-fno-threadsafe-statics', # disabled due to issue 1289
@@ -831,7 +831,7 @@ def get_cflags(user_args):
   if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
     return c_opts
 
-  return c_opts + emsdk_cflags(user_args)
+  return c_opts + emsdk_cflags(user_args, cxx)
 
 
 # Utilities
