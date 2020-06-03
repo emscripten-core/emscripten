@@ -366,7 +366,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     var ptr = 0;
     var ptrLen = 0;
     if (condition) {
-      ptrLen = len;
+      ptrLen = xhr.response ? xhr.response.byteLength : 0;
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
