@@ -85,7 +85,7 @@ def get(ports, settings, shared):
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'freetype', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.PYTHON, shared.EMCC, '-c', os.path.join(dest_path, src), '-o', o,
+      commands.append([shared.EMCC, '-c', os.path.join(dest_path, src), '-o', o,
                        '-DFT2_BUILD_LIBRARY', '-O2',
                        '-I' + dest_path + '/include',
                        '-I' + dest_path + '/truetype',

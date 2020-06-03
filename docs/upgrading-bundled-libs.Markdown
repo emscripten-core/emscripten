@@ -18,7 +18,7 @@ To update them,
    `system/lib`/ and have the suffix `.symbol`. To generate the new contents,
    build the system library with the new files, and do something like this
    for musl:
-   `~/Dev/fastcomp/build/bin/llvm-nm ~/.emscripten_cache/asmjs/libc.bc | sort`
+   `~/Dev/fastcomp/build/bin/llvm-nm cache/asmjs/libc.bc | sort`
    and write that to the `.symbol` file. Take a look at the git diff to see
    if anything looks odd.
  * Run the test suite to make sure everything works. You can open a PR and let

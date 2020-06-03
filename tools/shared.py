@@ -44,7 +44,7 @@ LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 93
-
+SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3']
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -67,6 +67,7 @@ diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('fastcomp')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
@@ -140,6 +141,10 @@ class WindowsPopen(object):
 
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
+
+
+def root_is_writable():
+  return os.access(__rootpath__, os.W_OK)
 
 
 # This is a workaround for https://bugs.python.org/issue9400
@@ -300,12 +305,12 @@ def parse_config_file():
   # Certain keys are mandatory
   for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
     if key not in config:
-      exit_with_error('%s is not defined in %s', key, hint_config_file_location())
+      exit_with_error('%s is not defined in %s', key, config_file_location())
     if not globals()[key]:
-      exit_with_error('%s is set to empty value in %s', key, hint_config_file_location())
+      exit_with_error('%s is set to empty value in %s', key, config_file_location())
 
   if not NODE_JS:
-    exit_with_error('NODE_JS is not defined in %s', hint_config_file_location())
+    exit_with_error('NODE_JS is not defined in %s', config_file_location())
 
   # EM_CONFIG stuff
   if not JS_ENGINES:
@@ -320,18 +325,18 @@ def parse_config_file():
       CLOSURE_COMPILER = [NODE_JS, '--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
-    logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
+    logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
     JAVA = 'java'
 
 
-# Returns a suggestion where current .emscripten config file might be located
-# (if EM_CONFIG env. var is used without a file, this hints to "default"
-# location at ~/.emscripten)
-def hint_config_file_location():
-  if CONFIG_FILE:
-    return CONFIG_FILE
-  else:
-    return '~/.emscripten'
+# Returns the location of the emscripten config file.
+def config_file_location():
+  # Handle the case where there is no config file at all (i.e. If EM_CONFIG is passed as python code
+  # direclty on the command line).
+  if not CONFIG_FILE:
+    return '<inline config>'
+
+  return CONFIG_FILE
 
 
 def listify(x):
@@ -553,6 +558,10 @@ def exe_suffix(cmd):
   return cmd + '.exe' if WINDOWS else cmd
 
 
+def bat_suffix(cmd):
+  return cmd + '.bat' if WINDOWS else cmd
+
+
 def replace_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
   return os.path.splitext(filename)[0] + new_suffix
@@ -610,7 +619,7 @@ class Configuration(object):
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
+        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config_file_location())
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -720,6 +729,7 @@ def emsdk_cflags(user_args=[]):
     path_from_root('system', 'include', 'libc'),
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
+    path_from_root('system', 'include', 'SSE'),
     Cache.get_path('include')
   ]
 
@@ -735,8 +745,24 @@ def emsdk_cflags(user_args=[]):
       result += ['-Xclang', '-isystem' + path]
     return result
 
-  if '-msse' in user_args:
-    c_opts += ['-D__SSE__=1'] + include_directive([path_from_root('system', 'include', 'SSE')])
+  def array_contains_any_of(hay, needles):
+    for n in needles:
+      if n in hay:
+        return True
+
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER):
+    if '-msimd128' not in user_args:
+      exit_with_error('Passing any of ' + ', '.join(SIMD_FEATURE_TOWER) + ' flags also requires passing -msimd128!')
+    c_opts += ['-D__SSE__=1']
+
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[1:]):
+    c_opts += ['-D__SSE2__=1']
+
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[2:]):
+    c_opts += ['-D__SSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[3:]):
+    c_opts += ['-D__SSSE3__=1']
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if Settings.USE_CXX:
@@ -1258,9 +1284,12 @@ class Building(object):
 
   @staticmethod
   def get_building_env(native=False, doublequote_commands=False, cflags=[]):
-    def nop(arg):
-      return arg
-    quote = Building.doublequote_spaces if doublequote_commands else nop
+    def quote(arg):
+      if WINDOWS and doublequote_commands:
+        return Building.doublequote_spaces(arg)
+      else:
+        return arg
+
     env = os.environ.copy()
     if native:
       env['CC'] = quote(CLANG_CC)
@@ -1275,18 +1304,13 @@ class Building(object):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
     # point CC etc. to the em* tools.
-    # on windows, we must specify python explicitly. on other platforms, we prefer
-    # not to, as some configure scripts expect e.g. CC to be a literal executable
-    # (but "python emcc.py" is not a file that exists).
-    # note that we point to emcc etc. here, without a suffix, instead of to
-    # emcc.py etc.
-    env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
-    env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
-    env['LD'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CC'] = quote(EMCC)
+    env['CXX'] = quote(EMXX)
+    env['AR'] = quote(EMAR)
+    env['LD'] = quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
+    env['LDSHARED'] = quote(EMCC)
+    env['RANLIB'] = quote(EMRANLIB)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     if cflags:
       env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
@@ -1904,13 +1928,13 @@ class Building(object):
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    run_process([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
+    run_process([EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
     response_filename = response_file.create_response_file(filenames, TEMP_DIR)
-    cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
+    cmd = [EMAR, action, output_filename] + ['@' + response_filename]
     try:
       run_process(cmd, stdout=stdout, stderr=stderr, env=env)
     finally:
@@ -3280,9 +3304,9 @@ def make_fetch_worker(source_file, output_file):
   open(output_file, 'w').write(fetch_worker_src)
 
 
-# =================================================================================================
+# ============================================================================
 # End declarations.
-# =================================================================================================
+# ============================================================================
 
 # Everything below this point is top level code that get run when importing this
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
@@ -3299,7 +3323,7 @@ def make_fetch_worker(source_file, output_file):
 # 3. Local .emscripten file, if found
 # 4. Local .emscripten file, as used by `emsdk --embedded` (two levels above,
 #    see below)
-# 5. Fall back users home directory (~/.emscripten).
+# 5. User home directory config (~/.emscripten), if found.
 
 embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
@@ -3316,6 +3340,9 @@ embedded_config = path_from_root('.emscripten')
 # See: https://github.com/emscripten-core/emsdk/pull/367
 emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
 emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
+user_home_config = os.path.expanduser('~/.emscripten')
+
+EMSCRIPTEN_ROOT = __rootpath__
 
 if '--em-config' in sys.argv:
   EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
@@ -3343,11 +3370,16 @@ elif os.path.exists(embedded_config):
   EM_CONFIG = embedded_config
 elif os.path.exists(emsdk_embedded_config):
   EM_CONFIG = emsdk_embedded_config
+elif os.path.exists(user_home_config):
+  EM_CONFIG = user_home_config
 else:
-  EM_CONFIG = '~/.emscripten'
+  if root_is_writable():
+    generate_config(embedded_config, first_time=True)
+  else:
+    generate_config(user_home_config, first_time=True)
+  sys.exit(0)
 
 PYTHON = sys.executable
-EMSCRIPTEN_ROOT = __rootpath__
 
 # The following globals can be overridden by the config file.
 # See parse_config_file below.
@@ -3382,8 +3414,7 @@ else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
   logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
   if not os.path.exists(CONFIG_FILE):
-    generate_config(EM_CONFIG, first_time=True)
-    sys.exit(0)
+    exit_with_error('emscripten config file not found: ' + CONFIG_FILE)
 
 parse_config_file()
 SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
@@ -3392,7 +3423,16 @@ V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 if not CACHE:
-  CACHE = path_from_root('cache')
+  if root_is_writable():
+    CACHE = path_from_root('cache')
+  else:
+    # Use the legacy method of putting the cache in the user's home directory
+    # if the emscripten root is not writable.
+    # This is useful mostly for read-only installation and perhaps could
+    # be removed in the future since such installations should probably be
+    # setting a specific cache location.
+    logger.debug('Using home-directory for emscripten cache due to read-only root')
+    CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 if not PORTS:
   PORTS = os.path.join(CACHE, 'ports')
 
@@ -3456,17 +3496,11 @@ LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfd
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
-EMSCRIPTEN = path_from_root('emscripten.py')
-EMCC = path_from_root('emcc.py')
-EMXX = path_from_root('em++.py')
-EMAR = path_from_root('emar.py')
-EMRANLIB = path_from_root('emranlib.py')
-EMCONFIG = path_from_root('em-config.py')
-EMLINK = path_from_root('emlink.py')
-EMCONFIGURE = path_from_root('emconfigure.py')
-EMMAKE = path_from_root('emmake.py')
+EMCC = bat_suffix(path_from_root('emcc'))
+EMXX = bat_suffix(path_from_root('em++'))
+EMAR = bat_suffix(path_from_root('emar'))
+EMRANLIB = bat_suffix(path_from_root('emranlib'))
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 apply_configuration()

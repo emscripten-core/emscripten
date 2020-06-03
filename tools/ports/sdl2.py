@@ -68,7 +68,7 @@ def get(ports, settings, shared):
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      command = [shared.PYTHON, shared.EMCC,
+      command = [shared.EMCC,
                  '-c', os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src),
                  '-o', o, '-I' + dest_include_path,
                  '-O2', '-DUSING_GENERATED_CONFIG_H', '-w']
