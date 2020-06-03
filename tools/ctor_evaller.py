@@ -37,7 +37,6 @@ wasm = bool(binaryen_bin)
 assert global_base > 0
 
 logger = logging.getLogger('ctor_evaller')
-config = shared.Configuration()
 
 # helpers
 
@@ -133,7 +132,7 @@ def eval_ctors_js(js, mem_init, num):
 #    shared.safe_ensure_dirs(shared.CANONICAL_TEMP_DIR)
 #  else:
 #    temp_file = config.get_temp_files().get('.ctorEval.js').name
-  with config.get_temp_files().get_file('.ctorEval.js') as temp_file:
+  with shared.configuration.get_temp_files().get_file('.ctorEval.js') as temp_file:
     open(temp_file, 'w').write('''
 var totalMemory = %d;
 var totalStack = %d;
@@ -263,8 +262,8 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
 
     # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
     # us exiting with an error tells the caller that we failed. If it times out, give up.
-    out_file = config.get_temp_files().get('.out').name
-    err_file = config.get_temp_files().get('.err').name
+    out_file = shared.configuration.get_temp_files().get('.out').name
+    err_file = shared.configuration.get_temp_files().get('.err').name
     out_file_handle = open(out_file, 'w')
     err_file_handle = open(err_file, 'w')
     proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=out_file_handle, stderr=err_file_handle, universal_newlines=True)

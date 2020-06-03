@@ -39,15 +39,6 @@ if STDERR_FILE:
   STDERR_FILE = open(STDERR_FILE, 'w')
 
 
-def get_configuration():
-  if hasattr(get_configuration, 'configuration'):
-    return get_configuration.configuration
-
-  configuration = shared.Configuration(environ=os.environ)
-  get_configuration.configuration = configuration
-  return configuration
-
-
 def quote(prop):
   if shared.Settings.USE_CLOSURE_COMPILER == 2:
     return ''.join(["'" + p + "'" for p in prop.split('.')])
@@ -2580,7 +2571,7 @@ def generate_struct_info():
 
 
 def run(infile, outfile, memfile):
-  temp_files = get_configuration().get_temp_files()
+  temp_files = shared.configuration.get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
   generate_struct_info()
 

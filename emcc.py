@@ -2767,7 +2767,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Run a final regex pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
       # by processing steps that occurred after Closure.
       if shared.Settings.MINIMAL_RUNTIME == 2 and shared.Settings.USE_CLOSURE_COMPILER and shared.Settings.DEBUG_LEVEL == 0 and not shared.Settings.SINGLE_FILE:
-        # Process .js runtime file
+        # Process .js runtime file. Note that we need to handle the license text
+        # here, so that it will not confuse the hacky script.
+        shared.JS.handle_license(final)
         shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final])
         # Process .asm.js file
         if not shared.Settings.WASM and shared.Settings.SEPARATE_ASM:

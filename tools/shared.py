@@ -605,18 +605,18 @@ def get_canonical_temp_dir(temp_dir):
 
 
 class Configuration(object):
-  def __init__(self, environ=os.environ):
+  def __init__(self):
     self.EMSCRIPTEN_TEMP_DIR = None
 
-    self.TEMP_DIR = environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
+    self.TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
     if not os.path.isdir(self.TEMP_DIR):
       exit_with_error("The temporary directory `" + self.TEMP_DIR + "` does not exist! Please make sure that the path is correct.")
 
     self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
 
     if DEBUG:
+      self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
       try:
-        self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
         exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config_file_location())
@@ -2827,10 +2827,6 @@ class JS(object):
 
   @staticmethod
   def handle_license(js_target):
-    if not Settings.WASM_BACKEND:
-      # EMIT_EMSCRIPTEN_LICENSE is only supported in upstream (it would break
-      # source maps support in fastcomp, and perhaps other things)
-      return
     # ensure we emit the license if and only if we need to, and exactly once
     with open(js_target) as f:
       js = f.read()
