@@ -16,7 +16,7 @@ Download and install
     `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_). (While we
     don't officially support other ways of getting Emscripten, we definitely
     appreciate the efforts by third parties to
-    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#packaging-emscripten>`_
+    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/packaging.md>`_
     for users' convenience, and we'd like to help out, please get in touch if
     you are such a packager!)
 
