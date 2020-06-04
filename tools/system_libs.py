@@ -17,7 +17,7 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import shared
+from . import shared, building
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 try:
@@ -93,12 +93,12 @@ def run_one_command(cmd):
 
 
 def run_build_commands(commands):
-  cores = min(len(commands), shared.Building.get_num_cores())
+  cores = min(len(commands), building.get_num_cores())
   if cores <= 1:
     for command in commands:
       run_one_command(command)
   else:
-    pool = shared.Building.get_multiprocessing_pool()
+    pool = building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
     # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
@@ -118,9 +118,9 @@ def create_lib(libname, inputs):
       if inputs[0] != libname:
         shutil.copyfile(inputs[0], libname)
     else:
-      shared.Building.link_to_object(inputs, libname)
+      building.link_to_object(inputs, libname)
   elif suffix == '.a':
-    shared.Building.emar('cr', libname, inputs)
+    building.emar('cr', libname, inputs)
   else:
     raise Exception('unknown suffix ' + libname)
 
@@ -138,7 +138,7 @@ def read_symbols(path):
     if os.name != 'nt' and '\r\n' in content:
       raise Exception('Windows newlines \\r\\n detected in symbols file "' + path + '"! This could happen for example when copying Emscripten checkout from Windows to Linux or macOS. Please use Unix line endings on checkouts of Emscripten on Linux and macOS!')
 
-    return shared.Building.parse_symbols(content).defs
+    return building.parse_symbols(content).defs
 
 
 def get_wasm_libc_rt_files():
@@ -1526,7 +1526,7 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = shared.Building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+  symbolses = building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
 
   warn_on_unexported_main(symbolses)
 
@@ -1698,8 +1698,8 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     libs_to_link.sort(key=lambda x: x[0].endswith('.a'))
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
-  # Building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
-  # shouldn't add any extra `--no-whole-archive` or we will undo the intent of Building.link_ldd.
+  # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
+  # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
   if shared.Settings.LINKABLE and shared.Settings.WASM_BACKEND:
     return [l[0] for l in libs_to_link]
 

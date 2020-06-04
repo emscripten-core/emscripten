@@ -19,7 +19,7 @@ import time
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared, js_optimizer, jsrun
+from tools import shared, js_optimizer, jsrun, building
 from tools.tempfiles import try_delete
 
 
@@ -397,10 +397,10 @@ def main():
     js = js[:absolute_exports_start] + ', '.join([e + ': ' + e for e in exports]) + js[absolute_exports_start + len(exports_text):]
     open(js_file, 'w').write(js)
     # find unreachable methods and remove them
-    reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
+    reachable = building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
     for r in removed:
       assert r not in reachable, 'removed ctors must NOT be reachable'
-    shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={'keep': reachable}, output_filename=js_file)
+    building.js_optimizer(js_file, ['removeFuncs'], extra_info={'keep': reachable}, output_filename=js_file)
   else:
     # wasm path
     wasm_file = binary_file

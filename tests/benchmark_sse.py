@@ -11,7 +11,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 sys.path += [path_from_root('')]
-from tools import shared
+from tools import shared, building
 from tools.shared import PYTHON, WINDOWS, CLANG_CXX, EMCC, PIPE, V8_ENGINE
 from tools.shared import Popen
 
@@ -30,10 +30,10 @@ def run_benchmark(benchmark_file, results_file, build_args):
     # Run native build
     out_file = os.path.join(temp_dir, 'benchmark_sse_native')
     if WINDOWS: out_file += '.exe'
-    cmd = [CLANG_CXX] + shared.Building.get_native_building_args() + [benchmark_file, '-O3', '-o', out_file]
+    cmd = [CLANG_CXX] + building.get_native_building_args() + [benchmark_file, '-O3', '-o', out_file]
     print 'Building native version of the benchmark:'
     print ' '.join(cmd)
-    build = Popen(cmd, env=shared.Building.get_building_env(native=True))
+    build = Popen(cmd, env=building.get_building_env(native=True))
     out = build.communicate()
     if build.returncode != 0:
         sys.exit(1)
