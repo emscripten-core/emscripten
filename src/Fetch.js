@@ -427,8 +427,10 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
-      // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
-      // freed when emscripten_fetch_close() is called.
+#if ASSERTIONS
+      assert(onprogress, 'When doing a streaming fetch, you should have an onprogress handler registered to receive the chunks!');
+#endif
+      // Allocate byte data in Emscripten heap for the streamed memory block (freed immediately after onprogress call)
       ptr = _malloc(ptrLen);
       HEAPU8.set(new Uint8Array(xhr.response), ptr);
     }
@@ -441,6 +443,9 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     if (onprogress) onprogress(fetch, xhr, e);
+    if (ptr) {
+      _free(ptr);
+    }
   };
   xhr.onreadystatechange = function(e) {
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
