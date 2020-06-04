@@ -519,30 +519,39 @@ jobs:
   build-upstream-windows:
     executor:
       name: win/vs2019
-      shell: bash.exe
+      shell: bash.exe -eo pipefail
     environment:
-      # We need python installed before we can test anytyhing.
-      # There seems to be undocument copy of python installed here. Hopefully
-      # if this disappears there will be another way of getting a re-installed
-      # version.
-      PYTHON_BIN: "/c/python27amd64/python.exe"
+      # on windows the python binary is always calls python.exe and never
+      # python3.exe
+      PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
     steps:
       - checkout
       - run:
+          name: Install packages
+          command: choco install make cmake.portable python3
+      - run:
           name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/python27amd64/\"" >> $BASH_ENV
+          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - build-upstream
   test-upstream-minimal-windows:
     environment:
-      PYTHON_BIN: "/c/python27amd64/python.exe"
+      # on windows the python binary is always calls python.exe and never
+      # python3.exe
+      PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
     executor:
       name: win/vs2019
-      shell: bash.exe
+      shell: bash.exe -eo pipefail
     steps:
+      - run:
+          name: Install packages
+          command: choco install make cmake.portable python3
+      - run:
+          name: Add python to bash path
+          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - run-tests:
           test_targets: "wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug"
   build-upstream-mac:
