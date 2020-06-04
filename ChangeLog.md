@@ -17,16 +17,24 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- On first use, emscripten creates a sample config file.  This config file
+  is now created in the emscripten directory by default.  The traditional
+  `~/.emscripten` config file in the `$HOME` directory is still supported and
+  the sample config will still be written there in the case that the emscripten
+  root is read-only.
 - The default location for downloaded ports is now a directory called "ports"
   within the cache directory.  In practice these means by default they live
   in `cache/ports` inside the emscripten source directory.  This can be
   controlled by setting the location of the cache directory, or for even more
   fine grained control the `EM_PORTS` environment variable and the `PORTS`
   config setting can be used.
+- Added support for compiling SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE 4.2 and
+  128-bit wide AVX intrinsics, emulated on top of Wasm SIMD instruction set.
+  (#11193, #11243, #11290, #11327). Pass -msimd128 -msse<version> to enable
+  targeting SSE.
 - Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm
   SIMD. (#11180)
 - Add warning about fastcomp deprecation (can be disabled via `-Wno-fastcomp`).
-- Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm SIMD. (#11180)
 - The mmap method of JavaScript filesystem drivers (based on library_fs.js) no
   longer takes a target memory.  It's safer/cleaner/smaller to assume the target
   is the global memory buffer.

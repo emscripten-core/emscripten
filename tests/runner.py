@@ -62,8 +62,9 @@ from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
 from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
 from tools.shared import EM_BUILD_VERBOSE, CLANG_CC
-from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, asbytes, safe_copy, Settings
-from tools import jsrun, shared, line_endings
+from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete
+from tools.shared import asbytes, safe_copy, Settings
+from tools import jsrun, shared, line_endings, building
 
 
 def path_from_root(*pathelems):
@@ -609,28 +610,28 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if input_file.endswith(('.bc', '.o')):
         if input_file != output_obj:
           shutil.copy(input_file, output_obj)
-        Building.llvm_dis(output_obj, output_ll)
+        building.llvm_dis(output_obj, output_ll)
       else:
         shutil.copy(input_file, output_ll)
         fix_target(output_ll)
 
       if build_ll_hook:
         need_post = build_ll_hook(output_file)
-      Building.llvm_as(output_ll, output_obj)
+      building.llvm_as(output_ll, output_obj)
       shutil.move(output_ll, output_ll + '.pre') # for comparisons later
-      Building.llvm_dis(output_obj, output_ll)
+      building.llvm_dis(output_obj, output_ll)
       if build_ll_hook and need_post:
         build_ll_hook(output_file)
-        Building.llvm_as(output_ll, output_obj)
+        building.llvm_as(output_ll, output_obj)
         shutil.move(output_ll, output_ll + '.post') # for comparisons later
-        Building.llvm_dis(output_obj, output_ll)
+        building.llvm_dis(output_obj, output_ll)
 
-      Building.llvm_as(output_ll, output_obj)
+      building.llvm_as(output_ll, output_obj)
     else:
       if input_file.endswith('.ll'):
         safe_copy(input_file, output_ll)
         fix_target(output_ll)
-        Building.llvm_as(output_ll, output_obj)
+        building.llvm_as(output_ll, output_obj)
       else:
         safe_copy(input_file, output_obj)
 
@@ -706,7 +707,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(additional_files) + len(libraries):
         shutil.move(object_file, object_file + '.alone')
         inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
-        Building.link_to_object(inputs, object_file)
+        building.link_to_object(inputs, object_file)
         if not os.path.exists(object_file):
           print("Failed to link LLVM binaries:\n\n", object_file)
           self.fail("Linkage error")
@@ -715,7 +716,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.prep_ll_file(filename, object_file, build_ll_hook=build_ll_hook)
 
       # BC => JS
-      Building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
+      building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = all_sources + libraries
@@ -776,7 +777,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return num_funcs
 
   def count_wasm_contents(self, wasm_binary, what):
-    out = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
+    out = run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
     # output is something like
     # [?]        : 125
     for line in out.splitlines():
@@ -786,7 +787,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
-    return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+    return run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
 
   def is_exported_in_wasm(self, name, wasm):
     wat = self.get_wasm_text(wasm)
@@ -1778,7 +1779,7 @@ def build_library(name,
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-  env = Building.get_building_env(native, True, cflags=cflags)
+  env = building.get_building_env(native, True, cflags=cflags)
   for k, v in env_init.items():
     env[k] = v
   if configure:
@@ -1787,7 +1788,7 @@ def build_library(name,
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
           stdout = out if EM_BUILD_VERBOSE < 2 else None
           stderr = err if EM_BUILD_VERBOSE < 1 else None
-          Building.configure(configure + configure_args, env=env,
+          building.configure(configure + configure_args, env=env,
                              stdout=stdout,
                              stderr=stderr,
                              cwd=project_dir)
@@ -1816,7 +1817,7 @@ def build_library(name,
       with open_make_err('w') as make_err:
         stdout = make_out if EM_BUILD_VERBOSE < 2 else None
         stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
+        building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
                       cwd=project_dir)
   except subprocess.CalledProcessError:
     with open_make_out() as f:

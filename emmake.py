@@ -23,7 +23,7 @@ generate JavaScript.
 
 from __future__ import print_function
 import sys
-from tools import shared
+from tools import building
 from subprocess import CalledProcessError
 
 
@@ -42,7 +42,7 @@ variables so that emcc etc. are used. Typical usage:
     return 1
 
   try:
-    shared.Building.make(sys.argv[1:])
+    building.make(sys.argv[1:])
   except CalledProcessError as e:
     return e.returncode
 

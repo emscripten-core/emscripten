@@ -6,7 +6,7 @@
 from __future__ import print_function
 import sys, re, itertools
 
-from . import shared, js_optimizer
+from . import shared, js_optimizer, building
 
 
 class AsmModule():
@@ -162,7 +162,7 @@ class AsmModule():
     #print >> sys.stderr, 'f bases', f_bases
 
     # relocate
-    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate', 'last'], extra_info={
+    temp = building.js_optimizer(self.filename, ['asm', 'relocate', 'last'], extra_info={
       'replacements': replacements,
       'fBases': f_bases,
       'hBase': main.staticbump

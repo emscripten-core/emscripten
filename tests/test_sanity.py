@@ -12,11 +12,12 @@ import time
 import re
 import tempfile
 import zipfile
+from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, chdir
 from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
-from tools.shared import CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
+from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs
 from tools.shared import expected_llvm_version, Cache, Settings
 from tools import jsrun, shared, system_libs
@@ -118,18 +119,19 @@ class sanity(RunnerCore):
     # Unlike the other test suites we explicitly don't want to be skipping
     # the sanity checks here
     del os.environ['EMCC_SKIP_SANITY_CHECK']
+
+    assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
     shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
 
     print()
     print('Running sanity checks.')
-    print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
+    print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (CONFIG_FILE, CONFIG_FILE))
     print()
     print('>>> the original settings file is:')
-    print(open(os.path.expanduser('~/.emscripten')).read())
+    print(open(CONFIG_FILE).read())
     print('<<<')
     print()
 
-    assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
     assert 'EMCC_DEBUG' not in os.environ, 'do not run sanity checks in debug mode!'
     assert 'EMCC_WASM_BACKEND' not in os.environ, 'do not force wasm backend either way in sanity checks!'
 
@@ -147,12 +149,12 @@ class sanity(RunnerCore):
     super(sanity, self).tearDown()
     print('time:', time.time() - self.start_time)
 
-  def do(self, command):
+  def do(self, command, env=None):
     print('Running: ' + ' '.join(command))
     if type(command) is not list:
       command = [command]
 
-    return run_process(command, stdout=PIPE, stderr=STDOUT, check=False).stdout
+    return run_process(command, stdout=PIPE, stderr=STDOUT, check=False, env=env).stdout
 
   def check_working(self, command, expected=None):
     if type(command) is not list:
@@ -182,21 +184,24 @@ class sanity(RunnerCore):
         with open(os.path.join(temp_bin, name), 'w') as f:
           os.fchmod(f.fileno(), stat.S_IRWXU)
 
+      env = os.environ.copy()
+      if 'EM_CONFIG' in env:
+        del env['EM_CONFIG']
+
       try:
         temp_bin = tempfile.mkdtemp()
-        old_environ_path = os.environ['PATH']
-        os.environ['PATH'] = temp_bin + os.pathsep + old_environ_path
         make_executable('llvm-dis')
         make_executable('node')
         make_executable('python2')
-        output = self.do(command)
+        env['PATH'] = temp_bin + os.pathsep + os.environ['PATH']
+        output = self.do(command, env=env)
       finally:
-        os.environ['PATH'] = old_environ_path
         shutil.rmtree(temp_bin)
 
+      default_config = shared.embedded_config
       self.assertContained('Welcome to Emscripten!', output)
       self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
-      self.assertContained('A settings file has been copied to %s, at absolute path: %s' % (EM_CONFIG, CONFIG_FILE), output)
+      self.assertContained('A settings file has been copied to %s, at absolute path: %s' % (default_config, default_config), output)
       self.assertContained('It contains our best guesses for the important paths, which are:', output)
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
@@ -210,10 +215,8 @@ class sanity(RunnerCore):
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
-      config_file = open(CONFIG_FILE).read()
+      config_file = open(default_config).read()
       template_file = open(path_from_root('tools', 'settings_template.py')).read()
-      self.assertNotContained('~/.emscripten', config_file)
-      self.assertContained('~/.emscripten', template_file)
       self.assertNotContained('{{{', config_file)
       self.assertNotContained('}}}', config_file)
       self.assertContained('{{{', template_file)
@@ -229,15 +232,16 @@ class sanity(RunnerCore):
 
       # Second run, with bad EM_CONFIG
       for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]']:
-        f = open(CONFIG_FILE, 'w')
+        f = open(default_config, 'w')
         f.write(settings)
         f.close()
-        output = self.do(command)
+        output = self.do(command, env=env)
 
         if 'LLVM_ROOT' not in settings:
-          self.assertContained('Error in evaluating %s' % EM_CONFIG, output)
+          self.assertContained('Error in evaluating %s' % default_config, output)
         elif 'runner.py' not in ' '.join(command):
           self.assertContained('error:', output) # sanity check should fail
+      try_delete(default_config)
 
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'

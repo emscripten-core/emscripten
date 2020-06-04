@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared
+from tools import building
 
 f = open(sys.argv[1], 'r').read()
 orig_size = len(f)
@@ -52,7 +52,7 @@ f = re.sub(r'([;{}=,\*/\(\)\[\]])[\s]', r'\1', f)
 
 # Finally, rerun minifier because the above changes may have left redundant whitespaces
 open(sys.argv[1], 'w').write(f)
-minified = shared.Building.acorn_optimizer(sys.argv[1], ['minifyWhitespace'], return_output=True)
+minified = building.acorn_optimizer(sys.argv[1], ['minifyWhitespace'], return_output=True)
 open(sys.argv[1], 'w').write(minified)
 
 # optimized_size = len(f)
