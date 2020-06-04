@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <assert.h>
 
 int main() {
   char c = '1';
@@ -18,5 +19,11 @@ int main() {
   printf("%c,%hd,%d,%lld,%.1f,%.1f\n", c, s, i, l, f, d);
   printf("%#x,%#x\n", 1, 0);
 
+  // %m is a gnu extension which is equivelent to strerror(errnor).
+  // It is implemented in musl we disable under emscripten because it pulls in
+  // extra code.
+  assert(printf("%m\n") < 0);
+
+  printf("done\n");
   return 0;
 }
