@@ -10255,7 +10255,7 @@ int main() {
     # mechanism.
 
     # first compile the library with emcc, getting a .c and .h
-    run_process([PYTHON, EMCC,
+    run_process([EMCC,
                 path_from_root('tests', 'other', 'wasm2c', 'unsafe-library.c'),
                 '-O3', '-o', 'lib.wasm', '-s', 'WASM2C', '--no-entry'])
     # compile that .c to a native object
