@@ -159,6 +159,7 @@ var LibraryManager = {
 
     if (USE_WEBGPU) {
       libraries.push('library_webgpu.js');
+      libraries.push('library_emscripten_webgpu.js');
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) {
