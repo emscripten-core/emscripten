@@ -6027,8 +6027,8 @@ return malloc(size);
   @wasm_simd
   def test_sse1(self):
     src = path_from_root('tests', 'sse', 'test_sse1.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse1', stdout=PIPE, env=shared.building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_sse1', stdout=PIPE, env=building.get_building_env(native=True)).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse']
@@ -6040,8 +6040,8 @@ return malloc(size);
   @wasm_simd
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse2', stdout=PIPE, env=shared.building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_sse2', stdout=PIPE, env=building.get_building_env(native=True)).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse2', '-Wno-argument-outside-range']
