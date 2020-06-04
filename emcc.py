@@ -2126,19 +2126,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
           cxx = use_cxx(header)
           compiler = get_compiler(cxx)
-          base_cflags = shared.get_cflags(newargs, cxx)
-          args = [compiler] + base_cflags + cflags + compile_args + [header]
+          base_cflags = shared.get_cflags(args, cxx)
+          cmd = [compiler] + base_cflags + cflags + compile_args + [header]
           if specified_target:
-            args += ['-o', specified_target]
-          args = system_libs.process_args(args, shared.Settings)
-          logger.debug("running (for precompiled headers): " + args[0] + ' ' + ' '.join(args[1:]))
-          return run_process(args, check=False).returncode
+            cmd += ['-o', specified_target]
+          cmd = system_libs.process_args(cmd, shared.Settings)
+          logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
+          return run_process(cmd, check=False).returncode
 
       def get_clang_command(src_file):
         cxx = use_cxx(src_file)
-        base_cflags = shared.get_cflags(newargs, cxx)
-        args = [get_compiler(cxx)] + base_cflags + cflags + compile_args + [src_file]
-        return system_libs.process_args(args, shared.Settings)
+        base_cflags = shared.get_cflags(args, cxx)
+        cmd = [get_compiler(cxx)] + base_cflags + cflags + compile_args + [src_file]
+        return system_libs.process_args(cmd, shared.Settings)
 
       def get_clang_command_asm(src_file):
         asflags = shared.get_asmflags(compile_args)
