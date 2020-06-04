@@ -491,7 +491,9 @@ def generate_sanity():
     config = open(CONFIG_FILE).read()
   else:
     config = EM_CONFIG
-  sanity_file_content += '|%#x\n' % binascii.crc32(config.encode())
+  # Convert to unsigned for python2 and python3 compat
+  checksum = binascii.crc32(config.encode()) & 0xffffffff
+  sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
 
 
