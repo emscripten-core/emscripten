@@ -5,6 +5,7 @@
 
 import os
 import logging
+from tools import building
 
 TAG = '1.7.5'
 HASH = 'c2c13fc97bb74f0f13092b07804f7087e948bce49793f48b62c2c24a5792523acc0002840bebf21829172bb2e7c3df9f9625250aec6c786a55489667dd04d6a0'
@@ -42,8 +43,8 @@ def get(ports, settings, shared):
     if settings.USE_PTHREADS:
       configure_args += ['-DCMAKE_CXX_FLAGS="-pthread"']
 
-    shared.Building.configure(configure_args)
-    shared.Building.make(['make', '-j%d' % shared.Building.get_num_cores(), '-C' + dest_path, 'install'])
+    building.configure(configure_args)
+    building.make(['make', '-j%d' % building.get_num_cores(), '-C' + dest_path, 'install'])
 
     ports.install_header_dir(os.path.join(dest_path, 'include', 'harfbuzz'))
 

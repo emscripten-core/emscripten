@@ -14,6 +14,7 @@ import shutil
 import sys
 import time
 import unittest
+from subprocess import PIPE, STDOUT
 from functools import wraps
 from textwrap import dedent
 
@@ -21,9 +22,9 @@ from textwrap import dedent
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
-from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
+from tools.shared import run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
-from tools import jsrun, shared
+from tools import jsrun, shared, building
 from runner import RunnerCore, path_from_root
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
@@ -812,7 +813,7 @@ class TestCoreBase(RunnerCore):
   # No compiling from C/C++ - just process an existing .o/.ll/.bc file.
   def do_run_object(self, obj_file, expected_output=None, **kwargs):
     js_file = os.path.basename(obj_file) + '.js'
-    Building.emcc(obj_file, self.get_emcc_args(), js_file)
+    building.emcc(obj_file, self.get_emcc_args(), js_file)
     self.do_run(js_file, expected_output, no_build=True, **kwargs)
 
   def do_ll_run(self, filename, expected_output=None, **kwargs):
@@ -834,16 +835,16 @@ class TestCoreBase(RunnerCore):
       }
     ''')
 
-    Building.emcc('a1.c')
-    Building.emcc('a2.c')
-    Building.emcc('b1.c')
-    Building.emcc('b2.c')
-    Building.emcc('main.c')
+    building.emcc('a1.c')
+    building.emcc('a2.c')
+    building.emcc('b1.c')
+    building.emcc('b2.c')
+    building.emcc('main.c')
 
-    Building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
-    Building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
+    building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
+    building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
 
-    Building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
+    building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
 
     self.do_run_object('all.o', 'result: 1')
 
@@ -6026,8 +6027,8 @@ return malloc(size);
   @wasm_simd
   def test_sse1(self):
     src = path_from_root('tests', 'sse', 'test_sse1.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.Building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse1', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_sse1', stdout=PIPE, env=building.get_building_env(native=True)).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse']
@@ -6039,8 +6040,8 @@ return malloc(size);
   @wasm_simd
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.Building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse2', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_sse2', stdout=PIPE, env=building.get_building_env(native=True)).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse2', '-Wno-argument-outside-range']
@@ -6051,8 +6052,8 @@ return malloc(size);
   @wasm_simd
   def test_sse3(self):
     src = path_from_root('tests', 'sse', 'test_sse3.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.Building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse3', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_sse3', stdout=PIPE, env=building.get_building_env(native=True)).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse3', '-Wno-argument-outside-range']
@@ -6063,8 +6064,8 @@ return malloc(size);
   @wasm_simd
   def test_ssse3(self):
     src = path_from_root('tests', 'sse', 'test_ssse3.cpp')
-    run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.Building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_ssse3', stdout=PIPE, env=shared.Building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
+    native_result = run_process('./test_ssse3', stdout=PIPE, env=building.get_building_env(native=True)).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-mssse3', '-Wno-argument-outside-range']
@@ -6531,7 +6532,7 @@ return malloc(size);
 
     # Autodebug the code
     def do_autodebug(filename):
-      Building.llvm_dis(filename + '.o', filename + '.ll')
+      building.llvm_dis(filename + '.o', filename + '.ll')
       run_process([PYTHON, AUTODEBUGGER, filename + '.ll', filename + '.auto.ll'])
       # rebuild .bc
       # TODO: use code in do_autodebug_post for this
@@ -7339,7 +7340,7 @@ err = err = function(){};
     no_maps_filename = 'no-maps.out.js'
 
     assert '-g4' not in self.emcc_args
-    Building.emcc('src.cpp',
+    building.emcc('src.cpp',
                   self.serialize_settings() + self.emcc_args + self.emcc_args,
                   out_filename)
     # the file name may find its way into the generated code, so make sure we
@@ -7350,7 +7351,7 @@ err = err = function(){};
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     self.emcc_args.append('-g4')
 
-    Building.emcc(os.path.abspath('src.cpp'),
+    building.emcc(os.path.abspath('src.cpp'),
                   self.serialize_settings() + self.emcc_args + self.emcc_args,
                   out_filename,
                   stderr=PIPE)
@@ -7436,7 +7437,7 @@ err = err = function(){};
     js_filename = 'a.out.js'
     wasm_filename = 'a.out.wasm'
 
-    Building.emcc('src.cpp',
+    building.emcc('src.cpp',
                   self.serialize_settings() + self.emcc_args,
                   js_filename)
 
@@ -7502,7 +7503,7 @@ err = err = function(){};
     self.assertLess(get_dwarf_addr(6, 9), get_dwarf_addr(7, 9))
 
     # get the wat, printing with -g which has binary offsets
-    wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
+    wat = run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'),
                        wasm_filename, '-g', '--print'], stdout=PIPE).stdout
 
     # we expect to see a pattern like this, as in both debug and opt builds
@@ -7881,7 +7882,7 @@ Module['onRuntimeInitialized'] = function() {
 
     # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
     def break_wasm(name):
-      wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), name], stdout=PIPE).stdout
+      wat = run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), name], stdout=PIPE).stdout
       lines = wat.splitlines()
       wat = None
       for i in range(len(lines)):
@@ -7900,7 +7901,7 @@ Module['onRuntimeInitialized'] = function() {
       with open('wat.wat', 'w') as f:
         f.write(wat)
       shutil.move(name, name + '.orig')
-      run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
+      run_process([os.path.join(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
       return True
 
     def verify_working(args=['0']):

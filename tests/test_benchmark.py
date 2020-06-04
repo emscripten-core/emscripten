@@ -18,8 +18,8 @@ if __name__ == '__main__':
 
 import clang_native
 import runner
-from tools.shared import run_process, path_from_root, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
-from tools import shared, jsrun
+from tools.shared import run_process, path_from_root, SPIDERMONKEY_ENGINE, LLVM_ROOT, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
+from tools import shared, jsrun, building
 
 # standard arguments for timing:
 # 0: no runtime, just startup
@@ -168,7 +168,7 @@ class NativeBenchmarker(Benchmarker):
 
 def run_binaryen_opts(filename, opts):
   run_process([
-    os.path.join(Building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
+    os.path.join(building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
     filename,
     '-o', filename
   ] + opts)
@@ -236,7 +236,7 @@ class EmscriptenBenchmarker(Benchmarker):
 
   def cleanup(self):
     os.environ = self.old_env
-    Building.clear()
+    building.clear()
 
 
 CHEERP_BIN = '/opt/cheerp/bin/'
