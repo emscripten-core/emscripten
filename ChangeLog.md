@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+1.39.17: 06/05/2020
+-------------------
+- Use Promise polyfill for MODULARIZE when supporting legacy browsers. (#11320)
+- Fix minification of wasm2js output when using --emit-symbol-map. (#11279)
 - On first use, emscripten creates a sample config file.  This config file
   is now created in the emscripten directory by default.  The traditional
   `~/.emscripten` config file in the `$HOME` directory is still supported and
