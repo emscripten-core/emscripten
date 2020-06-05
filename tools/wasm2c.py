@@ -35,7 +35,7 @@ def do_wasm2c(infile):
   headers = [
     (WASM2C_DIR, 'wasm-rt.h'),
     (WASM2C_DIR, 'wasm-rt-impl.h'),
-    (os.path.dirname(h_file), os.path.basename(h_file))
+    ('', h_file)
   ]
   for header in headers:
     total = bundle_file(total, os.path.join(header[0], header[1]))
