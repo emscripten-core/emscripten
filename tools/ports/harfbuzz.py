@@ -31,6 +31,7 @@ def get(ports, settings, shared):
 
     configure_args = [
       'cmake',
+      '-G', 'Unix Makefiles',
       '-B' + dest_path,
       '-H' + source_path,
       '-DCMAKE_BUILD_TYPE=Release',

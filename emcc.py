@@ -767,10 +767,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
+  if run_via_emxx:
+    clang = shared.CLANG_CXX
+  else:
+    clang = shared.CLANG_CC
+
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = run_process([shared.CLANG_CC, '-v'], check=False).returncode
+    code = run_process([clang, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -799,7 +804,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if proc.returncode != 0:
         print(proc.stderr)
         exit_with_error('error getting cflags')
-      lines = [x for x in proc.stderr.splitlines() if shared.CLANG_CC in x and input_file in x]
+      lines = [x for x in proc.stderr.splitlines() if clang in x and input_file in x]
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
       print(' '.join(building.doublequote_spaces(parts[1:])))
@@ -3090,6 +3095,8 @@ def parse_args(newargs):
       options.expand_symlinks = False
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
+    elif newargs[i] == '-frtti':
+      shared.Settings.USE_RTTI = 1
 
     # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
     # exception handling by default when -fexceptions is given when wasm
