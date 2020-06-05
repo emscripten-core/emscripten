@@ -7294,6 +7294,34 @@ someweirdtext
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0', '--pre-js', 'pre.js']
     self.do_run(src, '418\ndotest retured: 42\n')
 
+  def test_embind_no_rtti_followed_by_rtti(self):
+    create_test_file('pre.js', '''
+      Module = {};
+      Module['postRun'] = function() {
+        out("dotest retured: " + Module.dotest());
+      };
+    ''')
+    src = r'''
+      #include <emscripten/bind.h>
+      #include <emscripten/val.h>
+      #include <stdio.h>
+
+      int main(int argc, char** argv){
+        printf("418\n");
+        return 0;
+      }
+
+      int test() {
+        return 42;
+      }
+
+      EMSCRIPTEN_BINDINGS(my_module) {
+        emscripten::function("dotest", &test);
+      }
+    '''
+    self.emcc_args += ['--bind', '-fno-rtti', '-frtti', '--pre-js', 'pre.js']
+    self.do_run(src, '418\ndotest retured: 42\n')
+
   @sync
   def test_webidl(self):
     if self.run_name == 'asm2':

@@ -3088,6 +3088,8 @@ def parse_args(newargs):
       options.expand_symlinks = False
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
+    elif newargs[i] == '-frtti':
+      shared.Settings.USE_RTTI = 1
 
     # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
     # exception handling by default when -fexceptions is given when wasm
