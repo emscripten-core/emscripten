@@ -3,7 +3,9 @@ mergeInto(LibraryManager.library, {
   emscripten_webgpu_get_device__deps: ['$WebGPU'],
   emscripten_webgpu_get_device__postset: 'WebGPU.initManagers();',
   emscripten_webgpu_get_device: function() {
+#if ASSERTIONS
     assert(Module['preinitializedWebGPUDevice']);
+#endif
     return WebGPU["mgrDevice"].create(Module['preinitializedWebGPUDevice']);
   },
 });
