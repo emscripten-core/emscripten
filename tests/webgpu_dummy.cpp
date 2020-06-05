@@ -7,7 +7,7 @@
 #include <webgpu/webgpu.h>
 
 #include <emscripten.h>
-#include <emscripten/html5.h>
+#include <emscripten/webgpu_html5.h>
 
 int main() {
 #ifdef REPORT_RESULT
