@@ -2595,7 +2595,9 @@ var LibraryJSEvents = {
     return GL.currentContext ? GL.currentContext.handle : 0;
   },
 
-  emscripten_webgl_get_drawing_buffer_size_calling_thread: function(contextHandle, width, height) {
+  emscripten_webgl_get_drawing_buffer_size__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_get_drawing_buffer_size__sig: 'iiii',
+  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
     var GLContext = GL.getContext(contextHandle);
 
     if (!GLContext || !GLContext.GLctx || !width || !height) {
@@ -2605,22 +2607,6 @@ var LibraryJSEvents = {
     {{{ makeSetValue('height', '0', 'GLContext.GLctx.drawingBufferHeight', 'i32') }}};
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-
-#if USE_PTHREADS
-  emscripten_webgl_get_drawing_buffer_size_main_thread__proxy: 'sync',
-  emscripten_webgl_get_drawing_buffer_size_main_thread__sig: 'iiii',
-  emscripten_webgl_get_drawing_buffer_size_main_thread__deps: ['emscripten_webgl_get_drawing_buffer_size_calling_thread'],
-  emscripten_webgl_get_drawing_buffer_size_main_thread: function(contextHandle, width, height) { return _emscripten_webgl_get_drawing_buffer_size_calling_thread(contextHandle, width, height); },
-
-  emscripten_webgl_get_drawing_buffer_size__deps: ['emscripten_webgl_get_drawing_buffer_size_calling_thread', 'emscripten_webgl_get_drawing_buffer_size_main_thread'],
-  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
-    if (GL.contexts[contextHandle]) return _emscripten_webgl_get_drawing_buffer_size_calling_thread(contextHandle, width, height);
-    else _emscripten_webgl_get_drawing_buffer_size_main_thread(contextHandle, width, height);
-  },
-#else
-  emscripten_webgl_get_drawing_buffer_size__sig: 'iiii',
-  emscripten_webgl_get_drawing_buffer_size: 'emscripten_webgl_get_drawing_buffer_size_calling_thread',
-#endif
 
   emscripten_webgl_do_commit_frame: function() {
 #if TRACE_WEBGL_CALLS
@@ -2655,6 +2641,8 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_webgl_get_context_attributes__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_get_context_attributes__sig: 'iii',
   emscripten_webgl_get_context_attributes__deps: ['_emscripten_webgl_power_preferences'],
   emscripten_webgl_get_context_attributes: function(c, a) {
     if (!a) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
@@ -2684,28 +2672,21 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_webgl_destroy_context_calling_thread: function(contextHandle) {
-    if (GL.currentContext == contextHandle) GL.currentContext = null;
+  emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_destroy_context__sig: 'vi',
+  emscripten_webgl_destroy_context__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
+  emscripten_webgl_destroy_context: function(contextHandle) {
+    if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
   },
 
-#if USE_PTHREADS
-  emscripten_webgl_destroy_context_main_thread__proxy: 'sync',
-  emscripten_webgl_destroy_context_main_thread__sig: 'vi',
-  emscripten_webgl_destroy_context_main_thread__deps: ['emscripten_webgl_destroy_context_calling_thread'],
-  emscripten_webgl_destroy_context_main_thread: function(contextHandle) { return _emscripten_webgl_destroy_context_calling_thread(contextHandle); },
-
-  emscripten_webgl_destroy_context__deps: ['emscripten_webgl_destroy_context_main_thread', 'emscripten_webgl_destroy_context_calling_thread', 'emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
-  emscripten_webgl_destroy_context: function(contextHandle) {
+  // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
+  // the call over to the target thread.
+  emscripten_webgl_destroy_context_before_on_calling_thread: function(contextHandle) {
     if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
-    return GL.contexts[contextHandle] ? _emscripten_webgl_destroy_context_calling_thread(contextHandle) : _emscripten_webgl_destroy_context_main_thread(contextHandle);
   },
-#else
-  emscripten_webgl_destroy_context__sig: 'vi',
-  emscripten_webgl_destroy_context: 'emscripten_webgl_destroy_context_calling_thread',
-#endif
 
-  emscripten_webgl_enable_extension_calling_thread__deps: [
+  emscripten_webgl_enable_extension__deps: [
 #if MIN_WEBGL_VERSION == 1
     '_webgl_enable_ANGLE_instanced_arrays',
     '_webgl_enable_OES_vertex_array_object',
@@ -2715,7 +2696,9 @@ var LibraryJSEvents = {
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
 #endif
   ],
-  emscripten_webgl_enable_extension_calling_thread: function(contextHandle, extension) {
+  emscripten_webgl_enable_extension__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_enable_extension__sig: 'iii',
+  emscripten_webgl_enable_extension: function(contextHandle, extension) {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
@@ -2762,21 +2745,6 @@ var LibraryJSEvents = {
     return 0;
 #endif
   },
-
-#if USE_PTHREADS
-  emscripten_webgl_enable_extension_main_thread__proxy: 'sync',
-  emscripten_webgl_enable_extension_main_thread__sig: 'iii',
-  emscripten_webgl_enable_extension_main_thread__deps: ['emscripten_webgl_enable_extension_calling_thread'],
-  emscripten_webgl_enable_extension_main_thread: function(contextHandle, extension) { return _emscripten_webgl_enable_extension_calling_thread(contextHandle, extension); },
-
-  emscripten_webgl_enable_extension__deps: ['emscripten_webgl_enable_extension_main_thread', 'emscripten_webgl_enable_extension_calling_thread'],
-  emscripten_webgl_enable_extension: function(contextHandle, extension) {
-    return GL.contexts[contextHandle] ? _emscripten_webgl_enable_extension_calling_thread(contextHandle, extension) : _emscripten_webgl_enable_extension_main_thread(contextHandle, extension);
-  },
-#else
-  emscripten_webgl_enable_extension__sig: 'iii',
-  emscripten_webgl_enable_extension: 'emscripten_webgl_enable_extension_calling_thread',
-#endif
 
   _registerWebGlEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerWebGlEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
@@ -3268,5 +3236,51 @@ var LibraryJSEvents = {
 #endif
   }
 };
+
+function handleWebGLProxying(funcs) {
+  if (!USE_PTHREADS) return; // No proxying needed in singlethreaded builds
+
+  function funcArgs(func) {
+    var args = [];
+    for(var i = 0; i < func.length; ++i) {
+      args.push('p' + i);
+    }
+    return args;
+  }
+
+  for(var i in funcs) {
+    if (funcs[i + '__proxy'] == 'sync_on_webgl_context_handle_thread') {
+#if OFFSCREENCANVAS_SUPPORT
+      // With OffscreenCanvas builds, GL context handle may be owned by main thread, the calling pthread,
+      // or another pthread. Route the call to the right thread.
+      // TODO: this handles the calling pthread and main thread cases, but not yet the case from pthread->pthread.
+      funcs[i + '_calling_thread'] = funcs[i];
+      funcs[i + '_main_thread'] = i + '_calling_thread';
+      funcs[i + '_main_thread__proxy'] = 'sync';
+      funcs[i + '_main_thread__sig'] = funcs[i + '__sig'];
+      funcs[i + '__deps'].push(i + '_calling_thread');
+      funcs[i + '__deps'].push(i + '_main_thread');
+      delete funcs[i + '__proxy'];
+      var funcArgs = funcArgs(funcs[i]);
+      var funcArgsString = funcArgs.join(',');
+      var funcBody = `return GL.contexts[p0] ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
+      if (funcs[i + '_before_on_calling_thread') {
+        funcs[i + '__deps'].push(i + '_before_on_calling_thread');
+        funcBody = `_${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
+      }
+      funcArgs.push(funcBody);
+      funcs[i] = new (Function.prototype.bind.apply(Function, [Function].concat(funcArgs)));
+#else
+#if OFFSCREEN_FRAMEBUFFER
+      // When building with OFFSCREEN_FRAMEBUFFER but without OFFSCREENCANVAS_SUPPORT,
+      // only main thread creates WebGL contexts, so all calls are unconditionally proxied.
+      funcs[i + '__proxy'] = 'sync';
+#endif
+#endif
+    }
+  }
+}
+
+handleWebGLProxying(LibraryJSEvents);
 
 mergeInto(LibraryManager.library, LibraryJSEvents);
