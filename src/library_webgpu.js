@@ -67,7 +67,7 @@
       // Assert descriptor is non-null, then that its nextInChain is null.
       // For descriptors that aren't the first in the chain (e.g ShaderModuleSPIRVDescriptor),
       // there is no nextInChain pointer but a ChainedStruct object named chain.
-      // So we need to check if chain.nextInChain is null. As long as nextInChain and chain are both the 
+      // So we need to check if chain.nextInChain is null. As long as nextInChain and chain are both the
       // first member in the struct, descriptor.nextInChain and descriptor.chain.nextInChain should have the same offset (0)
       // to the descriptor pointer and we can check it to be null.
       var OffsetOfNextInChainMember = 0;
@@ -79,7 +79,7 @@
         Fifo: 2,
     },
     SType: {
-        SurfaceDescriptorFromHTMLCanvasId: 4,
+        SurfaceDescriptorFromCanvasHTMLSelector: 4,
         ShaderModuleSPIRVDescriptor: 5,
         ShaderModuleWGSLDescriptor: 6,
     },
@@ -94,11 +94,12 @@ var LibraryWebGPU = {
 
       function makeManager() {
         return {
-          objects: [undefined],
+          objects: {},
+          nextId: 1,
           create: function(object, wrapper /* = {} */) {
             wrapper = wrapper || {};
 
-            var id = this.objects.length;
+            var id = this.nextId++;
             {{{ gpu.makeCheck("typeof this.objects[id] === 'undefined'") }}}
             wrapper.refcount = 1;
             wrapper.object = object;
@@ -1481,23 +1482,25 @@ var LibraryWebGPU = {
 #endif
   },
 
+  wgpuInstanceCreateSurface__deps: ['_findCanvasEventTarget'],
   wgpuInstanceCreateSurface: function(instanceId, descriptor) {
     {{{ gpu.makeCheck('descriptor') }}}
     {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
     var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.nextInChain, '*') }}};
 #if ASSERTIONS
     assert(nextInChainPtr !== 0);
-    assert({{{ gpu.SType.SurfaceDescriptorFromHTMLCanvasId }}} ===
+    assert({{{ gpu.SType.SurfaceDescriptorFromCanvasHTMLSelector }}} ===
       {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}});
 #endif
-    var descriptorFromHTMLCanvasId = nextInChainPtr;
+    var descriptorFromCanvasHTMLSelector = nextInChainPtr;
 
-    {{{ gpu.makeCheckDescriptor('descriptorFromHTMLCanvasId') }}}
-    var idPtr = {{{ makeGetValue('descriptorFromHTMLCanvasId', C_STRUCTS.WGPUSurfaceDescriptorFromHTMLCanvasId.id, '*') }}};
-    {{{ gpu.makeCheck('idPtr') }}}
-    var id = UTF8ToString(idPtr);
-    var canvas = document.getElementById(id);
+    {{{ gpu.makeCheckDescriptor('descriptorFromCanvasHTMLSelector') }}}
+    var selectorPtr = {{{ makeGetValue('descriptorFromCanvasHTMLSelector', C_STRUCTS.WGPUSurfaceDescriptorFromCanvasHTMLSelector.selector, '*') }}};
+    {{{ gpu.makeCheck('selectorPtr') }}}
+    var canvas = __findCanvasEventTarget(selectorPtr);
+#if ASSERTIONS
     assert(canvas instanceof HTMLCanvasElement);
+#endif
 
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.label, '*') }}};
     if (labelPtr) canvas.surfaceLabelWebGPU = UTF8ToString(labelPtr);
@@ -1516,8 +1519,10 @@ var LibraryWebGPU = {
     canvas.height = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}};
 
     var ctx = canvas.getContext('gpupresent');
+#if ASSERTIONS
     assert({{{ gpu.PresentMode.Fifo }}} ===
       {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.presentMode) }}});
+#endif
 
     var desc = {
       "label": undefined,
@@ -1540,10 +1545,14 @@ var LibraryWebGPU = {
   // Unsupported (won't be implemented)
 
   wgpuDeviceTick: function() {
+#if ASSERTIONS
     assert(false, 'wgpuDeviceTick is unsupported (use requestAnimationFrame via html5.h instead)');
+#endif
   },
   wgpuSwapChainPresent: function() {
+#if ASSERTIONS
     assert(false, 'wgpuSwapChainPresent is unsupported (use requestAnimationFrame via html5.h instead)');
+#endif
   },
 };
 

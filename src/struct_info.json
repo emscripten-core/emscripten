@@ -1842,9 +1842,9 @@
                 "nextInChain",
                 "label"
             ],
-            "WGPUSurfaceDescriptorFromHTMLCanvasId": [
+            "WGPUSurfaceDescriptorFromCanvasHTMLSelector": [
                 "chain",
-                "id"
+                "selector"
             ],
             "WGPUSwapChainDescriptor": [
                 "nextInChain",
