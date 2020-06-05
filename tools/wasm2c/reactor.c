@@ -1,4 +1,3 @@
-
 // TODO: optional prefixing
 void wasmbox_init(void) {
   // Initialize wasm2c runtime.
