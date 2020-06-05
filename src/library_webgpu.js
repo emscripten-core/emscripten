@@ -94,11 +94,12 @@ var LibraryWebGPU = {
 
       function makeManager() {
         return {
-          objects: [undefined],
+          objects: {},
+          nextId: 1,
           create: function(object, wrapper /* = {} */) {
             wrapper = wrapper || {};
 
-            var id = this.objects.length;
+            var id = this.nextId++;
             {{{ gpu.makeCheck("typeof this.objects[id] === 'undefined'") }}}
             wrapper.refcount = 1;
             wrapper.object = object;
@@ -1481,6 +1482,7 @@ var LibraryWebGPU = {
 #endif
   },
 
+  wgpuInstanceCreateSurface__deps: ['_findCanvasEventTarget'],
   wgpuInstanceCreateSurface: function(instanceId, descriptor) {
     {{{ gpu.makeCheck('descriptor') }}}
     {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
@@ -1495,9 +1497,10 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheckDescriptor('descriptorFromHTMLCanvasId') }}}
     var idPtr = {{{ makeGetValue('descriptorFromHTMLCanvasId', C_STRUCTS.WGPUSurfaceDescriptorFromHTMLCanvasId.id, '*') }}};
     {{{ gpu.makeCheck('idPtr') }}}
-    var id = UTF8ToString(idPtr);
-    var canvas = document.getElementById(id);
+    var canvas = __findCanvasEventTarget(idPtr);
+#if ASSERTIONS
     assert(canvas instanceof HTMLCanvasElement);
+#endif
 
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.label, '*') }}};
     if (labelPtr) canvas.surfaceLabelWebGPU = UTF8ToString(labelPtr);
@@ -1516,8 +1519,10 @@ var LibraryWebGPU = {
     canvas.height = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}};
 
     var ctx = canvas.getContext('gpupresent');
+#if ASSERTIONS
     assert({{{ gpu.PresentMode.Fifo }}} ===
       {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.presentMode) }}});
+#endif
 
     var desc = {
       "label": undefined,
@@ -1540,10 +1545,14 @@ var LibraryWebGPU = {
   // Unsupported (won't be implemented)
 
   wgpuDeviceTick: function() {
+#if ASSERTIONS
     assert(false, 'wgpuDeviceTick is unsupported (use requestAnimationFrame via html5.h instead)');
+#endif
   },
   wgpuSwapChainPresent: function() {
+#if ASSERTIONS
     assert(false, 'wgpuSwapChainPresent is unsupported (use requestAnimationFrame via html5.h instead)');
+#endif
   },
 };
 
