@@ -3240,7 +3240,7 @@ var LibraryJSEvents = {
 function handleWebGLProxying(funcs) {
   if (!USE_PTHREADS) return; // No proxying needed in singlethreaded builds
 
-  function funcArgs(func) {
+  function listOfNFunctionArgs(func) {
     var args = [];
     for(var i = 0; i < func.length; ++i) {
       args.push('p' + i);
@@ -3258,13 +3258,14 @@ function handleWebGLProxying(funcs) {
       funcs[i + '_main_thread'] = i + '_calling_thread';
       funcs[i + '_main_thread__proxy'] = 'sync';
       funcs[i + '_main_thread__sig'] = funcs[i + '__sig'];
+      if (!funcs[i + '__deps']) funcs[i + '__deps'] = [];
       funcs[i + '__deps'].push(i + '_calling_thread');
       funcs[i + '__deps'].push(i + '_main_thread');
       delete funcs[i + '__proxy'];
-      var funcArgs = funcArgs(funcs[i]);
+      var funcArgs = listOfNFunctionArgs(funcs[i]);
       var funcArgsString = funcArgs.join(',');
       var funcBody = `return GL.contexts[p0] ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
-      if (funcs[i + '_before_on_calling_thread') {
+      if (funcs[i + '_before_on_calling_thread']) {
         funcs[i + '__deps'].push(i + '_before_on_calling_thread');
         funcBody = `_${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
       }
