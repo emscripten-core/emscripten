@@ -521,7 +521,7 @@ jobs:
       name: win/vs2019
       shell: bash.exe -eo pipefail
     environment:
-      # on windows the python binary is always calls python.exe and never
+      # on windows the python binary is always called python.exe and never
       # python3.exe
       PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
@@ -537,7 +537,7 @@ jobs:
       - build-upstream
   test-upstream-minimal-windows:
     environment:
-      # on windows the python binary is always calls python.exe and never
+      # on windows the python binary is always called python.exe and never
       # python3.exe
       PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
