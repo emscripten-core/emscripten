@@ -3275,6 +3275,11 @@ function handleWebGLProxying(funcs) {
       // When building with OFFSCREEN_FRAMEBUFFER but without OFFSCREENCANVAS_SUPPORT,
       // only main thread creates WebGL contexts, so all calls are unconditionally proxied.
       funcs[i + '__proxy'] = 'sync';
+#else
+      // Building without OFFSCREENCANVAS_SUPPORT or OFFSCREEN_FRAMEBUFFER: the application
+      // will only utilize WebGL in the main browser thread. Remove any WebGL proxying
+      // directives.
+      delete funcs[i + '__proxy'];
 #endif
 #endif
     }
