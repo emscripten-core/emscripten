@@ -58,8 +58,12 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_testsuite
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete, asbytes, safe_copy, Settings
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
+from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
+from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
+from tools.shared import EM_BUILD_VERBOSE, CLANG_CC
+from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete
+from tools.shared import asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings, building
 
 
@@ -1231,6 +1235,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       js_engines += wasm_engines
+      if self.get_setting('WASM2C'):
+        # the "engine" to run wasm2c builds is clang that compiles the c
+        js_engines += [[CLANG_CC]]
     if len(js_engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:

@@ -165,6 +165,28 @@ def also_with_standalone_wasm(func):
   return decorated
 
 
+def also_with_standalone_wasm_and_wasm2c(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if can_do_standalone(self):
+      print('standalone')
+      self.set_setting('STANDALONE_WASM', 1)
+      # we will not legalize the JS ffi interface, so we must use BigInt
+      # support in order for JS to have a chance to run this without trapping
+      # when it sees an i64 on the ffi.
+      self.set_setting('WASM_BIGINT', 1)
+      with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+        func(self)
+        print('wasm2c')
+        self.set_setting('WASM2C', 1)
+        with wasm_engines_modify([]):
+          func(self)
+
+  return decorated
+
+
 # Similar to also_with_standalone_wasm, but suitable for tests that cannot
 # run in a wasm VM yet, as they are not 100% standalone. We can still
 # run them with the JS code though.
@@ -182,6 +204,31 @@ def also_with_impure_standalone_wasm(func):
       self.set_setting('WASM_BIGINT', 1)
       with wasm_engines_modify([]):
         with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+          func(self)
+
+  return decorated
+
+
+def also_with_impure_standalone_wasm_and_wasm2c(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if can_do_standalone(self):
+      print('standalone (impure; no wasm runtimes)')
+      with wasm_engines_modify([]):
+        self.set_setting('STANDALONE_WASM', 1)
+        # we will not legalize the JS ffi interface, so we must use BigInt
+        # support in order for JS to have a chance to run this without trapping
+        # when it sees an i64 on the ffi.
+        self.set_setting('WASM_BIGINT', 1)
+        with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+          func(self)
+        print('wasm2c')
+        self.set_setting('STANDALONE_WASM', 1)
+        self.set_setting('WASM2C', 1)
+        # disable js engines too, so we only run the c output
+        with js_engines_modify([]):
           func(self)
 
   return decorated
@@ -521,7 +568,7 @@ class TestCoreBase(RunnerCore):
     shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), 'cube2md5.txt')
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read(), assert_returncode=None)
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm_and_wasm2c
   @needs_make('make')
   def test_cube2hash(self):
     # A good test of i64 math
@@ -1076,6 +1123,7 @@ base align: 0, 0, 0, 0'''])
   def test_regex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
+  @also_with_impure_standalone_wasm_and_wasm2c
   def test_longjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
 
@@ -5580,7 +5628,7 @@ main( int argv, char ** argc ) {
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm_and_wasm2c
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -6608,7 +6656,7 @@ return malloc(size);
   @no_asan('autodebug logging interferes with asan')
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
-  @also_with_impure_standalone_wasm
+  @also_with_impure_standalone_wasm_and_wasm2c
   def test_autodebug_wasm(self):
     # Autodebug does not work with too much shadow memory.
     # Memory consumed by autodebug depends on the size of the WASM linear memory.
