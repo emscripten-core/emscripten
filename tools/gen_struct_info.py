@@ -386,31 +386,31 @@ def inspect_code(headers, cpp_opts, structs, defines):
   os.close(js_file[0])
 
   # Remove dangerous env modifications
-  safe_env = os.environ.copy()
-  for opt in ['EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS']:
-    if opt in safe_env:
-      del safe_env[opt]
+  env = os.environ.copy()
+  env['EMCC_FORCE_STDLIBS'] = 'libcompiler_rt'
+  env['EMCC_ONLY_FORCED_STDLIBS'] = '1'
 
   info = []
   # Compile the program.
   show('Compiling generated code...')
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
-                                                   '-O0', '--js-opts', '0', '--memory-init-file', '0',
-                                                   '-Werror', '-Wno-format',
-                                                   '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                                   '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
-                                                   '-s', 'STRICT=1',
-                                                   '-s', 'SINGLE_FILE=1']
+  cmd = [shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
+                                    '-O0', '--js-opts', '0', '--memory-init-file', '0',
+                                    '-Werror', '-Wno-format',
+                                    '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                    '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
+                                    '-s', 'STRICT=1',
+                                    '-s', 'SINGLE_FILE=1']
+
   if not shared.Settings.WASM_BACKEND:
     # Avoid the binaryen dependency if we are only using fastcomp
-    cmd += ['-s', 'WASM=0']
+    cmd += ['-s', 'WASM=0', '-Wno-fastcomp']
   if shared.Settings.LTO:
     cmd += ['-flto=' + shared.Settings.LTO]
 
   show(cmd)
   try:
-    subprocess.check_call(cmd, env=safe_env)
+    subprocess.check_call(cmd, env=env)
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)

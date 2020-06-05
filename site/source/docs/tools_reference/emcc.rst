@@ -182,7 +182,7 @@ Options that are modified or new in *emcc* are listed below:
 
   You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
-  .. note:: Some options might override this flag (e.g. ``EMTERPRETIFY``, ``DEAD_FUNCTIONS``, ``SAFE_HEAP`` and ``SPLIT_MEMORY`` override the value with ``js-opts=1``), because they depend on the js-optimizer.
+  .. note:: Some options might override this flag (e.g. ``DEAD_FUNCTIONS``, ``SAFE_HEAP`` and ``SPLIT_MEMORY`` override the value with ``js-opts=1``), because they depend on the js-optimizer.
 
 .. _emcc-llvm-opts:
 
@@ -351,22 +351,34 @@ Options that are modified or new in *emcc* are listed below:
   If using this in combination with ``--clear-cache``, be sure to specify
   this argument first.
 
-  The Emscripten cache defaults to being located in the path name stored
-  in the ``EM_CACHE`` environment variable or ``~/.emscripten_cache``.
+  The Emscripten cache defaults to ``emscripten/cache`` but can be overridden
+  using the ``EM_CACHE`` environment variable or ``CACHE`` config setting.
 
 .. _emcc-clear-cache:
 
 ``--clear-cache``
-  Manually clears the cache of compiled Emscripten system libraries (libc++, libc++abi, libc).
+  Manually clears the cache of compiled Emscripten system libraries (libc++,
+  libc++abi, libc).
 
-  This is normally handled automatically, but if you update LLVM in-place (instead of having a different directory for a new version), the caching mechanism can get confused. Clearing the cache can fix weird problems related to cache incompatibilities, like *Clang* failing to link with library files. This also clears other cached data. After the cache is cleared, this process will exit.
+  This is normally handled automatically, but if you update LLVM in-place
+  (instead of having a different directory for a new version), the caching
+  mechanism can get confused. Clearing the cache can fix weird problems related
+  to cache incompatibilities, like *Clang* failing to link with library files.
+  This also clears other cached data. After the cache is cleared, this process
+  will exit.
+
+  By default this will also clear any download ports since the ports directory
+  is usually within the cache directory.
 
 .. _emcc-clear-ports:
 
 ``--clear-ports``
-  Manually clears the local copies of ports from the Emscripten Ports repos (sdl2, etc.). This also clears the cache, to remove their builds.
+  Manually clears the local copies of ports from the Emscripten Ports repos
+  (sdl2, etc.). This also clears the cache, to remove their builds.
 
-  You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
+  You should only need to do this if a problem happens and you want all ports
+  that you use to be downloaded and built from scratch. After this operation is
+  complete, this process will exit.
 
 .. _emcc-show-ports:
 
@@ -420,7 +432,10 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-config:
 
 ``--em-config``
-  Specifies the location of the **.emscripten** configuration file for the current compiler run. If not specified, the environment variable ``EM_CONFIG`` is first read for this location. If neither are specified, the default location **~/.emscripten** is used.
+  Specifies the location of the **.emscripten** configuration file.  If not
+  specified emscripten will search for ``.emscripten`` first in the emscripten
+  directory itself, and then in the user's home directory (``~/.emscripten``).
+  This can be overridden using the ``EM_CONFIG`` environment variable.
 
 ``--default-obj-ext .ext``
   Specifies the file suffix to generate if the location of a directory name is passed to the ``-o`` directive.

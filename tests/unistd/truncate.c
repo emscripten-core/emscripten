@@ -22,7 +22,7 @@ int main() {
     FS.chdir('working');
     FS.writeFile('towrite', 'abcdef');
     FS.writeFile('toread', 'abcdef');
-    FS.chmod('toread', 0444);
+    FS.chmod('toread', 0o444);
   );
 
   struct stat s;
@@ -87,7 +87,7 @@ int main() {
   // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
   // will fail if any of the files are read-only.
   EM_ASM(
-    FS.chmod('toread', 0777);
+    FS.chmod('toread', 0o777);
   );
   return 0;
 }

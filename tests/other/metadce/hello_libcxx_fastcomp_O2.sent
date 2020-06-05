@@ -22,6 +22,7 @@ _fd_write
 _getenv
 _llvm_stackrestore
 _llvm_stacksave
+_llvm_trap
 _strftime
 _strftime_l
 abort

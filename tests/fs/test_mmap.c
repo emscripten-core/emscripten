@@ -83,7 +83,8 @@ int main() {
       printf("failed to open /yolo/out.txt\n");
       return 1;
     }
-    char buffer[13];
+    char buffer[15];
+    memset(buffer, 0, 15);
     fread(buffer, 1, 14, fd);
     printf("/yolo/out.txt content=%s\n", buffer);
     fclose(fd);
@@ -121,7 +122,8 @@ int main() {
       printf("failed to open /yolo/outreadonly.txt\n");
       return 1;
     }
-    char buffer[14];
+    char buffer[16];
+    memset(buffer, 0, 16);
     fread(buffer, 1, 15, fd);
     printf("/yolo/outreadonly.txt content=%s\n", buffer);
     fclose(fd);
@@ -161,7 +163,8 @@ int main() {
       printf("failed to open /yolo/private.txt\n");
       return 1;
     }
-    char buffer[13];
+    char buffer[15];
+    memset(buffer, 0, 15);
     fread(buffer, 1, 14, fd);
     printf("/yolo/private.txt content=%s\n", buffer);
     fclose(fd);
@@ -211,12 +214,14 @@ int main() {
     }
     size_t offset = sysconf(_SC_PAGE_SIZE) * 2;
     
-    char buffer[offset + 31];
+    char buffer[offset + 33];
+    memset(buffer, 0, offset + 33);
     fread(buffer, 1, offset + 32, fd);
     // expect text written from mmap operation to appear at offset in the file
     printf("/yolo/sharedoffset.txt content=%s %d\n", buffer + offset, offset);
     fclose(fd);
   }
+
 #if !defined(NODEFS)
   /**
    * MMAP to an 'over-allocated' file
@@ -256,7 +261,9 @@ int main() {
     assert(map[textsize-1] == 'a');
 
     // Assert that content from the over-allocated file buffer is not written beyond the allocated memory for the map
+#if !__has_feature(address_sanitizer) // the following is invalid, and asan complains rightfully
     assert(map[textsize] != 'b');
+#endif
 
     close(fd);
   }

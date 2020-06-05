@@ -9,11 +9,12 @@
 #include <math.h>
 #include <float.h>
 
+#ifndef EMSCRIPTEN_PRINTF_LONG_DOUBLE
 // XXX EMSCRIPTEN - while wasm32 has long double = float128, we don't support
-//                  printing it at full precision; instead, we lower to
+//                  printing at full precision by default. instead, we lower to
 //                  64-bit double. These macros makes our changes a little less
 //                  invasive.
-#define long_double double
+typedef double long_double;
 #undef LDBL_TRUE_MIN
 #define LDBL_TRUE_MIN DBL_DENORM_MIN
 #undef LDBL_MIN
@@ -36,6 +37,10 @@
 #define LDBL_MAX_10_EXP DBL_MAX_10_EXP
 #undef frexpl
 #define frexpl(x, exp) frexp(x, exp)
+#else // EMSCRIPTEN_FULL_LONG_DOUBLE_PRINTING
+// XXX EMSCRIPTEN - full long double printing support
+typedef long double long_double;
+#endif
 
 /* Some useful macros */
 
@@ -102,7 +107,9 @@ static const unsigned char states[]['z'-'A'+1] = {
 		S('E') = DBL, S('F') = DBL, S('G') = DBL, S('A') = DBL,
 		S('c') = CHAR, S('C') = INT,
 		S('s') = PTR, S('S') = PTR, S('p') = UIPTR, S('n') = PTR,
+#ifndef __EMSCRIPTEN__ // 'm' is a gnu extension, and strerror brings in 2.5K of strings
 		S('m') = NOARG,
+#endif
 		S('l') = LPRE, S('h') = HPRE, S('L') = BIGLPRE,
 		S('z') = ZTPRE, S('j') = JPRE, S('t') = ZTPRE,
 	}, { /* 1: l-prefixed */
@@ -244,9 +251,9 @@ typedef char compiler_defines_long_double_incorrectly[9-(int)sizeof(long_double)
 //                  get it linked in
 //                  also use a double argument here, as mentioned before,
 //                  we print float128s at double precision 
-typedef int (*fmt_fp_t)(FILE *f, double y, int w, int p, int fl, int t);
+typedef int (*fmt_fp_t)(FILE *f, long_double y, int w, int p, int fl, int t);
 
-static int fmt_fp(FILE *f, double y, int w, int p, int fl, int t)
+static int fmt_fp(FILE *f, long_double y, int w, int p, int fl, int t)
 {
 	uint32_t big[(LDBL_MANT_DIG+28)/29 + 1          // mantissa expansion
 		+ (LDBL_MAX_EXP+LDBL_MANT_DIG+28+8)/9]; // exponent expansion

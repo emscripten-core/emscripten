@@ -635,20 +635,13 @@ var LibraryEmbind = {
 
             var str;
             if (stdStringIsUTF8) {
-                //ensure null termination at one-past-end byte if not present yet
-                var endChar = HEAPU8[value + 4 + length];
-                var endCharSwap = 0;
-                if (endChar != 0) {
-                    endCharSwap = endChar;
-                    HEAPU8[value + 4 + length] = 0;
-                }
-
                 var decodeStartPtr = value + 4;
                 // Looping here to support possible embedded '0' bytes
                 for (var i = 0; i <= length; ++i) {
                     var currentBytePtr = value + 4 + i;
-                    if (HEAPU8[currentBytePtr] == 0) {
-                        var stringSegment = UTF8ToString(decodeStartPtr);
+                    if (HEAPU8[currentBytePtr] == 0 || i == length) {
+                        var maxRead = currentBytePtr - decodeStartPtr;
+                        var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
                         if (str === undefined) {
                             str = stringSegment;
                         } else {
@@ -657,10 +650,6 @@ var LibraryEmbind = {
                         }
                         decodeStartPtr = currentBytePtr + 1;
                     }
-                }
-
-                if (endCharSwap != 0) {
-                    HEAPU8[value + 4 + length] = endCharSwap;
                 }
             } else {
                 var a = new Array(length);
@@ -754,20 +743,14 @@ var LibraryEmbind = {
             var length = HEAPU32[value >> 2];
             var HEAP = getHeap();
             var str;
-            // Ensure null termination at one-past-end byte if not present yet
-            var endChar = HEAP[(value + 4 + length * charSize) >> shift];
-            var endCharSwap = 0;
-            if (endChar != 0) {
-                endCharSwap = endChar;
-                HEAP[(value + 4 + length * charSize) >> shift] = 0;
-            }
 
             var decodeStartPtr = value + 4;
             // Looping here to support possible embedded '0' bytes
             for (var i = 0; i <= length; ++i) {
                 var currentBytePtr = value + 4 + i * charSize;
-                if (HEAP[currentBytePtr >> shift] == 0) {
-                    var stringSegment = decodeString(decodeStartPtr);
+                if (HEAP[currentBytePtr >> shift] == 0 || i == length) {
+                    var maxReadBytes = currentBytePtr - decodeStartPtr;
+                    var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
                     if (str === undefined) {
                         str = stringSegment;
                     } else {
@@ -776,10 +759,6 @@ var LibraryEmbind = {
                     }
                     decodeStartPtr = currentBytePtr + charSize;
                 }
-            }
-
-            if (endCharSwap != 0) {
-                HEAP[(value + 4 + length * charSize) >> shift] = endCharSwap;
             }
 
             _free(value);
@@ -1346,7 +1325,7 @@ var LibraryEmbind = {
                 // assume all fields are present without checking.
                 for (var fieldName in fields) {
                     if (!(fieldName in o)) {
-                        throw new TypeError('Missing field');
+                        throw new TypeError('Missing field:  "' + fieldName + '"');
                     }
                 }
                 var ptr = rawConstructor();

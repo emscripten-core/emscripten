@@ -19,12 +19,7 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void* userD
 }
 
 void mainLoop() {
-#if __wasm__
   emscripten_sleep(100);
-#else
-  // In fastcomp, emterpreter needs yielding here.
-  emscripten_sleep_with_yield(100);
-#endif
   static int counter = 0;
   counter++;
   EM_ASM(

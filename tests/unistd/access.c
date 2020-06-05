@@ -27,10 +27,10 @@ int main() {
     FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
     FS.chdir('working');
-    FS.writeFile('forbidden', ''); FS.chmod('forbidden', 0000);
-    FS.writeFile('readable',  ''); FS.chmod('readable',  0444);
-    FS.writeFile('writeable', ''); FS.chmod('writeable', 0222);
-    FS.writeFile('allaccess', ''); FS.chmod('allaccess', 0777);
+    FS.writeFile('forbidden', ''); FS.chmod('forbidden', 0o000);
+    FS.writeFile('readable',  ''); FS.chmod('readable',  0o444);
+    FS.writeFile('writeable', ''); FS.chmod('writeable', 0o222);
+    FS.writeFile('allaccess', ''); FS.chmod('allaccess', 0o777);
   );
 #endif
   // Empty path checks #9136 fix
@@ -68,10 +68,10 @@ int main() {
   // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
   // will fail if any of the files are read-only.
   EM_ASM(
-    FS.chmod('forbidden', 0777);
-    FS.chmod('readable',  0777);
-    FS.chmod('writeable', 0777);
-    FS.chmod('allaccess', 0777);
+    FS.chmod('forbidden', 0o777);
+    FS.chmod('readable',  0o777);
+    FS.chmod('writeable', 0o777);
+    FS.chmod('allaccess', 0o777);
   );
 #endif
 

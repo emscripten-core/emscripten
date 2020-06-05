@@ -28,6 +28,9 @@ var SYSCALLS_REQUIRE_FILESYSTEM = 1;
 // the features section.
 var BINARYEN_FEATURES = [];
 
+// Tracks whether to enable Wasm SIMD support in Binaryen.
+var BINARYEN_SIMD = 0;
+
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for
 // runtime logging that can help in debugging.
 var AUTODEBUG = 0;
@@ -194,9 +197,6 @@ var SEPARATE_DWARF = 0;
 // New WebAssembly exception handling (experimental)
 var EXCEPTION_HANDLING = 0;
 
-// Enabled when building C++ code (for example via em++ or via -c c++)
-var USE_CXX = 0;
-
 // Used internally when running the JS compiler simply to generate list of all
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
 // JS library symbols.
@@ -209,3 +209,7 @@ var STACK_BASE = 0;
 // enabled, but if `--no-entry` is passed, or if `_main` is not part of 
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = 1;
+
+// Provide and export a .ready() Promise. This is currently used by default with
+// MODULARIZE, and returned from the factory function.
+var EXPORT_READY_PROMISE = 1;

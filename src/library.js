@@ -265,6 +265,8 @@ LibraryManager.library = {
   },
 #endif
 
+  // fork, spawn, etc. all return an error as we don't support multiple
+  // processes.
   fork__deps: ['$setErrNo'],
   fork__sig: 'i',
   fork: function() {
@@ -277,6 +279,10 @@ LibraryManager.library = {
   vfork: 'fork',
   posix_spawn: 'fork',
   posix_spawnp: 'fork',
+  posix_spawn_file_actions_adddup2: 'fork',
+  posix_spawn_file_actions_addopen: 'fork',
+  posix_spawn_file_actions_destroy: 'fork',
+  posix_spawn_file_actions_init: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
@@ -459,19 +465,19 @@ LibraryManager.library = {
     return {{{ DYNAMICTOP_PTR }}};
   },
 
-#if ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH
+#if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
-#if WASM
+#if ALLOW_MEMORY_GROWTH
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). If you want malloc to return NULL (0) instead of this abort, do not link with -s ABORTING_MALLOC=1 (that is, the default when growth is enabled is to not abort, but you have overridden that)');
+#else // ALLOW_MEMORY_GROWTH
     abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s INITIAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
-#else
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s INITIAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.INITIAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
-#endif
-#else
+#endif // ALLOW_MEMORY_GROWTH
+#else // ASSERTIONS
     abort('OOM');
-#endif
+#endif // ASSERTIONS
   },
-#endif
+#endif // ABORTING_MALLOC
 
 #if TEST_MEMORY_GROWTH_FAILS
   $emscripten_realloc_buffer: function(size) {
@@ -515,7 +521,7 @@ LibraryManager.library = {
 #if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
-#if ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH
+#if ABORTING_MALLOC
   , '$abortOnCannotGrowMemory'
 #endif
 #if ALLOW_MEMORY_GROWTH
@@ -571,7 +577,11 @@ LibraryManager.library = {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
 #endif
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory(requestedSize);
+#else
       return false;
+#endif
     }
 #if USE_ASAN
     // One byte of ASan's shadow memory shadows 8 bytes of real memory. Shadow memory area has a fixed size,
@@ -581,7 +591,11 @@ LibraryManager.library = {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
 #endif
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory(requestedSize);
+#else
       return false;
+#endif
     }
 #endif
 
@@ -627,7 +641,11 @@ LibraryManager.library = {
 #if ASSERTIONS
     err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
 #endif
+#if ABORTING_MALLOC
+    abortOnCannotGrowMemory(requestedSize);
+#else
     return false;
+#endif
 #endif // ALLOW_MEMORY_GROWTH
   },
 
@@ -1334,46 +1352,6 @@ LibraryManager.library = {
     stackRestore(ret);
   },
 
-#if MINIMAL_RUNTIME
-#if WASM_BACKEND == 0
-  $abortStackOverflow__deps: ['$stackSave'],
-#endif
-  $abortStackOverflow__import: true,
-  $abortStackOverflow: function(allocSize) {
-    abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
-  },
-
-#if WASM_BACKEND == 0
-  $stackAlloc__asm: true,
-  $stackAlloc__sig: 'ii',
-  $stackAlloc__deps: ['$abortStackOverflow'],
-  $stackAlloc: function(size) {
-    size = size|0;
-    var ret = 0;
-    ret = STACKTOP;
-    STACKTOP = (STACKTOP + size)|0;
-    STACKTOP = (STACKTOP + 15)&-16;
-#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
-    if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);
-#endif
-    return ret|0;
-  },
-
-  $stackSave__asm: true,
-  $stackSave__sig: 'i',
-  $stackSave: function() {
-    return STACKTOP|0;
-  },
-
-  $stackRestore__asm: true,
-  $stackRestore__sig: 'vi',
-  $stackRestore: function(top) {
-    top = top|0;
-    STACKTOP = top;
-  },
-#endif
-#endif
-
   llvm_flt_rounds: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },
@@ -2071,7 +2049,7 @@ LibraryManager.library = {
   },
 
   ctime_r__deps: ['localtime_r', 'asctime_r'
-#if MINIMAL_RUNTIME && !WASM_BACKEND
+#if !WASM_BACKEND
     , '$stackSave', '$stackAlloc', '$stackRestore'
 #endif
   ],
@@ -2889,78 +2867,7 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if SUPPORT_LONGJMP
-  // asm.js-style setjmp/longjmp support for wasm binaryen backend.
-  // In asm.js compilation, various variables including setjmpId will be
-  // generated within 'var asm' in emscripten.py, while in wasm compilation,
-  // wasm side is considered as 'asm' so they are not generated. But
-  // saveSetjmp() needs setjmpId and no other functions in wasm side needs it.
-  // So we declare it here if WASM_BACKEND=1.
-#if WASM_BACKEND == 1
-  $setjmpId: 0,
-#endif
-
-  saveSetjmp__asm: true,
-  saveSetjmp__sig: 'iii',
-#if WASM_BACKEND == 1
-  saveSetjmp__deps: ['realloc', '$setjmpId'],
-#else
-  saveSetjmp__deps: ['realloc'],
-#endif
-  saveSetjmp: function(env, label, table, size) {
-    // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
-    // prevents relooping anyhow, so slowness is to be expected. And typical case
-    // is 1 setjmp per invocation, or less.
-    env = env|0;
-    label = label|0;
-    table = table|0;
-    size = size|0;
-    var i = 0;
-    setjmpId = (setjmpId+1)|0;
-    {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
-    while ((i|0) < (size|0)) {
-      if ({{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}} == 0) {
-        {{{ makeSetValueAsm('table', '(i<<3)', 'setjmpId', 'i32') }}};
-        {{{ makeSetValueAsm('table', '(i<<3)+4', 'label', 'i32') }}};
-        // prepare next slot
-        {{{ makeSetValueAsm('table', '(i<<3)+8', '0', 'i32') }}};
-        {{{ makeSetTempRet0('size') }}};
-        return table | 0;
-      }
-      i = i+1|0;
-    }
-    // grow the table
-    size = (size*2)|0;
-    table = _realloc(table|0, 8*(size+1|0)|0) | 0;
-    table = _saveSetjmp(env|0, label|0, table|0, size|0) | 0;
-    {{{ makeSetTempRet0('size') }}};
-    return table | 0;
-  },
-
-  testSetjmp__asm: true,
-  testSetjmp__sig: 'iii',
-  testSetjmp: function(id, table, size) {
-    id = id|0;
-    table = table|0;
-    size = size|0;
-    var i = 0, curr = 0;
-    while ((i|0) < (size|0)) {
-      curr = {{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}};
-      if ((curr|0) == 0) break;
-      if ((curr|0) == (id|0)) {
-        return {{{ makeGetValueAsm('table', '(i<<3)+4', 'i32') }}};
-      }
-      i = i+1|0;
-    }
-    return 0;
-  },
-
-  setjmp__deps: ['saveSetjmp', 'testSetjmp'],
-  setjmp__inline: function(env) {
-    // Save the label
-    return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
-  },
-
-  longjmp__deps: ['saveSetjmp', 'testSetjmp'
+  longjmp__deps: [
 #if WASM_BACKEND == 0
   , 'setThrew'
 #endif
@@ -4357,7 +4264,7 @@ LibraryManager.library = {
   },
 
   emscripten_has_asyncify: function() {
-    return {{{ ASYNCIFY || EMTERPRETIFY_ASYNC }}};
+    return {{{ ASYNCIFY }}};
   },
 
   emscripten_debugger: function() {
@@ -4640,32 +4547,26 @@ LibraryManager.library = {
     return STACK_BASE;
   },
 
+  _readAsmConstArgsArray: '=[]',
+  $readAsmConstArgs__deps: ['_readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
-    if (!readAsmConstArgs.array) {
-      readAsmConstArgs.array = [];
-    }
-    var args = readAsmConstArgs.array;
-    args.length = 0;
+#if ASSERTIONS
+    // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
+    assert(Array.isArray( __readAsmConstArgsArray));
+    // Input buffer must be a pre-existing varargs buffer, so already aligned to 4 bytes.
+    assert(buf % 4 == 0);
+#endif
+    __readAsmConstArgsArray.length = 0;
     var ch;
+    buf >>= 2; // Align buf up front to index Int32Array (HEAP32)
     while (ch = HEAPU8[sigPtr++]) {
-      if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
-        buf = (buf + 7) & ~7;
-        args.push(HEAPF64[(buf >> 3)]);
-        buf += 8;
-      } else
 #if ASSERTIONS
-      if (ch === 105 /*'i'*/)
+      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
-      {
-        buf = (buf + 3) & ~3;
-        args.push(HEAP32[(buf >> 2)]);
-        buf += 4;
-      }
-#if ASSERTIONS
-      else abort("unexpected char in asm const signature " + ch);
-#endif
+      __readAsmConstArgsArray.push(ch < 105 ? HEAPF64[++buf >> 1] : HEAP32[buf]);
+      ++buf;
     }
-    return args;
+    return __readAsmConstArgsArray;
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS

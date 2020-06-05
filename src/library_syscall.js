@@ -249,7 +249,7 @@ var SyscallsLibrary = {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var info = FS.getStream(fd);
       if (!info) return -{{{ cDefine('EBADF') }}};
-      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
+      var res = FS.mmap(info, addr, len, off, prot, flags);
       ptr = res.ptr;
       allocated = res.allocated;
 #else // no filesystem support; report lack of support
@@ -1562,29 +1562,9 @@ var SyscallsLibrary = {
     // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_inheriting, '?', 'i64') }}};
     return 0;
   },
-#if EMTERPRETIFY_ASYNC
-  fd_sync__deps: ['$EmterpreterAsync'],
-#endif
   fd_sync__sig: 'ii',
   fd_sync: function(fd) {
     var stream = SYSCALLS.getStreamFromFD(fd);
-#if EMTERPRETIFY_ASYNC
-    return EmterpreterAsync.handle(function(resume) {
-      var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        resume(function() { return 0 });
-        return;
-      }
-      mount.type.syncfs(mount, false, function(err) {
-        if (err) {
-          resume(function() { return {{{ cDefine('EIO') }}} });
-          return;
-        }
-        resume(function() { return 0 });
-      });
-    });
-#else
 #if WASM_BACKEND && ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
       var mount = stream.node.mount;
@@ -1607,7 +1587,6 @@ var SyscallsLibrary = {
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // WASM_BACKEND && ASYNCIFY
-#endif // EMTERPRETIFY_ASYNC
   },
 
 #if !WASM_BACKEND
@@ -1859,11 +1838,8 @@ for (var x in SyscallsLibrary) {
   var wasi = false;
   if (x in WASI_SYSCALLS) {
     wasi = true;
-  } else {
-    var match = /^__sys_[^_]*$/.exec(x);
-    if (!match) {
-      continue;
-    }
+  } else if (!x.startsWith('__sys_') || isJsLibraryConfigIdentifier(x)) {
+    continue;
   }
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;

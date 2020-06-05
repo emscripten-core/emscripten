@@ -17,20 +17,86 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- On first use, emscripten creates a sample config file.  This config file
+  is now created in the emscripten directory by default.  The traditional
+  `~/.emscripten` config file in the `$HOME` directory is still supported and
+  the sample config will still be written there in the case that the emscripten
+  root is read-only.
+- The default location for downloaded ports is now a directory called "ports"
+  within the cache directory.  In practice these means by default they live
+  in `cache/ports` inside the emscripten source directory.  This can be
+  controlled by setting the location of the cache directory, or for even more
+  fine grained control the `EM_PORTS` environment variable and the `PORTS`
+  config setting can be used.
+- Added support for compiling SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE 4.2 and
+  128-bit wide AVX intrinsics, emulated on top of Wasm SIMD instruction set.
+  (#11193, #11243, #11290, #11327). Pass -msimd128 -msse<version> to enable
+  targeting SSE.
+- Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm
+  SIMD. (#11180)
+- Add warning about fastcomp deprecation (can be disabled via `-Wno-fastcomp`).
+- The mmap method of JavaScript filesystem drivers (based on library_fs.js) no
+  longer takes a target memory.  It's safer/cleaner/smaller to assume the target
+  is the global memory buffer.
+- Remove emterpreter and `EMTERPRETIFY` settings.  Emterpreter has largely
+  been replaced by asyncify and is fastcomp only so due for removing in
+  the near future anyway.
+- Upgrade various musl string functions to 1.2 to fix aliasing issues. (#11215)
+
+1.39.16: 05/15/2020
+-------------------
+- Add Math C API for direct access to JavaScript Math object (#11151).
+- Address Sanitizer support now includes JavaScript as well, that is, memory
+  access of HEAP\* arrays is checked by ASan. That allows errors to be found if
+  JS glue code does something wrong like forget to shift a pointer. To use this,
+  just build with ASan normally, `-fsanitize=address` at link (#11147).
+- Fix embind string conversions in multithreaded builds (#10844).
+- `ALLOW_MEMORY_GROWTH` used to silently disable `ABORTING_MALLOC`. It now
+  just changes the default, which means you can pass `-s ABORTING_MALLOC=1` to
+  override the default, which was not possible before. (If you pass the flag
+  and don't want that behavior, stop passing the flag.) (#11131)
+- Change the factory function created by using the `MODULARIZE` build option to
+  return a Promise instead of the module instance. That is, beforehand
+
+        Module()
+
+  would return an instance (which was perhaps not ready yet if startup was
+  async). In the new model, that returns a Promise which you can do `.then` or
+  `await` on to get notified when the instance is ready, and the callback
+  receives the instance. Note that both before and after this change
+  doing `Module()` creates and runs an instance, so the only change is
+  the return value from that call.
+  This fixes some long-standing bugs with that option which have been reported
+  multiple times, but is a breaking change - sorry about that. To reduce the
+  risk of confusing breakage, in a build with `ASSERTIONS` we will show a clear
+  warning on common errors. For more, see detailed examples for the current
+  usage in `src/settings.js` on `MODULARIZE`. (#10697)
+- A new `PRINTF_LONG_DOUBLE` option allows printf to print long doubles at full
+  float128 precision. (#11130)
+- `emscripten_async_queue_on_thread` has been renamed to
+  `emscripten_dispatch_to_thread` which no longer implies that it is async -
+  the operation is in fact only async if it is sent to another thread, while it
+  is sync if on the same one. A new `emscripten_dispatch_to_thread_async`
+  function is added which is always async.
+- The emscripten cache now lives in a directory called `cache` at the root
+  of the emscripten tree by default.  The `CACHE` config setting and the
+  `EM_CACHE` environment variable can be used to override this (#11126).
 - Honor `CACHE` setting in config file as an alternative to `EM_CACHE`
-  environment variable or `--cache` commandline flag.
+  environment variable.
 - Remove `--cache` command line arg.  The `CACHE` config setting and the
   `EM_CACHE` environment variable can be used to control this.
 - Compiling to a file with no suffix will now generate an executable (JS) rather
   than an object file.  This means simple cases like `emcc -o foo foo.c` do the
   expected thing and generate an executable.
+- System libraries such as libc and libc++ are now included by default at
+  link time rather than selectively included based on the symbols used in the
+  input object files.  For small programs that don't use any system libraries
+  this might result in slightly slower link times with the old fastcomp
+  backend.  In order to exclude these libraries build with `-nostdlib` and/or
+  `-nostdlib++`.
 
 1.39.15: 05/06/2020
 -------------------
-- Change the factory function created by using the `MODULARIZE` build option to
-  return a Promise instead of the module instance. If you use `MODULARIZE` you
-  will need to wait on the returned Promise, using `await` or its `then`
-  callback, to get the module instance (#10697).
 - Add `--extern-pre-js` and `--extern-post-js` emcc flags. Files provided there
   are prepended/appended to the final JavaScript output, *after* all other
   work has been done, including optimization, optional `MODULARIZE`-ation,
@@ -183,7 +249,7 @@ v1.39.9: 03/05/2020
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
-- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+- Add a check in Asyncify builds with `ASSERTIONS` that we do not have
   compiled code on the stack when starting to rewind, which is dangerous.
 - Implement libc system() for node.js (#10547).
 - Standalone mode improvements, time (#10530, #10536), sysconf (#10535),
@@ -411,6 +477,12 @@ v1.38.41: 08/07/2019
    print for parse error reporting. (#9088)
  - Internal API update: one can now specialize embind's (un)marshalling for a
    group of types via SFINAE, instead of a single type. (#9089)
+ - Options passed on the `Module` object during startup, like `Module.arguments`,
+   are now copied to a local (in order to avoid writing `Module.*` everywhere,
+   which wastes space). You can still provide them as always, but you can't
+   modify `Module.arguments` and other things *after* startup (which is now
+   after we've finished processing them). In a build with assertions enabled you
+   will get an error if you access those properties after startup. (#9072)
 
 v1.38.40: 07/24/2019
 --------------------

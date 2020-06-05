@@ -38,6 +38,13 @@ var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : 
 #endif // USE_CLOSURE_COMPILER
 #endif // SIDE_MODULE
 
+#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 29 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000) // https://caniuse.com/#feat=promises
+// Include a Promise polyfill for legacy browsers. This is needed either for
+// wasm2js, where we polyfill the wasm API which needs Promises, or when using
+// modularize which creates a Promise for when the module is ready.
+#include "promise_polyfill.js"
+#endif
+
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
@@ -45,6 +52,9 @@ Module['ready'] = new Promise(function(resolve, reject) {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
+#if ASSERTIONS
+{{{ addReadyPromiseAssertions("Module['ready']") }}}
+#endif
 #endif
 
 // --pre-jses are emitted after the Module integration code, so that they can
@@ -196,7 +206,7 @@ if (ENVIRONMENT_IS_NODE) {
     console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
     throw e;
   }
-  Worker = nodeWorkerThreads.Worker;
+  global.Worker = nodeWorkerThreads.Worker;
 #endif
 
 #if WASM == 2
@@ -337,7 +347,7 @@ if (ENVIRONMENT_IS_NODE) {
   // Polyfill the performance object, which emscripten pthreads support
   // depends on for good timing.
   if (typeof performance === 'undefined') {
-    performance = require('perf_hooks').performance;
+    global.performance = require('perf_hooks').performance;
   }
 }
 #endif

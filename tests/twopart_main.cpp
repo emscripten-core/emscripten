@@ -3,7 +3,15 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-extern void theFunc(const char *str);
+#ifndef __cplusplus
+#error "should be compiled as C++"
+#endif
+
+// Test that C++ headers are on the include path
+#include <vector>
+
+extern "C" void theFunc(const char *str);
+
 
 int main() {
   theFunc("hello from main");

@@ -6,7 +6,10 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if !WASM_BACKEND && !WASM
+// asm.js startup is synchronous
 Module['asm'] = asm;
+#endif
 
 {{{ exportRuntime() }}}
 
@@ -156,7 +159,11 @@ function callMain(args) {
 #endif
 
 #if STANDALONE_WASM
+#if EXPECT_MAIN
   var entryFunction = Module['__start'];
+#else
+  var entryFunction = Module['__initialize'];
+#endif
 #else
   var entryFunction = Module['_main'];
 #endif
@@ -185,10 +192,6 @@ function callMain(args) {
   var argc = 0;
   var argv = 0;
 #endif // MAIN_READS_PARAMS
-
-#if EMTERPRETIFY_ASYNC
-  var initialEmtStackTop = Module['emtStackSave']();
-#endif
 
   try {
 #if BENCHMARK
@@ -221,16 +224,16 @@ function callMain(args) {
     // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
     // off to a pthread.
 #if !PROXY_TO_PTHREAD
-#if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#if WASM_BACKEND && ASYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
     if (!noExitRuntime) {
-#endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#endif // WASM_BACKEND && ASYNCIFY
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
-#if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#if WASM_BACKEND && ASYNCIFY
     }
-#endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#endif // WASM_BACKEND && ASYNCIFY
   }
   catch(e) {
     if (e instanceof ExitStatus) {
@@ -240,10 +243,6 @@ function callMain(args) {
     } else if (e == 'unwind') {
       // running an evented main loop, don't immediately exit
       noExitRuntime = true;
-#if EMTERPRETIFY_ASYNC
-      // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
-      Module['emtStackRestore'](initialEmtStackTop);
-#endif
       return;
     } else {
       var toLog = e;
@@ -408,15 +407,17 @@ function exit(status, implicit) {
     if (!implicit) {
 #if EXIT_RUNTIME == 0
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
-      err(msg);
 #if MODULARIZE
       readyPromiseReject(msg);
+#else
+      err(msg);
 #endif // MODULARIZE
 #else
       var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
-      err(msg);
 #if MODULARIZE
       readyPromiseReject(msg);
+#else
+      err(msg);
 #endif // MODULARIZE
 #endif // EXIT_RUNTIME
     }
@@ -549,4 +550,8 @@ var workerResponded = false, workerCallbackId = -1;
   }
 })();
 
+#endif
+
+#if STANDALONE_WASM && ASSERTIONS && !WASM_BIGINT
+err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
 #endif

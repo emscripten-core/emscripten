@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 
+from tools import building
 from tools import shared
 from tools import system_libs
 
@@ -105,7 +106,7 @@ do that, run
    2. cmake . -DCMAKE_BUILD_TYPE=Release
    3. make (or mingw32-make/vcbuild/msbuild on Windows)
 
-and set up the location to the native optimizer in ~/.emscripten
+and set up the location to the native optimizer in .emscripten
 ''' % '\n        '.join(all_tasks)
 
 
@@ -125,7 +126,7 @@ def build(src, result_libs, args=[]):
       shared.Cache.erase_file(lib)
 
   try:
-    shared.Building.emcc(cpp, args, output_filename=temp_js)
+    building.emcc(cpp, args, output_filename=temp_js)
   except subprocess.CalledProcessError as e:
     shared.exit_with_error("embuilder: emcc command failed with %d: '%s'", e.returncode, ' '.join(e.cmd))
 

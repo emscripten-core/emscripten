@@ -21,9 +21,10 @@ import webbrowser
 import zlib
 
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
+from tools import building
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
-from tools.shared import try_delete, run_process, run_js, Building
+from tools.shared import try_delete, run_process, run_js
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -821,11 +822,10 @@ window.close = function() {
     self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js', '-lSDL', '-lGL'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
   def get_async_args(self):
-    if self.is_wasm_backend():
-      return ['-s', 'ASYNCIFY']
-    else:
-      return ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']
+    assert self.is_wasm_backend()
+    return ['-s', 'ASYNCIFY']
 
+  @no_fastcomp("no asyncify support")
   def test_sdl_key(self):
     for delay in [0, 1]:
       for defines in [
@@ -1312,6 +1312,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME=1', '-DFORCE_EXIT', '-lidbfs.js'])
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME=1', '-DFORCE_EXIT', '-lidbfs.js'])
 
+  @no_fastcomp("no asyncify support")
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
     create_test_file('pre.js', '''
@@ -1332,6 +1333,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']''', '-lidbfs.js'])
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']''', '-lidbfs.js'])
 
+  @no_fastcomp("no asyncify support")
   def test_fs_memfs_fsync(self):
     args = self.get_async_args() + ['-s', 'EXIT_RUNTIME=1']
     secret = str(time.time())
@@ -1421,11 +1423,13 @@ keydown(100);keyup(100); // trigger the end
       self.clear()
       self.btest(path_from_root('tests', 'idbstore.c'), str(stage), force_c=True, args=['-lidbstore.js', '-DSTAGE=' + str(stage), '-DSECRET=\"' + secret + '\"'])
 
+  @no_fastcomp("no asyncify support")
   def test_idbstore_sync(self):
     secret = str(time.time())
     self.clear()
     self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2'] + self.get_async_args())
 
+  @no_fastcomp("no asyncify support")
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
     self.clear()
@@ -1598,7 +1602,7 @@ keydown(100);keyup(100); // trigger the end
     html_file.close()
 
     for file_data in [1, 0]:
-      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + args
+      cmd = [EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + args
       print(cmd)
       subprocess.check_call(cmd)
       self.assertExists('worker.js')
@@ -2375,7 +2379,7 @@ void *getBindBuffer() {
       ('runtime_misuse.cpp', [], 600),
       ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
     ]:
-      for mode in [['-s', 'WASM=0'], ['-s', 'WASM=1']]:
+      for mode in [[], ['-s', 'WASM=0']]:
         if 'WASM=0' in mode and self.is_wasm_backend():
           continue
         print('\n', filename, extra_args, mode)
@@ -2384,10 +2388,10 @@ void *getBindBuffer() {
         self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
         print('sync startup, call too late')
         create_test_file('post.js', post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
+        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
         print('sync, runtime still alive, so all good')
         create_test_file('post.js', post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args + mode)
+        self.btest(filename, expected='606', args=['--post-js', 'post.js'] + extra_args + mode)
 
   def test_cwrap_early(self):
     self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS=1', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js'), '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap"]'], expected='0')
@@ -2404,6 +2408,7 @@ void *getBindBuffer() {
     self.compile_btest([path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]'])
     self.btest('worker_api_3_main.cpp', expected='5')
 
+  @no_fastcomp("no asyncify support")
   def test_worker_api_sleep(self):
     self.compile_btest([path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]'] + self.get_async_args())
     self.btest('worker_api_main.cpp', expected='566')
@@ -2466,12 +2471,12 @@ void *getBindBuffer() {
   def test_emrun_info(self):
     if not has_browser():
       self.skipTest('need a browser')
-    result = run_process([PYTHON, path_from_root('emrun.py'), '--system_info', '--browser_info'], stdout=PIPE).stdout
+    result = run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
     assert 'CPU' in result
     assert 'Browser' in result
     assert 'Traceback' not in result
 
-    result = run_process([PYTHON, path_from_root('emrun.py'), '--list_browsers'], stdout=PIPE).stdout
+    result = run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
     assert 'Traceback' not in result
 
   # Deliberately named as test_zzz_emrun to make this test the last one
@@ -2486,7 +2491,7 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args_base = [PYTHON, path_from_root('emrun.py'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
@@ -2700,16 +2705,15 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=1'])
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=2', '--separate-asm']) # empty polyfill, but browser has support, so semantics are like float
 
+  @no_fastcomp("no asyncify support")
   def test_wget(self):
     create_test_file('test.txt', 'emscripten')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=self.get_async_args())
 
+  @no_fastcomp("no asyncify support")
   def test_wget_data(self):
     create_test_file('test.txt', 'emscripten')
     self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2'] + self.get_async_args())
-    # in the emterpreter, check the special assertions mode as well
-    if not self.is_wasm_backend():
-      self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASSERTIONS=1'] + self.get_async_args())
 
   def test_locate_file(self):
     for wasm in ([0, 1] if not self.is_wasm_backend() else [1]):
@@ -3185,7 +3189,7 @@ window.close = function() {
     print('also test building to object files first')
     src = open(path_from_root('tests', 'sdl2_misc.c')).read()
     create_test_file('test.c', self.with_report_result(src))
-    run_process([PYTHON, EMCC, 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
+    run_process([EMCC, 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
     self.compile_btest(['test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
 
@@ -3210,27 +3214,31 @@ window.close = function() {
                      '-Wno-inconsistent-missing-override'],
                message='You should see Cocos2d logo')
 
+  @no_fastcomp("no asyncify support")
   def test_async(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2'] + self.get_async_args())
 
-  @no_fastcomp('emterpretify is not compatible with threads')
   @requires_threads
+  @no_fastcomp("no asyncify support")
   def test_async_in_pthread(self):
     self.btest('browser/async.cpp', '1', args=self.get_async_args() + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-g'])
 
+  @no_fastcomp("no asyncify support")
   def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
     create_test_file('pre.js', 'Error.stackTraceLimit = 80;\n')
     self.btest('browser/async_2.cpp', '40', args=['-O3', '--pre-js', 'pre.js'] + self.get_async_args())
 
+  @no_fastcomp("no asyncify support")
   def test_async_virtual(self):
     for opts in [0, 3]:
       print(opts)
       self.btest('browser/async_virtual.cpp', '5', args=['-O' + str(opts), '-profiling'] + self.get_async_args())
 
+  @no_fastcomp("no asyncify support")
   def test_async_virtual_2(self):
     for opts in [0, 3]:
       print(opts)
@@ -3238,6 +3246,7 @@ window.close = function() {
 
   # Test async sleeps in the presence of invoke_* calls, which can happen with
   # longjmp or exceptions.
+  @no_fastcomp("no asyncify support")
   @parameterized({
     'O0': ([],), # noqa
     'O3': (['-O3'],), # noqa
@@ -3245,52 +3254,26 @@ window.close = function() {
   def test_async_longjmp(self, args):
     self.btest('browser/async_longjmp.cpp', '2', args=args + self.get_async_args())
 
-  @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
-  def test_emterpreter_async_bad(self):
-    for opts in [0, 3]:
-      print(opts)
-      self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=1'])
-
-  @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
-  def test_emterpreter_async_bad_2(self):
-    for opts in [0, 3]:
-      for assertions in [0, 1]:
-        # without assertions, we end up continuing to run more non-emterpreted code in this testcase, returning 1
-        # with assertions, we hit the emterpreter-async assertion on that, and report a  clear error
-        expected = '2' if assertions else '1'
-        print(opts, assertions, expected)
-        self.btest('emterpreter_async_bad_2.cpp', expected, args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=%s' % assertions, '-g'])
-
+  @no_fastcomp("no asyncify support")
   def test_async_mainloop(self):
     for opts in [0, 3]:
       print(opts)
       self.btest('browser/async_mainloop.cpp', '121', args=['-O' + str(opts)] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify - specific behavior wrt other async calls being paused or not')
-  def test_emterpreter_async_with_manual(self):
-    for opts in [0, 3]:
-      print(opts)
-      self.btest('emterpreter_async_with_manual.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_acall"]'])
-
-  @no_wasm_backend('emterpretify - yielding behavior')
-  def test_emterpreter_async_sleep2(self):
-    self.btest('emterpreter_async_sleep2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz'])
-
-  @no_wasm_backend('emterpretify - safe-heap specific issues')
-  def test_emterpreter_async_sleep2_safeheap(self):
-    # check that safe-heap machinery does not cause errors in async operations
-    self.btest('emterpreter_async_sleep2_safeheap.cpp', '17', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz', '-profiling', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main","_callback","_fix"]', '-s', 'EXIT_RUNTIME=1'])
-
   @requires_sound_hardware
+  @no_fastcomp("no asyncify support")
   def test_sdl_audio_beep_sleep(self):
     self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1', '-lSDL'] + self.get_async_args(), timeout=90)
 
+  @no_fastcomp("no asyncify support")
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-Os'] + self.get_async_args())
 
+  @no_fastcomp("no asyncify support")
   def test_mainloop_infloop(self):
     self.btest('mainloop_infloop.cpp', '1', args=self.get_async_args())
 
+  @no_fastcomp("no asyncify support")
   def test_async_iostream(self):
     self.btest('browser/async_iostream.cpp', '1', args=self.get_async_args())
 
@@ -3305,7 +3288,7 @@ window.close = function() {
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
     'em_js_bad': (['-DBAD', '-DUSE_EM_JS'],), # noqa
   })
-  @no_fastcomp('emterpretify never worked here')
+  @no_fastcomp('wasm backend asyncify specific')
   def test_async_returnvalue(self, args):
     if '@' in str(args):
       create_test_file('filey.txt', '["sync_tunnel"]')
@@ -3459,7 +3442,7 @@ window.close = function() {
         return ret;
       }
     ''')
-    run_process([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
+    run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
     print('wasm in worker (we can read binary data synchronously there)')
@@ -3467,7 +3450,7 @@ window.close = function() {
     create_test_file('pre.js', '''
       var Module = { dynamicLibraries: ['side.wasm'] };
   ''')
-    run_process([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
+    run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
 
     print('wasm (will auto-preload since no sync binary reading)')
@@ -3560,7 +3543,7 @@ window.close = function() {
         return (const char *)glGetString(GL_EXTENSIONS);
       }
     ''')
-    run_process([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL=1'])
+    run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL=1'])
 
     self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
@@ -3888,6 +3871,11 @@ window.close = function() {
   def test_pthread_run_on_main_thread_flood(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread_flood.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
+  # Test that it is possible to asynchronously call a JavaScript function on the main thread.
+  @requires_threads
+  def test_pthread_call_async(self):
+    self.btest(path_from_root('tests', 'pthread', 'call_async.c'), expected='1', args=['-s', 'USE_PTHREADS=1'])
+
   # Test that it is possible to synchronously call a JavaScript function on the main thread and get a return value back.
   @requires_threads
   def test_pthread_call_sync_on_main_thread(self):
@@ -4090,34 +4078,6 @@ window.close = function() {
 
       print('see a fail')
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
-
-  @no_wasm_backend('emterpretify - bytecode in a file')
-  def test_emterpretify_file(self):
-    create_test_file('shell.html', '''
-      <!--
-        {{{ SCRIPT }}} // ignore this, we do it ourselves
-      -->
-      <script>
-        var Module = {};
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'code.dat', true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onload = function() {
-          Module.emterpreterFile = xhr.response;
-          var script = document.createElement('script');
-          script.src = "test.js";
-          document.body.appendChild(script);
-        };
-        xhr.send(null);
-      </script>
-''')
-    try_delete('code.dat')
-    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '--shell-file', 'shell.html', '-s', 'ASSERTIONS=1'])
-    self.assertExists('code.dat')
-
-    try_delete('code.dat')
-    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '-s', 'ASSERTIONS=1'])
-    self.assertExists('code.dat')
 
   def test_vanilla_html_when_proxying(self):
     for opts in [0, 1, 2]:
@@ -4876,11 +4836,11 @@ window.close = function() {
     html_file.write(open(path_from_root('tests', 'two_separate_asm_files.html')).read().replace('localhost:8888', 'localhost:%s' % self.port))
     html_file.close()
 
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page1.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module1', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage1["asm"]']
+    cmd = [EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page1.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module1', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage1["asm"]']
     print(cmd)
     subprocess.check_call(cmd)
 
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page2.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module2', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage2["asm"]']
+    cmd = [EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page2.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module2', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage2["asm"]']
     print(cmd)
     subprocess.check_call(cmd)
 
@@ -4894,7 +4854,7 @@ window.close = function() {
     html_file.write(open(path_from_root('tests', 'encapsulated_asmjs_page_load.html')).read().replace('localhost:8888', 'localhost:%s' % self.port))
     html_file.close()
 
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'a.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=EmscriptenCode', '-s', 'SEPARATE_ASM_MODULE_NAME="var EmscriptenCode"']
+    cmd = [EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'a.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=EmscriptenCode', '-s', 'SEPARATE_ASM_MODULE_NAME="var EmscriptenCode"']
     print(cmd)
     subprocess.check_call(cmd)
 
@@ -4929,7 +4889,7 @@ window.close = function() {
       self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
     except Exception as e:
       # dump the wasm file; this is meant to help debug #10539 on the bots
-      print(run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout)
+      print(run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout)
       raise e
 
   # Tests emscripten_unwind_to_js_event_loop() behavior

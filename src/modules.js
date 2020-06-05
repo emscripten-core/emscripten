@@ -62,7 +62,9 @@ var LibraryManager = {
     // Core system libraries (always linked against)
     var libraries = [
       'library.js',
+      'library_stack.js',
       'library_formatString.js',
+      'library_math.js',
       'library_path.js',
       'library_signals.js',
       'library_syscall.js',
@@ -129,7 +131,7 @@ var LibraryManager = {
         'library_async.js'
       ]);
     } else {
-      if (EMTERPRETIFY_ASYNC || ASYNCIFY) {
+      if (ASYNCIFY) {
         libraries.push('library_async.js');
       }
       if (USE_SDL == 1) {
@@ -160,7 +162,12 @@ var LibraryManager = {
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) {
-      libraries = ['library_formatString.js'];
+      libraries = [
+        'library_bootstrap.js',
+        'library_stack.js',
+        'library_formatString.js',
+        'library_stack_trace.js'
+      ];
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times
@@ -479,9 +486,6 @@ function exportRuntime() {
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
-    if (!MINIMAL_RUNTIME) {
-      runtimeElements.push('abortStackOverflow');
-    }
   }
 
   if (USE_PTHREADS) {

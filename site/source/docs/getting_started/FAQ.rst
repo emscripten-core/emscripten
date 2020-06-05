@@ -104,11 +104,6 @@ What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript
 Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
 
 
-Why do I get ``error while loading shared libraries: libtinfo.so.5``?
-=====================================================================
-
-LLVM and clang link libtinfo dynamically. On some recent Linuxes you may have only ``libtinfo.so.6`` (while our builders target the last Ubuntu LTS). To fix this, you can do something like ``apt-get install libtinfo5`` on Debian or Ubuntu, or on Fedora something like ``dnf install ncurses-compat-libs``.
-
 Why do I get ``machine type must be wasm32`` or ``is not a valid input file`` during linking?
 =============================================================================================
 
@@ -221,7 +216,7 @@ It is possible to allow access to local file system for code running in *node.js
 How can I tell when the page is fully loaded and it is safe to call compiled functions?
 =======================================================================================
 
-(You may need this answer if you see an error saying something like ``you need to wait for the runtime to be ready (e.g. wait for main() to be called)``, which is a check enabled in ``ASSERTIONS`` builds.)
+(You may need this answer if you see an error saying something like ``native function `x` called before runtime initialization``, which is a check enabled in ``ASSERTIONS`` builds.)
 
 Calling a compiled function before a page has fully loaded can result in an error, if the function relies on files that may not be present (for example the :ref:`.mem <emcc-memory-init-file>` file and :ref:`preloaded <emcc-preload-file>` files are loaded asynchronously, and therefore if you just place some JS that calls compiled code in a ``--post-js``, that code will be called synchronously at the end of the combined JS file, potentially before the asynchronous event happens, which is bad).
 

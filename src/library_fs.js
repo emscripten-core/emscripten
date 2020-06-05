@@ -1225,9 +1225,9 @@ FS.staticInit();` +
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
-    mmap: function(stream, buffer, offset, length, position, prot, flags) {
+    mmap: function(stream, address, length, position, prot, flags) {
 #if CAN_ADDRESS_2GB
-      offset >>>= 0;
+      address >>>= 0;
 #endif
       // User requests writing to file (prot & PROT_WRITE != 0).
       // Checking if we have permissions to write to the file unless
@@ -1246,7 +1246,7 @@ FS.staticInit();` +
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
       }
-      return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
+      return stream.stream_ops.mmap(stream, address, length, position, prot, flags);
     },
     msync: function(stream, buffer, offset, length, mmapFlags) {
 #if CAN_ADDRESS_2GB

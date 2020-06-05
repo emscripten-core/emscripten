@@ -6,6 +6,10 @@
 
 var LibraryJSEvents = {
   $JSEvents: {
+
+/* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
+   to save code size.
+   (but still documented here to keep track of what is supposed to be present)
     // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
     keyEvent: 0,
     mouseEvent: 0,
@@ -31,6 +35,14 @@ var LibraryJSEvents = {
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
+
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    // If positive, we are currently executing in a JS event handler.
+    inEventHandler: 0,
+    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
+    currentEventHandler: null,
+#endif
+*/
 
     removeAllEventListeners: function() {
       for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
@@ -109,11 +121,6 @@ var LibraryJSEvents = {
         call.targetFunction.apply(null, call.argsList);
       }
     },
-
-    // If positive, we are currently executing in a JS event handler.
-    inEventHandler: 0,
-    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
-    currentEventHandler: null,
 #endif
 
     // Stores objects representing each currently registered JS event handler.
@@ -185,7 +192,7 @@ var LibraryJSEvents = {
       {{{ makeSetValue('varargs', 0, 'eventTypeId', 'i32') }}};
       {{{ makeSetValue('varargs', 4, 'eventData', 'i32') }}};
       {{{ makeSetValue('varargs', 8, 'userData', 'i32') }}};
-      _emscripten_async_queue_on_thread_(targetThread, {{{ cDefine('EM_FUNC_SIG_IIII') }}}, eventHandlerFunc, eventData, varargs);
+      __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_FUNC_SIG_IIII') }}}, eventHandlerFunc, eventData, varargs);
       stackRestore(stackTop);
     },
 #endif
@@ -233,27 +240,31 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.keyEvent) JSEvents.keyEvent = _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} );
 
-    var keyEventHandlerFunc = function(ev) {
-      var e = ev || event;
+    var keyEventHandlerFunc = function(e) {
+#if ASSERTIONS
+      assert(e);
+#endif
 
 #if USE_PTHREADS
       var keyEventData = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} ) : JSEvents.keyEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
 #else
       var keyEventData = JSEvents.keyEvent;
 #endif
-      stringToUTF8(e.key ? e.key : "", keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
-      stringToUTF8(e.code ? e.code : "", keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.location, 'e.location', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.altKey, 'e.altKey', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.metaKey, 'e.metaKey', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.repeat, 'e.repeat', 'i32') }}};
-      stringToUTF8(e.locale ? e.locale : "", keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
-      stringToUTF8(e.char ? e.char : "", keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.charCode, 'e.charCode', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.keyCode, 'e.keyCode', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.which, 'e.which', 'i32') }}};
+      var idx = keyEventData >> 2;
+
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4}}}] = e.location;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey / 4}}}] = e.ctrlKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.shiftKey / 4}}}] = e.shiftKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.altKey / 4}}}] = e.altKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.metaKey / 4}}}] = e.metaKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.repeat / 4}}}] = e.repeat;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charCode / 4}}}] = e.charCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.keyCode / 4}}}] = e.keyCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.which / 4}}}] = e.which;
+      stringToUTF8(e.key || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
+      stringToUTF8(e.code || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
+      stringToUTF8(e.char || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
+      stringToUTF8(e.locale || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
@@ -474,7 +485,11 @@ var LibraryJSEvents = {
     // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
       // https://github.com/emscripten-core/emscripten/pull/4997
     // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
-    if (e.type !== 'wheel' && e.type !== 'mousewheel') {
+    if (e.type !== 'wheel'
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
+     && e.type !== 'mousewheel'
+#endif
+     ) {
       JSEvents.previousScreenX = e.screenX;
       JSEvents.previousScreenY = e.screenY;
     }
@@ -631,7 +646,7 @@ var LibraryJSEvents = {
 #endif
       if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, wheelEvent, userData)) e.preventDefault();
     };
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     // The 'mousewheel' event as implemented in Safari 6.0.5
     var mouseWheelHandlerFunc = function(ev) {
       var e = ev || event;
@@ -656,7 +671,7 @@ var LibraryJSEvents = {
 #endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
       handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
 #else
       handlerFunc: wheelHandlerFunc,
@@ -674,7 +689,7 @@ var LibraryJSEvents = {
     if (typeof target.onwheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     } else if (typeof target.onmousewheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "mousewheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -2018,23 +2033,34 @@ var LibraryJSEvents = {
 
     target = __findEventTarget(target);
 
-    var touchEventHandlerFunc = function(ev) {
-      var e = ev || event;
-
+    var touchEventHandlerFunc = function(e) {
+#if ASSERTIONS
+      assert(e);
+#endif
       var touches = {};
-      for(var i = 0; i < e.touches.length; ++i) {
-        var touch = e.touches[i];
-        touch.changed = false;
+      var et = e.touches;
+      for(var i = 0; i < et.length; ++i) {
+        var touch = et[i];
+#if ASSERTIONS
+        // Verify that browser does not recycle touch objects with old stale data, but reports new ones each time.
+        assert(!touch.isChanged);
+        assert(!touch.onTarget);
+#endif
         touches[touch.identifier] = touch;
       }
-      for(var i = 0; i < e.changedTouches.length; ++i) {
-        var touch = e.changedTouches[i];
+      et = e.changedTouches;
+      for(var i = 0; i < et.length; ++i) {
+        var touch = et[i];
+#if ASSERTIONS
+        // Verify that browser does not recycle touch objects with old stale data, but reports new ones each time.
+        assert(!touch.onTarget);
+#endif
+        touch.isChanged = 1;
         touches[touch.identifier] = touch;
-        touch.changed = true;
       }
-      for(var i = 0; i < e.targetTouches.length; ++i) {
-        var touch = e.targetTouches[i];
-        touches[touch.identifier].onTarget = true;
+      et = e.targetTouches;
+      for(var i = 0; i < et.length; ++i) {
+        touches[et[i].identifier].onTarget = 1;
       }
 
 #if USE_PTHREADS
@@ -2042,12 +2068,12 @@ var LibraryJSEvents = {
 #else
       var touchEvent = JSEvents.touchEvent;
 #endif
-      var ptr = touchEvent;
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
-      ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
+      var idx = touchEvent>>2; // Pre-shift the ptr to index to HEAP32 to save code size
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey / 4}}}] = e.ctrlKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey / 4}}}] = e.shiftKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey / 4}}}] = e.altKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey / 4}}}] = e.metaKey;
+      idx += {{{ C_STRUCTS.EmscriptenTouchEvent.touches / 4 }}}; // Advance to the start of the touch array.
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
       var canvasRect = Module['canvas'] ? __getBoundingClientRect(Module['canvas']) : undefined;
 #endif
@@ -2055,30 +2081,25 @@ var LibraryJSEvents = {
       var numTouches = 0;
       for(var i in touches) {
         var t = touches[i];
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.identifier, 't.identifier', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenX, 't.screenX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenY, 't.screenY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientX, 't.clientX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientY, 't.clientY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageX, 't.pageX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageY, 't.pageY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.isChanged, 't.changed', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.onTarget, 't.onTarget', 'i32') }}};
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4}}}] = t.clientX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4}}}] = t.clientY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4}}}] = t.pageX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4}}}] = t.pageY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged / 4}}}] = t.isChanged;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget / 4}}}] = t.onTarget;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4}}}] = t.clientX - targetRect.left;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4}}}] = t.clientY - targetRect.top;
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-        if (canvasRect) {
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - canvasRect.left', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - canvasRect.top', 'i32') }}};
-        } else {
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, '0', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, '0', 'i32') }}};            
-        }
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4}}}] = canvasRect ? t.clientX - canvasRect.left : 0;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4}}}] = canvasRect ? t.clientY - canvasRect.top : 0;
 #endif
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetX, 't.clientX - targetRect.left', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetY, 't.clientY - targetRect.top', 'i32') }}};
 
-        ptr += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
+        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ / 4 }}};
 
-        if (++numTouches >= 32) {
+        if (++numTouches > 31) {
           break;
         }
       }
@@ -2878,7 +2899,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', '_emscripten_call_on_thread'
 #if MINIMAL_RUNTIME && !WASM_BACKEND
   , '$stackSave', '$stackAlloc', '$stackRestore'
 #endif
@@ -2897,7 +2918,7 @@ var LibraryJSEvents = {
     // these two threads will deadlock. At the moment, we'd like to consider that this kind of deadlock would be an Emscripten runtime bug, although if
     // emscripten_set_canvas_element_size() was documented to require running an event in the queue of thread that owns the OffscreenCanvas, then that might be ok.
     // (safer this way however)
-    _emscripten_async_queue_on_thread_(targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
+    __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
     stackRestore(stackTop);
   },
 

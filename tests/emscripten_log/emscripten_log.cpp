@@ -102,13 +102,8 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	char *buffer = new char[21];
 	buffer[20] = 0x01; // Magic sentinel that should not change its value.
 	emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_DEMANGLE | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 20);
-#if EMTERPRETER
-	MYASSERT(!!strstr(buffer, "at emterpret ("), "Truncated emterpreter callstack was %s!", buffer);
-	MYASSERT(buffer[20] == 0x01, "");
-#else
 	MYASSERT(!!strstr(buffer, "at bar(int,"), "Truncated callstack was %s!", buffer);
 	MYASSERT(buffer[20] == 0x01, "");
-#endif
 	delete[] buffer;
 
 	/* With EM_LOG_JS_STACK, the callstack will be

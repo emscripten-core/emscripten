@@ -1,5 +1,6 @@
 # Config file
 .emscripten
+.emscripten_backup
 .emscripten_sanity
 .emscripten_sanity_wasm
 
@@ -9,6 +10,10 @@
 
 # Compiled python files
 *.pyc
+
+# Default emscripten cache
+/cache
+/cache.lock
 
 # Ignore only the root node_modules, but not any further down the path
 /node_modules/

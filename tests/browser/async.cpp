@@ -8,7 +8,7 @@
 #include <assert.h>
 
 int main() {
-  // infinite main loop, turned async using emterpreter
+  // infinite main loop, turned async via asyncify
   int counter = 0;
   while (1) {
     printf("frame: %d\n", ++counter);

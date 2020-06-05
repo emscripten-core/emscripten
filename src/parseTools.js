@@ -1603,7 +1603,7 @@ function expectToReceiveOnModule(name) {
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + " (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)') } });";
 }
 
 // Make code to receive a value on the incoming Module object.
@@ -1707,4 +1707,27 @@ function sendI64Argument(low, high) {
   } else {
     return low + ', ' + high;
   }
+}
+
+// Add assertions to catch common errors when using the Promise object we
+// create on Module.ready() and return from MODULARIZE Module() invocations.
+function addReadyPromiseAssertions(promise) {
+  // Warn on someone doing
+  //
+  //  var instance = Module();
+  //  ...
+  //  instance._main();
+  var properties = keys(EXPORTED_FUNCTIONS);
+  // Also warn on onRuntimeInitialized which might be a common pattern with
+  // older MODULARIZE-using codebases.
+  properties.push('onRuntimeInitialized');
+  return properties.map(function(property) {
+    const warningEnding = `${property} on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js`;
+    return `
+      if (!Object.getOwnPropertyDescriptor(${promise}, '${property}')) {
+        Object.defineProperty(${promise}, '${property}', { configurable: true, get: function() { abort('You are getting ${warningEnding}') } });
+        Object.defineProperty(${promise}, '${property}', { configurable: true, set: function() { abort('You are setting ${warningEnding}') } });
+      }
+    `;
+  }).join('\n');
 }
