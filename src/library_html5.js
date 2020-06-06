@@ -3237,6 +3237,8 @@ var LibraryJSEvents = {
   }
 };
 
+// Process 'sync_on_webgl_context_handle_thread' pseudo-proxying mode (used only in this file) to
+// appropriate proxying mechanism, either proxying on-demand, unconditionally, or never, depending on build modes.
 function handleWebGLProxying(funcs) {
   if (!USE_PTHREADS) return; // No proxying needed in singlethreaded builds
 
@@ -3278,8 +3280,8 @@ function handleWebGLProxying(funcs) {
       funcs[i + '__proxy'] = 'sync';
 #else
       // Building without OFFSCREENCANVAS_SUPPORT or OFFSCREEN_FRAMEBUFFER: the application
-      // will only utilize WebGL in the main browser thread. Remove any WebGL proxying
-      // directives.
+      // will only utilize WebGL in the main browser thread. Remove the WebGL proxying
+      // directive.
       delete funcs[i + '__proxy'];
 #endif
 #endif
