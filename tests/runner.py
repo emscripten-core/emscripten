@@ -1234,7 +1234,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += wasm_engines
-      if self.get_setting('WASM2C'):
+      # wasm2c requires a working clang install which is missing on CI, or to
+      # use msvc which wasm2c doesn't support yet
+      if self.get_setting('WASM2C') and not WINDOWS:
         # the "engine" to run wasm2c builds is clang that compiles the c
         engines += [[CLANG_CC]]
     if len(engines) == 0:

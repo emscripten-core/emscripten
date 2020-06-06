@@ -192,12 +192,21 @@ static u32 do_stat(int nfd, u32 buf) {
   wasm_i64_store(buf + 40, nbuf.st_size);
   wasm_i32_store(buf + 48, nbuf.st_blksize);
   wasm_i32_store(buf + 52, nbuf.st_blocks);
+#if defined(__APPLE__) || defined(__NetBSD__)
+  wasm_i32_store(buf + 56, nbuf.st_atimespec.tv_sec);
+  wasm_i32_store(buf + 60, nbuf.st_atimespec.tv_nsec);
+  wasm_i32_store(buf + 64, nbuf.st_mtimespec.tv_sec);
+  wasm_i32_store(buf + 68, nbuf.st_mtimespec.tv_nsec);
+  wasm_i32_store(buf + 72, nbuf.st_ctimespec.tv_sec);
+  wasm_i32_store(buf + 76, nbuf.st_ctimespec.tv_nsec);
+#else
   wasm_i32_store(buf + 56, nbuf.st_atim.tv_sec);
   wasm_i32_store(buf + 60, nbuf.st_atim.tv_nsec);
   wasm_i32_store(buf + 64, nbuf.st_mtim.tv_sec);
   wasm_i32_store(buf + 68, nbuf.st_mtim.tv_nsec);
   wasm_i32_store(buf + 72, nbuf.st_ctim.tv_sec);
   wasm_i32_store(buf + 76, nbuf.st_ctim.tv_nsec);
+#endif
   wasm_i64_store(buf + 80, nbuf.st_ino);
   return 0;
 }
