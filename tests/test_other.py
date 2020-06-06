@@ -10248,6 +10248,7 @@ int main() {
       for engine in WASM_ENGINES:
         self.assertContained(expected, run_js('test.wasm', engine))
 
+  @no_windows('TODO: fix setjmp.h on clang on windows on ci')
   @no_fastcomp("uses standalone mode")
   def test_wasm2c_reactor(self):
     # test compiling an unsafe library using wasm2c, then using it from a
