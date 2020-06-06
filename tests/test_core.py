@@ -179,10 +179,12 @@ def also_with_standalone_wasm_and_wasm2c(func):
       self.set_setting('WASM_BIGINT', 1)
       with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
         func(self)
-        print('wasm2c')
-        self.set_setting('WASM2C', 1)
-        with wasm_engines_modify([]):
-          func(self)
+        # wasm2c output is not yet portable on windows and mac
+        if not WINDOWS and not MACOS:
+          print('wasm2c')
+          self.set_setting('WASM2C', 1)
+          with wasm_engines_modify([]):
+            func(self)
 
   return decorated
 
@@ -224,12 +226,14 @@ def also_with_impure_standalone_wasm_and_wasm2c(func):
         self.set_setting('WASM_BIGINT', 1)
         with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
           func(self)
-        print('wasm2c')
-        self.set_setting('STANDALONE_WASM', 1)
-        self.set_setting('WASM2C', 1)
-        # disable js engines too, so we only run the c output
-        with js_engines_modify([]):
-          func(self)
+        # wasm2c output is not yet portable on windows and mac
+        if not WINDOWS and not MACOS:
+          print('wasm2c')
+          self.set_setting('STANDALONE_WASM', 1)
+          self.set_setting('WASM2C', 1)
+          # disable js engines too, so we only run the c output
+          with js_engines_modify([]):
+            func(self)
 
   return decorated
 
