@@ -9295,6 +9295,7 @@ int main () {
         test(['-s', 'WASM=0'], closure, opt)
         test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
+  @unittest.skip('allow binaryen improvements to roll')
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1',
@@ -10248,6 +10249,7 @@ int main() {
       for engine in WASM_ENGINES:
         self.assertContained(expected, run_js('test.wasm', engine))
 
+  @no_windows('TODO: fix setjmp.h on clang on windows on ci')
   @no_fastcomp("uses standalone mode")
   def test_wasm2c_reactor(self):
     # test compiling an unsafe library using wasm2c, then using it from a

@@ -1219,14 +1219,13 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       js_file = filename + '.o.js'
     self.assertExists(js_file)
 
-    # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
-    js_engines = self.filtered_js_engines(js_engines)
+    engines = self.filtered_js_engines(js_engines)
     # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
-    if len(js_engines) > 1 and not self.use_all_engines:
-      if SPIDERMONKEY_ENGINE in js_engines and not self.is_wasm_backend():
-        js_engines = [SPIDERMONKEY_ENGINE]
+    if len(engines) > 1 and not self.use_all_engines:
+      if SPIDERMONKEY_ENGINE in engines and not self.is_wasm_backend():
+        engines = [SPIDERMONKEY_ENGINE]
       else:
-        js_engines = js_engines[:1]
+        engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines
@@ -1234,13 +1233,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       wasm_engines = shared.WASM_ENGINES
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
-      js_engines += wasm_engines
-      if self.get_setting('WASM2C'):
+      engines += wasm_engines
+      # wasm2c requires a working clang install which is missing on CI, or to
+      # use msvc which wasm2c doesn't support yet
+      if self.get_setting('WASM2C') and not WINDOWS:
         # the "engine" to run wasm2c builds is clang that compiles the c
-        js_engines += [[CLANG_CC]]
-    if len(js_engines) == 0:
+        engines += [[CLANG_CC]]
+    if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
-    for engine in js_engines:
+    for engine in engines:
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:

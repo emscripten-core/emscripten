@@ -1654,8 +1654,6 @@ def get_binaryen_feature_flags():
   ret = ['--mvp-features']
   if Settings.USE_PTHREADS:
     ret += ['--enable-threads']
-  if Settings.BINARYEN_SIMD:
-    ret += ['--enable-simd']
   ret += Settings.BINARYEN_FEATURES
   return ret
 
