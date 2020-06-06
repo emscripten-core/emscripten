@@ -6579,10 +6579,10 @@ return malloc(size);
       '''
     self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
 
+  @also_with_standalone_wasm(wasm2c=True, impure=True)
   @no_asan('autodebug logging interferes with asan')
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
-  @also_with_standalone_wasm(wasm2c=True, impure=True)
   def test_autodebug_wasm(self):
     # Autodebug does not work with too much shadow memory.
     # Memory consumed by autodebug depends on the size of the WASM linear memory.
