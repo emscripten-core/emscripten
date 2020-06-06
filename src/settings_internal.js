@@ -28,9 +28,6 @@ var SYSCALLS_REQUIRE_FILESYSTEM = 1;
 // the features section.
 var BINARYEN_FEATURES = [];
 
-// Tracks whether to enable Wasm SIMD support in Binaryen.
-var BINARYEN_SIMD = 0;
-
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for
 // runtime logging that can help in debugging.
 var AUTODEBUG = 0;
@@ -206,7 +203,7 @@ var ONLY_CALC_JS_SYMBOLS = 0;
 var STACK_BASE = 0;
 
 // Set to true if the program has a main function.  By default this is
-// enabled, but if `--no-entry` is passed, or if `_main` is not part of 
+// enabled, but if `--no-entry` is passed, or if `_main` is not part of
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = 1;
 
