@@ -356,3 +356,13 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
+
+// Modularize code caching caches the compiled module outside of code that
+// closure can see (it has to, as each invocation of the factory function
+// creates a new instance, and closure only optimizes those instances, and not
+// code on the outside to handle creating the instances and caching between
+// them).
+/**
+ * @suppress {undefinedVars}
+ */
+var cachedModule;

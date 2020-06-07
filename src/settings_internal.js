@@ -210,3 +210,8 @@ var EXPECT_MAIN = 1;
 // Provide and export a .ready() Promise. This is currently used by default with
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = 1;
+
+// In modularize mode, we can in some cases cache the compiled module so that
+// multiple invocations of the factory function do not need to recompile the
+// code, and only instantiate it.
+var CACHE_MODULARIZE_MODULE = 0;

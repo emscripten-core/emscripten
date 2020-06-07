@@ -1429,6 +1429,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.MINIMAL_RUNTIME and final_suffix == '.html' and \
          not shared.Settings.USE_PTHREADS:
         shared.Settings.EXPORT_READY_PROMISE = 0
+      # cache the compiled module if compilation is synchronous (if it is async
+      # then multiple calls to the factory function will race anyhow, and we
+      # can't guarantee proper cachine), and just in the normal runtime for now
+      # (TODO: consider if worth it for minimal - as the main use cases may be
+      # in the shell anyhow, perhaps not)
+      shared.Settings.CACHE_MODULARIZE_MODULE = not shared.Settings.WASM_ASYNC_COMPILATION and not shared.Settings.MINIMAL_RUNTIME
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -3422,10 +3428,10 @@ function(%(EXPORT_NAME)s) {
       if shared.Settings.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
     lines = ['var _scriptDir = %s;' % script_url, script_url_node]
-    if not shared.Settings.WASM_ASYNC_COMPILATION:
+    if shared.Settings.CACHE_MODULARIZE_MODULE:
       # when we do sync compilation we can cache the compiled module to save
       # time on later factory invocations
-      lines.append('var compiledModule;')
+      lines.append('var cachedModule;')
     lines.append('return (%s);' % src)
     src = '''
 var %(EXPORT_NAME)s = (function() {

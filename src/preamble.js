@@ -1054,55 +1054,55 @@ function createWasm() {
     var binary;
     try {
       // First, get a module.
-#if MODULARIZE
+#if CACHE_MODULARIZE_MODULE
       // After the first compilation cache the module, so we don't compile it each
       // time the modularize factory is called. (Note that we could do this in
       // async as well, but racing could lead to multiple compilations there
       // anyhow.)
-      if (compiledModule) {
-        module = compiledModule;
+      if (cachedModule) {
+        module = cachedModule;
       } else {
-#endif // MODULARIZE
-      binary = getBinary();
+#endif // CACHE_MODULARIZE_MODULE
+        binary = getBinary();
 #if NODE_CODE_CACHING
-      if (ENVIRONMENT_IS_NODE) {
-        var v8 = require('v8');
-        // Include the V8 version in the cache name, so that we don't try to
-        // load cached code from another version, which fails silently (it seems
-        // to load ok, but we do actually recompile the binary every time).
-        var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
-        cachedCodeFile = locateFile(cachedCodeFile);
-        if (!nodeFS) nodeFS = require('fs');
-        var hasCached = nodeFS.existsSync(cachedCodeFile);
-        if (hasCached) {
+        if (ENVIRONMENT_IS_NODE) {
+          var v8 = require('v8');
+          // Include the V8 version in the cache name, so that we don't try to
+          // load cached code from another version, which fails silently (it seems
+          // to load ok, but we do actually recompile the binary every time).
+          var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
+          cachedCodeFile = locateFile(cachedCodeFile);
+          if (!nodeFS) nodeFS = require('fs');
+          var hasCached = nodeFS.existsSync(cachedCodeFile);
+          if (hasCached) {
 #if RUNTIME_LOGGING
-          err('NODE_CODE_CACHING: loading module');
+            err('NODE_CODE_CACHING: loading module');
 #endif
-          try {
-            module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
-          } catch (e) {
-            err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
-            // Save the new compiled code when we have it.
-            hasCached = false;
+            try {
+              module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
+            } catch (e) {
+              err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
+              // Save the new compiled code when we have it.
+              hasCached = false;
+            }
           }
         }
-      }
-      if (!module) {
-        module = new WebAssembly.Module(binary);
-      }
-      if (ENVIRONMENT_IS_NODE && !hasCached) {
+        if (!module) {
+          module = new WebAssembly.Module(binary);
+        }
+        if (ENVIRONMENT_IS_NODE && !hasCached) {
 #if RUNTIME_LOGGING
-        err('NODE_CODE_CACHING: saving module');
+          err('NODE_CODE_CACHING: saving module');
 #endif
-        nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
-      }
+          nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
+        }
 #else // NODE_CODE_CACHING
-      module = new WebAssembly.Module(binary);
+        module = new WebAssembly.Module(binary);
 #endif // NODE_CODE_CACHING
-#if MODULARIZE
-      compiledModule = module;
+#if CACHE_MODULARIZE_MODULE
+        cachedModule = module;
       }
-#endif
+#endif // CACHE_MODULARIZE_MODULE
 
       // Next, get an instance.
       instance = new WebAssembly.Instance(module, info);
