@@ -9295,7 +9295,6 @@ int main () {
         test(['-s', 'WASM=0'], closure, opt)
         test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  @unittest.skip('allow binaryen improvements to roll')
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1',
