@@ -1089,11 +1089,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # what is left contains no more |-x OPT| things
     skip = False
     for i in range(len(newargs)):
+      arg = newargs[i]
+
       if skip:
+        if arg == '-Xclang':
+          continue
         skip = False
         continue
 
-      arg = newargs[i]
       if arg in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
                  '-Xpreprocessor', '-include', '-imacros', '-idirafter',
                  '-iprefix', '-iwithprefix', '-iwithprefixbefore',
