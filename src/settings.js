@@ -1217,6 +1217,14 @@ var WASM = 1;
 // environments the expectation is to create the memory in the wasm itself.
 // Doing so prevents some possible JS optimizations, so we only do it behind
 // this flag.
+//
+// When this flag is set we do not legalize the JS interface, since the wasm is
+// meant to run in a wasm VM, which can handle i64s directly. If we legalized it
+// the wasm VM would not recognize the API. However, this means that the
+// optional JS emitted won't run if you use a JS API with an i64. You can use
+// the WASM_BIGINT option to avoid that problem by using BigInts for i64s which
+// means we don't need to legalize for JS (but this requires a new enough JS
+// VM).
 var STANDALONE_WASM = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You
@@ -1291,7 +1299,6 @@ var EMIT_PRODUCERS_SECTION = 0;
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
 // Emits emscripten license info in the JS output.
-// [upstream-only]
 var EMIT_EMSCRIPTEN_LICENSE = 0;
 
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
@@ -1744,6 +1751,14 @@ var DEFAULT_TO_CXX = 1;
 // saves libc code size. You can flip this option on to get a libc with full
 // long double printing precision.
 var PRINTF_LONG_DOUBLE = 0;
+
+// Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
+// resulting in a .c file that you can compile with a C compiler to get a
+// native executable that works the same as the normal js+wasm. This will also
+// emit the wasm2c .h file. The output filenames will be X.wasm.c, X.wasm.h
+// if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
+// which avoids trampling a C file).
+var WASM2C = 0;
 
 //===========================================
 // Internal, used for testing only, from here

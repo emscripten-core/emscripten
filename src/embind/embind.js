@@ -1325,7 +1325,7 @@ var LibraryEmbind = {
                 // assume all fields are present without checking.
                 for (var fieldName in fields) {
                     if (!(fieldName in o)) {
-                        throw new TypeError('Missing field');
+                        throw new TypeError('Missing field:  "' + fieldName + '"');
                     }
                 }
                 var ptr = rawConstructor();

@@ -117,7 +117,11 @@ The following terms are used when referring to the SDK and :ref:`emsdk`:
     There are a number of different Emscripten SDK packages. These can be downloaded from :ref:`here <sdk-download-and-install>`.
 
   Active Tool/SDK
-    The :term:`emsdk` can store multiple versions of :term:`tools <Tool>` and :term:`SDKs <SDK>`. The active tools/SDK is the set of tools that are used by default on the *Emscripten Command Prompt*. This compiler configuration is stored in a user-specific persistent file (**~/.emscripten**) and can be changed using *emsdk*.
+    The :term:`emsdk` can store multiple versions of :term:`tools <Tool>` and
+    :term:`SDKs <SDK>`. The active tools/SDK is the set of tools that are used
+    by default on the *Emscripten Command Prompt*. This compiler configuration
+    is stored in an emsdk-specific config file (**.emscripten**) and can be
+    changed using *emsdk*.
 
   emsdk root directory
     The :term:`emsdk` can manage any number of :term:`tools <Tool>` and :term:`SDKs <SDK>`, and these are stored in :term:`subdirectories <SDK root directory>` of the *emsdk root directory*. The **emsdk root** is the directory specified when you first installed an SDK.

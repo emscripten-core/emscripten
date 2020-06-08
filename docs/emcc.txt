@@ -429,9 +429,9 @@ Options that are modified or new in *emcc* are listed below:
    If using this in combination with "--clear-cache", be sure to
    specify this argument first.
 
-   The Emscripten cache defaults to being located in the path name
-   stored in the "EM_CACHE" environment variable or
-   "~/.emscripten_cache".
+   The Emscripten cache defaults to "emscripten/cache" but can be
+   overridden using the "EM_CACHE" environment variable or "CACHE"
+   config setting.
 
 "--clear-cache"
    Manually clears the cache of compiled Emscripten system libraries
@@ -443,6 +443,9 @@ Options that are modified or new in *emcc* are listed below:
    weird problems related to cache incompatibilities, like *Clang*
    failing to link with library files. This also clears other cached
    data. After the cache is cleared, this process will exit.
+
+   By default this will also clear any download ports since the ports
+   directory is usually within the cache directory.
 
 "--clear-ports"
    Manually clears the local copies of ports from the Emscripten Ports
@@ -534,10 +537,11 @@ Options that are modified or new in *emcc* are listed below:
    multithreaded builds (-s USE_PTHREADS=1/2).
 
 "--em-config"
-   Specifies the location of the **.emscripten** configuration file
-   for the current compiler run. If not specified, the environment
-   variable "EM_CONFIG" is first read for this location. If neither
-   are specified, the default location **~/.emscripten** is used.
+   Specifies the location of the **.emscripten** configuration file.
+   If not specified emscripten will search for ".emscripten" first in
+   the emscripten directory itself, and then in the user's home
+   directory ("~/.emscripten"). This can be overridden using the
+   "EM_CONFIG" environment variable.
 
 "--default-obj-ext .ext"
    Specifies the file suffix to generate if the location of a

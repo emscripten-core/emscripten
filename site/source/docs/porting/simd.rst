@@ -39,11 +39,11 @@ SIMD-related bug reports are tracked in the `Emscripten bug tracker with the lab
 Compiling SIMD code targeting x86 SSE instruction set
 =====================================================
 
-Emscripten supports compiling existing x86 SSE utilizing codebases by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
+Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
 
-Currently only the SSE1 instruction set is supported.
+Currently only the SSE1 and SSE2 instruction sets are supported.
 
-The following table highlights the performance landscape that can be expected from the different SSE1 instrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
+The following table highlights the availability and expected performance of different SSE1 intrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
 For detailed information on each SSE intrinsic function, visit the excellent `Intel Intrinsics Guide on SSE1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE>`_.
 
@@ -70,7 +70,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_setr_ps
      - ✅ wasm_f32x4_make
    * - _mm_set_ss
-     - ⚠️ emulated with wasm_f32x4_make
+     - 💡 emulated with wasm_f32x4_make
    * - _mm_set_ps1 (_mm_set1_ps)
      - ✅ wasm_f32x4_splat
    * - _mm_setzero_ps
@@ -96,7 +96,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_store_ps
      - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` Unaligned store on x86 CPUs.
    * - _mm_stream_ps
-     - 🟡 wasm_v128_store. VM must guess type.
+     - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` No cache control in Wasm SIMD.
    * - _mm_prefetch
      - 💭 No-op.
    * - _mm_sfence
@@ -118,7 +118,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_movemask_ps
      - 💣 No Wasm SIMD support. Emulated in scalar. `simd/#131 <https://github.com/WebAssembly/simd/issues/131>`_
    * - _mm_move_ss
-     - 💡 emulated with a shuffle
+     - 💡 emulated with a shuffle. VM must guess type.
    * - _mm_add_ps
      - ✅ wasm_f32x4_add
    * - _mm_add_ss
@@ -290,3 +290,728 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
  - _mm_avg_pu8, _mm_avg_pu16, _mm_cvt_pi2ps, _mm_cvt_ps2pi, _mm_cvt_pi16_ps, _mm_cvt_pi32_ps, _mm_cvt_pi32x2_ps, _mm_cvt_pi8_ps, _mm_cvt_ps_pi16, _mm_cvt_ps_pi32, _mm_cvt_ps_pi8, _mm_cvt_pu16_ps, _mm_cvt_pu8_ps, _mm_cvtt_ps2pi, _mm_cvtt_pi16_ps, _mm_cvttps_pi32, _mm_extract_pi16, _mm_insert_pi16, _mm_maskmove_si64, _m_maskmovq, _mm_max_pi16, _mm_max_pu8, _mm_min_pi16, _mm_min_pu8, _mm_movemask_pi8, _mm_mulhi_pu16, _m_pavgb, _m_pavgw, _m_pextrw, _m_pinsrw, _m_pmaxsw, _m_pmaxub, _m_pminsw, _m_pminub, _m_pmovmskb, _m_pmulhuw, _m_psadbw, _m_pshufw, _mm_sad_pu8, _mm_shuffle_pi16 and _mm_stream_pi.
 
 Any code referencing these intrinsics will not compile.
+
+The following table highlights the availability and expected performance of different SSE2 intrinsics. Refer to `Intel Intrinsics Guide on SSE2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE2>`_.
+
+.. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_add_epi16
+     - ✅ wasm_i16x8_add
+   * - _mm_add_epi32
+     - ✅ wasm_i32x4_add
+   * - _mm_add_epi64
+     - ✅ wasm_i64x2_add
+   * - _mm_add_epi8
+     - ✅ wasm_i8x16_add
+   * - _mm_add_pd
+     - ✅ wasm_f64x2_add
+   * - _mm_add_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_adds_epi16
+     - ✅ wasm_i16x8_add_saturate
+   * - _mm_adds_epi8
+     - ✅ wasm_i8x16_add_saturate
+   * - _mm_adds_epu16
+     - ✅ wasm_u16x8_add_saturate
+   * - _mm_adds_epu8
+     - ✅ wasm_u8x16_add_saturate
+   * - _mm_and_pd
+     - 🟡 wasm_v128_and. VM must guess type.
+   * - _mm_and_si128
+     - 🟡 wasm_v128_and. VM must guess type.
+   * - _mm_andnot_pd
+     - 🟡 wasm_v128_andnot. VM must guess type.
+   * - _mm_andnot_si128
+     - 🟡 wasm_v128_andnot. VM must guess type.
+   * - _mm_avg_epu16
+     - ✅ wasm_u16x8_avgr
+   * - _mm_avg_epu8
+     - ✅ wasm_u8x16_avgr
+   * - _mm_castpd_ps
+     - ✅ no-op
+   * - _mm_castpd_si128
+     - ✅ no-op
+   * - _mm_castps_pd
+     - ✅ no-op
+   * - _mm_castps_si128
+     - ✅ no-op
+   * - _mm_castsi128_pd
+     - ✅ no-op
+   * - _mm_castsi128_ps
+     - ✅ no-op
+   * - _mm_clflush
+     - 💭 No-op. No cache hinting in Wasm SIMD.
+   * - _mm_cmpeq_epi16
+     - ✅ wasm_i16x8_eq
+   * - _mm_cmpeq_epi32
+     - ✅ wasm_i32x4_eq
+   * - _mm_cmpeq_epi8
+     - ✅ wasm_i8x16_eq
+   * - _mm_cmpeq_pd
+     - ✅ wasm_f64x2_eq
+   * - _mm_cmpeq_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_cmpge_pd
+     - ✅ wasm_f64x2_ge
+   * - _mm_cmpge_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_cmpgt_epi16
+     - ✅ wasm_i16x8_gt
+   * - _mm_cmpgt_epi32
+     - ✅ wasm_i32x4_gt
+   * - _mm_cmpgt_epi8
+     - ✅ wasm_i8x16_gt
+   * - _mm_cmpgt_pd
+     - ✅ wasm_f64x2_gt
+   * - _mm_cmpgt_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_cmple_pd
+     - ✅ wasm_f64x2_le
+   * - _mm_cmple_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_cmplt_epi16
+     - ✅ wasm_i16x8_lt
+   * - _mm_cmplt_epi32
+     - ✅ wasm_i32x4_lt
+   * - _mm_cmplt_epi8
+     - ✅ wasm_i8x16_lt
+   * - _mm_cmplt_pd
+     - ✅ wasm_f64x2_lt
+   * - _mm_cmplt_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_cmpneq_pd
+     - ✅ wasm_f64x2_ne
+   * - _mm_cmpneq_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_cmpnge_pd
+     - ⚠️ emulated with not+ge
+   * - _mm_cmpnge_sd
+     - ⚠️ emulated with not+ge+shuffle
+   * - _mm_cmpngt_pd
+     - ⚠️ emulated with not+gt
+   * - _mm_cmpngt_sd
+     - ⚠️ emulated with not+gt+shuffle
+   * - _mm_cmpnle_pd
+     - ⚠️ emulated with not+le
+   * - _mm_cmpnle_sd
+     - ⚠️ emulated with not+le+shuffle
+   * - _mm_cmpnlt_pd
+     - ⚠️ emulated with not+lt
+   * - _mm_cmpnlt_sd
+     - ⚠️ emulated with not+lt+shuffle
+   * - _mm_cmpord_pd
+     - ❌ emulated with 2xcmp+and
+   * - _mm_cmpord_sd
+     - ❌ emulated with 2xcmp+and+shuffle
+   * - _mm_cmpunord_pd
+     - ❌ emulated with 2xcmp+or
+   * - _mm_cmpunord_sd
+     - ❌ emulated with 2xcmp+or+shuffle
+   * - _mm_comieq_sd
+     - ❌ scalarized
+   * - _mm_comige_sd
+     - ❌ scalarized
+   * - _mm_comigt_sd
+     - ❌ scalarized
+   * - _mm_comile_sd
+     - ❌ scalarized
+   * - _mm_comilt_sd
+     - ❌ scalarized
+   * - _mm_comineq_sd
+     - ❌ scalarized
+   * - _mm_cvtepi32_pd
+     - ❌ scalarized
+   * - _mm_cvtepi32_ps
+     - ✅ wasm_f32x4_convert_i32x4
+   * - _mm_cvtpd_epi32
+     - ❌ scalarized
+   * - _mm_cvtpd_ps
+     - ❌ scalarized
+   * - _mm_cvtps_epi32
+     - ❌ scalarized
+   * - _mm_cvtps_pd
+     - ❌ scalarized
+   * - _mm_cvtsd_f64
+     - ✅ wasm_f64x2_extract_lane
+   * - _mm_cvtsd_si32
+     - ❌ scalarized
+   * - _mm_cvtsd_si64
+     - ❌ scalarized
+   * - _mm_cvtsd_si64x
+     - ❌ scalarized
+   * - _mm_cvtsd_ss
+     - ❌ scalarized
+   * - _mm_cvtsi128_si32
+     - ✅ wasm_i32x4_extract_lane
+   * - _mm_cvtsi128_si64 (_mm_cvtsi128_si64x)
+     - ✅ wasm_i64x2_extract_lane
+   * - _mm_cvtsi32_sd
+     - ❌ scalarized
+   * - _mm_cvtsi32_si128
+     - 💡 emulated with wasm_i32x4_make
+   * - _mm_cvtsi64_sd (_mm_cvtsi64x_sd)
+     - ❌ scalarized
+   * - _mm_cvtsi64_si128 (_mm_cvtsi64x_si128)
+     - 💡 emulated with wasm_i64x2_make
+   * - _mm_cvtss_sd
+     - ❌ scalarized
+   * - _mm_cvttpd_epi32
+     - ❌ scalarized
+   * - _mm_cvttps_epi32
+     - ❌ scalarized
+   * - _mm_cvttsd_si32
+     - ❌ scalarized
+   * - _mm_cvttsd_si64 (_mm_cvttsd_si64x)
+     - ❌ scalarized
+   * - _mm_div_pd
+     - ✅ wasm_f64x2_div
+   * - _mm_div_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_extract_epi16
+     - ✅ wasm_u16x8_extract_lane
+   * - _mm_insert_epi16
+     - ✅ wasm_i16x8_replace_lane
+   * - _mm_lfence
+     - ⚠️ A full barrier in multithreaded builds.
+   * - _mm_load_pd
+     - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
+   * - _mm_load1_pd (_mm_load_pd1)
+     - 🟡 Virtual. v64x2.load_splat, VM must guess type.
+   * - _mm_load_sd
+     - ❌ emulated with wasm_f64x2_make
+   * - _mm_load_si128
+     - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
+   * - _mm_loadh_pd
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with scalar loads + shuffle.
+   * - _mm_loadl_epi64
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with scalar loads + shuffle.
+   * - _mm_loadl_pd
+     - ❌ No Wasm SIMD support. :raw-html:`<br />` Emulated with scalar loads + shuffle.
+   * - _mm_loadr_pd
+     - 💡 Virtual. Simd load + shuffle.
+   * - _mm_loadu_pd
+     - 🟡 wasm_v128_load. VM must guess type.
+   * - _mm_loadu_si128
+     - 🟡 wasm_v128_load. VM must guess type.
+   * - _mm_loadu_si32
+     - ❌ emulated with wasm_i32x4_make
+   * - _mm_madd_epi16
+     - ❌ scalarized
+   * - _mm_maskmoveu_si128
+     - ❌ scalarized
+   * - _mm_max_epi16
+     - ✅ wasm_i16x8_max
+   * - _mm_max_epu8
+     - ✅ wasm_u8x16_max
+   * - _mm_max_pd
+     - TODO: migrate to wasm_f64x2_pmax
+   * - _mm_max_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_mfence
+     - ⚠️ A full barrier in multithreaded builds.
+   * - _mm_min_epi16
+     - ✅ wasm_i16x8_min
+   * - _mm_min_epu8
+     - ✅ wasm_u8x16_min
+   * - _mm_min_pd
+     - TODO: migrate to wasm_f64x2_pmin
+   * - _mm_min_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_move_epi64
+     - 💡 emulated with a shuffle. VM must guess type.
+   * - _mm_move_sd
+     - 💡 emulated with a shuffle. VM must guess type.
+   * - _mm_movemask_epi8
+     - ❌ scalarized
+   * - _mm_movemask_pd
+     - ❌ scalarized
+   * - _mm_mul_epu32
+     - ❌ scalarized
+   * - _mm_mul_pd
+     - ✅ wasm_f64x2_mul
+   * - _mm_mul_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_mulhi_epi16
+     - ❌ scalarized
+   * - _mm_mulhi_epu16
+     - ❌ scalarized
+   * - _mm_mullo_epi16
+     - ✅ wasm_i16x8_mul
+   * - _mm_or_pd
+     - 🟡 wasm_v128_or. VM must guess type.
+   * - _mm_or_si128
+     - 🟡 wasm_v128_or. VM must guess type.
+   * - _mm_packs_epi16
+     - ❌ scalarized
+   * - _mm_packs_epi32
+     - ❌ scalarized
+   * - _mm_packus_epi16
+     - ❌ scalarized
+   * - _mm_pause
+     - 💭 No-op.
+   * - _mm_sad_epu8
+     - ❌ scalarized
+   * - _mm_set_epi16
+     - ✅ wasm_i16x8_make
+   * - _mm_set_epi32
+     - ✅ wasm_i32x4_make
+   * - _mm_set_epi64 (_mm_set_epi64x)
+     - ✅ wasm_i64x2_make
+   * - _mm_set_epi8
+     - ✅ wasm_i8x16_make
+   * - _mm_set_pd
+     - ✅ wasm_f64x2_make
+   * - _mm_set_sd
+     - 💡 emulated with wasm_f64x2_make
+   * - _mm_set1_epi16
+     - ✅ wasm_i16x8_splat
+   * - _mm_set1_epi32
+     - ✅ wasm_i32x4_splat
+   * - _mm_set1_epi64 (_mm_set1_epi64x)
+     - ✅ wasm_i64x2_splat
+   * - _mm_set1_epi8
+     - ✅ wasm_i8x16_splat
+   * - _mm_set1_pd (_mm_set_pd1)
+     - ✅ wasm_f64x2_splat
+   * - _mm_setr_epi16
+     - ✅ wasm_i16x8_make
+   * - _mm_setr_epi32
+     - ✅ wasm_i32x4_make
+   * - _mm_setr_epi64
+     - ✅ wasm_i64x2_make
+   * - _mm_setr_epi8
+     - ✅ wasm_i8x16_make
+   * - _mm_setr_pd
+     - ✅ wasm_f64x2_make
+   * - _mm_setzero_pd
+     - 💡 emulated with wasm_f64x2_const
+   * - _mm_setzero_si128
+     - 💡 emulated with wasm_i64x2_const
+   * - _mm_shuffle_epi32
+     - 💡 emulated with a general shuffle
+   * - _mm_shuffle_pd
+     - 💡 emulated with a general shuffle
+   * - _mm_shufflehi_epi16
+     - 💡 emulated with a general shuffle
+   * - _mm_shufflelo_epi16
+     - 💡 emulated with a general shuffle
+   * - _mm_sll_epi16
+     - ❌ scalarized
+   * - _mm_sll_epi32
+     - ❌ scalarized
+   * - _mm_sll_epi64
+     - ❌ scalarized
+   * - _mm_slli_epi16
+     - 💡 wasm_i16x8_shl :raw-html:`<br />` ✅ if shift count is immediate constant.
+   * - _mm_slli_epi32
+     - 💡 wasm_i32x4_shl :raw-html:`<br />` ✅ if shift count is immediate constant.
+   * - _mm_slli_epi64
+     - 💡 wasm_i64x2_shl :raw-html:`<br />` ✅ if shift count is immediate constant.
+   * - _mm_slli_si128 (_mm_bslli_si128)
+     - 💡 emulated with a general shuffle
+   * - _mm_sqrt_pd
+     - ✅ wasm_f64x2_sqrt
+   * - _mm_sqrt_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_sra_epi16
+     - ❌ scalarized
+   * - _mm_sra_epi32
+     - ❌ scalarized
+   * - _mm_srai_epi16
+     - 💡 wasm_i16x8_shr :raw-html:`<br />` ✅ if shift count is immediate constant.
+   * - _mm_srai_epi32
+     - 💡 wasm_i32x4_shr :raw-html:`<br />` ✅ if shift count is immediate constant.
+   * - _mm_srl_epi16
+     - ❌ scalarized
+   * - _mm_srl_epi32
+     - ❌ scalarized
+   * - _mm_srl_epi64
+     - ❌ scalarized
+   * - _mm_srli_epi16
+     - 💡 wasm_u16x8_shr :raw-html:`<br />` ✅ if shift count is immediate constant.
+   * - _mm_srli_epi32
+     - 💡 wasm_u32x4_shr :raw-html:`<br />` ✅ if shift count is immediate constant.
+   * - _mm_srli_epi64
+     - 💡 wasm_u64x2_shr :raw-html:`<br />` ✅ if shift count is immediate constant.
+   * - _mm_srli_si128 (_mm_bsrli_si128)
+     - 💡 emulated with a general shuffle
+   * - _mm_store_pd
+     - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` Unaligned store on x86 CPUs.
+   * - _mm_store_sd
+     - 💡 emulated with scalar store
+   * - _mm_store_si128
+     - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` Unaligned store on x86 CPUs.
+   * - _mm_store1_pd (_mm_store_pd1)
+     - 🟡 Virtual. Emulated with shuffle. :raw-html:`<br />` Unaligned store on x86 CPUs.
+   * - _mm_storeh_pd
+     - ❌ shuffle + scalar stores
+   * - _mm_storel_epi64
+     - ❌ scalar store
+   * - _mm_storel_pd
+     - ❌ scalar store
+   * - _mm_storer_pd
+     - ❌ shuffle + scalar stores
+   * - _mm_storeu_pd
+     - 🟡 wasm_v128_store. VM must guess type.
+   * - _mm_storeu_si128
+     - 🟡 wasm_v128_store. VM must guess type.
+   * - _mm_storeu_si32
+     - 💡 emulated with scalar store
+   * - _mm_stream_pd
+     - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` No cache control in Wasm SIMD.
+   * - _mm_stream_si128
+     - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` No cache control in Wasm SIMD.
+   * - _mm_stream_si32
+     - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` No cache control in Wasm SIMD.
+   * - _mm_stream_si64
+     - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` No cache control in Wasm SIMD.
+   * - _mm_sub_epi16
+     - ✅ wasm_i16x8_sub
+   * - _mm_sub_epi32
+     - ✅ wasm_i32x4_sub
+   * - _mm_sub_epi64
+     - ✅ wasm_i64x2_sub
+   * - _mm_sub_epi8
+     - ✅ wasm_i8x16_sub
+   * - _mm_sub_pd
+     - ✅ wasm_f64x2_sub
+   * - _mm_sub_sd
+     - ⚠️ emulated with a shuffle
+   * - _mm_subs_epi16
+     - ✅ wasm_i16x8_sub_saturate
+   * - _mm_subs_epi8
+     - ✅ wasm_i8x16_sub_saturate
+   * - _mm_subs_epu16
+     - ✅ wasm_u16x8_sub_saturate
+   * - _mm_subs_epu8
+     - ✅ wasm_u8x16_sub_saturate
+   * - _mm_ucomieq_sd
+     - ❌ scalarized
+   * - _mm_ucomige_sd
+     - ❌ scalarized
+   * - _mm_ucomigt_sd
+     - ❌ scalarized
+   * - _mm_ucomile_sd
+     - ❌ scalarized
+   * - _mm_ucomilt_sd
+     - ❌ scalarized
+   * - _mm_ucomineq_sd
+     - ❌ scalarized
+   * - _mm_undefined_pd
+     - ✅ Virtual
+   * - _mm_undefined_si128
+     - ✅ Virtual
+   * - _mm_unpackhi_epi16
+     - 💡 emulated with a shuffle
+   * - _mm_unpackhi_epi32
+     - 💡 emulated with a shuffle
+   * - _mm_unpackhi_epi64
+     - 💡 emulated with a shuffle
+   * - _mm_unpackhi_epi8
+     - 💡 emulated with a shuffle
+   * - _mm_unpachi_pd
+     - 💡 emulated with a shuffle
+   * - _mm_unpacklo_epi16
+     - 💡 emulated with a shuffle
+   * - _mm_unpacklo_epi32
+     - 💡 emulated with a shuffle
+   * - _mm_unpacklo_epi64
+     - 💡 emulated with a shuffle
+   * - _mm_unpacklo_epi8
+     - 💡 emulated with a shuffle
+   * - _mm_unpacklo_pd
+     - 💡 emulated with a shuffle
+   * - _mm_xor_pd
+     - 🟡 wasm_v128_or. VM must guess type.
+   * - _mm_xor_si128
+     - 🟡 wasm_v128_or. VM must guess type.
+
+⚫ The following extensions that SSE2 instruction set brought to 64-bit wide MMX registers are not available:
+ - _mm_add_si64, _mm_movepi64_pi64, _mm_movpi64_epi64, _mm_mul_su32, _mm_sub_si64, _mm_cvtpd_pi32, _mm_cvtpi32_pd, _mm_cvttpd_pi32
+
+Any code referencing these intrinsics will not compile.
+
+The following table highlights the availability and expected performance of different SSE3 intrinsics. Refer to `Intel Intrinsics Guide on SSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE3>`_.
+
+.. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_lddqu_si128
+     - ✅ wasm_v128_load.
+   * - _mm_addsub_ps
+     - ⚠️ emulated with a SIMD add+mul+const
+   * - _mm_hadd_ps
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_hsub_ps
+     - ⚠️ emulated with a SIMD sub+two shuffles
+   * - _mm_movehdup_ps
+     - 💡 emulated with a general shuffle
+   * - _mm_moveldup_ps
+     - 💡 emulated with a general shuffle
+   * - _mm_addsub_pd
+     - ⚠️ emulated with a SIMD add+mul+const
+   * - _mm_hadd_pd
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_hsub_pd
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_loaddup_pd
+     - 🟡 Scalar load + splat.
+   * - _mm_movedup_pd
+     - 💡 emulated with a general shuffle
+   * - _MM_GET_DENORMALS_ZERO_MODE
+     - ✅ Always returns _MM_DENORMALS_ZERO_ON. I.e. denormals are available.
+   * - _MM_SET_DENORMALS_ZERO_MODE
+     - ⚫ Not available. Fixed to _MM_DENORMALS_ZERO_ON.
+   * - _mm_monitor
+     - ⚫ Not available.
+   * - _mm_mwait
+     - ⚫ Not available.
+
+The following table highlights the availability and expected performance of different SSSE3 intrinsics. Refer to `Intel Intrinsics Guide on SSSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSSE3>`_.
+
+.. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_abs_epi8
+     - ⚠️ emulated with a SIMD shift+xor+add
+   * - _mm_abs_epi16
+     - ⚠️ emulated with a SIMD shift+xor+add
+   * - _mm_abs_epi32
+     - ⚠️ emulated with a SIMD shift+xor+add
+   * - _mm_alignr_epi8
+     - ⚠️ emulated with a SIMD or+two shifts
+   * - _mm_hadd_epi16
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_hadd_epi32
+     - ⚠️ emulated with a SIMD add+two shuffles
+   * - _mm_hadds_epi16
+     - ⚠️ emulated with a SIMD adds+two shuffles
+   * - _mm_hsub_epi16
+     - ⚠️ emulated with a SIMD sub+two shuffles
+   * - _mm_hsub_epi32
+     - ⚠️ emulated with a SIMD sub+two shuffles
+   * - _mm_hsubs_epi16
+     - ⚠️ emulated with a SIMD subs+two shuffles
+   * - _mm_maddubs_epi16
+     - 💣 scalarized
+   * - _mm_mulhrs_epi16
+     - 💣 scalarized (TODO: emulatable in SIMD?)
+   * - _mm_shuffle_epi8
+     - 💣 scalarized (TODO: use wasm_v8x16_swizzle when available)
+   * - _mm_sign_epi8
+     - ⚠️ emulated with a SIMD complex shuffle+cmp+xor+andnot
+   * - _mm_sign_epi16
+     - ⚠️ emulated with a SIMD shr+cmp+xor+andnot
+   * - _mm_sign_epi32
+     - ⚠️ emulated with a SIMD shr+cmp+xor+andnot
+
+⚫ The SSSE3 functions that deal with 64-bit wide MMX registers are not available:
+ -  _mm_abs_pi8, _mm_abs_pi16, _mm_abs_pi32, _mm_alignr_pi8, _mm_hadd_pi16, _mm_hadd_pi32, _mm_hadds_pi16, _mm_hsub_pi16, _mm_hsub_pi32, _mm_hsubs_pi16, _mm_maddubs_pi16, _mm_mulhrs_pi16, _mm_shuffle_pi8, _mm_sign_pi8, _mm_sign_pi16 and _mm_sign_pi32
+
+Any code referencing these intrinsics will not compile.
+
+The following table highlights the availability and expected performance of different SSE4.1 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_1>`_.
+
+.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_blend_epi16
+     - 💡 emulated with a general shuffle
+   * - _mm_blend_pd
+     - 💡 emulated with a general shuffle
+   * - _mm_blend_ps
+     - 💡 emulated with a general shuffle
+   * - _mm_blendv_epi8
+     - ⚠️ emulated with a SIMD shr+and+andnot+or
+   * - _mm_blendv_pd
+     - ⚠️ emulated with a SIMD shr+and+andnot+or
+   * - _mm_blendv_ps
+     - ⚠️ emulated with a SIMD shr+and+andnot+or
+   * - _mm_ceil_pd
+     - ❌ scalarized
+   * - _mm_ceil_ps
+     - ❌ scalarized
+   * - _mm_ceil_sd
+     - ❌ scalarized
+   * - _mm_ceil_ss
+     - ❌ scalarized
+   * - _mm_cmpeq_epi64
+     - ❌ scalarized
+   * - _mm_cvtepi16_epi32
+     - ✅ wasm_i32x4_widen_low_i16x8
+   * - _mm_cvtepi16_epi64
+     - ❌ scalarized
+   * - _mm_cvtepi32_epi64
+     - ❌ scalarized
+   * - _mm_cvtepi8_epi16
+     - ✅ wasm_i16x8_widen_low_i8x16
+   * - _mm_cvtepi8_epi32
+     - ❌ scalarized
+   * - _mm_cvtepi8_epi64
+     - ❌ scalarized
+   * - _mm_cvtepu16_epi32
+     - ✅ wasm_i32x4_widen_low_u16x8
+   * - _mm_cvtepu16_epi64
+     - ❌ scalarized
+   * - _mm_cvtepu32_epi64
+     - ❌ scalarized
+   * - _mm_cvtepu8_epi16
+     - ✅ wasm_i16x8_widen_low_u8x16
+   * - _mm_cvtepu8_epi32
+     - ❌ scalarized
+   * - _mm_cvtepu8_epi64
+     - ❌ scalarized
+   * - _mm_dp_pd
+     - ⚠️ emulated with SIMD mul+add+setzero+2xblend
+   * - _mm_dp_ps
+     - ⚠️ emulated with SIMD mul+add+setzero+2xblend
+   * - _mm_extract_epi32
+     - ✅ wasm_i32x4_extract_lane
+   * - _mm_extract_epi64
+     - ✅ wasm_i64x2_extract_lane
+   * - _mm_extract_epi8
+     - ✅ wasm_u8x16_extract_lane
+   * - _mm_extract_ps
+     - ✅ wasm_i32x4_extract_lane
+   * - _mm_floor_pd
+     - ❌ scalarized
+   * - _mm_floor_ps
+     - ❌ scalarized
+   * - _mm_floor_sd
+     - ❌ scalarized
+   * - _mm_floor_ss
+     - ❌ scalarized
+   * - _mm_insert_epi32
+     - ✅ wasm_i32x4_replace_lane
+   * - _mm_insert_epi64
+     - ✅ wasm_i64x2_replace_lane
+   * - _mm_insert_epi8
+     - ✅ wasm_i8x16_replace_lane
+   * - _mm_insert_ps
+     - ⚠️ emulated with generic non-SIMD-mapping shuffles
+   * - _mm_max_epi32
+     - ✅ wasm_i32x4_max
+   * - _mm_max_epi8
+     - ✅ wasm_i8x16_max
+   * - _mm_max_epu16
+     - ✅ wasm_u16x8_max
+   * - _mm_max_epu32
+     - ✅ wasm_u32x4_max
+   * - _mm_min_epi32
+     - ✅ wasm_i32x4_min
+   * - _mm_min_epi8
+     - ✅ wasm_i8x16_min
+   * - _mm_min_epu16
+     - ✅ wasm_u16x8_min
+   * - _mm_min_epu32
+     - ✅ wasm_u32x4_min
+   * - _mm_minpos_epu16
+     - 💣 scalarized
+   * - _mm_mpsadbw_epu8
+     - 💣 scalarized
+   * - _mm_mul_epi32
+     - ❌ scalarized
+   * - _mm_mullo_epi32
+     - ✅ wasm_i32x4_mul
+   * - _mm_packus_epi32
+     - ✅ wasm_u16x8_narrow_i32x4
+   * - _mm_round_pd
+     - 💣 scalarized
+   * - _mm_round_ps
+     - 💣 scalarized
+   * - _mm_round_sd
+     - 💣 scalarized
+   * - _mm_round_ss
+     - 💣 scalarized
+   * - _mm_stream_load_si128
+     - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
+   * - _mm_test_all_ones
+     - ❌ scalarized
+   * - _mm_test_all_zeros
+     - ❌ scalarized
+   * - _mm_test_mix_ones_zeros
+     - ❌ scalarized
+   * - _mm_testc_si128
+     - ❌ scalarized
+   * - _mm_test_nzc_si128
+     - ❌ scalarized
+   * - _mm_testz_si128
+     - ❌ scalarized
+
+The following table highlights the availability and expected performance of different SSE4.2 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_2>`_.
+
+.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_cmpgt_epi64
+     - ❌ scalarized
+
+⚫ The SSE4.2 functions that deal with string comparisons and CRC calculations are not available:
+ - _mm_cmpestra, _mm_cmpestrc, _mm_cmpestri, _mm_cmpestrm, _mm_cmpestro, _mm_cmpestrs, _mm_cmpestrz, _mm_cmpistra, _mm_cmpistrc, _mm_cmpistri, _mm_cmpistrm, _mm_cmpistro, _mm_cmpistrs, _mm_cmpistrz, _mm_crc32_u16, _mm_crc32_u32, _mm_crc32_u64, _mm_crc32_u8
+
+Any code referencing these intrinsics will not compile.
+
+The following table highlights the availability and expected performance of different AVX intrinsics. Refer to `Intel Intrinsics Guide on AVX <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=AVX>`_.
+
+.. list-table:: x86 AVX intrinsics available via #include <immintrin.h>
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_broadcast_ss
+     - ✅ wasm_v32x4_load_splat
+   * - _mm_cmp_pd
+     - ⚠️ emulated with 1-2 SIMD cmp+and/or
+   * - _mm_cmp_ps
+     - ⚠️ emulated with 1-2 SIMD cmp+and/or
+   * - _mm_cmp_sd
+     - ⚠️ emulated with 1-2 SIMD cmp+and/or+move
+   * - _mm_cmp_ss
+     - ⚠️ emulated with 1-2 SIMD cmp+and/or+move
+   * - _mm_maskload_pd
+     - ⚠️ emulated with SIMD load+shift+and
+   * - _mm_maskload_ps
+     - ⚠️ emulated with SIMD load+shift+and
+   * - _mm_maskstore_pd
+     - ❌ scalarized
+   * - _mm_maskstore_ps
+     - ❌ scalarized
+   * - _mm_permute_pd
+     - 💡 emulated with a general shuffle
+   * - _mm_permute_ps
+     - 💡 emulated with a general shuffle
+   * - _mm_permutevar_pd
+     - 💣 scalarized
+   * - _mm_permutevar_ps
+     - 💣 scalarized
+   * - _mm_testc_pd
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testc_ps
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testnzc_pd
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testnzc_ps
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testz_pd
+     - 💣 emulated with complex SIMD+scalar sequence
+   * - _mm_testz_ps
+     - 💣 emulated with complex SIMD+scalar sequence
+
+Only the 128-bit wide instructions from AVX instruction set are available. 256-bit wide AVX instructions are not provided.

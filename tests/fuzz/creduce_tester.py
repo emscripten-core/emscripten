@@ -40,7 +40,7 @@ print('4) Compile JS-ly and compare')
 
 
 def try_js(args):
-  shared.run_process([shared.PYTHON, shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
+  shared.run_process([shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
                      [filename, '-o', js_filename])
   js = shared.run_js(js_filename, stderr=PIPE, engine=ENGINE)
   assert correct == js

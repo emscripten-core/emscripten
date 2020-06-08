@@ -16,6 +16,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(1, __rootpath__)
 
 from tools.toolchain_profiler import ToolchainProfiler
+from tools import building
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
@@ -431,7 +432,7 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
-    cores = 1 if source_map else shared.Building.get_num_cores()
+    cores = 1 if source_map else building.get_num_cores()
 
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
@@ -481,7 +482,7 @@ EMSCRIPTEN_FUNCS();
         if DEBUG:
           print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size / (1024 * 1024.)), file=sys.stderr)
         with ToolchainProfiler.profile_block('optimizer_pool'):
-          pool = shared.Building.get_multiprocessing_pool()
+          pool = building.get_multiprocessing_pool()
           filenames = pool.map(run_on_chunk, commands, chunksize=1)
       else:
         # We can't parallize, but still break into chunks to avoid uglify/node memory issues
@@ -512,8 +513,8 @@ EMSCRIPTEN_FUNCS();
         if closure:
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)
-          cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes,
-                                                 extra_closure_args=extra_closure_args)
+          cld = building.closure_compiler(cld, pretty='minifyWhitespace' not in passes,
+                                          extra_closure_args=extra_closure_args)
           temp_files.note(cld)
         elif cleanup:
           if DEBUG:
@@ -521,7 +522,7 @@ EMSCRIPTEN_FUNCS();
           acorn_passes = ['JSDCE']
           if 'minifyWhitespace' in passes:
             acorn_passes.append('minifyWhitespace')
-          cld = shared.Building.acorn_optimizer(cld, acorn_passes)
+          cld = building.acorn_optimizer(cld, acorn_passes)
           temp_files.note(cld)
         coutput = open(cld).read()
 

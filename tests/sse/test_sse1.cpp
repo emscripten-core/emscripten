@@ -1,13 +1,16 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
-
+/*
+ * Copyright 2020 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
 // This file uses SSE1 by calling different functions with different interesting inputs and prints the results.
 // Use a diff tool to compare the results between platforms.
 
 #include <xmmintrin.h>
 #include "test_sse.h"
+
+bool testNaNBits = true;
 
 int main()
 {

@@ -58,9 +58,13 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_testsuite
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, asbytes, safe_copy, Settings
-from tools import jsrun, shared, line_endings
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
+from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
+from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
+from tools.shared import EM_BUILD_VERBOSE, CLANG_CC
+from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete
+from tools.shared import asbytes, safe_copy, Settings
+from tools import jsrun, shared, line_endings, building
 
 
 def path_from_root(*pathelems):
@@ -275,7 +279,7 @@ core_test_modes = [
   'strict'
 ]
 
-if shared.Settings.WASM_BACKEND:
+if Settings.WASM_BACKEND:
   core_test_modes += [
     'wasm2js0',
     'wasm2js1',
@@ -306,7 +310,7 @@ non_core_test_modes = [
   'benchmark',
 ]
 
-if shared.Settings.WASM_BACKEND:
+if Settings.WASM_BACKEND:
   non_core_test_modes += [
     'asan',
     'lsan',
@@ -461,6 +465,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.env = {}
     self.temp_files_before_run = []
 
+    if not Settings.WASM_BACKEND:
+      os.environ['EMCC_ALLOW_FASTCOMP'] = '1'
+
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
         for dirname in dirnames:
@@ -472,13 +479,18 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if EMTEST_SAVE_DIR:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      if EMTEST_SAVE_DIR != 2 and os.path.exists(self.working_dir):
-        # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
-        # expect this.  EMTEST_SAVE_DIR=2 can be used to keep the old contents for the new test
-        # run. This can be useful when iterating on a given test with extra files you want to keep
-        # around in the output directory.
-        delete_contents(self.working_dir)
+      if os.path.exists(self.working_dir):
+        if EMTEST_SAVE_DIR == 2:
+          print('Not clearing existing test directory')
+        else:
+          print('Clearing existing test directory')
+          # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
+          # expect this.  EMTEST_SAVE_DIR=2 can be used to keep the old contents for the new test
+          # run. This can be useful when iterating on a given test with extra files you want to keep
+          # around in the output directory.
+          delete_contents(self.working_dir)
       else:
+        print('Creating new test output directory')
         ensure_dir(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
@@ -598,28 +610,28 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if input_file.endswith(('.bc', '.o')):
         if input_file != output_obj:
           shutil.copy(input_file, output_obj)
-        Building.llvm_dis(output_obj, output_ll)
+        building.llvm_dis(output_obj, output_ll)
       else:
         shutil.copy(input_file, output_ll)
         fix_target(output_ll)
 
       if build_ll_hook:
         need_post = build_ll_hook(output_file)
-      Building.llvm_as(output_ll, output_obj)
+      building.llvm_as(output_ll, output_obj)
       shutil.move(output_ll, output_ll + '.pre') # for comparisons later
-      Building.llvm_dis(output_obj, output_ll)
+      building.llvm_dis(output_obj, output_ll)
       if build_ll_hook and need_post:
         build_ll_hook(output_file)
-        Building.llvm_as(output_ll, output_obj)
+        building.llvm_as(output_ll, output_obj)
         shutil.move(output_ll, output_ll + '.post') # for comparisons later
-        Building.llvm_dis(output_obj, output_ll)
+        building.llvm_dis(output_obj, output_ll)
 
-      Building.llvm_as(output_ll, output_obj)
+      building.llvm_as(output_ll, output_obj)
     else:
       if input_file.endswith('.ll'):
         safe_copy(input_file, output_ll)
         fix_target(output_ll)
-        Building.llvm_as(output_ll, output_obj)
+        building.llvm_as(output_ll, output_obj)
       else:
         safe_copy(input_file, output_obj)
 
@@ -683,7 +695,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           os.remove(f + '.o')
         except OSError:
           pass
-        args = [PYTHON, compiler] + self.get_emcc_args(main_file=True) + \
+        args = [compiler] + self.get_emcc_args(main_file=True) + \
                ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -695,7 +707,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(additional_files) + len(libraries):
         shutil.move(object_file, object_file + '.alone')
         inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
-        Building.link_to_object(inputs, object_file)
+        building.link_to_object(inputs, object_file)
         if not os.path.exists(object_file):
           print("Failed to link LLVM binaries:\n\n", object_file)
           self.fail("Linkage error")
@@ -704,11 +716,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.prep_ll_file(filename, object_file, build_ll_hook=build_ll_hook)
 
       # BC => JS
-      Building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
+      building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = all_sources + libraries
-      args = [PYTHON, compiler] + self.get_emcc_args(main_file=True) + \
+      args = [compiler] + self.get_emcc_args(main_file=True) + \
           ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
@@ -765,7 +777,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return num_funcs
 
   def count_wasm_contents(self, wasm_binary, what):
-    out = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
+    out = run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
     # output is something like
     # [?]        : 125
     for line in out.splitlines():
@@ -775,7 +787,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
-    return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+    return run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
 
   def is_exported_in_wasm(self, name, wasm):
     wat = self.get_wasm_text(wasm)
@@ -1092,7 +1104,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=[]):
-      cmdv = [PYTHON, EMCC, src, '-o', os.path.splitext(src)[0] + so] + self.get_emcc_args()
+      cmdv = [EMCC, src, '-o', os.path.splitext(src)[0] + so] + self.get_emcc_args()
       cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
       run_process(cmdv)
 
@@ -1207,14 +1219,13 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       js_file = filename + '.o.js'
     self.assertExists(js_file)
 
-    # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
-    js_engines = self.filtered_js_engines(js_engines)
+    engines = self.filtered_js_engines(js_engines)
     # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
-    if len(js_engines) > 1 and not self.use_all_engines:
-      if SPIDERMONKEY_ENGINE in js_engines and not self.is_wasm_backend():
-        js_engines = [SPIDERMONKEY_ENGINE]
+    if len(engines) > 1 and not self.use_all_engines:
+      if SPIDERMONKEY_ENGINE in engines and not self.is_wasm_backend():
+        engines = [SPIDERMONKEY_ENGINE]
       else:
-        js_engines = js_engines[:1]
+        engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines
@@ -1222,10 +1233,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       wasm_engines = shared.WASM_ENGINES
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
-      js_engines += wasm_engines
-    if len(js_engines) == 0:
+      engines += wasm_engines
+      # wasm2c requires a working clang install which is missing on CI, or to
+      # use msvc which wasm2c doesn't support yet
+      if self.get_setting('WASM2C') and not WINDOWS:
+        # the "engine" to run wasm2c builds is clang that compiles the c
+        engines += [[CLANG_CC]]
+    if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
-    for engine in js_engines:
+    for engine in engines:
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
@@ -1665,7 +1681,7 @@ class BrowserCore(RunnerCore):
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
   def compile_btest(self, args):
-    run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
+    run_process([EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
@@ -1764,7 +1780,7 @@ def build_library(name,
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-  env = Building.get_building_env(native, True, cflags=cflags)
+  env = building.get_building_env(native, True, cflags=cflags)
   for k, v in env_init.items():
     env[k] = v
   if configure:
@@ -1773,7 +1789,7 @@ def build_library(name,
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
           stdout = out if EM_BUILD_VERBOSE < 2 else None
           stderr = err if EM_BUILD_VERBOSE < 1 else None
-          Building.configure(configure + configure_args, env=env,
+          building.configure(configure + configure_args, env=env,
                              stdout=stdout,
                              stderr=stderr,
                              cwd=project_dir)
@@ -1802,7 +1818,7 @@ def build_library(name,
       with open_make_err('w') as make_err:
         stdout = make_out if EM_BUILD_VERBOSE < 2 else None
         stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
+        building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
                       cwd=project_dir)
   except subprocess.CalledProcessError:
     with open_make_out() as f:
@@ -2001,10 +2017,11 @@ def flattened_tests(loaded_tests):
 
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other')
-  has_multiple_tests = len(tests) > 1
-  has_multiple_cores = parallel_testsuite.num_cores() > 1
-  if suite_supported and has_multiple_tests and has_multiple_cores:
-    return parallel_testsuite.ParallelTestSuite(len(tests))
+  if not EMTEST_SAVE_DIR:
+    has_multiple_tests = len(tests) > 1
+    has_multiple_cores = parallel_testsuite.num_cores() > 1
+    if suite_supported and has_multiple_tests and has_multiple_cores:
+      return parallel_testsuite.ParallelTestSuite(len(tests))
   return unittest.TestSuite()
 
 
