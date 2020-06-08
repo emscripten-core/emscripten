@@ -11,6 +11,8 @@
 #define ENABLE_SSE2
 #include "test_sse.h"
 
+bool testNaNBits = true;
+
 float *interesting_floats = get_interesting_floats();
 int numInterestingFloats = sizeof(interesting_floats_)/sizeof(interesting_floats_[0]);
 uint32_t *interesting_ints = get_interesting_ints();
@@ -25,8 +27,10 @@ void test_arithmetic()
 	M128i_M128i_M128i(_mm_add_epi32);
 	M128i_M128i_M128i(_mm_add_epi64);
 	M128i_M128i_M128i(_mm_add_epi8);
+	testNaNBits = false;
 	Ret_M128d_M128d(__m128d, _mm_add_pd);
 	Ret_M128d_M128d(__m128d, _mm_add_sd);
+	testNaNBits = true;
 	M128i_M128i_M128i(_mm_adds_epi16);
 	M128i_M128i_M128i(_mm_adds_epi8);
 	M128i_M128i_M128i(_mm_adds_epu16);
@@ -35,8 +39,10 @@ void test_arithmetic()
 	Ret_M128d_M128d(__m128d, _mm_div_sd);
 	M128i_M128i_M128i(_mm_madd_epi16);
 	M128i_M128i_M128i(_mm_mul_epu32);
+	testNaNBits = false;
 	Ret_M128d_M128d(__m128d, _mm_mul_pd);
 	Ret_M128d_M128d(__m128d, _mm_mul_sd);
+	testNaNBits = true;
 	M128i_M128i_M128i(_mm_mulhi_epi16);
 	M128i_M128i_M128i(_mm_mulhi_epu16);
 	M128i_M128i_M128i(_mm_mullo_epi16);

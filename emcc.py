@@ -47,6 +47,8 @@ from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
+from tools import wasm2c
+
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
@@ -765,10 +767,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
+  if run_via_emxx:
+    clang = shared.CLANG_CXX
+  else:
+    clang = shared.CLANG_CC
+
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = run_process([shared.CLANG_CC, '-v'], check=False).returncode
+    code = run_process([clang, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -789,16 +796,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if '--cflags' in args:
     # fake running the command, to see the full args we pass to clang
-    debug_env = os.environ.copy()
     args = [x for x in args if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
       cmd = [shared.PYTHON, sys.argv[0], shared.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
-      proc = run_process(cmd, stderr=PIPE, env=debug_env, check=False)
+      proc = run_process(cmd, stderr=PIPE, check=False)
       if proc.returncode != 0:
         print(proc.stderr)
         exit_with_error('error getting cflags')
-      lines = [x for x in proc.stderr.splitlines() if shared.CLANG_CC in x and input_file in x]
+      lines = [x for x in proc.stderr.splitlines() if clang in x and input_file in x]
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
       print(' '.join(building.doublequote_spaces(parts[1:])))
@@ -814,10 +820,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         continue
       if item.startswith('-x'):
         return item[2:]
-    return None
+    return ''
 
   language_mode = get_language_mode(args)
-  has_fixed_language_mode = language_mode is not None
 
   def is_minus_s_for_emcc(args, i):
     # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
@@ -1140,7 +1145,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               message = arg + ': Unknown format, not a static library!'
             exit_with_error(message)
         else:
-          if has_fixed_language_mode:
+          if language_mode:
             newargs[i] = ''
             input_files.append((i, arg))
           else:
@@ -1384,27 +1389,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
 
-    def has_c_source(args):
-      for a in args:
-        if a[0] != '-' and a.endswith(C_ENDINGS + OBJC_ENDINGS):
-          return True
-      return False
-
-    use_cxx = False
-    if has_fixed_language_mode:
-      if 'c++' in language_mode:
-        use_cxx = True
-    elif run_via_emxx:
-      use_cxx = True
-    elif shared.Settings.DEFAULT_TO_CXX and not has_c_source(args):
-      # Default to using C++ even when run as `emcc`.
-      # This means that emcc will act as a C++ linker when no source files are
-      # specified.
-      # This differs to clang and gcc where the default is always C unless run as
-      # clang++/g++.
-      use_cxx = True
-    shared.Settings.USE_CXX = use_cxx
-
     if not compile_only:
       ldflags = shared.emsdk_ldflags(newargs)
       for f in ldflags:
@@ -1413,7 +1397,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Flags we pass to the compiler when building C/C++ code
     # We add these to the user's flags (newargs), but not when building .s or .S assembly files
-    cflags = shared.get_cflags(newargs)
+    cflags = []
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
@@ -2097,11 +2081,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   try:
     with ToolchainProfiler.profile_block('compile inputs'):
-      if use_cxx:
-        clang_compiler = CXX
-      else:
-        clang_compiler = CC
-
       def is_link_flag(flag):
         if flag.startswith('-nostdlib'):
           return True
@@ -2123,38 +2102,66 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.WASM_BACKEND:
         cflags += ['-Xclang', '-disable-O0-optnone']
 
+      def use_cxx(src):
+        if 'c++' in language_mode or run_via_emxx:
+          return True
+        # Next consider the filename
+        if src.endswith(C_ENDINGS + OBJC_ENDINGS):
+          return False
+        if src.endswith(CXX_ENDINGS):
+          return True
+        # Finally fall back to the default
+        if shared.Settings.DEFAULT_TO_CXX:
+          # Default to using C++ even when run as `emcc`.
+          # This means that emcc will act as a C++ linker when no source files are
+          # specified.
+          # This differs to clang and gcc where the default is always C unless run as
+          # clang++/g++.
+          return True
+        return False
+
+      def get_compiler(cxx):
+        if cxx:
+          return CXX
+        return CC
+
       # Precompiled headers support
       if has_header_inputs:
         headers = [header for _, header in input_files]
         for header in headers:
           if not header.endswith(HEADER_ENDINGS):
             exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
-        args = cflags + compile_args + headers
-        if specified_target:
-          args += ['-o', specified_target]
-        args = system_libs.process_args(args, shared.Settings)
-        logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
-        return run_process([clang_compiler] + args, check=False).returncode
+          cxx = use_cxx(header)
+          compiler = get_compiler(cxx)
+          base_cflags = shared.get_cflags(args, cxx)
+          cmd = [compiler] + base_cflags + cflags + compile_args + [header]
+          if specified_target:
+            cmd += ['-o', specified_target]
+          cmd = system_libs.process_args(cmd, shared.Settings)
+          logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
+          return run_process(cmd, check=False).returncode
 
-      def get_clang_command(input_files):
-        args = [clang_compiler] + cflags + compile_args + input_files
-        return system_libs.process_args(args, shared.Settings)
+      def get_clang_command(src_file):
+        cxx = use_cxx(src_file)
+        base_cflags = shared.get_cflags(args, cxx)
+        cmd = [get_compiler(cxx)] + base_cflags + cflags + compile_args + [src_file]
+        return system_libs.process_args(cmd, shared.Settings)
 
-      def get_clang_command_asm(input_files):
+      def get_clang_command_asm(src_file):
         asflags = shared.get_asmflags(compile_args)
-        return [clang_compiler] + asflags + compile_args + input_files
+        return [get_compiler(use_cxx(src_file))] + asflags + compile_args + [src_file]
 
       # preprocessor-only (-E) support
       if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
-        input_files = [x[1] for x in input_files]
-        cmd = get_clang_command(input_files)
-        if specified_target:
-          cmd += ['-o', specified_target]
-        # Do not compile, but just output the result from preprocessing stage or
-        # output the dependency rule. Warning: clang and gcc behave differently
-        # with -MF! (clang seems to not recognize it)
-        logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-        return run_process(cmd, check=False).returncode
+        for input_file in [x[1] for x in input_files]:
+          cmd = get_clang_command(input_file)
+          if specified_target:
+            cmd += ['-o', specified_target]
+          # Do not compile, but just output the result from preprocessing stage or
+          # output the dependency rule. Warning: clang and gcc behave differently
+          # with -MF! (clang seems to not recognize it)
+          logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
+          return run_process(cmd, check=False).returncode
 
       def get_object_filename(input_file):
         if compile_only and len(input_files) == 1:
@@ -2171,9 +2178,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         output_file = get_object_filename(input_file)
         temp_files.append((i, output_file))
         if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
-          cmd = get_clang_command_asm([input_file])
+          cmd = get_clang_command_asm(input_file)
         else:
-          cmd = get_clang_command([input_file])
+          cmd = get_clang_command(input_file)
         cmd += ['-c', '-o', output_file]
         if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
           cmd.append('-fPIC')
@@ -2218,7 +2225,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if not shared.Settings.WASM_BACKEND:
               exit_with_error('assembly files not supported by fastcomp')
             compile_source_file(i, input_file)
-        elif has_fixed_language_mode:
+        elif language_mode:
           compile_source_file(i, input_file)
         elif input_file == '-':
           exit_with_error('-E or -x required when input is from standard input')
@@ -2322,7 +2329,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
         extra_files_to_link = system_libs.get_ports(shared.Settings)
         if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-          # TODO(sbc): Only set link_as_cxx if use_cxx
+          # TODO(sbc): Only set link_as_cxx when run_via_emxx
           link_as_cxx = '-nostdlib++' not in newargs
           extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, link_as_cxx, forced=forced_stdlibs)
         linker_inputs += extra_files_to_link
@@ -2437,8 +2444,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           link_opts += building.get_safe_internalize() + ['-globaldce']
 
         if options.cfi:
-          if use_cxx:
-             link_opts.append("-wholeprogramdevirt")
+          link_opts.append("-wholeprogramdevirt")
           link_opts.append("-lowertypetests")
 
         if shared.Settings.AUTODEBUG:
@@ -3076,9 +3082,6 @@ def parse_args(newargs):
       else:
         shared.generate_config(optarg)
       should_exit = True
-    # Record SIMD setting for Binaryen
-    elif newargs[i] == '-msimd128' or newargs[i] in shared.SIMD_FEATURE_TOWER:
-      shared.Settings.BINARYEN_SIMD = 1
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
@@ -3089,6 +3092,8 @@ def parse_args(newargs):
       options.expand_symlinks = False
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
+    elif newargs[i] == '-frtti':
+      shared.Settings.USE_RTTI = 1
 
     # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
     # exception handling by default when -fexceptions is given when wasm
@@ -3349,6 +3354,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if dwarf_target is True:
       dwarf_target = wasm_binary_target + '.debug.wasm'
     building.emit_debug_on_side(wasm_binary_target, dwarf_target)
+
+  if shared.Settings.WASM2C:
+    wasm2c.do_wasm2c(wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:

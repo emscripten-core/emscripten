@@ -10,6 +10,8 @@
 #include <xmmintrin.h>
 #include "test_sse.h"
 
+bool testNaNBits = true;
+
 int main()
 {
 	float *interesting_floats = get_interesting_floats();

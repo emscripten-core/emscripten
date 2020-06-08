@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+1.39.17: 06/05/2020
+-------------------
+- Use Promise polyfill for MODULARIZE when supporting legacy browsers. (#11320)
+- Fix minification of wasm2js output when using --emit-symbol-map. (#11279)
 - On first use, emscripten creates a sample config file.  This config file
   is now created in the emscripten directory by default.  The traditional
   `~/.emscripten` config file in the `$HOME` directory is still supported and
@@ -28,7 +33,10 @@ Current Trunk
   controlled by setting the location of the cache directory, or for even more
   fine grained control the `EM_PORTS` environment variable and the `PORTS`
   config setting can be used.
-- Added support for SSE, SSE2, SSE3 and SSSE3. (#11193, #11243, #11290)
+- Added support for compiling SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE 4.2 and
+  128-bit wide AVX intrinsics, emulated on top of Wasm SIMD instruction set.
+  (#11193, #11243, #11290, #11327). Pass -msimd128 -msse<version> to enable
+  targeting SSE.
 - Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm
   SIMD. (#11180)
 - Add warning about fastcomp deprecation (can be disabled via `-Wno-fastcomp`).
