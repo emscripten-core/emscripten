@@ -25,16 +25,17 @@ site
 node_modules
 Makefile
 .git
+cache
+cache.lock
 '''.split()
 
 EXCLUDE_PATTERNS = '''
 *.pyc
 .*
-'''.split()
-
-EXCLUDE_DIRS = '''
 __pycache__
 '''.split()
+
+logger = logging.getLogger('install')
 
 
 def add_revision_file(target):
@@ -50,12 +51,13 @@ def copy_emscripten(target):
   os.chdir(emscripten_root)
   for root, dirs, files in os.walk('.'):
     # Handle the case were the target directory is underneath emscripten_root
-    if os.path.abspath(root) == target:
+    if os.path.abspath(root) == os.path.abspath(target):
+      dirs.clear()
       continue
 
     remove_dirs = []
     for d in dirs:
-      if d in EXCLUDE_DIRS:
+      if d in EXCLUDE_PATTERNS:
         remove_dirs.append(d)
         continue
       fulldir = os.path.normpath(os.path.join(root, d))
@@ -66,28 +68,33 @@ def copy_emscripten(target):
 
     for d in remove_dirs:
       # Prevent recursion in excluded dirs
-      logging.debug('skipping dir: ' + os.path.join(root, d))
+      logger.debug('skipping dir: ' + os.path.join(root, d))
       dirs.remove(d)
 
     for f in files:
-      for pat in EXCLUDE_PATTERNS:
-        if fnmatch.fnmatch(f, pat):
-          logging.debug('skipping file: ' + os.path.join(root, f))
-          continue
+      if any(fnmatch.fnmatch(f, pat) for pat in EXCLUDE_PATTERNS):
+        logger.debug('skipping file: ' + os.path.join(root, f))
+        continue
       full = os.path.normpath(os.path.join(root, f))
       if full in EXCLUDES:
+        logger.debug('skipping file: ' + os.path.join(root, f))
         continue
+      logger.debug('installing file: ' + os.path.join(root, f))
       shutil.copy2(full, os.path.join(target, root, f), follow_symlinks=False)
 
 
 def main():
+
   parser = argparse.ArgumentParser(description=__doc__)
+  parser.add_argument('-v', '--verbose', action='store_true', help='verbose',
+                      default=int(os.environ.get('EMCC_DEBUG', '0')))
   parser.add_argument('target', help='target directory')
   args = parser.parse_args()
   target = os.path.abspath(args.target)
   if os.path.exists(target):
     print('target directory already exists: %s' % target)
     return 1
+  logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
   os.makedirs(target)
   copy_emscripten(target)
   add_revision_file(target)
