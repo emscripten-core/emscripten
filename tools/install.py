@@ -50,7 +50,7 @@ def copy_emscripten(target):
   emscripten_root = os.path.dirname(script_dir)
   os.chdir(emscripten_root)
   for root, dirs, files in os.walk('.'):
-    # Handle the case were the target directory is underneath emscripten_root
+    # Handle the case where the target directory is underneath emscripten_root
     if os.path.abspath(root) == os.path.abspath(target):
       dirs.clear()
       continue
