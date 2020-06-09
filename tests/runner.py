@@ -1782,9 +1782,9 @@ def build_library(name,
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
   if native:
-    env = building.get_building_env(True, cflags=cflags)
-  else:
     env = clang_native.get_clang_native_env()
+  else:
+    env = building.get_building_env(True, cflags=cflags)
   for k, v in env_init.items():
     env[k] = v
   if configure:
