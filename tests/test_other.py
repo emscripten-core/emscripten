@@ -2911,128 +2911,127 @@ function print(str){
 }
 
 m0.FS.mkdir('/working');
-m0.FS.mount(m0.PROXYFS,{root:'/',fs:m1.FS},'/working');
+m0.FS.mount(m0.PROXYFS, {root:'/',fs:m1.FS}, '/working');
 m0.FS.mkdir('/working2');
-m0.FS.mount(m0.PROXYFS,{root:'/',fs:m2.FS},'/working2');
+m0.FS.mount(m0.PROXYFS, {root:'/',fs:m2.FS}, '/working2');
 
 section = "child m1 reads and writes local file.";
 print("m1 read embed");
-m1.ccall('myreade','number',[],[]);
-print("m1 write");console.log("");
-m1.ccall('mywrite0','number',['number'],[1]);
+m1.ccall('myreade', 'number', [], []);
+print("m1 write");
+console.log("");
+m1.ccall('mywrite0', 'number', ['number'], [1]);
 print("m1 read");
-m1.ccall('myread0','number',[],[]);
-
+m1.ccall('myread0', 'number', [], []);
 
 section = "child m2 reads and writes local file.";
 print("m2 read embed");
-m2.ccall('myreade','number',[],[]);
-print("m2 write");console.log("");
-m2.ccall('mywrite0','number',['number'],[2]);
+m2.ccall('myreade', 'number', [], []);
+print("m2 write");
+console.log("");
+m2.ccall('mywrite0', 'number', ['number'], [2]);
 print("m2 read");
-m2.ccall('myread0','number',[],[]);
+m2.ccall('myread0', 'number', [], []);
 
 section = "child m1 reads local file.";
 print("m1 read");
-m1.ccall('myread0','number',[],[]);
+m1.ccall('myread0', 'number', [], []);
 
 section = "parent m0 reads and writes local and children's file.";
 print("m0 read embed");
-m0.ccall('myreade','number',[],[]);
+m0.ccall('myreade', 'number', [], []);
 print("m0 read m1");
-m0.ccall('myread1','number',[],[]);
+m0.ccall('myread1', 'number', [], []);
 print("m0 read m2");
-m0.ccall('myread2','number',[],[]);
+m0.ccall('myread2', 'number', [], []);
 
 section = "m0,m1 and m2 verify local files.";
 print("m0 write");console.log("");
-m0.ccall('mywrite0','number',['number'],[0]);
+m0.ccall('mywrite0', 'number', ['number'], [0]);
 print("m0 read");
-m0.ccall('myread0','number',[],[]);
+m0.ccall('myread0', 'number', [], []);
 print("m1 read");
-m1.ccall('myread0','number',[],[]);
+m1.ccall('myread0', 'number', [], []);
 print("m2 read");
-m2.ccall('myread0','number',[],[]);
+m2.ccall('myread0', 'number', [], []);
 
 print("m0 read embed");
-m0.ccall('myreade','number',[],[]);
+m0.ccall('myreade', 'number', [], []);
 print("m1 read embed");
-m1.ccall('myreade','number',[],[]);
+m1.ccall('myreade', 'number', [], []);
 print("m2 read embed");
-m2.ccall('myreade','number',[],[]);
+m2.ccall('myreade', 'number', [], []);
 
 section = "parent m0 writes and reads children's files.";
-print("m0 write m1");console.log("");
-m0.ccall('mywrite1','number',[],[]);
+print("m0 write m1");
+console.log("");
+m0.ccall('mywrite1', 'number', [], []);
 print("m0 read m1");
-m0.ccall('myread1','number',[],[]);
-print("m0 write m2");console.log("");
-m0.ccall('mywrite2','number',[],[]);
+m0.ccall('myread1', 'number', [], []);
+print("m0 write m2");
+console.log("");
+m0.ccall('mywrite2', 'number', [], []);
 print("m0 read m2");
-m0.ccall('myread2','number',[],[]);
+m0.ccall('myread2', 'number', [], []);
 print("m1 read");
-m1.ccall('myread0','number',[],[]);
+m1.ccall('myread0', 'number', [], []);
 print("m2 read");
-m2.ccall('myread0','number',[],[]);
+m2.ccall('myread0', 'number', [], []);
 print("m0 read m0");
-m0.ccall('myread0','number',[],[]);
+m0.ccall('myread0', 'number', [], []);
 ''')
 
     create_test_file('proxyfs_pre.js', r'''
 if (typeof Module === 'undefined') Module = {};
-Module["noInitialRun"]=true;
+Module["noInitialRun"] = true;
 noExitRuntime=true;
 ''')
 
-    create_test_file('proxyfs_embed.txt', r'''test
-''')
+    create_test_file('proxyfs_embed.txt', 'test\n')
 
     create_test_file('proxyfs_test.c', r'''
 #include <stdio.h>
 
-int
-mywrite1(){
+int mywrite1() {
   FILE* out = fopen("/working/hoge.txt","w");
-  fprintf(out,"test1\n");
+  fprintf(out, "test1\n");
   fclose(out);
   return 0;
 }
 
-int
-myread1(){
+int myread1() {
   FILE* in = fopen("/working/hoge.txt","r");
   char buf[1024];
   int len;
-  if(in==NULL)
+  if (in==NULL)
     printf("open failed\n");
 
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
+  while (!feof(in)) {
+    if (fgets(buf,sizeof(buf),in)==buf){
       printf("%s",buf);
     }
   }
   fclose(in);
   return 0;
 }
-int
-mywrite2(){
+
+int mywrite2() {
   FILE* out = fopen("/working2/hoge.txt","w");
   fprintf(out,"test2\n");
   fclose(out);
   return 0;
 }
 
-int
-myread2(){
+int myread2() {
   {
     FILE* in = fopen("/working2/hoge.txt","r");
     char buf[1024];
     int len;
-    if(in==NULL)
+    if (in==NULL)
       printf("open failed\n");
 
-    while(! feof(in)){
-      if(fgets(buf,sizeof(buf),in)==buf){
+    while (!feof(in)) {
+      if (fgets(buf,sizeof(buf),in)==buf) {
         printf("%s",buf);
       }
     }
@@ -3041,25 +3040,23 @@ myread2(){
   return 0;
 }
 
-int
-mywrite0(int i){
+int mywrite0(int i) {
   FILE* out = fopen("hoge.txt","w");
   fprintf(out,"test0_%d\n",i);
   fclose(out);
   return 0;
 }
 
-int
-myread0(){
+int myread0() {
   {
     FILE* in = fopen("hoge.txt","r");
     char buf[1024];
     int len;
-    if(in==NULL)
+    if (in==NULL)
       printf("open failed\n");
 
-    while(! feof(in)){
-      if(fgets(buf,sizeof(buf),in)==buf){
+    while (!feof(in)) {
+      if(fgets(buf,sizeof(buf),in)==buf) {
         printf("%s",buf);
       }
     }
@@ -3068,17 +3065,16 @@ myread0(){
   return 0;
 }
 
-int
-myreade(){
+int myreade() {
   {
     FILE* in = fopen("proxyfs_embed.txt","r");
     char buf[1024];
     int len;
-    if(in==NULL)
+    if (in==NULL)
       printf("open failed\n");
 
-    while(! feof(in)){
-      if(fgets(buf,sizeof(buf),in)==buf){
+    while (!feof(in)) {
+      if (fgets(buf,sizeof(buf),in)==buf) {
         printf("%s",buf);
       }
     }
@@ -3088,11 +3084,11 @@ myreade(){
 }
 ''')
 
-    run_process([EMCC,
-                 '-o', 'proxyfs_test.js', 'proxyfs_test.c',
-                 '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
-                 '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+    run_process([EMCC, '-o', 'proxyfs_test.js', 'proxyfs_test.c',
+                 '--embed-file', 'proxyfs_embed.txt',
+                 '--pre-js', 'proxyfs_pre.js',
                  '-lproxyfs.js',
+                 '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
                  '-s', 'WASM_ASYNC_COMPILATION=0',
                  '-s', 'MAIN_MODULE=1',
                  '-s', 'EXPORT_ALL=1'])
@@ -3779,12 +3775,8 @@ int main()
     # compile a minimal program, with as few dependencies as possible, as
     # native building on CI may not always work well
     create_test_file('minimal.cpp', 'int main() { return 0; }')
-    try:
-      vs_env = shared.get_clang_native_env()
-    except Exception:
-      self.skipTest('Native clang env not found')
-    run_process([CLANG_CXX, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=vs_env)
-    err = run_process([EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
+    run_process([CLANG_CXX, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=clang_native.get_clang_native_env())
+    err = self.expect_fail([EMCC, 'a.bc'])
     if self.is_wasm_backend():
       self.assertContained('machine type must be wasm32', err)
     else:
