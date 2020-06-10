@@ -2357,7 +2357,7 @@ class Building(object):
           logger.warn('Closure compiler completed with warnings:\n')
 
       logger.warning(open(filename, 'r').read())
-      logger.fatal(open(outfile, 'r').read())
+
       # Print input file (long wall of text!)
       if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
         input_file = open(filename, 'r').read().splitlines()
@@ -2385,6 +2385,8 @@ class Building(object):
 
         if Settings.CLOSURE_WARNINGS == 'error':
           exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
+
+      logger.fatal(open(outfile, 'r').read())
 
       # Convert the source map to a symbol map if we are generating symbol maps.
       if emit_symbol_map:
