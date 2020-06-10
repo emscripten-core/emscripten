@@ -1398,6 +1398,7 @@ class libasan_js(Library):
 # in JS as it's more efficient that way).
 class libstandalonewasm(MuslInternalLibrary):
   name = 'libstandalonewasm'
+  # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
 
   cflags = ['-Os']

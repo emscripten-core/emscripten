@@ -330,7 +330,7 @@ class TestCoreBase(RunnerCore):
     self.set_setting('STRICT_JS')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_hello_argc(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_argc')
 
