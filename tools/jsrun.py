@@ -90,7 +90,7 @@ def require_engine(engine):
   engine_path = engine[0]
   # if None is the "engine", it means we compiled to a native executable;
   # there is no engine to check here
-  if engine_path == None:
+  if engine_path is None:
     return
   if engine_path not in WORKING_ENGINES:
     check_engine(engine)
