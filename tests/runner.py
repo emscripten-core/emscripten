@@ -1784,7 +1784,7 @@ def build_library(name,
   if native:
     env = clang_native.get_clang_native_env()
   else:
-    env = building.get_building_env(True, cflags=cflags)
+    env = building.get_building_env(cflags=cflags)
   for k, v in env_init.items():
     env[k] = v
   if configure:
