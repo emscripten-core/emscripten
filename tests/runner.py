@@ -1235,11 +1235,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += wasm_engines
-      # wasm2c requires a working clang install which is missing on CI, or to
-      # use msvc which wasm2c doesn't support yet
-      if self.get_setting('WASM2C') and not WINDOWS:
-        # the "engine" to run wasm2c builds is clang that compiles the c
-        engines += [[CLANG_CC]]
+      if self.get_setting('WASM2C'):
+        # compile the c file to a native executable.
+        c = shared.unsuffixed(js_file) + '.wasm.c'
+        executable = shared.unsuffixed(js_file) + '.exe'
+        cmd = [shared.CLANG_CC, c, '-o', executable] + clang_native.get_clang_native_args()
+        shared.run_process(cmd, env=clang_native.get_clang_native_env())
+        # we can now run the executable directly, without an engine, which
+        # we indicate with None as the engine
+        engines += [[None]]
     if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in engines:
