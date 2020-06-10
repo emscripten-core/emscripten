@@ -58,6 +58,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_testsuite
+import clang_native
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
 from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
@@ -1780,7 +1781,10 @@ def build_library(name,
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-  env = building.get_building_env(native, True, cflags=cflags)
+  if native:
+    env = clang_native.get_clang_native_env()
+  else:
+    env = building.get_building_env(True, cflags=cflags)
   for k, v in env_init.items():
     env[k] = v
   if configure:

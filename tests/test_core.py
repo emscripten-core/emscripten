@@ -28,6 +28,7 @@ from tools import jsrun, shared, building
 from runner import RunnerCore, path_from_root
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
+import clang_native
 
 # decorators for limiting which modes a test can run in
 
@@ -6001,8 +6002,8 @@ return malloc(size);
   @wasm_simd
   def test_sse1(self):
     src = path_from_root('tests', 'sse', 'test_sse1.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse1', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse1', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse']
@@ -6014,8 +6015,8 @@ return malloc(size);
   @wasm_simd
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse2', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse2', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse2', '-Wno-argument-outside-range']
@@ -6026,8 +6027,8 @@ return malloc(size);
   @wasm_simd
   def test_sse3(self):
     src = path_from_root('tests', 'sse', 'test_sse3.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse3', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse3', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse3', '-Wno-argument-outside-range']
@@ -6038,8 +6039,8 @@ return malloc(size);
   @wasm_simd
   def test_ssse3(self):
     src = path_from_root('tests', 'sse', 'test_ssse3.cpp')
-    run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_ssse3', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_ssse3', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-mssse3', '-Wno-argument-outside-range']
@@ -6050,8 +6051,8 @@ return malloc(size);
   @wasm_simd
   def test_sse4_1(self):
     src = path_from_root('tests', 'sse', 'test_sse4_1.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse4_1', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse4_1', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse4.1', '-Wno-argument-outside-range']
@@ -6062,8 +6063,8 @@ return malloc(size);
   @wasm_simd
   def test_sse4_2(self):
     src = path_from_root('tests', 'sse', 'test_sse4_2.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse4_2', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse4_2', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse4.2', '-Wno-argument-outside-range']
@@ -6074,8 +6075,8 @@ return malloc(size);
   @wasm_simd
   def test_avx(self):
     src = path_from_root('tests', 'sse', 'test_avx.cpp')
-    run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_avx', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_avx', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-mavx', '-Wno-argument-outside-range']
