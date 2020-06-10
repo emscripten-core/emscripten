@@ -62,7 +62,7 @@ import clang_native
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
 from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
-from tools.shared import EM_BUILD_VERBOSE, CLANG_CC
+from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete
 from tools.shared import asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings, building
