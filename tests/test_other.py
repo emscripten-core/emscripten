@@ -3933,6 +3933,9 @@ int main()
 
     for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1, 2]:
+        # -s WASM=2 is a WASM_BACKEND-only feature:
+        if wasm == 2 and not shared.Settings.WASM_BACKEND:
+          continue
         print(opts, wasm)
         self.clear()
         create_test_file('src.c', r'''
