@@ -1,3 +1,6 @@
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #ifndef _WIN32
 #include <unistd.h>
 #else
@@ -15,9 +18,15 @@ static int wasm_fd_to_native[MAX_FDS];
 static u32 next_wasm_fd;
 
 static void init_fds() {
+#ifndef _WIN32
   wasm_fd_to_native[0] = STDIN_FILENO;
   wasm_fd_to_native[1] = STDOUT_FILENO;
   wasm_fd_to_native[2] = STDERR_FILENO;
+#else
+  wasm_fd_to_native[0] = _fileno(stdin);
+  wasm_fd_to_native[1] = _fileno(stdout);
+  wasm_fd_to_native[2] = _fileno(stderr);
+#endif
   next_wasm_fd = 3;
 }
 
