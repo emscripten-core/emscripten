@@ -13,11 +13,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
-#ifndef _WIN32
-#include <unistd.h>
-#else
-#include <io.h>
-#endif
 
 #include "wasm-rt.h"
 #include "wasm-rt-impl.h"
