@@ -683,7 +683,7 @@ _mm_cvtss_f32(__m128 __a)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_undefined()
 {
-  return __m128();
+  return (__m128){};
 }
 
 #define _MM_EXCEPT_MASK       0x003f

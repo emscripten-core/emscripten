@@ -1596,13 +1596,13 @@ _mm_pause(void)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_undefined_pd()
 {
-  return __m128d();
+  return (__m128d){};
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_undefined_si128()
 {
-  return __m128i();
+  return (__m128i){};
 }
 
 #define _MM_SHUFFLE2(x, y) (((x) << 1) | (y))
