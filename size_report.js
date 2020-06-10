@@ -238,6 +238,24 @@ function recordSourceFile(nodeSizes, filename) {
   }
 }
 
+function demangleWasmSymbol(symbol) {
+  var out = '';
+  for(var i = 0; i < symbol.length; ++i) {
+    if (symbol[i] != '\\') {
+      out += symbol[i];
+    } else {
+      if (symbol[i + 1] == '\\') {
+        out += '\\';
+        ++i;
+      } else {
+        out += String.fromCharCode(parseInt(symbol.substring(i+1, i+3), 16));
+        i += 2;
+      }
+    }
+  }
+  return out;
+}
+
 function unminifyNameWithSourceMap(node, functionName, sourceMap) {
   var nodeStart = node.start;
 //  if (node.type == 'VariableDeclaration') {
@@ -1009,8 +1027,8 @@ function readSymbolMap(filename) {
   var symbolFile = fs.readFileSync(filename).toString();
   var symbols = symbolFile.split('\n');
   for(var i in symbols) {
-    var [mangled, unmangled] = splitInTwo(symbols[i], ':');
-    symbolMap[mangled] = unmangled;
+    var [minified, unminified] = splitInTwo(symbols[i], ':');
+    symbolMap[minified] = demangleWasmSymbol(unminified);
   }
   return symbolMap;
 }
@@ -1193,12 +1211,13 @@ if (extractBoolCmdLineInput(args, '--runTests')) {
 } else if (extractBoolCmdLineInput(args, '--help')) {
   console.log(`${process['argv'][1]}: Break down size report of used code. Usage:`);
   console.log(`\n  node ${process['argv'][1]} [--options] file1.[js|wasm] [file2.[js|wasm]] ... [fileN.[js|wasm]]`);
-  console.log(`\nwhere supported --options:`);
-  console.log(`\n  --json: Print JSON instead of human-readable output`);
-  console.log(`\n  --symbols <a.symbols>: Use the symbol map file a.symbols to unminify the symbol names`);
-  console.log(`\n  --dump <symbolName>: Print the contents of the given symbol`);
-  console.log(`\n  --expandLargerThanPercents <0.35>: Expand nested JavaScript blocks larger than given percentage of whole file size`);
-  console.log(`\n  --expandLargerThanBytes <1000>: Expand nested JavaScript blocks larger than given number of bytes`);
+  console.log(`\nwhere supported --options:\n`);
+  console.log(`  --json: Print JSON instead of human-readable output`);
+  console.log(`  --symbols <a.symbols>: Use the symbol map file a.symbols to unminify the symbol names`);
+  console.log(`  --dump <symbolName>: Print the contents of the given symbol`);
+  console.log(`  --expandLargerThanPercents <0.35>: Expand nested JavaScript blocks larger than given percentage of whole file size`);
+  console.log(`  --expandLargerThanBytes <1000>: Expand nested JavaScript blocks larger than given number of bytes`);
+  console.log('');
 } else {
   run(args, /*printOutput=*/true);
 }

@@ -2391,7 +2391,7 @@ class Building(object):
       # Convert the source map to a symbol map if we are generating symbol maps.
       if emit_symbol_map:
         logger.warning(open(source_map, 'r').read())
-        symbol_map_data = subprocess.check_output(NODE_JS + [path_from_root('tools', 'js_size_report.js'), '--createSymbolMapFromSourceMap', source_map, outfile])
+        symbol_map_data = subprocess.check_output(NODE_JS + [path_from_root('tools', 'size_report.js'), '--createSymbolMapFromSourceMap', source_map, outfile])
         try_delete(source_map)
         logger.fatal('-----')
         logger.fatal(symbol_map_data.decode('utf-8'))
