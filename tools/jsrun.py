@@ -34,7 +34,7 @@ def make_command(filename, engine=None, args=[]):
   # if no engine is needed, indicated by None, then there is a native executable
   # provided which we can just run
   if engine[0] is None:
-    executable = shared.unsuffixed(filename) + '.exe'
+    executable = shared.unsuffixed(os.path.abspath(filename)) + '.exe'
     return [executable] + args
   if type(engine) is not list:
     engine = [engine]
