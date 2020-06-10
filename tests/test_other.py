@@ -9833,6 +9833,30 @@ int main(void) {
   def test_mmap_memorygrowth(self):
     self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
 
+  def test_files_and_module_assignment(self):
+    # a pre-js can set Module to a new object or otherwise undo file preloading/
+    # embedding changes to Module.preRun. we show an error to avoid confusion
+    create_test_file('pre.js', 'Module = {};')
+    create_test_file('src.cpp', r'''
+      #include <stdio.h>
+      int main() {
+        printf("file exists: %d\n", !!fopen("src.cpp", "rb"));
+      }
+    ''')
+    run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '--embed-file', 'src.cpp'])
+    result = run_js('a.out.js', assert_returncode=None, stderr=PIPE, full_output=True)
+    self.assertContained('Module.preRun should exist because file support used it; did a pre-js delete it?', result)
+
+    def test_error(pre):
+      create_test_file('pre.js', pre)
+      run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '--embed-file', 'src.cpp'])
+      result = run_js('a.out.js', assert_returncode=None, stderr=PIPE, full_output=True)
+      self.assertContained('All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?', result)
+
+    # error if the user replaces Module or Module.preRun
+    test_error('Module = { preRun: [] };')
+    test_error('Module.preRun = [];')
+
   @no_fastcomp('fastcomp defines this in the backend itself, so it is always on there')
   def test_EMSCRIPTEN_and_STRICT(self):
     # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
