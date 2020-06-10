@@ -553,7 +553,7 @@ jobs:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - run-tests:
-          test_targets: "other wasm2"
+          test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug"
   build-upstream-mac:
     executor: mac
     steps:
