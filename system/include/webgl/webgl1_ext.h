@@ -237,27 +237,3 @@ WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getSupportedAstcProfiles(GLsizei
 #define GL_RG16_SNORM_EXT 0x8F99
 #define GL_RGB16_SNORM_EXT 0x8F9A
 #define GL_RGBA16_SNORM_EXT 0x8F9B
-
-// xx. Emscripten-specific WebGL extension to replace glGetIntegerv/glGetFloatv/glGetBooleanv (which take up about one 1KB of code space)
-// with smaller counterparts that offer more straightforward code.
-// param: any of
-// GL_ACTIVE_TEXTURE, GL_ALPHA_BITS, GL_BLEND, GL_BLEND_DST_ALPHA, GL_BLEND_DST_RGB, GL_BLEND_EQUATION, GL_BLEND_EQUATION_ALPHA,
-// GL_BLEND_EQUATION_RGB, GL_BLEND_SRC_ALPHA, GL_BLEND_SRC_RGB, GL_BLUE_BITS
-GLint emscripten_webgl_getParameter_name(GLenum param);
-double emscripten_webgl_getParameter_d(GLenum param);
-
-// GL_ALIASED_LINE_WIDTH_RANGE, GL_ALIASED_POINT_SIZE_RANGE, GL_BLEND_COLOR, GL_COLOR_CLEAR_VALUE, GL_COLOR_WRITEMASK - small array
-// Returns the number of elements written.
-int emscripten_webgl_getParameter_iv(GLenum param, int *dst, int dstLength);
-int emscripten_webgl_getParameter_fv(GLenum param, float *dst, int dstLength);
-int emscripten_webgl_getParameter_utf8(GLenum param, char *dst, int dstLength); // GL_RENDERER, GL_SHADING_LANGUAGE_VERSION
-void emscripten_webgl_getParameter_i64v(GLenum param, int64_t *dst);
-
-const char *emscripten_webgl_getSupportedExtensions(void);
-
-double emscripten_webgl_getProgramParameter_d(GLint program, GLenum param);
-double emscripten_webgl_getShaderParameter_d(GLint shader, GLenum param);
-
-// GL_COMPRESSED_TEXTURE_FORMATS Uint32Array
-
-// GL_ARRAY_BUFFER_BINDING object
