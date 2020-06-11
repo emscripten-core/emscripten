@@ -124,26 +124,85 @@ extern void *emscripten_webgl_get_proc_address(const char *name);
 #define EMSCRIPTEN_WEBGL_PARAM_TYPE_INT   0
 #define EMSCRIPTEN_WEBGL_PARAM_TYPE_FLOAT 1
 
+// Calls GLctx.getSupportedExtensions():
+// Returns a newly allocated string that contains all supported WebGL extensions by the currently active WebGL context,
+// separated by a space character ' '. Call free() to deallocate the string.
 char  *emscripten_webgl_get_supported_extensions(void);
 
+// Calls GLctx.getShaderParameter():
+// Returns a parameter of a WebGL shader as a double.
+// Call this function only for values of 'param' that return a Number type.
 double emscripten_webgl_get_shader_parameter_d(GLint shader, GLenum param);
+
+// Calls GLctx.getShaderInfoLog():
+// Returns a newly allocated string that contains the shader info log of the given shader. Call free() to deallocate the string.
 char  *emscripten_webgl_get_shader_info_log_utf8(GLint shader);
+
+// Calls GLctx.getShaderSource():
+// Returns a newly allocated string that contains the shader source the given shader. Call free() to deallocate the string.
 char  *emscripten_webgl_get_shader_source_utf8(GLint shader);
 
+// Calls GLctx.getProgramParameter():
+// Returns a parameter of a WebGL shader program as a double.
+// Call this function only for values of 'param' that return a Number type.
 double emscripten_webgl_get_program_parameter_d(GLint program, GLenum param);
+
+// Calls GLctx.getProgramInfoLog():
+// Returns a newly allocated string that contains the info log of the given program. Call free() to deallocate the string.
 char  *emscripten_webgl_get_program_info_log_utf8(GLint program);
 
+// Calls GLctx.getVertexAttrib():
+// Returns the given vertex attribute as a double.
+// Call this function only for values of 'param' that return a Number type.
 double emscripten_webgl_get_vertex_attrib_d(int index, GLenum param);
+
+// Calls GLctx.getVertexAttrib():
+// Returns the WebGL object name bound to the given vertex attribute.
+// Call this function only for values of 'param' that return a WebGL object type.
 GLint emscripten_webgl_get_vertex_attrib_o(int index, GLenum param);
+
+// Calls GLctx.getVertexAttrib():
+// Gets an array of currently active vertex attributes.
+// Call this function only for values of 'param' that return an array of types.
+// Use dstType to specify whether to read in ints or floats.
 int emscripten_webgl_get_vertex_attrib_v(int index, GLenum param, void *dst, int dstLength, EMSCRIPTEN_WEBGL_PARAM_TYPE dstType);
 
+// Calls GLctx.getUniform():
+// Returns the value of a uniform set in a program in the given location.
+// Call this function only for scalar uniform types. (float and int)
 double emscripten_webgl_get_uniform_d(GLint program, int location);
+
+// Calls GLctx.getUniform():
+// Gets an array set to an uniform in a program in the given location.
+// Call this function only for array uniform types. (vec2, ivec2 and so on)
+// Use dstType to specify whether to read in ints or floats.
 int emscripten_webgl_get_uniform_v(GLint program, int location, void *dst, int dstLength, EMSCRIPTEN_WEBGL_PARAM_TYPE dstType);
 
+// Calls GLctx.getParameter():
+// Gets an array of state set to the active WebGL context.
+// Call this function only for values of 'param' that return an array of types.
+// Use dstType to specify whether to read in ints or floats.
 int emscripten_webgl_get_parameter_v(GLenum param, void *dst, int dstLength, EMSCRIPTEN_WEBGL_PARAM_TYPE dstType);
+
+// Calls GLctx.getParameter():
+// Returns the given WebGL context state as double.
+// Call this function only for values of 'param' that return a Number type.
 double emscripten_webgl_get_parameter_d(GLenum param);
+
+// Calls GLctx.getParameter():
+// Returns the WebGL object name bound to the given WebGL context state binding point.
+// Call this function only for values of 'param' that return a WebGL object type.
 GLint emscripten_webgl_get_parameter_o(GLenum param);
+
+// Calls GLctx.getParameter():
+// Returns a newly allocated string containing the WebGL state associated with the given parameter.
+// Call free() to deallocate the string.
+// Call this function only for values of 'param' that return a WebGL string type.
 char *emscripten_webgl_get_parameter_utf8(GLenum param);
+
+// Calls GLctx.getParameter():
+// Returns the given WebGL context state as int64_t, written to the given heap location.
+// Call this function only for values of 'param' that return a WebGL Number type.
 void emscripten_webgl_get_parameter_i64v(GLenum param, int64_t *dst);
 
 #undef GLint
