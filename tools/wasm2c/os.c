@@ -17,15 +17,19 @@ static int wasm_fd_to_native[MAX_FDS];
 
 static u32 next_wasm_fd;
 
+#define WASM_STDIN  0
+#define WASM_STDOUT 1
+#define WASM_STDERR 2
+
 static void init_fds() {
 #ifndef _WIN32
-  wasm_fd_to_native[0] = STDIN_FILENO;
-  wasm_fd_to_native[1] = STDOUT_FILENO;
-  wasm_fd_to_native[2] = STDERR_FILENO;
+  wasm_fd_to_native[WASM_STDIN] = STDIN_FILENO;
+  wasm_fd_to_native[WASM_STDOUT] = STDOUT_FILENO;
+  wasm_fd_to_native[WASM_STDERR] = STDERR_FILENO;
 #else
-  wasm_fd_to_native[0] = _fileno(stdin);
-  wasm_fd_to_native[1] = _fileno(stdout);
-  wasm_fd_to_native[2] = _fileno(stderr);
+  wasm_fd_to_native[WASM_STDIN] = _fileno(stdin);
+  wasm_fd_to_native[WASM_STDOUT] = _fileno(stdout);
+  wasm_fd_to_native[WASM_STDERR] = _fileno(stderr);
 #endif
   next_wasm_fd = 3;
 }
@@ -79,9 +83,9 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_writeZ_iiiii, (u32 fd, u32 iov, u3
     ssize_t result;
     // Use stdio for stdout/stderr to avoid mixing a low-level write() with
     // other logging code, which can change the order from the expected.
-    if (nfd == STDOUT_FILENO) {
+    if (fd == WASM_STDOUT) {
       result = fwrite(MEMACCESS(ptr), 1, len, stdout);
-    } else if (nfd == STDERR_FILENO) {
+    } else if (fd == WASM_STDERR) {
       result = fwrite(MEMACCESS(ptr), 1, len, stderr);
     } else {
       result = write(nfd, MEMACCESS(ptr), len);
