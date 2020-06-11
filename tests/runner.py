@@ -100,6 +100,8 @@ EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
 EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
 
+EMTEST_NO_NATIVE_CLANG = os.getenv('EMTEST_NO_NATIVE_CLANG')
+
 EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0'))
 
 if EMTEST_VERBOSE:
@@ -180,6 +182,17 @@ def no_asmjs(note=''):
 
   def decorated(f):
     return skip_if(f, 'is_wasm', note, negate=True)
+  return decorated
+
+
+def requires_native_clang(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    if EMTEST_NO_NATIVE_CLANG:
+      return self.skipTest('native clang tests are disabled')
+    return func(self, *args, **kwargs)
+
   return decorated
 
 
