@@ -10274,6 +10274,7 @@ int main() {
       for engine in WASM_ENGINES:
         self.assertContained(expected, run_js('test.wasm', engine))
 
+  @requires_native_clang
   @no_fastcomp("uses standalone mode")
   def test_wasm2c_reactor(self):
     # test compiling an unsafe library using wasm2c, then using it from a
@@ -10284,15 +10285,11 @@ int main() {
     run_process([EMCC,
                 path_from_root('tests', 'other', 'wasm2c', 'unsafe-library.c'),
                 '-O3', '-o', 'lib.wasm', '-s', 'WASM2C', '--no-entry'])
-    # compile that .c to a native object
-    run_process([CLANG_CC, 'lib.wasm.c', '-c', '-O3', '-o', 'lib.o'] +
-                clang_native.get_clang_native_args(),
-                env=clang_native.get_clang_native_env())
-    # compile the main program natively normally, and link with the
-    # unsafe library
+    # compile the main program natively normally, together with the unsafe
+    # library
     run_process([CLANG_CC,
                 path_from_root('tests', 'other', 'wasm2c', 'my-code.c'),
-                '-O3', 'lib.o', '-o', 'program.exe'] +
+                'lib.wasm.c', '-O3', '-o', 'program.exe'] +
                 clang_native.get_clang_native_args(),
                 env=clang_native.get_clang_native_env())
     output = run_process([os.path.abspath('program.exe')], stdout=PIPE).stdout

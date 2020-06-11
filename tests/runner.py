@@ -1248,8 +1248,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += wasm_engines
-      if self.get_setting('WASM2C'):
-        # TODO: and not LACKS_NATIVE_CLANG
+      if self.get_setting('WASM2C') and not EMTEST_LACKS_NATIVE_CLANG:
         # compile the c file to a native executable.
         c = shared.unsuffixed(js_file) + '.wasm.c'
         executable = shared.unsuffixed(js_file) + '.exe'
