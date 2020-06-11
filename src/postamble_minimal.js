@@ -221,11 +221,27 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 })
-#if ASSERTIONS
+#if ASSERTIONS || WASM == 2
 .catch(function(error) {
+#if ASSERTIONS
   console.error(error);
-})
 #endif
+
+#if WASM == 2
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+  if (typeof location !== 'undefined') {
+#endif
+    // WebAssembly compilation failed, try running the JS fallback instead.
+    var search = location.search;
+    if (search.indexOf('_rwasm=0') < 0) {
+      location.href += (search ? search + '&' : '?') + '_rwasm=0';
+    }
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+  }
+#endif
+#endif // WASM == 2
+})
+#endif // ASSERTIONS || WASM == 2
 ;
 
 #else

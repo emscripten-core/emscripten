@@ -4916,6 +4916,16 @@ window.close = function() {
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
+  @no_fastcomp('wasm-backend specific feature')
+  def test_minimal_runtime_wasm2js_fallback(self):
+    src = 'src.cpp'
+    create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
+    self.compile_btest([src, '-s', 'WASM=2', '-s', 'MINIMAL_RUNTIME=1', '-o', 'test.html'])
+
+    # Corrupt the .wasm file, that should trigger the Wasm2js fallback to run
+    shutil.copyfile('test.js', 'test.wasm')
+    self.run_browser('test.html', 'hello!', '/report_result?0')
+
   def test_system(self):
     self.btest(path_from_root('tests', 'system.c'), '0')
 

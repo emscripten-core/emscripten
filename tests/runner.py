@@ -58,6 +58,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_testsuite
+import clang_native
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
 from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
@@ -98,6 +99,8 @@ EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
 EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
 EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
+
+EMTEST_LACKS_NATIVE_CLANG = os.getenv('EMTEST_LACKS_NATIVE_CLANG')
 
 EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0'))
 
@@ -179,6 +182,17 @@ def no_asmjs(note=''):
 
   def decorated(f):
     return skip_if(f, 'is_wasm', note, negate=True)
+  return decorated
+
+
+def requires_native_clang(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    if EMTEST_LACKS_NATIVE_CLANG:
+      return self.skipTest('native clang tests are disabled')
+    return func(self, *args, **kwargs)
+
   return decorated
 
 
@@ -1780,7 +1794,10 @@ def build_library(name,
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-  env = building.get_building_env(native, True, cflags=cflags)
+  if native:
+    env = clang_native.get_clang_native_env()
+  else:
+    env = building.get_building_env(cflags=cflags)
   for k, v in env_init.items():
     env[k] = v
   if configure:

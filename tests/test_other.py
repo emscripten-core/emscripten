@@ -35,7 +35,7 @@ from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WIND
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
-from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
+from runner import needs_dlfcn, env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
 from tools import jsrun, shared, building
 import clang_native
 import tools.line_endings
@@ -3775,19 +3775,18 @@ int main()
     print(cmd)
     run_process(cmd)
 
+  @requires_native_clang
   def test_bad_triple(self):
     # compile a minimal program, with as few dependencies as possible, as
     # native building on CI may not always work well
     create_test_file('minimal.cpp', 'int main() { return 0; }')
-    try:
-      vs_env = shared.get_clang_native_env()
-    except Exception:
-      self.skipTest('Native clang env not found')
-    run_process([CLANG_CXX, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=vs_env)
-    err = run_process([EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
+    run_process([CLANG_CXX, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=clang_native.get_clang_native_env())
+    # wasm backend will hard fail where as fastcomp only warns
     if self.is_wasm_backend():
+      err = self.expect_fail([EMCC, 'a.bc'])
       self.assertContained('machine type must be wasm32', err)
     else:
+      err = run_process([EMCC, 'a.bc'], stderr=PIPE).stderr
       assert 'warning' in err or 'WARNING' in err, err
       assert 'incorrect target triple' in err or 'different target triples' in err, err
 
@@ -3933,6 +3932,9 @@ int main()
 
     for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1, 2]:
+        # -s WASM=2 is a WASM_BACKEND-only feature:
+        if wasm == 2 and not shared.Settings.WASM_BACKEND:
+          continue
         print(opts, wasm)
         self.clear()
         create_test_file('src.c', r'''
@@ -9831,6 +9833,30 @@ int main(void) {
 
   def test_mmap_memorygrowth(self):
     self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
+
+  def test_files_and_module_assignment(self):
+    # a pre-js can set Module to a new object or otherwise undo file preloading/
+    # embedding changes to Module.preRun. we show an error to avoid confusion
+    create_test_file('pre.js', 'Module = {};')
+    create_test_file('src.cpp', r'''
+      #include <stdio.h>
+      int main() {
+        printf("file exists: %d\n", !!fopen("src.cpp", "rb"));
+      }
+    ''')
+    run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '--embed-file', 'src.cpp'])
+    result = run_js('a.out.js', assert_returncode=None, stderr=PIPE, full_output=True)
+    self.assertContained('Module.preRun should exist because file support used it; did a pre-js delete it?', result)
+
+    def test_error(pre):
+      create_test_file('pre.js', pre)
+      run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '--embed-file', 'src.cpp'])
+      result = run_js('a.out.js', assert_returncode=None, stderr=PIPE, full_output=True)
+      self.assertContained('All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?', result)
+
+    # error if the user replaces Module or Module.preRun
+    test_error('Module = { preRun: [] };')
+    test_error('Module.preRun = [];')
 
   @no_fastcomp('fastcomp defines this in the backend itself, so it is always on there')
   def test_EMSCRIPTEN_and_STRICT(self):

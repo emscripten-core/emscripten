@@ -14,9 +14,9 @@ import tempfile
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
-from tools import building
 from tools.shared import PYTHON, WINDOWS, CLANG_CXX, EMCC, PIPE, V8_ENGINE
-from tools.shared import Popen, path_from_root
+from tools.shared import Popen, path_from_root, run_process
+import clang_native
 
 temp_dir = tempfile.mkdtemp()
 
@@ -35,13 +35,10 @@ def run_benchmark(benchmark_file, results_file, build_args):
     out_file = os.path.join(temp_dir, 'benchmark_sse_native')
     if WINDOWS:
         out_file += '.exe'
-    cmd = [CLANG_CXX] + building.get_native_building_args() + [benchmark_file, '-O3', '-o', out_file]
+    cmd = [CLANG_CXX] + clang_native.get_clang_native_args() + [benchmark_file, '-O3', '-o', out_file]
     print('Building native version of the benchmark:')
     print(' '.join(cmd))
-    build = Popen(cmd, env=building.get_building_env(native=True))
-    build.communicate()
-    if build.returncode != 0:
-        sys.exit(1)
+    run_process(cmd, env=clang_native.get_clang_native_env())
 
     native_results = Popen([out_file], stdout=PIPE, stderr=PIPE).communicate()
     print(native_results[0])
@@ -51,10 +48,7 @@ def run_benchmark(benchmark_file, results_file, build_args):
     cmd = [EMCC, benchmark_file, '-O3', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file] + build_args
     print('Building Emscripten version of the benchmark:')
     print(' '.join(cmd))
-    build = Popen(cmd)
-    build.communicate()
-    if build.returncode != 0:
-        sys.exit(1)
+    run_process(cmd)
 
     cmd = V8_ENGINE + ['--experimental-wasm-simd', os.path.basename(out_file)]
     print(' '.join(cmd))

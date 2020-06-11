@@ -409,7 +409,7 @@ def kill_browser_process():
 class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   """Log messaging arriving via HTTP can come in out of sequence. Implement a
   sequencing mechanism to enforce ordered transmission."""
-  expected_http_seq_num = -1
+  expected_http_seq_num = 1
   # Stores messages that have arrived out of order, pending for a send as soon as the missing message arrives.
   # Kept in sorted order, first element is the oldest message received.
   http_message_queue = []
@@ -419,10 +419,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     with http_mutex:
       have_received_messages = True
 
-      if self.expected_http_seq_num == -1:
-        self.expected_http_seq_num = seq_num + 1
-        log(data)
-      elif seq_num == -1: # Message arrived without a sequence number? Just log immediately
+      if seq_num == -1: # Message arrived without a sequence number? Just log immediately
         log(data)
       elif seq_num == self.expected_http_seq_num:
         log(data)
