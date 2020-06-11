@@ -264,27 +264,21 @@ def remove_quotes(arg):
     return arg
 
 
-def get_building_env(doublequote_commands=False, cflags=[]):
-  def quote(arg):
-    if WINDOWS and doublequote_commands:
-      return doublequote_spaces(arg)
-    else:
-      return arg
-
+def get_building_env(cflags=[]):
   env = os.environ.copy()
   # point CC etc. to the em* tools.
-  env['CC'] = quote(EMCC)
-  env['CXX'] = quote(EMXX)
-  env['AR'] = quote(EMAR)
-  env['LD'] = quote(EMCC)
-  env['NM'] = quote(LLVM_NM)
-  env['LDSHARED'] = quote(EMCC)
-  env['RANLIB'] = quote(EMRANLIB)
+  env['CC'] = EMCC
+  env['CXX'] = EMXX
+  env['AR'] = EMAR
+  env['LD'] = EMCC
+  env['NM'] = LLVM_NM
+  env['LDSHARED'] = EMCC
+  env['RANLIB'] = EMRANLIB
   env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
   if cflags:
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
-  env['HOST_CC'] = quote(CLANG_CC)
-  env['HOST_CXX'] = quote(CLANG_CXX)
+  env['HOST_CC'] = CLANG_CC
+  env['HOST_CXX'] = CLANG_CXX
   env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
   env['HOST_CXXFLAGS'] = "-W" # if set to nothing, CXXFLAGS is used, which we don't want
   env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')

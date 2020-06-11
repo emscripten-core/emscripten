@@ -25,7 +25,7 @@ if __name__ == '__main__':
 from tools.shared import run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import jsrun, shared, building
-from runner import RunnerCore, path_from_root
+from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
 import clang_native
@@ -329,6 +329,10 @@ class TestCoreBase(RunnerCore):
   def test_wasm_synchronous_compilation(self):
     self.set_setting('STRICT_JS')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  @also_with_standalone_wasm()
+  def test_hello_argc(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_argc')
 
   def test_intvars(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_intvars')
@@ -6000,6 +6004,7 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse1(self):
     src = path_from_root('tests', 'sse', 'test_sse1.cpp')
     run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6013,6 +6018,7 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
     run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6025,6 +6031,7 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE3 pmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse3(self):
     src = path_from_root('tests', 'sse', 'test_sse3.cpp')
     run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6037,6 +6044,7 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSSE3 tmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_ssse3(self):
     src = path_from_root('tests', 'sse', 'test_ssse3.cpp')
     run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6049,6 +6057,7 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE4.1 smmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse4_1(self):
     src = path_from_root('tests', 'sse', 'test_sse4_1.cpp')
     run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6061,6 +6070,7 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE4.2 nmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse4_2(self):
     src = path_from_root('tests', 'sse', 'test_sse4_2.cpp')
     run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6073,6 +6083,7 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 AVX avxintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_avx(self):
     src = path_from_root('tests', 'sse', 'test_avx.cpp')
     run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
