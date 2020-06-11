@@ -1,5 +1,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -224,12 +225,12 @@ static u32 do_stat(int nfd, u32 buf) {
   wasm_i32_store(buf + 72, nbuf.st_ctimespec.tv_sec);
   wasm_i32_store(buf + 76, nbuf.st_ctimespec.tv_nsec);
 #elif defined(_WIN32)
-  wasm_i32_store(buf + 56, nbuf.st_atime.tv_sec);
-  wasm_i32_store(buf + 60, nbuf.st_atime.tv_nsec);
-  wasm_i32_store(buf + 64, nbuf.st_mtime.tv_sec);
-  wasm_i32_store(buf + 68, nbuf.st_mtime.tv_nsec);
-  wasm_i32_store(buf + 72, nbuf.st_ctime.tv_sec);
-  wasm_i32_store(buf + 76, nbuf.st_ctime.tv_nsec);
+  wasm_i32_store(buf + 56, gmtime(&nbuf.st_atime)->tm_sec);
+  wasm_i32_store(buf + 60, 0);
+  wasm_i32_store(buf + 64, gmtime(&nbuf.st_mtime)->tm_sec);
+  wasm_i32_store(buf + 68, 0);
+  wasm_i32_store(buf + 72, gmtime(&nbuf.st_ctime)->tm_sec);
+  wasm_i32_store(buf + 76, 0);
 #else
   wasm_i32_store(buf + 56, nbuf.st_atim.tv_sec);
   wasm_i32_store(buf + 60, nbuf.st_atim.tv_nsec);
