@@ -12,14 +12,8 @@
 #include <string.h>
 #include <time.h>
 
-// ssize_t detection: usually stdint provides it, but not on windows. on
-// MSVC, use the windows-specific header.
-#ifdef _MSC_VER
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#endif
+// ssize_t detection: usually stdint provides it, but not on windows apparently
 #ifndef ssize_t
-// for clang on windows, define it manually
 #ifdef _WIN64
 typedef signed long long ssize_t;
 #else
