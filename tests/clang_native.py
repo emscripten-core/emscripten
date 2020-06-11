@@ -84,7 +84,7 @@ def get_clang_native_env():
     # Guess where Windows 8.1 SDK is located
     if 'WindowsSdkDir' in env:
       windows8_sdk_dir = env['WindowsSdkDir']
-    elif os.path.isdir(os.path.join(prog_files_x86, 'Windows Kits', '8.1')):
+    else:
       windows8_sdk_dir = os.path.join(prog_files_x86, 'Windows Kits', '8.1')
     if not os.path.isdir(windows8_sdk_dir):
       raise Exception('Windows 8.1 SDK was not found in "' + windows8_sdk_dir + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set WindowsSdkDir env var).')
