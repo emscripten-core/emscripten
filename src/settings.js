@@ -1192,6 +1192,10 @@ var USE_GLFW = 2;
 // In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
 // the WebAssembly file is loaded if browser/shell supports it. Otherwise the
 // .wasm.js fallback will be used.
+//
+// Additionally in MINIMAL_RUNTIME mode, if WASM=2 is enabled and the browser
+// fails to compile the WebAssembly module, the page will be reloaded in Wasm2JS
+// mode.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
@@ -1751,6 +1755,14 @@ var DEFAULT_TO_CXX = 1;
 // saves libc code size. You can flip this option on to get a libc with full
 // long double printing precision.
 var PRINTF_LONG_DOUBLE = 0;
+
+// Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
+// resulting in a .c file that you can compile with a C compiler to get a
+// native executable that works the same as the normal js+wasm. This will also
+// emit the wasm2c .h file. The output filenames will be X.wasm.c, X.wasm.h
+// if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
+// which avoids trampling a C file).
+var WASM2C = 0;
 
 //===========================================
 // Internal, used for testing only, from here

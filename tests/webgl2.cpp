@@ -35,6 +35,7 @@ int main()
     memset(&attrs, -1, sizeof(attrs));
     EMSCRIPTEN_RESULT res = emscripten_webgl_get_context_attributes(context, &attrs);
     assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+    assert(attrs.majorVersion == 2);
     assert(attrs.powerPreference == EM_WEBGL_POWER_PREFERENCE_DEFAULT || attrs.powerPreference == EM_WEBGL_POWER_PREFERENCE_LOW_POWER || attrs.powerPreference == EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE);
     res = emscripten_webgl_make_context_current(context);
     assert(res == EMSCRIPTEN_RESULT_SUCCESS);

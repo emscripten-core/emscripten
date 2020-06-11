@@ -239,6 +239,48 @@ class EmscriptenBenchmarker(Benchmarker):
     building.clear()
 
 
+class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
+  def __init__(self, name):
+    super(EmscriptenWasm2CBenchmarker, self).__init__(name, 'no engine needed')
+
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+    # wasm2c doesn't want minimal runtime which the normal emscripten
+    # benchmarker defaults to, as we don't have any JS anyhow
+    emcc_args = emcc_args + [
+      '-s', 'STANDALONE_WASM',
+      '-s', 'MINIMAL_RUNTIME=0',
+      '-s', 'WASM2C'
+    ]
+
+    global LLVM_FEATURE_FLAGS
+    old_flags = LLVM_FEATURE_FLAGS
+    try:
+      # wasm2c does not support anything beyond MVP
+      LLVM_FEATURE_FLAGS = []
+      super(EmscriptenWasm2CBenchmarker, self).build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
+    finally:
+      LLVM_FEATURE_FLAGS = old_flags
+
+    # move the JS away so there is no chance we run it by mistake
+    shutil.move(self.filename, self.filename + '.old.js')
+
+    base = self.filename[:-3]
+    c = base + '.wasm.c'
+    native = base + '.exe'
+
+    run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',
+                 '-DWASM_RT_MAX_CALL_STACK_DEPTH=8000'])  # for havlak
+
+    self.filename = native
+
+  def run(self, args):
+    return run_process([self.filename] + args, stdout=PIPE, stderr=PIPE, check=False).stdout
+
+  def get_output_files(self):
+    # return the native code. c size may also be interesting.
+    return [self.filename]
+
+
 CHEERP_BIN = '/opt/cheerp/bin/'
 
 
@@ -323,6 +365,7 @@ if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   benchmarkers += [
     EmscriptenBenchmarker(default_v8_name, aot_v8),
     EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+    # EmscriptenWasm2CBenchmarker('wasm2c')
   ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [

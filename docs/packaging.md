@@ -132,14 +132,10 @@ The following is a partial list of downstream emscripten packages.  While there
 packages are not officially supported by the emscripten developers we try to
 work with downstream packagers to ensure everything works as expected.
 
-homebrew
-~~~~~~~~
-
+**Homebrew**
  - package info: https://formulae.brew.sh/formula/emscripten
  - maintainer: @chenrui333
 
-arch linux
-~~~~~~~~~~
-
+**Arch Linux**
  - package info: https://git.archlinux.org/svntogit/community.git/tree/trunk/PKGBUILD?h=packages/emscripten
  - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>

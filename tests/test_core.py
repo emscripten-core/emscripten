@@ -25,9 +25,10 @@ if __name__ == '__main__':
 from tools.shared import run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import jsrun, shared, building
-from runner import RunnerCore, path_from_root
+from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
+import clang_native
 
 # decorators for limiting which modes a test can run in
 
@@ -145,61 +146,34 @@ def can_do_standalone(self):
       '-fsanitize=address' not in self.emcc_args
 
 
-# Also run the test with -s STANDALONE. If we have wasm runtimes, also run in
-# them (regardless we also check that the js+wasm combo works in js vms).
-def also_with_standalone_wasm(func):
-  def decorated(self):
-    func(self)
-    # Standalone mode is only supported in the wasm backend, and not in all
-    # modes there.
-    if can_do_standalone(self):
-      print('standalone')
-      self.set_setting('STANDALONE_WASM', 1)
-      # we will not legalize the JS ffi interface, so we must use BigInt
-      # support in order for JS to have a chance to run this without trapping
-      # when it sees an i64 on the ffi.
-      self.set_setting('WASM_BIGINT', 1)
-      with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+# Impure means a test that cannot run in a wasm VM yet, as it is not 100%
+# standalone. We can still run them with the JS code though.
+def also_with_standalone_wasm(wasm2c=False, impure=False):
+  def decorated(func):
+    def metafunc(self, standalone):
+      if not standalone:
         func(self)
+      else:
+        if can_do_standalone(self):
+          self.set_setting('STANDALONE_WASM', 1)
+          # we will not legalize the JS ffi interface, so we must use BigInt
+          # support in order for JS to have a chance to run this without trapping
+          # when it sees an i64 on the ffi.
+          self.set_setting('WASM_BIGINT', 1)
+          # if we are impure, disallow all wasm engines
+          with wasm_engines_modify([] if impure else shared.WASM_ENGINES):
+            with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+              func(self)
+              if wasm2c:
+                print('wasm2c')
+                self.set_setting('WASM2C', 1)
+                with wasm_engines_modify([]):
+                  func(self)
 
-  return decorated
+    metafunc._parameterize = {'': (False,),
+                              'standalone': (True,)}
+    return metafunc
 
-
-# Similar to also_with_standalone_wasm, but suitable for tests that cannot
-# run in a wasm VM yet, as they are not 100% standalone. We can still
-# run them with the JS code though.
-def also_with_impure_standalone_wasm(func):
-  def decorated(self):
-    func(self)
-    # Standalone mode is only supported in the wasm backend, and not in all
-    # modes there.
-    if can_do_standalone(self):
-      print('standalone (impure; no wasm runtimes)')
-      self.set_setting('STANDALONE_WASM', 1)
-      # we will not legalize the JS ffi interface, so we must use BigInt
-      # support in order for JS to have a chance to run this without trapping
-      # when it sees an i64 on the ffi.
-      self.set_setting('WASM_BIGINT', 1)
-      with wasm_engines_modify([]):
-        with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
-          func(self)
-
-  return decorated
-
-
-# Similar to also_with_standalone_wasm, but suitable for tests that can *only*
-# run in a wasm VM, or in non-standalone mode, but not in standalone mode with
-# our JS.
-def also_with_only_standalone_wasm(func):
-  def decorated(self):
-    func(self)
-    # Standalone mode is only supported in the wasm backend, and not in all
-    # modes there.
-    if can_do_standalone(self):
-      print('standalone (only; no js runtimes)')
-      self.set_setting('STANDALONE_WASM', 1)
-      with js_engines_modify([]):
-        func(self)
   return decorated
 
 
@@ -345,7 +319,7 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     # must not emit this unneeded internal thing
@@ -355,6 +329,10 @@ class TestCoreBase(RunnerCore):
   def test_wasm_synchronous_compilation(self):
     self.set_setting('STRICT_JS')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  @also_with_standalone_wasm()
+  def test_hello_argc(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_argc')
 
   def test_intvars(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_intvars')
@@ -398,7 +376,7 @@ class TestCoreBase(RunnerCore):
   def test_i64_umul(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_i64_precise(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 
@@ -494,7 +472,7 @@ class TestCoreBase(RunnerCore):
     js = open('src.c.o.js').read()
     assert ('llvm_' not in js) == is_optimizing(self.emcc_args) or not self.is_wasm(), 'intrinsics must be lowered when optimizing'
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_bswap64(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_bswap64')
 
@@ -521,7 +499,7 @@ class TestCoreBase(RunnerCore):
     shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), 'cube2md5.txt')
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read(), assert_returncode=None)
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm(wasm2c=True)
   @needs_make('make')
   def test_cube2hash(self):
     # A good test of i64 math
@@ -1066,7 +1044,7 @@ base align: 0, 0, 0, 0'''])
       '''
       self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_assert(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_assert', assert_returncode=None)
 
@@ -1076,6 +1054,7 @@ base align: 0, 0, 0, 0'''])
   def test_regex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
+  @also_with_standalone_wasm(wasm2c=True, impure=True)
   def test_longjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
 
@@ -1585,7 +1564,7 @@ int main() {
 
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.
-  @also_with_impure_standalone_wasm
+  @also_with_standalone_wasm(impure=True)
   def test_ctors_no_main(self):
     self.emcc_args.append('--no-entry')
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
@@ -2130,7 +2109,7 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
-  @also_with_impure_standalone_wasm
+  @also_with_standalone_wasm(impure=True)
   def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2464,7 +2443,7 @@ The current type of b is: 9
     # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_atexit(self):
     # Confirms they are called in the proper reverse order
     self.set_setting('EXIT_RUNTIME', 1)
@@ -2557,7 +2536,7 @@ The current type of b is: 9
   def test_memcpy3(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_memcpy3', assert_returncode=None)
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_memcpy_alignment(self):
     self.do_run(open(path_from_root('tests', 'test_memcpy_alignment.cpp')).read(), 'OK.')
 
@@ -5483,7 +5462,7 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'unistd', 'isatty.c')).read()
     self.do_run(src, 'success', force_c=True)
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_unistd_sysconf(self):
     self.do_run_in_out_file_test('tests', 'unistd', 'sysconf')
 
@@ -5580,7 +5559,7 @@ main( int argv, char ** argc ) {
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm(wasm2c=True)
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -6025,10 +6004,11 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse1(self):
     src = path_from_root('tests', 'sse', 'test_sse1.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse1', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse1', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse']
@@ -6038,10 +6018,11 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse2', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse2', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse2', '-Wno-argument-outside-range']
@@ -6050,10 +6031,11 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE3 pmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse3(self):
     src = path_from_root('tests', 'sse', 'test_sse3.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse3', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse3', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse3', '-Wno-argument-outside-range']
@@ -6062,10 +6044,11 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSSE3 tmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_ssse3(self):
     src = path_from_root('tests', 'sse', 'test_ssse3.cpp')
-    run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_ssse3', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_ssse3', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-mssse3', '-Wno-argument-outside-range']
@@ -6074,10 +6057,11 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE4.1 smmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse4_1(self):
     src = path_from_root('tests', 'sse', 'test_sse4_1.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse4_1', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse4_1', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse4.1', '-Wno-argument-outside-range']
@@ -6086,10 +6070,11 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 SSE4.2 nmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_sse4_2(self):
     src = path_from_root('tests', 'sse', 'test_sse4_2.cpp')
-    run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_sse4_2', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_sse4_2', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse4.2', '-Wno-argument-outside-range']
@@ -6098,10 +6083,11 @@ return malloc(size);
 
   # Tests invoking the SIMD API via x86 AVX avxintrin.h header (_mm_x() functions)
   @wasm_simd
+  @requires_native_clang
   def test_avx(self):
     src = path_from_root('tests', 'sse', 'test_avx.cpp')
-    run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + building.get_native_building_args(), stdout=PIPE)
-    native_result = run_process('./test_avx', stdout=PIPE, env=building.get_building_env(native=True)).stdout
+    run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = run_process('./test_avx', stdout=PIPE).stdout
 
     orig_args = self.emcc_args
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-mavx', '-Wno-argument-outside-range']
@@ -6605,10 +6591,10 @@ return malloc(size);
       '''
     self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
 
+  @also_with_standalone_wasm(wasm2c=True, impure=True)
   @no_asan('autodebug logging interferes with asan')
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
-  @also_with_impure_standalone_wasm
   def test_autodebug_wasm(self):
     # Autodebug does not work with too much shadow memory.
     # Memory consumed by autodebug depends on the size of the WASM linear memory.
@@ -8195,7 +8181,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
           'allow': TRAP_OUTPUTS
         }[mode], assert_returncode=None)
 
-  @also_with_standalone_wasm
+  @also_with_standalone_wasm()
   def test_sbrk(self):
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
@@ -8641,7 +8627,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.
-  @also_with_impure_standalone_wasm
+  @also_with_standalone_wasm(impure=True)
   def test_undefined_main(self):
     # Traditionally in emscripten we allow main to be undefined.  This allows programs with a main
     # and libraries without a main to be compiled identically.

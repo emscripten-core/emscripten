@@ -47,6 +47,7 @@ def make_command(filename, engine=None, args=[]):
   is_jsc = 'jsc' in jsengine
   is_wasmer = 'wasmer' in jsengine
   is_wasmtime = 'wasmtime' in jsengine
+  is_clang = engine[0] == shared.CLANG_CC
   # Disable true async compilation (async apis will in fact be synchronous) for now
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
   shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
@@ -56,6 +57,14 @@ def make_command(filename, engine=None, args=[]):
   if is_wasmer or is_wasmtime:
     # in a wasm runtime, run the wasm, not the js
     filename = shared.unsuffixed(filename) + '.wasm'
+  elif is_clang:
+    # with wasm2c, the input is a c file, which we must compile first
+    c = shared.unsuffixed(filename) + '.wasm.c'
+    executable = shared.unsuffixed(filename) + '.exe'
+    shared.run_process(engine + [c, '-o', executable])
+    # we can now run the executable directly, without an engine
+    engine = []
+    filename = os.path.abspath(executable)
   # Separates engine flags from script flags
   flag_separator = ['--'] if is_d8 or is_jsc else []
   return engine + command_flags + [filename] + shell_option_flags + flag_separator + args
@@ -83,10 +92,14 @@ def check_engine(engine):
 
 def require_engine(engine):
   engine_path = engine[0]
+  # if clang is the "engine", it means we compiled to a native executable;
+  # there is nothing to check here
+  if engine_path == shared.CLANG_CC:
+    return
   if engine_path not in WORKING_ENGINES:
     check_engine(engine)
   if not WORKING_ENGINES[engine_path]:
-    logging.critical('The JavaScript shell (%s) does not seem to work, check the paths in the config file' % engine)
+    logging.critical('The engine (%s) does not seem to work, check the paths in the config file' % engine)
     sys.exit(1)
 
 
