@@ -2650,6 +2650,9 @@ Module["preRun"].push(function () {
   def test_webgl2_objects(self):
     self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
+  def test_html5_webgl_api(self):
+    self.btest(path_from_root('tests', 'html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
+
   def test_webgl2_ubos(self):
     self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 

@@ -3742,7 +3742,7 @@ var LibraryGL = {
     var writeLength = dstLength < len ? dstLength : len;
     var heap = heapType ? HEAPF32 : HEAP32;
     for(var i = 0; i < writeLength; ++i) {
-      heap[(dst + i) >> 2] = ret[i];
+      heap[(dst >> 2) + i] = arr[i];
     }
     return len;
   },
@@ -3756,20 +3756,23 @@ var LibraryGL = {
     return GLctx.getProgramParameter(GL.programs[program], param);
   },
 
+  emscripten_webgl_get_program_info_log_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_program_info_log_utf8: function(program) {
-    return GLctx.getProgramInfoLog(GL.programs[program]);
+    return stringToNewUTF8(GLctx.getProgramInfoLog(GL.programs[program]));
   },
 
   emscripten_webgl_get_shader_parameter_d: function(shader, param) {
     return GLctx.getShaderParameter(GL.shaders[shader], param);
   },
 
+  emscripten_webgl_get_shader_info_log_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_shader_info_log_utf8: function(shader) {
-    return GLctx.getShaderInfoLog(GL.shaders[shader]);
+    return stringToNewUTF8(GLctx.getShaderInfoLog(GL.shaders[shader]));
   },
 
+  emscripten_webgl_get_shader_source_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_shader_source_utf8: function(shader) {
-    return GLctx.getShaderSource(GL.shaders[shader]);
+    return stringToNewUTF8(GLctx.getShaderSource(GL.shaders[shader]));
   },
 
   emscripten_webgl_get_vertex_attrib_d: function(index, param) {
