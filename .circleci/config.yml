@@ -542,6 +542,9 @@ jobs:
       PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
+      # clang can compile but not link in the current setup, see
+      # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
+      EMTEST_LACKS_NATIVE_CLANG: "1"
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail

@@ -10275,7 +10275,6 @@ int main() {
         self.assertContained(expected, run_js('test.wasm', engine))
 
   @requires_native_clang
-  @no_windows('compiles on windows but does not link https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638')
   @no_fastcomp("uses standalone mode")
   def test_wasm2c_reactor(self):
     # test compiling an unsafe library using wasm2c, then using it from a
