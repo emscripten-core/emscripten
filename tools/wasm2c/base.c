@@ -12,10 +12,20 @@
 #include <string.h>
 #include <time.h>
 
-#if defined(_WIN32)
+// ssize_t detection: usually stdint provides it, but not on windows. on
+// MSVC, use the windows-specific header.
+#ifdef _MSC_VER
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
 #endif
+#ifndef ssize_t
+// for clang on windows, define it manually
+#ifdef _WIN64
+typedef signed long long ssize_t;
+#else
+typedef signed long ssize_t;
+#endif
+#endif // ssize_t
 
 #include "wasm-rt.h"
 #include "wasm-rt-impl.h"
