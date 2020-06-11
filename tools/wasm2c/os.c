@@ -209,8 +209,13 @@ static u32 do_stat(int nfd, u32 buf) {
   wasm_i32_store(buf + 28, nbuf.st_rdev);
   wasm_i32_store(buf + 32, 0);
   wasm_i64_store(buf + 40, nbuf.st_size);
+#ifdef _WIN32
+  wasm_i32_store(buf + 48, 512); // fixed blocksize on windows
+  wasm_i32_store(buf + 52, 0);   // but no reported blocks...
+#else
   wasm_i32_store(buf + 48, nbuf.st_blksize);
   wasm_i32_store(buf + 52, nbuf.st_blocks);
+#endif
 #if defined(__APPLE__) || defined(__NetBSD__)
   wasm_i32_store(buf + 56, nbuf.st_atimespec.tv_sec);
   wasm_i32_store(buf + 60, nbuf.st_atimespec.tv_nsec);
@@ -218,6 +223,13 @@ static u32 do_stat(int nfd, u32 buf) {
   wasm_i32_store(buf + 68, nbuf.st_mtimespec.tv_nsec);
   wasm_i32_store(buf + 72, nbuf.st_ctimespec.tv_sec);
   wasm_i32_store(buf + 76, nbuf.st_ctimespec.tv_nsec);
+#elif defined(_WIN32)
+  wasm_i32_store(buf + 56, nbuf.st_atime.tv_sec);
+  wasm_i32_store(buf + 60, nbuf.st_atime.tv_nsec);
+  wasm_i32_store(buf + 64, nbuf.st_mtime.tv_sec);
+  wasm_i32_store(buf + 68, nbuf.st_mtime.tv_nsec);
+  wasm_i32_store(buf + 72, nbuf.st_ctime.tv_sec);
+  wasm_i32_store(buf + 76, nbuf.st_ctime.tv_nsec);
 #else
   wasm_i32_store(buf + 56, nbuf.st_atim.tv_sec);
   wasm_i32_store(buf + 60, nbuf.st_atim.tv_nsec);
@@ -279,11 +291,11 @@ IMPORT_IMPL(u32, Z_envZ___sys_accessZ_iii, (u32 pathname, u32 mode), {
 #define WASM_CLOCK_REALTIME 0
 #define WASM_CLOCK_MONOTONIC 1
 #define WASM_CLOCK_PROCESS_CPUTIME 2
-#define WASM_CLOCK_CLOCK_THREAD_CPUTIME_ID 3
+#define WASM_CLOCK_THREAD_CPUTIME_ID 3
 
 static int check_clock(u32 clock_id) {
   return clock_id == WASM_CLOCK_REALTIME || clock_id == WASM_CLOCK_MONOTONIC ||
-         clock_id == WASM_CLOCK_PROCESS_CPUTIME || clock_id == CLOCK_THREAD_CPUTIME_ID;
+         clock_id == WASM_CLOCK_PROCESS_CPUTIME || clock_id == WASM_CLOCK_THREAD_CPUTIME_ID;
 }
 
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_time_getZ_iiji, (u32 clock_id, u64 max_lag, u32 out), {
