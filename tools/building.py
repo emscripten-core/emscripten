@@ -1573,6 +1573,7 @@ def path_to_system_js_libraries(library_name):
     'dl': '',
     'EGL': 'library_egl.js',
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
+    'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
     'GLESv2': 'library_webgl.js',
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
     'GLEW': 'library_glew.js',
