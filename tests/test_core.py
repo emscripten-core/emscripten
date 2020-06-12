@@ -5261,6 +5261,9 @@ main( int argv, char ** argc ) {
   def test_std_cout_new(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_std_cout_new')
 
+  def test_std_function_incomplete_return(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_std_function_incomplete_return')
+
   def test_istream(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
