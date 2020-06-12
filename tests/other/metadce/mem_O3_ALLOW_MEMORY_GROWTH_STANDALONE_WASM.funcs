@@ -2,5 +2,4 @@ $__main_void
 $_start
 $dlmalloc
 $emscripten_resize_heap
-$main
 $sbrk

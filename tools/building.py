@@ -528,6 +528,8 @@ def lld_flags_for_executable(external_symbol_list):
     if external_symbol_list:
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbol_list]
+    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN:
+      c_exports.remove('main')
     for export in c_exports:
       cmd += ['--export', export]
 
