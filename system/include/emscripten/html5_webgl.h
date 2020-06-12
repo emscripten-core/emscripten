@@ -199,9 +199,9 @@ GLint emscripten_webgl_get_parameter_o(GLenum param);
 char *emscripten_webgl_get_parameter_utf8(GLenum param);
 
 // Calls GLctx.getParameter():
-// Returns the given WebGL context state as int64_t, written to the given heap location.
+// Returns the given WebGL context state as long long, written to the given heap location.
 // Call this function only for values of 'param' that return a WebGL Number type.
-void emscripten_webgl_get_parameter_i64v(GLenum param, int64_t *dst);
+void emscripten_webgl_get_parameter_i64v(GLenum param, long long *dst);
 
 #undef GLint
 #undef GLenum
