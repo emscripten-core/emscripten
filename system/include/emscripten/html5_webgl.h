@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include <webgl/webgl1.h>
-
 #ifdef __cplusplus
 #if !defined(__DEFINED_pthread_t)
 typedef unsigned long pthread_t;
