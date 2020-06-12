@@ -162,7 +162,9 @@ GLint emscripten_webgl_get_vertex_attrib_o(int index, GLenum param);
 // Calls GLctx.getVertexAttrib():
 // Gets an array of currently active vertex attributes.
 // Call this function only for values of 'param' that return an array of types.
-// Use dstType to specify whether to read in ints or floats.
+// Use dstType to specify whether to read an array of ints or floats.
+// The function writes at most dstLength array elements to array dst.
+// The actual length of the state array is returned (not the number of elements written)
 int emscripten_webgl_get_vertex_attrib_v(int index, GLenum param, void *dst, int dstLength, EMSCRIPTEN_WEBGL_PARAM_TYPE dstType);
 
 // Calls GLctx.getUniform():
@@ -174,12 +176,16 @@ double emscripten_webgl_get_uniform_d(GLint program, int location);
 // Gets an array set to an uniform in a program in the given location.
 // Call this function only for array uniform types. (vec2, ivec2 and so on)
 // Use dstType to specify whether to read in ints or floats.
+// The function writes at most dstLength array elements to array dst.
+// The actual length of the state array is returned (not the number of elements written)
 int emscripten_webgl_get_uniform_v(GLint program, int location, void *dst, int dstLength, EMSCRIPTEN_WEBGL_PARAM_TYPE dstType);
 
 // Calls GLctx.getParameter():
 // Gets an array of state set to the active WebGL context.
 // Call this function only for values of 'param' that return an array of types.
 // Use dstType to specify whether to read in ints or floats.
+// The function writes at most dstLength array elements to array dst.
+// The actual length of the state array is returned (not the number of elements written)
 int emscripten_webgl_get_parameter_v(GLenum param, void *dst, int dstLength, EMSCRIPTEN_WEBGL_PARAM_TYPE dstType);
 
 // Calls GLctx.getParameter():
