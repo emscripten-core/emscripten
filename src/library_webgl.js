@@ -1798,19 +1798,21 @@ var LibraryGL = {
     }
 #endif
 
-    if (data) {
 #if MAX_WEBGL_VERSION >= 2
-      if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      if (data) {
         GLctx.bufferData(target, HEAPU8, usage, data, size);
       } else {
-#endif
-        GLctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
-#if MAX_WEBGL_VERSION >= 2
+        GLctx.bufferData(target, size, usage);
       }
-#endif
     } else {
-      GLctx.bufferData(target, size, usage);
+#endif
+      // N.b. here first form specifies a heap subarray, second form an integer size, so the ?: code here is polymorphic. It is advised to avoid
+      // randomly mixing both uses in calling code, to avoid any potential JS engine JIT issues.
+      GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
+#if MAX_WEBGL_VERSION >= 2
     }
+#endif
   },
 
   glBufferSubData__sig: 'viiii',
