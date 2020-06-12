@@ -7863,13 +7863,13 @@ Module['onRuntimeInitialized'] = function() {
 
   @parameterized({
     'normal': ([], True),
-    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo(int, double)"]'], False),
-    'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
-    'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
+    'blacklist_a': (['-s', 'ASYNCIFY_REMOVE_LIST=["foo(int, double)"]'], False),
+    'blacklist_b': (['-s', 'ASYNCIFY_REMOVE_LIST=["bar()"]'], True),
+    'blacklist_c': (['-s', 'ASYNCIFY_REMOVE_LIST=["baz()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'whitelist_d': (['-s', 'ASYNCIFY_ONLY_LIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
     'whitelist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'whitelist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
@@ -7878,7 +7878,7 @@ Module['onRuntimeInitialized'] = function() {
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_test_file('response.file', response)
-      self.emcc_args += ['-s', 'ASYNCIFY_WHITELIST=@response.file']
+      self.emcc_args += ['-s', 'ASYNCIFY_ONLY_LIST=@response.file']
     self.set_setting('ASYNCIFY', 1)
     self.emcc_args += args
     try:

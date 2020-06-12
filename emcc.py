@@ -640,7 +640,6 @@ def backend_binaryen_passes():
     # be able to whitelist them etc.
     passes += ['--fpcast-emu']
   if shared.Settings.ASYNCIFY:
-    # TODO: allow whitelist as in asyncify
     passes += ['--asyncify']
     if shared.Settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
@@ -678,15 +677,18 @@ def backend_binaryen_passes():
           logger.warning('''emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):''')
           logger.warning('''   ''' + item)
           logger.warning('''This may indicate improper escaping that led to splitting inside your names.''')
-          logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_WHITELIST=["foo(int, char)", "bar"]' ''')
+          logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_ONLY_LIST=["foo(int, char)", "bar"]' ''')
           break
 
-    if shared.Settings.ASYNCIFY_BLACKLIST:
-      check_human_readable_list(shared.Settings.ASYNCIFY_BLACKLIST)
-      passes += ['--pass-arg=asyncify-blacklist@%s' % ','.join(shared.Settings.ASYNCIFY_BLACKLIST)]
-    if shared.Settings.ASYNCIFY_WHITELIST:
-      check_human_readable_list(shared.Settings.ASYNCIFY_WHITELIST)
-      passes += ['--pass-arg=asyncify-whitelist@%s' % ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
+    if shared.Settings.ASYNCIFY_REMOVE_LIST:
+      check_human_readable_list(shared.Settings.ASYNCIFY_REMOVE_LIST)
+      passes += ['--pass-arg=asyncify-removelist@%s' % ','.join(shared.Settings.ASYNCIFY_REMOVE_LIST)]
+    if shared.Settings.ASYNCIFY_ADD_LIST:
+      check_human_readable_list(shared.Settings.ASYNCIFY_ADD_LIST)
+      passes += ['--pass-arg=asyncify-addlist@%s' % ','.join(shared.Settings.ASYNCIFY_ADD_LIST)]
+    if shared.Settings.ASYNCIFY_ONLY_LIST:
+      check_human_readable_list(shared.Settings.ASYNCIFY_ONLY_LIST)
+      passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(shared.Settings.ASYNCIFY_ONLY_LIST)]
   if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
 
@@ -3146,7 +3148,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   debug_info = shared.Settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
   # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
   # this is necessary for emitting a symbol map at the end.
-  intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST)
+  intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_ONLY_LIST or shared.Settings.ASYNCIFY_REMOVE_LIST or shared.Settings.ASYNCIFY_ADD_LIST)
   emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:

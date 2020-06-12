@@ -691,7 +691,7 @@ var NODEJS_CATCH_REJECTION = 1;
 // This allows to inject some async functions to the C code that appear to be sync
 // e.g. emscripten_sleep
 // On fastcomp this uses the Asyncify IR transform.
-// On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
+// On upstream this uses the Asyncify pass in Binaryen.
 var ASYNCIFY = 0;
 
 // Imports which can do a sync operation, in addition to the default ones that
@@ -714,7 +714,7 @@ var ASYNCIFY_IGNORE_INDIRECT = 0;
 // In that case, you should increase this size.
 var ASYNCIFY_STACK_SIZE = 4096;
 
-// If the Asyncify blacklist is provided, then the functions in it will not
+// If the Asyncify remove-list is provided, then the functions in it will not
 // be instrumented even if it looks like they need to. This can be useful
 // if you know things the whole-program analysis doesn't, like if you
 // know certain indirect calls are safe and won't unwind. But if you
@@ -735,13 +735,22 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
 // Simple '*' wildcard matching is supported.
-var ASYNCIFY_BLACKLIST = [];
+var ASYNCIFY_REMOVE_LIST = [];
 
-// If the Asyncify whitelist is provided, then *only* the functions in the list
-// will be instrumented. Like the blacklist, getting this wrong will break
+// Functions in the Asyncify add-list are added to the list of instrumented
+// functions, that is, they will be instrumented even if otherwise asyncify
+// thinks they don't need to be. As by default everything will be instrumented
+// in the safest way possible, this is only useful if you use IGNORE_INDIRECT
+// and use this list to fix up some indirect calls that *do* need to be
+// instrumented.
+// See notes on ASYNCIFY_REMOVE_LIST about the names.
+var ASYNCIFY_ADD_LIST = [];
+
+// If the Asyncify only-list is provided, then *only* the functions in the list
+// will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
-// See notes on ASYNCIFY_BLACKLIST about the names.
-var ASYNCIFY_WHITELIST = [];
+// See notes on ASYNCIFY_REMOVE_LIST about the names.
+var ASYNCIFY_ONLY_LIST = [];
 
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
