@@ -7890,6 +7890,25 @@ Module['onRuntimeInitialized'] = function() {
       if should_pass:
         raise
 
+  @parameterized({
+    'normal': ([], True),
+    'ignoreindirect': (['-s', 'ASYNCIFY_IGNORE_INDIRECT'], False),
+    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD_LIST=["main","__original_main","virt()","Structy::virty()"]'], True),
+  })
+  @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
+  @no_fastcomp('new asyncify only')
+  def test_asyncify_indirect_lists(self, args, should_pass):
+    self.set_setting('ASYNCIFY', 1)
+    self.emcc_args += args
+    try:
+      self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_indirect_lists', assert_identical=True)
+      if not should_pass:
+        should_pass = True
+        raise Exception('should not have passed')
+    except Exception:
+      if should_pass:
+        raise
+
   @no_asan('asyncify stack operations confuse asan')
   @no_fastcomp('wasm-backend specific feature')
   def test_emscripten_scan_registers(self):
