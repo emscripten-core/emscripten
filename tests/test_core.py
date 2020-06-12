@@ -7863,15 +7863,15 @@ Module['onRuntimeInitialized'] = function() {
 
   @parameterized({
     'normal': ([], True),
-    'blacklist_a': (['-s', 'ASYNCIFY_REMOVE_LIST=["foo(int, double)"]'], False),
-    'blacklist_b': (['-s', 'ASYNCIFY_REMOVE_LIST=["bar()"]'], True),
-    'blacklist_c': (['-s', 'ASYNCIFY_REMOVE_LIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_ONLY_LIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
-    'whitelist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
-    'whitelist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
+    'removelist_a': (['-s', 'ASYNCIFY_REMOVE_LIST=["foo(int, double)"]'], False),
+    'removelist_b': (['-s', 'ASYNCIFY_REMOVE_LIST=["bar()"]'], True),
+    'removelist_c': (['-s', 'ASYNCIFY_REMOVE_LIST=["baz()"]'], False),
+    'onlylist_a': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'onlylist_b': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'onlylist_c': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'onlylist_d': (['-s', 'ASYNCIFY_ONLY_LIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
+    'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
+    'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   @no_fastcomp('new asyncify only')

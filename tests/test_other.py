@@ -8948,7 +8948,7 @@ test_module().then((test_module_instance) => {
     proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY_LIST=@a.txt"], stdout=PIPE, stderr=PIPE)
     # we should parse the response file properly, and then issue a proper warning for the missing function
     self.assertContained(
-        'Asyncify whitelist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
+        'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
         proc.stderr)
 
   # Sockets and networking
