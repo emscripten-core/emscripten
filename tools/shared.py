@@ -1713,7 +1713,12 @@ else:
     exit_with_error('emscripten config file not found: ' + CONFIG_FILE)
 
 parse_config_file()
-SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
+# Engine tweaks
+if SPIDERMONKEY_ENGINE:
+  new_spidermonkey = SPIDERMONKEY_ENGINE
+  if '-w' not in str(new_spidermonkey):
+    new_spidermonkey += ['-w']
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
@@ -1806,13 +1811,6 @@ ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-emscripten'
 
 check_vanilla()
-
-# Engine tweaks
-if SPIDERMONKEY_ENGINE:
-  new_spidermonkey = SPIDERMONKEY_ENGINE
-  if '-w' not in str(new_spidermonkey):
-    new_spidermonkey += ['-w']
-  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 
 Settings = SettingsManager()
 verify_settings()
