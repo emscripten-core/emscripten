@@ -12,15 +12,16 @@ struct Structy {
   }
 };
 
+Structy y;
+
 __attribute__((noinline))
 void virt() {
   if (x == 1337) {
     // don't inline me
     virt();
   }
-  Structy x;
-  Structy *y = &x;
-  printf("virt: %d\n", y->virty()); // but the indirect call itself!
+  Structy *z = &y;
+  printf("virt: %d\n", z->virty()); // but the indirect call itself!
 }
 
 int main() {

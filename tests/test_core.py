@@ -7893,7 +7893,7 @@ Module['onRuntimeInitialized'] = function() {
   @parameterized({
     'normal': ([], True),
     'ignoreindirect': (['-s', 'ASYNCIFY_IGNORE_INDIRECT'], False),
-    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD_LIST=["main","__original_main","virt()","Structy::virty()"]'], True),
+    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD_LIST=["main","virt()"]'], True),
   })
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   @no_fastcomp('new asyncify only')
