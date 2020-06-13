@@ -359,11 +359,6 @@ def parameterized(parameters):
   return decorator
 
 
-def run_js_default(filename, *args, **kw):
-  engine = shared.JS_ENGINES[0]
-  return jsrun.run_js(filename, engine, *args, **kw)
-
-
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):

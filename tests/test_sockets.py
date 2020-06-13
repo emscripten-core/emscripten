@@ -24,7 +24,8 @@ except Exception:
   # which is the same behavior as before.
   pass
 import clang_native
-from runner import BrowserCore, no_windows, chdir, run_js_default
+from jsrun import run_js
+from runner import BrowserCore, no_windows, chdir
 from tools import shared
 from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, JS_ENGINES, CLANG_CC
 
@@ -431,7 +432,7 @@ class sockets(BrowserCore):
       with harness:
         run_process([EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], stdout=PIPE, stderr=PIPE)
 
-        out = run_js_default('client.js', full_output=True)
+        out = run_js('client.js', full_output=True)
         self.assertContained('do_msg_read: read 14 bytes', out)
 
     if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
@@ -445,7 +446,7 @@ class sockets(BrowserCore):
         with harness:
           run_process([EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
 
-          out = run_js_default('client.js', full_output=True)
+          out = run_js('client.js', full_output=True)
           self.assertContained('do_msg_read: read 14 bytes', out)
           self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
 
@@ -468,7 +469,7 @@ class sockets(BrowserCore):
 
           run_process([EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
 
-          out = run_js_default('client.js', full_output=True)
+          out = run_js('client.js', full_output=True)
           self.assertContained('do_msg_read: read 14 bytes', out)
           self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
 
