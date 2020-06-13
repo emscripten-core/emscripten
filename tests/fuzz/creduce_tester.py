@@ -14,7 +14,6 @@ from subprocess import Popen, PIPE
 
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tools')]
 import shared
-import jsrun
 
 # creduce will only pass the filename of the C file as the first arg, so other
 # configuration options will have to be hardcoded.
@@ -30,7 +29,7 @@ try:
   print('2) Compile natively')
   shared.run_process([shared.CLANG_CC, '-O2', filename, '-o', obj_filename] + CSMITH_CFLAGS)
   print('3) Run natively')
-  correct = jsrun.timeout_run(Popen([obj_filename], stdout=PIPE, stderr=PIPE), 3)
+  correct = shared.timeout_run(Popen([obj_filename], stdout=PIPE, stderr=PIPE), 3)
 except Exception as e:
   print('Failed or infinite looping in native, skipping', e)
   sys.exit(1) # boring
@@ -41,7 +40,7 @@ print('4) Compile JS-ly and compare')
 def try_js(args):
   shared.run_process([shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
                      [filename, '-o', js_filename])
-  js = jsrun.run_js(js_filename, engine=shared.NODE_JS, stderr=PIPE)
+  js = shared.run_js_tool(js_filename, stderr=PIPE)
   assert correct == js
 
 

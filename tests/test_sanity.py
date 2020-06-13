@@ -14,13 +14,14 @@ import tempfile
 import zipfile
 from subprocess import PIPE, STDOUT
 
+import jsrun
 from runner import RunnerCore, path_from_root, env_modify, chdir, run_js_default
 from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, safe_ensure_dirs
 from tools.shared import expected_llvm_version, Cache, Settings
-from tools import jsrun, shared, system_libs
+from tools import shared, system_libs
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
 commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
