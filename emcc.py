@@ -3122,7 +3122,7 @@ def parse_args(newargs):
 def emit_js_source_maps(target, js_transform_tempfiles):
   logger.debug('generating source maps')
   jsrun.run_js_tool(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-                    shared.NODE_JS, js_transform_tempfiles +
+                    js_transform_tempfiles +
                     ['--sourceRoot', os.getcwd(),
                      '--mapFileBaseName', target,
                      '--offset', '0'])

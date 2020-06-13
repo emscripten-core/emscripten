@@ -90,7 +90,7 @@ import subprocess
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared
+from tools import shared, jsrun
 
 QUIET = (__name__ != '__main__')
 
@@ -418,7 +418,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
   # Run the compiled program.
   show('Calling generated program... ' + js_file[1])
   try:
-    info = shared.run_js(js_file[1]).splitlines()
+    info = jsrun.run_js(js_file[1], engine=shared.NODE_JS).splitlines()
   except subprocess.CalledProcessError:
     sys.stderr.write('FAIL: Running the generated program failed!\n')
     sys.exit(1)
