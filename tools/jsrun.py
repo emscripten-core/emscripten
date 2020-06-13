@@ -103,16 +103,6 @@ def require_engine(engine):
     sys.exit(1)
 
 
-def run_js_tool(filename, jsargs=[], *args, **kw):
-  """Execute a javascript tool.
-
-  This is used by emcc to run parts of the build process that are written
-  implemented in javascript.
-  """
-  command = make_command(filename, shared.NODE_JS, jsargs)
-  return shared.check_call(command, *args, **kw).stdout
-
-
 # TODO(sbc): Move to into test directory
 def run_js(filename, engine, args=[], check_timeout=False,
            stdin=None, stdout=PIPE, stderr=None, cwd=None,

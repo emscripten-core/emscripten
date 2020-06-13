@@ -76,7 +76,6 @@ if __name__ == '__main__':
 
 import posixpath
 from tools import shared
-from tools.jsrun import run_js_tool
 from subprocess import PIPE
 import fnmatch
 import json
@@ -523,9 +522,9 @@ def main():
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = run_js_tool(shared.path_from_root('tools', 'lz4-compress.js'),
-                         [shared.path_from_root('src', 'mini-lz4.js'),
-                         temp, data_target], stdout=PIPE)
+      meta = shared.run_js_tool(shared.path_from_root('tools', 'lz4-compress.js'),
+                                [shared.path_from_root('src', 'mini-lz4.js'),
+                                temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''
             var compressedData = %s;
