@@ -30,7 +30,7 @@ if sys.version_info[0] == 3 and sys.version_info < (3, 5):
 
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
-from . import jsrun, cache, tempfiles, colored_logger
+from . import cache, tempfiles, colored_logger
 from . import diagnostics
 
 
@@ -212,6 +212,16 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
   except OSError as e:
     exit_with_error("'%s' failed: %s", ' '.join(cmd), str(e))
+
+
+def run_js_tool(filename, jsargs=[], *args, **kw):
+  """Execute a javascript tool.
+
+  This is used by emcc to run parts of the build process that are written
+  implemented in javascript.
+  """
+  command = NODE_JS + [filename] + jsargs
+  return check_call(command, *args, **kw).stdout
 
 
 # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
@@ -463,17 +473,18 @@ def env_with_node_in_path():
 
 
 def check_node_version():
-  jsrun.check_engine(NODE_JS)
   try:
     actual = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
-    if version >= EXPECTED_NODE_VERSION:
-      return True
-    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
-    return False
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return False
+
+  if version < EXPECTED_NODE_VERSION:
+    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    return False
+
+  return True
 
 
 def set_version_globals():
@@ -501,8 +512,10 @@ def perform_sanify_checks():
   logger.info('(Emscripten: Running sanity checks)')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
-    if not jsrun.check_engine(NODE_JS):
-      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s', NODE_JS, EM_CONFIG)
+    try:
+      run_process(NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
+    except Exception as e:
+      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', NODE_JS, config_file_location, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_AS, LLVM_NM]:
@@ -1548,7 +1561,7 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expandMacros']
 
-  jsrun.run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
+  run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
   out = open(stdout, 'r').read()
 
   return out
