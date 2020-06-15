@@ -37,7 +37,8 @@ from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES,
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
 from runner import run_js_default
-from tools import jsrun, shared, building
+from tools import shared, building
+import jsrun
 import clang_native
 import tools.line_endings
 import tools.js_optimizer
@@ -8236,10 +8237,10 @@ int main() {
     self.assertTrue(jsrun.check_engine(engine2))
 
     # Test that run_js requires the engine
-    jsrun.run_js(path_from_root('src', 'hello_world.js'), NODE_JS)
+    jsrun.run_js(path_from_root('tests', 'hello_world.js'), NODE_JS)
     caught_exit = 0
     try:
-      jsrun.run_js(path_from_root('src', 'hello_world.js'), bogus_engine)
+      jsrun.run_js(path_from_root('tests', 'hello_world.js'), bogus_engine)
     except SystemExit as e:
       caught_exit = e.code
     self.assertEqual(1, caught_exit, 'Did not catch SystemExit with bogus JS engine')

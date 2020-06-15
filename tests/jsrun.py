@@ -6,28 +6,11 @@
 import logging
 import os
 import sys
-import time
 from subprocess import Popen, PIPE, CalledProcessError
 
-TRACK_PROCESS_SPAWNS = int(os.getenv('EM_BUILD_VERBOSE', '0')) >= 3
+from tools import shared
+
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
-
-
-def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
-  start = time.time()
-  if timeout is not None:
-    while time.time() - start < timeout and proc.poll() is None:
-      time.sleep(0.1)
-    if proc.poll() is None:
-      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out: " + note)
-  stdout, stderr = proc.communicate()
-  out = ['' if o is None else o for o in (stdout, stderr)]
-  if throw_on_failure and proc.returncode != 0:
-    raise CalledProcessError(proc.returncode, ' '.join(note_args), stdout, stderr)
-  if TRACK_PROCESS_SPAWNS:
-    logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
-  return '\n'.join(out) if full_output else out[0]
 
 
 def make_command(filename, engine, args=[]):
@@ -80,7 +63,7 @@ def check_engine(engine):
     return WORKING_ENGINES[engine_path]
   try:
     logging.debug('Checking JS engine %s' % engine)
-    output = run_js(shared.path_from_root('src', 'hello_world.js'), engine,
+    output = run_js(shared.path_from_root('tests', 'hello_world.js'), engine,
                     skip_check=True)
     if 'hello, world!' in output:
       WORKING_ENGINES[engine_path] = True
@@ -147,10 +130,10 @@ def run_js(filename, engine, args=[], check_timeout=False,
     # if we got here, then require_engine succeeded, so we can raise the original error
     raise
   timeout = 15 * 60 if check_timeout else None
-  if TRACK_PROCESS_SPAWNS:
+  if shared.TRACK_PROCESS_SPAWNS:
     logging.info('Blocking on process ' + str(proc.pid) + ': ' + str(command) + (' for ' + str(timeout) + ' seconds' if timeout else ' until it finishes.'))
   try:
-    ret = timeout_run(
+    ret = shared.timeout_run(
       proc,
       timeout,
       'Execution',
@@ -166,10 +149,3 @@ def run_js(filename, engine, args=[], check_timeout=False,
   if assert_returncode is not None and proc.returncode is not assert_returncode:
     raise CalledProcessError(proc.returncode, ' '.join(command), str(ret))
   return ret
-
-
-try:
-  from . import shared
-except ImportError:
-  # Python 2 circular import compatibility
-  import shared

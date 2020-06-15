@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import sys
 import tempfile
 
@@ -254,6 +255,25 @@ def which(program):
             return exe_file + suffix
 
   return None
+
+
+# Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
+# this can most likely be moved into the tests/jsrun.py.
+def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
+  start = time.time()
+  if timeout is not None:
+    while time.time() - start < timeout and proc.poll() is None:
+      time.sleep(0.1)
+    if proc.poll() is None:
+      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
+      raise Exception("Timed out: " + note)
+  stdout, stderr = proc.communicate()
+  out = ['' if o is None else o for o in (stdout, stderr)]
+  if throw_on_failure and proc.returncode != 0:
+    raise subprocess.CalledProcessError(proc.returncode, ' '.join(note_args), stdout, stderr)
+  if TRACK_PROCESS_SPAWNS:
+    logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
+  return '\n'.join(out) if full_output else out[0]
 
 
 def generate_config(path, first_time=False):
@@ -1756,6 +1776,7 @@ else:
 # 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
 # 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
 EM_BUILD_VERBOSE = int(os.getenv('EM_BUILD_VERBOSE', '0'))
+TRACK_PROCESS_SPAWNS = EM_BUILD_VERBOSE >= 3
 
 set_version_globals()
 
