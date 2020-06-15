@@ -257,8 +257,8 @@ def which(program):
   return None
 
 
-# Only used by tests and by ctor_evaller.py.   Once fastcomp is remove
-# this can most likely be moved in the tests/jsrun.py.
+# Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
+# this can most likely be moved into the tests/jsrun.py.
 def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
   start = time.time()
   if timeout is not None:
