@@ -286,14 +286,6 @@ var WARN_UNALIGNED = 0;
 // behavior with WebAssembly.
 var PRECISE_F32 = 0;
 
-// Whether to allow autovectorized SIMD code
-// (https://github.com/johnmccutchan/ecmascript_simd).  SIMD intrinsics are
-// always compiled to SIMD code, so you only need this option if you also want
-// the autovectorizer to run.  Note that SIMD support in browsers is not yet
-// there (as of Sep 2, 2014), so you will be running in a polyfill, which is not
-// fast.
-var SIMD = 0;
-
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
 
@@ -1172,48 +1164,6 @@ var EXPORT_NAME = 'Module';
 // to warnings instead of throwing an exception.
 var DYNAMIC_EXECUTION = 1;
 
-// Runs tools/emterpretify on the compiler output.
-// [fastcomp-only]
-var EMTERPRETIFY = 0;
-
-// If defined, a file to write bytecode to, otherwise the default is to embed it
-// in text JS arrays (which is less efficient).  When emitting HTML, we
-// automatically generate code to load this file and set it to
-// Module.emterpreterFile. If you emit JS, you need to make sure that
-// Module.emterpreterFile contains an ArrayBuffer with the bytecode, when the
-// code loads.  Note: You might need to quote twice in the shell, something like
-// -s 'EMTERPRETIFY_FILE="waka"'
-// [fastcomp-only]
-var EMTERPRETIFY_FILE = '';
-
-// Functions to not emterpret, that is, to run normally at full speed
-// [fastcomp-only]
-var EMTERPRETIFY_BLACKLIST = [];
-
-// If this contains any functions, then only the functions in this list are
-// emterpreted (as if all the rest are blacklisted; this overrides the
-// BLACKLIST)
-// [fastcomp-only]
-var EMTERPRETIFY_WHITELIST = [];
-
-// Allows sync code in the emterpreter, by saving the call stack, doing an async
-// delay, and resuming it
-// [fastcomp-only]
-var EMTERPRETIFY_ASYNC = 0;
-
-// Performs a static analysis to suggest which functions should be run in the
-// emterpreter, as it appears they can be on the stack when a sync function is
-// called in the EMTERPRETIFY_ASYNC option.  After showing the suggested list,
-// compilation will halt. You can apply the provided list as an emcc argument
-// when compiling later.
-// [fastcomp-only]
-var EMTERPRETIFY_ADVISE = 0;
-
-// If you have additional custom synchronous functions, add them to this list
-// and the advise mode will include them in its analysis.
-// [fastcomp-only]
-var EMTERPRETIFY_SYNCLIST = [];
-
 // whether js opts will be run, after the main compiler
 var RUNNING_JS_OPTS = 0;
 
@@ -1242,6 +1192,9 @@ var USE_GLFW = 2;
 // In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
 // the WebAssembly file is loaded if browser/shell supports it. Otherwise the
 // .wasm.js fallback will be used.
+//
+// If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
+// the page will be reloaded in Wasm2JS mode.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
@@ -1267,6 +1220,14 @@ var WASM = 1;
 // environments the expectation is to create the memory in the wasm itself.
 // Doing so prevents some possible JS optimizations, so we only do it behind
 // this flag.
+//
+// When this flag is set we do not legalize the JS interface, since the wasm is
+// meant to run in a wasm VM, which can handle i64s directly. If we legalized it
+// the wasm VM would not recognize the API. However, this means that the
+// optional JS emitted won't run if you use a JS API with an i64. You can use
+// the WASM_BIGINT option to avoid that problem by using BigInts for i64s which
+// means we don't need to legalize for JS (but this requires a new enough JS
+// VM).
 var STANDALONE_WASM = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You
@@ -1341,7 +1302,6 @@ var EMIT_PRODUCERS_SECTION = 0;
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
 // Emits emscripten license info in the JS output.
-// [upstream-only]
 var EMIT_EMSCRIPTEN_LICENSE = 0;
 
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
@@ -1794,6 +1754,14 @@ var DEFAULT_TO_CXX = 1;
 // saves libc code size. You can flip this option on to get a libc with full
 // long double printing precision.
 var PRINTF_LONG_DOUBLE = 0;
+
+// Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
+// resulting in a .c file that you can compile with a C compiler to get a
+// native executable that works the same as the normal js+wasm. This will also
+// emit the wasm2c .h file. The output filenames will be X.wasm.c, X.wasm.h
+// if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
+// which avoids trampling a C file).
+var WASM2C = 0;
 
 //===========================================
 // Internal, used for testing only, from here

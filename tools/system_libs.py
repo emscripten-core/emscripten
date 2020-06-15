@@ -17,7 +17,7 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import shared
+from . import shared, building
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 try:
@@ -86,16 +86,19 @@ def run_one_command(cmd):
   for opt in ['EMMAKEN_CFLAGS']:
     if opt in safe_env:
       del safe_env[opt]
+  # Disable certain warnings when we build ports/system libraries we don't want to
+  # show them a million times.
+  cmd.append('-Wno-fastcomp')
   shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
 
 
 def run_build_commands(commands):
-  cores = min(len(commands), shared.Building.get_num_cores())
+  cores = min(len(commands), building.get_num_cores())
   if cores <= 1:
     for command in commands:
       run_one_command(command)
   else:
-    pool = shared.Building.get_multiprocessing_pool()
+    pool = building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
     # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
@@ -115,9 +118,9 @@ def create_lib(libname, inputs):
       if inputs[0] != libname:
         shutil.copyfile(inputs[0], libname)
     else:
-      shared.Building.link_to_object(inputs, libname)
+      building.link_to_object(inputs, libname)
   elif suffix == '.a':
-    shared.Building.emar('cr', libname, inputs)
+    building.emar('cr', libname, inputs)
   else:
     raise Exception('unknown suffix ' + libname)
 
@@ -135,7 +138,7 @@ def read_symbols(path):
     if os.name != 'nt' and '\r\n' in content:
       raise Exception('Windows newlines \\r\\n detected in symbols file "' + path + '"! This could happen for example when copying Emscripten checkout from Windows to Linux or macOS. Please use Unix line endings on checkouts of Emscripten on Linux and macOS!')
 
-    return shared.Building.parse_symbols(content).defs
+    return building.parse_symbols(content).defs
 
 
 def get_wasm_libc_rt_files():
@@ -381,9 +384,9 @@ class Library(object):
       o = self.in_temp(shared.unsuffixed_basename(src) + '.o')
       ext = os.path.splitext(src)[1]
       if ext in ('.s', '.c'):
-        cmd = [shared.PYTHON, shared.EMCC]
+        cmd = [shared.EMCC]
       else:
-        cmd = [shared.PYTHON, shared.EMXX]
+        cmd = [shared.EMXX]
       if ext != '.s':
         cmd += cflags
       commands.append(cmd + ['-c', src, '-o', o])
@@ -691,6 +694,7 @@ class libcompiler_rt(Library):
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   else:
     src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
+  src_files.append('emscripten_setjmp.c')
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
@@ -882,6 +886,24 @@ class crt1(MuslInternalLibrary):
 
   def can_build(self):
     return super(crt1, self).can_build() and shared.Settings.WASM_BACKEND
+
+
+class crt1_reactor(MuslInternalLibrary):
+  name = 'crt1_reactor'
+  cflags = ['-O2']
+  src_dir = ['system', 'lib', 'libc']
+  src_files = ['crt1_reactor.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
+    return super(crt1_reactor, self).can_use() and shared.Settings.STANDALONE_WASM
+
+  def can_build(self):
+    return super(crt1_reactor, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 class libc_extras(NoBCLibrary, MuslInternalLibrary):
@@ -1376,6 +1398,8 @@ class libasan_js(Library):
 # in JS as it's more efficient that way).
 class libstandalonewasm(MuslInternalLibrary):
   name = 'libstandalonewasm'
+  # LTO defeats the weak linking trick used in __original_main.c
+  force_object_files = True
 
   cflags = ['-Os']
   src_dir = ['system', 'lib']
@@ -1410,23 +1434,29 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def get_files(self):
     base_files = files_in_path(
-        path_components=['system', 'lib'],
-        filenames=['standalone_wasm.c', 'standalone_wasm_stdio.c'])
+        path_components=['system', 'lib', 'standalone'],
+        filenames=['standalone.c', 'standalone_wasm_stdio.c', '__original_main.c',
+                   '__main_void.c', '__main_argc_argv.c'])
     # It is more efficient to use JS methods for time, normally.
     time_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
         filenames=['strftime.c',
                    '__month_to_secs.c',
+                   '__secs_to_tm.c',
                    '__tm_to_secs.c',
                    '__tz.c',
                    '__year_to_secs.c',
+                   'clock.c',
+                   'clock_gettime.c',
+                   'difftime.c',
                    'gettimeofday.c',
                    'localtime.c',
                    'localtime_r.c',
                    'gmtime.c',
                    'gmtime_r.c',
                    'nanosleep.c',
-                   'mktime.c'])
+                   'mktime.c',
+                   'time.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
     exit_files = files_in_path(
@@ -1499,7 +1529,7 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = shared.Building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+  symbolses = building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
 
   warn_on_unexported_main(symbolses)
 
@@ -1557,13 +1587,16 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     libs_to_link.append((lib.get_path(), need_whole_archive))
 
   if shared.Settings.STANDALONE_WASM:
-    add_library(system_libs_map['crt1'])
+    if shared.Settings.EXPECT_MAIN:
+      add_library(system_libs_map['crt1'])
+    else:
+      add_library(system_libs_map['crt1_reactor'])
 
   for forced in force_include:
     add_library(system_libs_map[forced])
 
   if only_forced:
-    if shared.Settings.WASM_BACKEND:
+    if shared.Settings.WASM_BACKEND and not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
       add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
@@ -1668,8 +1701,8 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     libs_to_link.sort(key=lambda x: x[0].endswith('.a'))
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
-  # Building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
-  # shouldn't add any extra `--no-whole-archive` or we will undo the intent of Building.link_ldd.
+  # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
+  # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
   if shared.Settings.LINKABLE and shared.Settings.WASM_BACKEND:
     return [l[0] for l in libs_to_link]
 
@@ -1745,7 +1778,7 @@ class Ports(object):
     objects = []
     for src in srcs:
       obj = src + '.o'
-      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
+      commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
     Ports.run_commands(commands)
@@ -1758,9 +1791,9 @@ class Ports(object):
     # that the ports are built in the correct configuration.
     def add_args(cmd):
       # this must only be called on a standard build command
-      assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+      assert cmd[0] in (shared.EMCC, shared.EMXX)
       # add standard cflags, but also allow the cmd to override them
-      return cmd[:2] + get_cflags() + cmd[2:]
+      return cmd[:1] + get_cflags() + cmd[1:]
     run_build_commands([add_args(c) for c in commands])
 
   @staticmethod
@@ -1769,7 +1802,7 @@ class Ports(object):
 
   @staticmethod
   def get_dir():
-    dirname = os.environ.get('EM_PORTS') or os.path.expanduser(os.path.join('~', '.emscripten_ports'))
+    dirname = shared.PORTS
     shared.safe_ensure_dirs(dirname)
     return dirname
 

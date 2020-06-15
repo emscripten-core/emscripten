@@ -173,8 +173,8 @@ class SimpleLoop {
 
   void Dump() {
     // Simplified for readability purposes.
-    fprintf(stderr, "loop-%d, nest: %d, depth: %d\n",
-            counter_, nesting_level_, depth_level_);
+    printf("loop-%d, nest: %d, depth: %d\n",
+           counter_, nesting_level_, depth_level_);
   }
 
   LoopSet *GetChildren() {
@@ -778,24 +778,24 @@ int main(int argc, char **argv) {
     default: printf("error: %d\\n", arg); return -1;
   }
 
-  fprintf(stderr, "Welcome to LoopTesterApp, C++ edition\n");
+  printf("Welcome to LoopTesterApp, C++ edition\n");
   MaoCFG cfg;
   LoopStructureGraph lsg;
 
-  fprintf(stderr, "Constructing Simple CFG...\n");
+  printf("Constructing Simple CFG...\n");
   cfg.CreateNode(0);  // top
   buildBaseLoop(&cfg, 0);
   cfg.CreateNode(1);  // bottom
   new BasicBlockEdge(&cfg, 0,  2);
 
-  fprintf(stderr, "15000 dummy loops\n");
+  printf("15000 dummy loops\n");
   for (int dummyloops = 0; dummyloops < 15000; ++dummyloops) {
     LoopStructureGraph * lsglocal = new LoopStructureGraph();
     FindHavlakLoops(&cfg, lsglocal);
     delete(lsglocal);
   }
 
-  fprintf(stderr, "Constructing CFG...\n");
+  printf("Constructing CFG...\n");
   int n = 2;
 
   for (int parlooptrees = 0; parlooptrees < 10; parlooptrees++) {
@@ -816,19 +816,18 @@ int main(int argc, char **argv) {
     buildConnect(&cfg, n, 1);
   }
 
-  fprintf(stderr, "Performing Loop Recognition\n1 Iteration\n");
+  printf("Performing Loop Recognition\n1 Iteration\n");
   int num_loops = FindHavlakLoops(&cfg, &lsg);
 
-  fprintf(stderr, "Another %d iterations...\n", NUM);
+  printf("Another %d iterations...\n", NUM);
   int sum = 0;
   for (int i = 0; i < NUM; i++) {
     LoopStructureGraph lsg;
-    //fprintf(stderr, ".");
+    //printf(".");
     sum += FindHavlakLoops(&cfg, &lsg);
   }
-  fprintf(stderr,
-          "\nFound %d loops (including artificial root node)"
-          "(%d)\n", num_loops, sum);
+  printf("\nFound %d loops (including artificial root node)"
+         "(%d)\n", num_loops, sum);
   return 0;
 }
 

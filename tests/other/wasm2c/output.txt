@@ -1,0 +1,5 @@
+Initializing sandboxed unsafe library
+Calling twice on 21 returns 42
+Calling something bad now...
+The sandbox should not have been able to print anything.
+It claims it printed 55 chars but the test proves it didn't!

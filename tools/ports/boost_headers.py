@@ -39,7 +39,7 @@ def get(ports, settings, shared):
     commands = []
     o_s = []
     obj = dummy_file + '.o'
-    command = [shared.PYTHON, shared.EMCC, '-c', dummy_file, '-o', obj]
+    command = [shared.EMCC, '-c', dummy_file, '-o', obj]
     commands.append(command)
     ports.run_commands(commands)
     final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)

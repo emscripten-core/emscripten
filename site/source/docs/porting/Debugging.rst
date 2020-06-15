@@ -137,6 +137,59 @@ Debug printouts can even execute arbitrary JavaScript. For example::
   }
 
 
+Handling C++ exceptions from javascript
+=======================================
+
+C++ exceptions are thrown from WebAssembly using exception pointers, which means
+that try/catch/finally blocks in JavaScript will only receive a number, which
+represents a pointer into linear memory. In order to get the exception message,
+the user will need to create some WASM code which will extract the meaning from
+the exception. In the example code below we created a function that receives the
+address of a ``std::exception``, and by casting the pointer
+returns the ``what`` function call result.
+
+.. code-block:: cpp
+
+  #include <bind.h>
+
+  std::string getExceptionMessage(intptr_t exceptionPtr) {
+    return std::string(reinterpret_cast<std::exception *>(exceptionPtr)->what());
+  }
+
+  EMSCRIPTEN_BINDINGS(Bindings) {
+    emscripten::function("getExceptionMessage", &getExceptionMessage);
+  };
+
+Once such a function has been created, exception handling code in javascript
+can call it when receiving an exception from WASM. Here the function is used
+in order to log the thrown exception.
+
+.. code-block:: javascript
+
+  try {
+    ... // some code that calls WebAssembly
+  } catch (exception) {
+    console.error(Module.getExceptionMessage(exception));
+  } finally {
+    ...
+  }
+
+It's important to notice that this example code will work only for thrown
+statically allocated exceptions. If your code throws other objects, such as
+strings or dynamically allocated exceptions, the handling code will need to
+take that into account. For example, if your code needs to handle both native
+C++ exceptions and JavaScript exceptions you could use the following code to
+distinguish between them:
+
+.. code-block:: javascript
+
+  function getExceptionMessage(exception) {
+    return typeof exception === 'number'
+      ? Module.getExceptionMessage(exception)
+      : exception;
+  }
+
+
 Disabling optimizations
 =======================
 
@@ -285,4 +338,3 @@ Need help?
 The :ref:`Emscripten Test Suite <emscripten-test-suite>` contains good examples of almost all functionality offered by Emscripten. If you have a problem, it is a good idea to search the suite to determine whether test code with similar behavior is able to run.
 
 If you've tried the ideas here and you need more help, please :ref:`contact`.
-

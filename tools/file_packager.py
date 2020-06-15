@@ -76,7 +76,6 @@ if __name__ == '__main__':
 
 import posixpath
 from tools import shared
-from tools.jsrun import run_js
 from subprocess import PIPE
 import fnmatch
 import json
@@ -285,7 +284,6 @@ def main():
   ret += '''
   if (!Module.expectedDataFileDownloads) {
     Module.expectedDataFileDownloads = 0;
-    Module.finishedDataFileDownloads = 0;
   }
   Module.expectedDataFileDownloads++;
   (function() {
@@ -524,10 +522,9 @@ def main():
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = run_js(shared.path_from_root('tools', 'lz4-compress.js'),
-                    shared.NODE_JS,
-                    [shared.path_from_root('src', 'mini-lz4.js'),
-                     temp, data_target], stdout=PIPE)
+      meta = shared.run_js_tool(shared.path_from_root('tools', 'lz4-compress.js'),
+                                [shared.path_from_root('src', 'mini-lz4.js'),
+                                temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''
             var compressedData = %s;
@@ -779,7 +776,6 @@ def main():
 
     code += r'''
       function processPackageData(arrayBuffer) {
-        Module.finishedDataFileDownloads++;
         assert(arrayBuffer, 'Loading data file failed.');
         assert(arrayBuffer instanceof ArrayBuffer, 'bad input to processPackageData');
         var byteArray = new Uint8Array(arrayBuffer);

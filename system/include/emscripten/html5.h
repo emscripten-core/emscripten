@@ -108,19 +108,19 @@ extern "C" {
 #define EM_HTML5_LONG_STRING_LEN_BYTES 128
 
 typedef struct EmscriptenKeyboardEvent {
-  EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
-  EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
   unsigned long location;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
   EM_BOOL altKey;
   EM_BOOL metaKey;
   EM_BOOL repeat;
-  EM_UTF8 locale[EM_HTML5_SHORT_STRING_LEN_BYTES];
-  EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
   unsigned long charCode;
   unsigned long keyCode;
   unsigned long which;
+  EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 locale[EM_HTML5_SHORT_STRING_LEN_BYTES];
 } EmscriptenKeyboardEvent;
 
 
@@ -504,9 +504,6 @@ extern void *emscripten_webgl2_get_proc_address(const char *name);
 
 // Combines emscripten_webgl1_get_proc_address() and emscripten_webgl2_get_proc_address() to return function pointers to both WebGL1 and WebGL2 functions. Same drawbacks apply.
 extern void *emscripten_webgl_get_proc_address(const char *name);
-
-typedef struct WGPUDeviceImpl* WGPUDevice;
-extern WGPUDevice emscripten_webgpu_get_device();
 
 extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
 extern EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);

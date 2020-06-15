@@ -6,7 +6,7 @@
 
 from __future__ import print_function
 import sys
-from tools import shared
+from tools import building
 from subprocess import CalledProcessError
 
 
@@ -24,7 +24,7 @@ variables so that emcc etc. are used. Typical usage:
     return 1
 
   try:
-    shared.Building.configure(sys.argv[1:])
+    building.configure(sys.argv[1:])
     return 0
   except CalledProcessError as e:
     return e.returncode

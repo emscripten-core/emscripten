@@ -1730,7 +1730,7 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if EMTERPRETIFY_ASYNC == 0 && !(WASM_BACKEND && ASYNCIFY)
+#if !(WASM_BACKEND && ASYNCIFY)
   SDL_Delay: function(delay) {
     if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
     // horrible busy-wait, but in a worker it at least does not block rendering
@@ -2410,11 +2410,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext'
-#if EMTERPRETIFY_ASYNC
-  , '$EmterpreterAsync'
-#endif
-  ],
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__sig: 'iii',
   SDL_OpenAudio: function(desired, obtained) {
@@ -2508,25 +2504,16 @@ var LibrarySDL = {
         }
       }
 
-#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
+#if (ASYNCIFY && WASM_BACKEND)
       var sleepCallback = function() {
         if (SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
       };
-#if EMTERPRETIFY_ASYNC
-      EmterpreterAsync.yieldCallbacks.push(sleepCallback);
-      SDL.audio.callbackRemover = function() {
-        EmterpreterAsync.yieldCallbacks = EmterpreterAsync.yieldCallbacks.filter(function(callback) {
-          return callback !== sleepCallback;
-        });
-      }
-#else
       Asyncify.sleepCallbacks.push(sleepCallback);
       SDL.audio.callbackRemover = function() {
         Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter(function(callback) {
           return callback !== sleepCallback;
         });
       }
-#endif
 #endif
 
       // Create a callback function that will be routinely called to ask more audio data from the user application.

@@ -19,7 +19,6 @@ import jsrun
 # creduce will only pass the filename of the C file as the first arg, so other
 # configuration options will have to be hardcoded.
 CSMITH_CFLAGS = ['-I', os.path.join(os.environ['CSMITH_PATH'], 'runtime')]
-ENGINE = shared.JS_ENGINES[0]
 EMCC_ARGS = ['-O2', '-s', 'ASM_JS=1']
 
 filename = sys.argv[1]
@@ -40,9 +39,9 @@ print('4) Compile JS-ly and compare')
 
 
 def try_js(args):
-  shared.run_process([shared.PYTHON, shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
+  shared.run_process([shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
                      [filename, '-o', js_filename])
-  js = shared.run_js(js_filename, stderr=PIPE, engine=ENGINE)
+  js = jsrun.run_js(js_filename, engine=shared.NODE_JS, stderr=PIPE)
   assert correct == js
 
 

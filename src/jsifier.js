@@ -66,11 +66,6 @@ function demangleCSymbolName(f) {
   return f[0] == '_' ? f.substr(1) : '$' + f;
 }
 
-function isJsLibraryConfigIdentifier(ident) {
-  return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
-   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
-}
-
 // JSifier
 function JSify(data, functionsOnly) {
   var mainPass = !functionsOnly;

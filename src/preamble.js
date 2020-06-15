@@ -151,21 +151,6 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
-#if EMTERPRETIFY_ASYNC
-  if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state) {
-#if ASSERTIONS
-    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
-    assert(!EmterpreterAsync.restartFunc, 'Cannot have multiple async ccalls in flight at once');
-#endif
-    return new Promise(function(resolve) {
-      EmterpreterAsync.restartFunc = func;
-      EmterpreterAsync.asyncFinalizers.push(function(ret) {
-        if (stack !== 0) stackRestore(stack);
-        resolve(convertReturnValue(ret));
-      });
-    });
-  }
-#endif
 #if ASYNCIFY && WASM_BACKEND
   var asyncMode = opts && opts.async;
   var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
@@ -192,7 +177,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
+#if ASYNCIFY && WASM_BACKEND
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -395,12 +380,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 
-#if EMTERPRETIFY
-function abortStackOverflowEmterpreter() {
-  abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
-}
-#endif
-
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
@@ -443,9 +422,9 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 
 #include "runtime_sab_polyfill.js"
 
-// In standalone mode, the wasm creates the memory, and the user can't provide it.
 #if STANDALONE_WASM
 #if ASSERTIONS
+// In standalone mode, the wasm creates the memory, and the user can't provide it.
 assert(!Module['wasmMemory']);
 #endif // ASSERTIONS
 #else // !STANDALONE_WASM
@@ -699,10 +678,6 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
-#if EMTERPRETIFY_ASYNC && ASSERTIONS
-var abortDecorators = [];
-#endif
-
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -725,11 +700,6 @@ function abort(what) {
   what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
   var output = 'abort(' + what + ') at ' + stackTrace();
-#if EMTERPRETIFY_ASYNC
-  abortDecorators.forEach(function(decorator) {
-    output = decorator(output, what);
-  });
-#endif
   what = output;
 #endif // ASSERTIONS
 
@@ -823,6 +793,29 @@ var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
 #include "URIUtils.js"
+
+#if ASSERTIONS
+function createExportWrapper(name, fixedasm) {
+  return function() {
+    var displayName = name;
+#if !WASM_BACKEND
+    if (name[0] == '_') {
+      displayName = name.substr(1);
+    }
+#endif
+    var asm = fixedasm;
+    if (!fixedasm) {
+      asm = Module['asm'];
+    }
+    assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
+    assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    if (!asm[name]) {
+      assert(asm[name], 'exported native function `' + displayName + '` not found');
+    }
+    return asm[name].apply(null, arguments);
+  };
+}
+#endif
 
 #if WASM
 var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
@@ -1017,6 +1010,21 @@ function createWasm() {
 #endif // USE_OFFSET_CONVERTER
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
+
+#if WASM == 2
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+      if (typeof location !== 'undefined') {
+#endif
+        // WebAssembly compilation failed, try running the JS fallback instead.
+        var search = location.search;
+        if (search.indexOf('_rwasm=0') < 0) {
+          location.href += (search ? search + '&' : '?') + '_rwasm=0';
+        }
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+      }
+#endif
+#endif // WASM == 2
+
       abort(reason);
     });
   }
@@ -1047,7 +1055,7 @@ function createWasm() {
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
             err('falling back to ArrayBuffer instantiation');
-            instantiateArrayBuffer(receiveInstantiatedSource);
+            return instantiateArrayBuffer(receiveInstantiatedSource);
           });
       });
     } else {

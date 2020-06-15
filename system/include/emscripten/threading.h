@@ -377,7 +377,7 @@ pthread_t emscripten_main_browser_thread_id(void);
 // Note 3: This function is enabled when targeting pthreads (SharedArrayBuffer),
 //         not to be confused with
 //         similarly named function emscripten_sleep(), which is intended for
-//         Asyncify and Emterpreter builds.
+//         Asyncify builds.
 void emscripten_thread_sleep(double msecs);
 
 #define EM_THREAD_STATUS int

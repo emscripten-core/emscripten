@@ -6,6 +6,10 @@
 
 var LibraryJSEvents = {
   $JSEvents: {
+
+/* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
+   to save code size.
+   (but still documented here to keep track of what is supposed to be present)
     // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
     keyEvent: 0,
     mouseEvent: 0,
@@ -23,14 +27,24 @@ var LibraryJSEvents = {
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
 
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 8 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
     // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
     // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
     previousScreenX: null,
     previousScreenY: null,
+#endif
 
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
+
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    // If positive, we are currently executing in a JS event handler.
+    inEventHandler: 0,
+    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
+    currentEventHandler: null,
+#endif
+*/
 
     removeAllEventListeners: function() {
       for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
@@ -109,11 +123,6 @@ var LibraryJSEvents = {
         call.targetFunction.apply(null, call.argsList);
       }
     },
-
-    // If positive, we are currently executing in a JS event handler.
-    inEventHandler: 0,
-    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
-    currentEventHandler: null,
 #endif
 
     // Stores objects representing each currently registered JS event handler.
@@ -233,27 +242,31 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.keyEvent) JSEvents.keyEvent = _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} );
 
-    var keyEventHandlerFunc = function(ev) {
-      var e = ev || event;
+    var keyEventHandlerFunc = function(e) {
+#if ASSERTIONS
+      assert(e);
+#endif
 
 #if USE_PTHREADS
       var keyEventData = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} ) : JSEvents.keyEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
 #else
       var keyEventData = JSEvents.keyEvent;
 #endif
-      stringToUTF8(e.key ? e.key : "", keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
-      stringToUTF8(e.code ? e.code : "", keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.location, 'e.location', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.altKey, 'e.altKey', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.metaKey, 'e.metaKey', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.repeat, 'e.repeat', 'i32') }}};
-      stringToUTF8(e.locale ? e.locale : "", keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
-      stringToUTF8(e.char ? e.char : "", keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.charCode, 'e.charCode', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.keyCode, 'e.keyCode', 'i32') }}};
-      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.which, 'e.which', 'i32') }}};
+      var idx = keyEventData >> 2;
+
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4}}}] = e.location;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey / 4}}}] = e.ctrlKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.shiftKey / 4}}}] = e.shiftKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.altKey / 4}}}] = e.altKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.metaKey / 4}}}] = e.metaKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.repeat / 4}}}] = e.repeat;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charCode / 4}}}] = e.charCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.keyCode / 4}}}] = e.keyCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.which / 4}}}] = e.which;
+      stringToUTF8(e.key || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
+      stringToUTF8(e.code || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
+      stringToUTF8(e.char || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
+      stringToUTF8(e.locale || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}}, {{{ cDefine('EM_HTML5_SHORT_STRING_LEN_BYTES') }}});
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
@@ -420,17 +433,22 @@ var LibraryJSEvents = {
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
   _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '$specialHTMLTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientX, 'e.clientX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientY, 'e.clientY', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.altKey, 'e.altKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.metaKey, 'e.metaKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.button, 'e.button', 'i16') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
-    var movementX = e["movementX"]
+#if ASSERTIONS
+    assert(eventStruct % 4 == 0);
+#endif
+    var idx = eventStruct >> 2;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenX / 4 }}}] = e.screenX;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientX / 4 }}}] = e.clientX;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientY / 4 }}}] = e.clientY;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey / 4 }}}] = e.ctrlKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey / 4 }}}] = e.shiftKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey / 4 }}}] = e.altKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey / 4 }}}] = e.metaKey;
+    HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.button / 2 }}}] = e.button;
+    HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.buttons / 2 }}}] = e.buttons;
+
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementX / 4 }}}] = e["movementX"]
 #if MIN_FIREFOX_VERSION <= 40
       //     https://caniuse.com/#feat=mdn-api_mouseevent_movementx
       || e["mozMovementX"]
@@ -438,46 +456,51 @@ var LibraryJSEvents = {
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementX"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenX-JSEvents.previousScreenX)
 #endif
       ;
-    var movementY = e["movementY"]
+
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementY / 4 }}}] = e["movementY"]
 #if MIN_FIREFOX_VERSION <= 40
       || e["mozMovementY"]
 #endif
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementY"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenY-JSEvents.previousScreenY)
 #endif
       ;
 
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'movementX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'movementY', 'i32') }}};
-
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
       var rect = __getBoundingClientRect(Module['canvas']);
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = e.clientX - rect.left;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = e.clientY - rect.top;
     } else { // Canvas is not initialized, return 0.
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, '0', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = 0;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = 0;
     }
 #endif
     var rect = __getBoundingClientRect(target);
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - rect.left;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - rect.top;
 
-    // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
-      // https://github.com/emscripten-core/emscripten/pull/4997
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_CHROME_VERSION <= 76
+    // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera <= 76,
+    // so there we should not record previous screen coordinates on wheel events.
     // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
-    if (e.type !== 'wheel' && e.type !== 'mousewheel') {
+    // https://github.com/emscripten-core/emscripten/pull/4997
+    if (e.type !== 'wheel') {
+#endif
       JSEvents.previousScreenX = e.screenX;
       JSEvents.previousScreenY = e.screenY;
+#if MIN_CHROME_VERSION <= 76
     }
+#endif
+#endif
   },
 
   _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_findEventTarget'],
@@ -631,7 +654,7 @@ var LibraryJSEvents = {
 #endif
       if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, wheelEvent, userData)) e.preventDefault();
     };
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     // The 'mousewheel' event as implemented in Safari 6.0.5
     var mouseWheelHandlerFunc = function(ev) {
       var e = ev || event;
@@ -656,7 +679,7 @@ var LibraryJSEvents = {
 #endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
       handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
 #else
       handlerFunc: wheelHandlerFunc,
@@ -674,7 +697,7 @@ var LibraryJSEvents = {
     if (typeof target.onwheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     } else if (typeof target.onmousewheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "mousewheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -2018,23 +2041,34 @@ var LibraryJSEvents = {
 
     target = __findEventTarget(target);
 
-    var touchEventHandlerFunc = function(ev) {
-      var e = ev || event;
-
+    var touchEventHandlerFunc = function(e) {
+#if ASSERTIONS
+      assert(e);
+#endif
       var touches = {};
-      for(var i = 0; i < e.touches.length; ++i) {
-        var touch = e.touches[i];
-        touch.changed = false;
+      var et = e.touches;
+      for(var i = 0; i < et.length; ++i) {
+        var touch = et[i];
+#if ASSERTIONS
+        // Verify that browser does not recycle touch objects with old stale data, but reports new ones each time.
+        assert(!touch.isChanged);
+        assert(!touch.onTarget);
+#endif
         touches[touch.identifier] = touch;
       }
-      for(var i = 0; i < e.changedTouches.length; ++i) {
-        var touch = e.changedTouches[i];
+      et = e.changedTouches;
+      for(var i = 0; i < et.length; ++i) {
+        var touch = et[i];
+#if ASSERTIONS
+        // Verify that browser does not recycle touch objects with old stale data, but reports new ones each time.
+        assert(!touch.onTarget);
+#endif
+        touch.isChanged = 1;
         touches[touch.identifier] = touch;
-        touch.changed = true;
       }
-      for(var i = 0; i < e.targetTouches.length; ++i) {
-        var touch = e.targetTouches[i];
-        touches[touch.identifier].onTarget = true;
+      et = e.targetTouches;
+      for(var i = 0; i < et.length; ++i) {
+        touches[et[i].identifier].onTarget = 1;
       }
 
 #if USE_PTHREADS
@@ -2042,12 +2076,12 @@ var LibraryJSEvents = {
 #else
       var touchEvent = JSEvents.touchEvent;
 #endif
-      var ptr = touchEvent;
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
-      ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
+      var idx = touchEvent>>2; // Pre-shift the ptr to index to HEAP32 to save code size
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey / 4}}}] = e.ctrlKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey / 4}}}] = e.shiftKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey / 4}}}] = e.altKey;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey / 4}}}] = e.metaKey;
+      idx += {{{ C_STRUCTS.EmscriptenTouchEvent.touches / 4 }}}; // Advance to the start of the touch array.
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
       var canvasRect = Module['canvas'] ? __getBoundingClientRect(Module['canvas']) : undefined;
 #endif
@@ -2055,30 +2089,25 @@ var LibraryJSEvents = {
       var numTouches = 0;
       for(var i in touches) {
         var t = touches[i];
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.identifier, 't.identifier', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenX, 't.screenX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenY, 't.screenY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientX, 't.clientX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientY, 't.clientY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageX, 't.pageX', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageY, 't.pageY', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.isChanged, 't.changed', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.onTarget, 't.onTarget', 'i32') }}};
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4}}}] = t.clientX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4}}}] = t.clientY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4}}}] = t.pageX;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4}}}] = t.pageY;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged / 4}}}] = t.isChanged;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget / 4}}}] = t.onTarget;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4}}}] = t.clientX - targetRect.left;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4}}}] = t.clientY - targetRect.top;
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-        if (canvasRect) {
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - canvasRect.left', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - canvasRect.top', 'i32') }}};
-        } else {
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, '0', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, '0', 'i32') }}};            
-        }
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4}}}] = canvasRect ? t.clientX - canvasRect.left : 0;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4}}}] = canvasRect ? t.clientY - canvasRect.top : 0;
 #endif
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetX, 't.clientX - targetRect.left', 'i32') }}};
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetY, 't.clientY - targetRect.top', 'i32') }}};
 
-        ptr += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
+        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ / 4 }}};
 
-        if (++numTouches >= 32) {
+        if (++numTouches > 31) {
           break;
         }
       }
@@ -2574,7 +2603,9 @@ var LibraryJSEvents = {
     return GL.currentContext ? GL.currentContext.handle : 0;
   },
 
-  emscripten_webgl_get_drawing_buffer_size_calling_thread: function(contextHandle, width, height) {
+  emscripten_webgl_get_drawing_buffer_size__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_get_drawing_buffer_size__sig: 'iiii',
+  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
     var GLContext = GL.getContext(contextHandle);
 
     if (!GLContext || !GLContext.GLctx || !width || !height) {
@@ -2584,22 +2615,6 @@ var LibraryJSEvents = {
     {{{ makeSetValue('height', '0', 'GLContext.GLctx.drawingBufferHeight', 'i32') }}};
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-
-#if USE_PTHREADS
-  emscripten_webgl_get_drawing_buffer_size_main_thread__proxy: 'sync',
-  emscripten_webgl_get_drawing_buffer_size_main_thread__sig: 'iiii',
-  emscripten_webgl_get_drawing_buffer_size_main_thread__deps: ['emscripten_webgl_get_drawing_buffer_size_calling_thread'],
-  emscripten_webgl_get_drawing_buffer_size_main_thread: function(contextHandle, width, height) { return _emscripten_webgl_get_drawing_buffer_size_calling_thread(contextHandle, width, height); },
-
-  emscripten_webgl_get_drawing_buffer_size__deps: ['emscripten_webgl_get_drawing_buffer_size_calling_thread', 'emscripten_webgl_get_drawing_buffer_size_main_thread'],
-  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
-    if (GL.contexts[contextHandle]) return _emscripten_webgl_get_drawing_buffer_size_calling_thread(contextHandle, width, height);
-    else _emscripten_webgl_get_drawing_buffer_size_main_thread(contextHandle, width, height);
-  },
-#else
-  emscripten_webgl_get_drawing_buffer_size__sig: 'iiii',
-  emscripten_webgl_get_drawing_buffer_size: 'emscripten_webgl_get_drawing_buffer_size_calling_thread',
-#endif
 
   emscripten_webgl_do_commit_frame: function() {
 #if TRACE_WEBGL_CALLS
@@ -2634,6 +2649,8 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_webgl_get_context_attributes__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_get_context_attributes__sig: 'iii',
   emscripten_webgl_get_context_attributes__deps: ['_emscripten_webgl_power_preferences'],
   emscripten_webgl_get_context_attributes: function(c, a) {
     if (!a) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
@@ -2663,28 +2680,21 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_webgl_destroy_context_calling_thread: function(contextHandle) {
-    if (GL.currentContext == contextHandle) GL.currentContext = null;
+  emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_destroy_context__sig: 'vi',
+  emscripten_webgl_destroy_context__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
+  emscripten_webgl_destroy_context: function(contextHandle) {
+    if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
   },
 
-#if USE_PTHREADS
-  emscripten_webgl_destroy_context_main_thread__proxy: 'sync',
-  emscripten_webgl_destroy_context_main_thread__sig: 'vi',
-  emscripten_webgl_destroy_context_main_thread__deps: ['emscripten_webgl_destroy_context_calling_thread'],
-  emscripten_webgl_destroy_context_main_thread: function(contextHandle) { return _emscripten_webgl_destroy_context_calling_thread(contextHandle); },
-
-  emscripten_webgl_destroy_context__deps: ['emscripten_webgl_destroy_context_main_thread', 'emscripten_webgl_destroy_context_calling_thread', 'emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
-  emscripten_webgl_destroy_context: function(contextHandle) {
+  // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
+  // the call over to the target thread.
+  emscripten_webgl_destroy_context_before_on_calling_thread: function(contextHandle) {
     if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
-    return GL.contexts[contextHandle] ? _emscripten_webgl_destroy_context_calling_thread(contextHandle) : _emscripten_webgl_destroy_context_main_thread(contextHandle);
   },
-#else
-  emscripten_webgl_destroy_context__sig: 'vi',
-  emscripten_webgl_destroy_context: 'emscripten_webgl_destroy_context_calling_thread',
-#endif
 
-  emscripten_webgl_enable_extension_calling_thread__deps: [
+  emscripten_webgl_enable_extension__deps: [
 #if MIN_WEBGL_VERSION == 1
     '_webgl_enable_ANGLE_instanced_arrays',
     '_webgl_enable_OES_vertex_array_object',
@@ -2694,7 +2704,9 @@ var LibraryJSEvents = {
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
 #endif
   ],
-  emscripten_webgl_enable_extension_calling_thread: function(contextHandle, extension) {
+  emscripten_webgl_enable_extension__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_enable_extension__sig: 'iii',
+  emscripten_webgl_enable_extension: function(contextHandle, extension) {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
@@ -2741,21 +2753,6 @@ var LibraryJSEvents = {
     return 0;
 #endif
   },
-
-#if USE_PTHREADS
-  emscripten_webgl_enable_extension_main_thread__proxy: 'sync',
-  emscripten_webgl_enable_extension_main_thread__sig: 'iii',
-  emscripten_webgl_enable_extension_main_thread__deps: ['emscripten_webgl_enable_extension_calling_thread'],
-  emscripten_webgl_enable_extension_main_thread: function(contextHandle, extension) { return _emscripten_webgl_enable_extension_calling_thread(contextHandle, extension); },
-
-  emscripten_webgl_enable_extension__deps: ['emscripten_webgl_enable_extension_main_thread', 'emscripten_webgl_enable_extension_calling_thread'],
-  emscripten_webgl_enable_extension: function(contextHandle, extension) {
-    return GL.contexts[contextHandle] ? _emscripten_webgl_enable_extension_calling_thread(contextHandle, extension) : _emscripten_webgl_enable_extension_main_thread(contextHandle, extension);
-  },
-#else
-  emscripten_webgl_enable_extension__sig: 'iii',
-  emscripten_webgl_enable_extension: 'emscripten_webgl_enable_extension_calling_thread',
-#endif
 
   _registerWebGlEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerWebGlEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
@@ -2813,16 +2810,6 @@ var LibraryJSEvents = {
 #endif
     return !GL.contexts[target] || GL.contexts[target].GLctx.isContextLost(); // No context ~> lost context.
   },
-
-#if USE_WEBGPU
-  // TODO(kainino0x): make it possible to actually create devices through webgpu.h
-  emscripten_webgpu_get_device__deps: ['$WebGPU'],
-  emscripten_webgpu_get_device__postset: 'WebGPU.initManagers();',
-  emscripten_webgpu_get_device: function() {
-    assert(Module['preinitializedWebGPUDevice']);
-    return WebGPU["mgrDevice"].create(Module['preinitializedWebGPUDevice']);
-  },
-#endif
 
 #if USE_PTHREADS
   emscripten_set_canvas_element_size_calling_thread__deps: ['$JSEvents', 'emscripten_set_offscreencanvas_size_on_target_thread', '_findCanvasEventTarget'],
@@ -3247,5 +3234,59 @@ var LibraryJSEvents = {
 #endif
   }
 };
+
+// Process 'sync_on_webgl_context_handle_thread' pseudo-proxying mode (used only in this file) to
+// appropriate proxying mechanism, either proxying on-demand, unconditionally, or never, depending on build modes.
+function handleWebGLProxying(funcs) {
+  if (!USE_PTHREADS) return; // No proxying needed in singlethreaded builds
+
+  function listOfNFunctionArgs(func) {
+    var args = [];
+    for(var i = 0; i < func.length; ++i) {
+      args.push('p' + i);
+    }
+    return args;
+  }
+
+  for(var i in funcs) {
+    if (funcs[i + '__proxy'] == 'sync_on_webgl_context_handle_thread') {
+#if OFFSCREENCANVAS_SUPPORT
+      // With OffscreenCanvas builds, GL context handle may be owned by main thread, the calling pthread,
+      // or another pthread. Route the call to the right thread.
+      // TODO: this handles the calling pthread and main thread cases, but not yet the case from pthread->pthread.
+      funcs[i + '_calling_thread'] = funcs[i];
+      funcs[i + '_main_thread'] = i + '_calling_thread';
+      funcs[i + '_main_thread__proxy'] = 'sync';
+      funcs[i + '_main_thread__sig'] = funcs[i + '__sig'];
+      if (!funcs[i + '__deps']) funcs[i + '__deps'] = [];
+      funcs[i + '__deps'].push(i + '_calling_thread');
+      funcs[i + '__deps'].push(i + '_main_thread');
+      delete funcs[i + '__proxy'];
+      var funcArgs = listOfNFunctionArgs(funcs[i]);
+      var funcArgsString = funcArgs.join(',');
+      var funcBody = `return GL.contexts[p0] ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
+      if (funcs[i + '_before_on_calling_thread']) {
+        funcs[i + '__deps'].push(i + '_before_on_calling_thread');
+        funcBody = `_${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
+      }
+      funcArgs.push(funcBody);
+      funcs[i] = new (Function.prototype.bind.apply(Function, [Function].concat(funcArgs)));
+#else
+#if OFFSCREEN_FRAMEBUFFER
+      // When building with OFFSCREEN_FRAMEBUFFER but without OFFSCREENCANVAS_SUPPORT,
+      // only main thread creates WebGL contexts, so all calls are unconditionally proxied.
+      funcs[i + '__proxy'] = 'sync';
+#else
+      // Building without OFFSCREENCANVAS_SUPPORT or OFFSCREEN_FRAMEBUFFER: the application
+      // will only utilize WebGL in the main browser thread. Remove the WebGL proxying
+      // directive.
+      delete funcs[i + '__proxy'];
+#endif
+#endif
+    }
+  }
+}
+
+handleWebGLProxying(LibraryJSEvents);
 
 mergeInto(LibraryManager.library, LibraryJSEvents);

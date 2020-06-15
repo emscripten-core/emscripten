@@ -19,7 +19,7 @@ import time
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared, js_optimizer, jsrun
+from tools import shared, js_optimizer, jsrun, building
 from tools.tempfiles import try_delete
 
 
@@ -37,7 +37,6 @@ wasm = bool(binaryen_bin)
 assert global_base > 0
 
 logger = logging.getLogger('ctor_evaller')
-config = shared.Configuration()
 
 # helpers
 
@@ -133,7 +132,7 @@ def eval_ctors_js(js, mem_init, num):
 #    shared.safe_ensure_dirs(shared.CANONICAL_TEMP_DIR)
 #  else:
 #    temp_file = config.get_temp_files().get('.ctorEval.js').name
-  with config.get_temp_files().get_file('.ctorEval.js') as temp_file:
+  with shared.configuration.get_temp_files().get_file('.ctorEval.js') as temp_file:
     open(temp_file, 'w').write('''
 var totalMemory = %d;
 var totalStack = %d;
@@ -263,8 +262,8 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
 
     # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
     # us exiting with an error tells the caller that we failed. If it times out, give up.
-    out_file = config.get_temp_files().get('.out').name
-    err_file = config.get_temp_files().get('.err').name
+    out_file = shared.configuration.get_temp_files().get('.out').name
+    err_file = shared.configuration.get_temp_files().get('.err').name
     out_file_handle = open(out_file, 'w')
     err_file_handle = open(err_file, 'w')
     proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=out_file_handle, stderr=err_file_handle, universal_newlines=True)
@@ -398,10 +397,10 @@ def main():
     js = js[:absolute_exports_start] + ', '.join([e + ': ' + e for e in exports]) + js[absolute_exports_start + len(exports_text):]
     open(js_file, 'w').write(js)
     # find unreachable methods and remove them
-    reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
+    reachable = building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
     for r in removed:
       assert r not in reachable, 'removed ctors must NOT be reachable'
-    shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={'keep': reachable}, output_filename=js_file)
+    building.js_optimizer(js_file, ['removeFuncs'], extra_info={'keep': reachable}, output_filename=js_file)
   else:
     # wasm path
     wasm_file = binary_file

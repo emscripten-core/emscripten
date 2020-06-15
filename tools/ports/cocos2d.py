@@ -40,8 +40,7 @@ def get(ports, settings, shared):
     for src in cocos2dx_src:
       o = os.path.join(cocos2d_build, 'Cocos2d-' + TAG, 'build', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      command = [shared.PYTHON,
-                 shared.EMCC,
+      command = [shared.EMCC,
                  '-c', src,
                  '-Wno-overloaded-virtual',
                  '-Wno-deprecated-declarations',

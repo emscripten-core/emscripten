@@ -30,12 +30,7 @@ class Cache(object):
     dirname = os.path.normpath(dirname)
     self.root_dirname = dirname
 
-    def try_remove_ending(thestring, ending):
-      if thestring.endswith(ending):
-        return thestring[:-len(ending)]
-      return thestring
-
-    self.filelock_name = try_remove_ending(try_remove_ending(dirname, '/'), '\\') + '.lock'
+    self.filelock_name = dirname.rstrip('/\\') + '.lock'
     self.filelock = filelock.FileLock(self.filelock_name)
 
     # if relevant, use a subdir of the cache
@@ -88,10 +83,13 @@ class Cache(object):
       self.release_cache_lock()
 
   def erase(self):
-    tempfiles.try_delete(self.root_dirname)
-    self.filelock = None
-    tempfiles.try_delete(self.filelock_name)
-    self.filelock = filelock.FileLock(self.filelock_name)
+    self.acquire_cache_lock()
+    try:
+      if os.path.exists(self.root_dirname):
+        for f in os.listdir(self.root_dirname):
+          tempfiles.try_delete(os.path.join(self.root_dirname, f))
+    finally:
+      self.release_cache_lock()
 
   def get_path(self, shortname):
     return os.path.join(self.dirname, shortname)
