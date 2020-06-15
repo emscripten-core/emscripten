@@ -687,6 +687,13 @@ _mm_undefined()
   return val;
 }
 
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+_mm_undefined_ps()
+{
+  __m128 val;
+  return val;
+}
+
 #define _MM_EXCEPT_MASK       0x003f
 #define _MM_EXCEPT_INVALID    0x0001
 #define _MM_EXCEPT_DENORM     0x0002
