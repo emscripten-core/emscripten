@@ -1193,9 +1193,8 @@ var USE_GLFW = 2;
 // the WebAssembly file is loaded if browser/shell supports it. Otherwise the
 // .wasm.js fallback will be used.
 //
-// Additionally in MINIMAL_RUNTIME mode, if WASM=2 is enabled and the browser
-// fails to compile the WebAssembly module, the page will be reloaded in Wasm2JS
-// mode.
+// If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
+// the page will be reloaded in Wasm2JS mode.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
