@@ -99,10 +99,9 @@ class interactive(BrowserCore):
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_beeps(self):
-    open(os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
-
+    open('sdl_audio_beep.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    Popen([EMCC, '-O2', os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html']).communicate()
+    self.compile_btest(['sdl_audio_beep.cpp', '-O2', '--closure', '1', '--minify', '0', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl2_mixer(self):
