@@ -6081,19 +6081,6 @@ return malloc(size);
     self.maybe_closure()
     self.do_run(open(src).read(), native_result)
 
-  # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_undefined() functions)
-  @wasm_simd
-  @requires_native_clang
-  def test_sse_undefined(self):
-    src = path_from_root('tests', 'sse', 'test_sse_undefined.c')
-    run_process([shared.CLANG_CC, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse_undefined', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
-    native_result = run_process('./test_sse_undefined', stdout=PIPE).stdout
-
-    orig_args = self.emcc_args
-    self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse2', '-Wno-argument-outside-range']
-    self.maybe_closure()
-    self.do_run(open(src).read(), native_result)
-
   # Tests invoking the SIMD API via x86 AVX avxintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
