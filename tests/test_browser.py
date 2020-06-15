@@ -20,9 +20,9 @@ import unittest
 import webbrowser
 import zlib
 
+from jsrun import run_js
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
-from runner import run_js_default
 from tools import building
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
@@ -1612,7 +1612,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_worker(self):
     self.do_test_worker()
-    self.assertContained('you should not see this text when in a worker!', run_js_default('worker.js')) # code should run standalone too
+    self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone too
 
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
@@ -2549,7 +2549,7 @@ void *getBindBuffer() {
     assert ").randomBytes" in test_js_closure
     assert "window.crypto.getRandomValues" in test_js_closure
 
-    out = run_js_default('test.js', full_output=True)
+    out = run_js('test.js', full_output=True)
     print(out)
 
     # Tidy up files that might have been created by this test.
