@@ -4919,14 +4919,20 @@ window.close = function() {
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
   @no_fastcomp('wasm-backend specific feature')
-  def test_minimal_runtime_wasm2js_fallback(self):
-    src = 'src.cpp'
-    create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
-    self.compile_btest([src, '-s', 'WASM=2', '-s', 'MINIMAL_RUNTIME=1', '-o', 'test.html'])
+  def test_wasm2js_fallback_on_wasm_compilation_failure(self):
+    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      src = 'src.cpp'
+      create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
+      self.compile_btest([src, '-s', 'WASM=2', '-o', 'test.html'] + args)
 
-    # Corrupt the .wasm file, that should trigger the Wasm2js fallback to run
-    shutil.copyfile('test.js', 'test.wasm')
-    self.run_browser('test.html', 'hello!', '/report_result?0')
+      # Run without the .wasm.js file present: with Wasm support, the page should still run
+      os.rename('test.wasm.js', 'test.wasm.js.unused')
+      self.run_browser('test.html', 'hello!', '/report_result?0')
+
+      # Restore the .wasm.js file, then corrupt the .wasm file, that should trigger the Wasm2js fallback to run
+      os.rename('test.wasm.js.unused', 'test.wasm.js')
+      shutil.copyfile('test.js', 'test.wasm')
+      self.run_browser('test.html', 'hello!', '/report_result?0')
 
   def test_system(self):
     self.btest(path_from_root('tests', 'system.c'), '0')
