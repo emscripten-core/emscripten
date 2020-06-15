@@ -1607,6 +1607,7 @@ var LibraryOpenAL = {
 
   // bufferSize is actually 'number of sample frames', so was renamed
   // bufferFrameCapacity here for clarity.
+  alcCaptureOpenDevice__deps: ['$autoResumeAudioContext'],
   alcCaptureOpenDevice__proxy: 'sync',
   alcCaptureOpenDevice__sig: 'iiiii',
   alcCaptureOpenDevice: function(pDeviceName, requestedSampleRate, format, bufferFrameCapacity) {
@@ -1670,6 +1671,8 @@ var LibraryOpenAL = {
         return 0;
       }
     }
+
+    autoResumeAudioContext(AL.sharedCaptureAudioCtx);
 
     var outputChannelCount;
 
@@ -2082,6 +2085,7 @@ var LibraryOpenAL = {
     return 1 /* ALC_TRUE */;
   },
 
+  alcCreateContext__deps: ['$autoResumeAudioContext'],
   alcCreateContext__proxy: 'sync',
   alcCreateContext__sig: 'iii',
   alcCreateContext: function(deviceId, pAttrList) {
@@ -2179,6 +2183,8 @@ var LibraryOpenAL = {
 
       return 0;
     }
+
+    autoResumeAudioContext(ac);
 
     // Old Web Audio API (e.g. Safari 6.0.5) had an inconsistently named createGainNode function.
     if (typeof(ac.createGain) === 'undefined') {
