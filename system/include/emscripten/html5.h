@@ -64,6 +64,8 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_BEFOREUNLOAD          28
 #define EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE 29
 #define EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE    30
+#define EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST      31
+#define EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED  32
 #define EMSCRIPTEN_EVENT_MOUSEENTER            33
 #define EMSCRIPTEN_EVENT_MOUSELEAVE            34
 #define EMSCRIPTEN_EVENT_MOUSEOVER             35
@@ -71,9 +73,7 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_CANVASRESIZED         37
 #define EMSCRIPTEN_EVENT_POINTERLOCKERROR      38
 
-#ifndef EMSCRIPTEN_RESULT
 #define EMSCRIPTEN_RESULT int
-#endif
 
 #define EMSCRIPTEN_RESULT_SUCCESS              0
 #define EMSCRIPTEN_RESULT_DEFERRED             1
@@ -91,9 +91,7 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_TARGET_WINDOW         ((const char*)2)
 #define EMSCRIPTEN_EVENT_TARGET_SCREEN         ((const char*)3)
 
-#ifndef EM_BOOL
 #define EM_BOOL int
-#endif
 #define EM_TRUE 1
 #define EM_FALSE 0
 #define EM_UTF8 char

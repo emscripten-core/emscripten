@@ -7,32 +7,11 @@
 
 #pragma once
 
-#ifdef __cplusplus
-#if !defined(__DEFINED_pthread_t)
-typedef unsigned long pthread_t;
-#define __DEFINED_pthread_t
-#endif
-#else
-#if !defined(__DEFINED_pthread_t)
-typedef struct __pthread * pthread_t;
-#define __DEFINED_pthread_t
-#endif
-#endif
+#include <emscripten/html5.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#ifndef EM_BOOL
-#define EM_BOOL int
-#endif
-
-#ifndef EMSCRIPTEN_RESULT
-#define EMSCRIPTEN_RESULT int
-#endif
-
-#define EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST      31
-#define EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED  32
 
 typedef int EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
 
