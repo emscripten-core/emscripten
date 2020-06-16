@@ -501,6 +501,13 @@ mergeInto(LibraryManager.library, {
         abort('invalid state: ' + Asyncify.state);
       }
       return Asyncify.handleSleepReturnValue;
+    },
+
+    handlePromise: function(promise) {
+      return Asyncify.handleSleep(function(wakeUp) {
+        // TODO: add error handling as a second param when handleSleep implements it.
+        promise.then(wakeUp);
+      });
     }
   },
 
