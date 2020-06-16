@@ -25,7 +25,6 @@ from tools import building
 from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
-from tools import jsrun
 from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
@@ -761,9 +760,9 @@ def compile_settings(temp_files):
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
-    out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), shared.NODE_JS,
-                            [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                            cwd=path_from_root('src'), env=env)
+    out = shared.run_js_tool(path_from_root('src', 'compiler.js'),
+                             [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                             cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
@@ -908,8 +907,19 @@ def report_missing_symbols(all_implemented, pre):
       continue
     diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
 
-  # Handle main specially, unless IGNORE_MISSING_MAIN is set
-  if shared.Settings.EXPECT_MAIN and '_main' not in all_implemented and not shared.Settings.IGNORE_MISSING_MAIN:
+  # Special hanlding for the `_main` symbol
+
+  if shared.Settings.STANDALONE_WASM:
+    # standalone mode doesn't use main, and it always reports missing entry point at link time.
+    # In this mode we never expect _main in the export list.
+    return
+
+  if shared.Settings.IGNORE_MISSING_MAIN:
+    # The default mode for emscripten is to ignore the missing main function allowing
+    # maximum compatibility.
+    return
+
+  if shared.Settings.EXPECT_MAIN and '_main' not in all_implemented:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')

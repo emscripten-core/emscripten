@@ -17,9 +17,10 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py benchmark')
 
 import clang_native
+import jsrun
 import runner
 from tools.shared import run_process, path_from_root, SPIDERMONKEY_ENGINE, LLVM_ROOT, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
-from tools import shared, jsrun, building
+from tools import shared, building
 
 # standard arguments for timing:
 # 0: no runtime, just startup

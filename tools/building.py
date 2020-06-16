@@ -528,6 +528,8 @@ def lld_flags_for_executable(external_symbol_list):
     if external_symbol_list:
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbol_list]
+    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN:
+      c_exports.remove('main')
     for export in c_exports:
       cmd += ['--export', export]
 
@@ -952,7 +954,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
 def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[], no_license=False):
   from . import js_optimizer
   try:
-    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
+    ret = js_optimizer.run(filename, passes, debug, extra_info, just_split, just_concat, extra_closure_args)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
   if output_filename:

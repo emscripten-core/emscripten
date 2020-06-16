@@ -40,7 +40,7 @@ import base64
 from subprocess import PIPE
 
 import emscripten
-from tools import shared, system_libs, client_mods, js_optimizer, jsrun
+from tools import shared, system_libs, client_mods, js_optimizer
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
@@ -3121,11 +3121,11 @@ def parse_args(newargs):
 
 def emit_js_source_maps(target, js_transform_tempfiles):
   logger.debug('generating source maps')
-  jsrun.run_js_tool(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-                    shared.NODE_JS, js_transform_tempfiles +
-                    ['--sourceRoot', os.getcwd(),
-                     '--mapFileBaseName', target,
-                     '--offset', '0'])
+  shared.run_js_tool(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
+                     js_transform_tempfiles +
+                     ['--sourceRoot', os.getcwd(),
+                      '--mapFileBaseName', target,
+                      '--offset', '0'])
 
 
 def separate_asm_js(final, asm_target):
@@ -3622,7 +3622,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
           function loadMainJs() {
 %s
           }
-          if (!window.WebAssembly) {
+          if (!window.WebAssembly || location.search.indexOf('_rwasm=0') > 0) {
             // Current browser does not support WebAssembly, load the .wasm.js JavaScript fallback
             // before the main JS runtime.
             var wasm2js = document.createElement('script');

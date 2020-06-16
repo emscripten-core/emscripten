@@ -417,11 +417,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
 
   # Run the compiled program.
   show('Calling generated program... ' + js_file[1])
-  try:
-    info = shared.run_js(js_file[1]).splitlines()
-  except subprocess.CalledProcessError:
-    sys.stderr.write('FAIL: Running the generated program failed!\n')
-    sys.exit(1)
+  info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
 
   # Remove all temporary files.
   os.unlink(src_file[1])

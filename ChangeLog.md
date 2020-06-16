@@ -18,6 +18,13 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+1.39.18: 06/12/2020
+-------------------
+- Disable `LIBCXX_ABI_OPTIMIZED_FUNCTION` which is an ABI change in libc++
+  (changing the layout of the `std::function` object) (#11403).
+- New `WASM2C` option that integrates with wabt's wasm2c tool in order to
+  compile everything into a single C file (#11213).
+
 1.39.17: 06/05/2020
 -------------------
 - Use Promise polyfill for MODULARIZE when supporting legacy browsers. (#11320)

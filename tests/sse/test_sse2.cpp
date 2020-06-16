@@ -345,5 +345,6 @@ int main()
 
 #ifdef __EMSCRIPTEN__
 	_mm_undefined_si128();
+	_mm_undefined_pd();
 #endif
 }

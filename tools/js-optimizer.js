@@ -4655,7 +4655,7 @@ function minifyLocals(ast) {
       if (asm) {
         return name in asmData.vars || name in asmData.params;
       } else {
-        return name in localNames;
+        return Object.prototype.hasOwnProperty.call(localNames, name);
       }
     }
     traverse(fun, function(node, type) {
