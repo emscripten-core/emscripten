@@ -5,6 +5,21 @@
  */
 
 var LibraryHtml5WebGL = {
+  // Writes a JS typed array containing 32-bit floats or ints to memory
+  $writeGLArray: function(arr, dst, dstLength, heapType) {
+#if ASSERTIONS
+    assert(arr);
+    assert(typeof arr.length !== 'undefined');
+#endif
+    var len = arr.length;
+    var writeLength = dstLength < len ? dstLength : len;
+    var heap = heapType ? HEAPF32 : HEAP32;
+    for(var i = 0; i < writeLength; ++i) {
+      heap[(dst >> 2) + i] = arr[i];
+    }
+    return len;
+  },
+
   // Execute in calling thread without proxying needed.
   emscripten_webgl_init_context_attributes: function(attributes) {
 #if ASSERTIONS
@@ -468,9 +483,9 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_get_vertex_attrib_v__sig: 'iiiiii',
   emscripten_webgl_get_vertex_attrib_v__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_vertex_attrib_v__deps: ['_write_array'],
+  emscripten_webgl_get_vertex_attrib_v__deps: ['$writeGLArray'],
   emscripten_webgl_get_vertex_attrib_v: function(index, param, dst, dstLength, dstType) {
-    return __write_array(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType);
+    return writeGLArray(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType);
   },
 
   emscripten_webgl_get_uniform_d__sig: 'fii',
@@ -481,16 +496,16 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_get_uniform_v__sig: 'iiiiii',
   emscripten_webgl_get_uniform_v__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_uniform_v__deps: ['_write_array'],
+  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray'],
   emscripten_webgl_get_uniform_v: function(program, location, dst, dstLength, dstType) {
-    return __write_array(GLctx.getUniform(GL.programs[program], GL.uniforms[location]), dst, dstLength, dstType);
+    return writeGLArray(GLctx.getUniform(GL.programs[program], GL.uniforms[location]), dst, dstLength, dstType);
   },
 
   emscripten_webgl_get_parameter_v__sig: 'iiiii',
   emscripten_webgl_get_parameter_v__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_parameter_v__deps: ['_write_array'],
+  emscripten_webgl_get_parameter_v__deps: ['$writeGLArray'],
   emscripten_webgl_get_parameter_v: function(param, dst, dstLength, dstType) {
-    return __write_array(GLctx.getParameter(param), dst, dstLength, dstType);
+    return writeGLArray(GLctx.getParameter(param), dst, dstLength, dstType);
   },
 
   emscripten_webgl_get_parameter_d__sig: 'fi',

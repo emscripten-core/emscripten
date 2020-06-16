@@ -3735,20 +3735,6 @@ var LibraryGL = {
   },
 #endif
 
-  _write_array: function(arr, dst, dstLength, heapType) {
-#if ASSERTIONS
-    assert(arr);
-    assert(typeof arr.length !== 'undefined');
-#endif
-    var len = arr.length;
-    var writeLength = dstLength < len ? dstLength : len;
-    var heap = heapType ? HEAPF32 : HEAP32;
-    for(var i = 0; i < writeLength; ++i) {
-      heap[(dst >> 2) + i] = arr[i];
-    }
-    return len;
-  },
-
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',
