@@ -131,6 +131,8 @@ class BufferedParallelTestResult(object):
     result.stopTest(self.test)
 
   def startTest(self, test):
+    # Python 2 does not have perf_counter()
+    # TODO: remove when we remove Python 2 support
     if hasattr(time, 'perf_counter'):
       self.start_time = time.perf_counter()
 
