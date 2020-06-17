@@ -1826,4 +1826,6 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
   ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
+  ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY_LIST'],
+  ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE_LIST'],
 ];
