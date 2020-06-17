@@ -8663,7 +8663,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_custom_js_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_custom_js_settings')
 
-    self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([PYTHON, EMCC, '-jsDWASM=0']))
+    self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([EMCC, '-jsDWASM=0']))
 
 
 # Generate tests for everything
