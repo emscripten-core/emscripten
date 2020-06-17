@@ -8628,12 +8628,12 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIdentical(normal, huge)
 
   def test_EM_ASM_ES6(self):
-    # check we show a proper understandable error for JS parse problems
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
 int main() {
   EM_ASM({
-    var x = (a, b) => 5; // valid ES6!
+    var x = (a, b) => 5; // valid ES6
+    async function y() {} // valid ES2017
     out('hello!');
   });
 }
