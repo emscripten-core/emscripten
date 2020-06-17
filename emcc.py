@@ -40,7 +40,7 @@ import base64
 from subprocess import PIPE
 
 import emscripten
-from tools import shared, system_libs, client_mods, js_optimizer, jsrun
+from tools import shared, system_libs, client_mods, js_optimizer
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
@@ -983,7 +983,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] += newargs[i + 1]
         newargs[i + 1] = ''
 
-    options, settings_changes, newargs = parse_args(newargs)
+    options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
     if '-print-search-dirs' in newargs:
       return run_process([CC, '-print-search-dirs'], check=False).returncode
@@ -1265,6 +1265,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
+
+    # Apply user -jsD settings
+    for s in user_js_defines:
+      shared.Settings.attrs[s[0]] = s[1]
 
     shared.verify_settings()
 
@@ -2838,6 +2842,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
+  user_js_defines = []
   should_exit = False
   eh_enabled = False
   wasm_eh_enabled = False
@@ -3113,21 +3118,31 @@ def parse_args(newargs):
       shared.Settings.EXCEPTION_HANDLING = 0
       shared.Settings.DISABLE_EXCEPTION_THROWING = 0
       shared.Settings.DISABLE_EXCEPTION_CATCHING = 0
+    elif newargs[i].startswith('-jsD'):
+      key = newargs[i][4:]
+      if '=' in key:
+        key, value = key.split('=')
+      else:
+        value = '1'
+      if key in shared.Settings.attrs:
+        exit_with_error(newargs[i] + ': cannot change built-in settings values with a -jsD directive. Pass -s ' + key + '=' + value + ' instead!')
+      user_js_defines += [(key, value)]
+      newargs[i] = ''
 
   if should_exit:
     sys.exit(0)
 
   newargs = [a for a in newargs if a]
-  return options, settings_changes, newargs
+  return options, settings_changes, user_js_defines, newargs
 
 
 def emit_js_source_maps(target, js_transform_tempfiles):
   logger.debug('generating source maps')
-  jsrun.run_js_tool(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-                    shared.NODE_JS, js_transform_tempfiles +
-                    ['--sourceRoot', os.getcwd(),
-                     '--mapFileBaseName', target,
-                     '--offset', '0'])
+  shared.run_js_tool(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
+                     js_transform_tempfiles +
+                     ['--sourceRoot', os.getcwd(),
+                      '--mapFileBaseName', target,
+                      '--offset', '0'])
 
 
 def separate_asm_js(final, asm_target):
@@ -3624,7 +3639,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
           function loadMainJs() {
 %s
           }
-          if (!window.WebAssembly) {
+          if (!window.WebAssembly || location.search.indexOf('_rwasm=0') > 0) {
             // Current browser does not support WebAssembly, load the .wasm.js JavaScript fallback
             // before the main JS runtime.
             var wasm2js = document.createElement('script');

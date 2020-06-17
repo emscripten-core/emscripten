@@ -20,11 +20,13 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
+from jsrun import run_js
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
+from runner import no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
-from tools.shared import try_delete, run_process, run_js
+from tools.shared import try_delete, run_process
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -2650,6 +2652,12 @@ Module["preRun"].push(function () {
   def test_webgl2_objects(self):
     self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
+  def test_html5_webgl_api(self):
+    for mode in [['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
+                 ['-s', 'OFFSCREEN_FRAMEBUFFER=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
+                 []]:
+      self.btest(path_from_root('tests', 'html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode, expected='0')
+
   def test_webgl2_ubos(self):
     self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
@@ -4917,14 +4925,20 @@ window.close = function() {
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
   @no_fastcomp('wasm-backend specific feature')
-  def test_minimal_runtime_wasm2js_fallback(self):
-    src = 'src.cpp'
-    create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
-    self.compile_btest([src, '-s', 'WASM=2', '-s', 'MINIMAL_RUNTIME=1', '-o', 'test.html'])
+  def test_wasm2js_fallback_on_wasm_compilation_failure(self):
+    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      src = 'src.cpp'
+      create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
+      self.compile_btest([src, '-s', 'WASM=2', '-o', 'test.html'] + args)
 
-    # Corrupt the .wasm file, that should trigger the Wasm2js fallback to run
-    shutil.copyfile('test.js', 'test.wasm')
-    self.run_browser('test.html', 'hello!', '/report_result?0')
+      # Run without the .wasm.js file present: with Wasm support, the page should still run
+      os.rename('test.wasm.js', 'test.wasm.js.unused')
+      self.run_browser('test.html', 'hello!', '/report_result?0')
+
+      # Restore the .wasm.js file, then corrupt the .wasm file, that should trigger the Wasm2js fallback to run
+      os.rename('test.wasm.js.unused', 'test.wasm.js')
+      shutil.copyfile('test.js', 'test.wasm')
+      self.run_browser('test.html', 'hello!', '/report_result?0')
 
   def test_system(self):
     self.btest(path_from_root('tests', 'system.c'), '0')

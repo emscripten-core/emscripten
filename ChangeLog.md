@@ -268,6 +268,8 @@ v1.39.9: 03/05/2020
   getpagesize (#10533), _Exit (#10534)
 - Fix many closure compiler warnings (e.g. #10525).
 - Avoid unnecessary syscall proxying (#10511).
+- Added new link time command line option -jsDfoo=val to allow specifying
+  custom preprocessor options to JS library files. (#10624, #10580)
 
 v1.39.8: 02/14/2020
 -------------------

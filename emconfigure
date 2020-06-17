@@ -22,7 +22,7 @@ if [ -z "$PYTHON" ]; then
 fi
 
 if [ -z "$PYTHON" ]; then
-  print 'unable to find python in $PATH'
+  echo 'unable to find python in $PATH'
   exit 1
 fi
 

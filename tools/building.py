@@ -954,7 +954,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
 def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[], no_license=False):
   from . import js_optimizer
   try:
-    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
+    ret = js_optimizer.run(filename, passes, debug, extra_info, just_split, just_concat, extra_closure_args)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
   if output_filename:
@@ -1574,7 +1574,8 @@ def path_to_system_js_libraries(library_name):
     'c': '',
     'dl': '',
     'EGL': 'library_egl.js',
-    'GL': 'library_webgl.js',
+    'GL': ['library_webgl.js', 'library_html5_webgl.js'],
+    'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
     'GLESv2': 'library_webgl.js',
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
     'GLEW': 'library_glew.js',

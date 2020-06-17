@@ -22,13 +22,14 @@ from textwrap import dedent
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
-from tools.shared import run_js, run_process, try_delete
+from tools.shared import run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
-from tools import jsrun, shared, building
+from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
 import clang_native
+from jsrun import run_js
 
 # decorators for limiting which modes a test can run in
 
@@ -4017,7 +4018,7 @@ ok
       print('check warnings')
       self.set_setting('ASSERTIONS', 2)
       test()
-      full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
+      full = run_js('src.cpp.o.js', full_output=True, stderr=STDOUT)
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
   @needs_dlfcn
@@ -4551,7 +4552,7 @@ res64 - external 64\n''', header='''
 
     if not self.has_changed_setting('ASSERTIONS'):
       print('check warnings')
-      full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
+      full = run_js('src.cpp.o.js', full_output=True, stderr=STDOUT)
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dlfcn
@@ -7450,9 +7451,9 @@ err = err = function(){};
       # the sourcesContent attribute is optional, but if it is present it
       # needs to containt valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
-    mappings = json.loads(jsrun.run_js(
+    mappings = json.loads(run_js(
       path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
-      shared.NODE_JS, [map_filename]))
+      args=[map_filename]))
     if str is bytes:
       # Python 2 compatibility
       mappings = encode_utf8(mappings)
@@ -8674,6 +8675,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests the operation of API found in #include <emscripten/math.h>
   def test_emscripten_math(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_math')
+
+  # Tests that users can pass custom JS options from command line using
+  # the -jsDfoo=val syntax. (https://github.com/emscripten-core/emscripten/issues/10580)
+  def test_custom_js_options(self):
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_custom_js_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_custom_js_settings')
+
+    self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([EMCC, '-jsDWASM=0']))
 
 
 # Generate tests for everything
