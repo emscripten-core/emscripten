@@ -18,24 +18,25 @@ void TestStackValidity() {
   uintptr_t free = abs((intptr_t)end - (intptr_t)emscripten_stack_get_current());
   uintptr_t free2 = emscripten_stack_get_free();
   uintptr_t total = abs((intptr_t)end - (intptr_t)base);
-  printf("free: %u\n", free);
-  printf("free2: %u\n", free2);
   assert(used + free == total);
   assert(free == free2);
 }
 
+int increment = 256 * 1024;
+
 int main() {
-  printf("Stack free: %u\n", emscripten_stack_get_free());
   TestStackValidity();
 
+  uintptr_t origFree = emscripten_stack_get_free();
   uintptr_t prevFree = emscripten_stack_get_free();
+  printf("Stack used: %u\n", origFree - emscripten_stack_get_free());
   for(int i = 0; i < 10; ++i) {
-    void *p = alloca(emscripten_random() >= 0 ? 256*1024 : 255 * 1024);
+    void *p = alloca(increment);
     uintptr_t free = emscripten_stack_get_free();
-    assert(prevFree - free == 256*1024);
+    assert(prevFree - free == increment);
     prevFree = free;
     DoSomething(p);
-    printf("Stack free: %u\n", emscripten_stack_get_free());
+    printf("Stack used: %u\n", origFree - emscripten_stack_get_free());
     TestStackValidity();
   }
   return 0;

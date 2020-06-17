@@ -9,6 +9,7 @@ mergeInto(LibraryManager.library, {
     return STACK_BASE;
   },
   emscripten_stack_get_end: function() {
+    // TODO(sbc): rename STACK_MAX -> STACK_END?
     return STACK_MAX;
   },
 
@@ -51,7 +52,7 @@ mergeInto(LibraryManager.library, {
     STACKTOP = top;
   },
 
-  // In wasm backend, these functions are implemented as native
+  // With the wasm backend, these functions are implemented as native
   // functions in compiler-rt/stack_ops.s
   emscripten_stack_get_current__asm: true,
   emscripten_stack_get_current__sig: 'i',

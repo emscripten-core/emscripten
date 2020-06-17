@@ -18,12 +18,12 @@ extern "C" {
 // that the stack pointer would point to when no bytes are in use on the stack.
 uintptr_t emscripten_stack_get_base(void);
 
-// Returns the end address of the wasm stack. This is the address
-// that the stack pointer would point to when the whole stack is in use.
-// (the address pointed to by the end is not part of the stack itself)
-// Note that in fastcomp, stack grows up, whereas in wasm backend, it grows down.
-// So in wasm backend, the address returned by emscripten_stack_get_end() is
-// smaller than emscripten_stack_get_base().
+// Returns the end address of the wasm stack. This is the address that the stack
+// pointer would point to when the whole stack is in use.  (the address pointed
+// to by the end is not part of the stack itself) Note that in fastcomp, the
+// stack grows up, whereas in wasm backend, it grows down.  So with wasm
+// backend, the address returned by emscripten_stack_get_end() is smaller than
+// emscripten_stack_get_base().
 uintptr_t emscripten_stack_get_end(void);
 
 // Returns the current stack pointer.
