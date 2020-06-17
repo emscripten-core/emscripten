@@ -17,6 +17,16 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add support for the new `ASYNCIFY_ADD_LIST`, and update existing list names
+  following the updates in Binaryen, so that now we have `ASYNCIFY_ADD_LIST` to
+  add a function, `ASYNCIFY_REMOVE_LIST` to remove one (previously this was
+  called `ASYNCIFY_BLACKLIST`), and `ASYNCIFY_ONLY_LIST` to set a list of the
+  only functions to instrument and no others (previously this was called
+  `ASYNCIFY_WHITELIST`). The updated lists also handle indirect calls properly,
+  so that if you use `ASYNCIFY_IGNORE_INDIRECT` and then add (using either the
+  add-list or the only-list) all the functions that are on the stack when
+  pausing, then things will work (for more, see
+  https://github.com/WebAssembly/binaryen/pull/2913).
 
 1.39.18: 06/12/2020
 -------------------
