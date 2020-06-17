@@ -10483,5 +10483,5 @@ int main() {
 
   # Tests that environment support is not present when building with -s SUPPORT_POSIX_ENV=0
   def test_no_environ(self):
-    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'env', 'src-mini.c'), '-s', 'SUPPORT_POSIX_ENV=0'])
+    err = self.expect_fail([EMCC, path_from_root('tests', 'env', 'src-mini.c'), '-s', 'SUPPORT_POSIX_ENV=0'])
     self.assertContained("undefined symbol: environ", err)
