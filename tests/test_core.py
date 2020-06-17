@@ -8184,9 +8184,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
         }[mode], assert_returncode=None)
 
   @node_pthreads
-  def test_binaryen_2170_emscripten_atomic_cas_u8(self, js_engines):
+  def test_binaryen_2170_emscripten_atomic_cas_u8(self):
     self.emcc_args += ['-s', 'USE_PTHREADS=1']
-    self.do_run_in_out_file_test('tests', 'binaryen_2170_emscripten_atomic_cas_u8', js_engines=js_engines)
+    self.do_run_in_out_file_test('tests', 'binaryen_2170_emscripten_atomic_cas_u8')
 
   @also_with_standalone_wasm()
   def test_sbrk(self):
