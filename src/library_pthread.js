@@ -92,7 +92,7 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    exitHandlers: [], // An array of C functions to run when this thread exits.
+    threadExitHandlers: [], // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
@@ -163,8 +163,8 @@ var LibraryPThread = {
 #endif
 
     runExitHandlers: function() {
-      while (PThread.exitHandlers.length > 0) {
-        PThread.exitHandlers.pop()();
+      while (PThread.threadExitHandlers.length > 0) {
+        PThread.threadExitHandlers.pop()();
       }
 
       // Call into the musl function that runs destructors of all thread-specific data.
@@ -1077,11 +1077,11 @@ var LibraryPThread = {
 
   pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
-    PThread.exitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
+    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
   },
 
   pthread_cleanup_pop: function(execute) {
-    var routine = PThread.exitHandlers.pop();
+    var routine = PThread.threadExitHandlers.pop();
     if (execute) routine();
   },
 
