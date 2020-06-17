@@ -503,12 +503,12 @@ mergeInto(LibraryManager.library, {
       return Asyncify.handleSleepReturnValue;
     },
 
-    handlePromise: function(promise) {
+    handleAsync: function(startAsync) {
       return Asyncify.handleSleep(function(wakeUp) {
         // TODO: add error handling as a second param when handleSleep implements it.
-        promise.then(wakeUp);
+        startAsync().then(wakeUp);
       });
-    }
+    },
   },
 
   emscripten_sleep: function(ms) {

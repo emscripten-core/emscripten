@@ -490,9 +490,10 @@ var LibraryEmVal = {
 #if ASYNCIFY
   _emval_await__deps: ['$requireHandle', '_emval_register', '$Asyncify'],
   _emval_await: function(promise) {
-    promise = requireHandle(promise);
-    promise = promise.then(__emval_register);
-    return Asyncify.handlePromise(promise);
+    return Asyncify.handleAsync(function () {
+      promise = requireHandle(promise);
+      return promise.then(__emval_register);
+    });
   },
 #endif
 };
