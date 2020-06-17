@@ -10465,6 +10465,13 @@ int main() {
     create_test_file('foo.h', ' ')
     run_process([EMCC, '-c', '-o', 'out.o', '-Xclang', '-include', '-Xclang', 'foo.h', path_from_root('tests', 'hello_world.c')])
 
+  def test_emcc_size_parsing(self):
+    create_test_file('foo.h', ' ')
+    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=X'])
+    self.assertContained('error: invalid byte size `X`.  Valid suffixes are: kb, mb, gb, tb', err)
+    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=11PB'])
+    self.assertContained('error: invalid byte size `11PB`.  Valid suffixes are: kb, mb, gb, tb', err)
+
   def test_native_call_before_init(self):
     self.set_setting('ASSERTIONS')
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
