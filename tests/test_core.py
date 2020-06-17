@@ -183,8 +183,6 @@ def node_pthreads(f):
     self.set_setting('USE_PTHREADS', 1)
     if not self.is_wasm_backend():
       self.skipTest('node pthreads only supported on wasm backend')
-    if not self.get_setting('WASM'):
-      self.skipTest("pthreads doesn't work in non-wasm yet")
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('asan ends up using atomics that are not yet supported in node 12')
     with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
