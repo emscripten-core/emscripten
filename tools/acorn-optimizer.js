@@ -1299,7 +1299,7 @@ if (extraInfoStart > 0) {
 // Collect all JS code comments to this array so that we can retain them in the outputted code
 // if --closureFriendly was requested.
 var sourceComments = [];
-var ast = acorn.parse(input, { ecmaVersion: 6, preserveParens: closureFriendly, onComment: closureFriendly ? sourceComments : undefined });
+var ast = acorn.parse(input, { ecmaVersion: 9, preserveParens: closureFriendly, onComment: closureFriendly ? sourceComments : undefined });
 
 var minifyWhitespace = false;
 var noPrint = false;
