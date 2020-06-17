@@ -740,8 +740,13 @@ LibraryManager.library = {
 #endif
 
   // used in rust, clang when doing thread_local statics
+#if USE_PTHREADS
   __cxa_thread_atexit: 'pthread_cleanup_push',
   __cxa_thread_atexit_impl: 'pthread_cleanup_push',
+#else
+  __cxa_thread_atexit: 'atexit',
+  __cxa_thread_atexit_impl: 'atexit',
+#endif
 
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
   // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
