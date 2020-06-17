@@ -4547,14 +4547,6 @@ LibraryManager.library = {
     });
   },
 
-  emscripten_get_stack_top: function() {
-    return STACKTOP;
-  },
-
-  emscripten_get_stack_base: function() {
-    return STACK_BASE;
-  },
-
   _readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['_readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {

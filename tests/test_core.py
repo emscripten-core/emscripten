@@ -8664,12 +8664,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_math')
 
   # Tests that users can pass custom JS options from command line using
-  # the -jsDfoo=val syntax. (https://github.com/emscripten-core/emscripten/issues/10580)
+  # the -jsDfoo=val syntax:
+  # See https://github.com/emscripten-core/emscripten/issues/10580.
   def test_custom_js_options(self):
     self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_custom_js_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_custom_js_settings')
 
     self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([EMCC, '-jsDWASM=0']))
+
+  # Tests <emscripten/stack.h> API
+  def test_emscripten_stack(self):
+    self.emcc_args += ['-lstack.js']
+    self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free')
 
 
 # Generate tests for everything
