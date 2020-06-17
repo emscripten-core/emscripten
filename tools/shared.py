@@ -878,21 +878,6 @@ def get_cflags(user_args, cxx):
   return c_opts + emsdk_cflags(user_args, cxx)
 
 
-def expand_byte_size_suffixes(value):
-  """Given a string with KB/MB size suffixes, such as "32MB", computes how
-  many bytes that is and returns it as an integer.
-  """
-  SIZE_SUFFIXES = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
-  match = re.match(r'\s*(\d+)\s*([kmgt]?b)$', value, re.I)
-  if not match:
-    try:
-      return int(value)
-    except ValueError:
-      raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
-  value, suffix = match.groups()
-  return int(value) * SIZE_SUFFIXES[suffix.lower()]
-
-
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 class SettingsManager(object):
 

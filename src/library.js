@@ -719,10 +719,9 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME && !EXIT_RUNTIME
+  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
   atexit: function(){},
   __cxa_atexit: function(){},
-  __cxa_thread_atexit: function(){},
-  __cxa_thread_atexit_impl: function(){},
 #else
   atexit__proxy: 'sync',
   atexit__sig: 'iii',
@@ -732,11 +731,20 @@ LibraryManager.library = {
     warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
 #endif
 #endif
+
+#if EXIT_RUNTIME
     __ATEXIT__.unshift({ func: func, arg: arg });
+#endif
   },
   __cxa_atexit: 'atexit',
 
+#endif
+
   // used in rust, clang when doing thread_local statics
+#if USE_PTHREADS
+  __cxa_thread_atexit: 'pthread_cleanup_push',
+  __cxa_thread_atexit_impl: 'pthread_cleanup_push',
+#else
   __cxa_thread_atexit: 'atexit',
   __cxa_thread_atexit_impl: 'atexit',
 #endif
