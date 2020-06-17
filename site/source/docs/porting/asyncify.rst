@@ -243,7 +243,7 @@ example is based off of
 Note that we must propagate the value returned from ``handleSleep()``. The calling C code then
 gets it normally, after the Promise completes.
 
-If you're using ``handleSleep`` API, the value needs to be also passed to the ``wakeUp`` callback, instead of being returned from our handler:
+If you're using the ``handleSleep`` API, the value needs to be also passed to the ``wakeUp`` callback, instead of being returned from our handler:
 
 .. code-block:: cpp
 
