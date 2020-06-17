@@ -181,8 +181,6 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
-    if not self.is_wasm_backend():
-      self.skipTest('node pthreads only supported on wasm backend')
     if not self.get_setting('WASM'):
       self.skipTest("pthreads doesn't work in non-wasm yet")
     if '-fsanitize=address' in self.emcc_args:
@@ -8185,6 +8183,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
           'allow': TRAP_OUTPUTS
         }[mode], assert_returncode=None)
 
+  @node_pthreads
+  def test_binaryen_2170_emscripten_atomic_cas_u8(self):
+    self.emcc_args += ['-s', 'USE_PTHREADS=1']
+    self.do_run_in_out_file_test('tests', 'binaryen_2170_emscripten_atomic_cas_u8')
+
   @also_with_standalone_wasm()
   def test_sbrk(self):
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
@@ -8595,6 +8598,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthreads_create(self):
+    if not self.is_wasm_backend():
+      self.skipTest('only supported on wasm backend')
+
     def test():
       self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create')
     test()
