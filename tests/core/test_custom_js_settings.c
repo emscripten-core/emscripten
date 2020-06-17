@@ -4,5 +4,5 @@ int js_function(void);
 
 int main()
 {
-	printf("%d\n", js_function);
+	printf("%d\n", js_function());
 }
