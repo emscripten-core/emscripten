@@ -6,8 +6,8 @@
 #include <assert.h>
 #include <string.h>
 
-void __attribute__((noinline)) DoSomething(void *addr) {
-  memcpy(addr, addr + 42, 13);
+void __attribute__((noinline)) DoSomething(char *addr) {
+  memset(addr, 42, 13);
 }
 
 void TestStackValidity() {
@@ -31,11 +31,15 @@ int main() {
   uintptr_t prevFree = emscripten_stack_get_free();
   printf("Stack used: %u\n", origFree - emscripten_stack_get_free());
   for(int i = 0; i < 10; ++i) {
-    void *p = alloca(increment);
+    int increment_noopt = emscripten_random() >= 0 ? increment : 2;
+    char *p = alloca(increment_noopt);
+    DoSomething(p);
     uintptr_t free = emscripten_stack_get_free();
     assert(prevFree - free == increment);
     prevFree = free;
-    DoSomething(p);
+    // Print something from the allocationed region to prevent whole program
+    // optimizations from elminiating the alloca completely.
+    printf("Val: %d\n", p[10]);
     printf("Stack used: %u\n", origFree - emscripten_stack_get_free());
     TestStackValidity();
   }
