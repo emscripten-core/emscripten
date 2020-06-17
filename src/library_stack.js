@@ -5,7 +5,15 @@
  */
 
 mergeInto(LibraryManager.library, {
-#if WASM_BACKEND == 0
+  emscripten_stack_get_base: function() {
+    return STACK_BASE;
+  },
+  emscripten_stack_get_end: function() {
+    // TODO(sbc): rename STACK_MAX -> STACK_END?
+    return STACK_MAX;
+  },
+
+#if !WASM_BACKEND
   $abortStackOverflow__deps: ['$stackSave'],
 #endif
   $abortStackOverflow__import: true,
@@ -13,7 +21,7 @@ mergeInto(LibraryManager.library, {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },
 
-#if WASM_BACKEND == 0
+#if !WASM_BACKEND
   $stackAlloc__asm: true,
   $stackAlloc__sig: 'ii',
 #if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
@@ -43,5 +51,18 @@ mergeInto(LibraryManager.library, {
     top = top|0;
     STACKTOP = top;
   },
+
+  // With the wasm backend, these functions are implemented as native
+  // functions in compiler-rt/stack_ops.s
+  emscripten_stack_get_current__asm: true,
+  emscripten_stack_get_current__sig: 'i',
+  emscripten_stack_get_current: function() {
+    return STACKTOP|0;
+  },
+  emscripten_stack_get_free__asm: true,
+  emscripten_stack_get_free__sig: 'i',
+  emscripten_stack_get_free: function() {
+    return (STACK_MAX|0) - (STACKTOP|0);
+  }
 #endif
 });
