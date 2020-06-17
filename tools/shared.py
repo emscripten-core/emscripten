@@ -1004,8 +1004,6 @@ class SettingsManager(object):
         self.attrs[alt_name] = value
 
       if attr not in self.attrs:
-        import traceback
-        traceback.print_stack()
         msg = "Attempt to set a non-existent setting: '%s'\n" % attr
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
         if suggestions:
