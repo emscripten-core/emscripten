@@ -7853,7 +7853,6 @@ Module['onRuntimeInitialized'] = function() {
     src = open(path_from_root('tests', 'test_fibers.cpp')).read()
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
-  @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
   @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
@@ -7862,26 +7861,45 @@ Module['onRuntimeInitialized'] = function() {
 
   @parameterized({
     'normal': ([], True),
-    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo(int, double)"]'], False),
-    'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
-    'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
-    'whitelist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
-    'whitelist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
+    'removelist_a': (['-s', 'ASYNCIFY_REMOVE_LIST=["foo(int, double)"]'], False),
+    'removelist_b': (['-s', 'ASYNCIFY_REMOVE_LIST=["bar()"]'], True),
+    'removelist_c': (['-s', 'ASYNCIFY_REMOVE_LIST=["baz()"]'], False),
+    'onlylist_a': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'onlylist_b': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'onlylist_c': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'onlylist_d': (['-s', 'ASYNCIFY_ONLY_LIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
+    'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
+    'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_test_file('response.file', response)
-      self.emcc_args += ['-s', 'ASYNCIFY_WHITELIST=@response.file']
+      self.emcc_args += ['-s', 'ASYNCIFY_ONLY_LIST=@response.file']
     self.set_setting('ASYNCIFY', 1)
     self.emcc_args += args
     try:
       self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_lists', assert_identical=True)
+      if not should_pass:
+        should_pass = True
+        raise Exception('should not have passed')
+    except Exception:
+      if should_pass:
+        raise
+
+  @parameterized({
+    'normal': ([], True),
+    'ignoreindirect': (['-s', 'ASYNCIFY_IGNORE_INDIRECT'], False),
+    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD_LIST=["main","virt()"]'], True),
+  })
+  @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
+  @no_fastcomp('new asyncify only')
+  def test_asyncify_indirect_lists(self, args, should_pass):
+    self.set_setting('ASYNCIFY', 1)
+    self.emcc_args += args
+    try:
+      self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_indirect_lists', assert_identical=True)
       if not should_pass:
         should_pass = True
         raise Exception('should not have passed')
@@ -8182,6 +8200,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
           'clamp': '|-2147483648|\n|4294967295|',
           'allow': TRAP_OUTPUTS
         }[mode], assert_returncode=None)
+
+  @node_pthreads
+  def test_binaryen_2170_emscripten_atomic_cas_u8(self):
+    self.emcc_args += ['-s', 'USE_PTHREADS=1']
+    self.do_run_in_out_file_test('tests', 'binaryen_2170_emscripten_atomic_cas_u8')
 
   @also_with_standalone_wasm()
   def test_sbrk(self):
@@ -8593,6 +8616,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthreads_create(self):
+    if not self.is_wasm_backend():
+      self.skipTest('only supported on wasm backend')
+
     def test():
       self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create')
     test()
@@ -8654,6 +8680,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests the operation of API found in #include <emscripten/math.h>
   def test_emscripten_math(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_math')
+
+  # Tests that users can pass custom JS options from command line using
+  # the -jsDfoo=val syntax:
+  # See https://github.com/emscripten-core/emscripten/issues/10580.
+  def test_custom_js_options(self):
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_custom_js_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_custom_js_settings')
+
+    self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([EMCC, '-jsDWASM=0']))
+
+  # Tests <emscripten/stack.h> API
+  def test_emscripten_stack(self):
+    self.emcc_args += ['-lstack.js']
+    self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free')
 
 
 # Generate tests for everything

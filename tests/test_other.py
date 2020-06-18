@@ -8628,12 +8628,12 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIdentical(normal, huge)
 
   def test_EM_ASM_ES6(self):
-    # check we show a proper understandable error for JS parse problems
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
 int main() {
   EM_ASM({
-    var x = (a, b) => 5; // valid ES6!
+    var x = (a, b) => 5; // valid ES6
+    async function y() {} // valid ES2017
     out('hello!');
   });
 }
@@ -8931,7 +8931,7 @@ test_module().then((test_module_instance) => {
 
   @no_fastcomp('uses new ASYNCIFY')
   def test_asyncify_escaping(self):
-    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_WHITELIST=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
+    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY_LIST=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
     self.assertContained('emcc: ASYNCIFY list contains an item without balanced parentheses', proc.stderr)
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
     self.assertContained('Try to quote the entire argument', proc.stderr)
@@ -8943,10 +8943,10 @@ test_module().then((test_module_instance) => {
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
 ]
 ''')
-    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_WHITELIST=@a.txt"], stdout=PIPE, stderr=PIPE)
+    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY_LIST=@a.txt"], stdout=PIPE, stderr=PIPE)
     # we should parse the response file properly, and then issue a proper warning for the missing function
     self.assertContained(
-        'Asyncify whitelist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
+        'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
         proc.stderr)
 
   # Sockets and networking
@@ -10464,6 +10464,13 @@ int main() {
   def test_xclang_flag(self):
     create_test_file('foo.h', ' ')
     run_process([EMCC, '-c', '-o', 'out.o', '-Xclang', '-include', '-Xclang', 'foo.h', path_from_root('tests', 'hello_world.c')])
+
+  def test_emcc_size_parsing(self):
+    create_test_file('foo.h', ' ')
+    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=X'])
+    self.assertContained('error: invalid byte size `X`.  Valid suffixes are: kb, mb, gb, tb', err)
+    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=11PB'])
+    self.assertContained('error: invalid byte size `11PB`.  Valid suffixes are: kb, mb, gb, tb', err)
 
   def test_native_call_before_init(self):
     self.set_setting('ASSERTIONS')

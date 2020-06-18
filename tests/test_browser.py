@@ -3307,8 +3307,8 @@ window.close = function() {
     self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
 
   @no_fastcomp('wasm backend asyncify specific')
-  def test_async_bad_whitelist(self):
-    self.btest('browser/async_bad_whitelist.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_WHITELIST=["waka"]', '--profiling'])
+  def test_async_bad_list(self):
+    self.btest('browser/async_bad_list.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_ONLY_LIST=["waka"]', '--profiling'])
 
   # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s MODULARIZE=1 as well.
   def test_minimal_runtime_modularize(self):
@@ -4816,6 +4816,10 @@ window.close = function() {
   @requires_threads
   def test_embind_with_pthreads(self):
     self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  @no_fastcomp("no asyncify support")
+  def test_embind_with_asyncify(self):
+    self.btest('embind_with_asyncify.cpp', '1', args=['--bind'] + self.get_async_args())
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):

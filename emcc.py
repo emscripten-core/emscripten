@@ -115,7 +115,7 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
   'emscripten_fiber_swap',
-  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync']
+  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await']
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc
 # opt levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to
@@ -390,6 +390,22 @@ def embed_memfile(options):
             not use_source_map(options))))
 
 
+def expand_byte_size_suffixes(value):
+  """Given a string with KB/MB size suffixes, such as "32MB", computes how
+  many bytes that is and returns it as an integer.
+  """
+  value = value.strip()
+  match = re.fullmatch(r'(\d+)\s*([kmgt]?b)?', value, re.I)
+  if not match:
+    exit_with_error("invalid byte size `%s`.  Valid suffixes are: kb, mb, gb, tb" % value)
+  value, suffix = match.groups()
+  value = int(value)
+  if suffix:
+    size_suffixes = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
+    value *= size_suffixes[suffix.lower()]
+  return value
+
+
 def apply_settings(changes):
   """Take a list of settings in form `NAME=VALUE` and apply them to the global
   Settings object.
@@ -421,7 +437,7 @@ def apply_settings(changes):
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
     if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
                'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
-      value = str(shared.expand_byte_size_suffixes(value))
+      value = str(expand_byte_size_suffixes(value))
 
     if value[0] == '@':
       filename = value[1:]
@@ -640,7 +656,6 @@ def backend_binaryen_passes():
     # be able to whitelist them etc.
     passes += ['--fpcast-emu']
   if shared.Settings.ASYNCIFY:
-    # TODO: allow whitelist as in asyncify
     passes += ['--asyncify']
     if shared.Settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
@@ -678,15 +693,18 @@ def backend_binaryen_passes():
           logger.warning('''emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):''')
           logger.warning('''   ''' + item)
           logger.warning('''This may indicate improper escaping that led to splitting inside your names.''')
-          logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_WHITELIST=["foo(int, char)", "bar"]' ''')
+          logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_ONLY_LIST=["foo(int, char)", "bar"]' ''')
           break
 
-    if shared.Settings.ASYNCIFY_BLACKLIST:
-      check_human_readable_list(shared.Settings.ASYNCIFY_BLACKLIST)
-      passes += ['--pass-arg=asyncify-blacklist@%s' % ','.join(shared.Settings.ASYNCIFY_BLACKLIST)]
-    if shared.Settings.ASYNCIFY_WHITELIST:
-      check_human_readable_list(shared.Settings.ASYNCIFY_WHITELIST)
-      passes += ['--pass-arg=asyncify-whitelist@%s' % ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
+    if shared.Settings.ASYNCIFY_REMOVE_LIST:
+      check_human_readable_list(shared.Settings.ASYNCIFY_REMOVE_LIST)
+      passes += ['--pass-arg=asyncify-removelist@%s' % ','.join(shared.Settings.ASYNCIFY_REMOVE_LIST)]
+    if shared.Settings.ASYNCIFY_ADD_LIST:
+      check_human_readable_list(shared.Settings.ASYNCIFY_ADD_LIST)
+      passes += ['--pass-arg=asyncify-addlist@%s' % ','.join(shared.Settings.ASYNCIFY_ADD_LIST)]
+    if shared.Settings.ASYNCIFY_ONLY_LIST:
+      check_human_readable_list(shared.Settings.ASYNCIFY_ONLY_LIST)
+      passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(shared.Settings.ASYNCIFY_ONLY_LIST)]
   if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
 
@@ -981,7 +999,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] += newargs[i + 1]
         newargs[i + 1] = ''
 
-    options, settings_changes, newargs = parse_args(newargs)
+    options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
     if '-print-search-dirs' in newargs:
       return run_process([CC, '-print-search-dirs'], check=False).returncode
@@ -1263,6 +1281,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
+
+    # Apply user -jsD settings
+    for s in user_js_defines:
+      shared.Settings.attrs[s[0]] = s[1]
 
     shared.verify_settings()
 
@@ -2833,6 +2855,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
+  user_js_defines = []
   should_exit = False
   eh_enabled = False
   wasm_eh_enabled = False
@@ -3108,12 +3131,22 @@ def parse_args(newargs):
       shared.Settings.EXCEPTION_HANDLING = 0
       shared.Settings.DISABLE_EXCEPTION_THROWING = 0
       shared.Settings.DISABLE_EXCEPTION_CATCHING = 0
+    elif newargs[i].startswith('-jsD'):
+      key = newargs[i][4:]
+      if '=' in key:
+        key, value = key.split('=')
+      else:
+        value = '1'
+      if key in shared.Settings.attrs:
+        exit_with_error(newargs[i] + ': cannot change built-in settings values with a -jsD directive. Pass -s ' + key + '=' + value + ' instead!')
+      user_js_defines += [(key, value)]
+      newargs[i] = ''
 
   if should_exit:
     sys.exit(0)
 
   newargs = [a for a in newargs if a]
-  return options, settings_changes, newargs
+  return options, settings_changes, user_js_defines, newargs
 
 
 def emit_js_source_maps(target, js_transform_tempfiles):
@@ -3143,7 +3176,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   debug_info = shared.Settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
   # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
   # this is necessary for emitting a symbol map at the end.
-  intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST)
+  intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_ONLY_LIST or shared.Settings.ASYNCIFY_REMOVE_LIST or shared.Settings.ASYNCIFY_ADD_LIST)
   emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
