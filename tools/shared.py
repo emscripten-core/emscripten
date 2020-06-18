@@ -1267,27 +1267,11 @@ function jsCall_%s(index%s) {
 
   @staticmethod
   def make_invoke(sig, named=True):
-    if sig == 'X':
-      # 'X' means the generic unknown signature, used in wasm dynamic linking
-      # to indicate an invoke that the main JS may not have defined, so we
-      # go through this (which may be slower, as we don't declare the
-      # arguments explicitly). In non-wasm dynamic linking, the other modules
-      # have JS and so can define their own invokes to be linked in.
-      # This only makes sense in function pointer emulation mode, where we
-      # can do a direct table call.
-      assert Settings.WASM
-      assert Settings.WASM_BACKEND or Settings.EMULATED_FUNCTION_POINTERS
-      args = ''
-      body = '''
-        var args = Array.prototype.slice.call(arguments);
-        return wasmTable.get(args[0]).apply(null, args.slice(1));
-      '''
-    else:
-      legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
-      args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
-      args = 'index' + (',' if args else '') + args
-      ret = 'return ' if sig[0] != 'v' else ''
-      body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
+    legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
+    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
+    args = 'index' + (',' if args else '') + args
+    ret = 'return ' if sig[0] != 'v' else ''
+    body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     if Settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"

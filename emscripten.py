@@ -2044,9 +2044,6 @@ def emscript_wasm_backend(infile, outfile, memfile, temp_files, DEBUG):
   pre = None
 
   invoke_funcs = metadata['invokeFuncs']
-  if shared.Settings.RELOCATABLE:
-    invoke_funcs.append('invoke_X')
-
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
   except KeyError:
