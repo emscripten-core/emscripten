@@ -503,6 +503,11 @@ mergeInto(LibraryManager.library, {
       return Asyncify.handleSleepReturnValue;
     },
 
+    // Unlike `handleSleep`, accepts a function returning a `Promise`
+    // and uses the fulfilled value instead of passing in a separate callback.
+    //
+    // This is particularly useful for native JS `async` functions where the
+    // returned value will "just work" and be passed back to C++.
     handleAsync: function(startAsync) {
       return Asyncify.handleSleep(function(wakeUp) {
         // TODO: add error handling as a second param when handleSleep implements it.
@@ -752,4 +757,3 @@ mergeInto(LibraryManager.library, {
 if (WASM_BACKEND && ASYNCIFY) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Asyncify');
 }
-
