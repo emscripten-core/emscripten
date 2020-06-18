@@ -243,11 +243,15 @@ you can tell Asyncify to ignore indirect calls using
 If you know that some indirect calls matter and others do not, then you
 can provide a manual list of functions to Asyncify:
 
-* ``ASYNCIFY_BLACKLIST`` is a list of functions that do not unwind the stack.
-  Asyncify will do it's normal whole-program analysis under the assumption
-  that those do not unwind.
-* ``ASYNCIFY_WHITELIST`` is a list of the **only** functions that can unwind
-  the stack. Asyncify will instrument those and no others.
+* ``ASYNCIFY_REMOVE_LIST`` is a list of functions that do not unwind the stack.
+  Asyncify will do its normal whole-program analysis, then remove these
+  functions from the list of instrumented functions.
+* ``ASYNCIFY_ADD_LIST`` is a list of functions that do unwind the stack, and
+  are added after doing the normal whole-program analysis. This is mostly useful
+  if you use ``ASYNCIFY_IGNORE_INDIRECT`` but want to also mark some additional
+  functions that need to unwind.
+* ``ASYNCIFY_ONLY_LIST`` is a list of the **only** functions that can unwind
+  the stack. Asyncify will instrument exactly those and no others.
 
 For more details see ``settings.js``. Note that the manual settings
 mentioned here are error-prone - if you don't get things exactly right,
