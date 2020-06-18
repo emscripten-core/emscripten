@@ -645,10 +645,10 @@ var LibraryGL = {
       canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
       if (!ctx) {
         err('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
-        return 0;
+        return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED') }}};
       }
 #else
-      if (!ctx) return 0;
+      if (!ctx) return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED') }}};
 #endif
 
       var handle = GL.registerContext(ctx, webGLContextAttributes);

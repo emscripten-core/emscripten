@@ -367,7 +367,7 @@ var LibraryEGL = {
 
     EGL.context = GL.createContext(Module['canvas'], EGL.contextAttributes);
 
-    if (EGL.context != 0) {
+    if (EGL.context > 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
 
       // Run callbacks so that GL emulation works
