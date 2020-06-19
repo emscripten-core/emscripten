@@ -16,7 +16,11 @@ var
 WebAssembly = {
   Memory: /** @constructor */ function(opts) {
     return {
+#if USE_PTHREADS
+      buffer: new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
+#else
       buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
+#endif
       grow: function(amount) {
 #if ASSERTIONS
         var oldBuffer = this.buffer;
