@@ -54,7 +54,6 @@ WebAssembly = {
   Module: function(binary) {
     // TODO: use the binary and info somehow - right now the wasm2js output is embedded in
     // the main JS
-    return this;
   },
 
   Instance: function(module, info) {
@@ -70,8 +69,12 @@ WebAssembly = {
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {
     return {
       then: function(ok) {
+        var module = new WebAssembly.Module(binary);
         ok({
-          'instance': new WebAssembly.Instance(new WebAssembly.Module(binary))
+#if USE_PTHREADS
+          'module': module,
+#endif
+          'instance': new WebAssembly.Instance(module)
         });
 #if ASSERTIONS
         // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.
