@@ -388,7 +388,11 @@ var LibraryPThread = {
         // independently load up the same main application file.
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
 #if WASM
+#if WASM2JS // cannot clone the polyfill WebAssembly.Memory instance which has function properties
+        'wasmMemory': { 'buffer': wasmMemory.buffer },
+#else // WASM2JS
         'wasmMemory': wasmMemory,
+#endif // WASM2JS
         'wasmModule': wasmModule,
 #if LOAD_SOURCE_MAP
         'wasmSourceMap': wasmSourceMap,
