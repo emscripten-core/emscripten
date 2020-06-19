@@ -1583,8 +1583,8 @@ var ASMFS = 0;
 //
 // When using code that depends on this option, your Content Security Policy may
 // need to be updated. Specifically, embedding asm.js requires the script-src
-// directive to whitelist 'unsafe-inline', and using a Worker requires the
-// child-src directive to whitelist blob:. If you aren't using Content Security
+// directive to allow 'unsafe-inline', and using a Worker requires the
+// child-src directive to allow blob:. If you aren't using Content Security
 // Policy, or your CSP header doesn't include either script-src or child-src,
 // then you can safely ignore this warning.
 var SINGLE_FILE = 0;
