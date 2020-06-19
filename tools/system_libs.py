@@ -759,7 +759,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       # multiple bytes at once as an int and overflowing a buffer.
       # Otherwise, ASan will catch these errors and terminate the program.
       ignore += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
-                    'aligned_alloc.c', 'fcntl.c']
+                 'aligned_alloc.c', 'fcntl.c']
       libc_files += [
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strcpy.c'),
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_memchr.c'),
@@ -773,7 +773,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       ignore += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
     else:
       ignore += ['rintf.c', 'ceil.c', 'ceilf.c', 'floor.c', 'floorf.c',
-                    'fabs.c', 'fabsf.c', 'sqrt.c', 'sqrtf.c']
+                 'fabs.c', 'fabsf.c', 'sqrt.c', 'sqrtf.c']
 
     ignore = set(ignore)
     # TODO: consider using more math code from musl, doing so makes box2d faster
