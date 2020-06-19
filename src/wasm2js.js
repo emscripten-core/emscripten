@@ -14,23 +14,21 @@
 var
 #endif
 WebAssembly = {
-  Memory: /** @constructor */ function(opts) {
-    return {
+  Memory: function(opts) {
 #if USE_PTHREADS
-      buffer: new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
+    this.buffer = new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
 #else
-      buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
+    this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
 #endif
-      grow: function(amount) {
+    this.grow = function(amount) {
 #if ASSERTIONS
-        var oldBuffer = this.buffer;
+      var oldBuffer = this.buffer;
 #endif
-        var ret = __growWasmMemory(amount);
+      var ret = __growWasmMemory(amount);
 #if ASSERTIONS
-        assert(this.buffer !== oldBuffer); // the call should have updated us
+      assert(this.buffer !== oldBuffer); // the call should have updated us
 #endif
-        return ret;
-      }
+      return ret;
     };
   },
 
@@ -56,7 +54,7 @@ WebAssembly = {
   Module: function(binary) {
     // TODO: use the binary and info somehow - right now the wasm2js output is embedded in
     // the main JS
-    return {};
+    return this;
   },
 
   Instance: function(module, info) {
