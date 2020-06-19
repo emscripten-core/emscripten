@@ -1290,7 +1290,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.WASM_BACKEND and 'EMCC_ALLOW_FASTCOMP' not in os.environ:
       diagnostics.warning('fastcomp', 'the fastomp compiler is deprecated.  Please switch to the upstream llvm backend as soon as possible and open issues if you have trouble doing so')
 
-    if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+    if options.no_entry or ('_main' not in shared.Settings.EXPORTED_FUNCTIONS and
+                            '__start' not in shared.Settings.EXPORTED_FUNCTIONS):
       shared.Settings.EXPECT_MAIN = 0
 
     if shared.Settings.STANDALONE_WASM:
