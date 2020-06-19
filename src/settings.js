@@ -735,7 +735,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
 // Simple '*' wildcard matching is supported.
-var ASYNCIFY_REMOVE_LIST = [];
+var ASYNCIFY_REMOVE = [];
 
 // Functions in the Asyncify add-list are added to the list of instrumented
 // functions, that is, they will be instrumented even if otherwise asyncify
@@ -743,14 +743,14 @@ var ASYNCIFY_REMOVE_LIST = [];
 // in the safest way possible, this is only useful if you use IGNORE_INDIRECT
 // and use this list to fix up some indirect calls that *do* need to be
 // instrumented.
-// See notes on ASYNCIFY_REMOVE_LIST about the names.
-var ASYNCIFY_ADD_LIST = [];
+// See notes on ASYNCIFY_REMOVE about the names.
+var ASYNCIFY_ADD = [];
 
 // If the Asyncify only-list is provided, then *only* the functions in the list
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
-// See notes on ASYNCIFY_REMOVE_LIST about the names.
-var ASYNCIFY_ONLY_LIST = [];
+// See notes on ASYNCIFY_REMOVE about the names.
+var ASYNCIFY_ONLY = [];
 
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
@@ -1826,6 +1826,6 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
   ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
-  ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY_LIST'],
-  ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE_LIST'],
+  ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
+  ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],
 ];

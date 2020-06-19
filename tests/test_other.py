@@ -8931,7 +8931,7 @@ test_module().then((test_module_instance) => {
 
   @no_fastcomp('uses new ASYNCIFY')
   def test_asyncify_escaping(self):
-    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY_LIST=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
+    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
     self.assertContained('emcc: ASYNCIFY list contains an item without balanced parentheses', proc.stderr)
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
     self.assertContained('Try to quote the entire argument', proc.stderr)
@@ -8943,7 +8943,7 @@ test_module().then((test_module_instance) => {
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
 ]
 ''')
-    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY_LIST=@a.txt"], stdout=PIPE, stderr=PIPE)
+    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY=@a.txt"], stdout=PIPE, stderr=PIPE)
     # we should parse the response file properly, and then issue a proper warning for the missing function
     self.assertContained(
         'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
