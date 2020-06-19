@@ -281,7 +281,6 @@ class JSOptimizer(object):
     self.queue = []
     self.extra_info = {}
     self.queue_history = []
-    self.blacklist = os.environ.get('EMCC_JSOPT_BLACKLIST', '').split(',')
     self.minify_whitespace = False
     self.cleanup_shell = False
 
@@ -295,8 +294,6 @@ class JSOptimizer(object):
     self.in_temp = in_temp
 
   def flush(self, title='js_opts'):
-    self.queue = [p for p in self.queue if p not in self.blacklist]
-
     assert not shared.Settings.WASM_BACKEND, 'JSOptimizer should not run with pure wasm output'
 
     if self.extra_info is not None and len(self.extra_info) == 0:
@@ -653,7 +650,7 @@ def backend_binaryen_passes():
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     # note that this pass must run before asyncify, as if it runs afterwards we only
     # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
-    # be able to whitelist them etc.
+    # be able to further process them.
     passes += ['--fpcast-emu']
   if shared.Settings.ASYNCIFY:
     passes += ['--asyncify']

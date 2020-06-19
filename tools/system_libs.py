@@ -724,14 +724,14 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
 
     # musl modules
-    blacklist = [
+    ignore = [
         'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env',
         'ldso', 'conf'
     ]
 
     # individual files
-    blacklist += [
+    ignore += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
         'inet_addr.c', 'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
@@ -741,10 +741,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'faccessat.c',
     ]
 
-    blacklist += LIBC_SOCKETS
+    ignore += LIBC_SOCKETS
 
     # individual math files
-    blacklist += [
+    ignore += [
         'abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
         'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c',
         'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c',
@@ -758,7 +758,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       # functions that do not rely on undefined behavior, for example, reading
       # multiple bytes at once as an int and overflowing a buffer.
       # Otherwise, ASan will catch these errors and terminate the program.
-      blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
+      ignore += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
                     'aligned_alloc.c', 'fcntl.c']
       libc_files += [
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strcpy.c'),
@@ -770,28 +770,28 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
-      blacklist += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
+      ignore += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
     else:
-      blacklist += ['rintf.c', 'ceil.c', 'ceilf.c', 'floor.c', 'floorf.c',
+      ignore += ['rintf.c', 'ceil.c', 'ceilf.c', 'floor.c', 'floorf.c',
                     'fabs.c', 'fabsf.c', 'sqrt.c', 'sqrtf.c']
 
-    blacklist = set(blacklist)
+    ignore = set(ignore)
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
       for f in filenames:
         if f.endswith('.c'):
-          if f in blacklist:
+          if f in ignore:
             continue
           dir_parts = os.path.split(dirpath)
           cancel = False
           for part in dir_parts:
-            if part in blacklist:
+            if part in ignore:
               cancel = True
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
-    # Allowed files from blacklisted modules
+    # Allowed files from ignored modules
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
         filenames=['clock_settime.c'])
