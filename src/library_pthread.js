@@ -537,6 +537,7 @@ var LibraryPThread = {
         'stackSize': threadParams.stackSize
     };
 #if OFFSCREENCANVAS_SUPPORT
+    // Note that we do not need to quote these names because they are only used in this file, and not from the external worker.js.
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
