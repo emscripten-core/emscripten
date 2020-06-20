@@ -3628,7 +3628,7 @@ window.close = function() {
           self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
-  # TODO wasm2js
+  # TODO wasm2js "64-bit AtomicRMW not implemented"
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
@@ -3640,7 +3640,7 @@ window.close = function() {
 
   # 64 bit version of the above test.
   @requires_threads
-  # TODO wasm2js
+  # TODO wasm2js "64-bit AtomicRMW not implemented"
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
