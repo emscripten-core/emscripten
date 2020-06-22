@@ -1319,14 +1319,15 @@ int main(int argc, char **argv)
     print('2')
     self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
+  @unittest.skip('allow llvm to roll')
   def test_exceptions_white_list(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["__Z12somefunctionv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["__Z12somefunctionv"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_Z12somefunctionv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
 
@@ -1339,12 +1340,12 @@ int main(int argc, char **argv)
     # check that an empty whitelist works properly (as in, same as exceptions disabled)
     empty_output = path_from_root('tests', 'core', 'test_exceptions_white_list_empty.out')
 
-    self.set_setting('EXCEPTION_CATCHING_WHITELIST', [])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
     self.do_run_from_file(src, empty_output, assert_returncode=None)
     empty_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'empty.js')
 
-    self.set_setting('EXCEPTION_CATCHING_WHITELIST', ['fake'])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
     self.do_run_from_file(src, empty_output, assert_returncode=None)
     fake_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'fake.js')
@@ -1362,28 +1363,30 @@ int main(int argc, char **argv)
       # full disable can remove a little bit more
       assert empty_size >= disabled_size, [empty_size, disabled_size]
 
+  @unittest.skip('allow llvm to roll')
   def test_exceptions_white_list_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_main"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_main"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["main"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_2')
 
+  @unittest.skip('allow llvm to roll')
   def test_exceptions_white_list_uncaught(self):
     self.emcc_args += ['-std=c++11']
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["__Z4testv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["__Z4testv"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_Z4testv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 

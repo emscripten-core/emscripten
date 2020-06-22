@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Following the upstream LLVM backend, rename `EXCEPTION_CATCHING_WHITELIST` to
+  `EXCEPTION_CATCHING_ALLOWED`.
 - Add support for the new `ASYNCIFY_ADD_LIST`, and update existing list names
   following the updates in Binaryen, so that now we have `ASYNCIFY_ADD_LIST` to
   add a function, `ASYNCIFY_REMOVE_LIST` to remove one (previously this was

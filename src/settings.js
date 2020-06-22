@@ -655,7 +655,7 @@ var LZ4 = 0;
 // DISABLE_EXCEPTION_CATCHING = 0 - generate code to actually catch exceptions
 // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
 // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
-//                                  catching in whitelist
+//                                  catching in list of allowed functions
 // XXX note that this removes *catching* of exceptions, which is the main
 //     issue for speed, but you should build source files with
 //     -fno-exceptions to really get rid of all exceptions code overhead,
@@ -668,7 +668,7 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 // Enables catching exception in the listed functions only, if
 // DISABLE_EXCEPTION_CATCHING = 2 is set
 // [compile+link] - affects user code at compile and system libraries at link
-var EXCEPTION_CATCHING_WHITELIST = [];
+var EXCEPTION_CATCHING_ALLOWED = [];
 
 // By default we handle exit() in node, by catching the Exit exception. However,
 // this means we catch all process exceptions. If you disable this, then we no
@@ -1583,8 +1583,8 @@ var ASMFS = 0;
 //
 // When using code that depends on this option, your Content Security Policy may
 // need to be updated. Specifically, embedding asm.js requires the script-src
-// directive to whitelist 'unsafe-inline', and using a Worker requires the
-// child-src directive to whitelist blob:. If you aren't using Content Security
+// directive to allow 'unsafe-inline', and using a Worker requires the
+// child-src directive to allow blob:. If you aren't using Content Security
 // Policy, or your CSP header doesn't include either script-src or child-src,
 // then you can safely ignore this warning.
 var SINGLE_FILE = 0;
@@ -1828,4 +1828,5 @@ var LEGACY_SETTINGS = [
   ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
   ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY_LIST'],
   ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE_LIST'],
+  ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
 ];

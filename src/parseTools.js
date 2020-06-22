@@ -1528,18 +1528,18 @@ function getQuoted(str) {
 }
 
 function makeRetainedCompilerSettings() {
-  var blacklist = set('STRUCT_INFO');
+  var ignore = set('STRUCT_INFO');
   if (STRICT) {
     for (var i in LEGACY_SETTINGS) {
       var name = LEGACY_SETTINGS[i][0];
-      blacklist[name] = 0;
+      ignore[name] = 0;
     }
   }
 
   var ret = {};
   for (var x in this) {
     try {
-      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
+      if (x[0] !== '_' && !(x in ignore) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
     } catch(e){}
   }
   return ret;
