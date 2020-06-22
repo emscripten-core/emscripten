@@ -601,7 +601,7 @@ def create_backend_cmd(infile, temp_js):
   if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
     args += ['-enable-emscripten-cpp-exceptions']
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
+      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_ALLOWED or ['fake'])]
   if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
   if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:

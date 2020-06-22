@@ -453,7 +453,7 @@ def llvm_backend_args():
   if Settings.DISABLE_EXCEPTION_CATCHING != 1:
     args += ['-enable-emscripten-cxx-exceptions']
   if Settings.DISABLE_EXCEPTION_CATCHING == 2:
-    whitelist = ','.join(Settings.EXCEPTION_CATCHING_WHITELIST or ['__fake'])
+    whitelist = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
     args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
 
   # asm.js-style setjmp/longjmp handling
