@@ -29,8 +29,8 @@ int main() {
 
   emscripten_sleep(1);
 
-  // We should not get here - the unwind will fail as the whitelist is wrong, this function
-  // should be instrumented but will not be.
+  // We should not get here - the unwind will fail as we did now all the right
+  // functions - this function should be instrumented, but will not be.
   puts("We should not get here!");
   REPORT_RESULT(1);
 

@@ -448,7 +448,9 @@ Options that are modified or new in *emcc* are listed below:
 
 
 ``--valid-abspath path``
-  Whitelist an absolute path to prevent warnings about absolute include paths.
+  Note an allowed absolute path, which we should not warn about (absolute
+  include paths normally are warned about, since they may refer to the
+  local system headers etc. which we need to avoid when cross-compiling).
 
 .. _emcc-o-target:
 
