@@ -8680,6 +8680,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXPORTED_FUNCTIONS', [])
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
+  def test_export_start(self):
+    if not can_do_standalone(self):
+      self.skipTest('standalone mode only')
+    self.set_setting('STANDALONE_WASM', 1)
+    self.set_setting('EXPORTED_FUNCTIONS', ['__start'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
   # Tests the operation of API found in #include <emscripten/math.h>
   def test_emscripten_math(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_math')
