@@ -262,7 +262,7 @@ namespace emscripten {
     };
     */
 
-    // whitelist all raw pointers
+    // allow all raw pointers
     struct allow_raw_pointers {
         template<typename InputType, int Index>
         struct Transform {
