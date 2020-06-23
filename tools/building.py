@@ -453,8 +453,8 @@ def llvm_backend_args():
   if Settings.DISABLE_EXCEPTION_CATCHING != 1:
     args += ['-enable-emscripten-cxx-exceptions']
   if Settings.DISABLE_EXCEPTION_CATCHING == 2:
-    whitelist = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
-    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+    allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
+    args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
   # asm.js-style setjmp/longjmp handling
   args += ['-enable-emscripten-sjlj']
@@ -528,7 +528,7 @@ def lld_flags_for_executable(external_symbol_list):
     if external_symbol_list:
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbol_list]
-    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN:
+    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN and 'main' in c_exports:
       c_exports.remove('main')
     for export in c_exports:
       cmd += ['--export', export]
