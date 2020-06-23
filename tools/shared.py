@@ -991,7 +991,7 @@ class SettingsManager(object):
       if attr not in self.attrs:
         msg = "Attempt to set a non-existent setting: '%s'\n" % attr
         suggestions = difflib.get_close_matches(attr, list(self.attrs.keys()))
-        suggestions = [suggestion for suggestion in suggestions if suggestion not in self.legacy_settings]
+        suggestions = [s for s in suggestions if s not in self.legacy_settings]
         suggestions = ', '.join(suggestions)
         if suggestions:
           msg += ' - did you mean one of %s?\n' % suggestions
