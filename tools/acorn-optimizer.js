@@ -1,7 +1,6 @@
-var acorn = require('../third_party/acorn');
+var acorn = require('acorn');
 var terser = require('../third_party/terser');
 var fs = require('fs');
-var path = require('path');
 
 // Setup
 
