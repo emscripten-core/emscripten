@@ -8342,6 +8342,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
 
+  @no_wasm2js('wasm2js wasm emulation does not include custom sections')
   @no_fastcomp('return address not supported on fastcomp')
   @no_optimize('return address test cannot work with optimizations')
   def test_return_address(self):
