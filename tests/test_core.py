@@ -284,6 +284,9 @@ class TestCoreBase(RunnerCore):
       return True
     return False
 
+  def assertStartswith(self, output, prefix):
+    self.assertEqual(prefix, output[:len(prefix)])
+
   def verify_in_strict_mode(self, filename):
     with open(filename) as infile:
       js = infile.read()
@@ -7975,10 +7978,10 @@ Module['onRuntimeInitialized'] = function() {
       return True
 
     def verify_working(args=['0']):
-      self.assertContained('foo_end', run_js('src.cpp.o.js', args=args))
+      self.assertContained('foo_end\n', run_js('src.cpp.o.js', args=args))
 
     def verify_broken(args=['0']):
-      self.assertNotContained('foo_end', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=None))
+      self.assertNotContained('foo_end\n', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=None))
 
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
@@ -8275,8 +8278,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     src = open(path_from_root('tests', 'core', 'test_hello_world.c')).read()
     self.build(src, self.get_dir(), 'src.c')
     output = run_js('src.c.o.js', assert_returncode=None, stderr=STDOUT)
-    self.assertNotContained('failed to asynchronously prepare wasm', output)
-    self.assertContained('hello, world!', output)
+    self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
