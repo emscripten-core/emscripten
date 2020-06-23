@@ -6851,6 +6851,10 @@ high = 1234
     stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
     self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
     self.assertContained('(see src/settings.js for valid values)', stderr)
+    # suggestions do not include renamed legacy settings
+    stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ZBINARYEN_ASYNC_COMPILATION'])
+    self.assertContained("Attempt to set a non-existent setting: 'ZBINARYEN_ASYNC_COMPILATION'", stderr)
+    self.assertNotContained(' BINARYEN_ASYNC_COMPILATION', stderr)
 
   def test_python_2_3(self):
     # check emcc/em++ can be called by any python
