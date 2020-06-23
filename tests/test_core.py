@@ -1319,7 +1319,7 @@ int main(int argc, char **argv)
     print('2')
     self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
-  def test_exceptions_white_list(self):
+  def test_exceptions_allowed(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
@@ -1330,14 +1330,14 @@ int main(int argc, char **argv)
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
 
-    test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
+    test_path = path_from_root('tests', 'core', 'test_exceptions_allowed')
     src, output = (test_path + s for s in ('.cpp', '.out'))
     self.do_run_from_file(src, output)
     size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'orig.js')
 
     # check that an empty whitelist works properly (as in, same as exceptions disabled)
-    empty_output = path_from_root('tests', 'core', 'test_exceptions_white_list_empty.out')
+    empty_output = path_from_root('tests', 'core', 'test_exceptions_allowed_empty.out')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
     self.do_run_from_file(src, empty_output, assert_returncode=None)
@@ -1362,7 +1362,7 @@ int main(int argc, char **argv)
       # full disable can remove a little bit more
       assert empty_size >= disabled_size, [empty_size, disabled_size]
 
-  def test_exceptions_white_list_2(self):
+  def test_exceptions_allowed_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
@@ -1373,9 +1373,9 @@ int main(int argc, char **argv)
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_2')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_allowed_2')
 
-  def test_exceptions_white_list_uncaught(self):
+  def test_exceptions_allowed_uncaught(self):
     self.emcc_args += ['-std=c++11']
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
@@ -1387,7 +1387,7 @@ int main(int argc, char **argv)
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_uncaught')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_allowed_uncaught')
 
   @with_both_exception_handling
   def test_exceptions_uncaught(self):
