@@ -10487,3 +10487,18 @@ int main() {
     self.build('#include <stdio.h>\nint main() { puts("foo called"); return 0; }', self.get_dir(), 'foo.c')
     err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
     self.assertContained('native function `main` called after runtime exit', err)
+
+  def test_metadce_wasm2js_i64(self):
+    # handling i64 unsigned remainder brings in some i64 support code. metadce
+    # must not remove it.
+    create_test_file('src.cpp', r'''
+int main(int argc, char **argv) {
+  // Intentionally do not print anything, to not bring in more code than we
+  // need to test - this only tests that we do not crash, which we would if
+  // metadce broke us.
+  unsigned long long x = argc;
+  // do some i64 math, but return 0
+  return (x % (x - 20)) == 42;
+}''')
+    run_process([EMCC, 'src.cpp', '-O3', '-s', 'WASM=0'])
+    run_js('a.out.js')
