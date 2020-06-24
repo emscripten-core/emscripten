@@ -3130,11 +3130,6 @@ myreade(){
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
 
-  @unittest.skip("autovectorization of this stopped in LLVM 6.0")
-  def test_autovectorize_linpack(self):
-    # TODO: investigate when SIMD arrives in wasm
-    run_process([EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-msimd128', '-DSP', '--profiling'])
-
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
     # copied from the temporary directory.
