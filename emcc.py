@@ -281,7 +281,6 @@ class JSOptimizer(object):
     self.queue = []
     self.extra_info = {}
     self.queue_history = []
-    self.blacklist = os.environ.get('EMCC_JSOPT_BLACKLIST', '').split(',')
     self.minify_whitespace = False
     self.cleanup_shell = False
 
@@ -295,8 +294,6 @@ class JSOptimizer(object):
     self.in_temp = in_temp
 
   def flush(self, title='js_opts'):
-    self.queue = [p for p in self.queue if p not in self.blacklist]
-
     assert not shared.Settings.WASM_BACKEND, 'JSOptimizer should not run with pure wasm output'
 
     if self.extra_info is not None and len(self.extra_info) == 0:
@@ -653,7 +650,7 @@ def backend_binaryen_passes():
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     # note that this pass must run before asyncify, as if it runs afterwards we only
     # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
-    # be able to whitelist them etc.
+    # be able to further process them.
     passes += ['--fpcast-emu']
   if shared.Settings.ASYNCIFY:
     passes += ['--asyncify']
@@ -1293,7 +1290,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.WASM_BACKEND and 'EMCC_ALLOW_FASTCOMP' not in os.environ:
       diagnostics.warning('fastcomp', 'the fastomp compiler is deprecated.  Please switch to the upstream llvm backend as soon as possible and open issues if you have trouble doing so')
 
-    if options.no_entry or '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+    if options.no_entry or ('_main' not in shared.Settings.EXPORTED_FUNCTIONS and
+                            '__start' not in shared.Settings.EXPORTED_FUNCTIONS):
       shared.Settings.EXPECT_MAIN = 0
 
     if shared.Settings.STANDALONE_WASM:
@@ -3054,8 +3052,8 @@ def parse_args(newargs):
       options.separate_asm = True
       newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
-      options.path_name = newargs[i][2:]
-      if os.path.isabs(options.path_name) and not is_valid_abspath(options, options.path_name):
+      path_name = newargs[i][2:]
+      if os.path.isabs(path_name) and not is_valid_abspath(options, path_name):
         # Of course an absolute path to a non-system-specific library or header
         # is fine, and you can ignore this warning. The danger are system headers
         # that are e.g. x86 specific and nonportable. The emscripten bundled

@@ -3130,11 +3130,6 @@ myreade(){
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
 
-  @unittest.skip("autovectorization of this stopped in LLVM 6.0")
-  def test_autovectorize_linpack(self):
-    # TODO: investigate when SIMD arrives in wasm
-    run_process([EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-msimd128', '-DSP', '--profiling'])
-
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
     # copied from the temporary directory.
@@ -6851,6 +6846,10 @@ high = 1234
     stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
     self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
     self.assertContained('(see src/settings.js for valid values)', stderr)
+    # suggestions do not include renamed legacy settings
+    stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ZBINARYEN_ASYNC_COMPILATION'])
+    self.assertContained("Attempt to set a non-existent setting: 'ZBINARYEN_ASYNC_COMPILATION'", stderr)
+    self.assertNotContained(' BINARYEN_ASYNC_COMPILATION', stderr)
 
   def test_python_2_3(self):
     # check emcc/em++ can be called by any python
