@@ -282,6 +282,9 @@ class TestCoreBase(RunnerCore):
       return True
     return False
 
+  def assertStartswith(self, output, prefix):
+    self.assertEqual(prefix, output[:len(prefix)])
+
   def verify_in_strict_mode(self, filename):
     with open(filename) as infile:
       js = infile.read()
@@ -1317,32 +1320,32 @@ int main(int argc, char **argv)
     print('2')
     self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
-  def test_exceptions_white_list(self):
+  def test_exceptions_allowed(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["__Z12somefunctionv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["__Z12somefunctionv"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_Z12somefunctionv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
 
-    test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
+    test_path = path_from_root('tests', 'core', 'test_exceptions_allowed')
     src, output = (test_path + s for s in ('.cpp', '.out'))
     self.do_run_from_file(src, output)
     size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'orig.js')
 
     # check that an empty whitelist works properly (as in, same as exceptions disabled)
-    empty_output = path_from_root('tests', 'core', 'test_exceptions_white_list_empty.out')
+    empty_output = path_from_root('tests', 'core', 'test_exceptions_allowed_empty.out')
 
-    self.set_setting('EXCEPTION_CATCHING_WHITELIST', [])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
     self.do_run_from_file(src, empty_output, assert_returncode=None)
     empty_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'empty.js')
 
-    self.set_setting('EXCEPTION_CATCHING_WHITELIST', ['fake'])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
     self.do_run_from_file(src, empty_output, assert_returncode=None)
     fake_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'fake.js')
@@ -1360,32 +1363,32 @@ int main(int argc, char **argv)
       # full disable can remove a little bit more
       assert empty_size >= disabled_size, [empty_size, disabled_size]
 
-  def test_exceptions_white_list_2(self):
+  def test_exceptions_allowed_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_main"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_main"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["main"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_2')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_allowed_2')
 
-  def test_exceptions_white_list_uncaught(self):
+  def test_exceptions_allowed_uncaught(self):
     self.emcc_args += ['-std=c++11']
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["__Z4testv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["__Z4testv"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_Z4testv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_uncaught')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_allowed_uncaught')
 
   @with_both_exception_handling
   def test_exceptions_uncaught(self):
@@ -4133,6 +4136,42 @@ res64 - external 64\n''', header='''
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''')
+
+  @needs_dlfcn
+  @also_with_wasm_bigint
+  def test_dylink_i64_invoke(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.dylink_test(r'''\
+    #include <stdio.h>
+    #include <stdint.h>
+
+    extern "C" int64_t sidey(int64_t arg);
+
+    int main(int argc, char *argv[]) {
+        int64_t temp = 42;
+        printf("got %lld\n", sidey(temp));
+        return 0;
+    }''', r'''\
+    #include <stdint.h>
+    #include <stdio.h>
+    #include <emscripten.h>
+
+    extern "C" {
+
+    EMSCRIPTEN_KEEPALIVE int64_t do_call(int64_t arg) {
+        if (arg == 0) {
+            throw;
+        }
+        return 2 * arg;
+    }
+    int64_t sidey(int64_t arg) {
+        try {
+            return do_call(arg);
+        } catch(...) {
+            return 0;
+        }
+    }
+    }''', 'got 84', need_reverse=False)
 
   @needs_dlfcn
   def test_dylink_class(self):
@@ -7973,10 +8012,10 @@ Module['onRuntimeInitialized'] = function() {
       return True
 
     def verify_working(args=['0']):
-      self.assertContained('foo_end', run_js('src.cpp.o.js', args=args))
+      self.assertContained('foo_end\n', run_js('src.cpp.o.js', args=args))
 
     def verify_broken(args=['0']):
-      self.assertNotContained('foo_end', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=None))
+      self.assertNotContained('foo_end\n', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=None))
 
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
@@ -8273,8 +8312,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     src = open(path_from_root('tests', 'core', 'test_hello_world.c')).read()
     self.build(src, self.get_dir(), 'src.c')
     output = run_js('src.c.o.js', assert_returncode=None, stderr=STDOUT)
-    self.assertNotContained('failed to asynchronously prepare wasm', output)
-    self.assertContained('hello, world!', output)
+    self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
@@ -8340,6 +8378,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
 
+  @no_wasm2js('wasm2js wasm emulation does not include custom sections')
   @no_fastcomp('return address not supported on fastcomp')
   @no_optimize('return address test cannot work with optimizations')
   def test_return_address(self):
@@ -8674,6 +8713,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.remove('--no-entry')
     self.set_setting('EXPORTED_FUNCTIONS', [])
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
+
+  def test_export_start(self):
+    if not can_do_standalone(self):
+      self.skipTest('standalone mode only')
+    self.set_setting('STANDALONE_WASM', 1)
+    self.set_setting('EXPORTED_FUNCTIONS', ['__start'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   # Tests the operation of API found in #include <emscripten/math.h>
   def test_emscripten_math(self):

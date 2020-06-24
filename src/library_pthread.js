@@ -535,12 +535,13 @@ var LibraryPThread = {
         'selfThreadId': threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
         'parentThreadId': threadParams.parent_pthread_ptr,
         'stackBase': threadParams.stackBase,
-        'stackSize': threadParams.stackSize,
+        'stackSize': threadParams.stackSize
+    };
 #if OFFSCREENCANVAS_SUPPORT
-        'moduleCanvasId': threadParams.moduleCanvasId,
-        'offscreenCanvases': threadParams.offscreenCanvases,
+    // Note that we do not need to quote these names because they are only used in this file, and not from the external worker.js.
+    msg.moduleCanvasId = threadParams.moduleCanvasId;
+    msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-      };
     worker.runPthread = function() {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();

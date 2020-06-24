@@ -601,7 +601,7 @@ def create_backend_cmd(infile, temp_js):
   if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
     args += ['-enable-emscripten-cpp-exceptions']
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
+      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_ALLOWED or ['fake'])]
   if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
   if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
@@ -2044,9 +2044,6 @@ def emscript_wasm_backend(infile, outfile, memfile, temp_files, DEBUG):
   pre = None
 
   invoke_funcs = metadata['invokeFuncs']
-  if shared.Settings.RELOCATABLE:
-    invoke_funcs.append('invoke_X')
-
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
   except KeyError:

@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Rename `EXCEPTION_CATCHING_WHITELIST` to `EXCEPTION_CATCHING_ALLOWED`. The
+  functionality is unchanged, and the old name will be allowed as an alias
+  for a few releases to give users time to migrate.
 - Add support for the new `ASYNCIFY_ADD_LIST`, and update existing list names
   following the updates in Binaryen, so that now we have `ASYNCIFY_ADD_LIST` to
   add a function, `ASYNCIFY_REMOVE_LIST` to remove one (previously this was
