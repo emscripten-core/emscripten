@@ -878,21 +878,6 @@ def get_cflags(user_args, cxx):
   return c_opts + emsdk_cflags(user_args, cxx)
 
 
-def expand_byte_size_suffixes(value):
-  """Given a string with KB/MB size suffixes, such as "32MB", computes how
-  many bytes that is and returns it as an integer.
-  """
-  SIZE_SUFFIXES = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
-  match = re.match(r'\s*(\d+)\s*([kmgt]?b)$', value, re.I)
-  if not match:
-    try:
-      return int(value)
-    except ValueError:
-      raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
-  value, suffix = match.groups()
-  return int(value) * SIZE_SUFFIXES[suffix.lower()]
-
-
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 class SettingsManager(object):
 
@@ -1005,7 +990,9 @@ class SettingsManager(object):
 
       if attr not in self.attrs:
         msg = "Attempt to set a non-existent setting: '%s'\n" % attr
-        suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
+        suggestions = difflib.get_close_matches(attr, list(self.attrs.keys()))
+        suggestions = [s for s in suggestions if s not in self.legacy_settings]
+        suggestions = ', '.join(suggestions)
         if suggestions:
           msg += ' - did you mean one of %s?\n' % suggestions
         msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
@@ -1280,27 +1267,11 @@ function jsCall_%s(index%s) {
 
   @staticmethod
   def make_invoke(sig, named=True):
-    if sig == 'X':
-      # 'X' means the generic unknown signature, used in wasm dynamic linking
-      # to indicate an invoke that the main JS may not have defined, so we
-      # go through this (which may be slower, as we don't declare the
-      # arguments explicitly). In non-wasm dynamic linking, the other modules
-      # have JS and so can define their own invokes to be linked in.
-      # This only makes sense in function pointer emulation mode, where we
-      # can do a direct table call.
-      assert Settings.WASM
-      assert Settings.WASM_BACKEND or Settings.EMULATED_FUNCTION_POINTERS
-      args = ''
-      body = '''
-        var args = Array.prototype.slice.call(arguments);
-        return wasmTable.get(args[0]).apply(null, args.slice(1));
-      '''
-    else:
-      legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
-      args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
-      args = 'index' + (',' if args else '') + args
-      ret = 'return ' if sig[0] != 'v' else ''
-      body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
+    legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
+    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
+    args = 'index' + (',' if args else '') + args
+    ret = 'return ' if sig[0] != 'v' else ''
+    body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     if Settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"

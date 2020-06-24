@@ -1398,6 +1398,12 @@ Functions
     the stack - the wasm VM has spilled them, but none of that is observable to
     user code).
 
+    Note that this function scans wasm locals. Depending on the LLVM
+    optimization level, this may not scan the original locals in your source
+    code. For example in ``-O0`` locals may be stored on the stack. To make
+    sure you scan everything necessary, you can also do
+    ``emscripten_scan_stack``.
+
     This function requires Asyncify - it relies on that option to spill the
     local state all the way up the stack. As a result, it will add overhead
     to your program.

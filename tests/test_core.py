@@ -181,8 +181,6 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
-    if not self.is_wasm_backend():
-      self.skipTest('node pthreads only supported on wasm backend')
     if not self.get_setting('WASM'):
       self.skipTest("pthreads doesn't work in non-wasm yet")
     if '-fsanitize=address' in self.emcc_args:
@@ -285,6 +283,9 @@ class TestCoreBase(RunnerCore):
       self.emcc_args += ['--closure', '1']
       return True
     return False
+
+  def assertStartswith(self, output, prefix):
+    self.assertEqual(prefix, output[:len(prefix)])
 
   def verify_in_strict_mode(self, filename):
     with open(filename) as infile:
@@ -1321,32 +1322,32 @@ int main(int argc, char **argv)
     print('2')
     self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
-  def test_exceptions_white_list(self):
+  def test_exceptions_allowed(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["__Z12somefunctionv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["__Z12somefunctionv"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_Z12somefunctionv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
 
-    test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
+    test_path = path_from_root('tests', 'core', 'test_exceptions_allowed')
     src, output = (test_path + s for s in ('.cpp', '.out'))
     self.do_run_from_file(src, output)
     size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'orig.js')
 
     # check that an empty whitelist works properly (as in, same as exceptions disabled)
-    empty_output = path_from_root('tests', 'core', 'test_exceptions_white_list_empty.out')
+    empty_output = path_from_root('tests', 'core', 'test_exceptions_allowed_empty.out')
 
-    self.set_setting('EXCEPTION_CATCHING_WHITELIST', [])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
     self.do_run_from_file(src, empty_output, assert_returncode=None)
     empty_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'empty.js')
 
-    self.set_setting('EXCEPTION_CATCHING_WHITELIST', ['fake'])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
     self.do_run_from_file(src, empty_output, assert_returncode=None)
     fake_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'fake.js')
@@ -1364,32 +1365,32 @@ int main(int argc, char **argv)
       # full disable can remove a little bit more
       assert empty_size >= disabled_size, [empty_size, disabled_size]
 
-  def test_exceptions_white_list_2(self):
+  def test_exceptions_allowed_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_main"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_main"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["main"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_2')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_allowed_2')
 
-  def test_exceptions_white_list_uncaught(self):
+  def test_exceptions_allowed_uncaught(self):
     self.emcc_args += ['-std=c++11']
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["__Z4testv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["__Z4testv"])
     else:
-      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_Z4testv"])
+      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_uncaught')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_allowed_uncaught')
 
   @with_both_exception_handling
   def test_exceptions_uncaught(self):
@@ -4137,6 +4138,42 @@ res64 - external 64\n''', header='''
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''')
+
+  @needs_dlfcn
+  @also_with_wasm_bigint
+  def test_dylink_i64_invoke(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.dylink_test(r'''\
+    #include <stdio.h>
+    #include <stdint.h>
+
+    extern "C" int64_t sidey(int64_t arg);
+
+    int main(int argc, char *argv[]) {
+        int64_t temp = 42;
+        printf("got %lld\n", sidey(temp));
+        return 0;
+    }''', r'''\
+    #include <stdint.h>
+    #include <stdio.h>
+    #include <emscripten.h>
+
+    extern "C" {
+
+    EMSCRIPTEN_KEEPALIVE int64_t do_call(int64_t arg) {
+        if (arg == 0) {
+            throw;
+        }
+        return 2 * arg;
+    }
+    int64_t sidey(int64_t arg) {
+        try {
+            return do_call(arg);
+        } catch(...) {
+            return 0;
+        }
+    }
+    }''', 'got 84', need_reverse=False)
 
   @needs_dlfcn
   def test_dylink_class(self):
@@ -7855,7 +7892,6 @@ Module['onRuntimeInitialized'] = function() {
     src = open(path_from_root('tests', 'test_fibers.cpp')).read()
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
-  @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
   @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
@@ -7864,26 +7900,45 @@ Module['onRuntimeInitialized'] = function() {
 
   @parameterized({
     'normal': ([], True),
-    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo(int, double)"]'], False),
-    'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
-    'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
-    'whitelist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
-    'whitelist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
+    'removelist_a': (['-s', 'ASYNCIFY_REMOVE_LIST=["foo(int, double)"]'], False),
+    'removelist_b': (['-s', 'ASYNCIFY_REMOVE_LIST=["bar()"]'], True),
+    'removelist_c': (['-s', 'ASYNCIFY_REMOVE_LIST=["baz()"]'], False),
+    'onlylist_a': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'onlylist_b': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'onlylist_c': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'onlylist_d': (['-s', 'ASYNCIFY_ONLY_LIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
+    'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
+    'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_test_file('response.file', response)
-      self.emcc_args += ['-s', 'ASYNCIFY_WHITELIST=@response.file']
+      self.emcc_args += ['-s', 'ASYNCIFY_ONLY_LIST=@response.file']
     self.set_setting('ASYNCIFY', 1)
     self.emcc_args += args
     try:
       self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_lists', assert_identical=True)
+      if not should_pass:
+        should_pass = True
+        raise Exception('should not have passed')
+    except Exception:
+      if should_pass:
+        raise
+
+  @parameterized({
+    'normal': ([], True),
+    'ignoreindirect': (['-s', 'ASYNCIFY_IGNORE_INDIRECT'], False),
+    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD_LIST=["main","virt()"]'], True),
+  })
+  @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
+  @no_fastcomp('new asyncify only')
+  def test_asyncify_indirect_lists(self, args, should_pass):
+    self.set_setting('ASYNCIFY', 1)
+    self.emcc_args += args
+    try:
+      self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_indirect_lists', assert_identical=True)
       if not should_pass:
         should_pass = True
         raise Exception('should not have passed')
@@ -7959,10 +8014,10 @@ Module['onRuntimeInitialized'] = function() {
       return True
 
     def verify_working(args=['0']):
-      self.assertContained('foo_end', run_js('src.cpp.o.js', args=args))
+      self.assertContained('foo_end\n', run_js('src.cpp.o.js', args=args))
 
     def verify_broken(args=['0']):
-      self.assertNotContained('foo_end', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=None))
+      self.assertNotContained('foo_end\n', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=None))
 
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
@@ -8185,6 +8240,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
           'allow': TRAP_OUTPUTS
         }[mode], assert_returncode=None)
 
+  @node_pthreads
+  def test_binaryen_2170_emscripten_atomic_cas_u8(self):
+    self.emcc_args += ['-s', 'USE_PTHREADS=1']
+    self.do_run_in_out_file_test('tests', 'binaryen_2170_emscripten_atomic_cas_u8')
+
   @also_with_standalone_wasm()
   def test_sbrk(self):
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
@@ -8254,8 +8314,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     src = open(path_from_root('tests', 'core', 'test_hello_world.c')).read()
     self.build(src, self.get_dir(), 'src.c')
     output = run_js('src.c.o.js', assert_returncode=None, stderr=STDOUT)
-    self.assertNotContained('failed to asynchronously prepare wasm', output)
-    self.assertContained('hello, world!', output)
+    self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
@@ -8321,6 +8380,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
 
+  @no_wasm2js('wasm2js wasm emulation does not include custom sections')
   @no_fastcomp('return address not supported on fastcomp')
   @no_optimize('return address test cannot work with optimizations')
   def test_return_address(self):
@@ -8595,6 +8655,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthreads_create(self):
+    if not self.is_wasm_backend():
+      self.skipTest('only supported on wasm backend')
+
     def test():
       self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create')
     test()
@@ -8653,9 +8716,31 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXPORTED_FUNCTIONS', [])
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
+  def test_export_start(self):
+    if not can_do_standalone(self):
+      self.skipTest('standalone mode only')
+    self.set_setting('STANDALONE_WASM', 1)
+    self.set_setting('EXPORTED_FUNCTIONS', ['__start'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
   # Tests the operation of API found in #include <emscripten/math.h>
   def test_emscripten_math(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_math')
+
+  # Tests that users can pass custom JS options from command line using
+  # the -jsDfoo=val syntax:
+  # See https://github.com/emscripten-core/emscripten/issues/10580.
+  def test_custom_js_options(self):
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_custom_js_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_custom_js_settings')
+
+    self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([EMCC, '-jsDWASM=0']))
+
+  # Tests <emscripten/stack.h> API
+  def test_emscripten_stack(self):
+    self.emcc_args += ['-lstack.js']
+    self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free')
 
 
 # Generate tests for everything
