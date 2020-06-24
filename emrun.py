@@ -46,7 +46,8 @@ else:
 # Populated from cmdline params
 emrun_options = None
 
-# Represents the process object handle to the browser we opened to run the html page.
+# Represents the process object handle to the browser we opened to run the html
+# page.
 browser_process = None
 
 previous_browser_process_pids = None
@@ -57,15 +58,15 @@ navigation_has_occurred = False
 # Stores the browser executable that was run with --browser= parameter.
 browser_exe = None
 
-# If we have routed browser output to file with --log_stdout and/or --log_stderr,
-# these track the handles.
+# If we have routed browser output to file with --log_stdout and/or
+# --log_stderr, these track the handles.
 browser_stdout_handle = sys.stdout
 browser_stderr_handle = sys.stderr
 
-# This flag tracks whether the html page has sent any stdout messages back to us.
-# Used to detect whether we might have gotten detached from the browser process we
-# spawned, in which case we are not able to detect when user closes the browser with
-# the close button.
+# This flag tracks whether the html page has sent any stdout messages back to
+# us.  Used to detect whether we might have gotten detached from the browser
+# process we spawned, in which case we are not able to detect when user closes
+# the browser with the close button.
 have_received_messages = False
 
 # At startup print a warning message once if user did not build with --emrun.
@@ -74,21 +75,25 @@ emrun_not_enabled_nag_printed = False
 # Stores the exit() code of the html page when/if it quits.
 page_exit_code = 0
 
-# If this is set to a non-empty string, all processes by this name will be killed at exit.
-# This is used to clean up after browsers that spawn subprocesses to handle the actual
-# browser launch. For example opera has a launcher.exe that runs the actual opera browser.
-# So killing browser_process would just kill launcher.exe and not the opera browser itself.
+# If this is set to a non-empty string, all processes by this name will be
+# killed at exit.  This is used to clean up after browsers that spawn
+# subprocesses to handle the actual browser launch. For example opera has a
+# launcher.exe that runs the actual opera browser.  So killing browser_process
+# would just kill launcher.exe and not the opera
+# browser itself.
 processname_killed_atexit = ""
 
-# Using "0.0.0.0" means "all interfaces", which should allow connecting to this server via LAN
-# addresses. Using "localhost" should allow only connecting from local computer.
+# Using "0.0.0.0" means "all interfaces", which should allow connecting to this
+# server via LAN addresses. Using "localhost" should allow only connecting from
+# local computer.
 default_webserver_hostname = '0.0.0.0'
 
-# If user does not specify a --port parameter, this port is used to launch the server.
+# If user does not specify a --port parameter, this port is used to launch the
+# server.
 default_webserver_port = 6931
 
 # Location of Android Debug Bridge executable
-ADB = ''
+ADB = None
 
 # Host OS detection to autolocate browsers and other OS-specific support needs.
 WINDOWS = False
@@ -136,8 +141,8 @@ def tick():
   return time.time()
 
 
-# Absolute wallclock time in seconds specifying when the previous HTTP stdout message from
-# the page was received.
+# Absolute wallclock time in seconds specifying when the previous HTTP stdout
+# message from the page was received.
 last_message_time = tick()
 
 # Absolute wallclock time in seconds telling when we launched emrun.
@@ -161,7 +166,8 @@ http_mutex = threading.RLock()
 
 
 def logi(msg):
-  """Prints a log message to 'info' stdout channel. Always printed."""
+  """Prints a log message to 'info' stdout channel. Always printed.
+  """
   global last_message_time
   with http_mutex:
     if emrun_options.log_html:
@@ -173,8 +179,10 @@ def logi(msg):
 
 
 def logv(msg):
-  """Prints a verbose log message to stdout channel. Only shown if run with --verbose."""
-  global emrun_options, last_message_time
+  """Prints a verbose log message to stdout channel.
+  Only shown if run with --verbose.
+  """
+  global last_message_time
   with http_mutex:
     if emrun_options.verbose:
       if emrun_options.log_html:
@@ -186,7 +194,8 @@ def logv(msg):
 
 
 def loge(msg):
-  """Prints an error message to stderr channel."""
+  """Prints an error message to stderr channel.
+  """
   global last_message_time
   with http_mutex:
     if emrun_options.log_html:
@@ -204,8 +213,9 @@ def format_eol(msg):
 
 
 def browser_logi(msg):
-  """Prints a message to the browser stdout output stream."""
-  global browser_stdout_handle, last_message_time
+  """Prints a message to the browser stdout output stream.
+  """
+  global last_message_time
   msg = format_eol(msg)
   print(msg, file=browser_stdout_handle)
   browser_stdout_handle.flush()
@@ -213,8 +223,9 @@ def browser_logi(msg):
 
 
 def browser_loge(msg):
-  """Prints a message to the browser stderr output stream."""
-  global browser_stderr_handle, last_message_time
+  """Prints a message to the browser stderr output stream.
+  """
+  global last_message_time
   msg = format_eol(msg)
   print(msg, file=browser_stderr_handle)
   browser_stderr_handle.flush()
@@ -222,7 +233,9 @@ def browser_loge(msg):
 
 
 def unquote_u(source):
-  """Unquotes a unicode string. (translates ascii-encoded utf string back to utf)"""
+  """Unquotes a unicode string.
+  (translates ascii-encoded utf string back to utf)
+  """
   result = unquote(source)
   if '%u' in result:
     result = result.replace('%u', '\\u').decode('unicode_escape')
@@ -241,11 +254,12 @@ def delete_emrun_safe_firefox_profile():
     temp_firefox_profile_dir = None
 
 
-# Firefox has a lot of default behavior that makes it unsuitable for automated/unattended run.
-# This function creates a temporary profile directory that customized Firefox with various flags that enable
-# automated runs.
+# Firefox has a lot of default behavior that makes it unsuitable for
+# automated/unattended run.
+# This function creates a temporary profile directory that customized Firefox
+# with various flags that enable automated runs.
 def create_emrun_safe_firefox_profile():
-  global temp_firefox_profile_dir, emrun_options
+  global temp_firefox_profile_dir
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
   with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
     f.write('''
@@ -340,10 +354,9 @@ user_pref("browser.privatebrowsing.autostart", true);
 
 
 def is_browser_process_alive():
-  """Returns whether the browser page we spawned is still running.  (note, not
-  perfect atm, in case we are running in detached mode)"""
-  global browser_process, current_browser_process_pids, navigation_has_occurred
-
+  """Returns whether the browser page we spawned is still running.
+  (note, not perfect atm, in case we are running in detached mode)
+  """
   # If navigation to the web page has not yet occurred, we behave as if the
   # browser has not yet even loaded the page, and treat it as if the browser
   # is running (as it is just starting up)
@@ -353,7 +366,7 @@ def is_browser_process_alive():
   if browser_process and browser_process.poll() is None:
     return True
 
-  if current_browser_process_pids is not None:
+  if current_browser_process_pids:
     try:
       import psutil
       for p in current_browser_process_pids:
@@ -368,8 +381,9 @@ def is_browser_process_alive():
 
 def kill_browser_process():
   """Kills browser_process and processname_killed_atexit. Also removes the
-  temporary Firefox profile that was created, if one exists."""
-  global browser_process, processname_killed_atexit, emrun_options, ADB
+  temporary Firefox profile that was created, if one exists.
+  """
+  global browser_process, processname_killed_atexit
   if browser_process:
     logv('Terminating browser process..')
     try:
@@ -404,14 +418,17 @@ def kill_browser_process():
 
 
 # Our custom HTTP web server that will server the target page to run via .html.
-# This is used so that we can load the page via a http:// URL instead of a file:// URL, since those wouldn't work too well unless user allowed XHR without CORS rules.
-# Also, the target page will route its stdout and stderr back to here via HTTP requests.
+# This is used so that we can load the page via a http:// URL instead of a
+# file:// URL, since those wouldn't work too well unless user allowed XHR
+# without CORS rules.  Also, the target page will route its stdout and stderr
+# back to here via HTTP requests.
 class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   """Log messaging arriving via HTTP can come in out of sequence. Implement a
   sequencing mechanism to enforce ordered transmission."""
   expected_http_seq_num = 1
-  # Stores messages that have arrived out of order, pending for a send as soon as the missing message arrives.
-  # Kept in sorted order, first element is the oldest message received.
+  # Stores messages that have arrived out of order, pending for a send as soon
+  # as the missing message arrives.  Kept in sorted order, first element is the
+  # oldest message received.
   http_message_queue = []
 
   def handle_incoming_message(self, seq_num, log, data):
@@ -419,7 +436,8 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     with http_mutex:
       have_received_messages = True
 
-      if seq_num == -1: # Message arrived without a sequence number? Just log immediately
+      if seq_num == -1:
+        # Message arrived without a sequence number? Just log immediately
         log(data)
       elif seq_num == self.expected_http_seq_num:
         log(data)
@@ -433,8 +451,9 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
         if len(self.http_message_queue) > 16:
           self.print_next_message()
 
-  # If it's been too long since we we got a message, prints out the oldest queued message, ignoring the proper order.
-  # This ensures that if any messages are actually lost, that the message queue will be orderly flushed.
+  # If it's been too long since we we got a message, prints out the oldest
+  # queued message, ignoring the proper order.  This ensures that if any
+  # messages are actually lost, that the message queue will be orderly flushed.
   def print_timed_out_messages(self):
     global last_message_time
     with http_mutex:
@@ -443,7 +462,8 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       if len(self.http_message_queue) and now - last_message_time > max_message_queue_time:
         self.print_next_message()
 
-  # Skips to printing the next message in queue now, independent of whether there was missed messages in the sequence numbering.
+  # Skips to printing the next message in queue now, independent of whether
+  # there was missed messages in the sequence numbering.
   def print_next_message(self):
     with http_mutex:
       if len(self.http_message_queue):
@@ -456,7 +476,8 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       while len(self.http_message_queue):
         self.print_next_message()
 
-  # Prints any messages that are now due after we logged some other previous messages.
+  # Prints any messages that are now due after we logged some other previous
+  # messages.
   def print_messages_due(self):
     with http_mutex:
       while len(self.http_message_queue):
@@ -469,7 +490,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
           return
 
   def serve_forever(self, timeout=0.5):
-    global emrun_options, last_message_time, page_exit_code, have_received_messages, emrun_not_enabled_nag_printed
+    global last_message_time, page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
     while self.is_running:
@@ -491,14 +512,14 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
         self.shutdown()
         logi('No activity in ' + str(emrun_options.silence_timeout) + ' seconds. Quitting web server with return code ' + str(emrun_options.timeout_returncode) + '. (--silence_timeout option)')
         page_exit_code = emrun_options.timeout_returncode
-        emrun_options.kill_on_exit = True
+        emrun_options.kill_exit = True
 
       # If the page has been running too long as a whole, kill process.
       time_since_start = now - page_start_time
       if emrun_options.timeout != 0 and time_since_start > emrun_options.timeout:
         self.shutdown()
         logi('Page has not finished in ' + str(emrun_options.timeout) + ' seconds. Quitting web server with return code ' + str(emrun_options.timeout_returncode) + '. (--timeout option)')
-        emrun_options.kill_on_exit = True
+        emrun_options.kill_exit = True
         page_exit_code = emrun_options.timeout_returncode
 
       # If we detect that the page is not running with emrun enabled, print a warning message.
@@ -513,8 +534,9 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 
   def handle_error(self, request, client_address):
     err = sys.exc_info()[1].args[0]
-    # Filter out the useless '[Errno 10054] An existing connection was forcibly closed by the remote host' errors that occur when we
-    # forcibly kill the client.
+    # Filter out the useless '[Errno 10054] An existing connection was forcibly
+    # closed by the remote host' errors that occur when we forcibly kill the
+    # client.
     if err != 10054:
       socketserver.BaseServer.handle_error(self, request, client_address)
 
@@ -532,7 +554,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     path = self.translate_path(self.path)
     f = None
 
-    # A browser has navigated to this page - check which PID got spawned for the browser
+    # A browser has navigated to this page - check which PID got spawned for
+    # the browser
     global previous_browser_process_pids, current_browser_process_pids, navigation_has_occurred
     if not navigation_has_occurred and current_browser_process_pids is None:
       running_browser_process_pids = list_processes_by_name(browser_exe)
@@ -568,11 +591,16 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
     self.send_response(200)
     guess_file_type = path
-    # All files of type x.gz are served as gzip-compressed, which means the browser will transparently decode the file before passing the uncompressed bytes to the JS page.
-    # Note: In a slightly silly manner, detect files ending with "gz" and not ".gz", since both Unity and UE4 generate multiple files with .jsgz, .datagz, .memgz, .symbolsgz suffixes and so on,
-    #       so everything goes.
-    # Note 2: If the JS application would like to receive the actual bits of a gzipped file, instead of having the browser decompress it immediately, then it can't use the suffix .gz when using emrun.
-    #         To work around, one can use the suffix .gzip instead.
+    # All files of type x.gz are served as gzip-compressed, which means the
+    # browser will transparently decode the file before passing the
+    # uncompressed bytes to the JS page.
+    # Note: In a slightly silly manner, detect files ending with "gz" and not
+    # ".gz", since both Unity and UE4 generate multiple files with .jsgz,
+    # .datagz, .memgz, .symbolsgz suffixes and so on, so everything goes.
+    # Note 2: If the JS application would like to receive the actual bits of a
+    # gzipped file, instead of having the browser decompress it immediately,
+    # then it can't use the suffix .gz when using emrun.
+    # To work around, one can use the suffix .gzip instead.
     if 'Accept-Encoding' in self.headers and 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
       self.send_header('Content-Encoding', 'gzip')
       logv('Serving ' + path + ' as gzip-compressed.')
@@ -613,11 +641,13 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
   def do_POST(self):
     self.protocol_version = 'HTTP/1.1'
-    global page_exit_code, emrun_options, have_received_messages, browser_exe
+    global page_exit_code, have_received_messages
 
     (_, _, path, query, _) = urlsplit(self.path)
     logv('POST: "' + self.path + '" (path: "' + path + '", query: "' + query + '")')
-    if query.startswith('file='): # Binary file dump/upload handling. Requests to "stdio.html?file=filename" will write binary data to the given file.
+    if query.startswith('file='):
+      # Binary file dump/upload handling. Requests to
+      # "stdio.html?file=filename" will write binary data to the given file.
       data = self.rfile.read(int(self.headers['Content-Length']))
       filename = query[len('file='):]
       dump_out_directory = 'dump_out'
@@ -1054,8 +1084,6 @@ def get_os_version():
 
 
 def get_system_memory():
-  global emrun_options
-
   try:
     if LINUX or emrun_options.android:
       if emrun_options.android:
@@ -1180,7 +1208,7 @@ def find_browser(name):
                          ('chrome', which('google-chrome-stable')),
                          ('chrome', which('google-chrome'))]
 
-  for (alias, browser_exe) in browser_locations:
+  for alias, browser_exe in browser_locations:
     if name == alias:
       if browser_exe is not None and os.path.isfile(browser_exe):
         return [browser_exe]
@@ -1189,7 +1217,6 @@ def find_browser(name):
 
 
 def get_android_model():
-  global ADB
   manufacturer = check_output([ADB, 'shell', 'getprop', 'ro.product.manufacturer']).strip()
   brand = check_output([ADB, 'shell', 'getprop', 'ro.product.brand']).strip()
   model = check_output([ADB, 'shell', 'getprop', 'ro.product.model']).strip()
@@ -1200,7 +1227,6 @@ def get_android_model():
 
 
 def get_android_os_version():
-  global ADB
   ver = check_output([ADB, 'shell', 'getprop', 'ro.build.version.release']).strip()
   apiLevel = check_output([ADB, 'shell', 'getprop', 'ro.build.version.sdk']).strip()
   if not apiLevel:
@@ -1216,7 +1242,6 @@ def get_android_os_version():
 
 
 def list_android_browsers():
-  global ADB
   apps = check_output([ADB, 'shell', 'pm', 'list', 'packages', '-f']).replace('\r\n', '\n')
   browsers = []
   for line in apps.split('\n'):
@@ -1387,93 +1412,119 @@ def list_processes_by_name(exe_full_path):
 
 
 def run():
-  global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed, ADB
-  usage_str = "emrun [emrun_options] filename.html [html_cmdline_options]\n\n   where emrun_options specifies command line options for emrun itself, whereas\n   html_cmdline_options specifies startup arguments to the program."
+  global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
+  usage_str = """\
+emrun [emrun_options] filename.html [html_cmdline_options]
+
+   where emrun_options specifies command line options for emrun itself, whereas
+   html_cmdline_options specifies startup arguments to the program.
+"""
   parser = argparse.ArgumentParser(usage=usage_str)
 
-  parser.add_argument('--kill_start', dest='kill_on_start', action='store_true',
-                      default=False,
-                      help='If true, any previously running instances of the target browser are killed before starting.')
+  parser.add_argument('--kill_start', action='store_true',
+                      help='If true, any previously running instances of '
+                           'the target browser are killed before starting.')
 
-  parser.add_argument('--kill_exit', dest='kill_on_exit', action='store_true',
-                      default=False,
-                      help='If true, the spawned browser process is forcibly killed when it calls exit(). Note: Using this option may require explicitly passing the option --browser=/path/to/browser, to avoid emrun being detached from the browser process it spawns.')
+  parser.add_argument('--kill_exit', action='store_true',
+                      help='If true, the spawned browser process is forcibly '
+                           'killed when it calls exit(). Note: Using this '
+                           'option may require explicitly passing the option '
+                           '--browser=/path/to/browser, to avoid emrun being '
+                           'detached from the browser process it spawns.')
 
-  parser.add_argument('--no_server', dest='no_server', action='store_true',
-                      default=False,
-                      help='If specified, a HTTP web server is not launched to host the page to run.')
+  parser.add_argument('--no_server',
+                      help='If specified, a HTTP web server is not launched '
+                           'to host the page to run.')
 
-  parser.add_argument('--no_browser', dest='no_browser', action='store_true',
-                      default=False,
-                      help='If specified, emrun will not launch a web browser to run the page.')
+  parser.add_argument('--no_browser', action='store_true',
+                      help='If specified, emrun will not launch a web browser '
+                           'to run the page.')
 
-  parser.add_argument('--no_emrun_detect', dest='no_emrun_detect', action='store_true',
-                      default=False,
-                      help='If specified, skips printing the warning message if html page is detected to not have been built with --emrun linker flag.')
+  parser.add_argument('--no_emrun_detect', action='store_true',
+                      help='If specified, skips printing the warning message '
+                           'if html page is detected to not have been built '
+                           'with --emrun linker flag.')
 
-  parser.add_argument('--serve_after_close', dest='serve_after_close', action='store_true',
-                      default=False,
-                      help='If true, serves the web page even after the application quits by user closing the web page.')
+  parser.add_argument('--serve_after_close', action='store_true',
+                      help='If true, serves the web page even after the '
+                           'application quits by user closing the web page.')
 
-  parser.add_argument('--serve_after_exit', dest='serve_after_exit', action='store_true',
-                      default=False,
-                      help='If true, serves the web page even after the application quits by a call to exit().')
+  parser.add_argument('--serve_after_exit', action='store_true',
+                      help='If true, serves the web page even after the '
+                           'application quits by a call to exit().')
 
-  parser.add_argument('--serve_root', dest='serve_root', default='',
-                      help='If set, specifies the root path that the emrun web server serves. If not specified, the directory where the target .html page lives in is served.')
+  parser.add_argument('--serve_root',
+                      help='If set, specifies the root path that the emrun '
+                           'web server serves. If not specified, the directory '
+                           'where the target .html page lives in is served.')
 
-  parser.add_argument('--verbose', dest='verbose', action='store_true', default=False,
+  parser.add_argument('--verbose', action='store_true',
                       help='Enable verbose logging from emrun internal operation.')
 
-  parser.add_argument('--hostname', dest='hostname', default=default_webserver_hostname,
+  parser.add_argument('--hostname', default=default_webserver_hostname,
                       help='Specifies the hostname the server runs in.')
 
-  parser.add_argument('--port', dest='port', default=default_webserver_port, type=int,
+  parser.add_argument('--port', default=default_webserver_port, type=int,
                       help='Specifies the port the server runs in.')
 
-  parser.add_argument('--log_stdout', dest='log_stdout', default='',
-                      help='Specifies a log filename where the browser process stdout data will be appended to.')
+  parser.add_argument('--log_stdout',
+                      help='Specifies a log filename where the browser process '
+                           'stdout data will be appended to.')
 
-  parser.add_argument('--log_stderr', dest='log_stderr', default='',
+  parser.add_argument('--log_stderr',
                       help='Specifies a log filename where the browser process stderr data will be appended to.')
 
-  parser.add_argument('--silence_timeout', dest='silence_timeout', type=int, default=0,
-                      help='If no activity is received in this many seconds, the browser process is assumed to be hung, and the web server is shut down and the target browser killed. Disabled by default.')
+  parser.add_argument('--silence_timeout', type=int, default=0,
+                      help='If no activity is received in this many seconds, '
+                           'the browser process is assumed to be hung, and the web '
+                           'server is shut down and the target browser killed.  '
+                           'Disabled by default.')
 
-  parser.add_argument('--timeout', dest='timeout', type=int, default=0,
-                      help='If the browser process does not quit or the page exit() in this many seconds, the browser is assumed to be hung, and the web server is shut down and the target browser killed. Disabled by default.')
+  parser.add_argument('--timeout', type=int, default=0,
+                      help='If the browser process does not quit or the page '
+                           'exit() in this many seconds, the browser is assumed '
+                           'to be hung, and the web server is shut down and the '
+                           'target browser killed. Disabled by default.')
 
-  parser.add_argument('--timeout_returncode', dest='timeout_returncode', type=int, default=99999,
-                      help='Sets the exit code that emrun reports back to caller in the case that a page timeout occurs. Default: 99999.')
+  parser.add_argument('--timeout_returncode', type=int, default=99999,
+                      help='Sets the exit code that emrun reports back to '
+                           'caller in the case that a page timeout occurs. '
+                           'Default: 99999.')
 
-  parser.add_argument('--list_browsers', dest='list_browsers', action='store_true',
-                      help='Prints out all detected browser that emrun is able to use with the --browser command and exits.')
+  parser.add_argument('--list_browsers', action='store_true',
+                      help='Prints out all detected browser that emrun is able '
+                           'to use with the --browser command and exits.')
 
-  parser.add_argument('--browser', dest='browser', default='',
+  parser.add_argument('--browser',
                       help='Specifies the browser executable to run the web page in.')
 
-  parser.add_argument('--browser_args', dest='browser_args', default='',
+  parser.add_argument('--browser_args', default='',
                       help='Specifies the arguments to the browser executable.')
 
-  parser.add_argument('--android', dest='android', action='store_true', default=False,
-                      help='Launches the page in a browser of an Android device connected to an USB on the local system. (via adb)')
+  parser.add_argument('--android', action='store_true',
+                      help='Launches the page in a browser of an Android '
+                           'device connected to an USB on the local system. (via adb)')
 
-  parser.add_argument('--system_info', dest='system_info', action='store_true',
+  parser.add_argument('--system_info', action='store_true',
                       help='Prints information about the current system at startup.')
 
-  parser.add_argument('--browser_info', dest='browser_info', action='store_true',
+  parser.add_argument('--browser_info', action='store_true',
                       help='Prints information about the target browser to launch at startup.')
 
-  parser.add_argument('--json', dest='json', action='store_true',
-                      help='If specified, --system_info and --browser_info are outputted in JSON format.')
+  parser.add_argument('--json', action='store_true',
+                      help='If specified, --system_info and --browser_info are '
+                           'outputted in JSON format.')
 
-  parser.add_argument('--safe_firefox_profile', dest='safe_firefox_profile', action='store_true',
-                      help='If true, the browser is launched into a new clean Firefox profile that is suitable for unattended automated runs. (If target browser != Firefox, this parameter is ignored)')
+  parser.add_argument('--safe_firefox_profile', action='store_true',
+                      help='If true, the browser is launched into a new clean '
+                           'Firefox profile that is suitable for unattended '
+                           'automated runs. (If target browser != Firefox, '
+                           'this parameter is ignored)')
 
-  parser.add_argument('--log_html', dest='log_html', action='store_true',
+  parser.add_argument('--log_html', action='store_true',
                       help='If set, information lines are printed out an HTML-friendly format.')
 
-  parser.add_argument('--private_browsing', dest='private_browsing', action='store_true', default=False,
+  parser.add_argument('--private_browsing', action='store_true',
                       help='If specified, opens browser in private/incognito mode.')
 
   parser.add_argument('serve', nargs='*')
@@ -1500,6 +1551,7 @@ def run():
   emrun_options = options
 
   if options.android:
+    global ADB
     ADB = which('adb')
     if not ADB:
       loge("Could not find the adb tool. Install Android SDK and add the directory of adb to PATH.")
@@ -1523,7 +1575,8 @@ def run():
     return
 
   if len(args) < 1 and (options.system_info or options.browser_info):
-    options.no_server = options.no_browser = True # Don't run if only --system_info or --browser_info was passed.
+    # Don't run if only --system_info or --browser_info was passed.
+    options.no_server = options.no_browser = True
 
   if len(args) < 1 and not (options.no_server and options.no_browser):
     logi(usage_str)
@@ -1616,9 +1669,11 @@ def run():
       browser_args = shlex.split(unwrap(options.browser_args))
 
       if 'safari' in browser_exe.lower():
-        # Safari has a bug that a command line 'Safari http://page.com' does not launch that page,
-        # but instead launches 'file:///http://page.com'. To remedy this, must use the open -a command
-        # to run Safari, but unfortunately this will end up spawning Safari process detached from emrun.
+        # Safari has a bug that a command line 'Safari http://page.com' does
+        # not launch that page, but instead launches 'file:///http://page.com'.
+        # To remedy this, must use the open -a command to run Safari, but
+        # unfortunately this will end up spawning Safari process detached from
+        # emrun.
         if MACOS:
           browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
 
@@ -1639,13 +1694,14 @@ def run():
       elif 'opera' in browser_exe.lower():
         processname_killed_atexit = 'opera'
 
-      # In Windows cmdline, & character delimits multiple commmands, so must use ^ to escape them.
+      # In Windows cmdline, & character delimits multiple commmands, so must
+      # use ^ to escape them.
       if browser_exe == 'cmd':
         url = url.replace('&', '^&')
       url = url.replace('0.0.0.0', 'localhost')
       browser += browser_args + [url]
 
-  if options.kill_on_start:
+  if options.kill_start:
     pname = processname_killed_atexit
     kill_browser_process()
     processname_killed_atexit = pname
@@ -1663,8 +1719,9 @@ def run():
     run(['adb', 'push', os.path.join(profile_dir, 'prefs.js'), '/mnt/sdcard/safe_firefox_profile/prefs.js'])
     browser += ['--es', 'args', '"--profile /mnt/sdcard/safe_firefox_profile"']
 
-  # Create temporary Firefox profile to run the page with. This is important to run after kill_browser_process()/kill_on_start op above, since that
-  # cleans up the temporary profile if one exists.
+  # Create temporary Firefox profile to run the page with. This is important to
+  # run after kill_browser_process()/kill_start op above, since that cleans up
+  # the temporary profile if one exists.
   if processname_killed_atexit == 'firefox' and options.safe_firefox_profile and not options.no_browser and not options.android:
     profile_dir = create_emrun_safe_firefox_profile()
 
@@ -1687,10 +1744,11 @@ def run():
   if options.no_emrun_detect:
     emrun_not_enabled_nag_printed = True
 
-  global browser_stdout_handle, browser_stderr_handle
   if options.log_stdout:
+    global browser_stdout_handle
     browser_stdout_handle = open(options.log_stdout, 'a')
   if options.log_stderr:
+    global browser_stderr_handle
     if options.log_stderr == options.log_stdout:
       browser_stderr_handle = browser_stdout_handle
     else:
@@ -1703,14 +1761,16 @@ def run():
   if not options.no_browser:
     logi("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
-    #   Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
+    #   Workaround an issue where passing 'cmd /C start' is not able to detect
+    #   when the user closes the page.
     #   serve_forever = True
     global previous_browser_process_pids
     previous_browser_process_pids = list_processes_by_name(browser[0])
     browser_process = subprocess.Popen(browser, env=subprocess_env())
-    if options.kill_on_exit:
+    if options.kill_exit:
       atexit.register(kill_browser_process)
-    # For Android automation, we execute adb, so this process does not represent a browser and no point killing it.
+    # For Android automation, we execute adb, so this process does not
+    # represent a browser and no point killing it.
     if options.android:
       browser_process = None
   elif not options.no_server:
@@ -1734,19 +1794,22 @@ def run():
     logv('Closed web server.')
 
   if not options.no_browser:
-    if options.kill_on_exit:
+    if options.kill_exit:
       kill_browser_process()
     else:
       if is_browser_process_alive():
         logv('Not terminating browser process, pass --kill_exit to terminate the browser when it calls exit().')
-      # If we have created a temporary Firefox profile, we would really really like to wait until the browser closes,
-      # or otherwise we'll just have to litter temp files and keep the temporary profile alive. It is possible here
-      # that the browser is cooperatively shutting down, but has not yet had time to do so, so wait for a short while.
+      # If we have created a temporary Firefox profile, we would really really
+      # like to wait until the browser closes, or otherwise we'll just have to
+      # litter temp files and keep the temporary profile alive. It is possible
+      # here that the browser is cooperatively shutting down, but has not yet
+      # had time to do so, so wait for a short while.
       if temp_firefox_profile_dir is not None:
         time.sleep(3)
 
     if not is_browser_process_alive():
-      # Browser is no longer running, make sure to clean up the temp Firefox profile, if we created one.
+      # Browser is no longer running, make sure to clean up the temp Firefox
+      # profile, if we created one.
       delete_emrun_safe_firefox_profile()
 
   return page_exit_code
