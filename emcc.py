@@ -3052,8 +3052,8 @@ def parse_args(newargs):
       options.separate_asm = True
       newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
-      options.path_name = newargs[i][2:]
-      if os.path.isabs(options.path_name) and not is_valid_abspath(options, options.path_name):
+      path_name = newargs[i][2:]
+      if os.path.isabs(path_name) and not is_valid_abspath(options, path_name):
         # Of course an absolute path to a non-system-specific library or header
         # is fine, and you can ignore this warning. The danger are system headers
         # that are e.g. x86 specific and nonportable. The emscripten bundled
