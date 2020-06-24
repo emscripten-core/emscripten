@@ -17,17 +17,13 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Add support for the new `ASYNCIFY_ADD`, and update existing list names
-  following the updates in Binaryen, so that now we have `ASYNCIFY_ADD` to
-  add a function, `ASYNCIFY_REMOVE` to remove one (previously this was
-  called `ASYNCIFY_BLACKLIST`), and `ASYNCIFY_ONLY` to set a list of the
 - Rename `EXCEPTION_CATCHING_WHITELIST` to `EXCEPTION_CATCHING_ALLOWED`. The
   functionality is unchanged, and the old name will be allowed as an alias
   for a few releases to give users time to migrate.
-- Add support for the new `ASYNCIFY_ADD_LIST`, and update existing list names
-  following the updates in Binaryen, so that now we have `ASYNCIFY_ADD_LIST` to
-  add a function, `ASYNCIFY_REMOVE_LIST` to remove one (previously this was
-  called `ASYNCIFY_BLACKLIST`), and `ASYNCIFY_ONLY_LIST` to set a list of the
+- Add support for the new add-list in Asyncify and update existing list names
+  following the updates in Binaryen, so that now we have `ASYNCIFY_ADD` to
+  add a function, `ASYNCIFY_REMOVE` to remove one (previously this was
+  called `ASYNCIFY_BLACKLIST`), and `ASYNCIFY_ONLY` to set a list of the
   only functions to instrument and no others (previously this was called
   `ASYNCIFY_WHITELIST`). The updated lists also handle indirect calls properly,
   so that if you use `ASYNCIFY_IGNORE_INDIRECT` and then add (using either the
