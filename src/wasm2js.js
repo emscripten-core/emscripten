@@ -14,11 +14,9 @@
 var
 #endif
 WebAssembly = {
-  // The Memory, Table, Module, and Instance functions are constructors, which
-  // set properties on the 'this' object, normally. Note that they do not use
-  // closure quoting (this['buffer']), which means they are unsafe for use
-  // outside of the compiled code. As this polyfill is only used internally,
-  // this is good enough, and more compact.
+  // Note that we do not use closure quoting (this['buffer'], etc.) on these
+  // functions, as they are just meant for internal use. In other words, this is
+  // not a fully general polyfill.
   Memory: function(opts) {
     this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
     this.grow = function(amount) {
@@ -33,22 +31,26 @@ WebAssembly = {
     };
   },
 
-  Table: function(opts) {
-    var array = new Array(opts['initial']);
-    this.grow = function(by) {
+  // Table is not a normal constructor and instead returns the array object.
+  // That lets us use the length property automatically, which is simpler and
+  // smaller (but instanceof will fail).
+  Table: /** @constructor */ function(opts) {
+    var ret = new Array(opts['initial']);
+    ret.grow = function(by) {
 #if !ALLOW_TABLE_GROWTH
-      if (array.length >= {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}}) {
+      if (ret.length >= {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}}) {
         abort('Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.')
       }
 #endif
-      array.push(null);
+      ret.push(null);
     };
-    this.set = function(i, func) {
-      array[i] = func;
+    ret.set = function(i, func) {
+      ret[i] = func;
     };
-    this.get = function(i) {
-      return array[i];
+    ret.get = function(i) {
+      return ret[i];
     };
+    return ret;
   },
 
   Module: function(binary) {
