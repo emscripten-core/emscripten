@@ -33,7 +33,8 @@ WebAssembly = {
 
   // Table is not a normal constructor and instead returns the array object.
   // That lets us use the length property automatically, which is simpler and
-  // smaller (but instanceof will fail).
+  // smaller (but instanceof will not report that an instance of Table is an
+  // instance of this function).
   Table: /** @constructor */ function(opts) {
     var ret = new Array(opts['initial']);
     ret.grow = function(by) {
