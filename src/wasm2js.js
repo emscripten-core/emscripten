@@ -14,55 +14,53 @@
 var
 #endif
 WebAssembly = {
-  Memory: /** @constructor */ function(opts) {
-    return {
-      buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
-      grow: function(amount) {
+  // The Memory, Table, Module, and Instance functions are constructors, which
+  // set properties on the 'this' object, normally. Note that they do not use
+  // closure quoting (this['buffer']), which means they are unsafe for use
+  // outside of the compiled code. As this polyfill is only used internally,
+  // this is good enough, and more compact.
+  Memory: function(opts) {
+    this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
+    this.grow = function(amount) {
 #if ASSERTIONS
-        var oldBuffer = this.buffer;
+      var oldBuffer = this.buffer;
 #endif
-        var ret = __growWasmMemory(amount);
+      var ret = __growWasmMemory(amount);
 #if ASSERTIONS
-        assert(this.buffer !== oldBuffer); // the call should have updated us
+      assert(this.buffer !== oldBuffer); // the call should have updated us
 #endif
-        return ret;
-      }
+      return ret;
     };
   },
 
   Table: function(opts) {
-    var ret = new Array(opts['initial']);
-    ret.grow = function(by) {
+    var array = new Array(opts['initial']);
+    this.grow = function(by) {
 #if !ALLOW_TABLE_GROWTH
-      if (ret.length >= {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}}) {
+      if (array.length >= {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}}) {
         abort('Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.')
       }
 #endif
-      ret.push(null);
+      array.push(null);
     };
-    ret.set = function(i, func) {
-      ret[i] = func;
+    this.set = function(i, func) {
+      array[i] = func;
     };
-    ret.get = function(i) {
-      return ret[i];
+    this.get = function(i) {
+      return array[i];
     };
-    return ret;
   },
 
   Module: function(binary) {
     // TODO: use the binary and info somehow - right now the wasm2js output is embedded in
     // the main JS
-    return {};
   },
 
   Instance: function(module, info) {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // This will be replaced by the actual wasm2js code.
-    var exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
-    return {
-      'exports': exports
-    };
+    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
   },
 
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {
