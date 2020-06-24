@@ -388,7 +388,10 @@ var LibraryPThread = {
         // independently load up the same main application file.
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
 #if WASM
-#if WASM2JS // cannot clone the polyfill WebAssembly.Memory instance which has function properties
+#if WASM2JS
+        // the polyfill WebAssembly.Memory instance has function properties,
+        // which will fail in postMessage, so just send a custom object with the
+        // property we need, the buffer
         'wasmMemory': { 'buffer': wasmMemory.buffer },
 #else // WASM2JS
         'wasmMemory': wasmMemory,
