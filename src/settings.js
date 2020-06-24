@@ -694,7 +694,7 @@ var NODEJS_CATCH_REJECTION = 1;
 // On upstream this uses the Asyncify pass in Binaryen.
 var ASYNCIFY = 0;
 
-// Imports which can do a sync operation, in addition to the default ones that
+// Imports which can do an sync operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
 // mention them to here, or else they will not work (in ASSERTIONS builds an
 // error will be shown).
