@@ -46,7 +46,7 @@ mergeInto(LibraryManager.library, {
       return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
     },
     createSocket: function(family, type, protocol) {
-      type &= ~{{{ cDefine('SOCK_CLOEXEC') }}}; // Some applications may pass it; it makes no sense for a single process.
+      type &= ~{{{ cDefine('SOCK_CLOEXEC') | cDefine('SOCK_NONBLOCK') }}}; // Some applications may pass it; it makes no sense for a single process.
       var streaming = type == {{{ cDefine('SOCK_STREAM') }}};
       if (protocol) {
         assert(streaming == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if SOCK_STREAM, must be tcp
