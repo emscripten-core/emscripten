@@ -20,9 +20,9 @@ typedef SSIZE_T ssize_t;
 #else // _MSC_VER
 #ifdef _WIN64
 typedef signed long long ssize_t;
-#else
+#else // _WIN64
 typedef signed long ssize_t;
-#endif
+#endif // _WIN64
 #endif // _MSC_VER
 #endif // _WIN32
 
