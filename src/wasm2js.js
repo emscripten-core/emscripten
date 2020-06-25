@@ -14,6 +14,9 @@
 var
 #endif
 WebAssembly = {
+  // Note that we do not use closure quoting (this['buffer'], etc.) on these
+  // functions, as they are just meant for internal use. In other words, this is
+  // not a fully general polyfill.
   Memory: function(opts) {
 #if USE_PTHREADS
     this.buffer = new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
@@ -32,7 +35,11 @@ WebAssembly = {
     };
   },
 
-  Table: function(opts) {
+  // Table is not a normal constructor and instead returns the array object.
+  // That lets us use the length property automatically, which is simpler and
+  // smaller (but instanceof will not report that an instance of Table is an
+  // instance of this function).
+  Table: /** @constructor */ function(opts) {
     var ret = new Array(opts['initial']);
     ret.grow = function(by) {
 #if !ALLOW_TABLE_GROWTH
@@ -60,10 +67,7 @@ WebAssembly = {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // This will be replaced by the actual wasm2js code.
-    var exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
-    return {
-      'exports': exports
-    };
+    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
   },
 
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {
