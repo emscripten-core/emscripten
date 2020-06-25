@@ -1420,7 +1420,11 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     passes = []
     # it may be useful to also run: simplifyIfs, registerize, asmLastOpts
     # passes += ['simplifyExpressions'] # XXX fails on wasm3js.test_sqlite
-    if not debug_info:
+    # TODO: enable name minification with pthreads. atm wasm2js emits pthread
+    # helper functions outside of the asmFunc(), and they mix up minifyGlobals
+    # (which assumes any vars in that area are global, like var HEAP8, but
+    # those helpers have internal vars in a scope it doesn't understand yet)
+    if not debug_info and not Settings.USE_PTHREADS:
       passes += ['minifyNames']
     if minify_whitespace:
       passes += ['minifyWhitespace']
