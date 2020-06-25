@@ -92,7 +92,7 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    exitHandlers: null, // An array of C functions to run when this thread exits.
+    threadExitHandlers: [], // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
@@ -163,11 +163,8 @@ var LibraryPThread = {
 #endif
 
     runExitHandlers: function() {
-      if (PThread.exitHandlers !== null) {
-        while (PThread.exitHandlers.length > 0) {
-          PThread.exitHandlers.pop()();
-        }
-        PThread.exitHandlers = null;
+      while (PThread.threadExitHandlers.length > 0) {
+        PThread.threadExitHandlers.pop()();
       }
 
       // Call into the musl function that runs destructors of all thread-specific data.
@@ -534,12 +531,13 @@ var LibraryPThread = {
         'selfThreadId': threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
         'parentThreadId': threadParams.parent_pthread_ptr,
         'stackBase': threadParams.stackBase,
-        'stackSize': threadParams.stackSize,
+        'stackSize': threadParams.stackSize
+    };
 #if OFFSCREENCANVAS_SUPPORT
-        'moduleCanvasId': threadParams.moduleCanvasId,
-        'offscreenCanvases': threadParams.offscreenCanvases,
+    // Note that we do not need to quote these names because they are only used in this file, and not from the external worker.js.
+    msg.moduleCanvasId = threadParams.moduleCanvasId;
+    msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-      };
     worker.runPthread = function() {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();
@@ -1078,20 +1076,13 @@ var LibraryPThread = {
     return 0;
   },
 
+  pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
-    if (PThread.exitHandlers === null) {
-      PThread.exitHandlers = [];
-#if EXIT_RUNTIME
-      if (!ENVIRONMENT_IS_PTHREAD) {
-        __ATEXIT__.push(function() { PThread.runExitHandlers(); });
-      }
-#endif
-    }
-    PThread.exitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
+    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
   },
 
   pthread_cleanup_pop: function(execute) {
-    var routine = PThread.exitHandlers.pop();
+    var routine = PThread.threadExitHandlers.pop();
     if (execute) routine();
   },
 

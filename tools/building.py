@@ -453,8 +453,8 @@ def llvm_backend_args():
   if Settings.DISABLE_EXCEPTION_CATCHING != 1:
     args += ['-enable-emscripten-cxx-exceptions']
   if Settings.DISABLE_EXCEPTION_CATCHING == 2:
-    whitelist = ','.join(Settings.EXCEPTION_CATCHING_WHITELIST or ['__fake'])
-    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+    allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
+    args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
   # asm.js-style setjmp/longjmp handling
   args += ['-enable-emscripten-sjlj']
@@ -528,7 +528,7 @@ def lld_flags_for_executable(external_symbol_list):
     if external_symbol_list:
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbol_list]
-    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN:
+    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN and 'main' in c_exports:
       c_exports.remove('main')
     for export in c_exports:
       cmd += ['--export', export]
@@ -1484,7 +1484,8 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
-  contents = asbytes(wasm_file_with_dwarf)
+  filename_bytes = asbytes(wasm_file_with_dwarf)
+  contents = WebAssembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
     f.write(b'\0') # user section is code 0
@@ -1574,7 +1575,8 @@ def path_to_system_js_libraries(library_name):
     'c': '',
     'dl': '',
     'EGL': 'library_egl.js',
-    'GL': 'library_webgl.js',
+    'GL': ['library_webgl.js', 'library_html5_webgl.js'],
+    'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
     'GLESv2': 'library_webgl.js',
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
     'GLEW': 'library_glew.js',

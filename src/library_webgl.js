@@ -1797,6 +1797,7 @@ var LibraryGL = {
         break;
     }
 #endif
+
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (data) {
@@ -2029,14 +2030,18 @@ var LibraryGL = {
       switch (type) {
         case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+#if GL_ASSERTIONS
         default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+#endif
       }
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
           case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+#if GL_ASSERTIONS
           default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+#endif
         }
       }
     }
@@ -2102,7 +2107,9 @@ var LibraryGL = {
         case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
         case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
+#if GL_ASSERTIONS
         default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
+#endif
       }
     } else {
       for (var i = 0; i < data.length; i++) {
@@ -2110,7 +2117,9 @@ var LibraryGL = {
           case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
+#if GL_ASSERTIONS
           default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
+#endif
         }
       }
     }

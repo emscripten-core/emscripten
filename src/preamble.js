@@ -518,6 +518,9 @@ function exitRuntime() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   {{{ getQuoted('ATEXITS') }}}
+#if USE_PTHREADS
+  PThread.runExitHandlers();
+#endif
 #endif
   runtimeExited = true;
 }

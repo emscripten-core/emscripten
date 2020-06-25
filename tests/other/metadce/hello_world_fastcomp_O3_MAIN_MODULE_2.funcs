@@ -18,3 +18,5 @@ $dynCall_ii
 $dynCall_iiii
 $dynCall_iiiii
 $stackAlloc
+$stackRestore
+$stackSave

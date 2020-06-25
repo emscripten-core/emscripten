@@ -2652,6 +2652,12 @@ Module["preRun"].push(function () {
   def test_webgl2_objects(self):
     self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
+  def test_html5_webgl_api(self):
+    for mode in [['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
+                 ['-s', 'OFFSCREEN_FRAMEBUFFER=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
+                 []]:
+      self.btest(path_from_root('tests', 'html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode, expected='0')
+
   def test_webgl2_ubos(self):
     self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
@@ -3301,8 +3307,8 @@ window.close = function() {
     self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
 
   @no_fastcomp('wasm backend asyncify specific')
-  def test_async_bad_whitelist(self):
-    self.btest('browser/async_bad_whitelist.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_WHITELIST=["waka"]', '--profiling'])
+  def test_async_bad_list(self):
+    self.btest('browser/async_bad_list.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_ONLY=["waka"]', '--profiling'])
 
   # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s MODULARIZE=1 as well.
   def test_minimal_runtime_modularize(self):
@@ -4810,6 +4816,10 @@ window.close = function() {
   @requires_threads
   def test_embind_with_pthreads(self):
     self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  @no_fastcomp("no asyncify support")
+  def test_embind_with_asyncify(self):
+    self.btest('embind_with_asyncify.cpp', '1', args=['--bind'] + self.get_async_args())
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):

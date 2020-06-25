@@ -854,7 +854,7 @@ class benchmark(runner.RunnerCore):
     def output_parser(output):
       mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
       return 10000.0 / float(mflops)
-    self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
+    self.do_benchmark('linpack_double', open(path_from_root('tests', 'benchmark', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
   # Benchmarks the synthetic performance of calling native functions.
   @non_core
