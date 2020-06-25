@@ -13,13 +13,18 @@
 #include <time.h>
 
 // ssize_t detection: usually stdint provides it, but not on windows apparently
-#ifndef ssize_t
+#ifdef _WIN32
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#else // _MSC_VER
 #ifdef _WIN64
 typedef signed long long ssize_t;
 #else
 typedef signed long ssize_t;
 #endif
-#endif // ssize_t
+#endif // _MSC_VER
+#endif // _WIN32
 
 #include "wasm-rt.h"
 #include "wasm-rt-impl.h"
