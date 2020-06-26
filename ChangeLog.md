@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Rename `emscripten/math.h` to `emscripten/em_math.h` because if a user adds
+  `emscripten/` as an include path with `-I`, that can override libc math.h,
+  which leads to very confusing errors.
 - Rename `EXCEPTION_CATCHING_WHITELIST` to `EXCEPTION_CATCHING_ALLOWED`. The
   functionality is unchanged, and the old name will be allowed as an alias
   for a few releases to give users time to migrate.
