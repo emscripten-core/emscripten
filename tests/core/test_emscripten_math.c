@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <emscripten/math.h>
+#include <emscripten/em_math.h>
 
 int main()
 {
