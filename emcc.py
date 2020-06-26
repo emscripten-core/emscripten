@@ -2228,7 +2228,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           cmd.append('-emit-llvm')
         shared.print_compiler_stage(cmd)
         shared.check_call(cmd)
-        if output_file != '-':
+        if output_file not in ('-', os.devnull):
           assert(os.path.exists(output_file))
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
