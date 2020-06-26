@@ -443,7 +443,7 @@ jobs:
     steps:
       - run-tests:
           test_targets: "wasm3"
-  test-fastcomp-sanity:
+  test-sanity:
     executor: bionic
     steps:
       - run-tests:
@@ -624,10 +624,10 @@ workflows:
       - test-fastcomp-wasm3:
           requires:
             - build-fastcomp
-      - test-fastcomp-sanity:
-          requires:
-            - build-fastcomp
       - build-linux
+      - test-sanity:
+          requires:
+            - build-linux
       - test-wasm0:
           requires:
             - build-linux
