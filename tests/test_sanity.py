@@ -530,7 +530,7 @@ fi
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc
     if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm-obj', 'libc.a')))
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm', 'libc.a')))
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
     # Exactly one child process should have triggered libc build!
@@ -560,10 +560,7 @@ fi
 
     # Clean up created temp files.
     os.remove(custom_config_filename)
-    if Settings.WASM_BACKEND:
-      os.remove(custom_config_filename + "_sanity_wasm")
-    else:
-      os.remove(custom_config_filename + "_sanity")
+    os.remove(custom_config_filename + "_sanity")
     shutil.rmtree(temp_dir)
 
   @no_wasm_backend('depends on WASM=0 working')
@@ -736,7 +733,7 @@ fi
       self.check_working(EMCC)
       output = self.check_working(EMCC, 'check tells us to use')
       if 'wasm backend' in output:
-        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'wasm32-unknown-unknown-elf')
+        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'wasm32-unknown-emscripten')
       else:
         assert 'asm.js backend' in output
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'asmjs-unknown-emscripten')
@@ -827,14 +824,13 @@ fi
     if not Settings.WASM_BACKEND:
       self.skipTest('wasm backend only')
     restore_and_set_up()
-    root_cache = os.path.expanduser('~/.emscripten_cache')
     # the --lto flag makes us build wasm-bc
     self.do([EMCC, '--clear-cache'])
     run_process([EMBUILDER, 'build', 'libemmalloc'])
-    self.assertExists(os.path.join(root_cache, 'wasm-obj'))
+    self.assertExists(os.path.join(shared.CACHE, 'wasm'))
     self.do([EMCC, '--clear-cache'])
     run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
-    self.assertExists(os.path.join(root_cache, 'wasm-bc'))
+    self.assertExists(os.path.join(shared.CACHE, 'wasm-lto'))
 
   def test_binaryen_version(self):
     restore_and_set_up()
