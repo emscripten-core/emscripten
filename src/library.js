@@ -4252,8 +4252,9 @@ LibraryManager.library = {
     var str = '';
     var result = formatString(format, varargs);
     for (var i = 0 ; i < result.length; ++i) {
-      str += String.fromCharCode(result[i]);
+      str += '%' + ('0' + result[i].toString(16)).slice(-2);
     }
+    str = decodeURIComponent(str);
     _emscripten_log_js(flags, str);
   },
 
