@@ -62,6 +62,7 @@ commands:
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
+      - npm-install
       - run:
           name: gen_struct_info
           command: |
@@ -97,7 +98,6 @@ commands:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
-      - npm-install
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -327,6 +327,7 @@ jobs:
             echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
             echo "final .emscripten:"
             cat ~/.emscripten
+      - npm-install
       - run:
           name: embuilder build ALL
           command: |
@@ -336,7 +337,6 @@ jobs:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
-      - npm-install
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
