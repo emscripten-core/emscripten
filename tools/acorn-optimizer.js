@@ -1307,7 +1307,7 @@ try {
   });
 } catch (err) {
   err.message += (function() {
-    var errorMessage = '\n' + input.split('\n')[err.loc.line - 1] + '\n';
+    var errorMessage = '\n' + input.split(acorn.lineBreak)[err.loc.line - 1] + '\n';
     var column = err.loc.column;
     while (column--) {
       errorMessage += ' ';
