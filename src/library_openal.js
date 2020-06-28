@@ -1745,6 +1745,7 @@ var LibraryOpenAL = {
       inputChannelCount: null, // Not known until the getUserMedia() promise resolves
       mediaStreamError: null, // Used by other functions to return early and report an error.
       mediaStreamSourceNode: null,
+      mediaStream: null,
       // Either one, or none of the below two, is active.
       mergerNode: null,
       splitterNode: null,
@@ -1768,6 +1769,7 @@ var LibraryOpenAL = {
     };
     var onSuccess = function(mediaStream) {
       newCapture.mediaStreamSourceNode = newCapture.audioCtx.createMediaStreamSource(mediaStream);
+      newCapture.mediaStream = mediaStream;
 
       var inputChannelCount = 1;
       switch(newCapture.mediaStreamSourceNode.channelCountMode) {
@@ -1902,6 +1904,11 @@ var LibraryOpenAL = {
   alcCaptureCloseDevice: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureCloseDevice');
     if (!c) return false;
+
+    // Disabling the microphone of the browser.
+    AL.captures[deviceId].mediaStream.getTracks().forEach(function(track) {
+      track.stop();
+    });
 
     delete AL.captures[deviceId];
     AL.freeIds.push(deviceId);
