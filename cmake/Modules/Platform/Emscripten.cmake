@@ -248,6 +248,12 @@ set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
 set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
+# Thin LTO is not supported yet.
+string(REPLACE "thin" "full" CMAKE_C_COMPILE_OPTIONS_IPO
+               "${CMAKE_C_COMPILE_OPTIONS_IPO}")
+string(REPLACE "thin" "full" CMAKE_CXX_COMPILE_OPTIONS_IPO
+               "${CMAKE_CXX_COMPILE_OPTIONS_IPO}")
+
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to
 # detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
