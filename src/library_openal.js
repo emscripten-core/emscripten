@@ -1905,11 +1905,6 @@ var LibraryOpenAL = {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureCloseDevice');
     if (!c) return false;
 
-    // Disabling the microphone of the browser.
-    AL.captures[deviceId].mediaStream.getTracks().forEach(function(track) {
-      track.stop();
-    });
-
     delete AL.captures[deviceId];
     AL.freeIds.push(deviceId);
 
@@ -1921,6 +1916,12 @@ var LibraryOpenAL = {
     if (c.splitterNode) c.splitterNode.disconnect();
     // May happen if user hasn't decided to grant or deny input
     if (c.scriptProcessorNode) c.scriptProcessorNode.disconnect();
+    if (c.mediaStream) {
+      // Disabling the microphone of the browser.
+      c.mediaStream.getTracks().forEach(function(track) {
+        track.stop();
+      });
+    }
 
     delete c.buffers;
 
