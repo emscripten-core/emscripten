@@ -122,13 +122,14 @@ Options that are modified or new in *emcc* are listed below:
    * When linking, this is equivalent to -g3.
 
 "-gseparate-dwarf[=FILENAME]"
-   Preserve debug information, but in a separate file on the side. This is the
-   same as "-g", but the main file will contain no debug info, while debug
-   info will be present in a file on the side, "FILENAME" if provided,
-   otherwise the same as the wasm file but with suffix ".debug.wasm".
-   "FILENAME" can also be "FILENAME@PATH_IN_FILE" where "FILENAME" is the
-   emitted file as before, and "PATH_IN_FILE" is the path to the the file
-   (which might be a URL to where the file will be hosted, for example).
+   Preserve debug information, but in a separate file on the side.
+   This is the same as "-g", but the main file will contain no debug
+   info, while debug info will be present in a file on the side,
+   "FILENAME" if provided, otherwise the same as the wasm file but
+   with suffix ".debug.wasm". "FILENAME" can also be
+   "FILENAME@PATH_IN_FILE" where "FILENAME" is the emitted file as
+   before, and "PATH_IN_FILE" is the path to the the file (which might
+   be a URL to where the file will be hosted, for example).
 
 "-g<level>"
    Controls the level of debuggability. Each level builds on the
