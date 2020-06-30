@@ -103,7 +103,7 @@ var LibraryExceptions = {
     // A rethrown exception can reach refcount 0; it must not be discarded
     // Its next handler will clear the rethrown flag and addRef it, prior to
     // final decRef and destruction here
-    if (info.release_ref() && !info.rethrown) {
+    if (info.release_ref() && !info.get_rethrown()) {
       var destructor = info.get_destructor();
       if (destructor) {
 #if WASM_BACKEND == 0
@@ -157,7 +157,7 @@ var LibraryExceptions = {
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
   __cxa_throw__sig: 'viii',
-  __cxa_throw__deps: ['__exception_infos', '__exception_last', '_ZSt18uncaught_exceptionv', 'ExceptionInfo'],
+  __cxa_throw__deps: ['ExceptionInfo', '__exception_last', '_ZSt18uncaught_exceptionv'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
     err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
