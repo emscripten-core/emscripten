@@ -71,12 +71,22 @@ var LibraryExceptions = {
     }
 
     this.add_ref = function() {
+#if USE_PTHREADS
       Atomics.add(HEAP32, (this.ptr + ___ExceptionInfoAttrs.REFCOUNT_OFFSET) >> 2, 1);
+#else
+      var value = {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
+      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'value + 1', 'i32') }}};
+#endif
     }
 
     // Returns true if last reference released.
     this.release_ref = function() {
+#if USE_PTHREADS
       var prev = Atomics.sub(HEAP32, (this.ptr + ___ExceptionInfoAttrs.REFCOUNT_OFFSET) >> 2, 1);
+#else
+      var prev = {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
+      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'prev - 1', 'i32') }}};
+#endif
       if (prev === 0) {
         err('Exception reference counter underflow');
       }
