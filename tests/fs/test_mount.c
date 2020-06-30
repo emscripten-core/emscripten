@@ -48,6 +48,10 @@ int main() {
     }
     assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
 
+    // mount and unmount it the second time
+    FS.mount(MEMFS, {}, '/working');
+    FS.unmount(MEMFS, {}, '/working');
+
     // try to read the file from the old mount
     try {
       FS.readFile('/working/waka.txt', { encoding: 'utf8' });
