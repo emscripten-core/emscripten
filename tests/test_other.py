@@ -8206,10 +8206,7 @@ int main() {
       create_test_file('pre.js', 'WebAssembly = undefined;\n')
       run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '--pre-js', 'pre.js'] + opts)
       out = run_js('a.out.js', stderr=STDOUT, assert_returncode=None)
-      if opts == []:
-        self.assertContained('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.', out)
-      else:
-        self.assertContained('no native wasm support detected', out)
+      self.assertContained('no native wasm support detected', out)
 
   def test_jsrun(self):
     print(NODE_JS)
