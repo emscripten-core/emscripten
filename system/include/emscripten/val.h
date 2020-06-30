@@ -596,8 +596,7 @@ namespace emscripten {
         rv.resize(l);
 
         // Copy the array into our vector through the use of typed arrays.
-        // The main issue however, is that if it contains something else than numbers (for example a string),
-        // it will try to convert it as if using Number().
+        // It will try to convert each element through Number().
         // See https://www.ecma-international.org/ecma-262/6.0/#sec-%typedarray%.prototype.set-array-offset
         // and https://www.ecma-international.org/ecma-262/6.0/#sec-tonumber
         val memoryView{ typed_memory_view(l, rv.data()) };
