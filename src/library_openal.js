@@ -1918,6 +1918,7 @@ var LibraryOpenAL = {
     if (c.scriptProcessorNode) c.scriptProcessorNode.disconnect();
     if (c.mediaStream) {
       // Disabling the microphone of the browser.
+      // Without this operation, the red dot on the browser tab page will remain.
       c.mediaStream.getTracks().forEach(function(track) {
         track.stop();
       });
