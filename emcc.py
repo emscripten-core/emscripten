@@ -3385,11 +3385,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
   if shared.Settings.DEBUG_LEVEL >= 3 and shared.Settings.SEPARATE_DWARF and os.path.exists(wasm_binary_target):
-    # if the dwarf filename wasn't provided, use the default target + a suffix
-    dwarf_target = shared.Settings.SEPARATE_DWARF
-    if dwarf_target is True:
-      dwarf_target = wasm_binary_target + '.debug.wasm'
-    building.emit_debug_on_side(wasm_binary_target, dwarf_target)
+    building.emit_debug_on_side(wasm_binary_target, shared.Settings.SEPARATE_DWARF)
 
   if shared.Settings.WASM2C:
     wasm2c.do_wasm2c(wasm_binary_target)

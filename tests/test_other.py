@@ -8752,6 +8752,15 @@ int main() {
       stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), invalid])
       self.assertContained('invalid -gseparate-dwarf=FILENAME notation', stderr)
 
+  @no_fastcomp('dwarf')
+  def test_separate_dwarf_with_filename_and_path(self):
+    run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
+    with open('a.out.wasm', 'rb') as f:
+      self.assertIn(b'with_dwarf.wasm', f.read())
+    run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm@http://somewhere.com/hosted.wasm'])
+    with open('a.out.wasm', 'rb') as f:
+      self.assertIn(b'somewhere.com/hosted.wasm', f.read())
+
   def test_wasm_producers_section(self):
     # no producers section by default
     run_process([EMCC, path_from_root('tests', 'hello_world.c')])
