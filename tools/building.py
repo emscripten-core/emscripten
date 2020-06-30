@@ -1481,7 +1481,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # if the dwarf filename wasn't provided, use the default target + a suffix
   wasm_file_with_dwarf = shared.Settings.SEPARATE_DWARF
   if wasm_file_with_dwarf is True:
-    wasm_file_with_dwarf = wasm_binary_target + '.debug.wasm'
+    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
     embedded_path = wasm_file_with_dwarf
   elif '@' in wasm_file_with_dwarf:
     # FILE@PATH notation was provided
