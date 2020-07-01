@@ -122,6 +122,11 @@ var LibraryExceptions = {
     }
 
     this.get_exception_ptr = function() {
+      var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}
+        (this.get_exception_info().get_type());
+      if (isPointer) {
+        return {{{ makeGetValue('this.get_base_ptr()', '0', '*') }}};
+      }
       var adjusted = this.get_adjusted_ptr();
       if (adjusted !== 0) return adjusted;
       return this.get_base_ptr();
