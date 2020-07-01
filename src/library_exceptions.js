@@ -168,7 +168,7 @@ var LibraryExceptions = {
         Module['dynCall_ii'](destructor, info.excPtr);
 #endif
       }
-      ___cxa_free_exception(info.ptr);
+      ___cxa_free_exception(info.excPtr);
 #if EXCEPTION_DEBUG
       err('decref freeing exception ' + [info.excPtr, ___exception_last, 'stack', ___exception_caught]);
 #endif
@@ -422,12 +422,16 @@ var LibraryExceptions = {
     {{{ makeStructuralReturn(['catchInfo.ptr', 'thrownType']) }}};
   },
 
-  __resumeException__deps: [function() { '__exception_last', Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
-  __resumeException: function(ptr) {
+  __resumeException__deps: [function() { '__exception_last', 'CatchInfo',
+                                        Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
+  __resumeException: function(catchInfoPtr) {
+    var catchInfo = new _CatchInfo(catchInfoPtr);
+    var ptr = catchInfo.get_base_ptr();
 #if EXCEPTION_DEBUG
     out("Resuming exception " + [ptr, ___exception_last]);
 #endif
     if (!___exception_last) { ___exception_last = ptr; }
+    catchInfo.free();
     {{{ makeThrow('ptr') }}}
   },
 };
