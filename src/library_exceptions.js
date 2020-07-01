@@ -94,12 +94,57 @@ var LibraryExceptions = {
     }
   },
 
-    __exception_addRef: function(info) {
+  CatchInfo__deps: ['ExceptionInfo'],
+  // Returned from __cxa_find_matching_catch, stores base and adjusted exception pointer.
+  CatchInfo: function(ptr) {
+
+    this.free = function() {
+      _free(this.ptr);
+      this.ptr = 0;
+    }
+
+    this.set_base_ptr = function(basePtr) {
+      {{{ makeSetValue('this.ptr', '0', 'basePtr', '*') }}};
+    }
+
+    this.get_base_ptr = function() {
+      return {{{ makeGetValue('this.ptr', '0', '*') }}};
+    }
+
+    this.set_adjusted_ptr = function(adjustedPtr) {
+      var ptrSize = {{{ Runtime.POINTER_SIZE }}};
+      {{{ makeSetValue('this.ptr', 'ptrSize', 'adjustedPtr', '*') }}};
+    }
+
+    this.get_adjusted_ptr = function() {
+      var ptrSize = {{{ Runtime.POINTER_SIZE }}};
+      return {{{ makeGetValue('this.ptr', 'ptrSize', '*') }}};
+    }
+
+    this.get_exception_ptr = function() {
+      var adjusted = this.get_adjusted_ptr();
+      if (adjusted !== 0) return adjusted;
+      return this.get_base_ptr();
+    }
+
+    this.get_exception_info = function() {
+      return new _ExceptionInfo(this.get_base_ptr());
+    }
+
+    if (ptr === undefined) {
+      this.ptr = _malloc({{{ Runtime.POINTER_SIZE * 2 }}});
+      this.set_adjusted_ptr(0);
+    } else {
+      this.ptr = ptr;
+    }
+  },
+
+  __exception_addRef: function (info) {
 #if EXCEPTION_DEBUG
-      err('addref ' + info.excPtr);
+    err('addref ' + info.excPtr);
 #endif
-      info.add_ref();
-    },
+    info.add_ref();
+  },
 
   __exception_decRef__deps: ['__cxa_free_exception'
 #if EXCEPTION_DEBUG
@@ -137,7 +182,7 @@ var LibraryExceptions = {
     return _malloc(size + ___ExceptionInfoAttrs.SIZE) + ___ExceptionInfoAttrs.SIZE;
   },
 
-  __cxa_allocate_exception__deps: ['ExceptionInfo'],
+  __cxa_free_exception__deps: ['ExceptionInfo'],
   __cxa_free_exception: function(ptr) {
 #if ABORTING_MALLOC || ASSERTIONS
     try {
@@ -188,15 +233,19 @@ var LibraryExceptions = {
   // pop that here from the caught exceptions.
   __cxa_rethrow__deps: ['__exception_caught', 'ExceptionInfo', '__exception_last'],
   __cxa_rethrow: function() {
-    var ptr = ___exception_caught.pop();
-    var info = new _ExceptionInfo(ptr);
+    var catchInfo = ___exception_caught.pop();
+    var info = catchInfo.get_exception_info();
+    var ptr = catchInfo.get_base_ptr();
     if (!info.get_rethrown()) {
       // Only pop if the corresponding push was through rethrow_primary_exception
-      ___exception_caught.push(ptr);
+      ___exception_caught.push(catchInfo);
       info.set_rethrown(true);
+    } else {
+      catchInfo.free();
     }
 #if EXCEPTION_DEBUG
-    err('Compiled code RE-throwing an exception, popped ' + [ptr, ___exception_last, 'stack', ___exception_caught]);
+    err('Compiled code RE-throwing an exception, popped ' +
+      [ptr, ___exception_last, 'stack', ___exception_caught]);
 #endif
     ___exception_last = ptr;
     {{{ makeThrow('ptr') }}}
@@ -212,7 +261,7 @@ var LibraryExceptions = {
   llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
     var type = ___exception_last;
     for (var i = 2; i < arguments.length; i++) {
-      if (arguments[i] ==  type) return type;
+      if (arguments[i] == type) return type;
     }
     return 0;
   },
@@ -221,27 +270,30 @@ var LibraryExceptions = {
     return type;
   },
 
-  __cxa_begin_catch__deps: ['ExceptionInfo', '__exception_caught', '__exception_addRef', '_ZSt18uncaught_exceptionv'],
+  __cxa_begin_catch__deps: ['ExceptionInfo', 'CatchInfo', '__exception_caught', '__exception_addRef',
+                            '_ZSt18uncaught_exceptionv'],
   __cxa_begin_catch: function(ptr) {
-    var info = new _ExceptionInfo(ptr);
+    var catchInfo = new _CatchInfo(ptr);
+    var info = catchInfo.get_exception_info();
     if (!info.get_caught()) {
       info.set_caught(true);
       __ZSt18uncaught_exceptionv.uncaught_exceptions--;
     }
     info.set_rethrown(false);
-    ___exception_caught.push(ptr);
+    ___exception_caught.push(catchInfo);
 #if EXCEPTION_DEBUG
     err('cxa_begin_catch ' + [ptr, 'stack', ___exception_caught]);
 #endif
     ___exception_addRef(info);
-    return ptr;
+    return catchInfo.get_exception_ptr();
   },
 
   // We're done with a catch. Now, we can run the destructor if there is one
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__exception_caught', '__exception_last', '__exception_decRef', 'ExceptionInfo'
+  __cxa_end_catch__deps: ['__exception_caught', '__exception_last', '__exception_decRef',
+                          'CatchInfo'
 #if WASM_BACKEND == 0
   , 'setThrew'
 #endif
@@ -249,21 +301,27 @@ var LibraryExceptions = {
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0);
-    // Call destructor if one is registered then clear it.
-    var ptr = ___exception_caught.pop();
-#if EXCEPTION_DEBUG
-    err('cxa_end_catch popped ' + [ptr, ___exception_last, 'stack', ___exception_caught]);
-#endif
-    if (ptr) {
-      ___exception_decRef(new _ExceptionInfo(ptr));
-      ___exception_last = 0; // XXX in decRef?
+    if (!___exception_caught.length) {
+      err("Exceptions stack underflow");
+      return;
     }
+    // Call destructor if one is registered then clear it.
+    var catchInfo = ___exception_caught.pop();
+
+#if EXCEPTION_DEBUG
+    err('cxa_end_catch popped ' + [catchInfo, ___exception_last, 'stack', ___exception_caught]);
+#endif
+    ___exception_decRef(catchInfo.get_exception_info());
+    catchInfo.free();
+    ___exception_last = 0; // XXX in decRef?
   },
+
+  __cxa_get_exception_ptr__deps: ['CatchInfo'],
   __cxa_get_exception_ptr: function(ptr) {
 #if EXCEPTION_DEBUG
     err('cxa_get_exception_ptr ' + ptr);
 #endif
-    return ptr;
+    return new _CatchInfo(ptr).get_exception_ptr();
   },
 
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
@@ -283,18 +341,23 @@ var LibraryExceptions = {
     throw exception;
   },
 
-  __cxa_current_primary_exception__deps: ['__exception_caught', '__exception_addRef', 'ExceptionInfo'],
+  __cxa_current_primary_exception__deps: ['__exception_caught', '__exception_addRef', 'CatchInfo'],
   __cxa_current_primary_exception: function() {
-    var ret = ___exception_caught[___exception_caught.length-1] || 0;
-    if (ret) ___exception_addRef(new _ExceptionInfo(ret));
-    return ret;
+    if (!___exception_caught.length) {
+      return 0;
+    }
+    var catchInfo = ___exception_caught[___exception_caught.length - 1];
+    ___exception_addRef(catchInfo.get_exception_info());
+    return catchInfo.get_base_ptr();
   },
 
-  __cxa_rethrow_primary_exception__deps: ['ExceptionInfo', '__exception_caught', '__cxa_rethrow'],
+  __cxa_rethrow_primary_exception__deps: ['CatchInfo', '__exception_caught', '__cxa_rethrow'],
   __cxa_rethrow_primary_exception: function(ptr) {
     if (!ptr) return;
-    var info = new _ExceptionInfo(ptr);
-    ___exception_caught.push(ptr);
+    var catchInfo = new _CatchInfo();
+    catchInfo.set_base_ptr(ptr);
+    var info = catchInfo.get_exception_info();
+    ___exception_caught.push(catchInfo);
     info.set_rethrown(true);
     ___cxa_rethrow();
   },
@@ -308,8 +371,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-
-  __cxa_find_matching_catch__deps: ['__exception_last', 'ExceptionInfo', '__resumeException'],
+  __cxa_find_matching_catch__deps: ['__exception_last', 'ExceptionInfo', 'CatchInfo', '__resumeException'],
   __cxa_find_matching_catch: function() {
     var thrown = ___exception_last;
     if (!thrown) {
@@ -318,9 +380,11 @@ var LibraryExceptions = {
     }
     var info = new _ExceptionInfo(thrown);
     var thrownType = info.get_type();
+    var catchInfo = new _CatchInfo();
+    catchInfo.set_base_ptr(thrown);
     if (!thrownType) {
       // just pass through the thrown ptr
-      {{{ makeStructuralReturn(['thrown', 0]) }}};
+      {{{ makeStructuralReturn(['catchInfo.ptr', 0]) }}};
     }
     var typeArray = Array.prototype.slice.call(arguments);
 
@@ -347,15 +411,15 @@ var LibraryExceptions = {
       if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, thrownBuf)) {
         var adjusted = {{{ makeGetValue('thrownBuf', '0', '*') }}};
         if (thrown !== adjusted) {
-          err('Exception pointer adjusted')
+          catchInfo.set_adjusted_ptr(adjusted);
         }
 #if EXCEPTION_DEBUG
-        out("  can_catch found " + [thrown, caughtType]);
+        out("  can_catch found " + [adjusted, caughtType]);
 #endif
-        {{{ makeStructuralReturn(['thrown', 'caughtType']) }}};
+        {{{ makeStructuralReturn(['catchInfo.ptr', 'caughtType']) }}};
       }
     }
-    {{{ makeStructuralReturn(['thrown', 'thrownType']) }}};
+    {{{ makeStructuralReturn(['catchInfo.ptr', 'thrownType']) }}};
   },
 
   __resumeException__deps: [function() { '__exception_last', Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
@@ -374,6 +438,7 @@ var LibraryExceptions = {
 addCxaCatch = function(n) {
   LibraryManager.library['__cxa_find_matching_catch_' + n] = LibraryExceptions['__cxa_find_matching_catch'];
   LibraryManager.library['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('i');
+  LibraryManager.library['__cxa_find_matching_catch_' + n + '__deps'] = LibraryExceptions['__cxa_find_matching_catch__deps'];
 };
 
 mergeInto(LibraryManager.library, LibraryExceptions);
