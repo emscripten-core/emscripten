@@ -34,7 +34,7 @@ extern "C" {
 
 #if __EMSCRIPTEN__
 // This version of emscripten has <emscripten/vr.h> and associated support
-#define EMSCRIPTEN_HAS_VR_SUPPORT 1
+#define EMSCRIPTEN_HAS_VR_SUPPORT 0
 #endif
 
 /* Typedefs */

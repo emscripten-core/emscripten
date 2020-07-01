@@ -1,8 +1,10 @@
 .. _vr-h:
 
-====
-vr.h
-====
+==============
+vr.h (REMOVED)
+==============
+
+.. warning:: Support for WebVR has been removed in Emscripten 1.39.9
 
 The C APIs in `vr.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/vr.h>`_ provide basic interfaces for interacting with WebVR from Emscripten.
 
