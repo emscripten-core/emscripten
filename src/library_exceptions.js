@@ -122,6 +122,7 @@ var LibraryExceptions = {
     }
 
     this.get_exception_ptr = function() {
+#if WASM_BACKEND || DISABLE_EXCEPTION_CATCHING != 1 // work around a fastcomp bug
       var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}
         (this.get_exception_info().get_type());
       if (isPointer) {
@@ -130,6 +131,9 @@ var LibraryExceptions = {
       var adjusted = this.get_adjusted_ptr();
       if (adjusted !== 0) return adjusted;
       return this.get_base_ptr();
+#else
+      abort('No exceptions support');
+#endif
     }
 
     this.get_exception_info = function() {
