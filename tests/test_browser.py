@@ -20,11 +20,13 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
+from jsrun import run_js
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
+from runner import no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
-from tools.shared import try_delete, run_process, run_js
+from tools.shared import try_delete, run_process
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -2650,6 +2652,12 @@ Module["preRun"].push(function () {
   def test_webgl2_objects(self):
     self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
+  def test_html5_webgl_api(self):
+    for mode in [['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
+                 ['-s', 'OFFSCREEN_FRAMEBUFFER=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
+                 []]:
+      self.btest(path_from_root('tests', 'html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode, expected='0')
+
   def test_webgl2_ubos(self):
     self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
@@ -3299,8 +3307,8 @@ window.close = function() {
     self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
 
   @no_fastcomp('wasm backend asyncify specific')
-  def test_async_bad_whitelist(self):
-    self.btest('browser/async_bad_whitelist.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_WHITELIST=["waka"]', '--profiling'])
+  def test_async_bad_list(self):
+    self.btest('browser/async_bad_list.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_ONLY=["waka"]', '--profiling'])
 
   # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s MODULARIZE=1 as well.
   def test_minimal_runtime_modularize(self):
@@ -4809,6 +4817,10 @@ window.close = function() {
   def test_embind_with_pthreads(self):
     self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  @no_fastcomp("no asyncify support")
+  def test_embind_with_asyncify(self):
+    self.btest('embind_with_asyncify.cpp', '1', args=['--bind'] + self.get_async_args())
+
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
     self.btest(path_from_root('tests', 'emscripten_console_log.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_console_log_pre.js')])
@@ -4914,6 +4926,22 @@ window.close = function() {
       html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
       open('test.html', 'w').write(html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
+      self.run_browser('test.html', 'hello!', '/report_result?0')
+
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js_fallback_on_wasm_compilation_failure(self):
+    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      src = 'src.cpp'
+      create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
+      self.compile_btest([src, '-s', 'WASM=2', '-o', 'test.html'] + args)
+
+      # Run without the .wasm.js file present: with Wasm support, the page should still run
+      os.rename('test.wasm.js', 'test.wasm.js.unused')
+      self.run_browser('test.html', 'hello!', '/report_result?0')
+
+      # Restore the .wasm.js file, then corrupt the .wasm file, that should trigger the Wasm2js fallback to run
+      os.rename('test.wasm.js.unused', 'test.wasm.js')
+      shutil.copyfile('test.js', 'test.wasm')
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
   def test_system(self):

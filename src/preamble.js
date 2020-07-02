@@ -34,11 +34,7 @@ if (Module['doWasm2JS']) {
 
 #if WASM == 1
 if (typeof WebAssembly !== 'object') {
-#if ASSERTIONS
-  abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-#else
-  err('no native wasm support detected');
-#endif
+  abort('no native wasm support detected');
 }
 #endif
 
@@ -518,6 +514,9 @@ function exitRuntime() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   {{{ getQuoted('ATEXITS') }}}
+#if USE_PTHREADS
+  PThread.runExitHandlers();
+#endif
 #endif
   runtimeExited = true;
 }
@@ -1010,6 +1009,21 @@ function createWasm() {
 #endif // USE_OFFSET_CONVERTER
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
+
+#if WASM == 2
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+      if (typeof location !== 'undefined') {
+#endif
+        // WebAssembly compilation failed, try running the JS fallback instead.
+        var search = location.search;
+        if (search.indexOf('_rwasm=0') < 0) {
+          location.href += (search ? search + '&' : '?') + '_rwasm=0';
+        }
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+      }
+#endif
+#endif // WASM == 2
+
       abort(reason);
     });
   }

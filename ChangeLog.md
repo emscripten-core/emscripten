@@ -17,6 +17,31 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Rename `EXCEPTION_CATCHING_WHITELIST` to `EXCEPTION_CATCHING_ALLOWED`. The
+  functionality is unchanged, and the old name will be allowed as an alias
+  for a few releases to give users time to migrate.
+- Add support for the new add-list in Asyncify and update existing list names
+  following the updates in Binaryen, so that now we have `ASYNCIFY_ADD` to
+  add a function, `ASYNCIFY_REMOVE` to remove one (previously this was
+  called `ASYNCIFY_BLACKLIST`), and `ASYNCIFY_ONLY` to set a list of the
+  only functions to instrument and no others (previously this was called
+  `ASYNCIFY_WHITELIST`). The updated lists also handle indirect calls properly,
+  so that if you use `ASYNCIFY_IGNORE_INDIRECT` and then add (using either the
+  add-list or the only-list) all the functions that are on the stack when
+  pausing, then things will work (for more, see
+  https://github.com/WebAssembly/binaryen/pull/2913).
+
+1.39.18: 06/12/2020
+-------------------
+- Disable `LIBCXX_ABI_OPTIMIZED_FUNCTION` which is an ABI change in libc++
+  (changing the layout of the `std::function` object) (#11403).
+- New `WASM2C` option that integrates with wabt's wasm2c tool in order to
+  compile everything into a single C file (#11213).
+
+1.39.17: 06/05/2020
+-------------------
+- Use Promise polyfill for MODULARIZE when supporting legacy browsers. (#11320)
+- Fix minification of wasm2js output when using --emit-symbol-map. (#11279)
 - On first use, emscripten creates a sample config file.  This config file
   is now created in the emscripten directory by default.  The traditional
   `~/.emscripten` config file in the `$HOME` directory is still supported and
@@ -256,6 +281,8 @@ v1.39.9: 03/05/2020
   getpagesize (#10533), _Exit (#10534)
 - Fix many closure compiler warnings (e.g. #10525).
 - Avoid unnecessary syscall proxying (#10511).
+- Added new link time command line option -jsDfoo=val to allow specifying
+  custom preprocessor options to JS library files. (#10624, #10580)
 
 v1.39.8: 02/14/2020
 -------------------

@@ -227,9 +227,8 @@ class Minifier(object):
   perform minification of locals.
   """
 
-  def __init__(self, js, js_engine):
+  def __init__(self, js):
     self.js = js
-    self.js_engine = js_engine
     self.symbols_file = None
     self.profiling_funcs = False
 
@@ -256,7 +255,7 @@ class Minifier(object):
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = self.js_engine + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
+      cmd = shared.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
       if source_map:
@@ -317,7 +316,7 @@ def run_on_chunk(command):
     raise Exception()
 
 
-def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
+def run_on_js(filename, passes, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -387,7 +386,7 @@ EMSCRIPTEN_FUNCS();
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
       # we assume there is a maximum of one new name per line
-      minifier = Minifier(js, js_engine)
+      minifier = Minifier(js)
 
       def check_symbol_mapping(p):
         if p.startswith('symbolMap='):
@@ -467,7 +466,7 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
       if not use_native(passes, source_map):
-        commands = [js_engine + [JS_OPTIMIZER, f, 'noPrintMetadata'] +
+        commands = [shared.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] +
                     (['--debug'] if source_map else []) + passes for f in filenames]
       else:
         # use the native optimizer
@@ -584,14 +583,13 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 
-def run(filename, passes, js_engine=shared.NODE_JS, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
+def run(filename, passes, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
   if 'receiveJSON' in passes:
     just_split = True
   if 'emitJSON' in passes:
     just_concat = True
-  js_engine = shared.listify(js_engine)
   with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
-    return run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat, extra_closure_args)
+    return run_on_js(filename, passes, source_map, extra_info, just_split, just_concat, extra_closure_args)
 
 
 def main():

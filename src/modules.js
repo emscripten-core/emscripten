@@ -94,6 +94,7 @@ var LibraryManager = {
 
     if (USE_PTHREADS) { // TODO: Currently WebGL proxying makes pthreads library depend on WebGL.
       libraries.push('library_webgl.js');
+      libraries.push('library_html5_webgl.js');
     }
 
     if (FILESYSTEM) {
@@ -119,6 +120,7 @@ var LibraryManager = {
     if (AUTO_JS_LIBRARIES) {
       libraries = libraries.concat([
         'library_webgl.js',
+        'library_html5_webgl.js',
         'library_openal.js',
         'library_sdl.js',
         'library_glut.js',
@@ -138,7 +140,7 @@ var LibraryManager = {
         libraries.push('library_sdl.js');
       }
       if (USE_SDL == 2) {
-        libraries.push('library_egl.js', 'library_webgl.js');
+        libraries.push('library_egl.js', 'library_webgl.js', 'library_html5_webgl.js');
       }
     }
 
@@ -159,6 +161,7 @@ var LibraryManager = {
 
     if (USE_WEBGPU) {
       libraries.push('library_webgpu.js');
+      libraries.push('library_html5_webgpu.js');
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) {

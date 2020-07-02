@@ -719,10 +719,9 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME && !EXIT_RUNTIME
+  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
   atexit: function(){},
   __cxa_atexit: function(){},
-  __cxa_thread_atexit: function(){},
-  __cxa_thread_atexit_impl: function(){},
 #else
   atexit__proxy: 'sync',
   atexit__sig: 'iii',
@@ -732,11 +731,20 @@ LibraryManager.library = {
     warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
 #endif
 #endif
+
+#if EXIT_RUNTIME
     __ATEXIT__.unshift({ func: func, arg: arg });
+#endif
   },
   __cxa_atexit: 'atexit',
 
+#endif
+
   // used in rust, clang when doing thread_local statics
+#if USE_PTHREADS
+  __cxa_thread_atexit: 'pthread_cleanup_push',
+  __cxa_thread_atexit_impl: 'pthread_cleanup_push',
+#else
   __cxa_thread_atexit: 'atexit',
   __cxa_thread_atexit_impl: 'atexit',
 #endif
@@ -4539,14 +4547,6 @@ LibraryManager.library = {
     });
   },
 
-  emscripten_get_stack_top: function() {
-    return STACKTOP;
-  },
-
-  emscripten_get_stack_base: function() {
-    return STACK_BASE;
-  },
-
   _readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['_readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
@@ -5127,6 +5127,39 @@ LibraryManager.library = {
 #else
     return thisProgram || './this.program';
 #endif
+  },
+
+  $listenOnce: function(object, event, func) {
+#if MIN_CHROME_VERSION < 55 || MIN_EDGE_VERSION < 18 || MIN_FIREFOX_VERSION < 50 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+    object.addEventListener(event, function handler() {
+      func();
+      object.removeEventListener(event, handler);
+    });
+#else
+    object.addEventListener(event, func, { 'once': true });
+#endif
+  },
+
+  // Receives a Web Audio context plus a set of elements to listen for user
+  // input events on, and registers a context resume() for them. This lets
+  // audio work properly in an automatic way, as browsers won't let audio run
+  // without user interaction.
+  // If @elements is not provided, we default to the document and canvas
+  // elements, which handle common use cases.
+  $autoResumeAudioContext__deps: ['$listenOnce'],
+  $autoResumeAudioContext: function(ctx, elements) {
+    if (!elements) {
+      elements = [document, document.getElementById('canvas')];
+    }
+    ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
+      elements.forEach(function(element) {
+        if (element) {
+          listenOnce(element, event, function() {
+            if (ctx.state === 'suspended') ctx.resume();
+          });
+        }
+      });
+    });
   },
 };
 

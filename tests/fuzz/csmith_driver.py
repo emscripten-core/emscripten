@@ -93,13 +93,13 @@ while 1:
   shared.run_process([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
   print('3) Run natively')
   try:
-    correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
+    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct1 or len(correct1) < 10:
       raise Exception('segfault')
-    correct2 = shared.jsrun.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
+    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct2 or len(correct2) < 10:
       raise Exception('segfault')
-    correct3 = shared.jsrun.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
+    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct3 or len(correct3) < 10:
       raise Exception('segfault')
     if correct1 != correct3:
@@ -176,8 +176,8 @@ while 1:
   def execute_js(engine):
     print('(run in %s)' % engine)
     try:
-      js = shared.jsrun.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
-    except CalledProcessError:
+      js = shared.timeout_run(Popen(shared.NODE_JS + [filename + '.js'], stdout=PIPE, stderr=PIPE), 15 * 60)
+    except Exception:
       print('failed to run in primary')
       return False
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)

@@ -174,5 +174,6 @@ int main()
 
 #ifdef __EMSCRIPTEN__
 	_mm_undefined();
+	_mm_undefined_ps();
 #endif
 }

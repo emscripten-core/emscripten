@@ -22,7 +22,7 @@ from . import diagnostics
 from . import response_file
 from . import shared
 from .toolchain_profiler import ToolchainProfiler
-from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON, MACOS
+from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_AR
 from .shared import JS, LLVM_OPT, LLVM_LINK, LLVM_DIS, LLVM_AS, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
@@ -241,11 +241,8 @@ def get_multiprocessing_pool():
 # When creating environment variables for Makefiles to execute, we need to
 # doublequote the commands if they have spaces in them..
 def doublequote_spaces(arg):
-  arg = arg[:] # Operate on a copy of the input string/list
   if isinstance(arg, list):
-    for i in range(len(arg)):
-      arg[i] = doublequote_spaces(arg[i])
-    return arg
+    return [doublequote_spaces(a) for a in arg]
 
   if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
     return '"' + arg.replace('"', '\\"') + '"'
@@ -256,11 +253,8 @@ def doublequote_spaces(arg):
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
 # remove them when needed.
 def remove_quotes(arg):
-  arg = arg[:] # Operate on a copy of the input string/list
   if isinstance(arg, list):
-    for i in range(len(arg)):
-      arg[i] = remove_quotes(arg[i])
-    return arg
+    return [remove_quotes(a) for a in arg]
 
   if arg.startswith('"') and arg.endswith('"'):
     return arg[1:-1].replace('\\"', '"')
@@ -270,46 +264,21 @@ def remove_quotes(arg):
     return arg
 
 
-def get_native_building_args():
-  if MACOS:
-    return ['--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk']
-  else:
-    return ['']
-
-
-def get_building_env(native=False, doublequote_commands=False, cflags=[]):
-  def quote(arg):
-    if WINDOWS and doublequote_commands:
-      return doublequote_spaces(arg)
-    else:
-      return arg
-
+def get_building_env(cflags=[]):
   env = os.environ.copy()
-  if native:
-    env['CC'] = quote(CLANG_CC)
-    env['CXX'] = quote(CLANG_CXX)
-    env['LD'] = quote(CLANG_CXX)
-    # get a non-native one, and see if we have some of its effects - remove them if so
-    non_native = get_building_env(cflags=cflags)
-    # the ones that a non-native would modify
-    EMSCRIPTEN_MODIFIES = ['LDSHARED', 'AR', 'CROSS_COMPILE', 'NM', 'RANLIB']
-    for dangerous in EMSCRIPTEN_MODIFIES:
-      if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
-        del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
-    return env
   # point CC etc. to the em* tools.
-  env['CC'] = quote(EMCC)
-  env['CXX'] = quote(EMXX)
-  env['AR'] = quote(EMAR)
-  env['LD'] = quote(EMCC)
-  env['NM'] = quote(LLVM_NM)
-  env['LDSHARED'] = quote(EMCC)
-  env['RANLIB'] = quote(EMRANLIB)
+  env['CC'] = EMCC
+  env['CXX'] = EMXX
+  env['AR'] = EMAR
+  env['LD'] = EMCC
+  env['NM'] = LLVM_NM
+  env['LDSHARED'] = EMCC
+  env['RANLIB'] = EMRANLIB
   env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
   if cflags:
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
-  env['HOST_CC'] = quote(CLANG_CC)
-  env['HOST_CXX'] = quote(CLANG_CXX)
+  env['HOST_CC'] = CLANG_CC
+  env['HOST_CXX'] = CLANG_CXX
   env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
   env['HOST_CXXFLAGS'] = "-W" # if set to nothing, CXXFLAGS is used, which we don't want
   env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
@@ -484,8 +453,8 @@ def llvm_backend_args():
   if Settings.DISABLE_EXCEPTION_CATCHING != 1:
     args += ['-enable-emscripten-cxx-exceptions']
   if Settings.DISABLE_EXCEPTION_CATCHING == 2:
-    whitelist = ','.join(Settings.EXCEPTION_CATCHING_WHITELIST or ['__fake'])
-    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+    allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
+    args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
   # asm.js-style setjmp/longjmp handling
   args += ['-enable-emscripten-sjlj']
@@ -559,10 +528,13 @@ def lld_flags_for_executable(external_symbol_list):
     if external_symbol_list:
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbol_list]
+    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN and 'main' in c_exports:
+      c_exports.remove('main')
     for export in c_exports:
       cmd += ['--export', export]
 
   if Settings.RELOCATABLE:
+    cmd.append('--experimental-pic')
     if Settings.SIDE_MODULE:
       cmd.append('-shared')
     else:
@@ -983,7 +955,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
 def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[], no_license=False):
   from . import js_optimizer
   try:
-    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
+    ret = js_optimizer.run(filename, passes, debug, extra_info, just_split, just_concat, extra_closure_args)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
   if output_filename:
@@ -1513,7 +1485,8 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
-  contents = asbytes(wasm_file_with_dwarf)
+  filename_bytes = asbytes(wasm_file_with_dwarf)
+  contents = WebAssembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
     f.write(b'\0') # user section is code 0
@@ -1603,7 +1576,8 @@ def path_to_system_js_libraries(library_name):
     'c': '',
     'dl': '',
     'EGL': 'library_egl.js',
-    'GL': 'library_webgl.js',
+    'GL': ['library_webgl.js', 'library_html5_webgl.js'],
+    'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
     'GLESv2': 'library_webgl.js',
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
     'GLEW': 'library_glew.js',
@@ -1654,8 +1628,6 @@ def get_binaryen_feature_flags():
   ret = ['--mvp-features']
   if Settings.USE_PTHREADS:
     ret += ['--enable-threads']
-  if Settings.BINARYEN_SIMD:
-    ret += ['--enable-simd']
   ret += Settings.BINARYEN_FEATURES
   return ret
 

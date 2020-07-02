@@ -27,10 +27,12 @@ var LibraryJSEvents = {
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
 
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 8 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
     // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
     // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
     previousScreenX: null,
     previousScreenY: null,
+#endif
 
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
@@ -431,17 +433,22 @@ var LibraryJSEvents = {
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
   _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '$specialHTMLTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientX, 'e.clientX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientY, 'e.clientY', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.altKey, 'e.altKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.metaKey, 'e.metaKey', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.button, 'e.button', 'i16') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
-    var movementX = e["movementX"]
+#if ASSERTIONS
+    assert(eventStruct % 4 == 0);
+#endif
+    var idx = eventStruct >> 2;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenX / 4 }}}] = e.screenX;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientX / 4 }}}] = e.clientX;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientY / 4 }}}] = e.clientY;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey / 4 }}}] = e.ctrlKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey / 4 }}}] = e.shiftKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey / 4 }}}] = e.altKey;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey / 4 }}}] = e.metaKey;
+    HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.button / 2 }}}] = e.button;
+    HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.buttons / 2 }}}] = e.buttons;
+
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementX / 4 }}}] = e["movementX"]
 #if MIN_FIREFOX_VERSION <= 40
       //     https://caniuse.com/#feat=mdn-api_mouseevent_movementx
       || e["mozMovementX"]
@@ -449,50 +456,51 @@ var LibraryJSEvents = {
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementX"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenX-JSEvents.previousScreenX)
 #endif
       ;
-    var movementY = e["movementY"]
+
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementY / 4 }}}] = e["movementY"]
 #if MIN_FIREFOX_VERSION <= 40
       || e["mozMovementY"]
 #endif
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementY"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenY-JSEvents.previousScreenY)
 #endif
       ;
 
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'movementX', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'movementY', 'i32') }}};
-
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
       var rect = __getBoundingClientRect(Module['canvas']);
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = e.clientX - rect.left;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = e.clientY - rect.top;
     } else { // Canvas is not initialized, return 0.
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, '0', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = 0;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = 0;
     }
 #endif
     var rect = __getBoundingClientRect(target);
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - rect.left;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - rect.top;
 
-    // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
-      // https://github.com/emscripten-core/emscripten/pull/4997
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_CHROME_VERSION <= 76
+    // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera <= 76,
+    // so there we should not record previous screen coordinates on wheel events.
     // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
-    if (e.type !== 'wheel'
-#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
-     && e.type !== 'mousewheel'
+    // https://github.com/emscripten-core/emscripten/pull/4997
+    if (e.type !== 'wheel') {
 #endif
-     ) {
       JSEvents.previousScreenX = e.screenX;
       JSEvents.previousScreenY = e.screenY;
+#if MIN_CHROME_VERSION <= 76
     }
+#endif
+#endif
   },
 
   _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_findEventTarget'],
@@ -2391,459 +2399,6 @@ var LibraryJSEvents = {
     __fillBatteryEventData(batteryState, __battery());
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-
-  // Execute in calling thread without proxying needed.
-  emscripten_webgl_init_context_attributes: function(attributes) {
-#if ASSERTIONS
-    assert(attributes);
-#endif
-    var a = attributes >> 2;
-    for(var i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
-      HEAP32[a+i] = 0;
-    }
-
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)] = 1;
-
-#if USE_PTHREADS
-    // Default context initialization state (user can override):
-    // - if main thread is creating the context, default to the context not being shared between threads - enabling sharing has performance overhead, because it forces the context to be OffscreenCanvas or OffscreenFramebuffer.
-    // - if a web worker is creating the context, default to using OffscreenCanvas if available, or proxying via Offscreen Framebuffer if not
-    if (ENVIRONMENT_IS_WORKER) {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread, 1/*EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK*/, 'i32') }}};
-#endif
-  },
-
-  _emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
-
-// In offscreen framebuffer mode, we implement these functions in C so that they enable
-// the proxying of GL commands. Otherwise, they are implemented here in JS.
-#if !(USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
-  emscripten_webgl_create_context__sig: 'iii',
-  emscripten_webgl_create_context: 'emscripten_webgl_do_create_context',
-
-  emscripten_webgl_get_current_context__sig: 'i',
-  emscripten_webgl_get_current_context: 'emscripten_webgl_do_get_current_context',
-
-  emscripten_webgl_commit_frame__sig: 'i',
-  emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
-#endif
-
-  // This code is called from the main proxying logic, which has a big switch
-  // for all the messages, one of which is this GL-using one. This won't be
-  // called if GL is not linked in, but also make sure to not add a dep on
-  // GL unnecessarily from here, as that would cause a linker error.
-  emscripten_webgl_do_create_context__deps: [
-#if LibraryManager.has('library_webgl.js')
-  '$GL',
-#endif
-  '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
-  // This function performs proxying manually, depending on the style of context that is to be created.
-  emscripten_webgl_do_create_context: function(target, attributes) {
-#if ASSERTIONS
-    assert(attributes);
-#endif
-    var contextAttributes = {};
-    var a = attributes >> 2;
-    contextAttributes['alpha'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)];
-    contextAttributes['depth'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)];
-    contextAttributes['stencil'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.stencil }}}>>2)];
-    contextAttributes['antialias'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)];
-    contextAttributes['premultipliedAlpha'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)];
-    contextAttributes['preserveDrawingBuffer'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}>>2)];
-    var powerPreference = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
-    contextAttributes['powerPreference'] = __emscripten_webgl_power_preferences[powerPreference];
-    contextAttributes['failIfMajorPerformanceCaveat'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}>>2)];
-    contextAttributes.majorVersion = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)];
-    contextAttributes.minorVersion = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)];
-    contextAttributes.enableExtensionsByDefault = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)];
-    contextAttributes.explicitSwapControl = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}>>2)];
-    contextAttributes.proxyContextToMainThread = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)];
-    contextAttributes.renderViaOffscreenBackBuffer = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)];
-
-    var canvas = __findCanvasEventTarget(target);
-
-#if GL_DEBUG
-    var targetStr = UTF8ToString(target);
-#endif
-
-#if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
-    // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
-    if (ENVIRONMENT_IS_PTHREAD) {
-      if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
-         (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}})) {
-        // When WebGL context is being proxied via the main thread, we must render using an offscreen FBO render target to avoid WebGL's
-        // "implicit swap when callback exits" behavior. TODO: If OffscreenCanvas is supported, explicitSwapControl=true and still proxying,
-        // then this can be avoided, since OffscreenCanvas enables explicit swap control.
-#if GL_DEBUG
-        if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}}) console.error('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
-        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}}) console.error('Specified canvas target "' + targetStr + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
-        console.error('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
-#endif
-        // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
-        if (typeof OffscreenCanvas === 'undefined') {
-          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i32') }}}
-          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i32') }}}
-        }
-        return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_CREATE_CONTEXT') }}}, target, attributes);
-      }
-    }
-#endif
-
-    if (!canvas) {
-#if GL_DEBUG
-      console.error('emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
-#endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
-    }
-
-#if OFFSCREENCANVAS_SUPPORT
-    if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
-
-#if GL_DEBUG
-    if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) console.log('emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "' + targetStr + '"');
-    else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) console.log('emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "' + targetStr + '"');
-#endif
-
-    if (contextAttributes.explicitSwapControl) {
-      var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas);
-
-      if (!supportsOffscreenCanvas) {
-#if OFFSCREEN_FRAMEBUFFER
-        if (!contextAttributes.renderViaOffscreenBackBuffer) {
-          contextAttributes.renderViaOffscreenBackBuffer = true;
-#if GL_DEBUG
-          console.error('emscripten_webgl_create_context: Performance warning, OffscreenCanvas is not supported but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
-#endif
-        }
-#else
-#if GL_DEBUG
-        console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
-#endif
-        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-#endif
-      }
-
-      if (canvas.transferControlToOffscreen) {
-#if GL_DEBUG
-        console.log('explicitSwapControl requested: canvas.transferControlToOffscreen() on canvas "' + targetStr + '" to get .commit() function and not rely on implicit WebGL swap');
-#endif
-        if (!canvas.controlTransferredOffscreen) {
-          GL.offscreenCanvases[canvas.id] = {
-            canvas: canvas.transferControlToOffscreen(),
-            canvasSharedPtr: _malloc(12),
-            id: canvas.id
-          };
-          canvas.controlTransferredOffscreen = true;
-        } else if (!GL.offscreenCanvases[canvas.id]) {
-#if GL_DEBUG
-          console.error('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
-#endif
-          return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-        }
-        canvas = GL.offscreenCanvases[canvas.id];
-      }
-    }
-#else // !OFFSCREENCANVAS_SUPPORT
-#if OFFSCREEN_FRAMEBUFFER
-    if (contextAttributes.explicitSwapControl && !contextAttributes.renderViaOffscreenBackBuffer) {
-      contextAttributes.renderViaOffscreenBackBuffer = true;
-#if GL_DEBUG
-      console.error('emscripten_webgl_create_context: Performance warning, not building with OffscreenCanvas support enabled but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
-#endif
-    }
-#else
-    if (contextAttributes.explicitSwapControl) {
-#if GL_DEBUG
-      console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
-#endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    }
-#endif // ~!OFFSCREEN_FRAMEBUFFER
-
-#endif // ~!OFFSCREENCANVAS_SUPPORT
-
-    var contextHandle = GL.createContext(canvas, contextAttributes);
-    return contextHandle;
-  },
-#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER
-  // Runs on the calling thread, proxies if needed.
-  emscripten_webgl_make_context_current_calling_thread: function(contextHandle) {
-    var success = GL.makeContextCurrent(contextHandle);
-    if (success) GL.currentContextIsProxied = false; // If succeeded above, we will have a local GL context from this thread (worker or main).
-    return success ? {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
-  },
-  // This function gets called in a pthread, after it has successfully activated (with make_current()) a proxied GL context to itself from the main thread.
-  // In this scenario, the pthread does not hold a high-level JS object to the GL context, because it lives on the main thread, in which case we record
-  // an integer pointer as a token value to represent the GL context activation from another thread. (when this function is called, the main browser thread
-  // has already accepted the GL context activation for our pthread, so that side is good)
-  _emscripten_proxied_gl_context_activated_from_main_browser_thread: function(contextHandle) {
-    GLctx = Module.ctx = GL.currentContext = contextHandle;
-    GL.currentContextIsProxied = true;
-  },
-#else
-  emscripten_webgl_make_context_current: function(contextHandle) {
-    var success = GL.makeContextCurrent(contextHandle);
-    return success ? {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
-  },
-#endif
-
-  emscripten_webgl_do_get_current_context: function() {
-    return GL.currentContext ? GL.currentContext.handle : 0;
-  },
-
-  emscripten_webgl_get_drawing_buffer_size_calling_thread: function(contextHandle, width, height) {
-    var GLContext = GL.getContext(contextHandle);
-
-    if (!GLContext || !GLContext.GLctx || !width || !height) {
-      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
-    }
-    {{{ makeSetValue('width', '0', 'GLContext.GLctx.drawingBufferWidth', 'i32') }}};
-    {{{ makeSetValue('height', '0', 'GLContext.GLctx.drawingBufferHeight', 'i32') }}};
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-  },
-
-#if USE_PTHREADS
-  emscripten_webgl_get_drawing_buffer_size_main_thread__proxy: 'sync',
-  emscripten_webgl_get_drawing_buffer_size_main_thread__sig: 'iiii',
-  emscripten_webgl_get_drawing_buffer_size_main_thread__deps: ['emscripten_webgl_get_drawing_buffer_size_calling_thread'],
-  emscripten_webgl_get_drawing_buffer_size_main_thread: function(contextHandle, width, height) { return _emscripten_webgl_get_drawing_buffer_size_calling_thread(contextHandle, width, height); },
-
-  emscripten_webgl_get_drawing_buffer_size__deps: ['emscripten_webgl_get_drawing_buffer_size_calling_thread', 'emscripten_webgl_get_drawing_buffer_size_main_thread'],
-  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
-    if (GL.contexts[contextHandle]) return _emscripten_webgl_get_drawing_buffer_size_calling_thread(contextHandle, width, height);
-    else _emscripten_webgl_get_drawing_buffer_size_main_thread(contextHandle, width, height);
-  },
-#else
-  emscripten_webgl_get_drawing_buffer_size__sig: 'iiii',
-  emscripten_webgl_get_drawing_buffer_size: 'emscripten_webgl_get_drawing_buffer_size_calling_thread',
-#endif
-
-  emscripten_webgl_do_commit_frame: function() {
-#if TRACE_WEBGL_CALLS
-    var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : function() { return 1; };
-    console.error('[Thread ' + threadId() + ', GL ctx: ' + GL.currentContext.handle + ']: emscripten_webgl_do_commit_frame()');
-#endif
-    if (!GL.currentContext || !GL.currentContext.GLctx) {
-#if GL_DEBUG
-      console.error('emscripten_webgl_commit_frame() failed: no GL context set current via emscripten_webgl_make_context_current()!');
-#endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-    }
-
-#if OFFSCREEN_FRAMEBUFFER
-    if (GL.currentContext.defaultFbo) {
-      GL.blitOffscreenFramebuffer(GL.currentContext);
-#if GL_DEBUG && OFFSCREENCANVAS_SUPPORT
-      if (GL.currentContext.GLctx.commit) console.error('emscripten_webgl_commit_frame(): Offscreen framebuffer should never have gotten created when canvas is in OffscreenCanvas mode, since it is redundant and not necessary');
-#endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-    }
-#endif
-    if (!GL.currentContext.attributes.explicitSwapControl) {
-#if GL_DEBUG
-      console.error('emscripten_webgl_commit_frame() cannot be called for canvases with implicit swap control mode!');
-#endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-    }
-    // We would do GL.currentContext.GLctx.commit(); here, but the current implementation
-    // in browsers has removed it - swap is implicit, so this function is a no-op for now
-    // (until/unless the spec changes).
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-  },
-
-  emscripten_webgl_get_context_attributes__deps: ['_emscripten_webgl_power_preferences'],
-  emscripten_webgl_get_context_attributes: function(c, a) {
-    if (!a) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
-    c = GL.contexts[c];
-    if (!c) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-    var t = c.GLctx;
-    if (!t) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-    t = t.getContextAttributes();
-
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 't.stencil', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 't.antialias', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 't.premultipliedAlpha', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 't.preserveDrawingBuffer', 'i32') }}};
-    var power = t['powerPreference'] && __emscripten_webgl_power_preferences.indexOf(t['powerPreference']);
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference, 'power', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'c.version', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
-#if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'c.attributes.enableExtensionsByDefault', 'i32') }}};
-#endif
-#if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'c.attributes.explicitSwapControl', 'i32') }}};
-#endif
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-  },
-
-  emscripten_webgl_destroy_context_calling_thread: function(contextHandle) {
-    if (GL.currentContext == contextHandle) GL.currentContext = null;
-    GL.deleteContext(contextHandle);
-  },
-
-#if USE_PTHREADS
-  emscripten_webgl_destroy_context_main_thread__proxy: 'sync',
-  emscripten_webgl_destroy_context_main_thread__sig: 'vi',
-  emscripten_webgl_destroy_context_main_thread__deps: ['emscripten_webgl_destroy_context_calling_thread'],
-  emscripten_webgl_destroy_context_main_thread: function(contextHandle) { return _emscripten_webgl_destroy_context_calling_thread(contextHandle); },
-
-  emscripten_webgl_destroy_context__deps: ['emscripten_webgl_destroy_context_main_thread', 'emscripten_webgl_destroy_context_calling_thread', 'emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
-  emscripten_webgl_destroy_context: function(contextHandle) {
-    if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
-    return GL.contexts[contextHandle] ? _emscripten_webgl_destroy_context_calling_thread(contextHandle) : _emscripten_webgl_destroy_context_main_thread(contextHandle);
-  },
-#else
-  emscripten_webgl_destroy_context__sig: 'vi',
-  emscripten_webgl_destroy_context: 'emscripten_webgl_destroy_context_calling_thread',
-#endif
-
-  emscripten_webgl_enable_extension_calling_thread__deps: [
-#if MIN_WEBGL_VERSION == 1
-    '_webgl_enable_ANGLE_instanced_arrays',
-    '_webgl_enable_OES_vertex_array_object',
-    '_webgl_enable_WEBGL_draw_buffers',
-#endif
-#if MAX_WEBGL_VERSION >= 2
-    '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
-#endif
-  ],
-  emscripten_webgl_enable_extension_calling_thread: function(contextHandle, extension) {
-    var context = GL.getContext(contextHandle);
-    var extString = UTF8ToString(extension);
-#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-    if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
-#endif
-
-#if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
-    // Switch-board that pulls in code for all GL extensions, even if those are not used :/
-    // Build with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS = 0 to avoid this.
-
-#if MIN_WEBGL_VERSION == 1
-    // Obtain function entry points to WebGL 1 extension related functions.
-    if (extString == 'ANGLE_instanced_arrays') __webgl_enable_ANGLE_instanced_arrays(GLctx);
-    if (extString == 'OES_vertex_array_object') __webgl_enable_OES_vertex_array_object(GLctx);
-    if (extString == 'WEBGL_draw_buffers') __webgl_enable_WEBGL_draw_buffers(GLctx);
-#endif
-
-#if MAX_WEBGL_VERSION >= 2
-    if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
-#endif
-
-#else
-
-#if ASSERTIONS || GL_ASSERTIONS
-    if (['ANGLE_instanced_arrays',
-         'OES_vertex_array_object',
-         'WEBGL_draw_buffers',
-         'WEBGL_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
-      console.error('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
-                    + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
-    }
-#endif
-
-#endif
-
-    var ext = context.GLctx.getExtension(extString);
-    return !!ext;
-  },
-
-  emscripten_supports_offscreencanvas: function() {
-#if OFFSCREENCANVAS_SUPPORT
-    return typeof OffscreenCanvas !== 'undefined';
-#else
-    return 0;
-#endif
-  },
-
-#if USE_PTHREADS
-  emscripten_webgl_enable_extension_main_thread__proxy: 'sync',
-  emscripten_webgl_enable_extension_main_thread__sig: 'iii',
-  emscripten_webgl_enable_extension_main_thread__deps: ['emscripten_webgl_enable_extension_calling_thread'],
-  emscripten_webgl_enable_extension_main_thread: function(contextHandle, extension) { return _emscripten_webgl_enable_extension_calling_thread(contextHandle, extension); },
-
-  emscripten_webgl_enable_extension__deps: ['emscripten_webgl_enable_extension_main_thread', 'emscripten_webgl_enable_extension_calling_thread'],
-  emscripten_webgl_enable_extension: function(contextHandle, extension) {
-    return GL.contexts[contextHandle] ? _emscripten_webgl_enable_extension_calling_thread(contextHandle, extension) : _emscripten_webgl_enable_extension_main_thread(contextHandle, extension);
-  },
-#else
-  emscripten_webgl_enable_extension__sig: 'iii',
-  emscripten_webgl_enable_extension: 'emscripten_webgl_enable_extension_calling_thread',
-#endif
-
-  _registerWebGlEventCallback__deps: ['$JSEvents', '_findEventTarget'],
-  _registerWebGlEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
-#if USE_PTHREADS
-    targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
-#endif
-
-#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (!target) target = Module['canvas'];
-#endif
-
-    var webGlEventHandlerFunc = function(ev) {
-      var e = ev || event;
-
-#if USE_PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, 0, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, 0, userData)) e.preventDefault();
-    };
-
-    var eventHandler = {
-      target: __findEventTarget(target),
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
-      handlerFunc: webGlEventHandlerFunc,
-      useCapture: useCapture
-    };
-    JSEvents.registerOrRemoveHandler(eventHandler);
-  },
-
-  emscripten_set_webglcontextlost_callback_on_thread__proxy: 'sync',
-  emscripten_set_webglcontextlost_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_webglcontextlost_callback_on_thread__deps: ['_registerWebGlEventCallback'],
-  emscripten_set_webglcontextlost_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
-    __registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST') }}}, "webglcontextlost", targetThread);
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-  },
-
-  emscripten_set_webglcontextrestored_callback_on_thread__proxy: 'sync',
-  emscripten_set_webglcontextrestored_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_webglcontextrestored_callback_on_thread__deps: ['_registerWebGlEventCallback'],
-  emscripten_set_webglcontextrestored_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
-    __registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED') }}}, "webglcontextrestored", targetThread);
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-  },
-
-  emscripten_is_webgl_context_lost__proxy: 'sync',
-  emscripten_is_webgl_context_lost__sig: 'ii',
-  emscripten_is_webgl_context_lost: function(target) {
-#if USE_PTHREADS && ASSERTIONS && OFFSCREENCANVAS_SUPPORT
-    // TODO: for Offscreencanvas case, must first search locally in the calling thread if the given context is an OffscreenCanvas context on the calling thread,
-    // and only if it's not, then try to proxy the call to main thread. I.e. this function cannot be unconditionally 'sync' proxied.
-    if (ENVIRONMENT_IS_PTHREAD) warnOnce('TODO: emscripten_is_webgl_context_lost() does not yet work properly in pthreads with OffscreenCanvas contexts');
-#endif
-    return !GL.contexts[target] || GL.contexts[target].GLctx.isContextLost(); // No context ~> lost context.
-  },
-
-#if USE_WEBGPU
-  // TODO(kainino0x): make it possible to actually create devices through webgpu.h
-  emscripten_webgpu_get_device__deps: ['$WebGPU'],
-  emscripten_webgpu_get_device__postset: 'WebGPU.initManagers();',
-  emscripten_webgpu_get_device: function() {
-    assert(Module['preinitializedWebGPUDevice']);
-    return WebGPU["mgrDevice"].create(Module['preinitializedWebGPUDevice']);
-  },
-#endif
 
 #if USE_PTHREADS
   emscripten_set_canvas_element_size_calling_thread__deps: ['$JSEvents', 'emscripten_set_offscreencanvas_size_on_target_thread', '_findCanvasEventTarget'],

@@ -655,7 +655,7 @@ var LZ4 = 0;
 // DISABLE_EXCEPTION_CATCHING = 0 - generate code to actually catch exceptions
 // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
 // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
-//                                  catching in whitelist
+//                                  catching in list of allowed functions
 // XXX note that this removes *catching* of exceptions, which is the main
 //     issue for speed, but you should build source files with
 //     -fno-exceptions to really get rid of all exceptions code overhead,
@@ -668,7 +668,7 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 // Enables catching exception in the listed functions only, if
 // DISABLE_EXCEPTION_CATCHING = 2 is set
 // [compile+link] - affects user code at compile and system libraries at link
-var EXCEPTION_CATCHING_WHITELIST = [];
+var EXCEPTION_CATCHING_ALLOWED = [];
 
 // By default we handle exit() in node, by catching the Exit exception. However,
 // this means we catch all process exceptions. If you disable this, then we no
@@ -691,10 +691,10 @@ var NODEJS_CATCH_REJECTION = 1;
 // This allows to inject some async functions to the C code that appear to be sync
 // e.g. emscripten_sleep
 // On fastcomp this uses the Asyncify IR transform.
-// On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
+// On upstream this uses the Asyncify pass in Binaryen.
 var ASYNCIFY = 0;
 
-// Imports which can do a sync operation, in addition to the default ones that
+// Imports which can do an sync operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
 // mention them to here, or else they will not work (in ASSERTIONS builds an
 // error will be shown).
@@ -714,7 +714,7 @@ var ASYNCIFY_IGNORE_INDIRECT = 0;
 // In that case, you should increase this size.
 var ASYNCIFY_STACK_SIZE = 4096;
 
-// If the Asyncify blacklist is provided, then the functions in it will not
+// If the Asyncify remove-list is provided, then the functions in it will not
 // be instrumented even if it looks like they need to. This can be useful
 // if you know things the whole-program analysis doesn't, like if you
 // know certain indirect calls are safe and won't unwind. But if you
@@ -735,13 +735,22 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
 // Simple '*' wildcard matching is supported.
-var ASYNCIFY_BLACKLIST = [];
+var ASYNCIFY_REMOVE = [];
 
-// If the Asyncify whitelist is provided, then *only* the functions in the list
-// will be instrumented. Like the blacklist, getting this wrong will break
+// Functions in the Asyncify add-list are added to the list of instrumented
+// functions, that is, they will be instrumented even if otherwise asyncify
+// thinks they don't need to be. As by default everything will be instrumented
+// in the safest way possible, this is only useful if you use IGNORE_INDIRECT
+// and use this list to fix up some indirect calls that *do* need to be
+// instrumented.
+// See notes on ASYNCIFY_REMOVE about the names.
+var ASYNCIFY_ADD = [];
+
+// If the Asyncify only-list is provided, then *only* the functions in the list
+// will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
-// See notes on ASYNCIFY_BLACKLIST about the names.
-var ASYNCIFY_WHITELIST = [];
+// See notes on ASYNCIFY_REMOVE about the names.
+var ASYNCIFY_ONLY = [];
 
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
@@ -1192,6 +1201,9 @@ var USE_GLFW = 2;
 // In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
 // the WebAssembly file is loaded if browser/shell supports it. Otherwise the
 // .wasm.js fallback will be used.
+//
+// If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
+// the page will be reloaded in Wasm2JS mode.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
@@ -1571,8 +1583,8 @@ var ASMFS = 0;
 //
 // When using code that depends on this option, your Content Security Policy may
 // need to be updated. Specifically, embedding asm.js requires the script-src
-// directive to whitelist 'unsafe-inline', and using a Worker requires the
-// child-src directive to whitelist blob:. If you aren't using Content Security
+// directive to allow 'unsafe-inline', and using a Worker requires the
+// child-src directive to allow blob:. If you aren't using Content Security
 // Policy, or your CSP header doesn't include either script-src or child-src,
 // then you can safely ignore this warning.
 var SINGLE_FILE = 0;
@@ -1752,6 +1764,14 @@ var DEFAULT_TO_CXX = 1;
 // long double printing precision.
 var PRINTF_LONG_DOUBLE = 0;
 
+// Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
+// resulting in a .c file that you can compile with a C compiler to get a
+// native executable that works the same as the normal js+wasm. This will also
+// emit the wasm2c .h file. The output filenames will be X.wasm.c, X.wasm.h
+// if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
+// which avoids trampling a C file).
+var WASM2C = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
@@ -1806,4 +1826,7 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
   ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
+  ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
+  ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],
+  ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
 ];

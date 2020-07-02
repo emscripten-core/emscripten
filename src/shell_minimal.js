@@ -54,8 +54,9 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 #endif
 
 #if !SINGLE_FILE
-// Wasm or Wasm2JS loading:
 #if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
+// Wasm or Wasm2JS loading:
+
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
@@ -98,8 +99,8 @@ if (ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-// asm.js loading in fastcomp backend:
 #if !WASM && !WASM_BACKEND
+// asm.js loading in fastcomp backend:
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {

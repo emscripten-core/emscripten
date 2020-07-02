@@ -57,10 +57,16 @@ else:
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
+import clang_native
+import jsrun
 import parallel_testsuite
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete, asbytes, safe_copy, Settings
-from tools import jsrun, shared, line_endings, building
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
+from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
+from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
+from tools.shared import EM_BUILD_VERBOSE, CLANG_CC
+from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete
+from tools.shared import asbytes, safe_copy, Settings
+from tools import shared, line_endings, building
 
 
 def path_from_root(*pathelems):
@@ -94,6 +100,8 @@ EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
 EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
 EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
+
+EMTEST_LACKS_NATIVE_CLANG = os.getenv('EMTEST_LACKS_NATIVE_CLANG')
 
 EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0'))
 
@@ -175,6 +183,17 @@ def no_asmjs(note=''):
 
   def decorated(f):
     return skip_if(f, 'is_wasm', note, negate=True)
+  return decorated
+
+
+def requires_native_clang(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    if EMTEST_LACKS_NATIVE_CLANG:
+      return self.skipTest('native clang tests are disabled')
+    return func(self, *args, **kwargs)
+
   return decorated
 
 
@@ -512,9 +531,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           for filename in filenames:
             temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
 
-        # Our leak detection will pick up *any* new temp files in the temp dir. They may not be due to
-        # us, but e.g. the browser when running browser tests. Until we figure out a proper solution,
-        # ignore some temp file names that we see on our CI infrastructure.
+        # Our leak detection will pick up *any* new temp files in the temp dir.
+        # They may not be due to us, but e.g. the browser when running browser
+        # tests. Until we figure out a proper solution, ignore some temp file
+        # names that we see on our CI infrastructure.
         ignorable_file_prefixes = [
           '/tmp/tmpaddon',
           '/tmp/circleci-no-output-timeout',
@@ -528,12 +548,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           for f in left_over_files:
             print('leaked file: ' + f, file=sys.stderr)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
-
-      # Make sure we don't leave stuff around
-      # if not self.has_prev_ll:
-      #   for temp_file in os.listdir(TEMP_DIR):
-      #     assert not temp_file.endswith('.ll'), temp_file
-      #     # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
   def get_setting(self, key):
     if key in self.settings_mods:
@@ -1215,14 +1229,13 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       js_file = filename + '.o.js'
     self.assertExists(js_file)
 
-    # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
-    js_engines = self.filtered_js_engines(js_engines)
+    engines = self.filtered_js_engines(js_engines)
     # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
-    if len(js_engines) > 1 and not self.use_all_engines:
-      if SPIDERMONKEY_ENGINE in js_engines and not self.is_wasm_backend():
-        js_engines = [SPIDERMONKEY_ENGINE]
+    if len(engines) > 1 and not self.use_all_engines:
+      if SPIDERMONKEY_ENGINE in engines and not self.is_wasm_backend():
+        engines = [SPIDERMONKEY_ENGINE]
       else:
-        js_engines = js_engines[:1]
+        engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines
@@ -1230,10 +1243,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       wasm_engines = shared.WASM_ENGINES
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
-      js_engines += wasm_engines
-    if len(js_engines) == 0:
+      engines += wasm_engines
+      # wasm2c requires a working clang install which is missing on CI, or to
+      # use msvc which wasm2c doesn't support yet
+      if self.get_setting('WASM2C') and not WINDOWS:
+        # the "engine" to run wasm2c builds is clang that compiles the c
+        engines += [[CLANG_CC]]
+    if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
-    for engine in js_engines:
+    for engine in engines:
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
@@ -1772,7 +1790,10 @@ def build_library(name,
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-  env = building.get_building_env(native, True, cflags=cflags)
+  if native:
+    env = clang_native.get_clang_native_env()
+  else:
+    env = building.get_building_env(cflags=cflags)
   for k, v in env_init.items():
     env[k] = v
   if configure:

@@ -264,6 +264,15 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     :returns: A std::vector<T> made from the javascript array
 
 
+  .. cpp:function:: val await() const
+
+    Pauses the C++ to ``await`` the ``Promise`` / thenable.
+
+    :returns: The fulfilled value.
+
+    This method requires :ref:`Asyncify` to be enabled.
+
+
 .. cpp:type: EMSCRIPTEN_SYMBOL(name)
 
   **HamishW**-Replace with description.

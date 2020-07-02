@@ -101,6 +101,7 @@ namespace emscripten {
             bool _emval_in(EM_VAL item, EM_VAL object);
             bool _emval_delete(EM_VAL object, EM_VAL property);
             bool _emval_throw(EM_VAL object);
+            EM_VAL _emval_await(EM_VAL promise);
         }
 
         template<const char* address>
@@ -527,6 +528,10 @@ namespace emscripten {
 
         void throw_() const {
             internal::_emval_throw(handle);
+        }
+
+        val await() const {
+            return val(internal::_emval_await(handle));
         }
 
     private:

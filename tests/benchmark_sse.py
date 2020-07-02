@@ -1,19 +1,22 @@
-#!/usr/bin/env python
-# flake8: noqa
+#!/usr/bin/env python3
 # Copyright 2020 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import tempfile, os, sys, shutil, json, re
+import json
+import os
+import re
+import shutil
+import sys
+import tempfile
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
-sys.path += [path_from_root('')]
-from tools import shared, building
+sys.path.append(__rootpath__)
+
 from tools.shared import PYTHON, WINDOWS, CLANG_CXX, EMCC, PIPE, V8_ENGINE
-from tools.shared import Popen
+from tools.shared import Popen, path_from_root, run_process
+import clang_native
 
 temp_dir = tempfile.mkdtemp()
 
@@ -26,33 +29,29 @@ native_info = Popen(['clang', '-v'], stdout=PIPE, stderr=PIPE).communicate()
 # Emscripten info
 emscripten_info = Popen([EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
 
+
 def run_benchmark(benchmark_file, results_file, build_args):
     # Run native build
     out_file = os.path.join(temp_dir, 'benchmark_sse_native')
-    if WINDOWS: out_file += '.exe'
-    cmd = [CLANG_CXX] + building.get_native_building_args() + [benchmark_file, '-O3', '-o', out_file]
-    print 'Building native version of the benchmark:'
-    print ' '.join(cmd)
-    build = Popen(cmd, env=building.get_building_env(native=True))
-    out = build.communicate()
-    if build.returncode != 0:
-        sys.exit(1)
+    if WINDOWS:
+        out_file += '.exe'
+    cmd = [CLANG_CXX] + clang_native.get_clang_native_args() + [benchmark_file, '-O3', '-o', out_file]
+    print('Building native version of the benchmark:')
+    print(' '.join(cmd))
+    run_process(cmd, env=clang_native.get_clang_native_env())
 
     native_results = Popen([out_file], stdout=PIPE, stderr=PIPE).communicate()
-    print native_results[0]
+    print(native_results[0])
 
     # Run emscripten build
     out_file = os.path.join(temp_dir, 'benchmark_sse_html.js')
     cmd = [EMCC, benchmark_file, '-O3', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file] + build_args
-    print 'Building Emscripten version of the benchmark:'
-    print ' '.join(cmd)
-    build = Popen(cmd)
-    out = build.communicate()
-    if build.returncode != 0:
-        sys.exit(1)
+    print('Building Emscripten version of the benchmark:')
+    print(' '.join(cmd))
+    run_process(cmd)
 
     cmd = V8_ENGINE + ['--experimental-wasm-simd', os.path.basename(out_file)]
-    print ' '.join(cmd)
+    print(' '.join(cmd))
     old_dir = os.getcwd()
     os.chdir(os.path.dirname(out_file))
     wasm_results = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
@@ -62,12 +61,14 @@ def run_benchmark(benchmark_file, results_file, build_args):
         raise Exception('Unable to run benchmark in V8!')
 
     if not wasm_results[0].strip():
-        print wasm_results[1]
+        print(wasm_results[1])
         sys.exit(1)
 
-    print wasm_results[0]
+    print(wasm_results[0])
+
     def strip_comments(text):
-        return re.sub('//.*?\n|/\*.*?\*/', '', text, re.S)
+        return re.sub('//.*?\n|/\*.*?\*/', '', text, re.S) # noqa
+
     benchmark_results = strip_comments(wasm_results[0])
 
     # Strip out unwanted print output.
@@ -75,16 +76,16 @@ def run_benchmark(benchmark_file, results_file, build_args):
     if '*************************' in benchmark_results:
         benchmark_results = benchmark_results[:benchmark_results.find('*************************')].strip()
 
-    print benchmark_results
+    print(benchmark_results)
 
     shutil.rmtree(temp_dir)
 
     native_results = json.loads(native_results[0])
-    benchmark_results = benchmark_results[benchmark_results.index('{'):benchmark_results.rindex('}')+1]
+    benchmark_results = benchmark_results[benchmark_results.index('{'):benchmark_results.rindex('}') + 1]
     wasm_results = json.loads(benchmark_results)
 
-    native_workload = native_results['workload']
-    html_workload = wasm_results['workload']
+    # native_workload = native_results['workload']
+    # html_workload = wasm_results['workload']
 
     html = '''<html><head></head><body><h1>SSE JavaScript Benchmark</h1>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
@@ -99,24 +100,29 @@ def run_benchmark(benchmark_file, results_file, build_args):
     charts_native = {}
     charts_html = {}
     for result in native_results['results']:
-    	ch = result['chart']
-    	if ch not in charts_native: charts_native[ch] = []
-    	charts_native[ch] += [result]
+        ch = result['chart']
+        if ch not in charts_native:
+            charts_native[ch] = []
+        charts_native[ch] += [result]
     for result in wasm_results['results']:
-    	ch = result['chart']
-    	if ch not in charts_html: charts_html[ch] = []
-    	charts_html[ch] += [result]
+        ch = result['chart']
+        if ch not in charts_html:
+            charts_html[ch] = []
+        charts_html[ch] += [result]
 
     def find_result_in_category(results, category):
-    	for result in results:
-    		if result['category'] == category:
-    			return result
-    	return None
+        for result in results:
+            if result['category'] == category:
+                return result
+        return None
 
     def format_comparison(a, b):
-    	if a < b and a != 0: return "<span style='color:green;font-weight:bold;'> {:10.2f}".format(b/a) + 'x FASTER</span>'
-    	elif b != 0: return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(a/b) + 'x SLOWER</span>'
-    	else: return "<span style='color:red;font-weight:bold;'> NaN </span>"
+        if a < b and a != 0:
+            return "<span style='color:green;font-weight:bold;'> {:10.2f}".format(b / a) + 'x FASTER</span>'
+        elif b != 0:
+            return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(a / b) + 'x SLOWER</span>'
+        else:
+            return "<span style='color:red;font-weight:bold;'> NaN </span>"
 
     chartNumber = 0
 
@@ -126,54 +132,54 @@ def run_benchmark(benchmark_file, results_file, build_args):
     total_time_html_simd = 0
 
     for chart_name in charts_native.keys():
-    	# Extract data for each chart.
-    	categories = []
-    	nativeScalarResults = []
-    	nativeSimdResults = []
-    	htmlScalarResults = []
-    	htmlSimdResults = []
-    	native_results = charts_native[chart_name]
-    	wasm_results = charts_html[chart_name]
-    	textual_results_native = '<p>'
-    	textual_results_html = '<p>'
-    	textual_results_html2 = '<p>'
-    	textual_results_html3 = '<p>'
-    	for result in native_results:
-    		categories += ["'" + result['category'] + "'"]
-    		nsc = result['scalar']
-    		nsi = result['simd']
-    		nativeScalarResults += [str(nsc)]
-    		nativeSimdResults += [str(nsi)]
-    		html_result = find_result_in_category(wasm_results, result['category'])
-    		textual_results_native += 'Native ' + result['category'] + ': ' + "{:10.4f}".format(nsc) + 'ns -> ' + "{:10.4f}".format(nsi) + 'ns. '
-    		textual_results_native += 'Native SSE is ' + format_comparison(nsi, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
+        # Extract data for each chart.
+        categories = []
+        nativeScalarResults = []
+        nativeSimdResults = []
+        htmlScalarResults = []
+        htmlSimdResults = []
+        native_results = charts_native[chart_name]
+        wasm_results = charts_html[chart_name]
+        textual_results_native = '<p>'
+        textual_results_html = '<p>'
+        textual_results_html2 = '<p>'
+        textual_results_html3 = '<p>'
+        for result in native_results:
+            categories += ["'" + result['category'] + "'"]
+            nsc = result['scalar']
+            nsi = result['simd']
+            nativeScalarResults += [str(nsc)]
+            nativeSimdResults += [str(nsi)]
+            html_result = find_result_in_category(wasm_results, result['category'])
+            textual_results_native += 'Native ' + result['category'] + ': ' + "{:10.4f}".format(nsc) + 'ns -> ' + "{:10.4f}".format(nsi) + 'ns. '
+            textual_results_native += 'Native SSE is ' + format_comparison(nsi, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
 
-    		if html_result is not None:
-    			hsc = html_result['scalar']
-    			htmlScalarResults += [str(hsc)]
-    			hsi = html_result['simd']
-    			htmlSimdResults += [str(hsi)]
-    			textual_results_html += 'JS ' + result['category'] + ': ' + "{:10.4f}".format(hsc) + 'ns -> ' + "{:10.4f}".format(hsi) + 'ns. '
-    			textual_results_html += 'JS SSE is ' + format_comparison(hsi, hsc) + ' than JS scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
-    			textual_results_html2 += 'JS ' + result['category'] + ': JS scalar is ' + format_comparison(hsc, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
-    			textual_results_html3 += 'JS ' + result['category'] + ': JS SSE is ' + format_comparison(hsi, nsi) + ' than native SSE. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
-    			total_time_native_scalar += nsc
-    			total_time_native_simd += nsi
-    			total_time_html_scalar += hsc
-    			total_time_html_simd += hsi
-    		else:
-    			htmlScalarResults += [str(-1)]
-    			htmlSimdResults += [str(-1)]
+            if html_result is not None:
+                hsc = html_result['scalar']
+                htmlScalarResults += [str(hsc)]
+                hsi = html_result['simd']
+                htmlSimdResults += [str(hsi)]
+                textual_results_html += 'JS ' + result['category'] + ': ' + "{:10.4f}".format(hsc) + 'ns -> ' + "{:10.4f}".format(hsi) + 'ns. '
+                textual_results_html += 'JS SSE is ' + format_comparison(hsi, hsc) + ' than JS scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
+                textual_results_html2 += 'JS ' + result['category'] + ': JS scalar is ' + format_comparison(hsc, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
+                textual_results_html3 += 'JS ' + result['category'] + ': JS SSE is ' + format_comparison(hsi, nsi) + ' than native SSE. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
+                total_time_native_scalar += nsc
+                total_time_native_simd += nsi
+                total_time_html_scalar += hsc
+                total_time_html_simd += hsi
+            else:
+                htmlScalarResults += [str(-1)]
+                htmlSimdResults += [str(-1)]
 
-    	chartNumber += 1
-    	html += '<div id="chart'+str(chartNumber)+'" style="width:100%; height:400px; margin-top: 100px;"></div>'
-    	html += '''<script>$(function () { 
+        chartNumber += 1
+        html += '<div id="chart' + str(chartNumber) + '" style="width:100%; height:400px; margin-top: 100px;"></div>'
+        html += '''<script>$(function () {
         $('#chart''' + str(chartNumber) + '''').highcharts({
             chart: {
                 type: 'column'
             },
             title: {
-                text: "'''+ chart_name + '''"
+                text: "''' + chart_name + '''"
             },
             subtitle: {
                 text: 'Time per operation in nanoseconds'
@@ -225,7 +231,7 @@ def run_benchmark(benchmark_file, results_file, build_args):
     # Final overall score
 
     html += '<div id="overallscore" style="width:100%; height:400px; margin-top: 100px;"></div>'
-    html += '''<script>$(function () { 
+    html += '''<script>$(function () {
         $('#overallscore').highcharts({
             chart: {
                 type: 'column'
@@ -262,15 +268,15 @@ def run_benchmark(benchmark_file, results_file, build_args):
 
             }, {
                 name: 'Native SSE',
-                data: [''' + (str(total_time_native_simd/total_time_native_scalar) if total_time_native_scalar != 0 else 'N/A') + ''']
+                data: [''' + (str(total_time_native_simd / total_time_native_scalar) if total_time_native_scalar != 0 else 'N/A') + ''']
 
             }, {
                 name: 'JS scalar',
-                data: [''' + (str(total_time_html_scalar/total_time_native_scalar) if total_time_native_scalar != 0 else 'N/A') + ''']
+                data: [''' + (str(total_time_html_scalar / total_time_native_scalar) if total_time_native_scalar != 0 else 'N/A') + ''']
 
             }, {
                 name: 'JS SSE',
-                data: [''' + (str(total_time_html_simd/total_time_native_scalar) if total_time_native_scalar != 0 else 'N/A') + ''']
+                data: [''' + (str(total_time_html_simd / total_time_native_scalar) if total_time_native_scalar != 0 else 'N/A') + ''']
 
             }]
         });
@@ -279,7 +285,8 @@ def run_benchmark(benchmark_file, results_file, build_args):
     html += '</body></html>'
 
     open(results_file, 'w').write(html)
-    print 'Wrote ' + str(len(html)) + ' bytes to file ' + results_file + '.'
+    print('Wrote ' + str(len(html)) + ' bytes to file ' + results_file + '.')
+
 
 if __name__ == '__main__':
     suite = sys.argv[1].lower() if len(sys.argv) == 2 else None

@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import sys
 import tempfile
 
@@ -30,7 +31,7 @@ if sys.version_info[0] == 3 and sys.version_info < (3, 5):
 
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
-from . import jsrun, cache, tempfiles, colored_logger
+from . import cache, tempfiles, colored_logger
 from . import diagnostics
 
 
@@ -214,6 +215,16 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", ' '.join(cmd), str(e))
 
 
+def run_js_tool(filename, jsargs=[], *args, **kw):
+  """Execute a javascript tool.
+
+  This is used by emcc to run parts of the build process that are written
+  implemented in javascript.
+  """
+  command = NODE_JS + [filename] + jsargs
+  return check_call(command, *args, **kw).stdout
+
+
 # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
 def which(program):
   def is_exe(fpath):
@@ -244,6 +255,25 @@ def which(program):
             return exe_file + suffix
 
   return None
+
+
+# Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
+# this can most likely be moved into the tests/jsrun.py.
+def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
+  start = time.time()
+  if timeout is not None:
+    while time.time() - start < timeout and proc.poll() is None:
+      time.sleep(0.1)
+    if proc.poll() is None:
+      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
+      raise Exception("Timed out: " + note)
+  stdout, stderr = proc.communicate()
+  out = ['' if o is None else o for o in (stdout, stderr)]
+  if throw_on_failure and proc.returncode != 0:
+    raise subprocess.CalledProcessError(proc.returncode, ' '.join(note_args), stdout, stderr)
+  if TRACK_PROCESS_SPAWNS:
+    logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
+  return '\n'.join(out) if full_output else out[0]
 
 
 def generate_config(path, first_time=False):
@@ -463,17 +493,18 @@ def env_with_node_in_path():
 
 
 def check_node_version():
-  jsrun.check_engine(NODE_JS)
   try:
     actual = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
-    if version >= EXPECTED_NODE_VERSION:
-      return True
-    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
-    return False
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return False
+
+  if version < EXPECTED_NODE_VERSION:
+    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    return False
+
+  return True
 
 
 def set_version_globals():
@@ -501,8 +532,10 @@ def perform_sanify_checks():
   logger.info('(Emscripten: Running sanity checks)')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
-    if not jsrun.check_engine(NODE_JS):
-      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s', NODE_JS, EM_CONFIG)
+    try:
+      run_process(NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
+    except Exception as e:
+      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', NODE_JS, config_file_location, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_AS, LLVM_NM]:
@@ -845,28 +878,6 @@ def get_cflags(user_args, cxx):
   return c_opts + emsdk_cflags(user_args, cxx)
 
 
-# Utilities
-def run_js(filename, engine=None, *args, **kw):
-  if engine is None:
-    engine = JS_ENGINES[0]
-  return jsrun.run_js(filename, engine, *args, **kw)
-
-
-def expand_byte_size_suffixes(value):
-  """Given a string with KB/MB size suffixes, such as "32MB", computes how
-  many bytes that is and returns it as an integer.
-  """
-  SIZE_SUFFIXES = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
-  match = re.match(r'\s*(\d+)\s*([kmgt]?b)$', value, re.I)
-  if not match:
-    try:
-      return int(value)
-    except ValueError:
-      raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
-  value, suffix = match.groups()
-  return int(value) * SIZE_SUFFIXES[suffix.lower()]
-
-
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 class SettingsManager(object):
 
@@ -979,7 +990,9 @@ class SettingsManager(object):
 
       if attr not in self.attrs:
         msg = "Attempt to set a non-existent setting: '%s'\n" % attr
-        suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
+        suggestions = difflib.get_close_matches(attr, list(self.attrs.keys()))
+        suggestions = [s for s in suggestions if s not in self.legacy_settings]
+        suggestions = ', '.join(suggestions)
         if suggestions:
           msg += ' - did you mean one of %s?\n' % suggestions
         msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
@@ -1234,16 +1247,6 @@ class JS(object):
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
-  def make_extcall(sig, named=True):
-    args = ','.join(['a' + str(i) for i in range(1, len(sig))])
-    args = 'index' + (',' if args else '') + args
-    # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-    ret = '''function%s(%s) {
-  %sModule["dynCall_%s"](%s);
-}''' % ((' extCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
-    return ret
-
-  @staticmethod
   def make_jscall(sig):
     fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
     args = (',' if fnargs else '') + fnargs
@@ -1264,27 +1267,11 @@ function jsCall_%s(index%s) {
 
   @staticmethod
   def make_invoke(sig, named=True):
-    if sig == 'X':
-      # 'X' means the generic unknown signature, used in wasm dynamic linking
-      # to indicate an invoke that the main JS may not have defined, so we
-      # go through this (which may be slower, as we don't declare the
-      # arguments explicitly). In non-wasm dynamic linking, the other modules
-      # have JS and so can define their own invokes to be linked in.
-      # This only makes sense in function pointer emulation mode, where we
-      # can do a direct table call.
-      assert Settings.WASM
-      assert Settings.WASM_BACKEND or Settings.EMULATED_FUNCTION_POINTERS
-      args = ''
-      body = '''
-        var args = Array.prototype.slice.call(arguments);
-        return wasmTable.get(args[0]).apply(null, args.slice(1));
-      '''
-    else:
-      legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
-      args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
-      args = 'index' + (',' if args else '') + args
-      ret = 'return ' if sig[0] != 'v' else ''
-      body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
+    legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
+    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
+    args = 'index' + (',' if args else '') + args
+    ret = 'return ' if sig[0] != 'v' else ''
+    body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     if Settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
@@ -1550,21 +1537,22 @@ def read_and_preprocess(filename, expand_macros=False):
   #       we only want the actual settings, hence the [1::2] slice operation.
   settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
   settings_file = os.path.join(temp_dir, 'settings.js')
-  open(settings_file, 'w').write(settings_str)
+  with open(settings_file, 'w') as f:
+    f.write(settings_str)
 
   # Run the JS preprocessor
   # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
   # and shell.html is bigger than that!
   # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
-  (path, file) = os.path.split(filename)
-  if not path:
-    path = None
+  dirname, filename = os.path.split(filename)
+  if not dirname:
+    dirname = None
   stdout = os.path.join(temp_dir, 'stdout')
-  args = [settings_file, file]
+  args = [settings_file, filename]
   if expand_macros:
     args += ['--expandMacros']
 
-  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
+  run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
   out = open(stdout, 'r').read()
 
   return out
@@ -1716,7 +1704,12 @@ else:
     exit_with_error('emscripten config file not found: ' + CONFIG_FILE)
 
 parse_config_file()
-SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
+# Engine tweaks
+if SPIDERMONKEY_ENGINE:
+  new_spidermonkey = SPIDERMONKEY_ENGINE
+  if '-w' not in str(new_spidermonkey):
+    new_spidermonkey += ['-w']
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
@@ -1754,6 +1747,7 @@ else:
 # 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
 # 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
 EM_BUILD_VERBOSE = int(os.getenv('EM_BUILD_VERBOSE', '0'))
+TRACK_PROCESS_SPAWNS = EM_BUILD_VERBOSE >= 3
 
 set_version_globals()
 
@@ -1809,13 +1803,6 @@ ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-emscripten'
 
 check_vanilla()
-
-# Engine tweaks
-if SPIDERMONKEY_ENGINE:
-  new_spidermonkey = SPIDERMONKEY_ENGINE
-  if '-w' not in str(new_spidermonkey):
-    new_spidermonkey += ['-w']
-  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 
 Settings = SettingsManager()
 verify_settings()
