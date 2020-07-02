@@ -8,60 +8,75 @@ var LibraryExceptions = {
   __exception_last: '0',
   __exception_caught: ' []',
 
+  // Static fields for ExceptionInfo class.
   __ExceptionInfoAttrs: {
-    TYPE_OFFSET: 0,
-    DESTRUCTOR_OFFSET: Runtime.POINTER_SIZE,
-    REFCOUNT_OFFSET: Runtime.POINTER_SIZE * 2,
-    CAUGHT_OFFSET: Runtime.POINTER_SIZE * 2 + 4,
-    RETHROWN_OFFSET: Runtime.POINTER_SIZE * 2 + 5,
+    // ExceptionInfo native structure layout.
+    DESTRUCTOR_OFFSET: 0,
+    REFCOUNT_OFFSET: Runtime.POINTER_SIZE,
+    TYPE_OFFSET: Runtime.POINTER_SIZE + 4,
+    CAUGHT_OFFSET: Runtime.POINTER_SIZE + 8,
+    RETHROWN_OFFSET: Runtime.POINTER_SIZE + 9,
 
-    // Should be multiple of allocation alignment.
-    SIZE: alignMemory(Runtime.POINTER_SIZE * 2 + 6, 16)
+    // Total structure size with padding, should be multiple of allocation alignment.
+    SIZE: alignMemory(Runtime.POINTER_SIZE + 10)
   },
 
   ExceptionInfo__deps: ['__ExceptionInfoAttrs'],
+  // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
+  // It is allocated in one block among with a thrown object in __cxa_allocate_exception and freed
+  // in ___cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
+  // class itself is just a native pointer wrapper, and contains all the necessary accessors for the
+  // fields in the native structure.
+  // TODO: Unfortunately this approach still cannot be considered thread-safe because single
+  // exception object can be simultaneously thrown in several threads and its state (except
+  // reference counter) is not protected from that. Also protection is not enough, separate state
+  // should be allocated. libcxxabi has concept of dependent exception which is used for that
+  // purpose, it references the primary exception.
+  //
+  // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
   ExceptionInfo: function(excPtr) {
     this.excPtr = excPtr;
     this.ptr = excPtr - ___ExceptionInfoAttrs.SIZE;
 
     this.set_type = function(type) {
       {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.TYPE_OFFSET', 'type', '*') }}};
-    }
+    };
 
     this.get_type = function() {
       return {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.TYPE_OFFSET', '*') }}};
-    }
+    };
 
     this.set_destructor = function(destructor) {
       {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.DESTRUCTOR_OFFSET', 'destructor', '*') }}};
-    }
+    };
 
     this.get_destructor = function() {
       return {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.DESTRUCTOR_OFFSET', '*') }}};
-    }
+    };
 
     this.set_refcount = function(refcount) {
-      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'refcount', '*') }}};
-    }
+      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'refcount', 'i32') }}};
+    };
 
     this.set_caught = function (caught) {
       caught = caught ? 1 : 0;
       {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.CAUGHT_OFFSET', 'caught', 'i8') }}};
-    }
+    };
 
     this.get_caught = function () {
       return {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.CAUGHT_OFFSET', 'i8') }}} != 0;
-    }
+    };
 
     this.set_rethrown = function (rethrown) {
       rethrown = rethrown ? 1 : 0;
       {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.RETHROWN_OFFSET', 'rethrown', 'i8') }}};
-    }
+    };
 
     this.get_rethrown = function () {
       return {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.RETHROWN_OFFSET', 'i8') }}} != 0;
-    }
+    };
 
+    // Initialize native structure fields. Should be called once after allocated.
     this.init = function(type, destructor) {
       this.set_type(type);
       this.set_destructor(destructor);
@@ -77,7 +92,7 @@ var LibraryExceptions = {
       var value = {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
       {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'value + 1', 'i32') }}};
 #endif
-    }
+    };
 
     // Returns true if last reference released.
     this.release_ref = function() {
@@ -87,44 +102,56 @@ var LibraryExceptions = {
       var prev = {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
       {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'prev - 1', 'i32') }}};
 #endif
-      if (prev === 0) {
-        err('Exception reference counter underflow');
-      }
+#if ASSERTIONS
+      assert(prev > 0);
+#endif
       return prev === 1;
-    }
+    };
   },
 
   CatchInfo__deps: ['ExceptionInfo'],
-  // Returned from __cxa_find_matching_catch, stores base and adjusted exception pointer.
+  // This native structure is returned from __cxa_find_matching_catch, and serves as catching
+  // context, i.e. stores information required to proceed with a specific selected catch. It stores
+  // base and adjusted pointers of a thrown object. It is allocated dynamically and should be freed
+  // when it is done with a specific catch (i.e. either in __cxa_end_catch when caught or in
+  // __resumeException when no catch clause matched). The class itself is just a native pointer
+  // wrapper, and contains all the necessary accessors for the fields in the native structure.
+  // ptr - Native structure pointer to wrap, the structure is allocated when not specified.
   CatchInfo: function(ptr) {
 
     this.free = function() {
       _free(this.ptr);
       this.ptr = 0;
-    }
+    };
 
     this.set_base_ptr = function(basePtr) {
       {{{ makeSetValue('this.ptr', '0', 'basePtr', '*') }}};
-    }
+    };
 
     this.get_base_ptr = function() {
       return {{{ makeGetValue('this.ptr', '0', '*') }}};
-    }
+    };
 
     this.set_adjusted_ptr = function(adjustedPtr) {
       var ptrSize = {{{ Runtime.POINTER_SIZE }}};
       {{{ makeSetValue('this.ptr', 'ptrSize', 'adjustedPtr', '*') }}};
-    }
+    };
 
     this.get_adjusted_ptr = function() {
       var ptrSize = {{{ Runtime.POINTER_SIZE }}};
       return {{{ makeGetValue('this.ptr', 'ptrSize', '*') }}};
-    }
+    };
 
+    // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
+    // when the pointer is casted to some of the exception object base classes (e.g. when virtual
+    // inheritance is used). When a pointer is thrown this method should return the thrown pointer
+    // itself.
     this.get_exception_ptr = function() {
-#if WASM_BACKEND || DISABLE_EXCEPTION_CATCHING != 1 // work around a fastcomp bug
-      var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}
-        (this.get_exception_info().get_type());
+      // Work around a fastcomp bug, this code is still included for some reason in a build without
+      // exceptions support.
+#if WASM_BACKEND || DISABLE_EXCEPTION_CATCHING != 1
+      var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(
+        this.get_exception_info().get_type());
       if (isPointer) {
         return {{{ makeGetValue('this.get_base_ptr()', '0', '*') }}};
       }
@@ -134,11 +161,11 @@ var LibraryExceptions = {
 #else
       abort('No exceptions support');
 #endif
-    }
+    };
 
     this.get_exception_info = function() {
       return new _ExceptionInfo(this.get_base_ptr());
-    }
+    };
 
     if (ptr === undefined) {
       this.ptr = _malloc({{{ Runtime.POINTER_SIZE * 2 }}});
@@ -187,7 +214,7 @@ var LibraryExceptions = {
   // Exceptions
   __cxa_allocate_exception__deps: ['__ExceptionInfoAttrs'],
   __cxa_allocate_exception: function(size) {
-    // Exception object is prepended by exception info block
+    // Thrown object is prepended by exception metadata block
     return _malloc(size + ___ExceptionInfoAttrs.SIZE) + ___ExceptionInfoAttrs.SIZE;
   },
 
@@ -227,6 +254,7 @@ var LibraryExceptions = {
     err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
 #endif
     var info = new _ExceptionInfo(ptr);
+    // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
     info.init(type, destructor);
     ___exception_last = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
@@ -310,10 +338,9 @@ var LibraryExceptions = {
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0);
-    if (!___exception_caught.length) {
-      err("Exceptions stack underflow");
-      return;
-    }
+#if ASSERTIONS
+    assert(___exception_caught.length > 0);
+#endif
     // Call destructor if one is registered then clear it.
     var catchInfo = ___exception_caught.pop();
 
