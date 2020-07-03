@@ -246,8 +246,12 @@ function callMain(args) {
       return;
     } else {
       var toLog = e;
+      // add the stacktrace, unless its already included in the exception
+      // message itself (jsStackTrace does this).
       if (e && typeof e === 'object' && e.stack) {
-        toLog = [e, e.stack];
+        if (!e.stack.includes('jsStackTrace')) {
+          toLog = [e, e.stack];
+        }
       }
       err('exception thrown: ' + toLog);
       quit_(1, e);
