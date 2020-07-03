@@ -8696,11 +8696,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # are not yet suppored by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)
   def test_undefined_main(self):
-    # Traditionally in emscripten we allow main to be undefined.  This allows programs with a main
-    # and libraries without a main to be compiled identically.
-    # However we are trying to move away from that model to a more explicit opt-out model. See:
-    # https://github.com/emscripten-core/emscripten/issues/9640
-    if not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT') and not self.get_setting('STANDALONE_WASM'):
+    if self.get_setting('STANDALONE_WASM'):
+      # In standalone mode we the user to explicly opt out if they don't have a main function
+      err = self.expect_fail([EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
+      self.assertContained('error: undefined symbol: main (referenced by top-level compiled C/C++ code)', err)
+    elif not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
+      # Traditionally in emscripten we allow main to be undefined.  This allows programs with a main
+      # and libraries without a main to be compiled identically.
+      # However we are trying to move away from that model to a more explicit opt-out model. See:
+      # https://github.com/emscripten-core/emscripten/issues/9640
       self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
       # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
