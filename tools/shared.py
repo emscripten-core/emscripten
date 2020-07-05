@@ -1512,7 +1512,7 @@ def safe_move(src, dst):
     dst = os.path.join(dst, os.path.basename(src))
   if src == dst:
     return
-  if dst == '/dev/null':
+  if dst == os.devnull:
     return
   logging.debug('move: %s -> %s', src, dst)
   shutil.move(src, dst)
@@ -1525,7 +1525,7 @@ def safe_copy(src, dst):
     dst = os.path.join(dst, os.path.basename(src))
   if src == dst:
     return
-  if dst == '/dev/null':
+  if dst == os.devnull:
     return
   shutil.copyfile(src, dst)
 

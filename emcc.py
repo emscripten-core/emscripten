@@ -61,15 +61,13 @@ except ImportError:
 
 logger = logging.getLogger('emcc')
 
-DEV_NULL = '/dev/null' if not WINDOWS else 'NUL'
-
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
 ASSEMBLY_CPP_ENDINGS = ('.S',)
-SPECIAL_ENDINGLESS_FILENAMES = (DEV_NULL,)
+SPECIAL_ENDINGLESS_FILENAMES = (os.devnull,)
 
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ASSEMBLY_CPP_ENDINGS
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
@@ -1123,7 +1121,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         arg = os.path.realpath(arg)
 
       if not arg.startswith('-'):
-        if not os.path.exists(arg):
+        # os.devnul should always be reported as existing but there is bug in windows
+        # python before 3.8:
+        # https://bugs.python.org/issue1311
+        if not os.path.exists(arg) and arg != os.devnull:
           exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
 
         file_suffix = get_file_suffix(arg)
@@ -2500,7 +2501,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # exit block 'post-link'
       log_time('post-link')
 
-    if target == DEV_NULL:
+    if target == os.devnull:
       # TODO(sbc): In theory we should really run the whole pipeline even if the output is
       # /dev/null, but that will take some refactoring
       return 0

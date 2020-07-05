@@ -286,17 +286,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
+    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so']]:
       print('args:', args)
-      if '/dev/null' in args and WINDOWS:
-        print('skip because windows')
-        continue
       target = args[1] if len(args) == 2 else 'hello_world.o'
       self.clear()
       run_process([compiler, path_from_root('tests', 'hello_world' + suffix)] + args)
-      if args[-1] == '/dev/null':
-        print('(no output)')
-        continue
       syms = building.llvm_nm(target)
       self.assertIn('main', syms.defs)
       if self.is_wasm_backend():
@@ -6418,9 +6412,8 @@ int main() {
     # there should be no musl syscalls in hello world output
     self.assertNotContained('__syscall', src)
 
-  @no_windows('posix-only')
   def test_emcc_dev_null(self):
-    out = run_process([EMCC, '-dM', '-E', '-x', 'c', '/dev/null'], stdout=PIPE).stdout
+    out = run_process([EMCC, '-dM', '-E', '-x', 'c', os.devnull], stdout=PIPE).stdout
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
   def test_umask_0(self):
@@ -10234,8 +10227,7 @@ int main() {
     self.assertNotExists('-foo')
 
   def test_output_to_nowhere(self):
-    nowhere = 'NULL' if WINDOWS else '/dev/null'
-    run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', nowhere, '-c'])
+    run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', os.devnull, '-c'])
 
   # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
   # I.e. -s MIN_X_VERSION=-1 is equal to -s MIN_X_VERSION=Infinity
