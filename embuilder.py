@@ -51,7 +51,6 @@ MINIMAL_TASKS = [
     'libsockets',
     'libc_rt_wasm',
     'struct_info',
-    'libc-wasm',
     'libstandalonewasm',
     'crt1',
     'libunwind-except'
