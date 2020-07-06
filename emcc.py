@@ -839,16 +839,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   language_mode = get_language_mode(args)
 
   def is_dash_s_for_emcc(args, i):
-    # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
+    # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
-    assert args[i] == '-s'
-    if len(args) > i + 1:
-      arg = args[i + 1]
-      if arg.split('=')[0].isupper():
-        return True
-
-    logger.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
-    return False
+    if args[i] == '-s':
+      if len(args) <= i:
+        return False
+      arg = args[i+1]
+    else:
+      arg = args[i][2:]
+    return arg.split('=')[0].isupper()
 
   CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args
   if CONFIGURE_CONFIG and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE'):
@@ -1035,29 +1034,28 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     for i in range(len(newargs)):
       if newargs[i].startswith('-s'):
-        if newargs[i] == '-s':
-          if not is_dash_s_for_emcc(newargs, i):
-            continue
-          key = newargs[i + 1]
-          newargs[i + 1] = ''
-        else:
-          key = newargs[i][2:]
-        newargs[i] = ''
+        if is_dash_s_for_emcc(newargs, i):
+          if newargs[i] == '-s':
+            key = newargs[i + 1]
+            newargs[i + 1] = ''
+          else:
+            key = newargs[i][2:]
+          newargs[i] = ''
 
-        # If not = is specified default to 1
-        if '=' not in key:
-          key += '=1'
+          # If not = is specified default to 1
+          if '=' not in key:
+            key += '=1'
 
-        # Special handling of browser version targets. A version -1 means that the specific version
-        # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
-        # #if MIN_FIREFOX_VERSION < 68
-        try:
-          if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
-            key = key.split('=')[0] + '=0x7FFFFFFF'
-        except Exception:
-          pass
+          # Special handling of browser version targets. A version -1 means that the specific version
+          # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+          # #if MIN_FIREFOX_VERSION < 68
+          try:
+            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
+              key = key.split('=')[0] + '=0x7FFFFFFF'
+          except Exception:
+            pass
 
-        settings_changes.append(key)
+          settings_changes.append(key)
 
     newargs = [arg for arg in newargs if arg]
 
