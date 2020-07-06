@@ -8743,6 +8743,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([EMCC, '-jsDWASM=0']))
 
   # Tests <emscripten/stack.h> API
+  @no_asan('stack allocation sizes are no longer predictable')
   def test_emscripten_stack(self):
     self.emcc_args += ['-lstack.js']
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
