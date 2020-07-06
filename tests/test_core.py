@@ -8701,6 +8701,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # opt out (see below).
       err = self.expect_fail([EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
       self.assertContained('error: undefined symbol: main (referenced by top-level compiled C/C++ code)', err)
+      self.assertContained('warning: To build in STANDALONE_WASM mode without a main(), use emcc --no-entry', err)
     elif not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
       # Traditionally in emscripten we allow main to be implicitly undefined.  This allows programs
       # with a main and libraries without a main to be compiled identically.
