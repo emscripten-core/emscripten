@@ -960,6 +960,12 @@ var PROXY_TO_WORKER_FILENAME = '';
 // something that applications can do manually as well if they wish, this option
 // is provided as convenience.
 //
+// The pthread that main() runs on is a normal pthread in all ways, with the one
+// difference that its stack size is the same as the main thread would normally
+// have, that is, TOTAL_STACK. This makes it easy to flip between
+// PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
+// the same amount of stack.
+//
 // This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
 // is enabled. This has to happen because this is the only chance - this browser
 // main thread does the only pthread_create call that happens on
