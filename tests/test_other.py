@@ -6842,6 +6842,11 @@ high = 1234
     self.assertContained("Attempt to set a non-existent setting: 'ZBINARYEN_ASYNC_COMPILATION'", stderr)
     self.assertNotContained(' BINARYEN_ASYNC_COMPILATION', stderr)
 
+  def test_dash_no_space(self):
+    run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-sEXPORT_ALL=1'])
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp'), '-sEXPORTED_FUNCTIONS=["foo"]'])
+    self.assertContained('error: undefined exported function: "foo"', err)
+
   def test_python_2_3(self):
     # check emcc/em++ can be called by any python
     def trim_py_suffix(filename):

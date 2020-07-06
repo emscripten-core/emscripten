@@ -838,7 +838,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   language_mode = get_language_mode(args)
 
-  def is_minus_s_for_emcc(args, i):
+  def is_dash_s_for_emcc(args, i):
     # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
     assert args[i] == '-s'
@@ -1034,24 +1034,31 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       start_time = time.time() # done after parsing arguments, which might affect debug state
 
     for i in range(len(newargs)):
-      if newargs[i] == '-s':
-        if is_minus_s_for_emcc(newargs, i):
+      if newargs[i].startswith('-s'):
+        if newargs[i] == '-s':
+          if not is_dash_s_for_emcc(newargs, i):
+            continue
           key = newargs[i + 1]
-          # If not = is specified default to 1
-          if '=' not in key:
-            key += '=1'
+          newargs[i + 1] = None
+        else:
+          key = newargs[i][2:]
+        newargs[i] = None
 
-          # Special handling of browser version targets. A version -1 means that the specific version
-          # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
-          # #if MIN_FIREFOX_VERSION < 68
-          try:
-            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=0x7FFFFFFF'
-          except Exception:
-            pass
+        # If not = is specified default to 1
+        if '=' not in key:
+          key += '=1'
 
-          settings_changes.append(key)
-          newargs[i] = newargs[i + 1] = ''
+        # Special handling of browser version targets. A version -1 means that the specific version
+        # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+        # #if MIN_FIREFOX_VERSION < 68
+        try:
+          if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
+            key = key.split('=')[0] + '=0x7FFFFFFF'
+        except Exception:
+          pass
+
+        settings_changes.append(key)
+
     newargs = [arg for arg in newargs if arg]
 
     settings_key_changes = set()
