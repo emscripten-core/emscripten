@@ -1039,10 +1039,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if not is_dash_s_for_emcc(newargs, i):
             continue
           key = newargs[i + 1]
-          newargs[i + 1] = None
+          newargs[i + 1] = ''
         else:
           key = newargs[i][2:]
-        newargs[i] = None
+        newargs[i] = ''
 
         # If not = is specified default to 1
         if '=' not in key:
