@@ -9721,10 +9721,11 @@ int main(void) {
   def test_asan_pthread_stubs(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
 
-  @no_fastcomp('asan is not supported on fastcomp')
-  def test_asan_proxy_to_pthread_stack(self):
+  def test_proxy_to_pthread_stack(self):
     with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
-      self.do_smart_test(path_from_root('tests', 'other', 'test_asan_proxy_to_pthread_stack.c'), emcc_args=['-s', 'USE_PTHREADS', '-fsanitize=address', '-s', 'TOTAL_MEMORY=64MB', '-O2'])
+      self.do_smart_test(path_from_root('tests', 'other', 'test_proxy_to_pthread_stack.c'),
+                         ['success'],
+                         emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_STACK=1048576'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION=1'],
