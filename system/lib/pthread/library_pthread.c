@@ -934,12 +934,7 @@ int proxy_main(int argc, char** argv) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-    // TODO: Read this from -s TOTAL_STACK parameter, and make actual main browser thread stack
-    // something tiny, or create a -s PROXY_THREAD_STACK_SIZE parameter.
-#define EMSCRIPTEN_PTHREAD_STACK_SIZE (128 * 1024)
-
-    pthread_attr_setstacksize(&attr, (EMSCRIPTEN_PTHREAD_STACK_SIZE));
+    pthread_attr_setstacksize(&attr, EM_ASM_INT({ return TOTAL_STACK }));
     // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
     // should instead take a list of canvases that are specified from the command line with
     // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.

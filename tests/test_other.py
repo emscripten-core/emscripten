@@ -36,6 +36,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
+from runner import js_engines_modify
 from jsrun import run_js
 from tools import shared, building
 import jsrun
@@ -9719,6 +9720,11 @@ int main(void) {
   @no_fastcomp('asan is not supported on fastcomp')
   def test_asan_pthread_stubs(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+
+  @no_fastcomp('asan is not supported on fastcomp')
+  def test_asan_proxy_to_pthread_stack(self):
+    with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
+      self.do_smart_test(path_from_root('tests', 'other', 'test_asan_proxy_to_pthread_stack.c'), emcc_args=['-s', 'USE_PTHREADS', '-fsanitize=address', '-s', 'TOTAL_MEMORY=64MB', '-O2'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION=1'],
