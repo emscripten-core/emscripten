@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Settings on the command line no longer require a space between the `-s` and
+  the name of the setting.   For example, `-sEXPORT_ALL` is now equivalent to
+  `-s EXPORT_ALL`.
 - Rename `EXCEPTION_CATCHING_WHITELIST` to `EXCEPTION_CATCHING_ALLOWED`. The
   functionality is unchanged, and the old name will be allowed as an alias
   for a few releases to give users time to migrate.
