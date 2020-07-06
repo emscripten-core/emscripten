@@ -182,6 +182,9 @@ function JSify(data, functionsOnly) {
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
           }
+          if (ident === 'main' && STANDALONE_WASM) {
+            warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
+          }
         }
         if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
