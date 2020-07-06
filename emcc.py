@@ -842,9 +842,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
     if args[i] == '-s':
-      if len(args) <= i:
+      if len(args) <= i + 1:
         return False
-      arg = args[i+1]
+      arg = args[i + 1]
     else:
       arg = args[i][2:]
     return arg.split('=')[0].isupper()
