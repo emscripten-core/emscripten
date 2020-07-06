@@ -838,17 +838,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   language_mode = get_language_mode(args)
 
-  def is_minus_s_for_emcc(args, i):
-    # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
+  def is_dash_s_for_emcc(args, i):
+    # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
-    assert args[i] == '-s'
-    if len(args) > i + 1:
+    if args[i] == '-s':
+      if len(args) <= i + 1:
+        return False
       arg = args[i + 1]
-      if arg.split('=')[0].isupper():
-        return True
-
-    logger.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
-    return False
+    else:
+      arg = args[i][2:]
+    return arg.split('=')[0].isupper()
 
   CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args
   if CONFIGURE_CONFIG and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE'):
@@ -1034,9 +1033,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       start_time = time.time() # done after parsing arguments, which might affect debug state
 
     for i in range(len(newargs)):
-      if newargs[i] == '-s':
-        if is_minus_s_for_emcc(newargs, i):
-          key = newargs[i + 1]
+      if newargs[i].startswith('-s'):
+        if is_dash_s_for_emcc(newargs, i):
+          if newargs[i] == '-s':
+            key = newargs[i + 1]
+            newargs[i + 1] = ''
+          else:
+            key = newargs[i][2:]
+          newargs[i] = ''
+
           # If not = is specified default to 1
           if '=' not in key:
             key += '=1'
@@ -1051,7 +1056,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             pass
 
           settings_changes.append(key)
-          newargs[i] = newargs[i + 1] = ''
+
     newargs = [arg for arg in newargs if arg]
 
     settings_key_changes = set()
