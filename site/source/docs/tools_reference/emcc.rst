@@ -107,7 +107,7 @@ Options that are modified or new in *emcc* are listed below:
     - The specified file path must be absolute, not relative.
 
   .. note:: Options can be specified as a single argument without a space
-            between the ``-s`` and option name.  .e.g ``-sFOO=1``.
+            between the ``-s`` and option name.  e.g. ``-sFOO=1``.
 
 .. _emcc-g:
 
