@@ -3954,7 +3954,10 @@ window.close = function() {
   @no_fastcomp('WASM backend stack protection')
   @requires_threads
   def test_pthread_safe_stack(self):
-    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
+    # Note that as the test runs with PROXY_TO_PTHREAD, we set TOTAL_STACK,
+    # and not DEFAULT_PTHREAD_STACK_SIZE, as the pthread for main() gets the
+    # same stack size as the main thread normally would.
+    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'TOTAL_STACK=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
 
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-g4']],
