@@ -123,10 +123,10 @@ def no_wasm2js(note=''):
 def sync(f):
   assert callable(f)
 
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     if self.get_setting('WASM') or self.is_wasm_backend():
       self.emcc_args += ['-s', 'WASM_ASYNC_COMPILATION=0'] # test is set up synchronously
-    f(self)
+    f(self, *args, **kwargs)
   return decorated
 
 
@@ -7349,59 +7349,54 @@ someweirdtext
     self.emcc_args += ['--bind', '-fno-rtti', '-frtti', '--pre-js', 'pre.js']
     self.do_run(src, '418\ndotest retured: 42\n')
 
+  @parameterized({
+    'all': ('ALL', False),
+    'fast': ('FAST', False),
+    'default': ('DEFAULT', False),
+    'all_growth': ('ALL', True),
+  })
   @sync
-  def test_webidl(self):
+  def test_webidl(self, mode, allow_memory_growth):
     if self.run_name == 'asm2':
       self.emcc_args += ['--closure', '1', '-g1'] # extra testing
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE', 1)
 
-    def do_test_in_mode(mode, allow_memory_growth):
-      print('testing mode', mode, ', memory growth =', allow_memory_growth)
-      # Force IDL checks mode
-      os.environ['IDL_CHECKS'] = mode
+    # Force IDL checks mode
+    os.environ['IDL_CHECKS'] = mode
 
-      run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
-                   path_from_root('tests', 'webidl', 'test.idl'),
-                   'glue'])
-      self.assertExists('glue.cpp')
-      self.assertExists('glue.js')
+    run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                 path_from_root('tests', 'webidl', 'test.idl'),
+                 'glue'])
+    self.assertExists('glue.cpp')
+    self.assertExists('glue.js')
 
-      # Export things on "TheModule". This matches the typical use pattern of the bound library
-      # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-      create_test_file('export.js', '''
-// test purposes: remove printErr output, whose order is unpredictable when compared to print
-err = err = function(){};
-''')
-      self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js', '--post-js', 'export.js']
-      if allow_memory_growth:
-        self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-Wno-almost-asm']
-      shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), 'test.h')
-      shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), 'test.cpp')
-      src = open('test.cpp').read()
+    # Export things on "TheModule". This matches the typical use pattern of the bound library
+    # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
+    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js']
+    if allow_memory_growth:
+      self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-Wno-almost-asm']
+    shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), 'test.h')
+    shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), 'test.cpp')
+    src = open('test.cpp').read()
 
-      def post(filename):
-        with open(filename, 'a') as f:
-          f.write('\n\n')
-          if self.run_name == 'asm2':
-            f.write('var TheModule = Module();\n')
-          else:
-            f.write('var TheModule = Module;\n')
-          f.write('\n\n')
-          if allow_memory_growth:
-            f.write("var isMemoryGrowthAllowed = true;")
-          else:
-            f.write("var isMemoryGrowthAllowed = false;")
-          f.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
-          f.write('\n\n')
+    def post(filename):
+      with open(filename, 'a') as f:
+        f.write('\n\n')
+        if self.run_name == 'asm2':
+          f.write('var TheModule = Module();\n')
+        else:
+          f.write('var TheModule = Module;\n')
+        f.write('\n\n')
+        if allow_memory_growth:
+          f.write("var isMemoryGrowthAllowed = true;")
+        else:
+          f.write("var isMemoryGrowthAllowed = false;")
+        f.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
+        f.write('\n\n')
 
-      output = open(path_from_root('tests', 'webidl', "output_%s.txt" % mode)).read()
-      self.do_run(src, output, post_build=post, output_nicerizer=(lambda out, err: out))
-
-    do_test_in_mode('ALL', False)
-    do_test_in_mode('FAST', False)
-    do_test_in_mode('DEFAULT', False)
-    do_test_in_mode('ALL', True)
+    output = open(path_from_root('tests', 'webidl', "output_%s.txt" % mode)).read()
+    self.do_run(src, output, post_build=post)
 
   ### Tests for tools
 
