@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+1.39.19: 07/07/2020
+-------------------
 - Settings on the command line no longer require a space between the `-s` and
   the name of the setting.   For example, `-sEXPORT_ALL` is now equivalent to
   `-s EXPORT_ALL`.
