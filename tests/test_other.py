@@ -5173,7 +5173,7 @@ main(const int argc, const char * const * const argv)
     create_test_file('src.cpp', '')
     run_process([EMCC, 'src.cpp', '--pre-js', 'pre_main.js'])
     self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
-                         run_js('a.out.js', assert_returncode=None, stderr=PIPE))
+                         run_js('a.out.js', full_output=True, assert_returncode=None, stderr=PIPE))
 
   def test_js_malloc(self):
     create_test_file('src.cpp', r'''
@@ -7185,11 +7185,11 @@ mergeInto(LibraryManager.library, {
     self.assertContained('|world|', output.stdout)
 
   def test_warn_no_filesystem(self):
-    WARNING = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
+    error = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
 
     run_process([EMCC, path_from_root('tests', 'hello_world.c')])
     seen = run_js('a.out.js', stderr=PIPE)
-    assert WARNING not in seen
+    self.assertNotContained(error, seen)
 
     def test(contents):
       create_test_file('src.cpp', r'''
@@ -7202,7 +7202,7 @@ mergeInto(LibraryManager.library, {
   }
   ''' % contents)
       run_process([EMCC, 'src.cpp'])
-      self.assertContained(WARNING, run_js('a.out.js', stderr=PIPE, assert_returncode=None))
+      self.assertContained(error, run_js('a.out.js', full_output=True, stderr=PIPE, assert_returncode=None))
 
     # might appear in handwritten code
     test("FS.init()")
@@ -7216,13 +7216,13 @@ mergeInto(LibraryManager.library, {
 
     # text is in the source when needed, but when forcing FS, it isn't there
     run_process([EMCC, 'src.cpp'])
-    self.assertContained(WARNING, open('a.out.js').read())
+    self.assertContained(error, open('a.out.js').read())
     run_process([EMCC, 'src.cpp', '-s', 'FORCE_FILESYSTEM=1']) # forcing FS means no need
-    self.assertNotContained(WARNING, open('a.out.js').read())
+    self.assertNotContained(error, open('a.out.js').read())
     run_process([EMCC, 'src.cpp', '-s', 'ASSERTIONS=0']) # no assertions, no need
-    self.assertNotContained(WARNING, open('a.out.js').read())
+    self.assertNotContained(error, open('a.out.js').read())
     run_process([EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
-    self.assertNotContained(WARNING, open('a.out.js').read())
+    self.assertNotContained(error, open('a.out.js').read())
 
   def test_warn_module_print_err(self):
     ERROR = 'was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)'
@@ -9944,7 +9944,7 @@ int main(void) {
       }
     ''')
     run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS', '--pre-js', 'pre.js'])
-    self.assertContained('Module.read option was removed', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
+    self.assertContained('Module.read option was removed', run_js('a.out.js', full_output=True, assert_returncode=None, stderr=PIPE))
 
   def test_assertions_on_outgoing_module_api_changes(self):
     create_test_file('src.cpp', r'''
@@ -9971,7 +9971,7 @@ int main(void) {
 Module.read has been replaced with plain read_ (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)
 Module.wasmBinary has been replaced with plain wasmBinary (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)
 Module.arguments has been replaced with plain arguments_ (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)
-''', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
+''', run_js('a.out.js', full_output=True, assert_returncode=None, stderr=PIPE))
 
   def test_assertions_on_ready_promise(self):
     # check that when assertions are on we give useful error messages for
