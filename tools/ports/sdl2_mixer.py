@@ -7,10 +7,8 @@ import os
 import shutil
 import logging
 
-TAG = 'release-2.0.1'
-HASH = '81fac757bd058adcb3eb5b2cc46addeaa44cee2cd4db653dad5d9666bdc0385cdc21bf5b72872e6dd6dd8eb65812a46d7752298827d6c61ad5ce2b6c963f7ed0'
-
-deps = ['vorbis', 'sdl2']
+TAG = 'release-2.0.2'
+HASH = 'b9d03061d177f20f4e03f3e3553afd7bfe0c05da7b9a774312b389318e747cf9724e0475e9afff6a64ce31bab0217e2afb2619d75556753fbbb6ecafa9775219'
 
 
 def needed(settings):
@@ -21,7 +19,14 @@ def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
   ports.fetch_project('sdl2_mixer', 'https://github.com/emscripten-ports/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libSDL2_mixer')
+
+  settings.SDL2_MIXER_FORMATS.sort()
+  formats = '-'.join(settings.SDL2_MIXER_FORMATS)
+
+  libname = 'libSDL2_mixer'
+  if formats != '':
+    libname += '_' + formats
+  libname = ports.get_lib_name(libname)
 
   def create():
     logging.info('building port: sdl2_mixer')
@@ -32,12 +37,39 @@ def get(ports, settings, shared):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
+    flags = [
+      '-s', 'USE_SDL=2',
+      '-O2'
+    ]
+
+    if "ogg" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-s', 'USE_VORBIS=1',
+        '-DMUSIC_OGG',
+      ]
+
+    if "mp3" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-s', 'USE_MPG123=1',
+        '-DMUSIC_MP3_MPG123',
+      ]
+
     final = os.path.join(dest_path, libname)
-    ports.build_port(dest_path, final, [], ['-DOGG_MUSIC', '-O2', '-s', 'USE_VORBIS=1', '-s', 'USE_SDL=2'],
-                     ['dynamic_flac', 'dynamic_fluidsynth', 'dynamic_mod', 'dynamic_modplug', 'dynamic_mp3',
-                      'fluidsynth', 'load_mp3', 'music_cmd', 'music_flac', 'music_mad', 'music_mod',
-                      'music_modplug', 'playmus.c', 'playwave.c'],
-                     ['external', 'native_midi', 'timidity'])
+    ports.build_port(
+      dest_path,
+      final,
+      includes=[],
+      flags=flags,
+      exclude_files=[
+        'playmus.c',
+        'playwave.c',
+      ],
+      exclude_dirs=[
+        'native_midi',
+        'timidity',
+        'external',
+      ]
+    )
 
     # copy header to a location so it can be used as 'SDL2/'
     ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
@@ -51,8 +83,15 @@ def clear(ports, settings, shared):
 
 
 def process_dependencies(settings):
+  global deps
+  deps = ['vorbis', 'mpg123', 'sdl2']
   settings.USE_SDL = 2
-  settings.USE_VORBIS = 1
+  if "ogg" in settings.SDL2_MIXER_FORMATS:
+    deps.append('vorbis')
+    settings.USE_VORBIS = 1
+  if "mp3" in settings.SDL2_MIXER_FORMATS:
+    deps.append('mpg123')
+    settings.USE_MPG123 = 1
 
 
 def process_args(ports):
