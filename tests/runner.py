@@ -803,7 +803,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
-  def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
+  def run_generated_code(self, engine, filename, args=[], output_nicerizer=None, assert_returncode=0):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
@@ -814,7 +814,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       print("Running '%s' under '%s'" % (filename, engine))
     try:
       with chdir(self.get_dir()):
-        jsrun.run_js(filename, engine, args, check_timeout,
+        jsrun.run_js(filename, engine, args,
                      stdout=open(stdout, 'w'),
                      stderr=open(stderr, 'w'),
                      assert_returncode=assert_returncode)
