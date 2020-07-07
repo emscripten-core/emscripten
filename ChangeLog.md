@@ -20,6 +20,12 @@ Current Trunk
 
 1.39.19: 07/07/2020
 -------------------
+- In standalone mode make `main` mandatory by default (#11536). To build a
+  library ("reactor"), use `--no-entry`. The compiler will suggest that if
+  `main` is not present.
+- Automatically resume AudioContexts on user input in SDL and OpenAL (#10843).
+- Asyncify now does liveness analysis to find which locals to save
+  (Binaryen#2890).
 - Settings on the command line no longer require a space between the `-s` and
   the name of the setting.   For example, `-sEXPORT_ALL` is now equivalent to
   `-s EXPORT_ALL`.
