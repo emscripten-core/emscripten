@@ -50,7 +50,7 @@ int main() {
 
     // mount and unmount it the second time
     FS.mount(MEMFS, {}, '/working');
-    FS.unmount(MEMFS, {}, '/working');
+    FS.unmount('/working');
 
     // try to read the file from the old mount
     try {
