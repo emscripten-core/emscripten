@@ -49,8 +49,8 @@ int main() {
     assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
 
     // mount and unmount again
-    // FS.mount(MEMFS, {}, '/working');
-    // FS.unmount('/working');
+    FS.mount(MEMFS, {}, '/working');
+    FS.unmount('/working');
 
     // try to read the file from the old mount
     try {
