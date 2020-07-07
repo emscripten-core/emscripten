@@ -534,6 +534,7 @@ def lld_flags_for_executable(external_symbol_list):
       cmd += ['--export', export]
 
   if Settings.RELOCATABLE:
+    cmd.append('--experimental-pic')
     if Settings.SIDE_MODULE:
       cmd.append('-shared')
     else:

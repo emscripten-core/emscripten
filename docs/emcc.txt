@@ -83,8 +83,8 @@ Options that are modified or new in *emcc* are listed below:
    Note: For more tips on optimizing your code, see Optimizing Code.
 
 "-s OPTION[=VALUE]"
-   JavaScript code generation option passed into the Emscripten
-   compiler. For the available options, see src/settings.js.
+   Emscripten build options. For the available options, see
+   src/settings.js.
 
    Note: You can prefix boolean options with "NO_" to reverse them.
      For example, "-s EXIT_RUNTIME=1" is the same as "-s
@@ -112,6 +112,9 @@ Options that are modified or new in *emcc* are listed below:
        functions: "["_func1", "func2"]".
 
      * The specified file path must be absolute, not relative.
+
+   Note: Options can be specified as a single argument without a
+     space between the "-s" and option name.  e.g. "-sFOO=1".
 
 "-g"
    Preserve debug information.

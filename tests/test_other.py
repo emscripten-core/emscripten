@@ -36,6 +36,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
+from runner import js_engines_modify
 from jsrun import run_js
 from tools import shared, building
 import jsrun
@@ -286,17 +287,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
+    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so']]:
       print('args:', args)
-      if '/dev/null' in args and WINDOWS:
-        print('skip because windows')
-        continue
       target = args[1] if len(args) == 2 else 'hello_world.o'
       self.clear()
       run_process([compiler, path_from_root('tests', 'hello_world' + suffix)] + args)
-      if args[-1] == '/dev/null':
-        print('(no output)')
-        continue
       syms = building.llvm_nm(target)
       self.assertIn('main', syms.defs)
       if self.is_wasm_backend():
@@ -5662,13 +5657,11 @@ print(os.environ.get('NM'))
 ''')
     check(emconfigure, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
-  @no_windows('This test is broken, https://github.com/emscripten-core/emscripten/issues/8872')
   def test_emmake_python(self):
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
     # not confuse by setting those vars to something containing `python X` as the script checks for
     # the existence of an executable.
-    result = run_process([emmake, PYTHON, path_from_root('tests', 'emmake', 'make.py')], stdout=PIPE, stderr=PIPE)
-    print(result.stdout, result.stderr)
+    run_process([emmake, PYTHON, path_from_root('tests', 'emmake', 'make.py')])
 
   def test_sdl2_config(self):
     for args, expected in [
@@ -6420,9 +6413,8 @@ int main() {
     # there should be no musl syscalls in hello world output
     self.assertNotContained('__syscall', src)
 
-  @no_windows('posix-only')
   def test_emcc_dev_null(self):
-    out = run_process([EMCC, '-dM', '-E', '-x', 'c', '/dev/null'], stdout=PIPE).stdout
+    out = run_process([EMCC, '-dM', '-E', '-x', 'c', os.devnull], stdout=PIPE).stdout
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
   def test_umask_0(self):
@@ -6850,6 +6842,11 @@ high = 1234
     stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ZBINARYEN_ASYNC_COMPILATION'])
     self.assertContained("Attempt to set a non-existent setting: 'ZBINARYEN_ASYNC_COMPILATION'", stderr)
     self.assertNotContained(' BINARYEN_ASYNC_COMPILATION', stderr)
+
+  def test_dash_s_no_space(self):
+    run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-sEXPORT_ALL=1'])
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp'), '-sEXPORTED_FUNCTIONS=["foo"]'])
+    self.assertContained('error: undefined exported function: "foo"', err)
 
   def test_python_2_3(self):
     # check emcc/em++ can be called by any python
@@ -8206,10 +8203,7 @@ int main() {
       create_test_file('pre.js', 'WebAssembly = undefined;\n')
       run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '--pre-js', 'pre.js'] + opts)
       out = run_js('a.out.js', stderr=STDOUT, assert_returncode=None)
-      if opts == []:
-        self.assertContained('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.', out)
-      else:
-        self.assertContained('no native wasm support detected', out)
+      self.assertContained('no native wasm support detected', out)
 
   def test_jsrun(self):
     print(NODE_JS)
@@ -8930,7 +8924,7 @@ test_module().then((test_module_instance) => {
 
   @no_fastcomp('uses new ASYNCIFY')
   def test_asyncify_escaping(self):
-    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY_LIST=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
+    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
     self.assertContained('emcc: ASYNCIFY list contains an item without balanced parentheses', proc.stderr)
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
     self.assertContained('Try to quote the entire argument', proc.stderr)
@@ -8942,7 +8936,7 @@ test_module().then((test_module_instance) => {
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
 ]
 ''')
-    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY_LIST=@a.txt"], stdout=PIPE, stderr=PIPE)
+    proc = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY=@a.txt"], stdout=PIPE, stderr=PIPE)
     # we should parse the response file properly, and then issue a proper warning for the missing function
     self.assertContained(
         'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
@@ -9732,6 +9726,12 @@ int main(void) {
   def test_asan_pthread_stubs(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
 
+  def test_proxy_to_pthread_stack(self):
+    with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
+      self.do_smart_test(path_from_root('tests', 'other', 'test_proxy_to_pthread_stack.c'),
+                         ['success'],
+                         emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_STACK=1048576'])
+
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION=1'],
     'sync': ['-s', 'WASM_ASYNC_COMPILATION=0'],
@@ -10239,8 +10239,7 @@ int main() {
     self.assertNotExists('-foo')
 
   def test_output_to_nowhere(self):
-    nowhere = 'NULL' if WINDOWS else '/dev/null'
-    run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', nowhere, '-c'])
+    run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', os.devnull, '-c'])
 
   # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
   # I.e. -s MIN_X_VERSION=-1 is equal to -s MIN_X_VERSION=Infinity

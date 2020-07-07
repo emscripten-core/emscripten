@@ -302,7 +302,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
 
-        var ptr = _malloc(length);
+        var ptr = FS.mmapAlloc(length);
 
         NODEFS.stream_ops.read(stream, HEAP8, ptr, length, position);
         return { ptr: ptr, allocated: true };

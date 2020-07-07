@@ -531,9 +531,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           for filename in filenames:
             temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
 
-        # Our leak detection will pick up *any* new temp files in the temp dir. They may not be due to
-        # us, but e.g. the browser when running browser tests. Until we figure out a proper solution,
-        # ignore some temp file names that we see on our CI infrastructure.
+        # Our leak detection will pick up *any* new temp files in the temp dir.
+        # They may not be due to us, but e.g. the browser when running browser
+        # tests. Until we figure out a proper solution, ignore some temp file
+        # names that we see on our CI infrastructure.
         ignorable_file_prefixes = [
           '/tmp/tmpaddon',
           '/tmp/circleci-no-output-timeout',
@@ -547,12 +548,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           for f in left_over_files:
             print('leaked file: ' + f, file=sys.stderr)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
-
-      # Make sure we don't leave stuff around
-      # if not self.has_prev_ll:
-      #   for temp_file in os.listdir(TEMP_DIR):
-      #     assert not temp_file.endswith('.ll'), temp_file
-      #     # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
   def get_setting(self, key):
     if key in self.settings_mods:

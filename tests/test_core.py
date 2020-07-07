@@ -7900,13 +7900,13 @@ Module['onRuntimeInitialized'] = function() {
 
   @parameterized({
     'normal': ([], True),
-    'removelist_a': (['-s', 'ASYNCIFY_REMOVE_LIST=["foo(int, double)"]'], False),
-    'removelist_b': (['-s', 'ASYNCIFY_REMOVE_LIST=["bar()"]'], True),
-    'removelist_c': (['-s', 'ASYNCIFY_REMOVE_LIST=["baz()"]'], False),
-    'onlylist_a': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'onlylist_b': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
-    'onlylist_c': (['-s', 'ASYNCIFY_ONLY_LIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
-    'onlylist_d': (['-s', 'ASYNCIFY_ONLY_LIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
+    'removelist_a': (['-s', 'ASYNCIFY_REMOVE=["foo(int, double)"]'], False),
+    'removelist_b': (['-s', 'ASYNCIFY_REMOVE=["bar()"]'], True),
+    'removelist_c': (['-s', 'ASYNCIFY_REMOVE=["baz()"]'], False),
+    'onlylist_a': (['-s', 'ASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'onlylist_b': (['-s', 'ASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'onlylist_c': (['-s', 'ASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'onlylist_d': (['-s', 'ASYNCIFY_ONLY=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
@@ -7915,7 +7915,7 @@ Module['onRuntimeInitialized'] = function() {
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_test_file('response.file', response)
-      self.emcc_args += ['-s', 'ASYNCIFY_ONLY_LIST=@response.file']
+      self.emcc_args += ['-s', 'ASYNCIFY_ONLY=@response.file']
     self.set_setting('ASYNCIFY', 1)
     self.emcc_args += args
     try:
@@ -7930,7 +7930,7 @@ Module['onRuntimeInitialized'] = function() {
   @parameterized({
     'normal': ([], True),
     'ignoreindirect': (['-s', 'ASYNCIFY_IGNORE_INDIRECT'], False),
-    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD_LIST=["main","virt()"]'], True),
+    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD=["main","virt()"]'], True),
   })
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   @no_fastcomp('new asyncify only')
@@ -8696,11 +8696,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # are not yet suppored by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)
   def test_undefined_main(self):
-    # Traditionally in emscripten we allow main to be undefined.  This allows programs with a main
-    # and libraries without a main to be compiled identically.
-    # However we are trying to move away from that model to a more explicit opt-out model. See:
-    # https://github.com/emscripten-core/emscripten/issues/9640
-    if not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT') and not self.get_setting('STANDALONE_WASM'):
+    if self.get_setting('STANDALONE_WASM'):
+      # In standalone we don't support implicitly building without main.  The user has to explicitly
+      # opt out (see below).
+      err = self.expect_fail([EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
+      self.assertContained('error: undefined symbol: main (referenced by top-level compiled C/C++ code)', err)
+      self.assertContained('warning: To build in STANDALONE_WASM mode without a main(), use emcc --no-entry', err)
+    elif not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
+      # Traditionally in emscripten we allow main to be implicitly undefined.  This allows programs
+      # with a main and libraries without a main to be compiled identically.
+      # However we are trying to move away from that model to a more explicit opt-out model. See:
+      # https://github.com/emscripten-core/emscripten/issues/9640
       self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
       # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
@@ -8737,6 +8743,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([EMCC, '-jsDWASM=0']))
 
   # Tests <emscripten/stack.h> API
+  @no_asan('stack allocation sizes are no longer predictable')
   def test_emscripten_stack(self):
     self.emcc_args += ['-lstack.js']
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)

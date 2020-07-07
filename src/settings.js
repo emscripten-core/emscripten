@@ -694,7 +694,7 @@ var NODEJS_CATCH_REJECTION = 1;
 // On upstream this uses the Asyncify pass in Binaryen.
 var ASYNCIFY = 0;
 
-// Imports which can do a sync operation, in addition to the default ones that
+// Imports which can do an sync operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
 // mention them to here, or else they will not work (in ASSERTIONS builds an
 // error will be shown).
@@ -735,7 +735,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
 // Simple '*' wildcard matching is supported.
-var ASYNCIFY_REMOVE_LIST = [];
+var ASYNCIFY_REMOVE = [];
 
 // Functions in the Asyncify add-list are added to the list of instrumented
 // functions, that is, they will be instrumented even if otherwise asyncify
@@ -743,14 +743,14 @@ var ASYNCIFY_REMOVE_LIST = [];
 // in the safest way possible, this is only useful if you use IGNORE_INDIRECT
 // and use this list to fix up some indirect calls that *do* need to be
 // instrumented.
-// See notes on ASYNCIFY_REMOVE_LIST about the names.
-var ASYNCIFY_ADD_LIST = [];
+// See notes on ASYNCIFY_REMOVE about the names.
+var ASYNCIFY_ADD = [];
 
 // If the Asyncify only-list is provided, then *only* the functions in the list
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
-// See notes on ASYNCIFY_REMOVE_LIST about the names.
-var ASYNCIFY_ONLY_LIST = [];
+// See notes on ASYNCIFY_REMOVE about the names.
+var ASYNCIFY_ONLY = [];
 
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
@@ -959,6 +959,12 @@ var PROXY_TO_WORKER_FILENAME = '';
 // calls pthread_create() to run the application main() in a pthread.  This is
 // something that applications can do manually as well if they wish, this option
 // is provided as convenience.
+//
+// The pthread that main() runs on is a normal pthread in all ways, with the one
+// difference that its stack size is the same as the main thread would normally
+// have, that is, TOTAL_STACK. This makes it easy to flip between
+// PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
+// the same amount of stack.
 //
 // This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
 // is enabled. This has to happen because this is the only chance - this browser
@@ -1206,9 +1212,9 @@ var USE_GLFW = 2;
 // the page will be reloaded in Wasm2JS mode.
 var WASM = 1;
 
-// STANDALONE_WASM indicates that we want to emit a wasm file that can run without
-// JavaScript. The file will use standard APIs such as wasi as much as possible
-// to achieve that.
+// STANDALONE_WASM indicates that we want to emit a wasm file that can run
+// without JavaScript. The file will use standard APIs such as wasi as much as
+// possible to achieve that.
 //
 // This option does not guarantee that the wasm can be used by itself - if you
 // use APIs with no non-JS alternative, we will still use those (e.g., OpenGL
@@ -1237,6 +1243,10 @@ var WASM = 1;
 // the WASM_BIGINT option to avoid that problem by using BigInts for i64s which
 // means we don't need to legalize for JS (but this requires a new enough JS
 // VM).
+//
+// Standlone builds by default require a `main` entry point.  If you want to
+// build a library (also known as a reactor) instead you can pass `--no-entry`
+// or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
 var STANDALONE_WASM = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You
@@ -1826,7 +1836,7 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
   ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
-  ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY_LIST'],
-  ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE_LIST'],
+  ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
+  ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],
   ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
 ];
