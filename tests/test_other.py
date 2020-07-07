@@ -5803,9 +5803,11 @@ int main() {
           aborting = 'ABORTING_MALLOC=1' in aborting_args or (not aborting_args and not growth)
           print('test_failing_alloc', args, pre_fail)
           run_process(args)
+          # growth also disables aborting
+          can_manage_another = not aborting
           split = '-DSPLIT' in args
           print('can manage another:', can_manage_another, 'split:', split, 'aborting:', aborting)
-          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None if aborting else 0)
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if can_manage_another else None)
           if can_manage_another:
             self.assertContained('an allocation failed!\n', output)
             if not split:
