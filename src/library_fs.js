@@ -2021,23 +2021,6 @@ FS.staticInit();` +
         transaction.onerror = onerror;
       };
       openRequest.onerror = onerror;
-    },
-
-    // Allocate memory for an mmap operation. This allocates space of the right
-    // page-aligned size, and clears it.
-    mmapAlloc: function(size) {
-      size = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
-      var ptr = _malloc(size);
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 37 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-      // Typed array fill is not available, and Array.prototype.fill is slow,
-      // so just loop.
-      for (var i = 0; i < size; i++) {
-        HEAPU8[ptr + i] = 0;
-      }
-#else
-      HEAPU8.fill(0, ptr, ptr + size);
-#endif
-      return ptr;
     }
   }
 });
