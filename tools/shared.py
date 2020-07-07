@@ -259,7 +259,7 @@ def which(program):
 
 # Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
 # this can most likely be moved into the tests/jsrun.py.
-def timeout_run(proc, timeout=None, full_output=False, throw_on_failure=True):
+def timeout_run(proc, timeout=None, full_output=False, check=True):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
@@ -269,7 +269,7 @@ def timeout_run(proc, timeout=None, full_output=False, throw_on_failure=True):
       raise Exception("Timed out")
   stdout, stderr = proc.communicate()
   out = ['' if o is None else o for o in (stdout, stderr)]
-  if throw_on_failure and proc.returncode != 0:
+  if check and proc.returncode != 0:
     raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
   if TRACK_PROCESS_SPAWNS:
     logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))

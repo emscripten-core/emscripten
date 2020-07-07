@@ -59,17 +59,19 @@ def check_engine(engine):
   else:
     engine_path = engine
   global WORKING_ENGINES
-  if engine_path in WORKING_ENGINES:
-    return WORKING_ENGINES[engine_path]
-  try:
-    logging.debug('Checking JS engine %s' % engine)
-    output = run_js(shared.path_from_root('tests', 'hello_world.js'), engine,
-                    skip_check=True)
-    if 'hello, world!' in output:
-      WORKING_ENGINES[engine_path] = True
-  except Exception as e:
-    logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
-    WORKING_ENGINES[engine_path] = False
+  if engine_path not in WORKING_ENGINES:
+    try:
+      logging.debug('Checking JS engine %s' % engine)
+      output = run_js(shared.path_from_root('tests', 'hello_world.js'), engine,
+                      skip_check=True)
+      print(output)
+      if 'hello, world!' in output:
+        WORKING_ENGINES[engine_path] = True
+      else:
+        WORKING_ENGINES[engine_path] = False
+    except Exception as e:
+      logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
+      WORKING_ENGINES[engine_path] = False
   return WORKING_ENGINES[engine_path]
 
 
@@ -105,6 +107,7 @@ def run_js(filename, engine=None, args=[],
         stderr=stderr,
         cwd=cwd,
         universal_newlines=True)
+    stdout, stderr = proc.communicate()
   except Exception:
     # the failure may be because the engine is not present. show the proper
     # error in that case
@@ -112,15 +115,11 @@ def run_js(filename, engine=None, args=[],
       require_engine(engine)
     # if we got here, then require_engine succeeded, so we can raise the original error
     raise
-  try:
-    ret = shared.timeout_run(proc, full_output=full_output, throw_on_failure=False)
-  except Exception:
-    # the failure may be because the engine does not work. show the proper
-    # error in that case
-    if not skip_check:
-      require_engine(engine)
-    # if we got here, then require_engine succeeded, so we can raise the original error
-    raise
+
+  out = ['' if o is None else o for o in (stdout, stderr)]
+  ret = '\n'.join(out) if full_output else out[0]
+
   if assert_returncode is not None and proc.returncode is not assert_returncode:
     raise CalledProcessError(proc.returncode, ' '.join(command), str(ret))
+
   return ret
