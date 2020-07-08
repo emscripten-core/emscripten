@@ -6566,8 +6566,6 @@ return malloc(size);
       shortname = os.path.splitext(name)[0]
       # TODO: test only worked in non-fastcomp (well, these cases)
       basename = os.path.basename(shortname)
-      if basename == returns_non_zero[-1]:
-        continue
       if basename in skip_tests:
         continue
       if self.is_wasm() and basename in skip_wasm:
