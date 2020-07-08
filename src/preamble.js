@@ -830,29 +830,24 @@ if (!isDataURI(wasmBinaryFile)) {
 }
 
 function getBinary() {
-  try {
-    if (wasmBinary) {
-      return new Uint8Array(wasmBinary);
-    }
+  if (wasmBinary) {
+    return new Uint8Array(wasmBinary);
+  }
 
 #if SUPPORT_BASE64_EMBEDDING
-    var binary = tryParseAsDataURI(wasmBinaryFile);
-    if (binary) {
-      return binary;
-    }
-#endif
-    if (readBinary) {
-      return readBinary(wasmBinaryFile);
-    } else {
-#if WASM_ASYNC_COMPILATION
-      throw "both async and sync fetching of the wasm failed";
-#else
-      throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
-#endif
-    }
+  var binary = tryParseAsDataURI(wasmBinaryFile);
+  if (binary) {
+    return binary;
   }
-  catch (err) {
-    abort(err);
+#endif
+  if (readBinary) {
+    return readBinary(wasmBinaryFile);
+  } else {
+#if WASM_ASYNC_COMPILATION
+    throw "both async and sync fetching of the wasm failed";
+#else
+    throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+#endif
   }
 }
 
@@ -874,8 +869,10 @@ function getBinaryPromise() {
       return getBinary();
     });
   }
-  // Otherwise, getBinary should be able to get it synchronously
-  return new Promise(function(resolve, reject) {
+  // Otherwise, getBinary should be able to get it synchronously.
+  // Using `new Promise` here rather than `Promise.resolve` so errors thrown
+  // from getBinary result in a rejected Promise.
+  return new Promise(function(resolve) {
     resolve(getBinary());
   });
 }
@@ -1002,7 +999,7 @@ function createWasm() {
   {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
 #endif
 
-  function instantiateArrayBuffer(receiver) {
+  function instantiateArrayBuffer() {
     return getBinaryPromise().then(function(binary) {
 #if USE_OFFSET_CONVERTER
       var result = WebAssembly.instantiate(binary, info);
@@ -1014,7 +1011,7 @@ function createWasm() {
 #else // USE_OFFSET_CONVERTER
       return WebAssembly.instantiate(binary, info);
 #endif // USE_OFFSET_CONVERTER
-    }).then(receiver, function(reason) {
+    }).catch(function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
 
 #if WASM == 2
@@ -1030,51 +1027,52 @@ function createWasm() {
       }
 #endif
 #endif // WASM == 2
-
-      abort(reason);
+      throw reason;
     });
   }
 
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
-    if (!wasmBinary &&
-        typeof WebAssembly.instantiateStreaming === 'function' &&
-        !isDataURI(wasmBinaryFile) &&
+    // If streaming instantiating isn't available or shouldn't be used,
+    // fallback to non-streaming instantiation
+    if (wasmBinary ||
+        typeof WebAssembly.instantiateStreaming !== 'function' ||
+        isDataURI(wasmBinaryFile) ||
 #if ENVIRONMENT_MAY_BE_WEBVIEW
         // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
-        !isFileURI(wasmBinaryFile) &&
+        isFileURI(wasmBinaryFile) ||
 #endif
-        typeof fetch === 'function') {
-      fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
-        var result = WebAssembly.instantiateStreaming(response, info);
+        typeof fetch !== 'function') {
+      return instantiateArrayBuffer();
+    }
+    
+    return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+      return WebAssembly.instantiateStreaming(response, info).then(function (wasmResult) {
 #if USE_OFFSET_CONVERTER
         // This doesn't actually do another request, it only copies the Response object.
         // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
-        Promise.all([response.clone().arrayBuffer(), result]).then(function (results) {
-          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(results[0]), results[1].module);
+        response.clone().arrayBuffer().then(function (clonedResponseBuffer) {
+          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(clonedResponseBuffer), wasmResult.module);
           {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
         });
 #endif
-        return result.then(receiveInstantiatedSource, function(reason) {
-            // We expect the most common failure cause to be a bad MIME type for the binary,
-            // in which case falling back to ArrayBuffer instantiation should work.
-            err('wasm streaming compile failed: ' + reason);
-            err('falling back to ArrayBuffer instantiation');
-            return instantiateArrayBuffer(receiveInstantiatedSource);
-          });
+        return wasmResult;
+      }, function(reason) {
+        // We expect the most common failure cause to be a bad MIME type for the binary,
+        // in which case falling back to ArrayBuffer instantiation should work.
+        err('wasm streaming compile failed: ' + reason);
+        err('falling back to ArrayBuffer instantiation');
+        return instantiateArrayBuffer();
       });
-    } else {
-      return instantiateArrayBuffer(receiveInstantiatedSource);
-    }
+    });
   }
 #else
   function instantiateSync() {
     var instance;
     var module;
-    var binary;
+    var binary = getBinary();
     try {
-      binary = getBinary();
 #if NODE_CODE_CACHING
       if (ENVIRONMENT_IS_NODE) {
         var v8 = require('v8');
@@ -1150,13 +1148,17 @@ function createWasm() {
 #if RUNTIME_LOGGING
   err('asynchronously preparing wasm');
 #endif
-  instantiateAsync();
+  instantiateAsync().then(receiveInstantiatedSource, abort);
 #if LOAD_SOURCE_MAP
   getSourceMapPromise().then(receiveSourceMapJSON);
 #endif
   return {}; // no exports yet; we'll fill them in later
 #else
-  instantiateSync();
+  try {
+    instantiateSync();
+  } catch (e) {
+    abort(e);
+  }
   return Module['asm']; // exports were assigned here
 #endif
 }
