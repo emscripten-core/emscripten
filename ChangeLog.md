@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Rename `emscripten/math.h` to `emscripten/em_math.h` because if a user adds
+  `emscripten/` as an include path with `-I`, that can override libc math.h,
+  which leads to very confusing errors.
 
 1.39.19: 07/07/2020
 -------------------
