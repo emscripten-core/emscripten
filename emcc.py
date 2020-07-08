@@ -1203,24 +1203,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] = ''
     newargs = [a for a in newargs if a]
 
-    if has_dash_c or has_dash_S:
+    if has_dash_c or has_dash_S or has_dash_E:
       if has_dash_c:
         if '-emit-llvm' in newargs:
           final_suffix = '.bc'
         else:
           final_suffix = options.default_object_extension
+        target = target_basename + final_suffix
       elif has_dash_S:
         if '-emit-llvm' in newargs:
           final_suffix = '.ll'
         else:
           final_suffix = '.s'
-      target = target_basename + final_suffix
+        target = target_basename + final_suffix
 
       if len(input_files) > 1 and specified_target:
-        exit_with_error('cannot specify -o with -c/-S and multiple source files')
+        exit_with_error('cannot specify -o with -c/-S/-E and multiple source files')
 
-    if has_dash_E:
-      final_suffix = '.eout' # not bitcode, not js; but just result from preprocessing stage of the input file
     if '-M' in newargs or '-MM' in newargs:
       final_suffix = '.mout' # not bitcode, not js; but just dependency rule of the input file
 
@@ -2156,22 +2155,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           return CXX
         return CC
 
-      # Precompiled headers support
-      if has_header_inputs:
-        headers = [header for _, header in input_files]
-        for header in headers:
-          if not header.endswith(HEADER_ENDINGS):
-            exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
-          cxx = use_cxx(header)
-          compiler = get_compiler(cxx)
-          base_cflags = shared.get_cflags(args, cxx)
-          cmd = [compiler] + base_cflags + cflags + compile_args + [header]
-          if specified_target:
-            cmd += ['-o', specified_target]
-          cmd = system_libs.process_args(cmd, shared.Settings)
-          logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
-          return run_process(cmd, check=False).returncode
-
       def get_clang_command(src_file):
         cxx = use_cxx(src_file)
         base_cflags = shared.get_cflags(args, cxx)
@@ -2187,11 +2170,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for input_file in [x[1] for x in input_files]:
           cmd = get_clang_command(input_file)
           if specified_target:
+            assert(len(input_files) == 1)
             cmd += ['-o', specified_target]
           # Do not compile, but just output the result from preprocessing stage or
           # output the dependency rule. Warning: clang and gcc behave differently
           # with -MF! (clang seems to not recognize it)
           logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
+          run_process(cmd, check=False).returncode
+        return 0
+
+      # Precompiled headers support
+      if has_header_inputs:
+        headers = [header for _, header in input_files]
+        for header in headers:
+          if not header.endswith(HEADER_ENDINGS):
+            exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
+          cxx = use_cxx(header)
+          compiler = get_compiler(cxx)
+          base_cflags = shared.get_cflags(args, cxx)
+          cmd = [compiler] + base_cflags + cflags + compile_args + [header]
+          if specified_target:
+            cmd += ['-o', specified_target]
+          cmd = system_libs.process_args(cmd, shared.Settings)
+          logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
           return run_process(cmd, check=False).returncode
 
       def get_object_filename(input_file):

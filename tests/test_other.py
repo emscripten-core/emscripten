@@ -2610,6 +2610,10 @@ done.
     self.assertContained('hello_world.c"', out)
     self.assertContained('printf("hello, world!', out)
 
+  def test_preprocess_multi(self):
+    out = run_process([EMCC, path_from_root('tests', 'hello_world.c'), path_from_root('tests', 'hello_world.c'), '-E'], stdout=PIPE).stdout
+    self.assertEqual(out.count('printf("hello, world!'), 2)
+
   def test_syntax_only_valid(self):
     result = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-fsyntax-only'], stdout=PIPE, stderr=STDOUT)
     self.assertEqual(result.stdout, '')
