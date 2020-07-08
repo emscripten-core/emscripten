@@ -482,6 +482,8 @@
         "defines": [
             "SOCK_DGRAM", 
             "SOCK_STREAM", 
+            "SOCK_CLOEXEC",
+            "SOCK_NONBLOCK",
             "AF_INET", 
             "AF_UNSPEC", 
             "AF_INET6",

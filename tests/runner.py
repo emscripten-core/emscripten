@@ -63,7 +63,7 @@ import parallel_testsuite
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
 from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
-from tools.shared import EM_BUILD_VERBOSE, CLANG_CC
+from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete
 from tools.shared import asbytes, safe_copy, Settings
 from tools import shared, line_endings, building
@@ -531,9 +531,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           for filename in filenames:
             temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
 
-        # Our leak detection will pick up *any* new temp files in the temp dir. They may not be due to
-        # us, but e.g. the browser when running browser tests. Until we figure out a proper solution,
-        # ignore some temp file names that we see on our CI infrastructure.
+        # Our leak detection will pick up *any* new temp files in the temp dir.
+        # They may not be due to us, but e.g. the browser when running browser
+        # tests. Until we figure out a proper solution, ignore some temp file
+        # names that we see on our CI infrastructure.
         ignorable_file_prefixes = [
           '/tmp/tmpaddon',
           '/tmp/circleci-no-output-timeout',
@@ -547,12 +548,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           for f in left_over_files:
             print('leaked file: ' + f, file=sys.stderr)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
-
-      # Make sure we don't leave stuff around
-      # if not self.has_prev_ll:
-      #   for temp_file in os.listdir(TEMP_DIR):
-      #     assert not temp_file.endswith('.ll'), temp_file
-      #     # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
   def get_setting(self, key):
     if key in self.settings_mods:
@@ -808,7 +803,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
-  def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
+  def run_generated_code(self, engine, filename, args=[], output_nicerizer=None, assert_returncode=0):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
@@ -819,7 +814,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       print("Running '%s' under '%s'" % (filename, engine))
     try:
       with chdir(self.get_dir()):
-        jsrun.run_js(filename, engine, args, check_timeout,
+        jsrun.run_js(filename, engine, args,
                      stdout=open(stdout, 'w'),
                      stderr=open(stderr, 'w'),
                      assert_returncode=assert_returncode)
@@ -1249,11 +1244,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += wasm_engines
-      # wasm2c requires a working clang install which is missing on CI, or to
-      # use msvc which wasm2c doesn't support yet
-      if self.get_setting('WASM2C') and not WINDOWS:
-        # the "engine" to run wasm2c builds is clang that compiles the c
-        engines += [[CLANG_CC]]
+      if self.get_setting('WASM2C') and not EMTEST_LACKS_NATIVE_CLANG:
+        # compile the c file to a native executable.
+        c = shared.unsuffixed(js_file) + '.wasm.c'
+        executable = shared.unsuffixed(js_file) + '.exe'
+        cmd = [shared.CLANG_CC, c, '-o', executable] + clang_native.get_clang_native_args()
+        shared.run_process(cmd, env=clang_native.get_clang_native_env())
+        # we can now run the executable directly, without an engine, which
+        # we indicate with None as the engine
+        engines += [[None]]
     if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in engines:

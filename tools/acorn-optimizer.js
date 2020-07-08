@@ -1,7 +1,6 @@
-var acorn = require('../third_party/acorn');
+var acorn = require('acorn');
 var terser = require('../third_party/terser');
 var fs = require('fs');
-var path = require('path');
 
 // Setup
 
@@ -1299,7 +1298,25 @@ if (extraInfoStart > 0) {
 // Collect all JS code comments to this array so that we can retain them in the outputted code
 // if --closureFriendly was requested.
 var sourceComments = [];
-var ast = acorn.parse(input, { ecmaVersion: 2018, preserveParens: closureFriendly, onComment: closureFriendly ? sourceComments : undefined });
+var ast;
+try {
+  ast = acorn.parse(input, {
+    ecmaVersion: 2018,
+    preserveParens: closureFriendly,
+    onComment: closureFriendly ? sourceComments : undefined
+  });
+} catch (err) {
+  err.message += (function() {
+    var errorMessage = '\n' + input.split(acorn.lineBreak)[err.loc.line - 1] + '\n';
+    var column = err.loc.column;
+    while (column--) {
+      errorMessage += ' ';
+    }
+    errorMessage += '^\n';
+    return errorMessage;
+  })();
+  throw err;
+}
 
 var minifyWhitespace = false;
 var noPrint = false;

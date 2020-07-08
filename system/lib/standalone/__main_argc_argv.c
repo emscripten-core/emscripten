@@ -13,13 +13,9 @@
 
 #include <assert.h>
 
-// Main has to be weak here because in emscripten we allow standalone
-// applications that don't contain a main at all.
-int main(int argc, char *argv[]) __attribute__((weak));
+int main(int argc, char *argv[]);
 
 __attribute__((weak))
 int __main_argc_argv(int argc, char *argv[]) {
-  if (!main)
-    return 0;
   return main(argc, argv);
 }

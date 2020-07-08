@@ -34,11 +34,7 @@ if (Module['doWasm2JS']) {
 
 #if WASM == 1
 if (typeof WebAssembly !== 'object') {
-#if ASSERTIONS
-  abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-#else
-  err('no native wasm support detected');
-#endif
+  abort('no native wasm support detected');
 }
 #endif
 
@@ -693,7 +689,6 @@ function abort(what) {
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif
   what += '';
-  out(what);
   err(what);
 
   ABORT = true;
@@ -706,10 +701,10 @@ function abort(what) {
   what = output;
 #endif // ASSERTIONS
 
+#if WASM
   // Throw a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
-#if WASM
   throw new WebAssembly.RuntimeError(what);
 #else
   throw what;

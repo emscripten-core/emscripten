@@ -61,15 +61,13 @@ except ImportError:
 
 logger = logging.getLogger('emcc')
 
-DEV_NULL = '/dev/null' if not WINDOWS else 'NUL'
-
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
 ASSEMBLY_CPP_ENDINGS = ('.S',)
-SPECIAL_ENDINGLESS_FILENAMES = (DEV_NULL,)
+SPECIAL_ENDINGLESS_FILENAMES = (os.devnull,)
 
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ASSEMBLY_CPP_ENDINGS
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
@@ -392,7 +390,7 @@ def expand_byte_size_suffixes(value):
   many bytes that is and returns it as an integer.
   """
   value = value.strip()
-  match = re.fullmatch(r'(\d+)\s*([kmgt]?b)?', value, re.I)
+  match = re.match(r'^(\d+)\s*([kmgt]?b)?$', value, re.I)
   if not match:
     exit_with_error("invalid byte size `%s`.  Valid suffixes are: kb, mb, gb, tb" % value)
   value, suffix = match.groups()
@@ -840,17 +838,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   language_mode = get_language_mode(args)
 
-  def is_minus_s_for_emcc(args, i):
-    # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
+  def is_dash_s_for_emcc(args, i):
+    # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
-    assert args[i] == '-s'
-    if len(args) > i + 1:
+    if args[i] == '-s':
+      if len(args) <= i + 1:
+        return False
       arg = args[i + 1]
-      if arg.split('=')[0].isupper():
-        return True
-
-    logger.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
-    return False
+    else:
+      arg = args[i][2:]
+    return arg.split('=')[0].isupper()
 
   CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args
   if CONFIGURE_CONFIG and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE'):
@@ -1036,9 +1033,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       start_time = time.time() # done after parsing arguments, which might affect debug state
 
     for i in range(len(newargs)):
-      if newargs[i] == '-s':
-        if is_minus_s_for_emcc(newargs, i):
-          key = newargs[i + 1]
+      if newargs[i].startswith('-s'):
+        if is_dash_s_for_emcc(newargs, i):
+          if newargs[i] == '-s':
+            key = newargs[i + 1]
+            newargs[i + 1] = ''
+          else:
+            key = newargs[i][2:]
+          newargs[i] = ''
+
           # If not = is specified default to 1
           if '=' not in key:
             key += '=1'
@@ -1053,7 +1056,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             pass
 
           settings_changes.append(key)
-          newargs[i] = newargs[i + 1] = ''
+
     newargs = [arg for arg in newargs if arg]
 
     settings_key_changes = set()
@@ -1123,7 +1126,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         arg = os.path.realpath(arg)
 
       if not arg.startswith('-'):
-        if not os.path.exists(arg):
+        # os.devnul should always be reported as existing but there is bug in windows
+        # python before 3.8:
+        # https://bugs.python.org/issue1311
+        if not os.path.exists(arg) and arg != os.devnull:
           exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
 
         file_suffix = get_file_suffix(arg)
@@ -2224,7 +2230,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           cmd.append('-emit-llvm')
         shared.print_compiler_stage(cmd)
         shared.check_call(cmd)
-        if output_file != '-':
+        if output_file not in ('-', os.devnull):
           assert(os.path.exists(output_file))
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
@@ -2502,7 +2508,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # exit block 'post-link'
       log_time('post-link')
 
-    if target == DEV_NULL:
+    if target == os.devnull:
       # TODO(sbc): In theory we should really run the whole pipeline even if the output is
       # /dev/null, but that will take some refactoring
       return 0

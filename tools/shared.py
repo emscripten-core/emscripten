@@ -259,18 +259,18 @@ def which(program):
 
 # Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
 # this can most likely be moved into the tests/jsrun.py.
-def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
+def timeout_run(proc, timeout=None, full_output=False, check=True):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
       time.sleep(0.1)
     if proc.poll() is None:
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out: " + note)
+      raise Exception("Timed out")
   stdout, stderr = proc.communicate()
   out = ['' if o is None else o for o in (stdout, stderr)]
-  if throw_on_failure and proc.returncode != 0:
-    raise subprocess.CalledProcessError(proc.returncode, ' '.join(note_args), stdout, stderr)
+  if check and proc.returncode != 0:
+    raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
   if TRACK_PROCESS_SPAWNS:
     logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
   return '\n'.join(out) if full_output else out[0]
@@ -1512,7 +1512,7 @@ def safe_move(src, dst):
     dst = os.path.join(dst, os.path.basename(src))
   if src == dst:
     return
-  if dst == '/dev/null':
+  if dst == os.devnull:
     return
   logging.debug('move: %s -> %s', src, dst)
   shutil.move(src, dst)
@@ -1525,7 +1525,7 @@ def safe_copy(src, dst):
     dst = os.path.join(dst, os.path.basename(src))
   if src == dst:
     return
-  if dst == '/dev/null':
+  if dst == os.devnull:
     return
   shutil.copyfile(src, dst)
 
