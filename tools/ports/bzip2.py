@@ -10,10 +10,11 @@ VERSION = '1.0.6'
 HASH = '512cbfde5144067f677496452f3335e9368fd5d7564899cb49e77847b9ae7dca598218276637cbf5ec524523be1e8ace4ad36a148ef7f4badf3f6d5a002a4bb2'
 
 
-def get(ports, settings, shared):
-  if settings.USE_BZIP2 != 1:
-    return []
+def needed(settings):
+  return settings.USE_BZIP2
 
+
+def get(ports, settings, shared):
   ports.fetch_project('bzip2', 'https://github.com/emscripten-ports/bzip2/archive/' + VERSION + '.zip', 'bzip2-' + VERSION, sha512hash=HASH)
 
   def create():
@@ -54,8 +55,8 @@ def clear(ports, shared):
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_BZIP2 == 1:
-    get(ports, settings, shared)
+  assert(needed(settings))
+  get(ports, settings, shared)
   return args
 
 

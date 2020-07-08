@@ -1977,14 +1977,15 @@ class Ports(object):
 def get_ports(settings):
   ret = []
 
-  try:
-    process_dependencies(settings)
-    for port in ports.ports:
-      # ports return their output files, which will be linked, or a txt file
-      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-  except Exception:
-    logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
-    raise
+  process_dependencies(settings)
+  for port in ports.ports:
+    if port.needed(settings):
+      try:
+        # ports return their output files, which will be linked, or a txt file
+        ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
+      except Exception:
+        logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
+        raise
 
   ret.reverse()
   return ret
@@ -1992,14 +1993,19 @@ def get_ports(settings):
 
 def process_dependencies(settings):
   for port in reversed(ports.ports):
-    if hasattr(port, "process_dependencies"):
+    if port.needed(settings) and hasattr(port, "process_dependencies"):
       port.process_dependencies(settings)
 
 
 def process_args(args, settings):
+  # Legacy SDL1 port is not actually a port at all but builtin
+  if settings.USE_SDL == 1:
+    args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
+
   process_dependencies(settings)
   for port in ports.ports:
-    args = port.process_args(Ports, args, settings, shared)
+    if port.needed(settings):
+      args = port.process_args(Ports, args, settings, shared)
   return args
 
 

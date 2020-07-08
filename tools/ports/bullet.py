@@ -11,10 +11,11 @@ TAG = 'version_1'
 HASH = '3922486816cf7d99ee02c3c1ef63d94290e8ed304016dd9927137d04206e7674d9df8773a4abb7bb57783d0a5107ad0f893aa87acfb34f7b316eec22ca55a536'
 
 
-def get(ports, settings, shared):
-  if settings.USE_BULLET != 1:
-    return []
+def needed(settings):
+  return settings.USE_BULLET == 1
 
+
+def get(ports, settings, shared):
   ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libbullet')
 
@@ -57,10 +58,9 @@ def clear(ports, shared):
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_BULLET == 1:
-    get(ports, settings, shared)
-    args += ['-I' + os.path.join(ports.get_include_dir(), 'bullet')]
-  return args
+  assert(needed(settings))
+  get(ports, settings, shared)
+  return args + ['-I' + os.path.join(ports.get_include_dir(), 'bullet')]
 
 
 def show():

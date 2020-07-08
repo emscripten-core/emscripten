@@ -10,10 +10,11 @@ HASH = '0ea4ab13b8715b9f8b41096f47dc03cad17f35e19c945156b2bb0f3c16b261a4b0c6d576
 SUBDIR = 'SDL2-' + TAG
 
 
-def get(ports, settings, shared):
-  if settings.USE_SDL != 2:
-    return []
+def needed(settings):
+  return settings.USE_SDL == 2
 
+
+def get(ports, settings, shared):
   # get the port
   ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
   libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
@@ -89,14 +90,10 @@ def clear(ports, shared):
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_SDL == 1:
-    # TODO(sbc): remove this
-    args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
-  elif settings.USE_SDL == 2:
-    # TODO(sbc): remove this
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_include_dir(), 'SDL2')]
-    get(ports, settings, shared)
-  return args
+  assert(needed(settings))
+  # TODO(sbc): remove this
+  get(ports, settings, shared)
+  return args + ['-Xclang', '-isystem' + os.path.join(ports.get_include_dir(), 'SDL2')]
 
 
 def show():
