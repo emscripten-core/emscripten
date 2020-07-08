@@ -3316,7 +3316,7 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
 
     run_process([EMCC, 'code.cpp', '--pre-js', 'pre.js'])
     output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-    assert r'<{(123456789)}>' in output, output
+    self.assertContained(r'<{(123456789)}>', output)
 
   def test_precompiled_headers_warnings(self):
     # Check that we don't have any underlying warnings from clang, this can happen if we
@@ -5711,7 +5711,7 @@ int main() {
 }
 ''')
     run_process([EMCC, 'src.cpp'])
-    self.assertContained('', run_js('a.out.js', assert_returncode=0))
+    self.assertContained('', run_js('a.out.js'))
 
   def test_file_packager_huge(self):
     MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
@@ -10037,8 +10037,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
 
   def test_boost_graph(self):
     self.do_smart_test(path_from_root('tests', 'test_boost_graph.cpp'),
-                       emcc_args=['-s', 'USE_BOOST_HEADERS=1'],
-                       assert_returncode=0)
+                       emcc_args=['-s', 'USE_BOOST_HEADERS=1'])
 
   @no_fastcomp('EM_ASM and setjmp works fine on fastcomp')
   def test_setjmp_em_asm(self):
