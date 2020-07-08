@@ -2176,7 +2176,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # output the dependency rule. Warning: clang and gcc behave differently
           # with -MF! (clang seems to not recognize it)
           logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-          run_process(cmd, check=False).returncode
+          shared.print_compiler_stage(cmd)
+          rtn = run_process(cmd, check=False).returncode
+          if rtn:
+            return rtn
         return 0
 
       # Precompiled headers support
@@ -2193,6 +2196,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['-o', specified_target]
           cmd = system_libs.process_args(cmd, shared.Settings)
           logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
+          shared.print_compiler_stage(cmd)
           return run_process(cmd, check=False).returncode
 
       def get_object_filename(input_file):
