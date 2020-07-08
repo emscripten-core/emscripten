@@ -2170,7 +2170,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for input_file in [x[1] for x in input_files]:
           cmd = get_clang_command(input_file)
           if specified_target:
-            assert(len(input_files) == 1)
             cmd += ['-o', specified_target]
           # Do not compile, but just output the result from preprocessing stage or
           # output the dependency rule. Warning: clang and gcc behave differently
