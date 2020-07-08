@@ -485,6 +485,13 @@ jobs:
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8
       - build
+  test-minimal-python2:
+    environment:
+      PYTHON_BIN: "python2"
+    executor: bionic
+    steps:
+      - run-tests:
+          test_targets: "wasm2.test_hello_world other.test_emcc_size_parsing"
   test-wasm0:
     executor: bionic
     steps:
