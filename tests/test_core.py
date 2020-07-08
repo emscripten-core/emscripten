@@ -28,8 +28,8 @@ from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
+from runner import NON_ZERO
 import clang_native
-from jsrun import run_js, NON_ZERO
 
 # decorators for limiting which modes a test can run in
 
@@ -293,7 +293,7 @@ class TestCoreBase(RunnerCore):
     filename += '.strict.js'
     with open(filename, 'w') as outfile:
       outfile.write('"use strict";\n' + js)
-    run_js(filename)
+    self.run_js(filename)
 
   def get_bullet_library(self, use_cmake):
     if use_cmake:
@@ -2907,7 +2907,7 @@ The current type of b is: 9
                 output_nicerizer=lambda x, err: x.replace('\n', '*'))
 
     if self.get_setting('ASM_JS') and SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
-      out = run_js('liblib.so', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
+      out = self.run_js('liblib.so', engine=SPIDERMONKEY_ENGINE)
       if 'asm' in out:
         self.validate_asmjs(out)
 
@@ -3700,7 +3700,7 @@ ok
       if force_c:
         shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
     if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
-      out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
+      out = self.run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE)
       if 'asm' in out:
         self.validate_asmjs(out)
     shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
@@ -4030,7 +4030,7 @@ ok
       print('check warnings')
       self.set_setting('ASSERTIONS', 2)
       test()
-      full = run_js('src.cpp.o.js', full_output=True, stderr=STDOUT)
+      full = self.run_js('src.cpp.o.js')
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
   @needs_dlfcn
@@ -4600,7 +4600,7 @@ res64 - external 64\n''', header='''
 
     if not self.has_changed_setting('ASSERTIONS'):
       print('check warnings')
-      full = run_js('src.cpp.o.js', full_output=True, stderr=STDOUT)
+      full = self.run_js('src.cpp.o.js')
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dlfcn
@@ -7084,7 +7084,7 @@ return malloc(size);
     self.assertIsNotNone(short_aborter)
     print('full:', full_aborter, 'short:', short_aborter)
     if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
-      output = run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=NON_ZERO)
+      output = self.run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
       # we may see the full one, if -g, or the short one if not
       if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
         # stack traces may also be ' name ' or 'name@' etc
@@ -7546,7 +7546,7 @@ someweirdtext
       # the sourcesContent attribute is optional, but if it is present it
       # needs to containt valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
-    mappings = json.loads(run_js(
+    mappings = json.loads(self.run_js(
       path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
       args=[map_filename]))
     if str is bytes:
@@ -8072,10 +8072,10 @@ Module['onRuntimeInitialized'] = function() {
       return True
 
     def verify_working(args=['0']):
-      self.assertContained('foo_end\n', run_js('src.cpp.o.js', args=args))
+      self.assertContained('foo_end\n', self.run_js('src.cpp.o.js', args=args))
 
     def verify_broken(args=['0']):
-      self.assertNotContained('foo_end\n', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=NON_ZERO))
+      self.assertNotContained('foo_end\n', self.run_js('src.cpp.o.js', args=args, assert_returncode=NON_ZERO))
 
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
@@ -8133,7 +8133,7 @@ Module['onRuntimeInitialized'] = function() {
     # remove the wasm to make sure we never use it again
     os.remove('src.c.o.wasm')
     # verify that it runs
-    self.assertContained('hello, world!', run_js('do_wasm2js.js'))
+    self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
 
   @no_fastcomp('wasm-backend specific feature')
   @no_asan('no wasm2js support yet in asan')
@@ -8148,13 +8148,13 @@ Module['onRuntimeInitialized'] = function() {
       # First run with WebAssembly support enabled
       # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
       os.rename('a.out.wasm.js', 'a.out.wasm.js.unused')
-      self.assertContained('hello!', run_js('a.out.js'))
+      self.assertContained('hello!', self.run_js('a.out.js'))
       os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
 
       # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
       open('b.out.js', 'w').write('WebAssembly = undefined;\n' + open('a.out.js', 'r').read())
       os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
-      self.assertContained('hello!', run_js('b.out.js'))
+      self.assertContained('hello!', self.run_js('b.out.js'))
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
@@ -8371,7 +8371,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.add_post_run('ThisFunctionDoesNotExist()')
     src = open(path_from_root('tests', 'core', 'test_hello_world.c')).read()
     self.build(src, self.get_dir(), 'src.c')
-    output = run_js('src.c.o.js', assert_returncode=NON_ZERO, stderr=STDOUT)
+    output = self.run_js('src.c.o.js', assert_returncode=NON_ZERO)
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 

@@ -804,12 +804,16 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
+  def run_js(self, filename, engine=None, args=[], assert_returncode=0):
+    return self.run_generated_code(engine, filename, args, assert_returncode=assert_returncode)
+
   def run_generated_code(self, engine, filename, args=[], output_nicerizer=None, assert_returncode=0):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
     # Make sure that we produced proper line endings to the .js file we are about to run.
-    self.assertEqual(line_endings.check_line_endings(filename), 0)
+    if not filename.endswith('.wasm'):
+      self.assertEqual(line_endings.check_line_endings(filename), 0)
     error = None
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
