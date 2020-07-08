@@ -10,6 +10,8 @@ from tools import building
 TAG = '1.7.5'
 HASH = 'c2c13fc97bb74f0f13092b07804f7087e948bce49793f48b62c2c24a5792523acc0002840bebf21829172bb2e7c3df9f9625250aec6c786a55489667dd04d6a0'
 
+deps = ['freetype']
+
 
 def needed(settings):
   return settings.USE_HARFBUZZ

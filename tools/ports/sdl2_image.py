@@ -63,10 +63,14 @@ def clear(ports, settings, shared):
 
 
 def process_dependencies(settings):
+  global deps
+  deps = ['sdl2']
   settings.USE_SDL = 2
   if 'png' in settings.SDL2_IMAGE_FORMATS:
+    deps.append('libpng')
     settings.USE_LIBPNG = 1
   if 'jpg' in settings.SDL2_IMAGE_FORMATS:
+    deps.append('libjpeg')
     settings.USE_LIBJPEG = 1
 
 
