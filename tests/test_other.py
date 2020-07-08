@@ -879,13 +879,13 @@ f.close()
     # fastcomp. all asm, so it can't just work with wrong sigs. but,
     # ASSERTIONS=2 gives much better info to debug
     # Case 1: No useful info, but does mention ASSERTIONS
-    test(['-O1'], 'ASSERTIONS', True)
+    test(['-O1'], 'ASSERTIONS', NON_ZERO)
     # Case 2: Some useful text
     test(['-O1', '-s', 'ASSERTIONS=1'], [
         'Invalid function pointer',
         "called with signature 'v'. Perhaps this is an invalid value",
         'Build with ASSERTIONS=2 for more info'
-    ], True)
+    ], NON_ZERO)
     # Case 3: actually useful identity of the bad pointer, with comparisons to
     # what it would be in other types/tables
     test(['-O1', '-s', 'ASSERTIONS=2'], [
@@ -895,7 +895,7 @@ f.close()
         'Invalid function pointer',
         "called with signature 'v'. Perhaps this is an invalid value",
         "i: asm['_my_func']"
-    ], True)
+    ], NON_ZERO)
     # Case 4: emulate so it works
     test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], 'my func\n', 0)
 
