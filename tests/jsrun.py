@@ -12,7 +12,7 @@ from tools import shared
 
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
 
-# Special valud for passing to assert_returncode which means we expect that program
+# Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
 NON_ZERO = -1
 

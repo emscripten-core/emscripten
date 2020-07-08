@@ -3400,7 +3400,7 @@ int main() {
       print(opts)
       result = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts, stderr=PIPE, check=False)
       if result.returncode == 0:
-        self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if opts else None))
+        self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if opts else NON_ZERO))
       else:
         self.assertContained(expected, result.stderr)
 
@@ -5811,7 +5811,7 @@ int main() {
           can_manage_another = not aborting
           split = '-DSPLIT' in args
           print('can manage another:', can_manage_another, 'split:', split, 'aborting:', aborting)
-          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if can_manage_another else None)
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if can_manage_another else NON_ZERO)
           if can_manage_another:
             self.assertContained('an allocation failed!\n', output)
             if not split:
@@ -9921,7 +9921,7 @@ int main(void) {
       print(compile_flags, link_flags, expect_caught)
       run_process([EMCC, 'src.cpp', '-c', '-o', 'src.o'] + compile_flags)
       run_process([EMCC, 'src.o'] + link_flags)
-      result = run_js('a.out.js', assert_returncode=0 if expect_caught else None, stderr=PIPE)
+      result = run_js('a.out.js', assert_returncode=0 if expect_caught else NON_ZERO, stderr=PIPE)
       self.assertContainedIf('CAUGHT', result, expect_caught)
 
   def test_assertions_on_internal_api_changes(self):
