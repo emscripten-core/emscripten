@@ -33,7 +33,7 @@ ports_by_name = {}
 
 
 def init():
-  expected_attrs = ['get', 'clear', 'process_args', 'show']
+  expected_attrs = ['get', 'clear', 'process_args', 'show', 'needed']
   for port in ports:
     name = port.__name__.split('.')[-1]
     ports_by_name[name] = port

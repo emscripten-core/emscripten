@@ -58,12 +58,11 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, shared, settings):
   shared.Cache.get_path(ports.get_lib_name('libSDL2_image'))
 
 
 def process_dependencies(settings):
-  assert(needed(settings))
   settings.USE_SDL = 2
   if 'png' in settings.SDL2_IMAGE_FORMATS:
     settings.USE_LIBPNG = 1
@@ -72,7 +71,6 @@ def process_dependencies(settings):
 
 
 def process_args(ports, args, settings, shared):
-  assert(needed(settings))
   get(ports, settings, shared)
   return args
 

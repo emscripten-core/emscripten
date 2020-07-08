@@ -38,12 +38,11 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create)]
 
 
-def clear(ports, shared):
+def clear(ports, shared, settings):
   shared.Cache.erase_file(ports.get_lib_name('libSDL2_gfx'))
 
 
 def process_args(ports, args, settings, shared):
-  assert(needed(settings))
   get(ports, settings, shared)
   return args
 

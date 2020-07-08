@@ -141,17 +141,15 @@ def get(ports, settings, shared):
   return [shared.Cache.get(get_lib_name(ports, settings), create, what='port')]
 
 
-def clear(ports, shared):
-  shared.Cache.erase_file(get_lib_name(ports))
+def clear(ports, settings, shared):
+  shared.Cache.erase_file(get_lib_name(ports, settings))
 
 
 def process_dependencies(settings):
-  assert(needed(settings))
   settings.FULL_ES2 = 1
 
 
 def process_args(ports, args, settings, shared):
-  assert(needed(settings))
   get(ports, settings, shared)
   return args
 

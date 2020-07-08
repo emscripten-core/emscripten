@@ -85,12 +85,11 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, shared, settings):
   shared.Cache.erase_file(ports.get_lib_name('libSDL2'))
 
 
 def process_args(ports, args, settings, shared):
-  assert(needed(settings))
   # TODO(sbc): remove this
   get(ports, settings, shared)
   return args + ['-Xclang', '-isystem' + os.path.join(ports.get_include_dir(), 'SDL2')]

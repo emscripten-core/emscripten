@@ -39,17 +39,15 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, shared, settings):
   shared.Cache.erase_file(ports.get_lib_name('libpng'))
 
 
 def process_dependencies(settings):
-  assert(needed(settings))
   settings.USE_ZLIB = 1
 
 
 def process_args(ports, args, settings, shared):
-  assert(needed(settings))
   get(ports, settings, shared)
   return args
 

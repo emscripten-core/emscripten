@@ -75,18 +75,16 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, shared, settings):
   shared.Cache.erase_file(ports.get_lib_name('libcocos2d'))
 
 
 def process_dependencies(settings):
-  assert(needed(settings))
   settings.USE_LIBPNG = 1
   settings.USE_ZLIB = 1
 
 
 def process_args(ports, args, settings, shared):
-  assert(needed(settings))
   get(ports, settings, shared)
   for include in make_includes(os.path.join(ports.get_include_dir(), 'cocos2d')):
     args.append('-I' + include)

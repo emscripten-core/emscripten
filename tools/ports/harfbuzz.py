@@ -55,17 +55,15 @@ def get(ports, settings, shared):
   return [shared.Cache.get('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a', create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, shared, settings):
   shared.Cache.erase_file('libharfbuzz.a')
 
 
 def process_dependencies(settings):
-  assert(needed(settings))
   settings.USE_FREETYPE = 1
 
 
 def process_args(ports, args, settings, shared):
-  assert(needed(settings))
   get(ports, settings, shared)
   return args + ['-I' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
 

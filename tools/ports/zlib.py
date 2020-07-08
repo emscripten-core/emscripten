@@ -47,12 +47,11 @@ def get(ports, settings, shared):
   return [shared.Cache.get('libz.a', create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, shared, settings):
   shared.Cache.erase_file('libz.a')
 
 
 def process_args(ports, args, settings, shared):
-  assert(needed(settings))
   get(ports, settings, shared)
   return args
 
