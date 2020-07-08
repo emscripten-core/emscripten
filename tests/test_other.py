@@ -476,7 +476,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.clear()
     err = self.expect_fail(cmd + ['-o', 'out.o'])
 
-    self.assertContained('cannot specify -o with -c/-S and multiple source files', err)
+    self.assertContained('cannot specify -o with -c/-S/-E and multiple source files', err)
     self.assertNotExists('twopart_main.o')
     self.assertNotExists('twopart_side.o')
     self.assertNotExists(path_from_root('tests', 'twopart_main.o'))
@@ -2609,6 +2609,10 @@ done.
     self.assertContained('# 1 ', out)
     self.assertContained('hello_world.c"', out)
     self.assertContained('printf("hello, world!', out)
+
+  def test_preprocess_multi(self):
+    out = run_process([EMCC, path_from_root('tests', 'hello_world.c'), path_from_root('tests', 'hello_world.c'), '-E'], stdout=PIPE).stdout
+    self.assertEqual(out.count('printf("hello, world!'), 2)
 
   def test_syntax_only_valid(self):
     result = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-fsyntax-only'], stdout=PIPE, stderr=STDOUT)
