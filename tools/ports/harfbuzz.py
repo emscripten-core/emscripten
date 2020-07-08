@@ -55,7 +55,7 @@ def get(ports, settings, shared):
   return [shared.Cache.get('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a', create, what='port')]
 
 
-def clear(ports, shared, settings):
+def clear(ports, settings, shared):
   shared.Cache.erase_file('libharfbuzz.a')
 
 

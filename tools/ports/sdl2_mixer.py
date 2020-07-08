@@ -44,7 +44,7 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared, settings):
+def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libSDL2_mixer'))
 
 
