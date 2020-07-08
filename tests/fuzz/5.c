@@ -15,6 +15,6 @@ int main(int argc, char **argv) {
   memset(&buffer[10], -114, argc+25);
   for(int i = 0; i < 100; i++) printf("%d:%d\n", i, buffer[i]);
   //memset 5243040,-114,6,false,6
-  return buffer[15];
+  return buffer[15] ? argc == 42 : 0;
 }
 

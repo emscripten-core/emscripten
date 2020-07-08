@@ -12,6 +12,10 @@ from tools import shared
 
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
 
+# Special valud for passing to assert_returncode which means we expect that program
+# to fail with non-zero return code, but we don't care about specifically which one.
+NON_ZERO = -1
+
 
 def make_command(filename, engine, args=[]):
   # if no engine is needed, indicated by None, then there is a native executable
@@ -115,7 +119,11 @@ def run_js(filename, engine=None, args=[],
   out = ['' if o is None else o for o in (stdout, stderr)]
   ret = '\n'.join(out) if full_output else out[0]
 
-  if assert_returncode is not None and proc.returncode is not assert_returncode:
+  # assert_returncode = None means we expect a failure.
+  if assert_returncode == NON_ZERO:
+    if proc.returncode == 0:
+      raise CalledProcessError(proc.returncode, ' '.join(command), str(ret))
+  elif proc.returncode != assert_returncode:
     raise CalledProcessError(proc.returncode, ' '.join(command), str(ret))
 
   return ret

@@ -60,6 +60,7 @@ sys.path.append(__rootpath__)
 import clang_native
 import jsrun
 import parallel_testsuite
+from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
 from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
@@ -833,7 +834,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       print(ret, end='')
       print('-- end program output --')
     if error:
-      self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+      if assert_returncode == NON_ZERO:
+        self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
+      else:
+        self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
