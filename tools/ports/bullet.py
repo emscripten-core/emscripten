@@ -57,9 +57,8 @@ def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libbullet'))
 
 
-def process_args(ports, args, settings, shared):
-  get(ports, settings, shared)
-  return args + ['-I' + os.path.join(ports.get_include_dir(), 'bullet')]
+def process_args(ports):
+  return ['-I' + os.path.join(ports.get_include_dir(), 'bullet')]
 
 
 def show():

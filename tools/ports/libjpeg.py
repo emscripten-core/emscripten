@@ -50,9 +50,8 @@ def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libjpeg'))
 
 
-def process_args(ports, args, settings, shared):
-  get(ports, settings, shared)
-  return args
+def process_args(ports):
+  return []
 
 
 def show():

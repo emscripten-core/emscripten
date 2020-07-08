@@ -84,8 +84,8 @@ def process_dependencies(settings):
   settings.USE_ZLIB = 1
 
 
-def process_args(ports, args, settings, shared):
-  get(ports, settings, shared)
+def process_args(ports):
+  args = []
   for include in make_includes(os.path.join(ports.get_include_dir(), 'cocos2d')):
     args.append('-I' + include)
   return args
