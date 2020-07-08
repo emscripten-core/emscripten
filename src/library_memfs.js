@@ -382,8 +382,7 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
-          var allocatedSize = alignMemory(length, {{{ POSIX_PAGE_SIZE }}});
-          ptr = _malloc(allocatedSize);
+          ptr = FS.mmapAlloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }
@@ -391,10 +390,6 @@ mergeInto(LibraryManager.library, {
           ptr >>>= 0;
 #endif
           HEAP8.set(contents, ptr);
-          // The extra space allocated due to alignment must be zeroed out.
-          for (var i = length; i < allocatedSize; i++) {
-            HEAP8[ptr + i] = 0;
-          }
         }
         return { ptr: ptr, allocated: allocated };
       },

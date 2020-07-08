@@ -302,16 +302,9 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
 
-        var allocatedSize = alignMemory(length, {{{ POSIX_PAGE_SIZE }}});
-        var ptr = _malloc(allocatedSize);
+        var ptr = FS.mmapAlloc(length);
 
         NODEFS.stream_ops.read(stream, HEAP8, ptr, length, position);
-
-        // The extra space allocated due to alignment must be zeroed out.
-        for (var i = length; i < allocatedSize; i++) {
-          HEAP8[ptr + i] = 0;
-        }
-
         return { ptr: ptr, allocated: true };
       },
       msync: function(stream, buffer, offset, length, mmapFlags) {
