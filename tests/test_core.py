@@ -1219,7 +1219,8 @@ int main() {
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      # TODO: add assert_returncode=NON_ZERO when node switches its default
+      # TODO: Node currently returns 0 for unhandled promise rejections.
+      # Switch this to True when they change their default
       expect_fail = False
       if self.get_setting('WASM') == 0:
         expect_fail = True
