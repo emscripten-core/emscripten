@@ -5860,6 +5860,7 @@ int main(void) {
     self.emcc_args += ['-mnontrapping-fptoint']
     self.test_fasta()
 
+  @no_fastcomp('RuntimeError: float unrepresentable in integer range')
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
 
