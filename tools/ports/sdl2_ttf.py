@@ -9,10 +9,11 @@ TAG = 'version_1'
 HASH = '6ce426de0411ba51dd307027c4ef00ff3de4ee396018e524265970039132ab20adb29c2d2e61576c393056374f03fd148dd96f0c4abf8dcee51853dd32f0778f'
 
 
-def get(ports, settings, shared):
-  if settings.USE_SDL_TTF != 2:
-    return []
+def needed(settings):
+  return settings.USE_SDL_TTF == 2
 
+
+def get(ports, settings, shared):
   ports.fetch_project('sdl2_ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libSDL2_ttf')
 
@@ -41,19 +42,17 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libSDL2_ttf'))
 
 
 def process_dependencies(settings):
-  if settings.USE_SDL_TTF == 2:
-    settings.USE_SDL = 2
-    settings.USE_FREETYPE = 1
+  settings.USE_SDL = 2
+  settings.USE_FREETYPE = 1
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_SDL_TTF == 2:
-    get(ports, settings, shared)
+  get(ports, settings, shared)
   return args
 
 

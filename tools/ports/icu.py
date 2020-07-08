@@ -12,10 +12,11 @@ VERSION = '62_1'
 HASH = 'd3fa42da9aa9c2fc749fff4a31a9e57e826903681d9f4e5b4474649bf3efe271fec10f214a027d542123b85ad3f6fcfc9b6208ad3f8e4c24fe4a0cbab4024e2d'
 
 
-def get(ports, settings, shared):
-  if settings.USE_ICU != 1:
-    return []
+def needed(settings):
+  return settings.USE_ICU
 
+
+def get(ports, settings, shared):
   url = 'https://github.com/unicode-org/icu/releases/download/%s/icu4c-%s-src.zip' % (TAG, VERSION)
   ports.fetch_project('icu', url, 'icu', sha512hash=HASH)
   libname = ports.get_lib_name('libicuuc')
@@ -38,13 +39,12 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create)]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libicuuc'))
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_ICU == 1:
-    get(ports, settings, shared)
+  get(ports, settings, shared)
   return args
 
 

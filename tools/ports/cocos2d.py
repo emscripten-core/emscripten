@@ -12,10 +12,11 @@ TAG = 'version_3_3'
 HASH = 'd7b22660036c684f09754fcbbc7562984f02aa955eef2b76555270c63a717e6672c4fe695afb16280822e8b7c75d4b99ae21975a01a4ed51cad957f7783722cd'
 
 
-def get(ports, settings, shared):
-  if settings.USE_COCOS2D != 3:
-    return []
+def needed(settings):
+  return settings.USE_COCOS2D == 3
 
+
+def get(ports, settings, shared):
   ports.fetch_project(
     'cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libcocos2d')
@@ -74,21 +75,19 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libcocos2d'))
 
 
 def process_dependencies(settings):
-  if settings.USE_COCOS2D == 3:
-    settings.USE_LIBPNG = 1
-    settings.USE_ZLIB = 1
+  settings.USE_LIBPNG = 1
+  settings.USE_ZLIB = 1
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_COCOS2D == 3:
-    get(ports, settings, shared)
-    for include in make_includes(os.path.join(ports.get_include_dir(), 'cocos2d')):
-      args.append('-I' + include)
+  get(ports, settings, shared)
+  for include in make_includes(os.path.join(ports.get_include_dir(), 'cocos2d')):
+    args.append('-I' + include)
   return args
 
 

@@ -11,10 +11,11 @@ TAG = 'release-2.0.1'
 HASH = '81fac757bd058adcb3eb5b2cc46addeaa44cee2cd4db653dad5d9666bdc0385cdc21bf5b72872e6dd6dd8eb65812a46d7752298827d6c61ad5ce2b6c963f7ed0'
 
 
-def get(ports, settings, shared):
-  if settings.USE_SDL_MIXER != 2:
-    return []
+def needed(settings):
+  return settings.USE_SDL_MIXER == 2
 
+
+def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
   ports.fetch_project('sdl2_mixer', 'https://github.com/emscripten-ports/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG, sha512hash=HASH)
@@ -43,19 +44,17 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libSDL2_mixer'))
 
 
 def process_dependencies(settings):
-  if settings.USE_SDL_MIXER == 2:
-    settings.USE_SDL = 2
-    settings.USE_VORBIS = 1
+  settings.USE_SDL = 2
+  settings.USE_VORBIS = 1
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_SDL_MIXER == 2:
-    get(ports, settings, shared)
+  get(ports, settings, shared)
   return args
 
 

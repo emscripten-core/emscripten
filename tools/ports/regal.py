@@ -11,14 +11,15 @@ TAG = 'version_7'
 HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b3347092a8d9ec1249160230fa163309a87a20c2b9ceef8554566cc215de9d'
 
 
+def needed(settings):
+  return settings.USE_REGAL
+
+
 def get_lib_name(ports, settings):
   return ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else ''))
 
 
 def get(ports, settings, shared):
-  if settings.USE_REGAL != 1:
-    return []
-
   ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
                       'regal-' + TAG, sha512hash=HASH)
 
@@ -140,18 +141,16 @@ def get(ports, settings, shared):
   return [shared.Cache.get(get_lib_name(ports, settings), create, what='port')]
 
 
-def clear(ports, shared):
-  shared.Cache.erase_file(get_lib_name(ports, shared.Settings))
+def clear(ports, settings, shared):
+  shared.Cache.erase_file(get_lib_name(ports, settings))
 
 
 def process_dependencies(settings):
-  if settings.USE_REGAL == 1:
-    settings.FULL_ES2 = 1
+  settings.FULL_ES2 = 1
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_REGAL == 1:
-    get(ports, settings, shared)
+  get(ports, settings, shared)
   return args
 
 

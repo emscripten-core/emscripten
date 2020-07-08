@@ -11,10 +11,11 @@ TAG = 'version_1'
 HASH = '929e8d6003c06ae09593021b83323c8f1f54532b67b8ba189f4aedce52c25dc182bac474de5392c46ad5b0dea5a24928e4ede1492d52f4dd5cd58eea9be4dba7'
 
 
-def get(ports, settings, shared):
-  if settings.USE_OGG != 1:
-    return []
+def needed(settings):
+  return settings.USE_OGG
 
+
+def get(ports, settings, shared):
   ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libogg')
 
@@ -41,13 +42,12 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create)]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libogg'))
 
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_OGG == 1:
-    get(ports, settings, shared)
+  get(ports, settings, shared)
   return args
 
 
