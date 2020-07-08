@@ -1969,7 +1969,7 @@ class Ports(object):
   @staticmethod
   def clear_project_build(name):
     port = ports.ports_by_name[name]
-    port.clear(Ports, shared, shared.Settings)
+    port.clear(Ports, shared.Settings, shared)
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
 
 
