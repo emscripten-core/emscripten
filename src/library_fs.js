@@ -2021,15 +2021,6 @@ FS.staticInit();` +
         transaction.onerror = onerror;
       };
       openRequest.onerror = onerror;
-    },
-
-    // Allocate memory for an mmap operation. This allocates space of the right
-    // page-aligned size, and clears it.
-    mmapAlloc: function(size) {
-      size = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
-      var ptr = _malloc(size);
-      Array.prototype.fill.call(HEAP8, 0, ptr, ptr + size)
-      return ptr;
     }
   }
 });
