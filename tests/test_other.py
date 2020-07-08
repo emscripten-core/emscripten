@@ -4037,9 +4037,7 @@ int main() {
                   cmd += ['-s', 'RELOCATABLE'] # disables asm-optimized safe heap
                 print(cmd)
                 run_process(cmd)
-                returncode = None
-                if emulate_casts:
-                  returncode = 0
+                returncode = 0 if emulate_casts else NON_ZERO
                 output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=returncode)
                 if emulate_casts:
                   # success!
