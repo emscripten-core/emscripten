@@ -813,11 +813,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
     try:
-      with chdir(self.get_dir()):
-        jsrun.run_js(filename, engine, args,
-                     stdout=open(stdout, 'w'),
-                     stderr=open(stderr, 'w'),
-                     assert_returncode=assert_returncode)
+      jsrun.run_js(filename, engine, args,
+                   stdout=open(stdout, 'w'),
+                   stderr=open(stderr, 'w'),
+                   assert_returncode=assert_returncode)
     except subprocess.CalledProcessError as e:
       error = e
 
