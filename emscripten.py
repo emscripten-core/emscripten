@@ -890,10 +890,6 @@ def get_all_implemented(forwarded_json, metadata):
 
 
 def report_missing_symbols(all_implemented, pre):
-  # we are not checking anyway, so just skip this
-  if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
-    return
-
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
   missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
