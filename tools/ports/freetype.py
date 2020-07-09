@@ -117,6 +117,7 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports, args, settings, shared):
+  get(ports, settings, shared)
   return args + ['-I' + os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')]
 
 
