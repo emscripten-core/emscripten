@@ -367,6 +367,8 @@ jobs:
     executor: bionic
     steps:
       - checkout
+      - run: pip2 install flake8==3.7.8
+      - run: pip3 install flake8==3.7.8
       - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
   test-fastcomp-other:
