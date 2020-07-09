@@ -1710,9 +1710,6 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args and self.is_wasm_backend():
-        # wasm2js does not support threads yet
-        also_asmjs = False
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
@@ -1748,6 +1745,7 @@ class BrowserCore(RunnerCore):
 
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):
+      print('WASM=0')
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
                  original_args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
 

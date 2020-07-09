@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Support for pthreads with wasm2js (`WASM=0`; #11505).
 - Rename `emscripten/math.h` to `emscripten/em_math.h` because if a user adds
   `emscripten/` as an include path with `-I`, that can override libc math.h,
   which leads to very confusing errors.

@@ -181,8 +181,8 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
-    if not self.get_setting('WASM'):
-      self.skipTest("pthreads doesn't work in non-wasm yet")
+    if not self.get_setting('WASM') and not self.is_wasm_backend():
+      self.skipTest("pthreads doesn't work in non-wasm fastcomp")
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('asan ends up using atomics that are not yet supported in node 12')
     with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):

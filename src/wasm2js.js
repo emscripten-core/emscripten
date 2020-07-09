@@ -18,7 +18,11 @@ WebAssembly = {
   // functions, as they are just meant for internal use. In other words, this is
   // not a fully general polyfill.
   Memory: function(opts) {
+#if USE_PTHREADS
+    this.buffer = new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
+#else
     this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
+#endif
     this.grow = function(amount) {
 #if ASSERTIONS
       var oldBuffer = this.buffer;
@@ -69,8 +73,12 @@ WebAssembly = {
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {
     return {
       then: function(ok) {
+        var module = new WebAssembly.Module(binary);
         ok({
-          'instance': new WebAssembly.Instance(new WebAssembly.Module(binary))
+#if USE_PTHREADS
+          'module': module,
+#endif
+          'instance': new WebAssembly.Instance(module)
         });
 #if ASSERTIONS
         // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.

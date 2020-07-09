@@ -1907,12 +1907,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
       if shared.Settings.WASM2JS:
         shared.Settings.MAYBE_WASM2JS = 1
-        # wasm2js does not support passive segments or atomics
-        if shared.Settings.USE_PTHREADS:
-          exit_with_error('WASM2JS does not yet support pthreads')
-        # in wasm2js, keep the mem init in the wasm itself if we can and if the
-        # options wouldn't tell a js build to use a separate mem init file
-        shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE
+        # when using wasm2js, if the memory segments are in the wasm then they
+        # end up converted by wasm2js into base64 encoded JS. alternatively, we
+        # can use a .mem file like asm.js used to.
+        # generally we follow what the options tell us to do (which is to use
+        # a .mem file in most cases, since it is binary & compact). however, for
+        # pthreads we must keep the memory segments in the wasm as they will be
+        # passive segments which the .mem format cannot handle.
+        shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE or shared.Settings.USE_PTHREADS
       else:
         # wasm includes the mem init in the wasm binary. The exception is
         # wasm2js, which behaves more like js.
