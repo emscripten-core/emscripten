@@ -1965,9 +1965,7 @@ class Ports(object):
 # get all ports
 def get_ports(settings):
   ret = []
-
-  process_dependencies(settings)
-  needed = set(p for p in ports.ports if p.needed(settings))
+  needed = get_needed_ports(settings)
 
   for port in dependency_order(needed):
     if port.needed(settings):
@@ -1987,7 +1985,7 @@ def dependency_order(port_list):
   port_map = {p.name: p for p in port_list}
 
   # Perform depth first search of dependecy graph adding nodes to
-  # the stack once all child have been explored.
+  # the stack only after all children have been explored.
   stack = []
   unsorted = set(port_list)
 
@@ -2005,7 +2003,7 @@ def dependency_order(port_list):
   return stack
 
 
-def process_dependencies(settings):
+def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
   needed = set(p for p in ports.ports if p.needed(settings))
 
@@ -2028,10 +2026,14 @@ def process_args(args, settings):
   if settings.USE_SDL == 1:
     args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
 
-  needed = process_dependencies(settings)
+  needed = get_needed_ports(settings)
+
+  # Now get (i.e. build) the ports independency order.  This is important because the
+  # headers from one ports might be needed before we can build the next.
   for port in dependency_order(needed):
     port.get(Ports, settings, shared)
     args += port.process_args(Ports)
+
   return args
 
 
