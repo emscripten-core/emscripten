@@ -17,19 +17,8 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import shared, building
+from . import shared, building, ports
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
-
-try:
-  from . import ports
-  # it's ok if the ports dir exists but is empty: then there are no ports
-  if not hasattr(ports, 'ports'):
-    ports.ports = []
-except ImportError:
-  # it's ok if the ports dir doesn't exist: then there are no ports
-  class NoPorts:
-    ports = []
-  ports = NoPorts()
 
 stdout = None
 stderr = None
@@ -1976,9 +1965,9 @@ class Ports(object):
 # get all ports
 def get_ports(settings):
   ret = []
+  needed = get_needed_ports(settings)
 
-  process_dependencies(settings)
-  for port in ports.ports:
+  for port in dependency_order(needed):
     if port.needed(settings):
       try:
         # ports return their output files, which will be linked, or a txt file
@@ -1991,10 +1980,45 @@ def get_ports(settings):
   return ret
 
 
-def process_dependencies(settings):
-  for port in reversed(ports.ports):
-    if port.needed(settings) and hasattr(port, "process_dependencies"):
-      port.process_dependencies(settings)
+def dependency_order(port_list):
+  # Perform topological sort of ports according to the dependency DAG
+  port_map = {p.name: p for p in port_list}
+
+  # Perform depth first search of dependecy graph adding nodes to
+  # the stack only after all children have been explored.
+  stack = []
+  unsorted = set(port_list)
+
+  def dfs(node):
+    for dep in node.deps:
+      child = port_map[dep]
+      if child in unsorted:
+        unsorted.remove(child)
+        dfs(child)
+    stack.append(node)
+
+  while unsorted:
+    dfs(unsorted.pop())
+
+  return stack
+
+
+def get_needed_ports(settings):
+  # Start with directly needed ports, and transitively add dependencies
+  needed = set(p for p in ports.ports if p.needed(settings))
+
+  def add_deps(node):
+    node.process_dependencies(settings)
+    for d in node.deps:
+      dep = ports.ports_by_name[d]
+      if dep not in needed:
+        needed.add(dep)
+        add_deps(dep)
+
+  for port in list(needed):
+    add_deps(port)
+
+  return needed
 
 
 def process_args(args, settings):
@@ -2002,11 +2026,14 @@ def process_args(args, settings):
   if settings.USE_SDL == 1:
     args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
 
-  process_dependencies(settings)
-  for port in ports.ports:
-    if port.needed(settings):
-      port.get(Ports, settings, shared)
-      args += port.process_args(Ports)
+  needed = get_needed_ports(settings)
+
+  # Now get (i.e. build) the ports independency order.  This is important because the
+  # headers from one ports might be needed before we can build the next.
+  for port in dependency_order(needed):
+    port.get(Ports, settings, shared)
+    args += port.process_args(Ports)
+
   return args
 
 

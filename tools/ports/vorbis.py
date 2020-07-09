@@ -10,6 +10,8 @@ import shutil
 TAG = 'version_1'
 HASH = '99bee75beb662f8520bbb18ad6dbf8590d30eb3a7360899f0ac4764ca72fe8013da37c9df21e525f9d2dc5632827d4b4cea558cbc938e7fbed0c41a29a7a2dc5'
 
+deps = ['ogg']
+
 
 def needed(settings):
   return settings.USE_VORBIS

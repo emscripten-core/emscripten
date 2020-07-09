@@ -11,6 +11,8 @@ import re
 TAG = 'version_3_3'
 HASH = 'd7b22660036c684f09754fcbbc7562984f02aa955eef2b76555270c63a717e6672c4fe695afb16280822e8b7c75d4b99ae21975a01a4ed51cad957f7783722cd'
 
+deps = ['libpng', 'zlib']
+
 
 def needed(settings):
   return settings.USE_COCOS2D == 3

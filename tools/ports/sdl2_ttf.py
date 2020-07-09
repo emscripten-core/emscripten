@@ -8,6 +8,8 @@ import os
 TAG = 'version_1'
 HASH = '6ce426de0411ba51dd307027c4ef00ff3de4ee396018e524265970039132ab20adb29c2d2e61576c393056374f03fd148dd96f0c4abf8dcee51853dd32f0778f'
 
+deps = ['freetype', 'sdl2']
+
 
 def needed(settings):
   return settings.USE_SDL_TTF == 2
