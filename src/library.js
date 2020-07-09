@@ -4249,11 +4249,8 @@ LibraryManager.library = {
 
   emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
   emscripten_log: function(flags, format, varargs) {
-    var str = '';
     var result = formatString(format, varargs);
-    for (var i = 0 ; i < result.length; ++i) {
-      str += String.fromCharCode(result[i]);
-    }
+    var str = UTF8ArrayToString(result, 0);
     _emscripten_log_js(flags, str);
   },
 
