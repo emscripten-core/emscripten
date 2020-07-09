@@ -47,9 +47,8 @@ def process_dependencies(settings):
   settings.USE_ZLIB = 1
 
 
-def process_args(ports, args, settings, shared):
-  get(ports, settings, shared)
-  return args
+def process_args(ports):
+  return []
 
 
 def show():

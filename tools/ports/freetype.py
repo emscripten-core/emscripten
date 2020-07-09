@@ -116,9 +116,8 @@ def clear(ports, settings, shared):
   shared.Cache.erase_file('libfreetype.a')
 
 
-def process_args(ports, args, settings, shared):
-  get(ports, settings, shared)
-  return args + ['-I' + os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')]
+def process_args(ports):
+  return ['-I' + os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')]
 
 
 def show():

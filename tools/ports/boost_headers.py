@@ -55,9 +55,8 @@ def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libboost_headers'))
 
 
-def process_args(ports, args, settings, shared):
-  get(ports, settings, shared)
-  return args + ['-DBOOST_ALL_NO_LIB']
+def process_args(ports):
+  return ['-DBOOST_ALL_NO_LIB']
 
 
 def show():

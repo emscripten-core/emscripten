@@ -2005,7 +2005,8 @@ def process_args(args, settings):
   process_dependencies(settings)
   for port in ports.ports:
     if port.needed(settings):
-      args = port.process_args(Ports, args, settings, shared)
+      port.get(Ports, settings, shared)
+      args += port.process_args(Ports)
   return args
 
 

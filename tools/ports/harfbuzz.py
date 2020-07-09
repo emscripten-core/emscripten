@@ -63,9 +63,8 @@ def process_dependencies(settings):
   settings.USE_FREETYPE = 1
 
 
-def process_args(ports, args, settings, shared):
-  get(ports, settings, shared)
-  return args + ['-I' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
+def process_args(ports):
+  return ['-I' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
 
 
 def show():
