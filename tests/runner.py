@@ -1703,16 +1703,13 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def compile_btest(self, args):
+  def compile_btest(self, args, include_global_reporting=False):
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    run_process([EMCC] + args + [
-      # Needed so functions outside the Emscripten-generated JS, i.e. test
-      # code, can use the reporting functions.
-      '--extern-pre-js', browser_reporting_js_path,
-      # Hack to workaround tests that use Closure Compiler optimization;
-      # Resolves errors about undefined variables for browser reporting functions.
-      '--pre-js', browser_reporting_js_path
-    ])
+    external_reporting_args = ['--extern-pre-js', browser_reporting_js_path] if include_global_reporting else []
+    # The browser reporting is always included as --pre-js because tests that
+    # employ Closure Compiler optimization require it to avoid undefined
+    # variable errors.
+    run_process([EMCC] + args + ['--pre-js', browser_reporting_js_path] + external_reporting_args)
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
