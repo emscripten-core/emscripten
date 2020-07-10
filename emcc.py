@@ -241,7 +241,6 @@ class EmccOptions(object):
     self.cpu_profiler = False
     self.thread_profiler = False
     self.memory_profiler = False
-    self.save_bc = False
     self.memory_init_file = None
     self.use_preload_cache = False
     self.no_heap_copy = False
@@ -2488,12 +2487,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if len(link_opts) > 0:
             final = building.llvm_opt(final, link_opts, DEFAULT_FINAL)
             save_intermediate('linktime', 'bc')
-          if options.save_bc:
-            shutil.copyfile(final, options.save_bc)
-
-        # Prepare .ll for Emscripten
-        if options.save_bc:
-          save_intermediate('ll', 'll')
 
         if shared.Settings.AUTODEBUG:
           logger.debug('autodebug')
@@ -3044,8 +3037,6 @@ def parse_args(newargs):
     elif newargs[i] == '--show-ports':
       system_libs.show_ports()
       should_exit = True
-    elif check_arg('--save-bc'):
-      options.save_bc = consume_arg()
     elif check_arg('--memory-init-file'):
       options.memory_init_file = int(consume_arg())
     elif newargs[i] == '--proxy-to-worker':
