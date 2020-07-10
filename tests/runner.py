@@ -878,7 +878,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
     if EMTEST_VERBOSE:
-      print("Expected to have '%s' == '%s'" % limit_size(values[0]), limit_size(y))
+      print("Expected to have '%s' == '%s'" % (limit_size(values[0]), limit_size(y)))
     fail_message = 'Unexpected difference:\n' + limit_size(diff)
     if not EMTEST_VERBOSE:
       fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
