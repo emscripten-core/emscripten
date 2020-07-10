@@ -651,7 +651,7 @@ def safe_ensure_dirs(dirname):
 
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
-# temp direcotyr (TEMP_DIR/emscripten_temp).
+# temp directory (TEMP_DIR/emscripten_temp).
 def get_emscripten_temp_dir():
   """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global configuration, EMSCRIPTEN_TEMP_DIR
