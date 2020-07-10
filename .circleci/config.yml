@@ -427,7 +427,9 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
+          # Skip poppler tests as it often takes more then 10 minutes and
+          # doesn't show any output.
+          test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p* skip:*.test_poppler"
   test-fastcomp-qrst:
     executor: bionic
     steps:
