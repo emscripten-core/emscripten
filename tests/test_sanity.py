@@ -453,7 +453,6 @@ fi
 
   def test_emcc_caching(self):
     BUILDING_MESSAGE = 'generating system library: X'
-    ERASING_MESSAGE = 'clearing cache'
 
     restore_and_set_up()
     self.erase_cache()
@@ -466,31 +465,36 @@ fi
       self.clear()
       output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
       print('\n\n\n', output)
-      assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
+      if i == 0:
+        self.assertContained(BUILDING_MESSAGE.replace('X', libname), output)
+      else:
+        self.assertNotContained(BUILDING_MESSAGE.replace('X', libname), output)
       self.assertContained('hello, world!', run_js('a.out.js'))
       self.assertExists(Cache.dirname)
       full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
       self.assertExists(os.path.join(Cache.dirname, full_libname))
 
-    restore_and_set_up()
-
+  def test_cache_clearing_manual(self):
     # Manual cache clearing
+    restore_and_set_up()
     self.ensure_cache()
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([EMCC, '--clear-cache'])
-    self.assertIn(ERASING_MESSAGE, output)
+    self.assertIn('clearing cache', output)
     self.assertIn(SANITY_MESSAGE, output)
     self.assertCacheEmpty()
 
+  def test_cache_clearing_auto(self):
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
+    restore_and_set_up()
     self.ensure_cache()
     make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
-    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten)')
+    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten) backend')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([EMCC])
-      self.assertIn(ERASING_MESSAGE, output)
+      self.assertIn('clearing cache', output)
       self.assertCacheEmpty()
 
   # FROZEN_CACHE prevents cache clears, and prevents building
