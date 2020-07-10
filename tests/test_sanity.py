@@ -490,7 +490,7 @@ fi
     restore_and_set_up()
     self.ensure_cache()
     make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
-    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten) backend')
+    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'got wasm32 backend! WebAssembly 32-bit')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([EMCC])
