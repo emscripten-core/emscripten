@@ -465,10 +465,7 @@ fi
       self.clear()
       output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
       print('\n\n\n', output)
-      if i == 0:
-        self.assertContained(BUILDING_MESSAGE.replace('X', libname), output)
-      else:
-        self.assertNotContained(BUILDING_MESSAGE.replace('X', libname), output)
+      self.assertContainedIf(BUILDING_MESSAGE.replace('X', libname), output, i == 0)
       self.assertContained('hello, world!', run_js('a.out.js'))
       self.assertExists(Cache.dirname)
       full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
