@@ -886,6 +886,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
+  def assertIdenticalUrlEncoded(self, expected, actual, **kwargs):
+    """
+    URL decodes the `actual` parameter before checking for equality
+    """
+    self.assertIdentical(expected, unquote(actual), **kwargs)
+
   def assertTextDataContained(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
@@ -1558,7 +1564,7 @@ class BrowserCore(RunnerCore):
         else:
           # verify the result, and try again if we should do so
           try:
-            self.assertIdentical(expectedResult, output)
+            self.assertIdenticalUrlEncoded(expectedResult, output)
           except Exception as e:
             if tries_left > 0:
               print('[test error (see below), automatically retrying]')
@@ -1698,7 +1704,15 @@ class BrowserCore(RunnerCore):
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
   def compile_btest(self, args):
-    run_process([EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
+    browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
+    run_process([EMCC] + args + [
+      # Needed so functions outside the Emscripten-generated JS, i.e. test
+      # code, can use the reporting functions.
+      '--extern-pre-js', browser_reporting_js_path,
+      # Hack to workaround tests that use Closure Compiler optimization;
+      # Resolves errors about undefined variables for browser reporting functions.
+      '--pre-js', browser_reporting_js_path
+    ])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,

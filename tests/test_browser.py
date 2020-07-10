@@ -3364,6 +3364,26 @@ window.close = function() {
         ''' % code)
         self.run_browser('a.html', '...', '/report_result?0')
 
+  def test_modularize_network_error(self):
+    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+    create_test_file('test.c', src)
+    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM=1', '-s', 'EXPORT_NAME="createModule"'])
+    create_test_file('a.html', '''
+      <script src="a.out.js"></script>
+      <script>
+        createModule()
+          .then(() => {
+            reportResultToServer("Module creation succeeded when it should have failed");
+          })
+          .catch(err => {
+            reportResultToServer(err.message.slice(0, 54));
+          });
+      </script>
+    ''')
+    print('Deleting a.out.wasm to cause a download error')
+    os.remove('a.out.wasm')
+    self.run_browser('a.html', '...', '/report_result?abort(both async and sync fetching of the wasm failed)')
+
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
   @no_wasm_backend('cannot customize INITIAL_MEMORY in wasm at runtime')
