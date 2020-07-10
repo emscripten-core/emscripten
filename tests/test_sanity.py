@@ -23,7 +23,7 @@ from tools.shared import run_process, try_delete, safe_ensure_dirs
 from tools.shared import expected_llvm_version, Cache, Settings
 from tools import shared, system_libs
 
-SANITY_FILE = CONFIG_FILE + '_sanity'
+SANITY_FILE = shared.Cache.get_path('sanity.txt')
 commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
 
@@ -572,7 +572,6 @@ fi
 
     # Clean up created temp files.
     os.remove(custom_config_filename)
-    os.remove(custom_config_filename + "_sanity")
     shutil.rmtree(temp_dir)
 
   @no_wasm_backend('depends on WASM=0 working')

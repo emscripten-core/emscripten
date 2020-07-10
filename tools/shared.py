@@ -563,7 +563,7 @@ def check_sanity(force=False):
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    sanity_file = CONFIG_FILE + '_sanity'
+    sanity_file = Cache.get_path('sanity.txt')
     if os.path.exists(sanity_file):
       sanity_data = open(sanity_file).read()
       if sanity_data != expected:
@@ -596,6 +596,7 @@ def check_sanity(force=False):
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
+      Cache.ensure()
       with open(sanity_file, 'w') as f:
         f.write(expected)
 
