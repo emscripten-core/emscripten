@@ -804,10 +804,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
-  def run_js(self, filename, engine=None, args=[], assert_returncode=0):
-    return self.run_generated_code(engine, filename, args, assert_returncode=assert_returncode)
-
-  def run_generated_code(self, engine, filename, args=[], output_nicerizer=None, assert_returncode=0):
+  def run_js(self, filename, engine=None, args=[], output_nicerizer=None, assert_returncode=0):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
@@ -1263,7 +1260,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in engines:
-      js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
+      js_output = self.run_js(js_file, engine, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
         try:
