@@ -3,9 +3,12 @@
 :: To modify this file, edit `tools/run_python.bat` and then run
 :: `tools/create_entry_points.py`
 
-:: emsdk will set EMSDK_PYTHON, otherwise just look for python in PATH
-@IF "%EMSDK_PYTHON%"=="" (
-  @SET EMSDK_PYTHON=python
+@IF "%PYTHON%"=="" (
+  @SET PYTHON=%EMSDK_PYTHON%
 )
 
-%EMSDK_PYTHON% "%~dp0\%~n0.py" %*
+@IF "%PYTHON%"=="" (
+  @SET PYTHON=python
+)
+
+%PYTHON% "%~dp0\%~n0.py" %*
