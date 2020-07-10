@@ -632,14 +632,14 @@ def replace_suffix(filename, new_suffix):
   return os.path.splitext(filename)[0] + new_suffix
 
 
-# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
+# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple
+# ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
   return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
-# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
@@ -650,8 +650,10 @@ def safe_ensure_dirs(dirname):
       raise
 
 
-# Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
+# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
+# temp directory (TEMP_DIR/emscripten_temp).
 def get_emscripten_temp_dir():
+  """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global configuration, EMSCRIPTEN_TEMP_DIR
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)

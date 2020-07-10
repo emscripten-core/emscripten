@@ -19,7 +19,7 @@ from runner import RunnerCore, path_from_root, env_modify, chdir
 from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
-from tools.shared import run_process, try_delete, safe_ensure_dirs
+from tools.shared import run_process, try_delete
 from tools.shared import expected_llvm_version, Cache, Settings
 from tools import shared, system_libs
 
@@ -758,14 +758,14 @@ fi
     f.write('LLVM_ROOT = "' + self.in_dir('fake1', 'bin') + '"\n')
     f.close()
 
-    safe_ensure_dirs(self.in_dir('fake1', 'bin'))
+    ensure_dir(self.in_dir('fake1', 'bin'))
     f = open(self.in_dir('fake1', 'bin', 'llc'), 'w')
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake1 output\nRegistered Targets:\n%s"' % 'got js backend! JavaScript (asm.js, emscripten) backend')
     f.close()
     os.chmod(self.in_dir('fake1', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
-    safe_ensure_dirs(self.in_dir('fake2', 'bin'))
+    ensure_dir(self.in_dir('fake2', 'bin'))
     f = open(self.in_dir('fake2', 'bin', 'llc'), 'w')
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake2 output\nRegistered Targets:\n%s"' % 'got wasm32 backend! WebAssembly 32-bit')
