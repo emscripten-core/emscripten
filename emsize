@@ -10,6 +10,10 @@
 # `tools/create_entry_points.py`
 
 if [ -z "$PYTHON" ]; then
+  PYTHON=$EMSDK_PYTHON
+fi
+
+if [ -z "$PYTHON" ]; then
   PYTHON=$(which python3 2> /dev/null)
 fi
 
