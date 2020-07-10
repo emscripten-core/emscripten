@@ -17,9 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Remove the --save-bc command line option.  This was specific to fastcomp,
-  which is deprecated, and for debugging purposes we already have EMCC_DEBUG
-  which saves all intermediante files.
+- Remove the `--save-bc` command line option.  This was specific to fastcomp,
+  which is deprecated, and for debugging purposes we already have `EMCC_DEBUG`
+  which saves all intermediate files.
 - It is now an error if a function listed in the `EXPORTED_FUNCTIONS` list is
   missing from the build (can be disabled via `-Wno-undefined`)
   (ERROR_ON_UNDEFINED_SYMBOLS and WARN_ON_UNDEFINED_SYMBOLS no longer apply
