@@ -1853,7 +1853,7 @@ int f() {
     err = self.expect_fail(cmd)
     self.assertContained('undefined exported function: "foobar"', err)
 
-    # setting `-Wno-undefined` should suppresses error
+    # setting `-Wno-undefined` should suppress error
     cmd += ['-Wno-undefined']
     run_process(cmd)
 
