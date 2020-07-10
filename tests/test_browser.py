@@ -2548,7 +2548,7 @@ void *getBindBuffer() {
     assert ").randomBytes" in test_js_closure
     assert "window.crypto.getRandomValues" in test_js_closure
 
-    out = self.run_js('test.js', full_output=True)
+    out = self.run_js('test.js')
     print(out)
 
     # Tidy up files that might have been created by this test.
