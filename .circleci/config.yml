@@ -503,7 +503,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm2"
+          test_targets: "wasm2 asan.test_embind*"
   test-wasm3:
     executor: bionic
     steps:
