@@ -2056,6 +2056,11 @@ var LibraryOpenAL = {
     // of available captured sample-frames, but not only would it
     // be insane not to do, OpenAL-Soft happens to do that as well.
     c.capturedFrameCount = 0;
+    
+    // Reset capturePlayhead to 0 since the existing samples are
+    // all anyways lost, since FrameCount is reset. Hence it is
+    // equivalent to starting with a clean slate.
+    c.capturePlayhead = 0;
   },
 
 
