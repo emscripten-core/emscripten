@@ -14,7 +14,6 @@ import shutil
 import sys
 import time
 import unittest
-from subprocess import PIPE, STDOUT
 from functools import wraps
 from textwrap import dedent
 
@@ -22,7 +21,7 @@ from textwrap import dedent
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
-from tools.shared import run_process, try_delete
+from tools.shared import run_process, try_delete, PIPE
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
