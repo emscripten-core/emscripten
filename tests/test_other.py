@@ -2037,17 +2037,6 @@ int f() {
       # make sure the slack is tiny compared to the whole program
       self.assertGreater(len(js), 100 * SLACK)
 
-  @no_wasm_backend('depends on bc output')
-  def test_save_bc(self):
-    cmd = [EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp'), '--save-bc', 'my_bitcode.bc']
-    run_process(cmd)
-    assert 'hello, world!' in run_js('a.out.js')
-    self.assertExists('my_bitcode.bc')
-    try_delete('a.out.js')
-    building.llvm_dis('my_bitcode.bc', 'my_ll.ll')
-    run_process([EMCC, 'my_ll.ll', '-nostdlib', '-o', 'two.js'])
-    assert 'hello, world!' in run_js('two.js')
-
   def test_js_optimizer(self):
     ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers', 'asanify']
     for input, expected, passes in [
