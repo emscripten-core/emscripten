@@ -58,7 +58,7 @@ The version of Sphinx on Ubuntu package repository (apt-get) fails when building
 
 The workaround is to use the *Python package installer* (pip) to get version 1.7.8, and then run an upgrade (note, you may have to uninstall Sphinx first): ::
 
-  pip install sphinx==1.7.9
+  pip install sphinx==2.4.4
 
 
 .. _about-site-builds:
