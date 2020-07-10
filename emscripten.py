@@ -313,7 +313,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   pre, funcs_js = get_js_funcs(pre, funcs)
   all_exported_functions = get_all_exported_functions(function_table_data)
   all_implemented = get_all_implemented(forwarded_json, metadata)
-  report_missing_symbols(all_implemented, pre)
+  all_implemented_with_aliases = set(all_implemented).union(set(metadata['aliases'].keys()))
+  report_missing_symbols(all_implemented_with_aliases, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
   pre = apply_table(pre)
@@ -890,10 +891,6 @@ def get_all_implemented(forwarded_json, metadata):
 
 
 def report_missing_symbols(all_implemented, pre):
-  # we are not checking anyway, so just skip this
-  if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
-    return
-
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
   missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)

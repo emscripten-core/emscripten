@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- It is now an error if a function listed in the `EXPORTED_FUNCTIONS` list is
+  missing from the build (can be disabled via `-Wno-undefined`)
+  (ERROR_ON_UNDEFINED_SYMBOLS and WARN_ON_UNDEFINED_SYMBOLS no longer apply
+  to these symbols which are explicly exported).
 - Support for pthreads with wasm2js (`WASM=0`; #11505).
 - Rename `emscripten/math.h` to `emscripten/em_math.h` because if a user adds
   `emscripten/` as an include path with `-I`, that can override libc math.h,

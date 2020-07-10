@@ -1553,7 +1553,7 @@ int f() {
 
   def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
-    full_export_name = '_' + export_name
+    full_export_name = '_this_is_an_entry_point'
 
     # The wasm backend exports symbols without the leading '_'
     if self.is_wasm_backend():
@@ -1563,10 +1563,10 @@ int f() {
 
     create_test_file('export.c', r'''
       #include <stdio.h>
-      void %s(void) {
+      void this_is_an_entry_point(void) {
         printf("Hello, world!\n");
       }
-    ''' % export_name)
+    ''')
     run_process([EMCC, 'export.c', '-c', '-o', 'export.o'])
     run_process([EMAR, 'rc', 'libexport.a', 'export.o'])
 
@@ -1580,12 +1580,7 @@ int f() {
     run_process([EMCC, 'main.c', '-L.', '-lexport'])
     self.assertFalse(self.is_exported_in_wasm(expect_export, 'a.out.wasm'))
 
-    # Sanity check: exporting without a definition does not cause it to appear.
-    # Note: exporting main prevents emcc from warning that it generated no code.
-    run_process([EMCC, 'main.c', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0', '-s', "EXPORTED_FUNCTIONS=['_main', '%s']" % full_export_name])
-    self.assertFalse(self.is_exported_in_wasm(expect_export, 'a.out.wasm'))
-
-    # Actual test: defining symbol in library and exporting it causes it to appear in the output.
+    # Exporting it causes it to appear in the output.
     run_process([EMCC, 'main.c', '-L.', '-lexport', '-s', "EXPORTED_FUNCTIONS=['%s']" % full_export_name])
     self.assertTrue(self.is_exported_in_wasm(expect_export, 'a.out.wasm'))
 
@@ -1849,7 +1844,7 @@ int f() {
 ''', output)
     self.assertNotContained('warning: library.js memcpy should not be running, it is only for testing!', output)
 
-  def test_undefined_function(self):
+  def test_undefined_exported_function(self):
     cmd = [EMCC, path_from_root('tests', 'hello_world.cpp')]
     run_process(cmd)
 
@@ -1858,8 +1853,8 @@ int f() {
     err = self.expect_fail(cmd)
     self.assertContained('undefined exported function: "foobar"', err)
 
-    # setting ERROR_ON_UNDEFINED_SYMBOLS=0 suppresses error
-    cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0']
+    # setting `-Wno-undefined` should suppress error
+    cmd += ['-Wno-undefined']
     run_process(cmd)
 
   def test_undefined_symbols(self):
