@@ -23,7 +23,7 @@ from tools.shared import run_process, try_delete, safe_ensure_dirs
 from tools.shared import expected_llvm_version, Cache, Settings
 from tools import shared, system_libs
 
-SANITY_FILE = CONFIG_FILE + '_sanity'
+SANITY_FILE = shared.Cache.get_path('sanity.txt')
 commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
 
@@ -453,7 +453,6 @@ fi
 
   def test_emcc_caching(self):
     BUILDING_MESSAGE = 'generating system library: X'
-    ERASING_MESSAGE = 'clearing cache'
 
     restore_and_set_up()
     self.erase_cache()
@@ -466,31 +465,33 @@ fi
       self.clear()
       output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
       print('\n\n\n', output)
-      assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
+      self.assertContainedIf(BUILDING_MESSAGE.replace('X', libname), output, i == 0)
       self.assertContained('hello, world!', run_js('a.out.js'))
       self.assertExists(Cache.dirname)
       full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
       self.assertExists(os.path.join(Cache.dirname, full_libname))
 
-    restore_and_set_up()
-
+  def test_cache_clearing_manual(self):
     # Manual cache clearing
+    restore_and_set_up()
     self.ensure_cache()
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([EMCC, '--clear-cache'])
-    self.assertIn(ERASING_MESSAGE, output)
+    self.assertIn('clearing cache', output)
     self.assertIn(SANITY_MESSAGE, output)
     self.assertCacheEmpty()
 
+  def test_cache_clearing_auto(self):
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
+    restore_and_set_up()
     self.ensure_cache()
     make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
-    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten)')
+    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'got wasm32 backend! WebAssembly 32-bit')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([EMCC])
-      self.assertIn(ERASING_MESSAGE, output)
+      self.assertIn('clearing cache', output)
       self.assertCacheEmpty()
 
   # FROZEN_CACHE prevents cache clears, and prevents building
@@ -568,7 +569,6 @@ fi
 
     # Clean up created temp files.
     os.remove(custom_config_filename)
-    os.remove(custom_config_filename + "_sanity")
     shutil.rmtree(temp_dir)
 
   @no_wasm_backend('depends on WASM=0 working')
