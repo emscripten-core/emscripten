@@ -9966,16 +9966,13 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # the breaking change in #10697 Module() now returns a promise, and to get
     # the instance you must use .then() to get a callback with the instance.
     create_test_file('test.js', r'''
-      try {
-        Module()._main;
-      } catch(e) {
-        console.log(e);
-      }
-      try {
-        Module().onRuntimeInitialized = 42;
-      } catch(e) {
-        console.log(e);
-      }
+      let promise = Module();
+      promise._main;
+      promise.catch(err => console.log(err));
+
+      promise = Module();
+      promise.catch(err => console.log(err));
+      promise.onRuntimeInitialized = 42;
     ''')
     run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE', '-s', 'ASSERTIONS', '--extern-post-js', 'test.js'])
     out = run_js('a.out.js')
