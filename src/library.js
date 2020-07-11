@@ -225,22 +225,16 @@ LibraryManager.library = {
     }
   },
 
-  execl__deps: ['$setErrNo'],
-  execl__sig: 'iiii',
-  execl: function(path, arg0, varArgs) {
-    // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
+  execve__deps: ['$setErrNo'],
+  execve__sig: 'iiii',
+  execve: function(path, argv, envp) {
+    // int execve(const char *pathname, char *const argv[],
+    //            char *const envp[]);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
     // We don't support executing external code.
     setErrNo({{{ cDefine('ENOEXEC') }}});
     return -1;
   },
-  execle: 'execl',
-  execlp: 'execl',
-  execv: 'execl',
-  execve: 'execl',
-  execvp: 'execl',
-  __execvpe: 'execl',
-  fexecve: 'execl',
 
   exit__sig: 'vi',
   exit: function(status) {
@@ -278,11 +272,6 @@ LibraryManager.library = {
   },
   vfork: 'fork',
   posix_spawn: 'fork',
-  posix_spawnp: 'fork',
-  posix_spawn_file_actions_adddup2: 'fork',
-  posix_spawn_file_actions_addopen: 'fork',
-  posix_spawn_file_actions_destroy: 'fork',
-  posix_spawn_file_actions_init: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
