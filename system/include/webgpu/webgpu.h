@@ -112,9 +112,8 @@ typedef enum WGPUBindingType {
     WGPUBindingType_Sampler = 0x00000003,
     WGPUBindingType_ComparisonSampler = 0x00000004,
     WGPUBindingType_SampledTexture = 0x00000005,
-    WGPUBindingType_StorageTexture = 0x00000006,
-    WGPUBindingType_ReadonlyStorageTexture = 0x00000007,
-    WGPUBindingType_WriteonlyStorageTexture = 0x00000008,
+    WGPUBindingType_ReadonlyStorageTexture = 0x00000006,
+    WGPUBindingType_WriteonlyStorageTexture = 0x00000007,
     WGPUBindingType_Force32 = 0x7FFFFFFF
 } WGPUBindingType;
 
@@ -436,7 +435,6 @@ typedef enum WGPUTextureUsage {
     WGPUTextureUsage_Sampled = 0x00000004,
     WGPUTextureUsage_Storage = 0x00000008,
     WGPUTextureUsage_OutputAttachment = 0x00000010,
-    WGPUTextureUsage_Present = 0x00000020,
     WGPUTextureUsage_Force32 = 0x7FFFFFFF
 } WGPUTextureUsage;
 typedef WGPUFlags WGPUTextureUsageFlags;
@@ -527,10 +525,6 @@ typedef struct WGPUCreateBufferMappedResult {
     void * data;
 } WGPUCreateBufferMappedResult;
 
-typedef struct WGPUDeviceProperties {
-    bool textureCompressionBC;
-} WGPUDeviceProperties;
-
 typedef struct WGPUExtent3D {
     uint32_t width;
     uint32_t height;
@@ -613,11 +607,6 @@ typedef struct WGPUSamplerDescriptor {
     WGPUCompareFunction compare;
 } WGPUSamplerDescriptor;
 
-typedef struct WGPUSamplerDescriptorDummyAnisotropicFiltering {
-    WGPUChainedStruct chain;
-    float maxAnisotropy;
-} WGPUSamplerDescriptorDummyAnisotropicFiltering;
-
 typedef struct WGPUShaderModuleDescriptor {
     WGPUChainedStruct const * nextInChain;
     char const * label;
@@ -676,7 +665,6 @@ typedef struct WGPUSwapChainDescriptor {
     uint32_t width;
     uint32_t height;
     WGPUPresentMode presentMode;
-    uint64_t implementation;
 } WGPUSwapChainDescriptor;
 
 typedef struct WGPUTextureViewDescriptor {
@@ -890,13 +878,10 @@ typedef WGPUShaderModule (*WGPUProcDeviceCreateShaderModule)(WGPUDevice device, 
 typedef WGPUSwapChain (*WGPUProcDeviceCreateSwapChain)(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const * descriptor);
 typedef WGPUTexture (*WGPUProcDeviceCreateTexture)(WGPUDevice device, WGPUTextureDescriptor const * descriptor);
 typedef WGPUQueue (*WGPUProcDeviceGetDefaultQueue)(WGPUDevice device);
-typedef void (*WGPUProcDeviceInjectError)(WGPUDevice device, WGPUErrorType type, char const * message);
-typedef void (*WGPUProcDeviceLoseForTesting)(WGPUDevice device);
 typedef bool (*WGPUProcDevicePopErrorScope)(WGPUDevice device, WGPUErrorCallback callback, void * userdata);
 typedef void (*WGPUProcDevicePushErrorScope)(WGPUDevice device, WGPUErrorFilter filter);
 typedef void (*WGPUProcDeviceSetDeviceLostCallback)(WGPUDevice device, WGPUDeviceLostCallback callback, void * userdata);
 typedef void (*WGPUProcDeviceSetUncapturedErrorCallback)(WGPUDevice device, WGPUErrorCallback callback, void * userdata);
-typedef void (*WGPUProcDeviceTick)(WGPUDevice device);
 typedef void (*WGPUProcDeviceReference)(WGPUDevice device);
 typedef void (*WGPUProcDeviceRelease)(WGPUDevice device);
 
@@ -981,7 +966,6 @@ typedef void (*WGPUProcSurfaceReference)(WGPUSurface surface);
 typedef void (*WGPUProcSurfaceRelease)(WGPUSurface surface);
 
 // Procs of SwapChain
-typedef void (*WGPUProcSwapChainConfigure)(WGPUSwapChain swapChain, WGPUTextureFormat format, WGPUTextureUsageFlags allowedUsage, uint32_t width, uint32_t height);
 typedef WGPUTextureView (*WGPUProcSwapChainGetCurrentTextureView)(WGPUSwapChain swapChain);
 typedef void (*WGPUProcSwapChainPresent)(WGPUSwapChain swapChain);
 typedef void (*WGPUProcSwapChainReference)(WGPUSwapChain swapChain);
@@ -1071,13 +1055,10 @@ WGPU_EXPORT WGPUShaderModule wgpuDeviceCreateShaderModule(WGPUDevice device, WGP
 WGPU_EXPORT WGPUSwapChain wgpuDeviceCreateSwapChain(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const * descriptor);
 WGPU_EXPORT WGPUTexture wgpuDeviceCreateTexture(WGPUDevice device, WGPUTextureDescriptor const * descriptor);
 WGPU_EXPORT WGPUQueue wgpuDeviceGetDefaultQueue(WGPUDevice device);
-WGPU_EXPORT void wgpuDeviceInjectError(WGPUDevice device, WGPUErrorType type, char const * message);
-WGPU_EXPORT void wgpuDeviceLoseForTesting(WGPUDevice device);
 WGPU_EXPORT bool wgpuDevicePopErrorScope(WGPUDevice device, WGPUErrorCallback callback, void * userdata);
 WGPU_EXPORT void wgpuDevicePushErrorScope(WGPUDevice device, WGPUErrorFilter filter);
 WGPU_EXPORT void wgpuDeviceSetDeviceLostCallback(WGPUDevice device, WGPUDeviceLostCallback callback, void * userdata);
 WGPU_EXPORT void wgpuDeviceSetUncapturedErrorCallback(WGPUDevice device, WGPUErrorCallback callback, void * userdata);
-WGPU_EXPORT void wgpuDeviceTick(WGPUDevice device);
 WGPU_EXPORT void wgpuDeviceReference(WGPUDevice device);
 WGPU_EXPORT void wgpuDeviceRelease(WGPUDevice device);
 
@@ -1162,7 +1143,6 @@ WGPU_EXPORT void wgpuSurfaceReference(WGPUSurface surface);
 WGPU_EXPORT void wgpuSurfaceRelease(WGPUSurface surface);
 
 // Methods of SwapChain
-WGPU_EXPORT void wgpuSwapChainConfigure(WGPUSwapChain swapChain, WGPUTextureFormat format, WGPUTextureUsageFlags allowedUsage, uint32_t width, uint32_t height);
 WGPU_EXPORT WGPUTextureView wgpuSwapChainGetCurrentTextureView(WGPUSwapChain swapChain);
 WGPU_EXPORT void wgpuSwapChainPresent(WGPUSwapChain swapChain);
 WGPU_EXPORT void wgpuSwapChainReference(WGPUSwapChain swapChain);

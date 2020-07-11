@@ -1657,7 +1657,7 @@
     },
     // ===========================================
     // WebGPU
-    //   This COULD BE auto-generated:
+    //   NOTE: This can be (mostly) auto-generated:
     //   https://dawn.googlesource.com/dawn/+/refs/heads/master/generator/templates/webgpu_struct_info.json
     // ===========================================
     {
@@ -1735,9 +1735,6 @@
                 "dataLength",
                 "data"
             ],
-            // "WGPUDeviceDescriptor": [
-            //     "nextInChain"
-            // ],
             "WGPUExtent3D": [
                 "width",
                 "height",
@@ -1802,10 +1799,6 @@
                 "stencilStoreOp",
                 "clearStencil"
             ],
-            // "WGPURequestAdapterOptions": [
-            //     "nextInChain",
-            //     "compatibleSurface"
-            // ],
             "WGPUSamplerDescriptor": [
                 "nextInChain",
                 "label",
