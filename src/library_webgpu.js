@@ -500,8 +500,8 @@ var LibraryWebGPU = {
 
   // *Destroy
 
-  wgpuBufferDestroy: function(bufferId) { WebGPU.mgrBuffer.get(bufferId).destroy(); },
-  wgpuTextureDestroy: function(textureId) { WebGPU.mgrTexture.get(textureId).destroy(); },
+  wgpuBufferDestroy: function(bufferId) { WebGPU.mgrBuffer.get(bufferId)["destroy"](); },
+  wgpuTextureDestroy: function(textureId) { WebGPU.mgrTexture.get(textureId)["destroy"](); },
 
   // wgpuDevice
 
@@ -1038,7 +1038,7 @@ var LibraryWebGPU = {
     var queue = WebGPU.mgrQueue.get(queueId);
     var fence = WebGPU.mgrFence.get(fenceId);
     var signalValue = {{{ gpu.makeU64ToNumber('signalValue_low', 'signalValue_high') }}};
-    queue.signal(fence, signalValue);
+    queue["signal"](fence, signalValue);
   },
 
   wgpuQueueSubmit: function(queueId, commandCount, commands) {
@@ -1048,7 +1048,7 @@ var LibraryWebGPU = {
     var queue = WebGPU.mgrQueue.get(queueId);
     var cmds = Array.from(HEAP32.subarray(commands >> 2, (commands >> 2) + commandCount),
       function(id) { return WebGPU.mgrCommandBuffer.get(id); });
-    queue.submit(cmds);
+    queue["submit"](cmds);
   },
 
   // wgpuCommandEncoder
