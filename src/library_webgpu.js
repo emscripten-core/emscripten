@@ -208,15 +208,22 @@ var LibraryWebGPU = {
       };
     },
 
-    makeBufferCopyView: function(ptr) {
+    makeTextureDataLayout: function(ptr) {
       {{{ gpu.makeCheckDescriptor('ptr') }}}
       return {
-        "buffer": this.mgrBuffer.get(
-          {{{ makeGetValue('ptr', C_STRUCTS.WGPUBufferCopyView.buffer, '*') }}}),
-        "offset": {{{ gpu.makeGetU64('ptr', C_STRUCTS.WGPUBufferCopyView.offset) }}},
-        "bytesPerRow": {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUBufferCopyView.bytesPerRow) }}},
-        "rowsPerImage": {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUBufferCopyView.rowsPerImage) }}},
+        "offset": {{{ gpu.makeGetU64('ptr', C_STRUCTS.WGPUTextureDataLayout.offset) }}},
+        "bytesPerRow": {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUTextureDataLayout.bytesPerRow) }}},
+        "rowsPerImage": {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUTextureDataLayout.rowsPerImage) }}},
       };
+    },
+
+    makeBufferCopyView: function(ptr) {
+      {{{ gpu.makeCheckDescriptor('ptr') }}}
+      var layoutPtr = ptr + {{{ C_STRUCTS.WGPUBufferCopyView.layout }}};
+      var bufferCopyView = this.makeTextureDataLayout(layoutPtr);
+      bufferCopyView["buffer"] = this.mgrBuffer.get(
+          {{{ makeGetValue('ptr', C_STRUCTS.WGPUBufferCopyView.buffer, '*') }}});
+      return bufferCopyView;
     },
 
     makeProgrammableStageDescriptor: function(ptr) {

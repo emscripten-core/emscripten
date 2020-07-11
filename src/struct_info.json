@@ -1699,13 +1699,6 @@
                 "srcFactor",
                 "dstFactor"
             ],
-            "WGPUBufferCopyView": [
-                "nextInChain",
-                "buffer",
-                "offset",
-                "bytesPerRow",
-                "rowsPerImage"
-            ],
             "WGPUBufferDescriptor": [
                 "nextInChain",
                 "label",
@@ -1850,6 +1843,12 @@
                 "height",
                 "presentMode"
             ],
+            "WGPUTextureDataLayout": [
+                "nextInChain",
+                "offset",
+                "bytesPerRow",
+                "rowsPerImage"
+            ],
             "WGPUTextureViewDescriptor": [
                 "nextInChain",
                 "label",
@@ -1878,6 +1877,11 @@
                 "label",
                 "entryCount",
                 "entries"
+            ],
+            "WGPUBufferCopyView": [
+                "nextInChain",
+                "layout",
+                "buffer"
             ],
             "WGPUColorStateDescriptor": [
                 "nextInChain",
