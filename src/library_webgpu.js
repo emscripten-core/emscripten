@@ -1598,14 +1598,21 @@ var LibraryWebGPU = {
 
   // Instance
 
+  wgpuCreateInstance: function() {
+#if ASSERTIONS
+    // Once implemented, Instance should create and own the object management tables.
+    abort('unimplemented (TODO)');
+#endif
+  },
+
   wgpuInstanceReference: function() {
 #if ASSERTIONS
-    assert(false, 'No WGPUInstance object should exist.');
+    abort('No WGPUInstance object should exist (TODO).');
 #endif
   },
   wgpuInstanceRelease: function() {
 #if ASSERTIONS
-    assert(false, 'No WGPUInstance object should exist.');
+    abort('No WGPUInstance object should exist (TODO).');
 #endif
   },
 
@@ -1635,7 +1642,31 @@ var LibraryWebGPU = {
     return WebGPU.mgrSurface.create(canvas);
   },
 
-  // wgpuDeviceCreateSwapChain + WGPUSwapChain
+  wgpuInstanceProcessEvents: function() {
+#if ASSERTIONS
+    abort('wgpuInstanceProcessEvents is unsupported (use requestAnimationFrame via html5.h instead)');
+#endif
+  },
+  wgpuInstanceRequestAdapter: function() {
+    abort('unimplemented (TODO)');
+  },
+
+  // WGPUAdapter
+
+  wgpuAdapterGetProperties: function() {
+    abort('unimplemented (TODO)');
+  },
+  wgpuAdapterRequestDevice: function() {
+    abort('unimplemented (TODO)');
+  },
+
+  // WGPUSurface
+
+  wgpuSurfaceGetPreferredFormat: function(surfaceId, adapterId, callback, userdata) {
+    abort('unimplemented (TODO)');
+  },
+
+  // WGPUSwapChain
 
   wgpuDeviceCreateSwapChain: function(deviceId, surfaceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
@@ -1670,9 +1701,19 @@ var LibraryWebGPU = {
     return WebGPU.mgrTextureView.create(swapChain["getCurrentTexture"]()["createView"]());
   },
   wgpuSwapChainPresent: function() {
+    // TODO: This could probably be emulated with ASYNCIFY.
 #if ASSERTIONS
-    assert(false, 'wgpuSwapChainPresent is unsupported (use requestAnimationFrame via html5.h instead)');
+    abort('wgpuSwapChainPresent is unsupported (use requestAnimationFrame via html5.h instead)');
 #endif
+  },
+
+  // wgpuGetProcAddress
+
+  wgpuGetProcAddress: function() {
+#if ASSERTIONS
+    abort('unimplemented (TODO: issue #11526)');
+#endif
+    return 0;
   },
 };
 
