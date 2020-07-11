@@ -1764,12 +1764,14 @@
                 "module",
                 "entryPoint"
             ],
-            // "WGPUQuerySetDescriptor": [
-            //     "nextInChain",
-            //     "label",
-            //     "type",
-            //     "count"
-            // ],
+            "WGPUQuerySetDescriptor": [
+                "nextInChain",
+                "label",
+                "type",
+                "count",
+                "pipelineStatistics",
+                "pipelineStatisticsCount"
+            ],
             "WGPURasterizationStateDescriptor": [
                 "nextInChain",
                 "frontFace",
@@ -1934,8 +1936,8 @@
                 "label",
                 "colorAttachmentCount",
                 "colorAttachments",
-                "depthStencilAttachment"
-                // "occlusionQuerySet"
+                "depthStencilAttachment",
+                "occlusionQuerySet"
             ],
             "WGPUVertexStateDescriptor": [
                 "nextInChain",

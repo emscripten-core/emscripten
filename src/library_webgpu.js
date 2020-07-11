@@ -146,6 +146,7 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('Sampler') }}}
       {{{ gpu.makeInitManager('Texture') }}}
       {{{ gpu.makeInitManager('TextureView') }}}
+      {{{ gpu.makeInitManager('QuerySet') }}}
 
       {{{ gpu.makeInitManager('BindGroupLayout') }}}
       {{{ gpu.makeInitManager('PipelineLayout') }}}
@@ -333,12 +334,24 @@ var LibraryWebGPU = {
       'clear',
       'load',
     ],
+    PipelineStatisticName: [
+      'vertex-shader-invocations',
+      'clipper-invocations',
+      'clipper-primitives-out',
+      'fragment-shader-invocations',
+      'compute-shader-invocations',
+    ],
     PrimitiveTopology: [
       'point-list',
       'line-list',
       'line-strip',
       'triangle-list',
       'triangle-strip',
+    ],
+    QueryType: [
+      'occlusion',
+      'pipeline-statistics',
+      'timestamp',
     ],
     StencilOperation: [
       'keep',
@@ -486,6 +499,7 @@ var LibraryWebGPU = {
   {{{ gpu.makeReferenceRelease('Sampler') }}}
   {{{ gpu.makeReferenceRelease('Texture') }}}
   {{{ gpu.makeReferenceRelease('TextureView') }}}
+  {{{ gpu.makeReferenceRelease('QuerySet') }}}
 
   {{{ gpu.makeReferenceRelease('BindGroupLayout') }}}
   {{{ gpu.makeReferenceRelease('PipelineLayout') }}}
@@ -500,6 +514,7 @@ var LibraryWebGPU = {
 
   wgpuBufferDestroy: function(bufferId) { WebGPU.mgrBuffer.get(bufferId)["destroy"](); },
   wgpuTextureDestroy: function(textureId) { WebGPU.mgrTexture.get(textureId)["destroy"](); },
+  wgpuQuerySetDestroy: function(querySetId) { WebGPU.mgrQuerySet.get(querySetId)["destroy"](); },
 
   // wgpuDevice
 
@@ -760,6 +775,33 @@ var LibraryWebGPU = {
 
     var device = WebGPU["mgrDevice"].get(deviceId);
     return WebGPU.mgrPipelineLayout.create(device["createPipelineLayout"](desc));
+  },
+
+  wgpuDeviceCreateQuerySet: function(deviceId, descriptor) {
+    {{{ gpu.makeCheckDescriptor('descriptor') }}}
+
+    var pipelineStatistics;
+    var pipelineStatisticsCount =
+      {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.pipelineStatisticsCount) }}};
+    if (pipelineStatisticsCount) {
+      var pipelineStatisticsPtr =
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.pipelineStatistics, '*') }}};
+      pipelineStatistics = [];
+      for (var i = 0; i < pipelineStatisticsCount; ++i) {
+        pipelineStatistics.push(WebGPU.PipelineStatisticName[
+          {{{ gpu.makeGetU32('pipelineStatisticsPtr', '4 * i') }}}]);
+      }
+    }
+
+    var desc = {
+      "type": WebGPU.QueryType[
+        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.type) }}}],
+      "count": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.count) }}},
+      "pipelineStatistics": pipelineStatistics,
+    };
+
+    var device = WebGPU["mgrDevice"].get(deviceId);
+    device["createQuerySet"](descriptor);
   },
 
   wgpuDeviceCreateComputePipeline: function(deviceId, descriptor) {
@@ -1164,6 +1206,8 @@ var LibraryWebGPU = {
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.colorAttachments, '*') }}}),
         "depthStencilAttachment": makeDepthStencilAttachment(
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.depthStencilAttachment, '*') }}}),
+        "occlusionQuerySet": WebGPU.mgrQuerySet.get(
+          {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.occlusionQuerySet, '*') }}}),
       };
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
@@ -1208,6 +1252,23 @@ var LibraryWebGPU = {
     var copySize = WebGPU.makeExtent3D(copySizePtr);
     commandEncoder["copyTextureToTexture"](
       WebGPU.makeTextureCopyView(srcPtr), WebGPU.makeTextureCopyView(dstPtr), copySize);
+  },
+
+  wgpuCommandEncoderResolveQuerySet: function(encoderId, querySetId, firstQuery, queryCount,
+      destinationId, {{{ defineI64Param('destinationOffset') }}}) {
+    {{{ receiveI64ParamAsI32s('destinationOffset') }}}
+    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    var destination = WebGPU.mgrBuffer.get(destinationId);
+    var destinationOffset = {{{ gpu.makeU64ToNumber('destinationOffset_low', 'destinationOffset_high') }}};
+
+    commandEncoder["resolveQuerySet"](querySet, firstQuery, queryCount, destination, destinationOffset);
+  },
+
+  wgpuCommandEncoderWriteTimestamp: function(encoderId, querySetId, queryIndex) {
+    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    commandEncoder["writeTimestamp"](querySet, queryIndex);
   },
 
   // wgpuBuffer
@@ -1304,6 +1365,7 @@ var LibraryWebGPU = {
     var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
     pass["setPipeline"](pipeline);
   },
+
   wgpuComputePassEncoderDispatch: function(passId, x, y, z) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["dispatch"](x, y, z);
@@ -1315,6 +1377,23 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["dispatchIndirect"](indirectBuffer, indirectOffset);
   },
+
+  wgpuComputePassEncoderBeginPipelineStatisticsQuery: function(passId, querySetId, queryIndex) {
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    pass["beginPipelineStatisticsQuery"](querySet, queryIndex);
+  },
+  wgpuComputePassEncoderEndPipelineStatisticsQuery: function(passId) {
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    pass["endPipelineStatisticsQuery"]();
+  },
+
+  wgpuComputePassEncoderWriteTimestamp: function(encoderId, querySetId, queryIndex) {
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    pass["writeTimestamp"](querySet, queryIndex);
+  },
+
   wgpuComputePassEncoderEndPass: function(passId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["endPass"]();
@@ -1366,6 +1445,7 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["setVertexBuffer"](slot, WebGPU.mgrBuffer.get(bufferId), offset, size);
   },
+
   wgpuRenderPassEncoderDraw: function(passId, vertexCount, instanceCount, firstVertex, firstInstance) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["draw"](vertexCount, instanceCount, firstVertex, firstInstance);
@@ -1388,6 +1468,7 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndexedIndirect"](indirectBuffer, indirectOffset);
   },
+
   wgpuRenderPassEncoderExecuteBundles: function(passId, count, bundlesPtr) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
 
@@ -1399,6 +1480,32 @@ var LibraryWebGPU = {
       function(id) { return WebGPU.mgrRenderBundle.get(id); });
     pass["executeBundles"](bundles);
   },
+
+  wgpuRenderPassEncoderBeginOcclusionQuery: function(passId, queryIndex) {
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    pass["beginOcclusionQuery"](queryIndex);
+  },
+  wgpuRenderPassEncoderEndOcclusionQuery: function(passId) {
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    pass["endOcclusionQuery"]();
+  },
+
+  wgpuRenderPassEncoderBeginPipelineStatisticsQuery: function(passId, querySetId, queryIndex) {
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    pass["beginPipelineStatisticsQuery"](querySet, queryIndex);
+  },
+  wgpuRenderPassEncoderEndPipelineStatisticsQuery: function(passId) {
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    pass["endPipelineStatisticsQuery"]();
+  },
+
+  wgpuRenderPassEncoderWriteTimestamp: function(encoderId, querySetId, queryIndex) {
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    pass["writeTimestamp"](querySet, queryIndex);
+  },
+
   wgpuRenderPassEncoderEndPass: function(passId) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["endPass"]();
