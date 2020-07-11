@@ -1099,6 +1099,27 @@ var LibraryWebGPU = {
     queue["submit"](cmds);
   },
 
+  wgpuQueueWriteBuffer: function(queueId,
+      bufferId, {{{ defineI64Param('bufferOffset') }}}, data, size) {
+    {{{ receiveI64ParamAsI32s('bufferOffset') }}}
+
+    var queue = WebGPU.mgrQueue.get(queueId);
+    var buffer = WebGPU.mgrBuffer.get(bufferId);
+    var bufferOffset = {{{ gpu.makeU64ToNumber('bufferOffset_low', 'bufferOffset_high') }}};
+    queue["writeBuffer"](buffer, bufferOffset, HEAPU8, data, size);
+  },
+
+  wgpuQueueWriteTexture: function(queueId,
+      destinationPtr, data, _dataSize, dataLayoutPtr, writeSizePtr) {
+    var queue = WebGPU.mgrQueue.get(queueId);
+
+    var destination = WebGPU.makeTextureCopyView(destinationPtr);
+    var dataLayout = WebGPU.makeTextureDataLayout(dataLayoutPtr);
+    dataLayout["offset"] += data;
+    var writeSize = WebGPU.makeExtent3D(writeSizePtr);
+    queue["writeTexture"](destination, HEAPU8, dataLayout, writeSize);
+  },
+
   // wgpuCommandEncoder
 
   wgpuCommandEncoderFinish: function(encoderId) {
