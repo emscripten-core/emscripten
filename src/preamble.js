@@ -713,9 +713,8 @@ var e =
 
 #if MODULARIZE
   readyPromiseReject(e);
-#else
-  throw e;
 #endif
+  throw e;
 }
 
 #if RELOCATABLE
