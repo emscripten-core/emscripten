@@ -1122,11 +1122,6 @@ var LibraryWebGPU = {
 
   // wgpuCommandEncoder
 
-  wgpuCommandEncoderFinish: function(encoderId) {
-    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
-    return WebGPU.mgrCommandBuffer.create(commandEncoder["finish"]());
-  },
-
   wgpuDeviceCreateRenderBundleEncoder: function(deviceId, descriptor) {
     {{{ gpu.makeCheck('descriptor') }}}
 
@@ -1303,6 +1298,24 @@ var LibraryWebGPU = {
     commandEncoder["writeTimestamp"](querySet, queryIndex);
   },
 
+  wgpuCommandEncoderPushDebugGroup: function(encoderId, groupLabelPtr) {
+    var encoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    encoder["pushDebugGroup"](UTF8ToString(groupLabelPtr));
+  },
+  wgpuCommandEncoderPopDebugGroup: function(encoderId) {
+    var encoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    encoder["popDebugGroup"]();
+  },
+  wgpuCommandEncoderInsertDebugMarker: function(encoderId, markerLabelPtr) {
+    var encoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
+  },
+
+  wgpuCommandEncoderFinish: function(encoderId) {
+    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    return WebGPU.mgrCommandBuffer.create(commandEncoder["finish"]());
+  },
+
   // wgpuBuffer
 
   wgpuBufferMapReadAsync: function(bufferId, callback, userdata) {
@@ -1426,6 +1439,19 @@ var LibraryWebGPU = {
     pass["writeTimestamp"](querySet, queryIndex);
   },
 
+  wgpuComputePassEncoderPushDebugGroup: function(encoderId, groupLabelPtr) {
+    var encoder = WebGPU.mgrComputePassEncoder.get(encoderId);
+    encoder["pushDebugGroup"](UTF8ToString(groupLabelPtr));
+  },
+  wgpuComputePassEncoderPopDebugGroup: function(encoderId) {
+    var encoder = WebGPU.mgrComputePassEncoder.get(encoderId);
+    encoder["popDebugGroup"]();
+  },
+  wgpuComputePassEncoderInsertDebugMarker: function(encoderId, markerLabelPtr) {
+    var encoder = WebGPU.mgrComputePassEncoder.get(encoderId);
+    encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
+  },
+
   wgpuComputePassEncoderEndPass: function(passId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["endPass"]();
@@ -1538,6 +1564,19 @@ var LibraryWebGPU = {
     pass["writeTimestamp"](querySet, queryIndex);
   },
 
+  wgpuRenderPassEncoderPushDebugGroup: function(encoderId, groupLabelPtr) {
+    var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
+    encoder["pushDebugGroup"](UTF8ToString(groupLabelPtr));
+  },
+  wgpuRenderPassEncoderPopDebugGroup: function(encoderId) {
+    var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
+    encoder["popDebugGroup"]();
+  },
+  wgpuRenderPassEncoderInsertDebugMarker: function(encoderId, markerLabelPtr) {
+    var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
+    encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
+  },
+
   wgpuRenderPassEncoderEndPass: function(passId) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["endPass"]();
@@ -1576,6 +1615,7 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["setVertexBuffer"](slot, WebGPU.mgrBuffer.get(bufferId), offset);
   },
+
   wgpuRenderBundleEncoderDraw: function(bundleId, vertexCount, instanceCount, firstVertex, firstInstance) {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["draw"](vertexCount, instanceCount, firstVertex, firstInstance);
@@ -1584,6 +1624,20 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
+
+  wgpuRenderBundleEncoderPushDebugGroup: function(encoderId, groupLabelPtr) {
+    var encoder = WebGPU.mgrRenderBundleEncoder.get(encoderId);
+    encoder["pushDebugGroup"](UTF8ToString(groupLabelPtr));
+  },
+  wgpuRenderBundleEncoderPopDebugGroup: function(encoderId) {
+    var encoder = WebGPU.mgrRenderBundleEncoder.get(encoderId);
+    encoder["popDebugGroup"]();
+  },
+  wgpuRenderBundleEncoderInsertDebugMarker: function(encoderId, markerLabelPtr) {
+    var encoder = WebGPU.mgrRenderBundleEncoder.get(encoderId);
+    encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
+  },
+
   wgpuRenderBundleEncoderFinish: function(bundleId, descriptor) {
     var desc;
     if (descriptor) {
