@@ -203,7 +203,6 @@ var LibraryWebGPU = {
         "texture": this.mgrTexture.get(
           {{{ makeGetValue('ptr', C_STRUCTS.WGPUTextureCopyView.texture, '*') }}}),
         "mipLevel": {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUTextureCopyView.mipLevel, '*') }}},
-        "arrayLayer": {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUTextureCopyView.arrayLayer, '*') }}},
         "origin": WebGPU.makeOrigin3D(ptr + {{{ C_STRUCTS.WGPUTextureCopyView.origin }}}),
       };
     },
@@ -581,7 +580,6 @@ var LibraryWebGPU = {
     var desc = {
       "label": undefined,
       "size": WebGPU.makeExtent3D(descriptor + {{{ C_STRUCTS.WGPUTextureDescriptor.size }}}),
-      "arrayLayerCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureDescriptor.arrayLayerCount) }}},
       "mipLevelCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureDescriptor.mipLevelCount) }}},
       "sampleCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureDescriptor.sampleCount) }}},
       "dimension": WebGPU.TextureDimension[

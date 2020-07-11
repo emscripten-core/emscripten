@@ -471,7 +471,6 @@ typedef struct WGPUBindGroupLayoutEntry {
     WGPUBindingType type;
     bool hasDynamicOffset;
     bool multisampled;
-    WGPUTextureViewDimension textureDimension;
     WGPUTextureViewDimension viewDimension;
     WGPUTextureComponentType textureComponentType;
     WGPUTextureFormat storageTextureFormat;
@@ -622,8 +621,6 @@ typedef struct WGPUSamplerDescriptorDummyAnisotropicFiltering {
 typedef struct WGPUShaderModuleDescriptor {
     WGPUChainedStruct const * nextInChain;
     char const * label;
-    uint32_t codeSize;
-    uint32_t const * code;
 } WGPUShaderModuleDescriptor;
 
 typedef struct WGPUShaderModuleSPIRVDescriptor {
@@ -704,8 +701,6 @@ typedef struct WGPUBindGroupDescriptor {
     WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUBindGroupLayout layout;
-    uint32_t bindingCount;
-    WGPUBindGroupEntry const * bindings;
     uint32_t entryCount;
     WGPUBindGroupEntry const * entries;
 } WGPUBindGroupDescriptor;
@@ -713,8 +708,6 @@ typedef struct WGPUBindGroupDescriptor {
 typedef struct WGPUBindGroupLayoutDescriptor {
     WGPUChainedStruct const * nextInChain;
     char const * label;
-    uint32_t bindingCount;
-    WGPUBindGroupLayoutEntry const * bindings;
     uint32_t entryCount;
     WGPUBindGroupLayoutEntry const * entries;
 } WGPUBindGroupLayoutDescriptor;
@@ -812,10 +805,6 @@ typedef struct WGPURenderPipelineDescriptor {
     bool alphaToCoverageEnabled;
 } WGPURenderPipelineDescriptor;
 
-
-// TODO(dawn:22): Remove this once users use the "Entry" version.
-typedef WGPUBindGroupEntry WGPUBindGroupBinding;
-typedef WGPUBindGroupLayoutEntry WGPUBindGroupLayoutBinding;
 
 #ifdef __cplusplus
 extern "C" {

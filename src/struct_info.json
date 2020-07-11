@@ -1918,7 +1918,6 @@
                 "nextInChain",
                 "texture",
                 "mipLevel",
-                "arrayLayer",
                 "origin"
             ],
             "WGPUTextureDescriptor": [
@@ -1927,7 +1926,6 @@
                 "usage",
                 "dimension",
                 "size",
-                "arrayLayerCount",
                 "format",
                 "mipLevelCount",
                 "sampleCount"
