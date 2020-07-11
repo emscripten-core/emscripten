@@ -823,7 +823,6 @@ typedef void (*WGPUProcBindGroupLayoutRelease)(WGPUBindGroupLayout bindGroupLayo
 typedef void (*WGPUProcBufferDestroy)(WGPUBuffer buffer);
 typedef void (*WGPUProcBufferMapReadAsync)(WGPUBuffer buffer, WGPUBufferMapReadCallback callback, void * userdata);
 typedef void (*WGPUProcBufferMapWriteAsync)(WGPUBuffer buffer, WGPUBufferMapWriteCallback callback, void * userdata);
-typedef void (*WGPUProcBufferSetSubData)(WGPUBuffer buffer, uint64_t start, uint64_t count, void const * data);
 typedef void (*WGPUProcBufferUnmap)(WGPUBuffer buffer);
 typedef void (*WGPUProcBufferReference)(WGPUBuffer buffer);
 typedef void (*WGPUProcBufferRelease)(WGPUBuffer buffer);
@@ -1000,7 +999,6 @@ WGPU_EXPORT void wgpuBindGroupLayoutRelease(WGPUBindGroupLayout bindGroupLayout)
 WGPU_EXPORT void wgpuBufferDestroy(WGPUBuffer buffer);
 WGPU_EXPORT void wgpuBufferMapReadAsync(WGPUBuffer buffer, WGPUBufferMapReadCallback callback, void * userdata);
 WGPU_EXPORT void wgpuBufferMapWriteAsync(WGPUBuffer buffer, WGPUBufferMapWriteCallback callback, void * userdata);
-WGPU_EXPORT void wgpuBufferSetSubData(WGPUBuffer buffer, uint64_t start, uint64_t count, void const * data);
 WGPU_EXPORT void wgpuBufferUnmap(WGPUBuffer buffer);
 WGPU_EXPORT void wgpuBufferReference(WGPUBuffer buffer);
 WGPU_EXPORT void wgpuBufferRelease(WGPUBuffer buffer);

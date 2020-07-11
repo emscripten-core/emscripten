@@ -1212,15 +1212,6 @@ var LibraryWebGPU = {
 
   // wgpuBuffer
 
-  wgpuBufferSetSubData: function(bufferId, {{{ defineI64Param('start') }}}, {{{ defineI64Param('count') }}}, data) {
-    {{{ receiveI64ParamAsI32s('start') }}}
-    {{{ receiveI64ParamAsI32s('count') }}}
-    var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var start = {{{ gpu.makeU64ToNumber('start_low', 'start_high') }}};
-    var count = {{{ gpu.makeU64ToNumber('count_low', 'count_high') }}};
-    buffer["setSubData"](start, HEAPU8, data, count);
-  },
-
   wgpuBufferMapReadAsync: function(bufferId, callback, userdata) {
     var bufferEntry = WebGPU.mgrBuffer.objects[bufferId];
     bufferEntry.mapped = 'write';
