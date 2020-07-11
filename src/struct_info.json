@@ -1689,6 +1689,7 @@
                 "visibility",
                 "type",
                 "hasDynamicOffset",
+                "minBufferBindingSize",
                 "multisampled",
                 "viewDimension",
                 "textureComponentType",

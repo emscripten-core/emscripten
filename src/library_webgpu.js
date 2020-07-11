@@ -668,6 +668,8 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetBool('entryPtr', C_STRUCTS.WGPUBindGroupLayoutEntry.multisampled) }}},
         "hasDynamicOffset":
           {{{ gpu.makeGetBool('entryPtr', C_STRUCTS.WGPUBindGroupLayoutEntry.hasDynamicOffset) }}},
+        "minBufferBindingSize":
+          {{{ gpu.makeGetU64('entryPtr', C_STRUCTS.WGPUBindGroupLayoutEntry.minBufferBindingSize) }}},
       };
     }
 
