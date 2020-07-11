@@ -1791,9 +1791,11 @@
                 "depthLoadOp",
                 "depthStoreOp",
                 "clearDepth",
+                "depthReadOnly",
                 "stencilLoadOp",
                 "stencilStoreOp",
-                "clearStencil"
+                "clearStencil",
+                "stencilReadOnly"
             ],
             "WGPUSamplerDescriptor": [
                 "nextInChain",
