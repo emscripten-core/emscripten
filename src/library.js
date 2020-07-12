@@ -754,12 +754,13 @@ LibraryManager.library = {
   // in both fastcomp and upstream.
   $ENV: {},
 
+  __environ: "{{{ makeStaticAlloc(Runtime.getNativeTypeSize('i8*')) }}}",
+  __buildEnvironment__deps: ['__environ', '$ENV', '_getExecutableName'
 #if !WASM_BACKEND
   // This implementation of environ/getenv/etc. is used for fastcomp, due
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['$ENV', '_getExecutableName'
 #if MINIMAL_RUNTIME
     , '$writeAsciiToMemory'
 #endif
@@ -771,7 +772,6 @@ LibraryManager.library = {
 
     // Statically allocate memory for the environment.
     var poolPtr;
-    var envPtr;
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
@@ -786,13 +786,13 @@ LibraryManager.library = {
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
-      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
-      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
+      __environ = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      {{{ makeSetValue('__environ', '0', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, '__environ', 'i8*') }}};
 #endif
     } else {
-      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
-      poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
+      __environ = {{{ makeGetValue('environ', '0', 'i8**') }}};
+      poolPtr = {{{ makeGetValue('__environ', '0', 'i8*') }}};
     }
 
     // Collect key=value lines.
@@ -814,10 +814,10 @@ LibraryManager.library = {
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
       writeAsciiToMemory(line, poolPtr);
-      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('__environ', 'i * ptrSize', 'poolPtr', 'i8*') }}};
       poolPtr += line.length + 1;
     }
-    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
+    {{{ makeSetValue('__environ', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   getenv__deps: ['$ENV',
 #if MINIMAL_RUNTIME
