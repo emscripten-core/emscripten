@@ -17,7 +17,7 @@ WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps 
 NON_ZERO = -1
 
 
-def make_command(filename, engine, args=[]):
+def make_command(filename, engine, args=[], command_flags=[]):
   # if no engine is needed, indicated by None, then there is a native executable
   # provided which we can just run
   if engine[0] is None:
@@ -42,7 +42,6 @@ def make_command(filename, engine, args=[]):
   # Disable true async compilation (async apis will in fact be synchronous) for now
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
   shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
-  command_flags = []
   if is_wasmer:
     command_flags += ['run']
   if is_wasmer or is_wasmtime:
@@ -88,7 +87,7 @@ def require_engine(engine):
     sys.exit(1)
 
 
-def run_js(filename, engine=None, args=[],
+def run_js(filename, engine=None, args=[], command_flags=[],
            stdin=None, stdout=PIPE, stderr=None, cwd=None,
            full_output=False, assert_returncode=0, skip_check=False):
   if not engine:
@@ -101,7 +100,7 @@ def run_js(filename, engine=None, args=[],
   if not os.path.exists(filename):
     raise Exception('JavaScript file not found: ' + filename)
 
-  command = make_command(filename, engine, args)
+  command = make_command(filename, engine, args, command_flags)
   try:
     proc = Popen(
         command,
