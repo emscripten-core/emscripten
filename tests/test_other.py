@@ -9966,13 +9966,18 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # the breaking change in #10697 Module() now returns a promise, and to get
     # the instance you must use .then() to get a callback with the instance.
     create_test_file('test.js', r'''
+      // Adds a noop catch handler to avoid unhandled promise rejection error for the process
+      function addCatch(promise) {
+        promise.catch(() => {});
+        return promise;
+      }
       try {
-        Module()._main;
+        addCatch(Module())._main;
       } catch(e) {
         console.log(e);
       }
       try {
-        Module().onRuntimeInitialized = 42;
+        addCatch(Module()).onRuntimeInitialized = 42;
       } catch(e) {
         console.log(e);
       }
