@@ -9966,11 +9966,19 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # the breaking change in #10697 Module() now returns a promise, and to get
     # the instance you must use .then() to get a callback with the instance.
     create_test_file('test.js', r'''
-      Module()._main;
-      Module().onRuntimeInitialized = 42;
+      try {
+        Module()._main;
+      } catch(e) {
+        console.log(e);
+      }
+      try {
+        Module().onRuntimeInitialized = 42;
+      } catch(e) {
+        console.log(e);
+      }
     ''')
     run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE', '-s', 'ASSERTIONS', '--extern-post-js', 'test.js'])
-    out = run_js('a.out.js', full_output=True, stderr=PIPE)
+    out = run_js('a.out.js')
     self.assertContained('You are getting _main on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
     self.assertContained('You are setting onRuntimeInitialized on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
 
