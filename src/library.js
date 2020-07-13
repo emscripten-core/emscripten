@@ -749,18 +749,18 @@ LibraryManager.library = {
 #endif
   },
 
+#if !WASM_BACKEND
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv. (This works
   // in both fastcomp and upstream.
   $ENV: {},
-
   __environ: "{{{ makeStaticAlloc(Runtime.getNativeTypeSize('i8*')) }}}",
-  __buildEnvironment__deps: ['__environ', '$ENV', '_getExecutableName'
-#if !WASM_BACKEND
+
   // This implementation of environ/getenv/etc. is used for fastcomp, due
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
+  __buildEnvironment__deps: ['__environ', '$ENV', '_getExecutableName'
 #if MINIMAL_RUNTIME
     , '$writeAsciiToMemory'
 #endif
