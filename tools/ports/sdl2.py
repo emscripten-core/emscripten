@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'version_21'
-HASH = '0ea4ab13b8715b9f8b41096f47dc03cad17f35e19c945156b2bb0f3c16b261a4b0c6d576008f1c458377a9f70f1c055a5900a47b8342b2858dc88a55919e63df'
+TAG = 'auto'
+HASH = '2802e54fe44c878af7b203a22c6de56cf90382959b0d8220c8b9fd9790b21aad6e6328081635f1034dec8b4c5595bbe52f8018427b833da77ddcd841ba1d0c73'
 SUBDIR = 'SDL2-' + TAG
 
 
@@ -87,6 +87,10 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libSDL2'))
+
+
+def process_dependencies(settings):
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext']
 
 
 def process_args(ports):
