@@ -3367,7 +3367,8 @@ window.close = function() {
   def test_modularize_network_error(self):
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     create_test_file('test.c', src)
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM=1', '-s', 'EXPORT_NAME="createModule"'], include_global_reporting=True)
+    browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
+    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
