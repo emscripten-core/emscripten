@@ -1044,7 +1044,11 @@ var SMALL_XHR_CHUNKS = 0;
 var HEADLESS = 0;
 
 // If 1, we force Date.now(), Math.random, etc. to return deterministic results.
-// Good for comparing builds for debugging purposes (and nothing else)
+// This also tries to make execution deterministic across machines and
+// environments, for example, not doing anything different based on the
+// browser's language setting (which would mean you can get different results
+// in different browsers, or in the browser and in node).
+// Good for comparing builds for debugging purposes (and nothing else).
 var DETERMINISTIC = 0;
 
 // By default we emit all code in a straightforward way into the output
