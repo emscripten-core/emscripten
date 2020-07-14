@@ -797,6 +797,7 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
+    path_from_root('system', 'lib', 'compiler-rt', 'include'),
     Cache.get_path('include')
   ]
 
