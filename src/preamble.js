@@ -1113,6 +1113,7 @@ function createWasm() {
       wasmOffsetConverter = new WasmOffsetConverter(binary, module);
       {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
+      return { instance, module };
     } catch (e) {
       var str = e.toString();
       err('failed to compile wasm module: ' + str);
@@ -1122,10 +1123,6 @@ function createWasm() {
       }
       throw e;
     }
-#if LOAD_SOURCE_MAP
-    receiveSourceMapJSON(getSourceMap());
-#endif
-    receiveInstance(instance, module);
   }
 #endif
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
@@ -1155,7 +1152,11 @@ function createWasm() {
   return {}; // no exports yet; we'll fill them in later
 #else
   try {
-    instantiateSync();
+    var output = instantiateSync();
+#if LOAD_SOURCE_MAP
+    receiveSourceMapJSON(getSourceMap());
+#endif
+    receiveInstance(output.instance, output.module);
   } catch (e) {
     abort(e);
   }
