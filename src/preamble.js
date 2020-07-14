@@ -1113,7 +1113,7 @@ function createWasm() {
       wasmOffsetConverter = new WasmOffsetConverter(binary, module);
       {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
-      return { instance, module };
+      return { instance: instance, module: module };
     } catch (e) {
       var str = e.toString();
       err('failed to compile wasm module: ' + str);
