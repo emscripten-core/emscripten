@@ -158,21 +158,6 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('RenderBundle') }}}
     },
 
-    trackMapWrite: function(obj, mapped) {
-      var data = _malloc(mapped.byteLength);
-      HEAPU8.fill(0, data, mapped.byteLength);
-      obj.mapWriteSrc = data;
-      obj.mapWriteDst = mapped;
-    },
-    trackUnmap: function(obj) {
-      if (obj.mapWriteSrc) {
-        new Uint8Array(obj.mapWriteDst).set(HEAPU8.subarray(obj.mapWriteSrc, obj.mapWriteSrc + obj.mapWriteDst.byteLength));
-        _free(obj.mapWriteSrc);
-      }
-      obj.mapWriteSrc = undefined;
-      obj.mapWriteDst = undefined;
-    },
-
     makeColor: function(ptr) {
       return {
         "r": {{{ makeGetValue('ptr', 0, 'float') }}},
@@ -558,41 +543,26 @@ var LibraryWebGPU = {
 
   wgpuDeviceCreateBuffer: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
+
+    var mappedAtCreation = {{{ gpu.makeGetBool('descriptor', C_STRUCTS.WGPUBufferDescriptor.mappedAtCreation) }}};
+
     var desc = {
       "label": undefined,
       "usage": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUBufferDescriptor.usage) }}},
       "size": {{{ gpu.makeGetU64('descriptor', C_STRUCTS.WGPUBufferDescriptor.size) }}},
+      "mappedAtCreation": mappedAtCreation,
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBufferDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     var device = WebGPU["mgrDevice"].get(deviceId);
-    return WebGPU.mgrBuffer.create(device["createBuffer"](desc));
-  },
-
-  wgpuDeviceCreateBufferMapped: function(returnPtr, deviceId, descriptor) {
-    {{{ gpu.makeCheckDescriptor('descriptor') }}}
-    var desc = {
-      "usage": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUBufferDescriptor.usage) }}},
-      "size": {{{ gpu.makeGetU64('descriptor', C_STRUCTS.WGPUBufferDescriptor.size) }}},
-    };
-
-    var device = WebGPU["mgrDevice"].get(deviceId);
-    var bufferMapped = device["createBufferMapped"](desc);
-    var buffer = bufferMapped[0];
-    var mapped = bufferMapped[1];
-
-    var bufferWrapper = {};
-    var bufferId = WebGPU.mgrBuffer.create(buffer, bufferWrapper);
-    WebGPU.trackMapWrite(bufferWrapper, mapped);
-
-    var dataLength_high = (mapped.byteLength / 0x100000000) | 0;
-    var dataLength_low = mapped.byteLength | 0;
-
-    {{{ makeSetValue('returnPtr', C_STRUCTS.WGPUCreateBufferMappedResult.buffer, 'bufferId', '*') }}}
-    {{{ makeSetValue('returnPtr', C_STRUCTS.WGPUCreateBufferMappedResult.dataLength + 0, 'dataLength_low', 'i32') }}}
-    {{{ makeSetValue('returnPtr', C_STRUCTS.WGPUCreateBufferMappedResult.dataLength + 4, 'dataLength_high', 'i32') }}}
-    {{{ makeSetValue('returnPtr', C_STRUCTS.WGPUCreateBufferMappedResult.data, 'bufferWrapper.mapWriteSrc', '*') }}}
+    var id = WebGPU.mgrBuffer.create(device["createBuffer"](desc));
+    if (mappedAtCreation) {
+      var bufferWrapper = WebGPU.mgrBuffer.objects[id];
+      bufferWrapper.mapMode = 2 /* WGPUMapMode_Write */;
+      bufferWrapper.onUnmap = [];
+    }
+    return id;
   },
 
   wgpuDeviceCreateTexture: function(deviceId, descriptor) {
@@ -1318,49 +1288,82 @@ var LibraryWebGPU = {
 
   // wgpuBuffer
 
-  wgpuBufferMapReadAsync: function(bufferId, callback, userdata) {
-    var bufferEntry = WebGPU.mgrBuffer.objects[bufferId];
-    bufferEntry.mapped = 'write';
-    var buffer = bufferEntry.object;
+  wgpuBufferGetConstMappedRange: function(bufferId) {
+    var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
 
-    buffer["mapReadAsync"]().then(function(mapped) {
-      var WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS = 0;
-      var data = _malloc(mapped.byteLength);
-      HEAPU8.set(new Uint8Array(mapped), data);
-      var dataLength_high = (mapped.byteLength / 0x100000000) | 0;
-      var dataLength_low = mapped.byteLength | 0;
-      // WGPUBufferMapAsyncStatus status, const void* data, uint64_t dataLength, void* userdata
-      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, {{{ sendI64Argument('dataLength_low', 'dataLength_high') }}}, userdata]);
-    }, function() {
-      // TODO(kainino0x): Figure out how to pick other error status values.
-      var WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR = 1;
-      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR, 0, 0, 0, userdata]);
+    var mapped;
+    try {
+      mapped = bufferWrapper.object["getMappedRange"]();
+    } catch (ex) {
+      // TODO(kainino0x): Somehow inject a validation error?
+      return 0;
+    }
+
+    var data = _malloc(mapped.byteLength);
+    HEAPU8.set(new Uint8Array(mapped), data);
+    bufferWrapper.onUnmap.push(function() {
+      _free(data);
     });
+    return data;
   },
 
-  wgpuBufferMapWriteAsync: function(bufferId, callback, userdata) {
+  wgpuBufferGetMappedRange: function(bufferId) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+
+    if (bufferWrapper.mapMode !== 2 /* WGPUMapMode_Write */) {
+#if ASSERTIONS
+      abort("GetMappedRange called, but buffer not mapped for writing");
+#endif
+      // TODO(kainino0x): Somehow inject a validation error?
+      return 0;
+    }
+
+    var mapped;
+    try {
+      mapped = bufferWrapper.object["getMappedRange"]();
+    } catch (ex) {
+      // TODO(kainino0x): Somehow inject a validation error?
+      return 0;
+    }
+
+    var data = _malloc(mapped.byteLength);
+    HEAPU8.fill(0, data, mapped.byteLength);
+    bufferWrapper.onUnmap.push(function() {
+      new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
+      _free(data);
+    });
+    return data;
+  },
+
+  wgpuBufferMapAsync: function(bufferId, mode, offset, size, callback, userdata) {
+    var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+    bufferWrapper.mapMode = mode;
+    bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
 
-    var WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS = 0;
-    var WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR = 1;
-    buffer["mapWriteAsync"]().then(function(mapped) {
-      WebGPU.trackMapWrite(bufferWrapper, mapped);
+    // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
-      var data = bufferWrapper.mapWriteSrc;
-      var dataLength_high = (mapped.byteLength / 0x100000000) | 0;
-      var dataLength_low = mapped.byteLength | 0;
-      // WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void* userdata
-      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, {{{ sendI64Argument('dataLength_low', 'dataLength_high') }}}, userdata]);
+    buffer["mapAsync"](mode, offset, size).then(function() {
+      dynCall('vii', callback, [0 /* WGPUBufferMapAsyncStatus_Success */, userdata]);
     }, function() {
       // TODO(kainino0x): Figure out how to pick other error status values.
-      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR, 0, 0, 0, userdata]);
+      dynCall('vii', callback, [1 /* WGPUBufferMapAsyncStatus_Error */, userdata]);
     });
   },
 
   wgpuBufferUnmap: function(bufferId) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
-    WebGPU.trackUnmap(bufferWrapper);
+
+    if (!bufferWrapper.onUnmap) {
+      // Already unmapped
+      return;
+    }
+
+    for (var i = 0; i < bufferWrapper.onUnmap.length; ++i) {
+      bufferWrapper.onUnmap[i]();
+    }
+    bufferWrapper.onUnmap = undefined;
+
     bufferWrapper.object["unmap"]();
   },
 

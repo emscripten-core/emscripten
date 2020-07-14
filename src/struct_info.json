@@ -1704,7 +1704,8 @@
                 "nextInChain",
                 "label",
                 "usage",
-                "size"
+                "size",
+                "mappedAtCreation"
             ],
             "WGPUColor": [
                 "r",
@@ -1723,11 +1724,6 @@
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label"
-            ],
-            "WGPUCreateBufferMappedResult": [
-                "buffer",
-                "dataLength",
-                "data"
             ],
             "WGPUExtent3D": [
                 "width",

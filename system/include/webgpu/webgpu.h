@@ -438,6 +438,13 @@ typedef enum WGPUColorWriteMask {
 } WGPUColorWriteMask;
 typedef WGPUFlags WGPUColorWriteMaskFlags;
 
+typedef enum WGPUMapMode {
+    WGPUMapMode_Read = 0x00000001,
+    WGPUMapMode_Write = 0x00000002,
+    WGPUMapMode_Force32 = 0x7FFFFFFF
+} WGPUMapMode;
+typedef WGPUFlags WGPUMapModeFlags;
+
 typedef enum WGPUShaderStage {
     WGPUShaderStage_None = 0x00000000,
     WGPUShaderStage_Vertex = 0x00000001,
@@ -505,6 +512,7 @@ typedef struct WGPUBufferDescriptor {
     char const * label;
     WGPUBufferUsageFlags usage;
     uint64_t size;
+    bool mappedAtCreation;
 } WGPUBufferDescriptor;
 
 typedef struct WGPUColor {
@@ -532,12 +540,6 @@ typedef struct WGPUComputePassDescriptor {
 typedef struct WGPUDeviceDescriptor {
     WGPUChainedStruct const * nextInChain;
 } WGPUDeviceDescriptor;
-
-typedef struct WGPUCreateBufferMappedResult {
-    WGPUBuffer buffer;
-    uint64_t dataLength;
-    void * data;
-} WGPUCreateBufferMappedResult;
 
 typedef struct WGPUExtent3D {
     uint32_t width;
@@ -842,8 +844,7 @@ typedef struct WGPURenderPipelineDescriptor {
 extern "C" {
 #endif
 
-typedef void (*WGPUBufferMapReadCallback)(WGPUBufferMapAsyncStatus status, void const * data, uint64_t dataLength, void * userdata);
-typedef void (*WGPUBufferMapWriteCallback)(WGPUBufferMapAsyncStatus status, void * data, uint64_t dataLength, void * userdata);
+typedef void (*WGPUBufferMapCallback)(WGPUBufferMapAsyncStatus status, void * userdata);
 typedef void (*WGPUDeviceLostCallback)(char const * message, void * userdata);
 typedef void (*WGPUErrorCallback)(WGPUErrorType type, char const * message, void * userdata);
 typedef void (*WGPUFenceOnCompletionCallback)(WGPUFenceCompletionStatus status, void * userdata);
@@ -872,8 +873,9 @@ typedef void (*WGPUProcBindGroupLayoutRelease)(WGPUBindGroupLayout bindGroupLayo
 
 // Procs of Buffer
 typedef void (*WGPUProcBufferDestroy)(WGPUBuffer buffer);
-typedef void (*WGPUProcBufferMapReadAsync)(WGPUBuffer buffer, WGPUBufferMapReadCallback callback, void * userdata);
-typedef void (*WGPUProcBufferMapWriteAsync)(WGPUBuffer buffer, WGPUBufferMapWriteCallback callback, void * userdata);
+typedef void const * (*WGPUProcBufferGetConstMappedRange)(WGPUBuffer buffer);
+typedef void * (*WGPUProcBufferGetMappedRange)(WGPUBuffer buffer);
+typedef void (*WGPUProcBufferMapAsync)(WGPUBuffer buffer, WGPUMapModeFlags flags, size_t offset, size_t size, WGPUBufferMapCallback callback, void * userdata);
 typedef void (*WGPUProcBufferUnmap)(WGPUBuffer buffer);
 typedef void (*WGPUProcBufferReference)(WGPUBuffer buffer);
 typedef void (*WGPUProcBufferRelease)(WGPUBuffer buffer);
@@ -922,7 +924,6 @@ typedef void (*WGPUProcComputePipelineRelease)(WGPUComputePipeline computePipeli
 typedef WGPUBindGroup (*WGPUProcDeviceCreateBindGroup)(WGPUDevice device, WGPUBindGroupDescriptor const * descriptor);
 typedef WGPUBindGroupLayout (*WGPUProcDeviceCreateBindGroupLayout)(WGPUDevice device, WGPUBindGroupLayoutDescriptor const * descriptor);
 typedef WGPUBuffer (*WGPUProcDeviceCreateBuffer)(WGPUDevice device, WGPUBufferDescriptor const * descriptor);
-typedef WGPUCreateBufferMappedResult (*WGPUProcDeviceCreateBufferMapped)(WGPUDevice device, WGPUBufferDescriptor const * descriptor);
 typedef WGPUCommandEncoder (*WGPUProcDeviceCreateCommandEncoder)(WGPUDevice device, WGPUCommandEncoderDescriptor const * descriptor);
 typedef WGPUComputePipeline (*WGPUProcDeviceCreateComputePipeline)(WGPUDevice device, WGPUComputePipelineDescriptor const * descriptor);
 typedef WGPUPipelineLayout (*WGPUProcDeviceCreatePipelineLayout)(WGPUDevice device, WGPUPipelineLayoutDescriptor const * descriptor);
@@ -1073,8 +1074,9 @@ WGPU_EXPORT void wgpuBindGroupLayoutRelease(WGPUBindGroupLayout bindGroupLayout)
 
 // Methods of Buffer
 WGPU_EXPORT void wgpuBufferDestroy(WGPUBuffer buffer);
-WGPU_EXPORT void wgpuBufferMapReadAsync(WGPUBuffer buffer, WGPUBufferMapReadCallback callback, void * userdata);
-WGPU_EXPORT void wgpuBufferMapWriteAsync(WGPUBuffer buffer, WGPUBufferMapWriteCallback callback, void * userdata);
+WGPU_EXPORT void const * wgpuBufferGetConstMappedRange(WGPUBuffer buffer);
+WGPU_EXPORT void * wgpuBufferGetMappedRange(WGPUBuffer buffer);
+WGPU_EXPORT void wgpuBufferMapAsync(WGPUBuffer buffer, WGPUMapModeFlags flags, size_t offset, size_t size, WGPUBufferMapCallback callback, void * userdata);
 WGPU_EXPORT void wgpuBufferUnmap(WGPUBuffer buffer);
 WGPU_EXPORT void wgpuBufferReference(WGPUBuffer buffer);
 WGPU_EXPORT void wgpuBufferRelease(WGPUBuffer buffer);
@@ -1123,7 +1125,6 @@ WGPU_EXPORT void wgpuComputePipelineRelease(WGPUComputePipeline computePipeline)
 WGPU_EXPORT WGPUBindGroup wgpuDeviceCreateBindGroup(WGPUDevice device, WGPUBindGroupDescriptor const * descriptor);
 WGPU_EXPORT WGPUBindGroupLayout wgpuDeviceCreateBindGroupLayout(WGPUDevice device, WGPUBindGroupLayoutDescriptor const * descriptor);
 WGPU_EXPORT WGPUBuffer wgpuDeviceCreateBuffer(WGPUDevice device, WGPUBufferDescriptor const * descriptor);
-WGPU_EXPORT WGPUCreateBufferMappedResult wgpuDeviceCreateBufferMapped(WGPUDevice device, WGPUBufferDescriptor const * descriptor);
 WGPU_EXPORT WGPUCommandEncoder wgpuDeviceCreateCommandEncoder(WGPUDevice device, WGPUCommandEncoderDescriptor const * descriptor);
 WGPU_EXPORT WGPUComputePipeline wgpuDeviceCreateComputePipeline(WGPUDevice device, WGPUComputePipelineDescriptor const * descriptor);
 WGPU_EXPORT WGPUPipelineLayout wgpuDeviceCreatePipelineLayout(WGPUDevice device, WGPUPipelineLayoutDescriptor const * descriptor);
