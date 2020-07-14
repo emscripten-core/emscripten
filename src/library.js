@@ -787,13 +787,13 @@ LibraryManager.library = {
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
-      __environ = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
-      {{{ makeSetValue('__environ', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue('environ', 0, '__environ', 'i8*') }}};
+      ___environ = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      {{{ makeSetValue('___environ', '0', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, '___environ', 'i8*') }}};
 #endif
     } else {
-      __environ = {{{ makeGetValue('environ', '0', 'i8**') }}};
-      poolPtr = {{{ makeGetValue('__environ', '0', 'i8*') }}};
+      ___environ = {{{ makeGetValue('environ', '0', 'i8**') }}};
+      poolPtr = {{{ makeGetValue('___environ', '0', 'i8*') }}};
     }
 
     // Collect key=value lines.
@@ -815,10 +815,10 @@ LibraryManager.library = {
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
       writeAsciiToMemory(line, poolPtr);
-      {{{ makeSetValue('__environ', 'i * ptrSize', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('___environ', 'i * ptrSize', 'poolPtr', 'i8*') }}};
       poolPtr += line.length + 1;
     }
-    {{{ makeSetValue('__environ', 'strings.length * ptrSize', '0', 'i8*') }}};
+    {{{ makeSetValue('___environ', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   getenv__deps: ['$ENV',
 #if MINIMAL_RUNTIME
