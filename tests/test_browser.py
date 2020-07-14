@@ -20,8 +20,7 @@ import unittest
 import webbrowser
 import zlib
 
-from jsrun import run_js, NON_ZERO
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, NON_ZERO
 from runner import no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import system_libs
@@ -1612,7 +1611,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_worker(self):
     self.do_test_worker()
-    self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone too
+    self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
@@ -2539,7 +2538,7 @@ void *getBindBuffer() {
     # We run this test in Node/SPIDERMONKEY and browser environments because we try to make use of
     # high quality crypto random number generators such as crypto.getRandomValues or randomBytes (if available).
 
-    # First run tests in Node and/or SPIDERMONKEY using run_js. Use closure compiler so we can check that
+    # First run tests in Node and/or SPIDERMONKEY using self.run_js. Use closure compiler so we can check that
     # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
     self.compile_btest(['-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js', '-luuid'])
 
@@ -2549,7 +2548,7 @@ void *getBindBuffer() {
     assert ").randomBytes" in test_js_closure
     assert "window.crypto.getRandomValues" in test_js_closure
 
-    out = run_js('test.js', full_output=True)
+    out = self.run_js('test.js')
     print(out)
 
     # Tidy up files that might have been created by this test.
