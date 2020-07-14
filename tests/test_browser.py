@@ -2182,7 +2182,7 @@ void *getBindBuffer() {
       # asm.js-ification check
       self.compile_btest([path_from_root('tests', 'aniso.c'), '-O2', '-g2', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
       self.set_setting('ASM_JS', 1)
-      self.run_generated_code(SPIDERMONKEY_ENGINE, 'a.out.js', assert_returncode=NON_ZERO)
+      self.run_js('a.out.js', SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
       print('passed asm test')
 
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
