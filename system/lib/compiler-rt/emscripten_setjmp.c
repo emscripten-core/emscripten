@@ -11,13 +11,13 @@
 
 static uint32_t setjmpId = 0;
 
-struct TableEntry {
+typedef struct TableEntry {
   uint32_t id, label;
-};
+} TableEntry;
 
 extern void setTempRet0(uint32_t value);
 
-struct TableEntry* saveSetjmp(uint32_t* env, uint32_t label, struct TableEntry* table, uint32_t size) {
+TableEntry* saveSetjmp(uint32_t* env, uint32_t label, TableEntry* table, uint32_t size) {
   // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
   // prevents relooping anyhow, so slowness is to be expected. And typical case
   // is 1 setjmp per invocation, or less.
@@ -37,13 +37,13 @@ struct TableEntry* saveSetjmp(uint32_t* env, uint32_t label, struct TableEntry* 
   }
   // grow the table
   size *= 2;
-  table = (struct TableEntry*)realloc(table, sizeof(struct TableEntry) * (size +1));
+  table = (TableEntry*)realloc(table, sizeof(TableEntry) * (size +1));
   table = saveSetjmp(env, label, table, size);
   setTempRet0(size); // FIXME: unneeded?
   return table;
 }
 
-uint32_t testSetjmp(uint32_t id, struct TableEntry* table, uint32_t size) {
+uint32_t testSetjmp(uint32_t id, TableEntry* table, uint32_t size) {
   uint32_t i = 0, curr;
   while (i < size) {
     uint32_t curr = table[i].id;
