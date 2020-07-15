@@ -3,6 +3,7 @@
 #include <string.h>
 #include <thread>
 #include <emscripten.h>
+#include <sanitizer/lsan_interface.h>
 
 void *global_ptr;
 thread_local void *tls_ptr;
@@ -14,8 +15,6 @@ void g(void) {
   atomic_store(&thread_done, true);
   while (1);
 }
-
-extern "C" void __lsan_do_leak_check(void);
 
 int main(int argc, char **argv) {
   std::thread t(g);
