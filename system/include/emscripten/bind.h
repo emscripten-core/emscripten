@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
+#include <sanitizer/lsan_interface.h>
 
 namespace emscripten {
     enum class sharing_policy {
@@ -587,7 +588,9 @@ namespace emscripten {
         template<typename T>
         inline T* getContext(const T& t) {
             // not a leak because this is called once per binding
-            return new T(t);
+            auto* ret = new T(t);
+            __lsan_ignore_object(ret);
+            return ret;
         }
 
         template<typename Accessor, typename ValueType>
