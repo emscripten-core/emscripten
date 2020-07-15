@@ -63,7 +63,7 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
-diagnostics.add_warning('undefined')
+diagnostics.add_warning('undefined', error=True)
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('fastcomp')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
@@ -259,18 +259,18 @@ def which(program):
 
 # Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
 # this can most likely be moved into the tests/jsrun.py.
-def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
+def timeout_run(proc, timeout=None, full_output=False, check=True):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
       time.sleep(0.1)
     if proc.poll() is None:
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out: " + note)
+      raise Exception("Timed out")
   stdout, stderr = proc.communicate()
   out = ['' if o is None else o for o in (stdout, stderr)]
-  if throw_on_failure and proc.returncode != 0:
-    raise subprocess.CalledProcessError(proc.returncode, ' '.join(note_args), stdout, stderr)
+  if check and proc.returncode != 0:
+    raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
   if TRACK_PROCESS_SPAWNS:
     logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
   return '\n'.join(out) if full_output else out[0]
@@ -414,7 +414,7 @@ def fix_js_engine(old, new):
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "11.0"
+    return "12.0"
   else:
     return "6.0"
 
@@ -430,6 +430,8 @@ def get_clang_version():
 
 
 def check_llvm_version():
+  # Let LLVM 12 roll in
+  return True
   expected = expected_llvm_version()
   actual = get_clang_version()
   if expected in actual:
@@ -563,7 +565,7 @@ def check_sanity(force=False):
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    sanity_file = CONFIG_FILE + '_sanity'
+    sanity_file = Cache.get_path('sanity.txt')
     if os.path.exists(sanity_file):
       sanity_data = open(sanity_file).read()
       if sanity_data != expected:
@@ -596,6 +598,7 @@ def check_sanity(force=False):
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
+      Cache.ensure()
       with open(sanity_file, 'w') as f:
         f.write(expected)
 
@@ -631,14 +634,14 @@ def replace_suffix(filename, new_suffix):
   return os.path.splitext(filename)[0] + new_suffix
 
 
-# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
+# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple
+# ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
   return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
-# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
@@ -649,8 +652,10 @@ def safe_ensure_dirs(dirname):
       raise
 
 
-# Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
+# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
+# temp directory (TEMP_DIR/emscripten_temp).
 def get_emscripten_temp_dir():
+  """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global configuration, EMSCRIPTEN_TEMP_DIR
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
@@ -794,6 +799,7 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
+    path_from_root('system', 'lib', 'compiler-rt', 'include'),
     Cache.get_path('include')
   ]
 

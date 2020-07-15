@@ -60,10 +60,11 @@ sys.path.append(__rootpath__)
 import clang_native
 import jsrun
 import parallel_testsuite
+from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
 from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
-from tools.shared import EM_BUILD_VERBOSE, CLANG_CC
+from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete
 from tools.shared import asbytes, safe_copy, Settings
 from tools import shared, line_endings, building
@@ -803,21 +804,21 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
-  def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
+  def run_js(self, filename, engine=None, args=[], output_nicerizer=None, assert_returncode=0):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
     # Make sure that we produced proper line endings to the .js file we are about to run.
-    self.assertEqual(line_endings.check_line_endings(filename), 0)
+    if not filename.endswith('.wasm'):
+      self.assertEqual(line_endings.check_line_endings(filename), 0)
     error = None
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
     try:
-      with chdir(self.get_dir()):
-        jsrun.run_js(filename, engine, args, check_timeout,
-                     stdout=open(stdout, 'w'),
-                     stderr=open(stderr, 'w'),
-                     assert_returncode=assert_returncode)
+      jsrun.run_js(filename, engine, args,
+                   stdout=open(stdout, 'w'),
+                   stderr=open(stderr, 'w'),
+                   assert_returncode=assert_returncode)
     except subprocess.CalledProcessError as e:
       error = e
 
@@ -834,7 +835,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       print(ret, end='')
       print('-- end program output --')
     if error:
-      self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+      if assert_returncode == NON_ZERO:
+        self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
+      else:
+        self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
@@ -937,7 +941,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                   configure_args=[], make=['make'], make_args=None,
                   env_init={}, cache_name_extra='', native=False):
     if make_args is None:
-      make_args = ['-j', str(multiprocessing.cpu_count())]
+      make_args = ['-j', str(building.get_num_cores())]
 
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
@@ -1244,15 +1248,19 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += wasm_engines
-      # wasm2c requires a working clang install which is missing on CI, or to
-      # use msvc which wasm2c doesn't support yet
-      if self.get_setting('WASM2C') and not WINDOWS:
-        # the "engine" to run wasm2c builds is clang that compiles the c
-        engines += [[CLANG_CC]]
+      if self.get_setting('WASM2C') and not EMTEST_LACKS_NATIVE_CLANG:
+        # compile the c file to a native executable.
+        c = shared.unsuffixed(js_file) + '.wasm.c'
+        executable = shared.unsuffixed(js_file) + '.exe'
+        cmd = [shared.CLANG_CC, c, '-o', executable] + clang_native.get_clang_native_args()
+        shared.run_process(cmd, env=clang_native.get_clang_native_env())
+        # we can now run the executable directly, without an engine, which
+        # we indicate with None as the engine
+        engines += [[None]]
     if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in engines:
-      js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
+      js_output = self.run_js(js_file, engine, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
         try:
@@ -1703,9 +1711,6 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args and self.is_wasm_backend():
-        # wasm2js does not support threads yet
-        also_asmjs = False
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
@@ -1741,6 +1746,7 @@ class BrowserCore(RunnerCore):
 
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):
+      print('WASM=0')
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
                  original_args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
 

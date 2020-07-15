@@ -30,9 +30,6 @@ class Cache(object):
     dirname = os.path.normpath(dirname)
     self.root_dirname = dirname
 
-    self.filelock_name = dirname.rstrip('/\\') + '.lock'
-    self.filelock = filelock.FileLock(self.filelock_name)
-
     # if relevant, use a subdir of the cache
     if use_subdir:
       if shared.Settings.WASM_BACKEND:
@@ -47,6 +44,12 @@ class Cache(object):
 
     self.dirname = dirname
     self.acquired_count = 0
+
+    # since the lock itself lives inside the cache directory we need to ensure it
+    # exists.
+    self.ensure()
+    self.filelock_name = os.path.join(dirname, 'cache.lock')
+    self.filelock = filelock.FileLock(self.filelock_name)
 
   def acquire_cache_lock(self):
     if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
@@ -76,11 +79,7 @@ class Cache(object):
       logger.debug('PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
 
   def ensure(self):
-    self.acquire_cache_lock()
-    try:
-      shared.safe_ensure_dirs(self.dirname)
-    finally:
-      self.release_cache_lock()
+    shared.safe_ensure_dirs(self.dirname)
 
   def erase(self):
     self.acquire_cache_lock()

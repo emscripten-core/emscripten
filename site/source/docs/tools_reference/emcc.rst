@@ -388,11 +388,6 @@ Options that are modified or new in *emcc* are listed below:
 ``--show-ports``
   Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
 
-.. _emcc-save-bc:
-
-``--save-bc PATH``
-  When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.
-
 .. _emcc-memory-init-file:
 
 ``--memory-init-file <on>``

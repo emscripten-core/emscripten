@@ -221,7 +221,7 @@ class EmscriptenBenchmarker(Benchmarker):
     self.filename = final
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
 
   def get_output_files(self):
     ret = [self.filename]
@@ -341,7 +341,7 @@ class CheerpBenchmarker(Benchmarker):
         try_delete(dir_)
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
 
   def get_output_files(self):
     return [self.filename, self.filename.replace('.js', '.wasm')]

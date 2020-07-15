@@ -58,7 +58,6 @@ MINIMAL_TASKS = [
 ]
 
 USER_TASKS = [
-    'binaryen',
     'boost_headers',
     'bullet',
     'bzip2',
@@ -263,8 +262,6 @@ def main():
       build_port('harfbuzz-mt', 'libharfbuzz-mt.a', ['-s', 'USE_HARFBUZZ=1', '-s', 'USE_PTHREADS=1'])
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', libname('libSDL2_ttf'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
-    elif what == 'binaryen':
-      build_port('binaryen', None, ['-s', 'WASM=1'])
     elif what == 'cocos2d':
       build_port('cocos2d', libname('libcocos2d'), ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
@@ -273,20 +270,6 @@ def main():
       build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'USE_PTHREADS=1', '-pthread'])
     elif what == 'boost_headers':
       build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
-    elif what == 'libsockets':
-      build('''
-        #include <sys/socket.h>
-        int main() {
-          return socket(0,0,0);
-        }
-      ''', [libname('libsockets')])
-    elif what == 'libsockets_proxy':
-      build('''
-        #include <sys/socket.h>
-        int main() {
-          return socket(0,0,0);
-        }
-      ''', [libname('libsockets_proxy')], ['-s', 'PROXY_POSIX_SOCKETS=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

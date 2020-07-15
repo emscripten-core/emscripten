@@ -388,7 +388,14 @@ var LibraryPThread = {
         // independently load up the same main application file.
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
 #if WASM
+#if WASM2JS
+        // the polyfill WebAssembly.Memory instance has function properties,
+        // which will fail in postMessage, so just send a custom object with the
+        // property we need, the buffer
+        'wasmMemory': { 'buffer': wasmMemory.buffer },
+#else // WASM2JS
         'wasmMemory': wasmMemory,
+#endif // WASM2JS
         'wasmModule': wasmModule,
 #if LOAD_SOURCE_MAP
         'wasmSourceMap': wasmSourceMap,
@@ -1298,17 +1305,6 @@ var LibraryPThread = {
     // EM_ASMs as negative values (see include_asm_consts)
     var isEmAsmConst = index < 0;
     var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
-#if WASM_BACKEND
-    if (isEmAsmConst) {
-      // EM_ASM arguments are stored in their own buffer in memory, that we need
-      // to unpack in order to call. The proxied arguments are the code index,
-      // signature pointer, and vararg buffer pointer, in that order.
-      var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
-      var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
-      var constArgs = readAsmConstArgs(sigPtr, varargPtr);
-      return func.apply(null, constArgs);
-    }
-#endif
 #if ASSERTIONS
     assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif

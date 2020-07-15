@@ -1,3 +1,13 @@
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
+
+#ifndef _WIN32
+#include <unistd.h>
+#else
+#include <io.h>
+#endif
+
 IMPORT_IMPL(void, Z_wasi_snapshot_preview1Z_proc_exitZ_vi, (u32 x), {
   exit(x);
 });
@@ -8,10 +18,20 @@ static int wasm_fd_to_native[MAX_FDS];
 
 static u32 next_wasm_fd;
 
+#define WASM_STDIN  0
+#define WASM_STDOUT 1
+#define WASM_STDERR 2
+
 static void init_fds() {
-  wasm_fd_to_native[0] = STDIN_FILENO;
-  wasm_fd_to_native[1] = STDOUT_FILENO;
-  wasm_fd_to_native[2] = STDERR_FILENO;
+#ifndef _WIN32
+  wasm_fd_to_native[WASM_STDIN] = STDIN_FILENO;
+  wasm_fd_to_native[WASM_STDOUT] = STDOUT_FILENO;
+  wasm_fd_to_native[WASM_STDERR] = STDERR_FILENO;
+#else
+  wasm_fd_to_native[WASM_STDIN] = _fileno(stdin);
+  wasm_fd_to_native[WASM_STDOUT] = _fileno(stdout);
+  wasm_fd_to_native[WASM_STDERR] = _fileno(stderr);
+#endif
   next_wasm_fd = 3;
 }
 
@@ -64,9 +84,9 @@ IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_fd_writeZ_iiiii, (u32 fd, u32 iov, u3
     ssize_t result;
     // Use stdio for stdout/stderr to avoid mixing a low-level write() with
     // other logging code, which can change the order from the expected.
-    if (nfd == STDOUT_FILENO) {
+    if (fd == WASM_STDOUT) {
       result = fwrite(MEMACCESS(ptr), 1, len, stdout);
-    } else if (nfd == STDERR_FILENO) {
+    } else if (fd == WASM_STDERR) {
       result = fwrite(MEMACCESS(ptr), 1, len, stderr);
     } else {
       result = write(nfd, MEMACCESS(ptr), len);
@@ -190,8 +210,13 @@ static u32 do_stat(int nfd, u32 buf) {
   wasm_i32_store(buf + 28, nbuf.st_rdev);
   wasm_i32_store(buf + 32, 0);
   wasm_i64_store(buf + 40, nbuf.st_size);
+#ifdef _WIN32
+  wasm_i32_store(buf + 48, 512); // fixed blocksize on windows
+  wasm_i32_store(buf + 52, 0);   // but no reported blocks...
+#else
   wasm_i32_store(buf + 48, nbuf.st_blksize);
   wasm_i32_store(buf + 52, nbuf.st_blocks);
+#endif
 #if defined(__APPLE__) || defined(__NetBSD__)
   wasm_i32_store(buf + 56, nbuf.st_atimespec.tv_sec);
   wasm_i32_store(buf + 60, nbuf.st_atimespec.tv_nsec);
@@ -199,6 +224,13 @@ static u32 do_stat(int nfd, u32 buf) {
   wasm_i32_store(buf + 68, nbuf.st_mtimespec.tv_nsec);
   wasm_i32_store(buf + 72, nbuf.st_ctimespec.tv_sec);
   wasm_i32_store(buf + 76, nbuf.st_ctimespec.tv_nsec);
+#elif defined(_WIN32)
+  wasm_i32_store(buf + 56, gmtime(&nbuf.st_atime)->tm_sec);
+  wasm_i32_store(buf + 60, 0);
+  wasm_i32_store(buf + 64, gmtime(&nbuf.st_mtime)->tm_sec);
+  wasm_i32_store(buf + 68, 0);
+  wasm_i32_store(buf + 72, gmtime(&nbuf.st_ctime)->tm_sec);
+  wasm_i32_store(buf + 76, 0);
 #else
   wasm_i32_store(buf + 56, nbuf.st_atim.tv_sec);
   wasm_i32_store(buf + 60, nbuf.st_atim.tv_nsec);
@@ -260,11 +292,11 @@ IMPORT_IMPL(u32, Z_envZ___sys_accessZ_iii, (u32 pathname, u32 mode), {
 #define WASM_CLOCK_REALTIME 0
 #define WASM_CLOCK_MONOTONIC 1
 #define WASM_CLOCK_PROCESS_CPUTIME 2
-#define WASM_CLOCK_CLOCK_THREAD_CPUTIME_ID 3
+#define WASM_CLOCK_THREAD_CPUTIME_ID 3
 
 static int check_clock(u32 clock_id) {
   return clock_id == WASM_CLOCK_REALTIME || clock_id == WASM_CLOCK_MONOTONIC ||
-         clock_id == WASM_CLOCK_PROCESS_CPUTIME || clock_id == CLOCK_THREAD_CPUTIME_ID;
+         clock_id == WASM_CLOCK_PROCESS_CPUTIME || clock_id == WASM_CLOCK_THREAD_CPUTIME_ID;
 }
 
 IMPORT_IMPL(u32, Z_wasi_snapshot_preview1Z_clock_time_getZ_iiji, (u32 clock_id, u64 max_lag, u32 out), {

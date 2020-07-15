@@ -56,7 +56,7 @@ commands:
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
             echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
+            echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
@@ -328,11 +328,11 @@ jobs:
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf emscripten
-            cd -
             # We use an out-of-tree cache directory so it can be part of the
             # persisted workspace (see below).
             echo "import os" >> .emscripten
             echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
+            cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
       - emsdk-env
@@ -359,7 +359,7 @@ jobs:
       - checkout
       # This version is mentioned in `site/source/docs/site/about.rst`.
       # Please keep them in sync.
-      - run: pip3 install sphinx==1.7.9
+      - run: pip3 install sphinx==2.4.4
       - run: make -C site text
       - run: tests/check_emcc_help_text.py
       - run: make -C site html
@@ -367,6 +367,8 @@ jobs:
     executor: bionic
     steps:
       - checkout
+      - run: pip2 install flake8==3.7.8
+      - run: pip3 install flake8==3.7.8
       - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
   test-fastcomp-other:
@@ -423,6 +425,10 @@ jobs:
           test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
   test-fastcomp-p:
     executor: bionic
+    environment:
+      # Without this test_poppler can cause timeouts because it takes more then
+      # 10 minutes without outputing anything.
+      EM_BUILD_VERBOSE: "2"
     steps:
       - run-tests:
           test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
@@ -485,6 +491,13 @@ jobs:
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8
       - build
+  test-minimal-python2:
+    environment:
+      PYTHON_BIN: "python2"
+    executor: bionic
+    steps:
+      - run-tests:
+          test_targets: "wasm2.test_hello_world other.test_emcc_size_parsing"
   test-wasm0:
     executor: bionic
     steps:
@@ -494,7 +507,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm2"
+          test_targets: "wasm2 asan.test_embind*"
   test-wasm3:
     executor: bionic
     steps:
@@ -511,7 +524,7 @@ jobs:
     steps:
       - run-tests:
           # see explanations in the fastcomp skips for these, earlier
-          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
+          test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
     steps:
@@ -550,6 +563,9 @@ jobs:
       PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
+      # clang can compile but not link in the current setup, see
+      # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
+      EMTEST_LACKS_NATIVE_CLANG: "1"
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail
@@ -576,7 +592,7 @@ jobs:
     executor: mac
     steps:
       - run-tests-mac:
-          test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message skip:other.test_emcc_v"
+          test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message"
 
 workflows:
   build-test:

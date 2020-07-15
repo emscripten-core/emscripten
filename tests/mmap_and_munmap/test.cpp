@@ -80,6 +80,12 @@ int test_mmap_write() {
         size_t k = file_len() - i - 1;
         m[k] = file_data[i];
     }
+    // Write to a byte past the end of the file. mmap will allocate a multiple
+    // of the page size, which is bigger than our small file, and it will zero
+    // that out. So it is ok for us to write there, but those changes should
+    // not be saved anywhere.
+    ASSERT(m[file_len()] == 0, "No zero past file contents");
+    m[file_len()] = 42;
     ASSERT(munmap(m, file_len()) == 0, "Failed to unmap allocated pages");
 
     // mmap it again, where we should see the reversed data that was written.
@@ -89,6 +95,7 @@ int test_mmap_write() {
         size_t k = file_len() - i - 1;
         ASSERT(m[k] == file_data[i], "Wrong file data written or mapped");
     }
+    ASSERT(m[file_len()] == 0, "No zero past file contents");
     ASSERT(munmap(m, file_len()) == 0, "Failed to unmap allocated pages");
 
     TEST_PASS();
