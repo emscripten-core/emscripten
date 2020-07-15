@@ -2176,16 +2176,21 @@ def create_asm_consts_wasm(forwarded_json, metadata):
         # ... over to the negative integers starting at -1.
         preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { ' +
                      proxy_debug_print(sync_proxy) +
-                     'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
-                     str(int(sync_proxy)) +
-                     ', code, sigPtr, argbuf); }')
+                     'return _emscripten_proxy_to_main_thread_js.apply(null, ' +
+                     '[-1 - code, ' + str(int(sync_proxy)) + '].concat(args)) }')
 
     if shared.Settings.RELOCATABLE:
       preamble += '\n  code -= %s;\n' % shared.Settings.GLOBAL_BASE
 
+    # EM_ASM functions are variadic, receiving the actual arguments as a buffer
+    # in memory. the last parameter (argBuf) points to that data. We need to
+    # alwayd un-variadify that, as in the async case this is a stack allocation
+    # that LLVM made, which may go away before the main thread gets the message.
+    # the readAsmConstArgs helper does so.
     asm_const_funcs.append(r'''
-function %s(code, sigPtr, argbuf) {%s
+function %s(code, sigPtr, argbuf) {
   var args = readAsmConstArgs(sigPtr, argbuf);
+%s
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   asm_consts = [(key, value) for key, value in asm_consts.items()]
