@@ -5,7 +5,7 @@ Last Changed Date: 2019-01-19
 
 ===========================================================================
 
-* `ubsan_minimal_handlers.cpp` -- changed to use
+* `ubsan_minimal_handlers.cc` -- changed to use
   `emscripten_return_address` as `__builtin_return_address` is not yet
   available in clang target `wasm-unknown-emscripten`.
 * `sanitizer_atomic.h` -- based on `sanitizer_atomic.h`,
