@@ -208,7 +208,7 @@ class other(RunnerCore):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
       proc = run_process([compiler, '-v'], stdout=PIPE, stderr=PIPE)
-      self.assertContained('clang version %s' % shared.expected_llvm_version(), proc.stderr)
+      self.assertContained('clang version %s' % shared.supported_llvm_versions()[-1], proc.stderr)
       self.assertContained('GNU', proc.stderr)
       self.assertNotContained('this is dangerous', proc.stdout)
       self.assertNotContained('this is dangerous', proc.stderr)

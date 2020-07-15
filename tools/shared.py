@@ -412,11 +412,11 @@ def fix_js_engine(old, new):
   return new
 
 
-def expected_llvm_version():
+def supported_llvm_versions():
   if get_llvm_target() == WASM_TARGET:
-    return "12.0"
+    return ('11.0', '12.0')
   else:
-    return "6.0"
+    return ("6.0")
 
 
 def get_clang_version():
@@ -430,13 +430,11 @@ def get_clang_version():
 
 
 def check_llvm_version():
-  # Let LLVM 12 roll in
-  return True
-  expected = expected_llvm_version()
+  supported = supported_llvm_versions()
   actual = get_clang_version()
-  if expected in actual:
+  if actual in supported:
     return True
-  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
+  diagnostics.warning('version-check', 'unsupported LLVM version (seeing "%s", supported: %s)', actual, supported)
   return False
 
 
