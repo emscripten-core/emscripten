@@ -204,6 +204,7 @@ class other(RunnerCore):
       os.close(master)
       os.close(slave)
 
+  @unittest.skip('let llvm roll in')
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
