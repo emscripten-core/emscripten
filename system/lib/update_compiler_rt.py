@@ -34,10 +34,6 @@ def main():
   clear(local_include)
 
   for pattern in ('*.c', '*.h', '*.inc'):
-    for src in glob.glob(os.path.join(upstream_src, pattern)):
-      shutil.copy2(src, local_builtins)
-
-  for pattern in ('*.h', '*.inc'):
     for name in glob.glob(os.path.join(upstream_src, pattern)):
       shutil.copy2(name, local_builtins)
     for name in glob.glob(os.path.join(upstream_include, pattern)):
