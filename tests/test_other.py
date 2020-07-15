@@ -10484,3 +10484,28 @@ int main(int argc, char **argv) {
 }''')
     run_process([EMCC, 'src.cpp', '-O3', '-s', 'WASM=0'])
     self.run_js('a.out.js')
+
+  def test_DETERMINISTIC(self):
+    # test some things that may not be nondeterministic
+    create_test_file('src.cpp', r'''
+#include <emscripten.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+int main () {
+  timespec now;
+  clock_gettime(CLOCK_REALTIME, &now);
+  printf("C now: %ld %ld\n", now.tv_sec, now.tv_nsec);
+  printf("js now: %f\n", emscripten_get_now());
+  printf("C randoms: %d %d %d\n", rand(), rand(), rand());
+  printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
+}
+''')
+    run_process([EMCC, 'src.cpp', '-sDETERMINISTIC'])
+    one = self.run_js('a.out.js')
+    # ensure even if the time resolution is 1 second, that if we see the real
+    # time we'll see a difference
+    time.sleep(2)
+    two = self.run_js('a.out.js')
+    self.assertIdentical(one, two)
