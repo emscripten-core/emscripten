@@ -48,6 +48,7 @@ MINIMAL_TASKS = [
     'libemmalloc',
     'libemmalloc-64bit',
     'libpthread_stub',
+    'libsockets',
     'libc_rt_wasm',
     'struct_info',
     'libc-wasm',
