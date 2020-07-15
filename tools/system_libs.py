@@ -1321,7 +1321,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal']
-  src_files = ['ubsan_minimal_handlers.cpp']
+  src_files = ['ubsan_minimal_handlers.cc']
 
 
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
