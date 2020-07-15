@@ -887,9 +887,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.fail(fail_message)
 
   def assertIdenticalUrlEncoded(self, expected, actual, **kwargs):
-    """
-    URL decodes the `actual` parameter before checking for equality
-    """
+    """URL decodes the `actual` parameter before checking for equality."""
     self.assertIdentical(expected, unquote(actual), **kwargs)
 
   def assertTextDataContained(self, text1, text2):
