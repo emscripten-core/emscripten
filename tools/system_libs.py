@@ -677,8 +677,7 @@ class libcompiler_rt(Library):
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   if shared.Settings.WASM_BACKEND:
-    filelist = shared.path_from_root('system', 'lib', 'compiler-rt', 'filelist.txt')
-    src_files = open(filelist).read().splitlines()
+    src_files = glob_in_path(src_dir, '*.c')
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c'))
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   else:
