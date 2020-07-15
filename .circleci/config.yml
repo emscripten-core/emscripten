@@ -425,6 +425,10 @@ jobs:
           test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
   test-fastcomp-p:
     executor: bionic
+    environment:
+      # Without this test_poppler can cause timeouts because it takes more then
+      # 10 minutes without outputing anything.
+      EM_BUILD_VERBOSE: "2"
     steps:
       - run-tests:
           test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
@@ -503,7 +507,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm2"
+          test_targets: "wasm2 asan.test_embind*"
   test-wasm3:
     executor: bionic
     steps:

@@ -683,7 +683,7 @@ class libcompiler_rt(Library):
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   else:
     src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
-  src_files.append('emscripten_setjmp.c')
+  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
@@ -715,7 +715,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # musl modules
     ignore = [
         'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env',
+        'aio', 'exit', 'legacy', 'mq', 'search', 'setjmp', 'env',
         'ldso', 'conf'
     ]
 
@@ -728,6 +728,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
+        # 'process' exclusion
+        'fork.c', 'vfork.c', 'posix_spawn.c', 'execve.c', 'waitid.c', 'system.c'
     ]
 
     ignore += LIBC_SOCKETS
