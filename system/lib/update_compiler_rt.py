@@ -13,8 +13,12 @@ script_dir = os.path.abspath(os.path.dirname(__file__))
 local_src = os.path.join(script_dir, 'compiler-rt')
 
 copy_dirs = [
-    ('lib', 'builtins'),
-    ('include', 'sanitizer'),
+    #('lib', 'builtins'),
+    #('include', 'sanitizer'),
+    ('lib', 'ubsan'),
+    ('lib', 'ubsan_minimal'),
+    ('lib', 'ubsan_minimal'),
+    ('lib', 'sanitizer_common'),
 ]
 
 
