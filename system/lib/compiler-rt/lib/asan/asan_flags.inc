@@ -1,9 +1,8 @@
 //===-- asan_flags.inc ------------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -159,3 +158,5 @@ ASAN_FLAG(bool, allocator_frees_and_returns_null_on_realloc_zero, true,
 ASAN_FLAG(bool, verify_asan_link_order, true,
           "Check position of ASan runtime in library list (needs to be disabled"
           " when other library has to be preloaded system-wide)")
+ASAN_FLAG(bool, windows_hook_rtl_allocators, false,
+          "(Windows only) enable hooking of Rtl(Allocate|Free|Size|ReAllocate)Heap.")

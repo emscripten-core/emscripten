@@ -1,9 +1,8 @@
 //===-- ubsan_handlers.cc -------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -596,42 +595,6 @@ void __ubsan::__ubsan_handle_invalid_builtin(InvalidBuiltinData *Data) {
 void __ubsan::__ubsan_handle_invalid_builtin_abort(InvalidBuiltinData *Data) {
   GET_REPORT_OPTIONS(true);
   handleInvalidBuiltin(Data, Opts);
-  Die();
-}
-
-static void handleFunctionTypeMismatch(FunctionTypeMismatchData *Data,
-                                       ValueHandle Function,
-                                       ReportOptions Opts) {
-  SourceLocation CallLoc = Data->Loc.acquire();
-  ErrorType ET = ErrorType::FunctionTypeMismatch;
-
-  if (ignoreReport(CallLoc, Opts, ET))
-    return;
-
-  ScopedReport R(Opts, CallLoc, ET);
-
-  SymbolizedStackHolder FLoc(getSymbolizedLocation(Function));
-  const char *FName = FLoc.get()->info.function;
-  if (!FName)
-    FName = "(unknown)";
-
-  Diag(CallLoc, DL_Error, ET,
-       "call to function %0 through pointer to incorrect function type %1")
-      << FName << Data->Type;
-  Diag(FLoc, DL_Note, ET, "%0 defined here") << FName;
-}
-
-void
-__ubsan::__ubsan_handle_function_type_mismatch(FunctionTypeMismatchData *Data,
-                                               ValueHandle Function) {
-  GET_REPORT_OPTIONS(false);
-  handleFunctionTypeMismatch(Data, Function, Opts);
-}
-
-void __ubsan::__ubsan_handle_function_type_mismatch_abort(
-    FunctionTypeMismatchData *Data, ValueHandle Function) {
-  GET_REPORT_OPTIONS(true);
-  handleFunctionTypeMismatch(Data, Function, Opts);
   Die();
 }
 

@@ -1,7 +1,4 @@
-These files are from compiler-rt.
-
-Last Changed Rev: 351636
-Last Changed Date: 2019-01-19
+These files are from compiler-rt 9.0.0.
 
 ===========================================================================
 
