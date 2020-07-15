@@ -419,19 +419,19 @@ def supported_llvm_versions():
     return ("6.0")
 
 
-def get_clang_version():
-  if not hasattr(get_clang_version, 'found_version'):
+def get_llvm_version():
+  if not hasattr(get_llvm_version, 'found_version'):
     if not os.path.exists(CLANG_CC):
       exit_with_error('clang executable not found at `%s`' % CLANG_CC)
     proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
     m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
-    get_clang_version.found_version = m and m.group(1)
-  return get_clang_version.found_version
+    get_llvm_version.found_version = m and m.group(1)
+  return get_llvm_version.found_version
 
 
 def check_llvm_version():
   supported = supported_llvm_versions()
-  actual = get_clang_version()
+  actual = get_llvm_version()
   if actual in supported:
     return True
   diagnostics.warning('version-check', 'unsupported LLVM version (seeing "%s", supported: %s)', actual, supported)
@@ -517,7 +517,7 @@ def set_version_globals():
 
 
 def generate_sanity():
-  sanity_file_content = EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version()
+  sanity_file_content = EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_llvm_version()
   if CONFIG_FILE:
     config = open(CONFIG_FILE).read()
   else:
