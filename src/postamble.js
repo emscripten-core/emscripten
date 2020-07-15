@@ -397,7 +397,7 @@ function exit(status, implicit) {
   // don't need to do anything here and can just leave. if the status is
   // non-zero, though, then we need to report it.
   // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && status === 0) {
+  if (implicit && noExitRuntime && status === 0) {
     return;
   }
 
@@ -479,7 +479,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   Module['___embind_register_native_and_builtin_types']();
 #endif // EMBIND
 #if MODULARIZE
-  // The promise resolve function typically gets called as part of the execution 
+  // The promise resolve function typically gets called as part of the execution
   // of the Module `run`. The workers/pthreads don't execute `run` here, they
   // call `run` in response to a message at a later time, so the creation
   // promise can be resolved, marking the pthread-Module as initialized.

@@ -7356,19 +7356,19 @@ someweirdtext
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_val.cpp'), path_from_root('tests', 'embind', 'test_val.out'))
 
   def test_embind_no_rtti(self):
-    create_test_file('pre.js', '''
-      Module = {};
-      Module['postRun'] = function() {
-        out("dotest retured: " + Module.dotest());
-      };
-    ''')
     src = r'''
+      #include <emscripten.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
       #include <stdio.h>
 
+      EM_JS(void, calltest, (), {
+        console.log("dotest returned: " + Module.dotest());
+      });
+
       int main(int argc, char** argv){
         printf("418\n");
+        calltest();
         return 0;
       }
 
@@ -7380,23 +7380,23 @@ someweirdtext
         emscripten::function("dotest", &test);
       }
     '''
-    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0', '--pre-js', 'pre.js']
-    self.do_run(src, '418\ndotest retured: 42\n')
+    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    self.do_run(src, '418\ndotest returned: 42\n')
 
   def test_embind_no_rtti_followed_by_rtti(self):
-    create_test_file('pre.js', '''
-      Module = {};
-      Module['postRun'] = function() {
-        out("dotest retured: " + Module.dotest());
-      };
-    ''')
     src = r'''
+      #include <emscripten.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
       #include <stdio.h>
 
+      EM_JS(void, calltest, (), {
+        console.log("dotest returned: " + Module.dotest());
+      });
+
       int main(int argc, char** argv){
         printf("418\n");
+        calltest();
         return 0;
       }
 
@@ -7408,8 +7408,8 @@ someweirdtext
         emscripten::function("dotest", &test);
       }
     '''
-    self.emcc_args += ['--bind', '-fno-rtti', '-frtti', '--pre-js', 'pre.js']
-    self.do_run(src, '418\ndotest retured: 42\n')
+    self.emcc_args += ['--bind', '-fno-rtti', '-frtti']
+    self.do_run(src, '418\ndotest returned: 42\n')
 
   @parameterized({
     'all': ('ALL', False),
