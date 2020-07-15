@@ -1006,7 +1006,6 @@ class libcxx(NoBCLibrary, NoExceptLibrary, MTLibrary):
     'vector.cpp',
     os.path.join('experimental', 'memory_resource.cpp'),
     os.path.join('filesystem', 'directory_iterator.cpp'),
-    os.path.join('filesystem', 'int128_builtins.cpp'),
     os.path.join('filesystem', 'operations.cpp')
   ]
 
