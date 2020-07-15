@@ -17,7 +17,7 @@ WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps 
 NON_ZERO = -1
 
 
-def make_command(filename, engine, args=[], command_flags=None):
+def make_command(filename, engine, args=[]):
   # if no engine is needed, indicated by None, then there is a native executable
   # provided which we can just run
   if engine[0] is None:
@@ -25,8 +25,6 @@ def make_command(filename, engine, args=[], command_flags=None):
     return [executable] + args
   if type(engine) is not list:
     engine = [engine]
-  if command_flags is None:
-    command_flags = []
   # Emscripten supports multiple javascript runtimes.  The default is nodejs but
   # it can also use d8 (the v8 engine shell) or jsc (JavaScript Core aka
   # Safari).  Both d8 and jsc require a '--' to delimit arguments to be passed
@@ -44,6 +42,7 @@ def make_command(filename, engine, args=[], command_flags=None):
   # Disable true async compilation (async apis will in fact be synchronous) for now
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
   shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
+  command_flags = []
   if is_wasmer:
     command_flags += ['run']
   if is_wasmer or is_wasmtime:
@@ -89,7 +88,7 @@ def require_engine(engine):
     sys.exit(1)
 
 
-def run_js(filename, engine=None, args=[], command_flags=None,
+def run_js(filename, engine=None, args=[],
            stdin=None, stdout=PIPE, stderr=None, cwd=None,
            full_output=False, assert_returncode=0, skip_check=False):
   if not engine:
@@ -102,7 +101,7 @@ def run_js(filename, engine=None, args=[], command_flags=None,
   if not os.path.exists(filename):
     raise Exception('JavaScript file not found: ' + filename)
 
-  command = make_command(filename, engine, args, command_flags)
+  command = make_command(filename, engine, args)
   try:
     proc = Popen(
         command,
