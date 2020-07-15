@@ -33,11 +33,9 @@ def main():
   clear(local_builtins)
   clear(local_include)
 
-  listfile = os.path.join(script_dir, 'compiler-rt', 'filelist.txt')
-  for name in open(listfile).read().splitlines():
-    src = os.path.join(upstream_src, name);
-    target = os.path.join(local_builtins, name);
-    shutil.copy2(src, target)
+  for pattern in ('*.c', '*.h', '*.inc'):
+    for src in glob.glob(os.path.join(upstream_src, pattern)):
+      shutil.copy2(src, local_builtins)
 
   for pattern in ('*.h', '*.inc'):
     for name in glob.glob(os.path.join(upstream_src, pattern)):
