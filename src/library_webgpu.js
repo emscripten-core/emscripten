@@ -65,11 +65,13 @@
     },
     makeCheckDescriptor: function(descriptor) {
       // Assert descriptor is non-null, then that its nextInChain is null.
-      // For descriptors that aren't the first in the chain (e.g ShaderModuleSPIRVDescriptor),
-      // there is no nextInChain pointer but a ChainedStruct object named chain.
-      // So we need to check if chain.nextInChain is null. As long as nextInChain and chain are both the
-      // first member in the struct, descriptor.nextInChain and descriptor.chain.nextInChain should have the same offset (0)
-      // to the descriptor pointer and we can check it to be null.
+      // For descriptors that aren't the first in the chain (e.g
+      // ShaderModuleSPIRVDescriptor), there is no .nextInChain pointer, but
+      // instead a ChainedStruct object: .chain. So we need to check if
+      // .chain.nextInChain is null. As long as nextInChain and chain are always
+      // the first member in the struct, descriptor.nextInChain and
+      // descriptor.chain.nextInChain should have the same offset (0) to the
+      // descriptor pointer and we can check it to be null.
       var OffsetOfNextInChainMember = 0;
       return this.makeCheck(descriptor) + this.makeCheck(makeGetValue(descriptor, OffsetOfNextInChainMember, '*') + ' === 0');
     },
