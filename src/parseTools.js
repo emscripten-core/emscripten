@@ -13,7 +13,12 @@
 function processMacros(text) {
   return text.replace(/{{{([^}]|}(?!}))+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
-    var ret = eval(str);
+    try {
+      var ret = eval(str);
+    } catch (ex) {
+      ex.stack = 'In the following macro:\n\n' + str + '\n\n' + ex.stack;
+      throw ex;
+    }
     return ret !== null ? ret.toString() : '';
   });
 }
