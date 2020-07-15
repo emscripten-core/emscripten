@@ -252,9 +252,8 @@ class sanity(RunnerCore):
           self.assertContained('error:', output) # sanity check should fail
       try_delete(default_config)
 
-  @unittest.skip('let LLVM 12 roll in')
   def test_llvm(self):
-    LLVM_WARNING = 'LLVM version appears incorrect'
+    LLVM_WARNING = 'unsupported LLVM version'
 
     restore_and_set_up()
 

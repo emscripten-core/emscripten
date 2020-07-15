@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- A simultaneous support for both llvm 12.0 (tot) and llvm 11.0 (soon to be
+  stable).  See https://github.com/emscripten-core/emscripten/issues/11362
 - Remove the `--save-bc` command line option.  This was specific to fastcomp,
   which is deprecated, and for debugging purposes we already have `EMCC_DEBUG`
   which saves all intermediate files.
