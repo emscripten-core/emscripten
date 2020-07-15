@@ -280,7 +280,7 @@ The *AutoDebugger* is the 'nuclear option' for debugging Emscripten code.
 
 .. warning:: This option is primarily intended for Emscripten core developers.
 
-The *AutoDebugger* will rewrite the LLVM bitcode so it prints out each store to memory. This is useful because you can compare the output for different compiler settings in order to detect regressions, or compare the output of JavaScript and LLVM bitcode compiled using :term:`LLVM Nativizer` or :term:`LLVM interpreter`.
+The *AutoDebugger* will rewrite the output so it prints out each store to memory. This is useful because you can compare the output for different compiler settings in order to detect regressions.
 
 The *AutoDebugger* can potentially find **any** problem in the generated code, so it is strictly more powerful than the ``CHECK_*`` settings and ``SAFE_HEAP``. One use of the *AutoDebugger* is to quickly emit lots of logging output, which can then be reviewed for odd behavior. The *AutoDebugger* is also particularly useful for :ref:`debugging regressions <debugging-autodebugger-regressions>`.
 
@@ -316,14 +316,9 @@ Use the following workflow to find regressions with the *AutoDebugger*:
 
 Any difference between the outputs is likely to be caused by the bug.
 
-.. note:: False positives can be caused by calls to ``clock()``, which will differ slightly between runs.
-
-You can also make native builds using the :term:`LLVM Nativizer` tool. This can be run on the autodebugged **.ll** file, which will be emitted in ``/tmp/emscripten_temp`` when ``EMCC_DEBUG=1`` is set.
-
 .. note::
-
-  - The native build created using the :term:`LLVM Nativizer` will use native system libraries. Direct comparisons of output with Emscripten-compiled code can therefore be misleading.
-  - Attempting to interpret code compiled with ``-g`` using the *LLVM Nativizer* or :term:`lli` may crash, so you may need to build once without ``-g`` for these tools, then build again with ``-g``. Another option is to use `tools/exec_llvm.py <https://github.com/emscripten-core/emscripten/blob/master/tools/exec_llvm.py>`_ in Emscripten, which will run *lli* after cleaning out debug info.
+    You may want to use ``-s DETERMINISTIC`` which will ensure that timing
+    and other issues don't cause false positives.
 
 
 Useful Links
