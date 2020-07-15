@@ -8666,6 +8666,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
                 basename='src.c', expected_output='Hello, World!')
 
+  @no_wasm2js('TODO: ASAN in wasm2js')
+  @no_fastcomp('asan not supported on fastcomp')
+  def test_asan_api(self):
+    self.emcc_args.append('-fsanitize=address')
+    self.set_setting('ALLOW_MEMORY_GROWTH')
+    self.do_run_in_out_file_test('tests', 'core', 'test_asan_api')
+
   @no_fastcomp('WASM backend stack protection')
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
