@@ -7854,7 +7854,6 @@ int main() {
   def test_metadce_minimal_fastcomp(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
-  @unittest.skip('llvm roll')
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
     # exceptions increases code size significantly
