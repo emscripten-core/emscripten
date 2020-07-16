@@ -225,22 +225,16 @@ LibraryManager.library = {
     }
   },
 
-  execl__deps: ['$setErrNo'],
-  execl__sig: 'iiii',
-  execl: function(path, arg0, varArgs) {
-    // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
+  execve__deps: ['$setErrNo'],
+  execve__sig: 'iiii',
+  execve: function(path, argv, envp) {
+    // int execve(const char *pathname, char *const argv[],
+    //            char *const envp[]);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
     // We don't support executing external code.
     setErrNo({{{ cDefine('ENOEXEC') }}});
     return -1;
   },
-  execle: 'execl',
-  execlp: 'execl',
-  execv: 'execl',
-  execve: 'execl',
-  execvp: 'execl',
-  __execvpe: 'execl',
-  fexecve: 'execl',
 
   exit__sig: 'vi',
   exit: function(status) {
@@ -278,11 +272,6 @@ LibraryManager.library = {
   },
   vfork: 'fork',
   posix_spawn: 'fork',
-  posix_spawnp: 'fork',
-  posix_spawn_file_actions_adddup2: 'fork',
-  posix_spawn_file_actions_addopen: 'fork',
-  posix_spawn_file_actions_destroy: 'fork',
-  posix_spawn_file_actions_init: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
@@ -762,15 +751,17 @@ LibraryManager.library = {
 
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv. (This works
-  // in both fastcomp and upstream.
+  // in both fastcomp and upstream).
   $ENV: {},
 
 #if !WASM_BACKEND
+  __environ: "{{{ makeStaticAlloc(Runtime.getNativeTypeSize('i8*')) }}}",
+
   // This implementation of environ/getenv/etc. is used for fastcomp, due
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['$ENV', '_getExecutableName'
+  __buildEnvironment__deps: ['__environ', '$ENV', '_getExecutableName'
 #if MINIMAL_RUNTIME
     , '$writeAsciiToMemory'
 #endif
@@ -782,7 +773,6 @@ LibraryManager.library = {
 
     // Statically allocate memory for the environment.
     var poolPtr;
-    var envPtr;
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
@@ -797,13 +787,13 @@ LibraryManager.library = {
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
-      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
-      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
+      ___environ = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      {{{ makeSetValue('___environ', '0', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, '___environ', 'i8*') }}};
 #endif
     } else {
-      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
-      poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
+      ___environ = {{{ makeGetValue('environ', '0', 'i8**') }}};
+      poolPtr = {{{ makeGetValue('___environ', '0', 'i8*') }}};
     }
 
     // Collect key=value lines.
@@ -825,10 +815,10 @@ LibraryManager.library = {
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
       writeAsciiToMemory(line, poolPtr);
-      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('___environ', 'i * ptrSize', 'poolPtr', 'i8*') }}};
       poolPtr += line.length + 1;
     }
-    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
+    {{{ makeSetValue('___environ', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   getenv__deps: ['$ENV',
 #if MINIMAL_RUNTIME

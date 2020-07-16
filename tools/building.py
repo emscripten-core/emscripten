@@ -984,6 +984,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     next = original_filename + '.jso.js'
     configuration.get_temp_files().note(next)
     check_call(cmd, stdout=open(next, 'w'))
+    save_intermediate(next, '%s.js' % passes[0])
     return next
   output = check_call(cmd, stdout=PIPE).stdout
   return output

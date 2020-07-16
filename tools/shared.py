@@ -414,7 +414,7 @@ def fix_js_engine(old, new):
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "11.0"
+    return "12.0"
   else:
     return "6.0"
 
@@ -430,6 +430,8 @@ def get_clang_version():
 
 
 def check_llvm_version():
+  # Let LLVM 12 roll in
+  return True
   expected = expected_llvm_version()
   actual = get_clang_version()
   if expected in actual:
@@ -632,14 +634,14 @@ def replace_suffix(filename, new_suffix):
   return os.path.splitext(filename)[0] + new_suffix
 
 
-# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
+# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple
+# ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
   return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
-# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
@@ -650,8 +652,10 @@ def safe_ensure_dirs(dirname):
       raise
 
 
-# Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
+# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
+# temp directory (TEMP_DIR/emscripten_temp).
 def get_emscripten_temp_dir():
+  """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global configuration, EMSCRIPTEN_TEMP_DIR
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
@@ -795,6 +799,7 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
+    path_from_root('system', 'lib', 'compiler-rt', 'include'),
     Cache.get_path('include')
   ]
 
