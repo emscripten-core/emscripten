@@ -11,9 +11,17 @@ import shutil
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 local_src = os.path.join(script_dir, 'compiler-rt')
-local_builtins = os.path.join(local_src, 'lib', 'builtins')
-local_include = os.path.join(local_src, 'include', 'sanitizer')
 
+copy_dirs = [
+    ('include', 'sanitizer'),
+    ('lib', 'sanitizer_common'),
+    ('lib', 'asan'),
+    ('lib', 'interception'),
+    ('lib', 'builtins'),
+    ('lib', 'lsan'),
+    ('lib', 'ubsan'),
+    ('lib', 'ubsan_minimal'),
+]
 
 def clear(dirname):
   if os.path.exists(dirname):
@@ -29,15 +37,18 @@ def main():
   assert os.path.exists(upstream_src)
   assert os.path.exists(upstream_include)
 
-  # Remove old version
-  clear(local_builtins)
-  clear(local_include)
-
-  for pattern in ('*.c', '*.h', '*.inc'):
-    for name in glob.glob(os.path.join(upstream_src, pattern)):
-      shutil.copy2(name, local_builtins)
-    for name in glob.glob(os.path.join(upstream_include, pattern)):
-      shutil.copy2(name, local_include)
+  for dirname in copy_dirs:
+    srcdir = os.path.join(upstream_dir, *dirname)
+    assert os.path.exists(srcdir)
+    dest = os.path.join(local_src, *dirname)
+    clear(dest)
+    for name in os.listdir(srcdir):
+      if name in ('.clang-format', 'CMakeLists.txt', 'README.txt', 'weak_symbols.txt'):
+        continue
+      if name.endswith('.syms.extra'):
+        continue
+      if os.path.isfile(os.path.join(srcdir, name)):
+        shutil.copy2(os.path.join(srcdir, name), dest)
 
   shutil.copy2(os.path.join(upstream_dir, 'CREDITS.TXT'), local_src)
   shutil.copy2(os.path.join(upstream_dir, 'LICENSE.TXT'), local_src)
