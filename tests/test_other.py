@@ -636,25 +636,13 @@ f.close()
         if test_dir == 'target_html':
           env['EMCC_SKIP_SANITY_CHECK'] = '1'
         print(str(cmd))
-        ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
-        if ret.stderr is not None and len(ret.stderr.strip()):
-          print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
-        if ret.stderr is not None and 'error' in ret.stderr.lower():
-          print('Failed command: ' + ' '.join(cmd))
-          print('Result:\n' + ret.stderr)
-          self.fail('cmake call failed!')
+        run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
 
         # Build
         cmd = conf['build']
         if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
           cmd += ['VERBOSE=1']
-        ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
-        if ret.stderr is not None and len(ret.stderr.strip()):
-          print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
-        if ret.stdout is not None and 'error' in ret.stdout.lower() and '0 error(s)' not in ret.stdout.lower():
-          print('Failed command: ' + ' '.join(cmd))
-          print('Result:\n' + ret.stdout)
-          self.fail('make failed!')
+        run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
         self.assertExists(tempdirname + '/' + output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
 
         # Run through node, if CMake produced a .js file.
