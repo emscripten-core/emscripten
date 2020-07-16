@@ -9408,9 +9408,22 @@ int main () {
           # the LLVM IR text names, which lead to asm.js names, which leads to
           # difference code size, which leads to different relooper choices,
           # as a result leading to slightly different total code sizes.
+          # Also as of July 16, 2020, wasm2js files have different sizes on
+          # different platforms (Windows and MacOS improved to give a slightly
+          # better thing than Linux does, which didn't change; this just
+          # started to happen on CI, not in response to a code update, so it
+          # may have been present all along but just noticed now; it only
+          # happens in wasm2js, so it may be platform-nondeterminism in closure
+          # compiler).
           # TODO: identify what is causing this. meanwhile allow some amount of slop
-          mem_slop = 10 if self.is_wasm_backend() else 50
-          if size <= expected_size + mem_slop and size >= expected_size - mem_slop:
+          if self.is_wasm_backend():
+            if js:
+              slop = 30
+            else:
+              slop = 10
+          else:
+            slop = 50
+          if size <= expected_size + slop and size >= expected_size - slop:
             size = expected_size
 
           # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
