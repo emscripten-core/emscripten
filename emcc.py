@@ -725,7 +725,7 @@ def run(args):
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
   if DEBUG:
-    cmd = ' '.join(args)
+    cmd = shared.shlex_join(args)
     if EMCC_CFLAGS:
       cmd += ' + ' + EMCC_CFLAGS
     logger.warning('invocation: ' + cmd + '  (in ' + os.getcwd() + ')')
@@ -820,7 +820,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       lines = [x for x in proc.stderr.splitlines() if clang in x and input_file in x]
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
-      print(' '.join(building.doublequote_spaces(parts[1:])))
+      print(shared.shlex_join(parts[1:]))
     return 0
 
   def get_language_mode(args):
@@ -879,9 +879,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # use node.js raw filesystem access, to behave just like a native executable
     cmd += ['-s', 'NODERAWFS=1']
 
-    logger.debug('just configuring: ' + ' '.join(cmd))
+    logger.debug('just configuring: ' + shared.shlex_join(cmd))
     if debug_configure:
-      open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
+      open(tempout, 'a').write('emcc, just configuring: ' + shared.shlex_join(cmd) + '\n\n')
 
     linking = '-c' not in cmd
     # Last -o directive should take precedence, if multiple are specified
@@ -901,9 +901,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.copyfile(target, unsuffixed(target))
         target = unsuffixed(target)
       src = open(target).read()
-      full_node = ' '.join(shared.NODE_JS)
+      full_node = shared.shlex_join(shared.NODE_JS)
       if os.path.sep not in full_node:
-        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+        # TODO: use whereis etc. And how about non-*NIX?
+        full_node = '/usr/bin/env ' + full_node
       open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
       try:
         os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable

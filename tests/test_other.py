@@ -562,10 +562,10 @@ f.close()
   def test_emcc_cflags(self):
     output = run_process([EMCC, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained(' '.join(building.doublequote_spaces(shared.emsdk_cflags([], False))), flags)
+    self.assertContained(shared.shlex_join(shared.emsdk_cflags([], False)), flags)
     output = run_process([EMXX, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained(' '.join(building.doublequote_spaces(shared.emsdk_cflags([], True))), flags)
+    self.assertContained(shared.shlex_join(shared.emsdk_cflags([], True)), flags)
     # check they work
     cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
     run_process(cmd)
@@ -1318,7 +1318,7 @@ int f() {
         # (we'd use self.run_js() normally)
         try_delete('out.txt')
         cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
-        cmd = ' '.join(building.doublequote_spaces(cmd))
+        cmd = shared.shlex_join(cmd)
         if WINDOWS:
           os.system('type "in.txt" | {} >out.txt'.format(cmd))
         else: # posix
