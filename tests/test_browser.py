@@ -1607,7 +1607,7 @@ keydown(100);keyup(100); // trigger the end
       print(cmd)
       subprocess.check_call(cmd)
       self.assertExists('worker.js')
-      self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20:' + ('data%20for%20w' if file_data else '') + ':')
+      self.run_browser('main.html', '', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
   def test_worker(self):
     self.do_test_worker()
@@ -3362,6 +3362,27 @@ window.close = function() {
           </script>
         ''' % code)
         self.run_browser('a.html', '...', '/report_result?0')
+
+  def test_modularize_network_error(self):
+    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+    create_test_file('test.c', src)
+    browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
+    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    create_test_file('a.html', '''
+      <script src="a.out.js"></script>
+      <script>
+        createModule()
+          .then(() => {
+            reportResultToServer("Module creation succeeded when it should have failed");
+          })
+          .catch(err => {
+            reportResultToServer(err.message.slice(0, 54));
+          });
+      </script>
+    ''')
+    print('Deleting a.out.wasm to cause a download error')
+    os.remove('a.out.wasm')
+    self.run_browser('a.html', '...', '/report_result?abort(both async and sync fetching of the wasm failed)')
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
