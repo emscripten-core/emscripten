@@ -7330,7 +7330,7 @@ someweirdtext
     self.do_run(src, '107')
 
   def test_embind_5(self):
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['--bind', '-s', 'EXIT_RUNTIME=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
 
   def test_embind_custom_marshal(self):

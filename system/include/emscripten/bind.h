@@ -20,7 +20,10 @@
 #include <type_traits>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
+
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
 #include <sanitizer/lsan_interface.h>
+#endif
 
 namespace emscripten {
     enum class sharing_policy {
@@ -589,7 +592,9 @@ namespace emscripten {
         inline T* getContext(const T& t) {
             // not a leak because this is called once per binding
             auto* ret = new T(t);
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
             __lsan_ignore_object(ret);
+#endif
             return ret;
         }
 
