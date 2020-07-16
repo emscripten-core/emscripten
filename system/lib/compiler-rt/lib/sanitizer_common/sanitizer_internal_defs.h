@@ -105,7 +105,7 @@
 // FIXME: do we have anything like this on Mac?
 #ifndef SANITIZER_CAN_USE_PREINIT_ARRAY
 #if ((SANITIZER_LINUX && !SANITIZER_ANDROID) || SANITIZER_OPENBSD || \
-     SANITIZER_FUCHSIA) && !defined(PIC)
+     SANITIZER_FUCHSIA || SANITIZER_NETBSD) && !defined(PIC)
 #define SANITIZER_CAN_USE_PREINIT_ARRAY 1
 // Before Solaris 11.4, .preinit_array is fully supported only with GNU ld.
 // FIXME: Check for those conditions.
@@ -133,27 +133,27 @@ namespace __sanitizer {
 
 #if defined(_WIN64)
 // 64-bit Windows uses LLP64 data model.
-typedef unsigned long long uptr;  // NOLINT
-typedef signed   long long sptr;  // NOLINT
+typedef unsigned long long uptr;
+typedef signed long long sptr;
 #else
-typedef unsigned long uptr;  // NOLINT
-typedef signed   long sptr;  // NOLINT
+typedef unsigned long uptr;
+typedef signed long sptr;
 #endif  // defined(_WIN64)
 #if defined(__x86_64__)
 // Since x32 uses ILP32 data model in 64-bit hardware mode, we must use
 // 64-bit pointer to unwind stack frame.
-typedef unsigned long long uhwptr;  // NOLINT
+typedef unsigned long long uhwptr;
 #else
-typedef uptr uhwptr;   // NOLINT
+typedef uptr uhwptr;
 #endif
 typedef unsigned char u8;
-typedef unsigned short u16;  // NOLINT
+typedef unsigned short u16;
 typedef unsigned int u32;
-typedef unsigned long long u64;  // NOLINT
-typedef signed   char s8;
-typedef signed   short s16;  // NOLINT
-typedef signed   int s32;
-typedef signed   long long s64;  // NOLINT
+typedef unsigned long long u64;
+typedef signed char s8;
+typedef signed short s16;
+typedef signed int s32;
+typedef signed long long s64;
 #if SANITIZER_WINDOWS
 // On Windows, files are HANDLE, which is a synonim of void*.
 // Use void* to avoid including <windows.h> everywhere.
@@ -265,7 +265,7 @@ typedef ALIGNED(1) s64 us64;
 
 #if SANITIZER_WINDOWS
 }  // namespace __sanitizer
-typedef unsigned long DWORD;  // NOLINT
+typedef unsigned long DWORD;
 namespace __sanitizer {
 typedef DWORD thread_return_t;
 # define THREAD_CALLING_CONV __stdcall
@@ -420,18 +420,41 @@ inline void Trap() {
 
 }  // namespace __sanitizer
 
-namespace __asan  { using namespace __sanitizer; }  // NOLINT
-namespace __dsan  { using namespace __sanitizer; }  // NOLINT
-namespace __dfsan { using namespace __sanitizer; }  // NOLINT
-namespace __lsan  { using namespace __sanitizer; }  // NOLINT
-namespace __msan  { using namespace __sanitizer; }  // NOLINT
-namespace __hwasan  { using namespace __sanitizer; }  // NOLINT
-namespace __tsan  { using namespace __sanitizer; }  // NOLINT
-namespace __scudo { using namespace __sanitizer; }  // NOLINT
-namespace __ubsan { using namespace __sanitizer; }  // NOLINT
-namespace __xray  { using namespace __sanitizer; }  // NOLINT
-namespace __interception  { using namespace __sanitizer; }  // NOLINT
-namespace __hwasan  { using namespace __sanitizer; }  // NOLINT
-
+namespace __asan {
+using namespace __sanitizer;
+}
+namespace __dsan {
+using namespace __sanitizer;
+}
+namespace __dfsan {
+using namespace __sanitizer;
+}
+namespace __lsan {
+using namespace __sanitizer;
+}
+namespace __msan {
+using namespace __sanitizer;
+}
+namespace __hwasan {
+using namespace __sanitizer;
+}
+namespace __tsan {
+using namespace __sanitizer;
+}
+namespace __scudo {
+using namespace __sanitizer;
+}
+namespace __ubsan {
+using namespace __sanitizer;
+}
+namespace __xray {
+using namespace __sanitizer;
+}
+namespace __interception {
+using namespace __sanitizer;
+}
+namespace __hwasan {
+using namespace __sanitizer;
+}
 
 #endif  // SANITIZER_DEFS_H
