@@ -363,6 +363,9 @@ var LibraryHtml5WebGL = {
 #endif
 
     var ext = context.GLctx.getExtension(extString);
+    if (extString == 'WEBGL_multi_draw') {
+      context.GLctx.multiDrawWebgl = ext;
+    }
     return !!ext;
   },
 

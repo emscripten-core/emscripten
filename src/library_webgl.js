@@ -3601,6 +3601,59 @@ var LibraryGL = {
     GLctx.sampleCoverage(value, !!invert);
   },
 
+  glMultiDrawArraysWEBGL: function(mode, firsts, firstsOffset, counts, countsOffset, drawcount) {
+    let firstsList = new Int32Array(HEAPU8.subarray(firsts, firsts + drawcount * 4));
+    let countsList = new Int32Array(HEAPU8.subarray(counts, counts + drawcount * 4));
+    GLctx.multiDrawWebgl['multiDrawArraysWEBGL'](
+      mode,
+      firstsList,
+      firstsOffset,
+      countsList,
+      countsOffset,
+      drawcount);
+  },
+  glMultiDrawArraysInstancedWEBGL: function(mode, firsts, firstsOffset, counts, countsOffset, instanceCounts, instanceCountsOffset, drawcount) {
+    let firstsList = new Int32Array(HEAPU8.subarray(firsts, firsts + drawcount * 4));
+    let countsList = new Int32Array(HEAPU8.subarray(counts, counts + drawcount * 4));
+    let instanceCountsList = new Int32Array(HEAPU8.subarray(instanceCounts, instanceCounts + drawcount * 4));
+    GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
+      mode,
+      firstsList,
+      firstsOffset,
+      countsList,
+      countsOffset,
+      instanceCountsList,
+      instanceCountsOffset,
+      drawcount);
+  },
+  glMultiDrawElementsWEBGL: function(mode, counts, countsOffset, type, offsets, offsetsOffset, drawcount) {
+    let countsList = new Int32Array(HEAPU8.subarray(counts, counts + drawcount * 4));
+    let offsetsList = new Int32Array(HEAPU8.subarray(offsets, offsets + drawcount * 4));
+    GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
+      mode,
+      countsList,
+      countsOffset,
+      type,
+      offsetsList,
+      offsetsOffset,
+      drawcount);
+  },
+  glMultiDrawElementsInstancedWEBGL: function(mode, counts, countsOffset, type, offsets, offsetsOffset, instanceCounts, instanceCountsOffset, drawcount) {
+    let countsList = new Int32Array(HEAPU8.subarray(counts, counts + drawcount * 4));
+    let offsetsList = new Int32Array(HEAPU8.subarray(offsets, offsets + drawcount * 4));
+    let instanceCountsList = new Int32Array(HEAPU8.subarray(instanceCounts, instanceCounts + drawcount * 4));
+    GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
+      mode,
+      countsList,
+      countsOffset,
+      type,
+      offsetsList,
+      offsetsOffset,
+      instanceCountsList,
+      instanceCountsOffset,
+      drawcount);
+  },
+
   // As a small peculiarity, we currently allow building with -s FULL_ES3=1 to emulate client side arrays,
   // but without targeting WebGL 2, so this FULL_ES3 block is in library_webgl.js instead of library_webgl2.js
 #if FULL_ES3
