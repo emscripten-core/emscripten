@@ -107,7 +107,7 @@ class WindowsPopen(object):
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
       self.pid = self.process.pid
     except Exception as e:
-      logger.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e)))
+      logger.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (shlex_join(args), str(e)))
       raise
 
   def communicate(self, input=None):
@@ -143,6 +143,20 @@ def path_from_root(*pathelems):
 
 def root_is_writable():
   return os.access(__rootpath__, os.W_OK)
+
+
+# Switch to shlex.quote once we can depend on python 3
+def shlex_quote(arg):
+  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
+    return '"' + arg.replace('"', '\\"') + '"'
+
+  return arg
+
+
+# Switch to shlex.join once we can depend on python 3.8:
+# https://docs.python.org/3/library/shlex.html#shlex.join
+def shlex_join(cmd):
+  return ' '.join(shlex_quote(x) for x in cmd)
 
 
 # This is a workaround for https://bugs.python.org/issue9400
@@ -186,7 +200,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
   kw.setdefault('universal_newlines', True)
 
-  debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
+  debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
 
   if hasattr(subprocess, "run"):
     ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
@@ -210,9 +224,9 @@ def check_call(cmd, *args, **kw):
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
+    exit_with_error("'%s' failed (%d)", shlex_join(cmd), e.returncode)
   except OSError as e:
-    exit_with_error("'%s' failed: %s", ' '.join(cmd), str(e))
+    exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
 def run_js_tool(filename, jsargs=[], *args, **kw):
@@ -1070,7 +1084,7 @@ def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command
   before executing it."""
   if PRINT_STAGES:
-    print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
+    print(' "%s" %s' % (cmd[0], shlex_join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
 

@@ -238,18 +238,6 @@ def get_multiprocessing_pool():
   return multiprocessing_pool
 
 
-# When creating environment variables for Makefiles to execute, we need to
-# doublequote the commands if they have spaces in them..
-def doublequote_spaces(arg):
-  if isinstance(arg, list):
-    return [doublequote_spaces(a) for a in arg]
-
-  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
-    return '"' + arg.replace('"', '\\"') + '"'
-
-  return arg
-
-
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
 # remove them when needed.
 def remove_quotes(arg):
