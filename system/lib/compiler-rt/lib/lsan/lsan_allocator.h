@@ -1,9 +1,8 @@
 //=-- lsan_allocator.h ----------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -98,23 +97,11 @@ using PrimaryAllocator = PrimaryAllocatorASVT<LocalAddressSpaceView>;
 #endif
 
 template <typename AddressSpaceView>
-using AllocatorCacheASVT =
-    SizeClassAllocatorLocalCache<PrimaryAllocatorASVT<AddressSpaceView>>;
-using AllocatorCache = AllocatorCacheASVT<LocalAddressSpaceView>;
-
-template <typename AddressSpaceView>
-using SecondaryAllocatorASVT =
-    LargeMmapAllocator<NoOpMapUnmapCallback, DefaultLargeMmapAllocatorPtrArray,
-                       AddressSpaceView>;
-
-template <typename AddressSpaceView>
-using AllocatorASVT =
-    CombinedAllocator<PrimaryAllocatorASVT<AddressSpaceView>,
-                      AllocatorCacheASVT<AddressSpaceView>,
-                      SecondaryAllocatorASVT<AddressSpaceView>>;
+using AllocatorASVT = CombinedAllocator<PrimaryAllocatorASVT<AddressSpaceView>>;
 using Allocator = AllocatorASVT<LocalAddressSpaceView>;
+using AllocatorCache = Allocator::AllocatorCache;
 
-AllocatorCache *GetAllocatorCache();
+Allocator::AllocatorCache *GetAllocatorCache();
 
 int lsan_posix_memalign(void **memptr, uptr alignment, uptr size,
                         const StackTrace &stack);
@@ -123,6 +110,8 @@ void *lsan_memalign(uptr alignment, uptr size, const StackTrace &stack);
 void *lsan_malloc(uptr size, const StackTrace &stack);
 void lsan_free(void *p);
 void *lsan_realloc(void *p, uptr size, const StackTrace &stack);
+void *lsan_reallocarray(void *p, uptr nmemb, uptr size,
+                        const StackTrace &stack);
 void *lsan_calloc(uptr nmemb, uptr size, const StackTrace &stack);
 void *lsan_valloc(uptr size, const StackTrace &stack);
 void *lsan_pvalloc(uptr size, const StackTrace &stack);

@@ -45,7 +45,7 @@ def main():
     for name in os.listdir(srcdir):
       if name in ('.clang-format', 'CMakeLists.txt', 'README.txt', 'weak_symbols.txt'):
         continue
-      if name.endswith('.syms.extra'):
+      if name.endswith('.syms.extra') or name.endswith('.S'):
         continue
       if os.path.isfile(os.path.join(srcdir, name)):
         shutil.copy2(os.path.join(srcdir, name), dest)

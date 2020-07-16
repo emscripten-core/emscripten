@@ -1,9 +1,8 @@
 //===-- sanitizer_mac.cc --------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -240,25 +239,25 @@ int internal_sysctlbyname(const char *sname, void *oldp, uptr *oldlenp,
                       (size_t)newlen);
 }
 
-int internal_forkpty(int *amaster) {
-  int master, slave;
-  if (openpty(&master, &slave, nullptr, nullptr, nullptr) == -1) return -1;
+int internal_forkpty(int *aparent) {
+  int parent, worker;
+  if (openpty(&parent, &worker, nullptr, nullptr, nullptr) == -1) return -1;
   int pid = internal_fork();
   if (pid == -1) {
-    close(master);
-    close(slave);
+    close(parent);
+    close(worker);
     return -1;
   }
   if (pid == 0) {
-    close(master);
-    if (login_tty(slave) != 0) {
+    close(parent);
+    if (login_tty(worker) != 0) {
       // We already forked, there's not much we can do.  Let's quit.
       Report("login_tty failed (errno %d)\n", errno);
       internal__exit(1);
     }
   } else {
-    *amaster = master;
-    close(slave);
+    *aparent = parent;
+    close(worker);
   }
   return pid;
 }
@@ -559,8 +558,8 @@ MacosVersion GetMacosVersionInternal() {
       if (minor >= 5)
         return MACOS_VERSION_HIGH_SIERRA_DOT_RELEASE_4;
       return MACOS_VERSION_HIGH_SIERRA;
-    case 18:
-      return MACOS_VERSION_MOJAVE;
+    case 18: return MACOS_VERSION_MOJAVE;
+    case 19: return MACOS_VERSION_CATALINA;
     default:
       if (major < 9) return MACOS_VERSION_UNKNOWN;
       return MACOS_VERSION_UNKNOWN_NEWER;
@@ -913,7 +912,7 @@ char **GetArgv() {
   return *_NSGetArgv();
 }
 
-#if defined(__aarch64__) && SANITIZER_IOS && !SANITIZER_IOSSIM
+#if SANITIZER_IOS
 // The task_vm_info struct is normally provided by the macOS SDK, but we need
 // fields only available in 10.12+. Declare the struct manually to be able to
 // build against older SDKs.
@@ -944,33 +943,37 @@ struct __sanitizer_task_vm_info {
 #define __SANITIZER_TASK_VM_INFO_COUNT ((mach_msg_type_number_t) \
     (sizeof(__sanitizer_task_vm_info) / sizeof(natural_t)))
 
-uptr GetTaskInfoMaxAddress() {
+static uptr GetTaskInfoMaxAddress() {
   __sanitizer_task_vm_info vm_info = {} /* zero initialize */;
   mach_msg_type_number_t count = __SANITIZER_TASK_VM_INFO_COUNT;
   int err = task_info(mach_task_self(), TASK_VM_INFO, (int *)&vm_info, &count);
-  if (err == 0 && vm_info.max_address != 0) {
-    return vm_info.max_address - 1;
-  } else {
-    // xnu cannot provide vm address limit
-    return 0x200000000 - 1;
-  }
+  return err ? 0 : vm_info.max_address;
 }
-#endif
 
 uptr GetMaxUserVirtualAddress() {
-#if SANITIZER_WORDSIZE == 64
-# if defined(__aarch64__) && SANITIZER_IOS && !SANITIZER_IOSSIM
-  // Get the maximum VM address
   static uptr max_vm = GetTaskInfoMaxAddress();
-  CHECK(max_vm);
-  return max_vm;
+  if (max_vm != 0)
+    return max_vm - 1;
+
+  // xnu cannot provide vm address limit
+# if SANITIZER_WORDSIZE == 32
+  return 0xffe00000 - 1;
 # else
-  return (1ULL << 47) - 1;  // 0x00007fffffffffffUL;
+  return 0x200000000 - 1;
 # endif
-#else  // SANITIZER_WORDSIZE == 32
-  return (1ULL << 32) - 1;  // 0xffffffff;
-#endif  // SANITIZER_WORDSIZE
 }
+
+#else // !SANITIZER_IOS
+
+uptr GetMaxUserVirtualAddress() {
+# if SANITIZER_WORDSIZE == 64
+  return (1ULL << 47) - 1;  // 0x00007fffffffffffUL;
+# else // SANITIZER_WORDSIZE == 32
+  static_assert(SANITIZER_WORDSIZE == 32, "Wrong wordsize");
+  return (1ULL << 32) - 1;  // 0xffffffff;
+# endif
+}
+#endif
 
 uptr GetMaxVirtualAddress() {
   return GetMaxUserVirtualAddress();
