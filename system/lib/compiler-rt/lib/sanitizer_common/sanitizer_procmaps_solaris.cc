@@ -1,7 +1,8 @@
 //===-- sanitizer_procmaps_solaris.cc -------------------------------------===//
 //
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -49,9 +50,11 @@ bool MemoryMappingLayout::Next(MemoryMappedSegment *segment) {
     segment->protection |= kProtectionExecute;
 
   if (segment->filename != NULL && segment->filename_size > 0) {
-    internal_snprintf(segment->filename,
-                      Min(segment->filename_size, (uptr)PATH_MAX), "%s",
+    char proc_path[PATH_MAX + 1];
+
+    internal_snprintf(proc_path, sizeof(proc_path), "/proc/self/path/%s",
                       xmapentry->pr_mapname);
+    internal_readlink(proc_path, segment->filename, segment->filename_size);
   }
 
   data_.current += sizeof(prxmap_t);

@@ -1,9 +1,8 @@
 //===-- asan_posix.cc -----------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -40,8 +39,8 @@ void AsanOnDeadlySignal(int signo, void *siginfo, void *context) {
 
 // ---------------------- TSD ---------------- {{{1
 
-#if SANITIZER_NETBSD || SANITIZER_FREEBSD
-// Thread Static Data cannot be used in early init on NetBSD and FreeBSD.
+#if SANITIZER_NETBSD && !ASAN_DYNAMIC
+// Thread Static Data cannot be used in early static ASan init on NetBSD.
 // Reuse the Asan TSD API for compatibility with existing code
 // with an alternative implementation.
 

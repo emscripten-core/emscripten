@@ -1,9 +1,8 @@
 //===-- sanitizer_linux.cc ------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -840,7 +839,11 @@ int internal_sysctl(const int *name, unsigned int namelen, void *oldp,
 #if SANITIZER_FREEBSD
 int internal_sysctlbyname(const char *sname, void *oldp, uptr *oldlenp,
                           const void *newp, uptr newlen) {
-  return sysctlbyname(sname, oldp, (size_t *)oldlenp, newp, (size_t)newlen);
+  static decltype(sysctlbyname) *real = nullptr;
+  if (!real)
+    real = (decltype(sysctlbyname) *)dlsym(RTLD_NEXT, "sysctlbyname");
+  CHECK(real);
+  return real(sname, oldp, (size_t *)oldlenp, newp, (size_t)newlen);
 }
 #endif
 #endif
@@ -892,24 +895,6 @@ int internal_sigaction_norestorer(int signum, const void *act, void *oldact) {
   }
   return result;
 }
-
-// Invokes sigaction via a raw syscall with a restorer, but does not support
-// all platforms yet.
-// We disable for Go simply because we have not yet added to buildgo.sh.
-#if (defined(__x86_64__) || SANITIZER_MIPS64) && !SANITIZER_GO
-int internal_sigaction_syscall(int signum, const void *act, void *oldact) {
-  if (act == nullptr)
-    return internal_sigaction_norestorer(signum, act, oldact);
-  __sanitizer_sigaction u_adjust;
-  internal_memcpy(&u_adjust, act, sizeof(u_adjust));
-#if !SANITIZER_ANDROID || !SANITIZER_MIPS32
-  if (u_adjust.sa_restorer == nullptr) {
-    u_adjust.sa_restorer = internal_sigreturn;
-  }
-#endif
-  return internal_sigaction_norestorer(signum, (const void *)&u_adjust, oldact);
-}
-#endif  // defined(__x86_64__) && !SANITIZER_GO
 #endif  // SANITIZER_LINUX
 
 uptr internal_sigprocmask(int how, __sanitizer_sigset_t *set,
@@ -1111,6 +1096,8 @@ uptr GetMaxVirtualAddress() {
   return (1ULL << 40) - 1;  // 0x000000ffffffffffUL;
 # elif defined(__s390x__)
   return (1ULL << 53) - 1;  // 0x001fffffffffffffUL;
+#elif defined(__sparc__)
+  return ~(uptr)0;
 # else
   return (1ULL << 47) - 1;  // 0x00007fffffffffffUL;
 # endif
@@ -1908,10 +1895,20 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
   u64 esr;
   if (!Aarch64GetESR(ucontext, &esr)) return UNKNOWN;
   return esr & ESR_ELx_WNR ? WRITE : READ;
-#elif SANITIZER_SOLARIS && defined(__sparc__)
+#elif defined(__sparc__)
   // Decode the instruction to determine the access type.
   // From OpenSolaris $SRC/uts/sun4/os/trap.c (get_accesstype).
+#if SANITIZER_SOLARIS
   uptr pc = ucontext->uc_mcontext.gregs[REG_PC];
+#else
+  // Historical BSDism here.
+  struct sigcontext *scontext = (struct sigcontext *)context;
+#if defined(__arch64__)
+  uptr pc = scontext->sigc_regs.tpc;
+#else
+  uptr pc = scontext->si_regs.pc;
+#endif
+#endif
   u32 instr = *(u32 *)pc;
   return (instr >> 21) & 1 ? WRITE: READ;
 #else
@@ -2002,28 +1999,27 @@ static void GetPcSpBp(void *context, uptr *pc, uptr *sp, uptr *bp) {
   // pointer, but GCC always uses r31 when we need a frame pointer.
   *bp = ucontext->uc_mcontext.regs->gpr[PT_R31];
 #elif defined(__sparc__)
-  ucontext_t *ucontext = (ucontext_t*)context;
-  uptr *stk_ptr;
-# if defined(__sparcv9) || defined (__arch64__)
-# ifndef MC_PC
-#  define MC_PC REG_PC
-# endif
-# ifndef MC_O6
-#  define MC_O6 REG_O6
+#if defined(__arch64__) || defined(__sparcv9)
+#define STACK_BIAS 2047
+#else
+#define STACK_BIAS 0
 # endif
 # if SANITIZER_SOLARIS
-#  define mc_gregs gregs
-# endif
-  *pc = ucontext->uc_mcontext.mc_gregs[MC_PC];
-  *sp = ucontext->uc_mcontext.mc_gregs[MC_O6];
-  stk_ptr = (uptr *) (*sp + 2047);
-  *bp = stk_ptr[15];
-# else
+  ucontext_t *ucontext = (ucontext_t *)context;
   *pc = ucontext->uc_mcontext.gregs[REG_PC];
-  *sp = ucontext->uc_mcontext.gregs[REG_O6];
-  stk_ptr = (uptr *) *sp;
-  *bp = stk_ptr[15];
+  *sp = ucontext->uc_mcontext.gregs[REG_O6] + STACK_BIAS;
+#else
+  // Historical BSDism here.
+  struct sigcontext *scontext = (struct sigcontext *)context;
+#if defined(__arch64__)
+  *pc = scontext->sigc_regs.tpc;
+  *sp = scontext->sigc_regs.u_regs[14] + STACK_BIAS;
+#else
+  *pc = scontext->si_regs.pc;
+  *sp = scontext->si_regs.u_regs[14];
+#endif
 # endif
+  *bp = (uptr)((uhwptr *)*sp)[14] + STACK_BIAS;
 #elif defined(__mips__)
   ucontext_t *ucontext = (ucontext_t*)context;
   *pc = ucontext->uc_mcontext.pc;
@@ -2085,6 +2081,35 @@ void CheckASLR() {
                "ASLR will be disabled and the program re-executed.\n");
     CHECK_NE(personality(old_personality | ADDR_NO_RANDOMIZE), -1);
     ReExec();
+  }
+#elif SANITIZER_FREEBSD
+  int aslr_pie;
+  uptr len = sizeof(aslr_pie);
+#if SANITIZER_WORDSIZE == 64
+  if (UNLIKELY(internal_sysctlbyname("kern.elf64.aslr.pie_enable",
+      &aslr_pie, &len, NULL, 0) == -1)) {
+    // We're making things less 'dramatic' here since
+    // the OID is not necessarily guaranteed to be here
+    // just yet regarding FreeBSD release
+    return;
+  }
+
+  if (aslr_pie > 0) {
+    Printf("This sanitizer is not compatible with enabled ASLR "
+           "and binaries compiled with PIE\n");
+    Die();
+  }
+#endif
+  // there might be 32 bits compat for 64 bits
+  if (UNLIKELY(internal_sysctlbyname("kern.elf32.aslr.pie_enable",
+      &aslr_pie, &len, NULL, 0) == -1)) {
+    return;
+  }
+
+  if (aslr_pie > 0) {
+    Printf("This sanitizer is not compatible with enabled ASLR "
+           "and binaries compiled with PIE\n");
+    Die();
   }
 #else
   // Do nothing
