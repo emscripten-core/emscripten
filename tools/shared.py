@@ -1822,6 +1822,7 @@ Settings = SettingsManager()
 verify_settings()
 Cache = cache.Cache(CACHE)
 check_vanilla()
+reconfigure_cache()
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
