@@ -982,7 +982,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
   def run_process(self, cmd, check=True, **args):
-    # Wrapper around shared.run_process that fails that test with nice message
+    # Wrapper around shared.run_process.  This is desirable so that the tests
+    # can fail (in the unittest sense) rather than error'ing.
+    # In the long run it would nice to completely remove the dependency on
+    # core emscripten code (shared.py) here.
     try:
       return shared.run_process(cmd, check=check, **args)
     except subprocess.CalledProcessError as e:
