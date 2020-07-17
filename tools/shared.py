@@ -577,7 +577,7 @@ def check_sanity(force=False):
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt')
+    sanity_file = Cache.get_path('sanity.txt', root=True)
     if os.path.exists(sanity_file):
       sanity_data = open(sanity_file).read()
       if sanity_data != expected:
