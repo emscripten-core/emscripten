@@ -879,13 +879,17 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
     if EMTEST_VERBOSE:
-      print("Expected to have '%s' == '%s'" % limit_size(values[0]), limit_size(y))
+      print("Expected to have '%s' == '%s'" % (limit_size(values[0]), limit_size(y)))
     fail_message = 'Unexpected difference:\n' + limit_size(diff)
     if not EMTEST_VERBOSE:
       fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)
+
+  def assertIdenticalUrlEncoded(self, expected, actual, **kwargs):
+    """URL decodes the `actual` parameter before checking for equality."""
+    self.assertIdentical(expected, unquote(actual), **kwargs)
 
   def assertTextDataContained(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')
@@ -1559,7 +1563,7 @@ class BrowserCore(RunnerCore):
         else:
           # verify the result, and try again if we should do so
           try:
-            self.assertIdentical(expectedResult, output)
+            self.assertIdenticalUrlEncoded(expectedResult, output)
           except Exception as e:
             if tries_left > 0:
               print('[test error (see below), automatically retrying]')

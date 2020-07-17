@@ -562,10 +562,10 @@ f.close()
   def test_emcc_cflags(self):
     output = run_process([EMCC, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained(' '.join(building.doublequote_spaces(shared.emsdk_cflags([], False))), flags)
+    self.assertContained(shared.shlex_join(shared.emsdk_cflags([], False)), flags)
     output = run_process([EMXX, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained(' '.join(building.doublequote_spaces(shared.emsdk_cflags([], True))), flags)
+    self.assertContained(shared.shlex_join(shared.emsdk_cflags([], True)), flags)
     # check they work
     cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
     run_process(cmd)
@@ -636,25 +636,13 @@ f.close()
         if test_dir == 'target_html':
           env['EMCC_SKIP_SANITY_CHECK'] = '1'
         print(str(cmd))
-        ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
-        if ret.stderr is not None and len(ret.stderr.strip()):
-          print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
-        if ret.stderr is not None and 'error' in ret.stderr.lower():
-          print('Failed command: ' + ' '.join(cmd))
-          print('Result:\n' + ret.stderr)
-          self.fail('cmake call failed!')
+        run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
 
         # Build
         cmd = conf['build']
         if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
           cmd += ['VERBOSE=1']
-        ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
-        if ret.stderr is not None and len(ret.stderr.strip()):
-          print(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
-        if ret.stdout is not None and 'error' in ret.stdout.lower() and '0 error(s)' not in ret.stdout.lower():
-          print('Failed command: ' + ' '.join(cmd))
-          print('Result:\n' + ret.stdout)
-          self.fail('make failed!')
+        run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
         self.assertExists(tempdirname + '/' + output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
 
         # Run through node, if CMake produced a .js file.
@@ -1318,7 +1306,7 @@ int f() {
         # (we'd use self.run_js() normally)
         try_delete('out.txt')
         cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
-        cmd = ' '.join(building.doublequote_spaces(cmd))
+        cmd = shared.shlex_join(cmd)
         if WINDOWS:
           os.system('type "in.txt" | {} >out.txt'.format(cmd))
         else: # posix
@@ -7854,7 +7842,6 @@ int main() {
   def test_metadce_minimal_fastcomp(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
-  @unittest.skip('llvm roll')
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
     # exceptions increases code size significantly
@@ -9408,9 +9395,22 @@ int main () {
           # the LLVM IR text names, which lead to asm.js names, which leads to
           # difference code size, which leads to different relooper choices,
           # as a result leading to slightly different total code sizes.
+          # Also as of July 16, 2020, wasm2js files have different sizes on
+          # different platforms (Windows and MacOS improved to give a slightly
+          # better thing than Linux does, which didn't change; this just
+          # started to happen on CI, not in response to a code update, so it
+          # may have been present all along but just noticed now; it only
+          # happens in wasm2js, so it may be platform-nondeterminism in closure
+          # compiler).
           # TODO: identify what is causing this. meanwhile allow some amount of slop
-          mem_slop = 10 if self.is_wasm_backend() else 50
-          if size <= expected_size + mem_slop and size >= expected_size - mem_slop:
+          if self.is_wasm_backend():
+            if js:
+              slop = 30
+            else:
+              slop = 10
+          else:
+            slop = 50
+          if size <= expected_size + slop and size >= expected_size - slop:
             size = expected_size
 
           # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
@@ -9977,7 +9977,8 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
       }
     ''')
     run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE', '-s', 'ASSERTIONS', '--extern-post-js', 'test.js'])
-    out = self.run_js('a.out.js')
+    # A return code of 7 is from the unhandled Promise rejection
+    out = self.run_js('a.out.js', assert_returncode=7)
     self.assertContained('You are getting _main on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
     self.assertContained('You are setting onRuntimeInitialized on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
 

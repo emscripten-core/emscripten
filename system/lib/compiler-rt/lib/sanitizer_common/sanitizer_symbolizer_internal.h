@@ -1,9 +1,8 @@
 //===-- sanitizer_symbolizer_internal.h -------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -16,6 +15,7 @@
 
 #include "sanitizer_symbolizer.h"
 #include "sanitizer_file.h"
+#include "sanitizer_vector.h"
 
 namespace __sanitizer {
 
@@ -57,6 +57,10 @@ class SymbolizerTool {
   // and module offset values.
   virtual bool SymbolizeData(uptr addr, DataInfo *info) {
     UNIMPLEMENTED();
+  }
+
+  virtual bool SymbolizeFrame(uptr addr, FrameInfo *info) {
+    return false;
   }
 
   virtual void Flush() {}
@@ -121,12 +125,13 @@ class LLVMSymbolizer : public SymbolizerTool {
   explicit LLVMSymbolizer(const char *path, LowLevelAllocator *allocator);
 
   bool SymbolizePC(uptr addr, SymbolizedStack *stack) override;
-
   bool SymbolizeData(uptr addr, DataInfo *info) override;
+  bool SymbolizeFrame(uptr addr, FrameInfo *info) override;
 
  private:
-  const char *FormatAndSendCommand(bool is_data, const char *module_name,
-                                   uptr module_offset, ModuleArch arch);
+  const char *FormatAndSendCommand(const char *command_prefix,
+                                   const char *module_name, uptr module_offset,
+                                   ModuleArch arch);
 
   LLVMSymbolizerProcess *symbolizer_process_;
   static const uptr kBufferSize = 16 * 1024;

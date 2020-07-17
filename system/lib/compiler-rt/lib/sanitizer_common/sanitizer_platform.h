@@ -1,9 +1,8 @@
 //===-- sanitizer_platform.h ------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -248,8 +247,19 @@
 # else
 #  define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 48)
 # endif
+#elif defined(__sparc__)
+#define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 52)
 #else
 # define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 47)
+#endif
+
+// Whether the addresses are sign-extended from the VMA range to the word.
+// The SPARC64 Linux port implements this to split the VMA space into two
+// non-contiguous halves with a huge hole in the middle.
+#if defined(__sparc__) && SANITIZER_WORDSIZE == 64
+#define SANITIZER_SIGN_EXTENDED_ADDRESSES 1
+#else
+#define SANITIZER_SIGN_EXTENDED_ADDRESSES 0
 #endif
 
 // The AArch64 linux port uses the canonical syscall set as mandated by
@@ -293,10 +303,10 @@
 # define MSC_PREREQ(version) 0
 #endif
 
-#if defined(__arm64__) && SANITIZER_IOS
-# define SANITIZER_NON_UNIQUE_TYPEINFO 1
-#else
+#if SANITIZER_MAC && !(defined(__arm64__) && SANITIZER_IOS)
 # define SANITIZER_NON_UNIQUE_TYPEINFO 0
+#else
+# define SANITIZER_NON_UNIQUE_TYPEINFO 1
 #endif
 
 // On linux, some architectures had an ABI transition from 64-bit long double

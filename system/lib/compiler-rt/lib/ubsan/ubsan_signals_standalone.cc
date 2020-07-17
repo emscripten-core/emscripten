@@ -1,10 +1,9 @@
 //=-- ubsan_signals_standalone.cc
 //------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -14,6 +13,11 @@
 
 #include "ubsan_platform.h"
 #include "sanitizer_common/sanitizer_platform.h"
+#if CAN_SANITIZE_UB
+#include "interception/interception.h"
+#include "sanitizer_common/sanitizer_stacktrace.h"
+#include "ubsan_diag.h"
+#include "ubsan_init.h"
 
 // Interception of signals breaks too many things on Android.
 // * It requires that ubsan is the first dependency of the main executable for
@@ -29,21 +33,20 @@ namespace __ubsan {
 void InitializeDeadlySignals() {}
 }
 
-#elif CAN_SANITIZE_UB
-
-#include "interception/interception.h"
-#include "sanitizer_common/sanitizer_stacktrace.h"
-#include "ubsan_diag.h"
-#include "ubsan_init.h"
+#else
 
 #define COMMON_INTERCEPT_FUNCTION(name) INTERCEPT_FUNCTION(name)
 #include "sanitizer_common/sanitizer_signal_interceptors.inc"
+
+// TODO(yln): Temporary workaround. Will be removed.
+void ubsan_GetStackTrace(BufferedStackTrace *stack, uptr max_depth,
+                         uptr pc, uptr bp, void *context, bool fast);
 
 namespace __ubsan {
 
 static void OnStackUnwind(const SignalContext &sig, const void *,
                           BufferedStackTrace *stack) {
-  GetStackTrace(stack, kStackTraceMax, sig.pc, sig.bp, sig.context,
+  ubsan_GetStackTrace(stack, kStackTraceMax, sig.pc, sig.bp, sig.context,
                 common_flags()->fast_unwind_on_fatal);
 }
 
@@ -62,5 +65,7 @@ void InitializeDeadlySignals() {
 }
 
 } // namespace __ubsan
+
+#endif
 
 #endif // CAN_SANITIZE_UB
