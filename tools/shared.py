@@ -730,7 +730,6 @@ def check_vanilla():
     # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
     # must use wasm (or at least try to). to know that, we have to run llc to
     # see which backends it has. we cache this result.
-    temp_cache = cache.Cache(CACHE, use_subdir=False)
 
     def has_vanilla_targets():
       logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
@@ -739,16 +738,16 @@ def check_vanilla():
 
     def get_vanilla_file():
       logger.debug('regenerating vanilla file: %s' % LLVM_ROOT)
-      saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
+      saved_file = Cache.get_path('is_vanilla.txt', root=True)
       if os.path.exists(saved_file):
         logger.debug('old: %s\n' % open(saved_file).read())
       open(saved_file, 'w').write(('1' if has_vanilla_targets() else '0') + ':' + LLVM_ROOT + '\n')
       return saved_file
 
-    is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
+    is_vanilla_file = Cache.get('is_vanilla.txt', get_vanilla_file, root=True)
     if CONFIG_FILE and os.path.getmtime(CONFIG_FILE) > os.path.getmtime(is_vanilla_file):
       logger.debug('config file changed since we checked vanilla; re-checking')
-      is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
+      is_vanilla_file = Cache.get('is_vanilla.txt', get_vanilla_file, force=True, root=True)
     try:
       contents = open(is_vanilla_file).read().strip()
       middle = contents.index(':')
@@ -756,18 +755,20 @@ def check_vanilla():
       llvm_used = contents[middle + 1:]
       if llvm_used != LLVM_ROOT:
         logger.debug('regenerating vanilla check since other llvm (%s vs %s)`', llvm_used, LLVM_ROOT)
-        temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
+        Cache.get('is_vanilla.txt', get_vanilla_file, force=True, root=True)
         is_vanilla = has_vanilla_targets()
     except Exception as e:
       logger.debug('failed to use vanilla file, will re-check: ' + str(e))
       is_vanilla = has_vanilla_targets()
-    temp_cache = None
     if is_vanilla:
       logger.debug('check tells us to use wasm backend')
       LLVM_TARGET = WASM_TARGET
     else:
       logger.debug('check tells us to use asm.js backend')
       LLVM_TARGET = ASM_JS_TARGET
+
+  if LLVM_TARGET == WASM_TARGET:
+    Settings.WASM_BACKEND = 1
 
 
 def get_llvm_target():
@@ -944,9 +945,6 @@ class SettingsManager(object):
         assert name not in cls.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
         if not cls.attrs['STRICT']:
           cls.attrs[name] = default_value
-
-      if get_llvm_target() == WASM_TARGET:
-        cls.attrs['WASM_BACKEND'] = 1
 
       cls.internal_settings = set(internal_attrs.keys())
 
@@ -1820,13 +1818,12 @@ apply_configuration()
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-emscripten'
 
-check_vanilla()
-
 Settings = SettingsManager()
 verify_settings()
+Cache = cache.Cache(CACHE)
+check_vanilla()
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
 # compatibility with existing emcc, etc. scripts
-Cache = cache.Cache(CACHE)
 chunkify = cache.chunkify

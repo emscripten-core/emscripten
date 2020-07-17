@@ -90,7 +90,9 @@ class Cache(object):
     finally:
       self.release_cache_lock()
 
-  def get_path(self, shortname):
+  def get_path(self, shortname, root=False):
+    if root:
+      return os.path.join(self.root_dirname, shortname)
     return os.path.join(self.dirname, shortname)
 
   def erase_file(self, shortname):
@@ -101,8 +103,12 @@ class Cache(object):
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, what=None, force=False):
-    cachename = os.path.abspath(os.path.join(self.dirname, shortname))
+  def get(self, shortname, creator, what=None, force=False, root=False):
+    if root:
+      cachename = os.path.join(self.root_dirname, shortname)
+    else:
+      cachename = os.path.join(self.dirname, shortname)
+    cachename = os.path.abspath(cachename)
 
     self.acquire_cache_lock()
     try:
