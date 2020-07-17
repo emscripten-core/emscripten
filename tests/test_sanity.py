@@ -22,7 +22,7 @@ from tools.shared import run_process, try_delete
 from tools.shared import expected_llvm_version, Cache, Settings
 from tools import shared, system_libs
 
-SANITY_FILE = shared.Cache.get_path('sanity.txt')
+SANITY_FILE = shared.Cache.get_path('sanity.txt', root=True)
 commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
 
