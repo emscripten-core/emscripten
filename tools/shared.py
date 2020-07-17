@@ -769,6 +769,7 @@ def check_vanilla():
 
   if LLVM_TARGET == WASM_TARGET:
     Settings.WASM_BACKEND = 1
+    reconfigure_cache()
 
 
 def get_llvm_target():
@@ -1822,7 +1823,6 @@ Settings = SettingsManager()
 verify_settings()
 Cache = cache.Cache(CACHE)
 check_vanilla()
-reconfigure_cache()
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
