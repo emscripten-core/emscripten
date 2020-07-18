@@ -5962,6 +5962,9 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_close(self):
     self.do_run_in_out_file_test('unistd/close.c')
 
+  def test_unistd_fsync_stdout(self):
+    self.do_run_in_out_file_test(test_file('unistd/fsync_stdout.c'))
+
   @also_with_noderawfs
   def test_unistd_pipe(self):
     self.do_runf(test_file('unistd/pipe.c'), 'success')
