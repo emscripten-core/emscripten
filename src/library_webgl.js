@@ -3602,8 +3602,8 @@ var LibraryGL = {
   },
 
   glMultiDrawArraysWEBGL: function(mode, firsts, firstsOffset, counts, countsOffset, drawcount) {
-    var firstsList = new Int32Array(HEAPU8.subarray(firsts, firsts + drawcount * 4));
-    var countsList = new Int32Array(HEAPU8.subarray(counts, counts + drawcount * 4));
+    var firstsList = HEAP32.subarray(firsts >> 2, (firsts >> 2) + drawcount);
+    var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
     GLctx.multiDrawWebgl['multiDrawArraysWEBGL'](
       mode,
       firstsList,
@@ -3613,9 +3613,9 @@ var LibraryGL = {
       drawcount);
   },
   glMultiDrawArraysInstancedWEBGL: function(mode, firsts, firstsOffset, counts, countsOffset, instanceCounts, instanceCountsOffset, drawcount) {
-    var firstsList = new Int32Array(HEAPU8.subarray(firsts, firsts + drawcount * 4));
-    var countsList = new Int32Array(HEAPU8.subarray(counts, counts + drawcount * 4));
-    var instanceCountsList = new Int32Array(HEAPU8.subarray(instanceCounts, instanceCounts + drawcount * 4));
+    var firstsList = HEAP32.subarray(firsts >> 2, (firsts >> 2) + drawcount);
+    var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
+    var instanceCountsList = HEAP32.subarray(instanceCounts >> 2, (instanceCounts >> 2) + drawcount);
     GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
       mode,
       firstsList,
@@ -3627,8 +3627,8 @@ var LibraryGL = {
       drawcount);
   },
   glMultiDrawElementsWEBGL: function(mode, counts, countsOffset, type, offsets, offsetsOffset, drawcount) {
-    var countsList = new Int32Array(HEAPU8.subarray(counts, counts + drawcount * 4));
-    var offsetsList = new Int32Array(HEAPU8.subarray(offsets, offsets + drawcount * 4));
+    var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
+    var offsetsList = HEAP32.subarray(offsets >> 2, offsets + drawcount);
     GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
       mode,
       countsList,
@@ -3639,9 +3639,9 @@ var LibraryGL = {
       drawcount);
   },
   glMultiDrawElementsInstancedWEBGL: function(mode, counts, countsOffset, type, offsets, offsetsOffset, instanceCounts, instanceCountsOffset, drawcount) {
-    var countsList = new Int32Array(HEAPU8.subarray(counts, counts + drawcount * 4));
-    var offsetsList = new Int32Array(HEAPU8.subarray(offsets, offsets + drawcount * 4));
-    var instanceCountsList = new Int32Array(HEAPU8.subarray(instanceCounts, instanceCounts + drawcount * 4));
+    var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
+    var offsetsList = HEAP32.subarray(offsets >> 2, offsets + drawcount);
+    var instanceCountsList = HEAP32.subarray(instanceCounts >> 2, (instanceCounts >> 2) + drawcount);
     GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
       mode,
       countsList,
