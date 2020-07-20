@@ -1383,6 +1383,9 @@ var USE_VORBIS = 0;
 // 1 = use ogg from emscripten-ports
 var USE_OGG = 0;
 
+// 1 = use mpg123 from emscripten-ports
+var USE_MPG123 = 0;
+
 // 1 = use freetype from emscripten-ports
 var USE_FREETYPE = 0;
 
@@ -1398,6 +1401,9 @@ var USE_COCOS2D = 0;
 
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
 var SDL2_IMAGE_FORMATS = [];
+
+// Formats to support in SDL2_mixer. Valid values: ogg, mp3
+var SDL2_MIXER_FORMATS = ["ogg"];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.

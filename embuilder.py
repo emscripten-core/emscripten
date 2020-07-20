@@ -77,6 +77,8 @@ USER_TASKS = [
     'sdl2-image-png',
     'sdl2-image-jpg',
     'sdl2-mixer',
+    'sdl2-mixer-ogg',
+    'sdl2-mixer-mp3',
     'sdl2-net',
     'sdl2-ttf',
     'vorbis',
@@ -247,7 +249,20 @@ def main():
     elif what == 'sdl2-net':
       build_port('sdl2_net', libname('libSDL2_net'))
     elif what == 'sdl2-mixer':
+      old_formats = shared.Settings.SDL2_MIXER_FORMATS
+      shared.Settings.SDL2_MIXER_FORMATS = []
       build_port('sdl2_mixer', libname('libSDL2_mixer'))
+      shared.Settings.SDL2_MIXER_FORMATS = old_formats
+    elif what == 'sdl2-mixer-ogg':
+      old_formats = shared.Settings.SDL2_MIXER_FORMATS
+      shared.Settings.SDL2_MIXER_FORMATS = ["ogg"]
+      build_port('sdl2_mixer', libname('libSDL2_mixer_ogg'))
+      shared.Settings.SDL2_MIXER_FORMATS = old_formats
+    elif what == 'sdl2-mixer-mp3':
+      old_formats = shared.Settings.SDL2_MIXER_FORMATS
+      shared.Settings.SDL2_MIXER_FORMATS = ["mp3"]
+      build_port('sdl2_mixer', libname('libSDL2_mixer_mp3'))
+      shared.Settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a')
     elif what == 'harfbuzz':
