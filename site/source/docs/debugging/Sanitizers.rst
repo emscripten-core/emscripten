@@ -36,7 +36,7 @@ address in a WebAssembly Memory or a JavaScript Typed Array).
 In builds with ``ASSERTIONS`` enabled, a magic cookie stored at address 0 is
 checked at the end of the program execution. That is, it will notify you if
 anything wrote to that location while the prgram ran. This only detects writes,
-not reads, and does not help find where the bad write actually is.
+not reads, and does not help to find where the bad write actually is.
 
 Consider the following program, ``null-assign.c``:
 
