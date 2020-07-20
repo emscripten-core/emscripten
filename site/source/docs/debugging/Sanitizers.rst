@@ -30,8 +30,11 @@ Catching Null Dereference
 -------------------------
 
 By default, with Emscripten, dereferencing a null pointer does not immediately
-cause a segmentation fault, unlike traditional platforms (0 is just a normal
-address in a WebAssembly Memory or a JavaScript Typed Array).
+cause a segmentation fault, unlike traditional platforms, as 0 is just a normal
+address in a WebAssembly Memory. 0 is also a normal location in a
+JavaScript Typed Array, which is an issue in the JavaScript alongside the
+WebAssembly (runtime support code, JS library methods, ``EM_ASM/EM_JS``, etc.),
+and also for the compiled code if you build with ``-s WASM=0``.
 
 In builds with ``ASSERTIONS`` enabled, a magic cookie stored at address 0 is
 checked at the end of the program execution. That is, it will notify you if
@@ -134,7 +137,9 @@ you will receive an error message that looks something like:
   runtime, or (3) if you want malloc to return NULL (0) instead of this abort,
   compile with  -s ABORTING_MALLOC=0
 
-ASan fully supports multi-thread environments.
+ASan fully supports multi-thread environments. ASan also operates on the JS
+support code, that is, if JS tries to read from a memory address that is not
+valid, it will be caught, just like if that access happened from wasm.
 
 Examples
 --------
