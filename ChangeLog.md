@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+1.39.20: 07/20/2020
+-------------------
 - Remove the `--save-bc` command line option.  This was specific to fastcomp,
   which is deprecated, and for debugging purposes we already have `EMCC_DEBUG`
   which saves all intermediate files.
