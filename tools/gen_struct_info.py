@@ -402,6 +402,9 @@ def inspect_code(headers, cpp_opts, structs, defines):
                                     '-s', 'STRICT=1',
                                     '-s', 'SINGLE_FILE=1']
 
+  # TODO(sbc): Remove this one we remove the test_em_config_env_var test
+  cmd += ['-Wno-deprecated']
+
   if not shared.Settings.WASM_BACKEND:
     # Avoid the binaryen dependency if we are only using fastcomp
     cmd += ['-s', 'WASM=0', '-Wno-fastcomp']
