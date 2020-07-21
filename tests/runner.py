@@ -477,7 +477,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def setUp(self):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
-    self.emcc_args = ['-Werror']
+    self.emcc_args = ['-Werror', '-Wno-deprecated']
     self.env = {}
     self.temp_files_before_run = []
 

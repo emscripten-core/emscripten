@@ -21,7 +21,7 @@ Current Trunk
 - The `EM_CONFIG` environment variable and `--em-config` command line option no
   longer support a literal python string. Instead the name of a config file is
   required. Since all config file settings are individually override-able using
-  `EM_FOO` this should be needed.
+  `EM_FOO` this should be enough.
 
 1.39.20: 07/20/2020
 -------------------
