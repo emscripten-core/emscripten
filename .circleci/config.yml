@@ -13,16 +13,14 @@ executors:
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
-    working_directory:
-      path: "emscripten checkout"
+    working_directory: "emscripten checkout"
   mac:
     environment:
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
     macos:
       xcode: "9.0"
-    working_directory:
-      path: "emscripten checkout"
+    working_directory: "emscripten checkout"
 
 commands:
   emsdk-env:
@@ -545,8 +543,7 @@ jobs:
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail
-    working_directory:
-      path: "emscripten checkout"
+    working_directory: "emscripten checkout"
     environment:
       # on windows the python binary is always called python.exe and never
       # python3.exe
@@ -575,8 +572,7 @@ jobs:
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail
-    working_directory:
-      path: "emscripten checkout"
+    working_directory: "emscripten checkout"
     steps:
       - run:
           name: Install packages
