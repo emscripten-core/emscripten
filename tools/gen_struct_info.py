@@ -396,11 +396,14 @@ def inspect_code(headers, cpp_opts, structs, defines):
   # -Oz optimizes enough to avoid warnings on code size/num locals
   cmd = [shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
                                     '-O0', '--js-opts', '0', '--memory-init-file', '0',
-                                    '-Werror', '-Wno-format', '-Wno-deprecated',
+                                    '-Werror', '-Wno-format',
                                     '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                     '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
                                     '-s', 'STRICT=1',
                                     '-s', 'SINGLE_FILE=1']
+
+  # TODO(sbc): Remove this one we remove the test_em_config_env_var test
+  cmd += ['-Wno-deprecated']
 
   if not shared.Settings.WASM_BACKEND:
     # Avoid the binaryen dependency if we are only using fastcomp
