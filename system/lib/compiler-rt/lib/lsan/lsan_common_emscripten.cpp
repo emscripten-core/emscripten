@@ -105,7 +105,11 @@ void HandleLeaks() {
 void LockStuffAndStopTheWorld(StopTheWorldCallback callback, void *argument) {
   // Currently, on Emscripten this does nothing and just calls the callback.
   // This works fine on a single-threaded environment.
+  LockThreadRegistry();
+  LockAllocator();
   StopTheWorld(callback, argument);
+  UnlockAllocator();
+  UnlockThreadRegistry();
 }
 
 u32 GetCurrentThread();
