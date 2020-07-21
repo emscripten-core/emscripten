@@ -680,6 +680,9 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
+      - test-minimal-python2:
+          requires:
+            - build-linux
       - build-windows
       - test-minimal-windows:
           requires:
