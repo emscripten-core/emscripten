@@ -2961,7 +2961,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS || GL_TRACK_ERRORS
       if (log === null) log = '(unknown error)';
 #endif
-      if (log.length === 0){
+      if (log.length === 0) {
         // GLES2 specification says that if the shader has no information log, a value of 0 is returned.
         {{{ makeSetValue('p', '0', '0', 'i32') }}};
       } else {
