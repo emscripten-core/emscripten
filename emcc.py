@@ -987,7 +987,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     newargs = diagnostics.capture_warnings(newargs)
 
     if not shared.CONFIG_FILE:
-      diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprected. Please use a file instead.')
+      diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprecated. Please use a file instead.')
 
     for i in range(len(newargs)):
       if newargs[i] in ('-l', '-L', '-I'):

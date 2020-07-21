@@ -78,6 +78,7 @@ def run_one_command(cmd):
   # Disable certain warnings when we build ports/system libraries we don't want to
   # show them a million times.
   cmd.append('-Wno-fastcomp')
+  cmd.append('-Wno-deprecated')
   shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
 
 

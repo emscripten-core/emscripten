@@ -435,7 +435,8 @@ fi
 
     wipe()
     with env_modify({'EM_CONFIG': get_basic_config()}):
-      run_process([EMCC, 'main.cpp', '-o', 'a.out.js'])
+
+      run_process([EMCC, 'main.cpp', '-Wno-deprecated', '-o', 'a.out.js'])
 
     self.assertContained('hello from emcc with no config file', self.run_js('a.out.js'))
 
