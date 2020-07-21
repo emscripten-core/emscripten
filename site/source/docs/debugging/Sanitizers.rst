@@ -273,6 +273,8 @@ by doing:
 
 .. code-block:: c
 
+  #include <sanitizer/lsan_interface.h>
+
   #if defined(__has_feature)
   #if __has_feature(address_sanitizer)
     // code for ASan-enabled builds
