@@ -4424,6 +4424,12 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
+  @requires_threads
+  def test_async_xhr(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
+    self.btest('fetch/test_async_xhr.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
