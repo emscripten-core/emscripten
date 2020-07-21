@@ -31,14 +31,14 @@ Catching Null Dereference
 
 By default, with Emscripten, dereferencing a null pointer does not immediately
 cause a segmentation fault, unlike traditional platforms, as 0 is just a normal
-address in a WebAssembly Memory. 0 is also a normal location in a
+address in a WebAssembly memory. 0 is also a normal location in a
 JavaScript Typed Array, which is an issue in the JavaScript alongside the
 WebAssembly (runtime support code, JS library methods, ``EM_ASM/EM_JS``, etc.),
 and also for the compiled code if you build with ``-s WASM=0``.
 
 In builds with ``ASSERTIONS`` enabled, a magic cookie stored at address 0 is
 checked at the end of the program execution. That is, it will notify you if
-anything wrote to that location while the prgram ran. This only detects writes,
+anything wrote to that location while the program ran. This only detects writes,
 not reads, and does not help to find where the bad write actually is.
 
 Consider the following program, ``null-assign.c``:
@@ -374,8 +374,8 @@ option ``malloc_context_size=0``, like this:
 
   Module.ASAN_OPTIONS = 'malloc_context_size=0';
 
-This prevents ASan from reporting the location of memory leaks, as well as
-offer insight into where the memory for a heap-based memory error originated,
+This prevents ASan from reporting the location of memory leaks or offering
+insight into where the memory for a heap-based memory error originated,
 but may provide tremendous speed ups.
 
 Comparison to ``SAFE_HEAP``
