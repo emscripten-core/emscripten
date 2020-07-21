@@ -13,12 +13,16 @@ executors:
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
+    working_directory:
+      path: "emscripten checkout"
   mac:
     environment:
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
     macos:
       xcode: "9.0"
+    working_directory:
+      path: "emscripten checkout"
 
 commands:
   emsdk-env:
@@ -26,7 +30,7 @@ commands:
     steps:
       - run:
           name: emsdk_env.sh
-          command: echo "source ~/emsdk/emsdk_env.sh > /dev/null" >> $BASH_ENV
+          command: echo "source ~/emsdk\ master/emsdk_env.sh > /dev/null" >> $BASH_ENV
   npm-install:
     description: "npm ci"
     steps:
@@ -39,8 +43,8 @@ commands:
           command: |
             curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
             tar -C ~ -xf ~/emsdk-master.tar.gz
-            mv ~/emsdk-master ~/emsdk
-            cd ~/emsdk
+            mv ~/emsdk-master ~/emsdk\ master
+            cd ~/emsdk\ master
             ./emsdk update-tags
             ./emsdk install tot-upstream
             ./emsdk activate tot-upstream
@@ -63,7 +67,7 @@ commands:
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
             cd -
             echo "final .emscripten:"
-            cat ~/emsdk/.emscripten
+            cat ~/emsdk\ master/.emscripten
       - emsdk-env
       - npm-install
       - run:
@@ -100,13 +104,13 @@ commands:
       - run:
           name: freeze cache
           command: |
-            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
+            echo "FROZEN_CACHE=True" >> ~/emsdk\ master/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
           # Must be relative path from root
           paths:
-            - emsdk/
+            - emsdk\ master/
             - cache/
             - vms
             - .jsvu
@@ -319,8 +323,8 @@ jobs:
           command: |
             curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
             tar -C ~ -xf ~/emsdk-master.tar.gz
-            mv ~/emsdk-master ~/emsdk
-            cd ~/emsdk
+            mv ~/emsdk-master ~/emsdk\ master
+            cd ~/emsdk\ master
             ./emsdk update-tags
             ./emsdk install tot-fastcomp
             ./emsdk activate tot-fastcomp
@@ -334,7 +338,7 @@ jobs:
             echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
             cd -
             echo "final .emscripten:"
-            cat ~/emsdk/.emscripten
+            cat ~/emsdk\ master/.emscripten
       - emsdk-env
       - npm-install
       - run:
@@ -345,13 +349,13 @@ jobs:
       - run:
           name: freeze cache
           command: |
-            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
+            echo "FROZEN_CACHE=True" >> ~/emsdk\ master/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
           # Must be relative path from root
           paths:
-            - emsdk/
+            - emsdk\ master/
             - cache/
   build-docs:
     executor: bionic
@@ -541,6 +545,8 @@ jobs:
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail
+    working_directory:
+      path: "emscripten checkout"
     environment:
       # on windows the python binary is always called python.exe and never
       # python3.exe
@@ -569,6 +575,8 @@ jobs:
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail
+    working_directory:
+      path: "emscripten checkout"
     steps:
       - run:
           name: Install packages
