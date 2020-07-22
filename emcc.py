@@ -796,8 +796,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # This check comes after check_sanity because test_sanity expects this.
   if not args:
-    logger.warning('no input files')
-    return 1
+    exit_with_error('no input files')
 
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
