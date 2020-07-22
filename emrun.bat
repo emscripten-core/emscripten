@@ -3,18 +3,9 @@
 :: To modify this file, edit `tools/run_python.bat` and then run
 :: `tools/create_entry_points.py`
 
-:: Using setlocal here means that our use of PYTHON variable
-:: won't effect the calling shell.
-setlocal
-
-if "%PYTHON%"=="" (
-  set PYTHON=%EMSDK_PYTHON%
+set EM_PY=%EMSDK_PYTHON%
+if "%EM_PY%"=="" (
+  set EM_PY=python
 )
 
-if "%PYTHON%"=="" (
-  set PYTHON=python
-)
-
-call "%PYTHON%" "%~dp0\%~n0.py" %*
-
-endlocal
+"%EM_PY%" "%~dp0\%~n0.py" %*
