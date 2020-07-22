@@ -391,7 +391,6 @@ extern "C" {
   int emscripten_builtin_pthread_join(void *th, void **ret);
   void *emscripten_builtin_malloc(size_t size);
   void emscripten_builtin_free(void *);
-  char *emscripten_builtin_strerror(int err);
 }
 #endif
 
