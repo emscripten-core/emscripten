@@ -1068,6 +1068,7 @@ var LibraryEmbind = {
 
     function makeDynCaller(dynCall) {
 #if DYNAMIC_EXECUTION == 0
+      if(ABORT) throw "program has aborted";
       var argCache = [rawFunction];
       return function() {
           argCache.length = arguments.length + 1;
@@ -1084,10 +1085,14 @@ var LibraryEmbind = {
 
         var name = 'dynCall_' + signature + '_' + rawFunction;
         var body = 'return function ' + name + '(' + args.join(', ') + ') {\n';
+        body    += '    throwOnAbort();\n';
         body    += '    return dynCall(rawFunction' + (args.length ? ', ' : '') + args.join(', ') + ');\n';
         body    += '};\n';
 
-        return (new Function('dynCall', 'rawFunction', body))(dynCall, rawFunction);
+        // Lets us access ABORT from the current closure scope inside the dynamic function below
+        function throwOnAbort() { if(ABORT) throw "program has aborted"; }
+
+        return (new Function('dynCall', 'rawFunction', 'throwOnAbort', body))(dynCall, rawFunction, throwOnAbort);
 #endif
     }
 

@@ -104,6 +104,7 @@ function getCFunc(ident) {
     @param {Arguments|Array=} args
     @param {Object=} opts */
 function ccall(ident, returnType, argTypes, args, opts) {
+  if(ABORT) throw "program has aborted";
   // For fast lookup of conversion functions
   var toC = {
     'string': function(str) {
@@ -191,7 +192,11 @@ function cwrap(ident, returnType, argTypes, opts) {
   var numericArgs = argTypes.every(function(type){ return type === 'number'});
   var numericRet = returnType !== 'string';
   if (numericRet && numericArgs && !opts) {
-    return getCFunc(ident);
+    var func = getCFunc(ident);
+    return function() {
+      if(ABORT) throw "program has aborted";
+      return func.apply(null, arguments);
+    }
   }
 #endif
   return function() {
