@@ -1322,7 +1322,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal']
-  src_files = ['ubsan_minimal_handlers.cc']
+  src_files = ['ubsan_minimal_handlers.cpp']
 
 
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
@@ -1332,15 +1332,15 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   never_force = True
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
-  src_glob = '*.cc'
-  src_glob_exclude = ['sanitizer_common_nolibc.cc']
+  src_glob = '*.cpp'
+  src_glob_exclude = ['sanitizer_common_nolibc.cpp']
 
 
 class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  src_glob = '*.cc'
+  src_glob = '*.cpp'
 
 
 class libubsan_rt_wasm(SanitizerLibrary):
@@ -1354,15 +1354,15 @@ class liblsan_common_rt_wasm(SanitizerLibrary):
   name = 'liblsan_common_rt_wasm'
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
-  src_glob = 'lsan_common*.cc'
+  src_glob = 'lsan_common*.cpp'
 
 
 class liblsan_rt_wasm(SanitizerLibrary):
   name = 'liblsan_rt_wasm'
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
-  src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
-                      'lsan_common_emscripten.cc']
+  src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
+                      'lsan_common_emscripten.cpp']
 
 
 class libasan_rt_wasm(SanitizerLibrary):

@@ -1,1 +1,1 @@
-These files are from compiler-rt 9.0.0.
+These files are from compiler-rt 10.0.0.
