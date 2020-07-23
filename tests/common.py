@@ -113,9 +113,9 @@ def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     self.check_dylink()
-    return func(self)
+    return func(self, *args, **kwargs)
 
   return decorated
 
