@@ -4267,6 +4267,20 @@ window.close = function() {
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-s', 'FULL_ES2=1'])
 
+  # Tests for WEBGL_multi_draw extension
+  # For testing WebGL draft extensions like this, if using chrome as the browser,
+  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
+  @requires_graphics_hardware
+  def test_webgl_multi_draw(self):
+    self.btest('webgl_multi_draw_test.c', reference='webgl_array_of_structs_uniform.png',
+      args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_array_of_structs_uniform.png',
+      args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_array_of_structs_uniform.png',
+      args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_array_of_structs_uniform.png',
+      args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
