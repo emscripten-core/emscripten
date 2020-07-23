@@ -4273,13 +4273,13 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_multi_draw(self):
     self.btest('webgl_multi_draw_test.c', reference='webgl_array_of_structs_uniform.png',
-      args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
     self.btest('webgl_multi_draw_test.c', reference='webgl_array_of_structs_uniform.png',
-      args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
     self.btest('webgl_multi_draw_test.c', reference='webgl_array_of_structs_uniform.png',
-      args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
     self.btest('webgl_multi_draw_test.c', reference='webgl_array_of_structs_uniform.png',
-      args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
