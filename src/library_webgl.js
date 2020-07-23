@@ -3628,7 +3628,7 @@ var LibraryGL = {
   },
   glMultiDrawElementsWEBGL: function(mode, counts, countsOffset, type, offsets, offsetsOffset, drawcount) {
     var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
-    var offsetsList = HEAP32.subarray(offsets >> 2, offsets + drawcount);
+    var offsetsList = HEAP32.subarray(offsets >> 2, (offsets >> 2) + drawcount);
     GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
       mode,
       countsList,
@@ -3640,7 +3640,7 @@ var LibraryGL = {
   },
   glMultiDrawElementsInstancedWEBGL: function(mode, counts, countsOffset, type, offsets, offsetsOffset, instanceCounts, instanceCountsOffset, drawcount) {
     var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
-    var offsetsList = HEAP32.subarray(offsets >> 2, offsets + drawcount);
+    var offsetsList = HEAP32.subarray(offsets >> 2, (offsets >> 2) + drawcount);
     var instanceCountsList = HEAP32.subarray(instanceCounts >> 2, (instanceCounts >> 2) + drawcount);
     GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
       mode,

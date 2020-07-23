@@ -84,13 +84,21 @@ int main()
 
   static const float pos_and_color[] = {
   //     x,     y, r, g, b
-     -0.6f, -0.6f, 1, 0, 0,
-      0.6f, -0.6f, 0, 1, 0,
-      0.f,   0.6f, 0, 0, 1,
+     -0.5f, -0.5f, 1, 0, 0,
+      0.5f, -0.5f, 0, 1, 0,
+     -0.5f,   0.5f, 0, 0, 1,
+      0.5f, 0.5f, 1, 1, 1,
+     -0.5f,   0.5f, 0, 0, 1,
+      0.5f, -0.5f, 0, 1, 0,
   };
 
+  // 2 -- 3
+  // | \  |
+  // |  \ |
+  // 0 -- 1
   static const GLushort indices[] = {
-    0, 1, 2
+    0, 1, 2,
+    3, 2, 1
   };
 
   GLuint vbo;
@@ -115,29 +123,30 @@ int main()
     glClear(GL_COLOR_BUFFER_BIT);
     glDrawArrays(GL_TRIANGLES, 0, 3);
   } else {
-    GLint firsts[] = {0};
-    GLsizei counts[] = {3};
-    GLsizei instanceCounts[] = {1};
-    GLint offsets[] = {0};
+    GLint firsts[] = {0, 3};
+    GLsizei counts[] = {3, 3};
+    GLsizei instanceCounts[] = {1, 1};
+    GLint offsets[] = {0, 3 * sizeof(GLushort)};
+    GLsizei drawcount = 2;
 
 #ifdef MULTI_DRAW_ARRAYS
     glClear(GL_COLOR_BUFFER_BIT);
-    glMultiDrawArraysWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, 1);
+    glMultiDrawArraysWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ARRAYS_INSTANCED
     glClear(GL_COLOR_BUFFER_BIT);
-    glMultiDrawArraysInstancedWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, instanceCounts, 0, 1);
+    glMultiDrawArraysInstancedWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, instanceCounts, 0, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ELEMENTS
     glClear(GL_COLOR_BUFFER_BIT);
-    glMultiDrawElementsWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, 1);
+    glMultiDrawElementsWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ELEMENTS_INSTANCED
     glClear(GL_COLOR_BUFFER_BIT);
-    glMultiDrawElementsInstancedWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, instanceCounts, 0, 1);
+    glMultiDrawElementsInstancedWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, instanceCounts, 0, drawcount);
 #endif
   }
 
