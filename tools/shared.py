@@ -815,13 +815,13 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
     path_from_root('system', 'lib', 'compiler-rt', 'include'),
+    path_from_root('system', 'lib', 'libunwind', 'include'),
     Cache.get_path('include')
   ]
 
   cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
     path_from_root('system', 'lib', 'libcxxabi', 'include'),
-    path_from_root('system', 'lib', 'libunwind', 'include')
   ]
 
   def include_directive(paths):
