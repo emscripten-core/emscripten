@@ -2585,7 +2585,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args.append('--lz4')
         if options.use_preload_plugins:
           file_args.append('--use-preload-plugins')
-        file_code = run_process([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
+        file_code = shared.check_call([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
         options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
       # Apply pre and postjs files

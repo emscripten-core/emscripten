@@ -254,12 +254,13 @@ def main():
         data_files.append({'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode,
                            'explicit_dst_path': uses_at_notation})
       else:
-        print('Warning: ' + arg + ' does not exist, ignoring.', file=sys.stderr)
+        print('error: ' + arg + ' does not exist', file=sys.stderr)
+        return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
       print('Unknown parameter:', arg, file=sys.stderr)
-      sys.exit(1)
+      return 1
 
   if (not force) and not data_files:
     has_preloaded = False
