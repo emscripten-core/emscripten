@@ -68,7 +68,7 @@ def get_cflags(force_object_files=False):
 def run_one_command(cmd):
   # Helper function used by run_build_commands.
   if shared.EM_BUILD_VERBOSE:
-    print(' '.join(cmd))
+    print(shared.shlex_join(cmd))
   # building system libraries and ports should be hermetic in that it is not
   # affected by things like EMMAKEN_CFLAGS which the user may have set
   safe_env = os.environ.copy()
