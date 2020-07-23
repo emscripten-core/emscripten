@@ -120,8 +120,13 @@ int main()
   glClearColor(0.3f,0.3f,0.3f,1);
   
   if (!extAvailable) {
-    glClear(GL_COLOR_BUFFER_BIT);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    EM_ASM({
+      xhr = new XMLHttpRequest();
+      xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20WEBGL_multi_draw%20is%20not%20supported!');
+      xhr.send();
+      setTimeout(function() { window.close() }, 2000);
+    });
+    return 0;
   } else {
     GLint firsts[] = {0, 3};
     GLsizei counts[] = {3, 3};
