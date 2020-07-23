@@ -10,9 +10,10 @@
 #include <emscripten/fetch.h>
 
 void downloadSucceeded(emscripten_fetch_t *fetch) {
-    int *nump = (int*)fetch->userData;
     printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
-    printf("End: %d\n", *nump);
+    // int *nump = (int*)fetch->userData;
+    // printf("End: %d\n", *nump);
+    printf("End: %s\n", fetch->userData);
     emscripten_fetch_close(fetch);
 }
 
@@ -22,17 +23,20 @@ void downloadFailed(emscripten_fetch_t *fetch) {
 }
 
 int main() {
-    int num = 721;
-    int *nump = &num;
+    // int num = 721;
+    // int *nump = &num;
+    char *str = "test";
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
     strcpy(attr.requestMethod, "GET");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-    attr.userData = nump;
+    // attr.userData = nump;
+    attr.userData = str;
     attr.onsuccess = downloadSucceeded;
     attr.onerror = downloadFailed;
 
-    printf("Start: %d\n", *nump);
+    // printf("Start: %d\n", *nump);
+    printf("Start: %s\n", str);
 
     emscripten_fetch(&attr, "gears.png");
 }
