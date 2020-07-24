@@ -61,6 +61,16 @@ int main()
 
   GLboolean extAvailable = emscripten_webgl_enable_extension(ctx, "WEBGL_multi_draw");
 
+  if (!extAvailable) {
+    EM_ASM({
+      xhr = new XMLHttpRequest();
+      xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20WEBGL_multi_draw%20is%20not%20supported!');
+      xhr.send();
+      setTimeout(function() { window.close() }, 2000);
+    });
+    return 0;
+  }
+
   static const char vertex_shader[] =
     "attribute vec4 apos;"
     "attribute vec4 acolor;"
@@ -118,16 +128,6 @@ int main()
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
   glClearColor(0.3f,0.3f,0.3f,1);
-  
-  if (!extAvailable) {
-    EM_ASM({
-      xhr = new XMLHttpRequest();
-      xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20WEBGL_multi_draw%20is%20not%20supported!');
-      xhr.send();
-      setTimeout(function() { window.close() }, 2000);
-    });
-    return 0;
-  }
 
   GLint firsts[] = {0, 3};
   GLsizei counts[] = {3, 3};
