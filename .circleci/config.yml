@@ -21,15 +21,16 @@ executors:
       xcode: "9.0"
 
 commands:
+  emsdk-env:
+    description: "emsdk_env.sh"
+    steps:
+      - run:
+          name: emsdk_env.sh
+          command: echo "source ~/emsdk/emsdk_env.sh 2> /dev/null" >> $BASH_ENV
   npm-install:
     description: "npm ci"
     steps:
-      - run:
-          name: npm ci
-          command: |
-            # Will add emsdk version of node to PATH
-            source ~/emsdk-master/emsdk_env.sh
-            npm ci
+      - run: npm ci
   build:
     description: "Install emsdk build all libraries using embuilder"
     steps:
@@ -38,30 +39,32 @@ commands:
           command: |
             curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
             tar -C ~ -xf ~/emsdk-master.tar.gz
-            cd ~/emsdk-master
+            mv ~/emsdk-master ~/emsdk
+            cd ~/emsdk
             ./emsdk update-tags
             ./emsdk install tot-upstream
-            ./emsdk activate --no-embedded tot-upstream
+            ./emsdk activate tot-upstream
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf emscripten
-            echo "import os" >> ~/.emscripten
+            echo "import os" >> .emscripten
             # We use an out-of-tree cache directory so it can be part of the
             # persisted workspace (see below).
-            echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
+            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
             # test v8 with --wasm-staging which enables new features. we use v8
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> ~/.emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
-            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
-            echo "WASM_ENGINES = []" >> ~/.emscripten
-            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
-            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
+            echo "JS_ENGINES = [NODE_JS]" >> .emscripten
+            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
+            echo "WASM_ENGINES = []" >> .emscripten
+            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
+            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
             cd -
             echo "final .emscripten:"
-            cat ~/.emscripten
+            cat ~/emsdk/.emscripten
+      - emsdk-env
       - npm-install
       - run:
           name: gen_struct_info
@@ -97,15 +100,14 @@ commands:
       - run:
           name: freeze cache
           command: |
-            echo "FROZEN_CACHE=True" >> ~/.emscripten
+            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
           # Must be relative path from root
           paths:
-            - emsdk-master/
+            - emsdk/
             - cache/
-            - .emscripten
             - vms
             - .jsvu
   run-tests:
@@ -119,6 +121,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: run tests
@@ -136,6 +139,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: Install brew package dependencies
@@ -154,6 +158,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: download firefox
@@ -253,6 +258,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: download chrome
@@ -286,6 +292,7 @@ commands:
             wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             dpkg -i ~/chrome.deb
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: run sockets tests
@@ -312,21 +319,23 @@ jobs:
           command: |
             curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
             tar -C ~ -xf ~/emsdk-master.tar.gz
-            cd ~/emsdk-master
+            mv ~/emsdk-master ~/emsdk
+            cd ~/emsdk
             ./emsdk update-tags
             ./emsdk install tot-fastcomp
-            ./emsdk activate --no-embedded tot-fastcomp
+            ./emsdk activate tot-fastcomp
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf emscripten
-            cd -
             # We use an out-of-tree cache directory so it can be part of the
             # persisted workspace (see below).
-            echo "import os" >> ~/.emscripten
-            echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
+            echo "import os" >> .emscripten
+            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
+            cd -
             echo "final .emscripten:"
-            cat ~/.emscripten
+            cat ~/emsdk/.emscripten
+      - emsdk-env
       - npm-install
       - run:
           name: embuilder build ALL
@@ -336,22 +345,21 @@ jobs:
       - run:
           name: freeze cache
           command: |
-            echo "FROZEN_CACHE=True" >> ~/.emscripten
+            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
           # Must be relative path from root
           paths:
-            - emsdk-master/
+            - emsdk/
             - cache/
-            - .emscripten
   build-docs:
     executor: bionic
     steps:
       - checkout
       # This version is mentioned in `site/source/docs/site/about.rst`.
       # Please keep them in sync.
-      - run: pip3 install sphinx==1.7.9
+      - run: pip3 install sphinx==2.4.4
       - run: make -C site text
       - run: tests/check_emcc_help_text.py
       - run: make -C site html
@@ -359,6 +367,8 @@ jobs:
     executor: bionic
     steps:
       - checkout
+      - run: pip2 install flake8==3.7.8
+      - run: pip3 install flake8==3.7.8
       - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
   test-fastcomp-other:
@@ -415,6 +425,10 @@ jobs:
           test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
   test-fastcomp-p:
     executor: bionic
+    environment:
+      # Without this test_poppler can cause timeouts because it takes more then
+      # 10 minutes without outputing anything.
+      EM_BUILD_VERBOSE: "2"
     steps:
       - run-tests:
           test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
@@ -477,6 +491,19 @@ jobs:
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8
       - build
+  test-minimal-python2:
+    environment:
+      # PTYHON_BIN is used in this file to control which version of python
+      # we use to run the test runner, and EMSDK_PYTHON is used by emcc and
+      # other tools to determine which version of python to use internally.
+      # These can, by design, vary independently.
+      PYTHON_BIN: "python2"
+      EMSDK_PYTHON: "python2"
+      EMCC_ALLOW_PYTHON2: "1"
+    executor: bionic
+    steps:
+      - run-tests:
+          test_targets: "wasm2.test_hello_world other.test_emcc_size_parsing"
   test-wasm0:
     executor: bionic
     steps:
@@ -486,7 +513,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm2"
+          test_targets: "wasm2 asan.test_embind*"
   test-wasm3:
     executor: bionic
     steps:
@@ -503,7 +530,7 @@ jobs:
     steps:
       - run-tests:
           # see explanations in the fastcomp skips for these, earlier
-          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
+          test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
     steps:
@@ -542,6 +569,9 @@ jobs:
       PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
+      # clang can compile but not link in the current setup, see
+      # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
+      EMTEST_LACKS_NATIVE_CLANG: "1"
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail
@@ -553,7 +583,7 @@ jobs:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - run-tests:
-          test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error"
+          test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null"
   build-mac:
     executor: mac
     steps:
@@ -568,7 +598,7 @@ jobs:
     executor: mac
     steps:
       - run-tests-mac:
-          test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message skip:other.test_emcc_v"
+          test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message"
 
 workflows:
   build-test:
@@ -650,6 +680,9 @@ workflows:
           requires:
             - build-linux
       - test-sockets-chrome:
+          requires:
+            - build-linux
+      - test-minimal-python2:
           requires:
             - build-linux
       - build-windows

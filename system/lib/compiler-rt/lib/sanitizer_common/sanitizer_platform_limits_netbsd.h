@@ -1,9 +1,8 @@
 //===-- sanitizer_platform_limits_netbsd.h --------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -355,7 +354,13 @@ struct __sanitizer_addrinfo {
   int ai_family;
   int ai_socktype;
   int ai_protocol;
+#if defined(__sparc__) && defined(_LP64)
+  int __ai_pad0;
+#endif
   unsigned ai_addrlen;
+#if defined(__alpha__) || (defined(__i386__) && defined(_LP64))
+  int __ai_pad0;
+#endif
   char *ai_canonname;
   void *ai_addr;
   struct __sanitizer_addrinfo *ai_next;
@@ -407,6 +412,8 @@ extern int ptrace_pt_get_event_mask;
 extern int ptrace_pt_get_process_state;
 extern int ptrace_pt_set_siginfo;
 extern int ptrace_pt_get_siginfo;
+extern int ptrace_pt_lwpstatus;
+extern int ptrace_pt_lwpnext;
 extern int ptrace_piod_read_d;
 extern int ptrace_piod_write_d;
 extern int ptrace_piod_read_i;
@@ -431,8 +438,17 @@ struct __sanitizer_ptrace_lwpinfo {
   int pl_event;
 };
 
+struct __sanitizer_ptrace_lwpstatus {
+  __sanitizer_lwpid_t pl_lwpid;
+  __sanitizer_sigset_t pl_sigpend;
+  __sanitizer_sigset_t pl_sigmask;
+  char pl_name[20];
+  void *pl_private;
+};
+
 extern unsigned struct_ptrace_ptrace_io_desc_struct_sz;
 extern unsigned struct_ptrace_ptrace_lwpinfo_struct_sz;
+extern unsigned struct_ptrace_ptrace_lwpstatus_struct_sz;
 extern unsigned struct_ptrace_ptrace_event_struct_sz;
 extern unsigned struct_ptrace_ptrace_siginfo_struct_sz;
 
@@ -850,6 +866,26 @@ extern unsigned struct_usb_config_desc_sz;
 extern unsigned struct_usb_ctl_report_desc_sz;
 extern unsigned struct_usb_ctl_report_sz;
 extern unsigned struct_usb_ctl_request_sz;
+#if defined(__x86_64__)
+extern unsigned struct_nvmm_ioc_capability_sz;
+extern unsigned struct_nvmm_ioc_machine_create_sz;
+extern unsigned struct_nvmm_ioc_machine_destroy_sz;
+extern unsigned struct_nvmm_ioc_machine_configure_sz;
+extern unsigned struct_nvmm_ioc_vcpu_create_sz;
+extern unsigned struct_nvmm_ioc_vcpu_destroy_sz;
+extern unsigned struct_nvmm_ioc_vcpu_configure_sz;
+extern unsigned struct_nvmm_ioc_vcpu_setstate_sz;
+extern unsigned struct_nvmm_ioc_vcpu_getstate_sz;
+extern unsigned struct_nvmm_ioc_vcpu_inject_sz;
+extern unsigned struct_nvmm_ioc_vcpu_run_sz;
+extern unsigned struct_nvmm_ioc_gpa_map_sz;
+extern unsigned struct_nvmm_ioc_gpa_unmap_sz;
+extern unsigned struct_nvmm_ioc_hva_map_sz;
+extern unsigned struct_nvmm_ioc_hva_unmap_sz;
+extern unsigned struct_nvmm_ioc_ctl_sz;
+#endif
+extern unsigned struct_spi_ioctl_configure_sz;
+extern unsigned struct_spi_ioctl_transfer_sz;
 extern unsigned struct_autofs_daemon_request_sz;
 extern unsigned struct_autofs_daemon_done_sz;
 extern unsigned struct_sctp_connectx_addrs_sz;
@@ -892,6 +928,9 @@ extern unsigned struct_vnd_user_sz;
 extern unsigned struct_vt_stat_sz;
 extern unsigned struct_wdog_conf_sz;
 extern unsigned struct_wdog_mode_sz;
+extern unsigned struct_ipmi_recv_sz;
+extern unsigned struct_ipmi_req_sz;
+extern unsigned struct_ipmi_cmdspec_sz;
 extern unsigned struct_wfq_conf_sz;
 extern unsigned struct_wfq_getqid_sz;
 extern unsigned struct_wfq_getstats_sz;
@@ -970,6 +1009,7 @@ extern unsigned struct_iscsi_wait_event_parameters_sz;
 extern unsigned struct_isp_stats_sz;
 extern unsigned struct_lsenable_sz;
 extern unsigned struct_lsdisable_sz;
+extern unsigned struct_audio_format_query_sz;
 extern unsigned struct_mixer_ctrl_sz;
 extern unsigned struct_mixer_devinfo_sz;
 extern unsigned struct_mpu_command_rec_sz;
@@ -1576,13 +1616,14 @@ extern unsigned IOCTL_SPKRTONE;
 extern unsigned IOCTL_SPKRTUNE;
 extern unsigned IOCTL_SPKRGETVOL;
 extern unsigned IOCTL_SPKRSETVOL;
-#if 0 /* interfaces are WIP */
+#if defined(__x86_64__)
 extern unsigned IOCTL_NVMM_IOC_CAPABILITY;
 extern unsigned IOCTL_NVMM_IOC_MACHINE_CREATE;
 extern unsigned IOCTL_NVMM_IOC_MACHINE_DESTROY;
 extern unsigned IOCTL_NVMM_IOC_MACHINE_CONFIGURE;
 extern unsigned IOCTL_NVMM_IOC_VCPU_CREATE;
 extern unsigned IOCTL_NVMM_IOC_VCPU_DESTROY;
+extern unsigned IOCTL_NVMM_IOC_VCPU_CONFIGURE;
 extern unsigned IOCTL_NVMM_IOC_VCPU_SETSTATE;
 extern unsigned IOCTL_NVMM_IOC_VCPU_GETSTATE;
 extern unsigned IOCTL_NVMM_IOC_VCPU_INJECT;
@@ -1591,6 +1632,7 @@ extern unsigned IOCTL_NVMM_IOC_GPA_MAP;
 extern unsigned IOCTL_NVMM_IOC_GPA_UNMAP;
 extern unsigned IOCTL_NVMM_IOC_HVA_MAP;
 extern unsigned IOCTL_NVMM_IOC_HVA_UNMAP;
+extern unsigned IOCTL_NVMM_IOC_CTL;
 #endif
 extern unsigned IOCTL_AUTOFSREQUEST;
 extern unsigned IOCTL_AUTOFSDONE;
@@ -1656,6 +1698,7 @@ extern unsigned IOCTL_IOC_NPF_STATS;
 extern unsigned IOCTL_IOC_NPF_SAVE;
 extern unsigned IOCTL_IOC_NPF_RULE;
 extern unsigned IOCTL_IOC_NPF_CONN_LOOKUP;
+extern unsigned IOCTL_IOC_NPF_TABLE_REPLACE;
 extern unsigned IOCTL_PPPOESETPARMS;
 extern unsigned IOCTL_PPPOEGETPARMS;
 extern unsigned IOCTL_PPPOEGETSESSION;
@@ -1809,6 +1852,9 @@ extern unsigned IOCTL_AUDIO_GETPROPS;
 extern unsigned IOCTL_AUDIO_GETBUFINFO;
 extern unsigned IOCTL_AUDIO_SETCHAN;
 extern unsigned IOCTL_AUDIO_GETCHAN;
+extern unsigned IOCTL_AUDIO_QUERYFORMAT;
+extern unsigned IOCTL_AUDIO_GETFORMAT;
+extern unsigned IOCTL_AUDIO_SETFORMAT;
 extern unsigned IOCTL_AUDIO_MIXER_READ;
 extern unsigned IOCTL_AUDIO_MIXER_WRITE;
 extern unsigned IOCTL_AUDIO_MIXER_DEVINFO;
@@ -1894,6 +1940,7 @@ extern unsigned IOCTL_DIOCTUR;
 extern unsigned IOCTL_DIOCMWEDGES;
 extern unsigned IOCTL_DIOCGSECTORSIZE;
 extern unsigned IOCTL_DIOCGMEDIASIZE;
+extern unsigned IOCTL_DIOCRMWEDGES;
 extern unsigned IOCTL_DRVDETACHDEV;
 extern unsigned IOCTL_DRVRESCANBUS;
 extern unsigned IOCTL_DRVCTLCOMMAND;
@@ -1995,6 +2042,8 @@ extern unsigned IOCTL_SEQUENCER_TMR_TEMPO;
 extern unsigned IOCTL_SEQUENCER_TMR_SOURCE;
 extern unsigned IOCTL_SEQUENCER_TMR_METRONOME;
 extern unsigned IOCTL_SEQUENCER_TMR_SELECT;
+extern unsigned IOCTL_SPI_IOCTL_CONFIGURE;
+extern unsigned IOCTL_SPI_IOCTL_TRANSFER;
 extern unsigned IOCTL_MTIOCTOP;
 extern unsigned IOCTL_MTIOCGET;
 extern unsigned IOCTL_MTIOCIEOT;
@@ -2098,6 +2147,8 @@ extern unsigned IOCTL_SIOCSLINKSTR;
 extern unsigned IOCTL_SIOCGETHERCAP;
 extern unsigned IOCTL_SIOCGIFINDEX;
 extern unsigned IOCTL_SIOCSETHERCAP;
+extern unsigned IOCTL_SIOCSIFDESCR;
+extern unsigned IOCTL_SIOCGIFDESCR;
 extern unsigned IOCTL_SIOCGUMBINFO;
 extern unsigned IOCTL_SIOCSUMBPARAM;
 extern unsigned IOCTL_SIOCGUMBPARAM;
@@ -2222,6 +2273,19 @@ extern unsigned IOCTL_WDOGIOC_WHICH;
 extern unsigned IOCTL_WDOGIOC_TICKLE;
 extern unsigned IOCTL_WDOGIOC_GTICKLER;
 extern unsigned IOCTL_WDOGIOC_GWDOGS;
+extern unsigned IOCTL_KCOV_IOC_SETBUFSIZE;
+extern unsigned IOCTL_KCOV_IOC_ENABLE;
+extern unsigned IOCTL_KCOV_IOC_DISABLE;
+extern unsigned IOCTL_IPMICTL_RECEIVE_MSG_TRUNC;
+extern unsigned IOCTL_IPMICTL_RECEIVE_MSG;
+extern unsigned IOCTL_IPMICTL_SEND_COMMAND;
+extern unsigned IOCTL_IPMICTL_REGISTER_FOR_CMD;
+extern unsigned IOCTL_IPMICTL_UNREGISTER_FOR_CMD;
+extern unsigned IOCTL_IPMICTL_SET_GETS_EVENTS_CMD;
+extern unsigned IOCTL_IPMICTL_SET_MY_ADDRESS_CMD;
+extern unsigned IOCTL_IPMICTL_GET_MY_ADDRESS_CMD;
+extern unsigned IOCTL_IPMICTL_SET_MY_LUN_CMD;
+extern unsigned IOCTL_IPMICTL_GET_MY_LUN_CMD;
 extern unsigned IOCTL_SNDCTL_DSP_RESET;
 extern unsigned IOCTL_SNDCTL_DSP_SYNC;
 extern unsigned IOCTL_SNDCTL_DSP_SPEED;
@@ -2355,6 +2419,9 @@ struct __sanitizer_cdbw {
                  offsetof(struct CLASS, MEMBER))
 
 #define SIGACTION_SYMNAME __sigaction14
+
+// Compat with 9.0
+extern unsigned struct_statvfs90_sz;
 
 #endif  // SANITIZER_NETBSD
 

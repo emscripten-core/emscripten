@@ -39,12 +39,14 @@ var LibraryJSEvents = {
     removeEventListenersRegistered: false, 
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    // If positive, we are currently executing in a JS event handler.
-    inEventHandler: 0,
     // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
     currentEventHandler: null,
 #endif
 */
+
+    // If positive, we are currently executing in a JS event handler.
+    // (this particular property must be initialized to zero, as we ++/-- it)
+    inEventHandler: 0,
 
     removeAllEventListeners: function() {
       for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {

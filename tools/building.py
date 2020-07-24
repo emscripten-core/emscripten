@@ -238,18 +238,6 @@ def get_multiprocessing_pool():
   return multiprocessing_pool
 
 
-# When creating environment variables for Makefiles to execute, we need to
-# doublequote the commands if they have spaces in them..
-def doublequote_spaces(arg):
-  if isinstance(arg, list):
-    return [doublequote_spaces(a) for a in arg]
-
-  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
-    return '"' + arg.replace('"', '\\"') + '"'
-
-  return arg
-
-
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
 # remove them when needed.
 def remove_quotes(arg):
@@ -534,6 +522,7 @@ def lld_flags_for_executable(external_symbol_list):
       cmd += ['--export', export]
 
   if Settings.RELOCATABLE:
+    cmd.append('--experimental-pic')
     if Settings.SIDE_MODULE:
       cmd.append('-shared')
     else:
@@ -983,6 +972,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     next = original_filename + '.jso.js'
     configuration.get_temp_files().note(next)
     check_call(cmd, stdout=open(next, 'w'))
+    save_intermediate(next, '%s.js' % passes[0])
     return next
   output = check_call(cmd, stdout=PIPE).stdout
   return output
@@ -1420,7 +1410,11 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     passes = []
     # it may be useful to also run: simplifyIfs, registerize, asmLastOpts
     # passes += ['simplifyExpressions'] # XXX fails on wasm3js.test_sqlite
-    if not debug_info:
+    # TODO: enable name minification with pthreads. atm wasm2js emits pthread
+    # helper functions outside of the asmFunc(), and they mix up minifyGlobals
+    # (which assumes any vars in that area are global, like var HEAP8, but
+    # those helpers have internal vars in a scope it doesn't understand yet)
+    if not debug_info and not Settings.USE_PTHREADS:
       passes += ['minifyNames']
     if minify_whitespace:
       passes += ['minifyWhitespace']

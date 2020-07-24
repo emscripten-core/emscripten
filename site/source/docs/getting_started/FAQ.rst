@@ -257,13 +257,16 @@ Here is an example of how to use it:
 
 The crucial thing is that ``Module`` exists, and has the property ``onRuntimeInitialized``, before the script containing emscripten output (``my_project.js`` in this example) is loaded.
 
-Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. That puts all of the generated JavaScript into a factory function, which you can call to create an instance of your module. The factory function returns a Promise that resolves with the module instance. The promise is resolved once it's safe to call the compiled code, i.e. after the compiled code has been downloaded and instantiated. For example, if you build with ``-s MODULARIZE=1 -s 'EXPORT_NAME="createMyModule"'`` (see details in settings.js), then you can do this:
+Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. That puts all of the generated JavaScript into a factory function, which you can call to create an instance of your module. The factory function returns a Promise that resolves with the module instance. The promise is resolved once it's safe to call the compiled code, i.e. after the compiled code has been downloaded and instantiated. For example, if you build with ``-s MODULARIZE=1 -s 'EXPORT_NAME="createMyModule"'``, then you can do this:
 
 ::
 
-    createMyModule().then((myModule) => {
-      // this is reached when everything is ready, and you can call methods on myModule
+    createMyModule(/* optional default settings */).then(function(Module) {
+      // this is reached when everything is ready, and you can call methods on Module
     });
+
+Note that in ``MODULARIZE`` mode we do not look for a global Module object for default values. Default values must be passed as a parameter to the factory function.  (see details in settings.js)
+
 
 .. _faq-NO_EXIT_RUNTIME:
 

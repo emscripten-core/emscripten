@@ -82,7 +82,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-s-option-value:
 
 ``-s OPTION[=VALUE]``
-  JavaScript code generation option passed into the Emscripten compiler. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
+  Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
 
   .. note:: You can prefix boolean options with ``NO_`` to reverse them. For example, ``-s EXIT_RUNTIME=1`` is the same as ``-s NO_EXIT_RUNTIME=0``.
 
@@ -105,6 +105,9 @@ Options that are modified or new in *emcc* are listed below:
 
     - In this case the file might contain a JSON-formatted list of functions: ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
+
+  .. note:: Options can be specified as a single argument without a space
+            between the ``-s`` and option name.  e.g. ``-sFOO=1``.
 
 .. _emcc-g:
 
@@ -387,11 +390,6 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--show-ports``
   Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
-
-.. _emcc-save-bc:
-
-``--save-bc PATH``
-  When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.
 
 .. _emcc-memory-init-file:
 

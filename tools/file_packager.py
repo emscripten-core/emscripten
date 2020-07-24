@@ -566,7 +566,15 @@ def main():
 
     if use_preload_cache:
       code += r'''
-        var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+        var indexedDB;
+        if (typeof window === 'object') {
+          indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+        } else if (typeof location !== 'undefined') {
+          // worker
+          indexedDB = self.indexedDB;
+        } else {
+          throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
+        }
         var IDB_RO = "readonly";
         var IDB_RW = "readwrite";
         var DB_NAME = "''' + indexeddb_name + '''";

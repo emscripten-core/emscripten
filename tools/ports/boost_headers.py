@@ -11,10 +11,11 @@ TAG = '1.70.0'
 HASH = '3ba0180a4a3c20d64727750a3233c82aadba95f265a45052297b955902741edac1befd963400958d6915e5b8d9ade48195eeaf8524f06fdb4cfe43b98677f196'
 
 
-def get(ports, settings, shared):
-  if settings.USE_BOOST_HEADERS != 1:
-    return []
+def needed(settings):
+  return settings.USE_BOOST_HEADERS == 1
 
+
+def get(ports, settings, shared):
   ports.fetch_project('boost_headers', 'https://github.com/emscripten-ports/boost/releases/download/boost-1.70.0/boost-headers-' + TAG + '.zip',
                       'boost', sha512hash=HASH)
   libname = ports.get_lib_name('libboost_headers')
@@ -50,15 +51,12 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libboost_headers'))
 
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_BOOST_HEADERS == 1:
-    get(ports, settings, shared)
-    args += ['-DBOOST_ALL_NO_LIB']
-  return args
+def process_args(ports):
+  return ['-DBOOST_ALL_NO_LIB']
 
 
 def show():
