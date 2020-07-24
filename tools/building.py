@@ -1476,13 +1476,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   wasm_file_with_dwarf = shared.Settings.SEPARATE_DWARF
   if wasm_file_with_dwarf is True:
     wasm_file_with_dwarf = wasm_file + '.debug.wasm'
-    embedded_path = wasm_file_with_dwarf
-  elif '@' in wasm_file_with_dwarf:
-    # FILE@PATH notation was provided
-    wasm_file_with_dwarf, embedded_path = wasm_file_with_dwarf.split('@', 1)
-  else:
-    # FILE was provided
-    embedded_path = wasm_file_with_dwarf
+  embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
   run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
