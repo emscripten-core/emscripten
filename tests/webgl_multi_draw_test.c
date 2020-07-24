@@ -127,33 +127,33 @@ int main()
       setTimeout(function() { window.close() }, 2000);
     });
     return 0;
-  } else {
-    GLint firsts[] = {0, 3};
-    GLsizei counts[] = {3, 3};
-    GLsizei instanceCounts[] = {1, 1};
-    GLint offsets[] = {0, 3 * sizeof(GLushort)};
-    GLsizei drawcount = 2;
+  }
+
+  GLint firsts[] = {0, 3};
+  GLsizei counts[] = {3, 3};
+  GLsizei instanceCounts[] = {1, 1};
+  GLint offsets[] = {0, 3 * sizeof(GLushort)};
+  GLsizei drawcount = 2;
 
 #ifdef MULTI_DRAW_ARRAYS
-    glClear(GL_COLOR_BUFFER_BIT);
-    glMultiDrawArraysWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, drawcount);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glMultiDrawArraysWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ARRAYS_INSTANCED
-    glClear(GL_COLOR_BUFFER_BIT);
-    glMultiDrawArraysInstancedWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, instanceCounts, 0, drawcount);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glMultiDrawArraysInstancedWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, instanceCounts, 0, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ELEMENTS
-    glClear(GL_COLOR_BUFFER_BIT);
-    glMultiDrawElementsWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, drawcount);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glMultiDrawElementsWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ELEMENTS_INSTANCED
-    glClear(GL_COLOR_BUFFER_BIT);
-    glMultiDrawElementsInstancedWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, instanceCounts, 0, drawcount);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glMultiDrawElementsInstancedWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, instanceCounts, 0, drawcount);
 #endif
-  }
 
 #ifdef EXPLICIT_SWAP
   emscripten_webgl_commit_frame();
