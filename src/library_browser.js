@@ -74,6 +74,8 @@ var LibraryBrowser = {
         } catch (e) {
           if (e instanceof ExitStatus) {
             return;
+          } else if (e == 'unwind') {
+            return;
           } else {
             if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
             throw e;

@@ -12,7 +12,7 @@ double prevTime = -1.0;
 int frame = 0;
 
 void final(void*) {
-  assert(frame == 100);
+  assert(frame == 110);
 #ifdef REPORT_RESULT
   printf("Test passed.\n");
   REPORT_RESULT(0);
@@ -66,8 +66,12 @@ void looper() {
     assert(ret == 0);
   } else if (frame == 90) {
     emscripten_cancel_main_loop();
-    emscripten_set_main_loop(looper, 100, 1);
+    emscripten_set_main_loop(looper, 110, 1);
   } else if (frame == 100) {
+    emscripten_pause_main_loop();
+    emscripten_cancel_main_loop();
+    emscripten_set_main_loop(looper, 110, 1);
+  } else if (frame == 110) {
     emscripten_cancel_main_loop();
     emscripten_async_call(final, (void*)0, 1000);
   }
