@@ -119,8 +119,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-gseparate-dwarf[=FILENAME]``
   Preserve debug information, but in a separate file on the side. This is the
-  same as ``-g``, but the main file will contain no debug info, while debug
-  info will be present in a file on the side, ``FILENAME`` if provided,
+  same as ``-g``, but the main file will contain no debug info. Instead, debug
+  info will be present in a file on the side, in ``FILENAME`` if provided,
   otherwise the same as the wasm file but with suffix ``.debug.wasm``. While
   the main file contains no debug info, it does contain a URL to where the
   debug file is, so that devtools can find it. You can use
