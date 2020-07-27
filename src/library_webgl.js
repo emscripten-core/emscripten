@@ -2961,15 +2961,17 @@ var LibraryGL = {
 #if GL_ASSERTIONS || GL_TRACK_ERRORS
       if (log === null) log = '(unknown error)';
 #endif
-      if (log.length === 0) {
-        // GLES2 specification says that if the shader has no information log, a value of 0 is returned.
-        {{{ makeSetValue('p', '0', '0', 'i32') }}};
-      } else {
-        {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
-      }
+      // The GLES2 specification says that if the shader has an empty info log,
+      // a value of 0 is returned. Otherwise the log has a null char appended.
+      // (An empty string is falsey, so we can just check that instead of
+      // looking at log.length.)
+      var logLength = log ? log.length + 1 : 0;
+      {{{ makeSetValue('p', '0', 'logLength', 'i32') }}};
     } else if (pname == 0x8B88) { // GL_SHADER_SOURCE_LENGTH
       var source = GLctx.getShaderSource(GL.shaders[shader]);
-      var sourceLength = (source === null || source.length == 0) ? 0 : source.length + 1;
+      // source may be a null, or the empty string, both of which are falsey
+      // values that we report a 0 length for.
+      var sourceLength = source ? source.length + 1 : 0;
       {{{ makeSetValue('p', '0', 'sourceLength', 'i32') }}};
     } else {
       {{{ makeSetValue('p', '0', 'GLctx.getShaderParameter(GL.shaders[shader], pname)', 'i32') }}};
