@@ -89,12 +89,14 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
     return 0;
   }
 
+  EM_ASM(console.log($0, $1), fetch_attr->userData, *(int*)fetch_attr->userData);
   emscripten_fetch_t* fetch = (emscripten_fetch_t*)malloc(sizeof(emscripten_fetch_t));
   if (!fetch)
     return 0;
   memset(fetch, 0, sizeof(emscripten_fetch_t));
   fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
   fetch->userData = fetch_attr->userData;
+  EM_ASM(console.log($0, $1), fetch->userData, *(int*)fetch->userData);
   fetch->__attributes.timeoutMSecs = fetch_attr->timeoutMSecs;
   fetch->__attributes.attributes = fetch_attr->attributes;
   fetch->__attributes.withCredentials = fetch_attr->withCredentials;
@@ -173,6 +175,7 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
   } else
 #endif
     emscripten_start_fetch(fetch);
+  EM_ASM(console.log($0, $1), fetch->userData, *(int*)fetch->userData);
   return fetch;
 }
 
