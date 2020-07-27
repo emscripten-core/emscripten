@@ -4399,7 +4399,7 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', '$withBuiltinMalloc'
 #if MINIMAL_RUNTIME
     , '$allocateUTF8'
 #endif
@@ -4425,7 +4425,7 @@ LibraryManager.library = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    _emscripten_with_builtin_malloc(function () {
+    withBuiltinMalloc(function () {
       if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
       _emscripten_pc_get_function.ret = allocateUTF8(name);
     });
@@ -4464,7 +4464,7 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc',
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', '$withBuiltinMalloc',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
@@ -4473,7 +4473,7 @@ LibraryManager.library = {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    _emscripten_with_builtin_malloc(function () {
+    withBuiltinMalloc(function () {
       if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
       _emscripten_pc_get_file.ret = allocateUTF8(result.file);
     });
@@ -4502,9 +4502,9 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
-  emscripten_with_builtin_malloc__docs: '/** @suppress{checkTypes} */',
-  emscripten_with_builtin_malloc: function (func) {
+  $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
+  $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
+  $withBuiltinMalloc: function (func) {
     var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
     var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free !== 'undefined' ? _free : undefined;
@@ -4520,30 +4520,30 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '$syscallMmap2'],
+  emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return _emscripten_with_builtin_malloc(function () {
+    return withBuiltinMalloc(function () {
       return syscallMmap2(addr, len, prot, flags, fd, off);
     });
   },
 
-  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '$syscallMunmap'],
+  emscripten_builtin_munmap__deps: ['$withBuiltinMalloc', '$syscallMunmap'],
   emscripten_builtin_munmap: function (addr, len) {
-    return _emscripten_with_builtin_malloc(function () {
+    return withBuiltinMalloc(function () {
       return syscallMunmap(addr, len);
     });
   },
 
-  _readAsmConstArgsArray: '=[]',
-  $readAsmConstArgs__deps: ['_readAsmConstArgsArray'],
+  $readAsmConstArgsArray: '=[]',
+  $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
-    assert(Array.isArray( __readAsmConstArgsArray));
+    assert(Array.isArray(readAsmConstArgsArray));
     // The input buffer is allocated on the stack, so it must be stack-aligned.
     assert(buf % {{{ STACK_ALIGN }}} == 0);
 #endif
-    __readAsmConstArgsArray.length = 0;
+    readAsmConstArgsArray.length = 0;
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
@@ -4556,10 +4556,10 @@ LibraryManager.library = {
       // will emit padding to avoid that.
       var double = ch < 105;
       if (double && (buf & 1)) buf++;
-      __readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
+      readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
       ++buf;
     }
-    return __readAsmConstArgsArray;
+    return readAsmConstArgsArray;
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS
