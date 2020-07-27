@@ -11,7 +11,8 @@
 
 void downloadSucceeded(emscripten_fetch_t *fetch) {
     printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
-    printf("End: %d\n", *(int*)fetch->userData);
+    printf("Value: %d\n", *(int*)fetch->userData);
+    printf("Refer: %d\n", fetch->__attributes.userData);
     // printf("End: %s\n", fetch->userData);
     emscripten_fetch_close(fetch);
 }
