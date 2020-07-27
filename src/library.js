@@ -4540,8 +4540,8 @@ LibraryManager.library = {
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray( __readAsmConstArgsArray));
-    // The input buffer is allocated on the stack, so it must be stack-aligned.
-    assert(buf % {{{ STACK_ALIGN }}} == 0);
+    // Input buffer must be a pre-existing varargs buffer, so already aligned to at least 4 bytes.
+    assert(buf % 4 == 0);
 #endif
     __readAsmConstArgsArray.length = 0;
     var ch;
@@ -4552,12 +4552,12 @@ LibraryManager.library = {
 #if ASSERTIONS
       assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
-      // A double takes two 32-bit slots, and must also be aligned - the backend
-      // will emit padding to avoid that.
-      var double = ch < 105;
-      if (double && (buf & 1)) buf++;
-      __readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
-      ++buf;
+      // In C varargs, floats and doubles take up 8 bytes, and are 8 byte aligned.
+      // 4 byte padding will precede doubles to align them up.
+      var isDouble = ch < 105;
+      buf += isDouble & buf; // Align up buf pointer to 4/8 bytes for the next element.
+      __readAsmConstArgsArray.push(isDouble ? HEAPF64[buf >> 1] : HEAP32[buf]);
+      buf += 1 + isDouble; // Proceed to start of next element, either 4 bytes for int or 8 bytes for float==double.
     }
     return __readAsmConstArgsArray;
   },
