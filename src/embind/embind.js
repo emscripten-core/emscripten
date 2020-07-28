@@ -639,7 +639,7 @@ var LibraryEmbind = {
                 // Looping here to support possible embedded '0' bytes
                 for (var i = 0; i <= length; ++i) {
                     var currentBytePtr = value + 4 + i;
-                    if (HEAPU8[currentBytePtr] == 0 || i == length) {
+                    if (i == length || HEAPU8[currentBytePtr] == 0) {
                         var maxRead = currentBytePtr - decodeStartPtr;
                         var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
                         if (str === undefined) {
@@ -748,7 +748,7 @@ var LibraryEmbind = {
             // Looping here to support possible embedded '0' bytes
             for (var i = 0; i <= length; ++i) {
                 var currentBytePtr = value + 4 + i * charSize;
-                if (HEAP[currentBytePtr >> shift] == 0 || i == length) {
+                if (i == length || HEAP[currentBytePtr >> shift] == 0) {
                     var maxReadBytes = currentBytePtr - decodeStartPtr;
                     var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
                     if (str === undefined) {

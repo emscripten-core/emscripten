@@ -11,28 +11,44 @@ import shutil
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 local_src = os.path.join(script_dir, 'compiler-rt')
-local_builtins = os.path.join(local_src, 'lib', 'builtins')
+
+copy_dirs = [
+    ('include', 'sanitizer'),
+    ('lib', 'sanitizer_common'),
+    ('lib', 'asan'),
+    ('lib', 'interception'),
+    ('lib', 'builtins'),
+    ('lib', 'lsan'),
+    ('lib', 'ubsan'),
+    ('lib', 'ubsan_minimal'),
+]
+
+def clear(dirname):
+  if os.path.exists(dirname):
+    shutil.rmtree(dirname)
+  os.makedirs(dirname)
 
 
 def main():
   upstream_dir = os.path.abspath(sys.argv[1])
   assert os.path.exists(upstream_dir)
   upstream_src = os.path.join(upstream_dir, 'lib', 'builtins')
+  upstream_include = os.path.join(upstream_dir, 'include', 'sanitizer')
   assert os.path.exists(upstream_src)
+  assert os.path.exists(upstream_include)
 
-  # Remove old version
-  shutil.rmtree(local_builtins)
-  os.mkdir(local_builtins)
-
-  listfile = os.path.join(script_dir, 'compiler-rt', 'filelist.txt')
-  for name in open(listfile).read().splitlines():
-    src = os.path.join(upstream_src, name);
-    target = os.path.join(local_builtins, name);
-    shutil.copy2(src, target)
-
-  for pattern in ('*.h', '*.inc'):
-    for name in glob.glob(os.path.join(upstream_src, pattern)):
-      shutil.copy2(name, local_builtins)
+  for dirname in copy_dirs:
+    srcdir = os.path.join(upstream_dir, *dirname)
+    assert os.path.exists(srcdir)
+    dest = os.path.join(local_src, *dirname)
+    clear(dest)
+    for name in os.listdir(srcdir):
+      if name in ('.clang-format', 'CMakeLists.txt', 'README.txt', 'weak_symbols.txt'):
+        continue
+      if name.endswith('.syms.extra') or name.endswith('.S'):
+        continue
+      if os.path.isfile(os.path.join(srcdir, name)):
+        shutil.copy2(os.path.join(srcdir, name), dest)
 
   shutil.copy2(os.path.join(upstream_dir, 'CREDITS.TXT'), local_src)
   shutil.copy2(os.path.join(upstream_dir, 'LICENSE.TXT'), local_src)

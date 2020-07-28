@@ -137,5 +137,5 @@ work with downstream packagers to ensure everything works as expected.
  - maintainer: @chenrui333
 
 **Arch Linux**
- - package info: https://git.archlinux.org/svntogit/community.git/tree/trunk/PKGBUILD?h=packages/emscripten
+ - package info: https://github.com/archlinux/svntogit-community/tree/packages/emscripten/trunk
  - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>

@@ -225,22 +225,16 @@ LibraryManager.library = {
     }
   },
 
-  execl__deps: ['$setErrNo'],
-  execl__sig: 'iiii',
-  execl: function(path, arg0, varArgs) {
-    // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
+  execve__deps: ['$setErrNo'],
+  execve__sig: 'iiii',
+  execve: function(path, argv, envp) {
+    // int execve(const char *pathname, char *const argv[],
+    //            char *const envp[]);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
     // We don't support executing external code.
     setErrNo({{{ cDefine('ENOEXEC') }}});
     return -1;
   },
-  execle: 'execl',
-  execlp: 'execl',
-  execv: 'execl',
-  execve: 'execl',
-  execvp: 'execl',
-  __execvpe: 'execl',
-  fexecve: 'execl',
 
   exit__sig: 'vi',
   exit: function(status) {
@@ -278,11 +272,6 @@ LibraryManager.library = {
   },
   vfork: 'fork',
   posix_spawn: 'fork',
-  posix_spawnp: 'fork',
-  posix_spawn_file_actions_adddup2: 'fork',
-  posix_spawn_file_actions_addopen: 'fork',
-  posix_spawn_file_actions_destroy: 'fork',
-  posix_spawn_file_actions_init: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
@@ -719,10 +708,9 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME && !EXIT_RUNTIME
+  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
   atexit: function(){},
   __cxa_atexit: function(){},
-  __cxa_thread_atexit: function(){},
-  __cxa_thread_atexit_impl: function(){},
 #else
   atexit__proxy: 'sync',
   atexit__sig: 'iii',
@@ -732,11 +720,20 @@ LibraryManager.library = {
     warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
 #endif
 #endif
+
+#if EXIT_RUNTIME
     __ATEXIT__.unshift({ func: func, arg: arg });
+#endif
   },
   __cxa_atexit: 'atexit',
 
+#endif
+
   // used in rust, clang when doing thread_local statics
+#if USE_PTHREADS
+  __cxa_thread_atexit: 'pthread_cleanup_push',
+  __cxa_thread_atexit_impl: 'pthread_cleanup_push',
+#else
   __cxa_thread_atexit: 'atexit',
   __cxa_thread_atexit_impl: 'atexit',
 #endif
@@ -754,15 +751,17 @@ LibraryManager.library = {
 
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv. (This works
-  // in both fastcomp and upstream.
+  // in both fastcomp and upstream).
   $ENV: {},
 
 #if !WASM_BACKEND
+  __environ: "{{{ makeStaticAlloc(Runtime.getNativeTypeSize('i8*')) }}}",
+
   // This implementation of environ/getenv/etc. is used for fastcomp, due
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['$ENV', '_getExecutableName'
+  __buildEnvironment__deps: ['__environ', '$ENV', '_getExecutableName'
 #if MINIMAL_RUNTIME
     , '$writeAsciiToMemory'
 #endif
@@ -774,7 +773,6 @@ LibraryManager.library = {
 
     // Statically allocate memory for the environment.
     var poolPtr;
-    var envPtr;
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
@@ -789,13 +787,13 @@ LibraryManager.library = {
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
-      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
-      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
+      ___environ = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      {{{ makeSetValue('___environ', '0', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, '___environ', 'i8*') }}};
 #endif
     } else {
-      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
-      poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
+      ___environ = {{{ makeGetValue('environ', '0', 'i8**') }}};
+      poolPtr = {{{ makeGetValue('___environ', '0', 'i8*') }}};
     }
 
     // Collect key=value lines.
@@ -817,10 +815,10 @@ LibraryManager.library = {
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
       writeAsciiToMemory(line, poolPtr);
-      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('___environ', 'i * ptrSize', 'poolPtr', 'i8*') }}};
       poolPtr += line.length + 1;
     }
-    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
+    {{{ makeSetValue('___environ', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   getenv__deps: ['$ENV',
 #if MINIMAL_RUNTIME
@@ -4241,11 +4239,8 @@ LibraryManager.library = {
 
   emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
   emscripten_log: function(flags, format, varargs) {
-    var str = '';
     var result = formatString(format, varargs);
-    for (var i = 0 ; i < result.length; ++i) {
-      str += String.fromCharCode(result[i]);
-    }
+    var str = UTF8ArrayToString(result, 0);
     _emscripten_log_js(flags, str);
   },
 
@@ -4539,32 +4534,30 @@ LibraryManager.library = {
     });
   },
 
-  emscripten_get_stack_top: function() {
-    return STACKTOP;
-  },
-
-  emscripten_get_stack_base: function() {
-    return STACK_BASE;
-  },
-
   _readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['_readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray( __readAsmConstArgsArray));
-    // Input buffer must be a pre-existing varargs buffer, so already aligned to 4 bytes.
+    // Input buffer must be a pre-existing varargs buffer, so already aligned to at least 4 bytes.
     assert(buf % 4 == 0);
 #endif
     __readAsmConstArgsArray.length = 0;
     var ch;
-    buf >>= 2; // Align buf up front to index Int32Array (HEAP32)
+    // Most arguments are i32s, so shift the buffer pointer so it is a plain
+    // index into HEAP32.
+    buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
       assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
-      __readAsmConstArgsArray.push(ch < 105 ? HEAPF64[++buf >> 1] : HEAP32[buf]);
-      ++buf;
+      // In C varargs, floats and doubles take up 8 bytes, and are 8 byte aligned.
+      // 4 byte padding will precede doubles to align them up if necessary.
+      var isDouble = ch < 105;
+      buf += isDouble & buf; // Align up buf pointer to 4/8 bytes for the next element.
+      __readAsmConstArgsArray.push(isDouble ? HEAPF64[buf >> 1] : HEAP32[buf]);
+      buf += 1 + isDouble; // Proceed to start of next element, either 4 bytes for int or 8 bytes for float==double.
     }
     return __readAsmConstArgsArray;
   },

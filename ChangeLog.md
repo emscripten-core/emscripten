@@ -18,6 +18,53 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+- The `EM_CONFIG` environment variable and `--em-config` command line option no
+  longer support a literal python string. Instead the name of a config file is
+  required. Since all config file settings are individually override-able using
+  `EM_FOO` this should be enough.
+- Running emscripten under python2 is now deprecated.  It will show up as a
+  warning (which can be disabled with `-Wno-deprecated`).  Please update to
+  python3 as we hope to remove support completely in the next releaase.
+
+1.39.20: 07/20/2020
+-------------------
+- Remove the `--save-bc` command line option.  This was specific to fastcomp,
+  which is deprecated, and for debugging purposes we already have `EMCC_DEBUG`
+  which saves all intermediate files.
+- It is now an error if a function listed in the `EXPORTED_FUNCTIONS` list is
+  missing from the build (can be disabled via `-Wno-undefined`)
+  (ERROR_ON_UNDEFINED_SYMBOLS and WARN_ON_UNDEFINED_SYMBOLS no longer apply
+  to these symbols which are explicly exported).
+- Support for pthreads with wasm2js (`WASM=0`; #11505).
+- Rename `emscripten/math.h` to `emscripten/em_math.h` because if a user adds
+  `emscripten/` as an include path with `-I`, that can override libc math.h,
+  which leads to very confusing errors.
+
+1.39.19: 07/07/2020
+-------------------
+- In standalone mode make `main` mandatory by default (#11536). To build a
+  library ("reactor"), use `--no-entry`. The compiler will suggest that if
+  `main` is not present.
+- Automatically resume AudioContexts on user input in SDL and OpenAL (#10843).
+- Asyncify now does liveness analysis to find which locals to save
+  (Binaryen#2890).
+- Settings on the command line no longer require a space between the `-s` and
+  the name of the setting.   For example, `-sEXPORT_ALL` is now equivalent to
+  `-s EXPORT_ALL`.
+- Rename `EXCEPTION_CATCHING_WHITELIST` to `EXCEPTION_CATCHING_ALLOWED`. The
+  functionality is unchanged, and the old name will be allowed as an alias
+  for a few releases to give users time to migrate.
+- Add support for the new add-list in Asyncify and update existing list names
+  following the updates in Binaryen, so that now we have `ASYNCIFY_ADD` to
+  add a function, `ASYNCIFY_REMOVE` to remove one (previously this was
+  called `ASYNCIFY_BLACKLIST`), and `ASYNCIFY_ONLY` to set a list of the
+  only functions to instrument and no others (previously this was called
+  `ASYNCIFY_WHITELIST`). The updated lists also handle indirect calls properly,
+  so that if you use `ASYNCIFY_IGNORE_INDIRECT` and then add (using either the
+  add-list or the only-list) all the functions that are on the stack when
+  pausing, then things will work (for more, see
+  https://github.com/WebAssembly/binaryen/pull/2913).
+
 1.39.18: 06/12/2020
 -------------------
 - Disable `LIBCXX_ABI_OPTIMIZED_FUNCTION` which is an ABI change in libc++
@@ -268,6 +315,8 @@ v1.39.9: 03/05/2020
   getpagesize (#10533), _Exit (#10534)
 - Fix many closure compiler warnings (e.g. #10525).
 - Avoid unnecessary syscall proxying (#10511).
+- Added new link time command line option -jsDfoo=val to allow specifying
+  custom preprocessor options to JS library files. (#10624, #10580)
 
 v1.39.8: 02/14/2020
 -------------------

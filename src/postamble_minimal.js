@@ -24,6 +24,9 @@ function run() {
 #if EXIT_RUNTIME
     callRuntimeCallbacks(__ATEXIT__);
     {{{ getQuoted('ATEXITS') }}}
+#if USE_PTHREADS
+    PThread.runExitHandlers();
+#endif
 #endif
 
 #if IN_TEST_HARNESS

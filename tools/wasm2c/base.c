@@ -10,10 +10,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <time.h>
-#include <unistd.h>
+
+// ssize_t detection: usually stdint provides it, but not on windows apparently
+#ifdef _WIN32
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#else // _MSC_VER
+#ifdef _WIN64
+typedef signed long long ssize_t;
+#else // _WIN64
+typedef signed long ssize_t;
+#endif // _WIN64
+#endif // _MSC_VER
+#endif // _WIN32
 
 #include "wasm-rt.h"
 #include "wasm-rt-impl.h"

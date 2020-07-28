@@ -3,42 +3,36 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from . import boost_headers, bullet, cocos2d, freetype, harfbuzz, icu, libjpeg, libpng
-from . import ogg, regal, sdl2, sdl2_gfx, sdl2_image, sdl2_mixer, sdl2_ttf
-from . import sdl2_net, vorbis, zlib, bzip2
+import os
+from tools.shared import exit_with_error
 
-# If port A depends on port B, then A should be _after_ B
-ports = [
-    boost_headers,
-    icu,
-    zlib,
-    bzip2,
-    libjpeg,
-    libpng,
-    sdl2,
-    sdl2_image,
-    sdl2_gfx,
-    ogg, vorbis,
-    sdl2_mixer,
-    bullet,
-    freetype,
-    harfbuzz,
-    sdl2_ttf,
-    sdl2_net,
-    cocos2d,
-    regal
-]
+ports = []
 
 ports_by_name = {}
 
+ports_dir = os.path.dirname(os.path.abspath(__file__))
 
-def init():
-  expected_attrs = ['get', 'clear', 'process_args', 'show']
-  for port in ports:
-    name = port.__name__.split('.')[-1]
-    ports_by_name[name] = port
+
+def read_ports():
+  expected_attrs = ['get', 'clear', 'process_args', 'show', 'needed']
+  for filename in os.listdir(ports_dir):
+    if not filename.endswith('.py') or filename == '__init__.py':
+      continue
+    filename = os.path.splitext(filename)[0]
+    port = __import__(filename, globals(), level=1)
+    ports.append(port)
+    port.name = filename
+    ports_by_name[port.name] = port
     for a in expected_attrs:
       assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+    if not hasattr(port, 'process_dependencies'):
+      port.process_dependencies = lambda x: 0
+    if not hasattr(port, 'deps'):
+      port.deps = []
+
+  for dep in port.deps:
+    if dep not in ports_by_name:
+      exit_with_error('unknown dependency in port: %s' % dep)
 
 
-init()
+read_ports()

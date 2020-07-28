@@ -1,6 +1,8 @@
 .globl stackSave
 .globl stackRestore
 .globl stackAlloc
+.globl emscripten_stack_get_current
+.globl emscripten_stack_get_free
 
 .globaltype __stack_pointer, i32
 
@@ -29,4 +31,28 @@ stackAlloc:
   local.tee 1
   global.set __stack_pointer
   local.get 1
+  end_function
+
+emscripten_stack_get_current:
+  .functype emscripten_stack_get_current () -> (i32)
+  global.get __stack_pointer
+  end_function
+
+.functype emscripten_stack_get_end () -> (i32)
+.functype emscripten_stack_get_base () -> (i32)
+.globaltype __stack_end, i32
+__stack_end:
+
+emscripten_stack_get_free:
+  # set __stack_base/__stack_end on first call
+  .functype emscripten_stack_get_free () -> (i32)
+  global.get __stack_end
+  i32.eqz
+  if
+    call emscripten_stack_get_end
+    global.set __stack_end
+  end_if
+  global.get __stack_pointer
+  global.get __stack_end
+  i32.sub
   end_function

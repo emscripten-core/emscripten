@@ -313,7 +313,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   pre, funcs_js = get_js_funcs(pre, funcs)
   all_exported_functions = get_all_exported_functions(function_table_data)
   all_implemented = get_all_implemented(forwarded_json, metadata)
-  report_missing_symbols(all_implemented, pre)
+  all_implemented_with_aliases = set(all_implemented).union(set(metadata['aliases'].keys()))
+  report_missing_symbols(all_implemented_with_aliases, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
   pre = apply_table(pre)
@@ -601,7 +602,7 @@ def create_backend_cmd(infile, temp_js):
   if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
     args += ['-enable-emscripten-cpp-exceptions']
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
+      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_ALLOWED or ['fake'])]
   if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
   if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
@@ -890,10 +891,6 @@ def get_all_implemented(forwarded_json, metadata):
 
 
 def report_missing_symbols(all_implemented, pre):
-  # we are not checking anyway, so just skip this
-  if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
-    return
-
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
   missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
@@ -2044,9 +2041,6 @@ def emscript_wasm_backend(infile, outfile, memfile, temp_files, DEBUG):
   pre = None
 
   invoke_funcs = metadata['invokeFuncs']
-  if shared.Settings.RELOCATABLE:
-    invoke_funcs.append('invoke_X')
-
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
   except KeyError:
@@ -2092,7 +2086,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
 
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD:
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
@@ -2182,16 +2176,21 @@ def create_asm_consts_wasm(forwarded_json, metadata):
         # ... over to the negative integers starting at -1.
         preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { ' +
                      proxy_debug_print(sync_proxy) +
-                     'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
-                     str(int(sync_proxy)) +
-                     ', code, sigPtr, argbuf); }')
+                     'return _emscripten_proxy_to_main_thread_js.apply(null, ' +
+                     '[-1 - code, ' + str(int(sync_proxy)) + '].concat(args)) }')
 
     if shared.Settings.RELOCATABLE:
       preamble += '\n  code -= %s;\n' % shared.Settings.GLOBAL_BASE
 
+    # EM_ASM functions are variadic, receiving the actual arguments as a buffer
+    # in memory. the last parameter (argBuf) points to that data. We need to
+    # alwayd un-variadify that, as in the async case this is a stack allocation
+    # that LLVM made, which may go away before the main thread gets the message.
+    # the readAsmConstArgs helper does so.
     asm_const_funcs.append(r'''
-function %s(code, sigPtr, argbuf) {%s
+function %s(code, sigPtr, argbuf) {
   var args = readAsmConstArgs(sigPtr, argbuf);
+%s
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   asm_consts = [(key, value) for key, value in asm_consts.items()]

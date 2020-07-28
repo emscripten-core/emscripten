@@ -10,10 +10,11 @@ TAG = 'version_1'
 HASH = '77f7d8f18fe11bb66a57e358325b7422d721f7b506bd63293cfde74079f958864db66ead5a36c311a76dd8c2b089b7659641a5522de650de0f9e6865782a60dd'
 
 
-def get(ports, settings, shared):
-  if settings.USE_ZLIB != 1:
-    return []
+def needed(settings):
+  return settings.USE_ZLIB
 
+
+def get(ports, settings, shared):
   ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG, sha512hash=HASH)
 
   def create():
@@ -46,14 +47,12 @@ def get(ports, settings, shared):
   return [shared.Cache.get('libz.a', create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file('libz.a')
 
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_ZLIB == 1:
-    get(ports, settings, shared)
-  return args
+def process_args(ports):
+  return []
 
 
 def show():

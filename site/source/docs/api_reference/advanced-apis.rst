@@ -94,7 +94,6 @@ Advanced File System API
   FS.absolutePath(relative, base)
   FS.standardizePath(path)
   FS.findObject(path, dontResolveLastLink)
-  FS.analyzePath(path, dontResolveLastLink)
   FS.createFolder(parent, name, canRead, canWrite)
   FS.createPath(parent, path, canRead, canWrite)
   FS.createFile(parent, name, properties, canRead, canWrite)

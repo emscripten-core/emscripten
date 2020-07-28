@@ -14,23 +14,32 @@
 var
 #endif
 WebAssembly = {
-  Memory: /** @constructor */ function(opts) {
-    return {
-      buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
-      grow: function(amount) {
-#if ASSERTIONS
-        var oldBuffer = this.buffer;
+  // Note that we do not use closure quoting (this['buffer'], etc.) on these
+  // functions, as they are just meant for internal use. In other words, this is
+  // not a fully general polyfill.
+  Memory: function(opts) {
+#if USE_PTHREADS
+    this.buffer = new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
+#else
+    this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
 #endif
-        var ret = __growWasmMemory(amount);
+    this.grow = function(amount) {
 #if ASSERTIONS
-        assert(this.buffer !== oldBuffer); // the call should have updated us
+      var oldBuffer = this.buffer;
 #endif
-        return ret;
-      }
+      var ret = __growWasmMemory(amount);
+#if ASSERTIONS
+      assert(this.buffer !== oldBuffer); // the call should have updated us
+#endif
+      return ret;
     };
   },
 
-  Table: function(opts) {
+  // Table is not a normal constructor and instead returns the array object.
+  // That lets us use the length property automatically, which is simpler and
+  // smaller (but instanceof will not report that an instance of Table is an
+  // instance of this function).
+  Table: /** @constructor */ function(opts) {
     var ret = new Array(opts['initial']);
     ret.grow = function(by) {
 #if !ALLOW_TABLE_GROWTH
@@ -52,24 +61,24 @@ WebAssembly = {
   Module: function(binary) {
     // TODO: use the binary and info somehow - right now the wasm2js output is embedded in
     // the main JS
-    return {};
   },
 
   Instance: function(module, info) {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // This will be replaced by the actual wasm2js code.
-    var exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
-    return {
-      'exports': exports
-    };
+    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
   },
 
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {
     return {
       then: function(ok) {
+        var module = new WebAssembly.Module(binary);
         ok({
-          'instance': new WebAssembly.Instance(new WebAssembly.Module(binary))
+#if USE_PTHREADS
+          'module': module,
+#endif
+          'instance': new WebAssembly.Instance(module)
         });
 #if ASSERTIONS
         // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.
