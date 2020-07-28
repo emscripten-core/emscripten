@@ -4502,24 +4502,32 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_memset'],
+  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
+#if USE_ASAN
+                                         , 'emscripten_builtin_memset'
+#endif
+                                        ],
   emscripten_with_builtin_malloc__docs: '/** @suppress{checkTypes} */',
   emscripten_with_builtin_malloc: function (func) {
     var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
     var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free !== 'undefined' ? _free : undefined;
-    var prev_memset = typeof _memset !== 'undefined' ? _memset : undefined
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
+#if USE_ASAN
+    var prev_memset = typeof _memset !== 'undefined' ? _memset : undefined
     _memset = _emscripten_builtin_memset;
+#endif
     try {
       return func();
     } finally {
       _malloc = prev_malloc;
       _memalign = prev_memalign;
       _free = prev_free;
+#if USE_ASAN
       _memset = _emscripten_builtin_memset
+#endif
     }
   },
 
