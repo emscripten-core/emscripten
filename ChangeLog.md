@@ -17,6 +17,17 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+- The `EM_CONFIG` environment variable and `--em-config` command line option no
+  longer support a literal python string. Instead the name of a config file is
+  required. Since all config file settings are individually override-able using
+  `EM_FOO` this should be enough.
+- Running emscripten under python2 is now deprecated.  It will show up as a
+  warning (which can be disabled with `-Wno-deprecated`).  Please update to
+  python3 as we hope to remove support completely in the next releaase.
+
+1.39.20: 07/20/2020
+-------------------
 - Remove the `--save-bc` command line option.  This was specific to fastcomp,
   which is deprecated, and for debugging purposes we already have `EMCC_DEBUG`
   which saves all intermediate files.

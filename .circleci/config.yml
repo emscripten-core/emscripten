@@ -26,7 +26,7 @@ commands:
     steps:
       - run:
           name: emsdk_env.sh
-          command: echo "source ~/emsdk/emsdk_env.sh > /dev/null" >> $BASH_ENV
+          command: echo "source ~/emsdk/emsdk_env.sh 2> /dev/null" >> $BASH_ENV
   npm-install:
     description: "npm ci"
     steps:
@@ -493,7 +493,13 @@ jobs:
       - build
   test-minimal-python2:
     environment:
+      # PTYHON_BIN is used in this file to control which version of python
+      # we use to run the test runner, and EMSDK_PYTHON is used by emcc and
+      # other tools to determine which version of python to use internally.
+      # These can, by design, vary independently.
       PYTHON_BIN: "python2"
+      EMSDK_PYTHON: "python2"
+      EMCC_ALLOW_PYTHON2: "1"
     executor: bionic
     steps:
       - run-tests:
@@ -674,6 +680,9 @@ workflows:
           requires:
             - build-linux
       - test-sockets-chrome:
+          requires:
+            - build-linux
+      - test-minimal-python2:
           requires:
             - build-linux
       - build-windows

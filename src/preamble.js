@@ -702,13 +702,21 @@ function abort(what) {
 #endif // ASSERTIONS
 
 #if WASM
-  // Throw a wasm runtime error, because a JS error might be seen as a foreign
+  // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
-  throw new WebAssembly.RuntimeError(what);
+  var e = new WebAssembly.RuntimeError(what);
 #else
-  throw what;
+  var e = what;
 #endif
+
+#if MODULARIZE
+  readyPromiseReject(e);
+#endif
+  // Throw the error whether or not MODULARIZE is set because abort is used
+  // in code paths apart from instantiation where an exception is expected
+  // to be thrown when abort is called.
+  throw e;
 }
 
 #if RELOCATABLE

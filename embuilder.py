@@ -17,14 +17,13 @@ from __future__ import print_function
 import argparse
 import logging
 import os
-import subprocess
 import sys
 
-from tools import building
 from tools import shared
 from tools import system_libs
+from tools import js_optimizer
+import emscripten
 
-C_BARE = 'int main() {}'
 
 SYSTEM_LIBRARIES = system_libs.Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
@@ -49,6 +48,7 @@ MINIMAL_TASKS = [
     'libemmalloc',
     'libemmalloc-64bit',
     'libpthread_stub',
+    'libsockets',
     'libc_rt_wasm',
     'struct_info',
     'libc-wasm',
@@ -77,6 +77,8 @@ USER_TASKS = [
     'sdl2-image-png',
     'sdl2-image-jpg',
     'sdl2-mixer',
+    'sdl2-mixer-ogg',
+    'sdl2-mixer-mp3',
     'sdl2-net',
     'sdl2-ttf',
     'vorbis',
@@ -109,33 +111,11 @@ and set up the location to the native optimizer in .emscripten
 ''' % '\n        '.join(all_tasks)
 
 
-def build(src, result_libs, args=[]):
-  if shared.Settings.LTO:
-    args += ['-flto=' + shared.Settings.LTO]
-  if shared.Settings.RELOCATABLE:
-    args += ['-s', 'RELOCATABLE']
-  # build in order to generate the libraries
-  # do it all in a temp dir where everything will be cleaned up
-  temp_dir = temp_files.get_dir()
-  cpp = os.path.join(temp_dir, 'src.cpp')
-  open(cpp, 'w').write(src)
-  temp_js = os.path.join(temp_dir, 'out.js')
+def build_port(port_name, lib_name):
   if force:
-    for lib in result_libs:
-      shared.Cache.erase_file(lib)
+    shared.Cache.erase_file(lib_name)
 
-  try:
-    building.emcc(cpp, args, output_filename=temp_js)
-  except subprocess.CalledProcessError as e:
-    shared.exit_with_error("embuilder: emcc command failed with %d: '%s'", e.returncode, ' '.join(e.cmd))
-
-  for lib in result_libs:
-    if not os.path.exists(shared.Cache.get_path(lib)):
-      shared.exit_with_error('not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib)))
-
-
-def build_port(port_name, lib_name, params, extra_source=''):
-  build(extra_source + '\n' + C_BARE, [lib_name] if lib_name else [], params)
+  system_libs.build_port(port_name, shared.Settings)
 
 
 def main():
@@ -197,11 +177,15 @@ def main():
       skip_tasks = []
       if shared.Settings.RELOCATABLE:
         # we don't support PIC + pthreads yet
-        skip_tasks += [task for task in SYSTEM_TASKS + USER_TASKS if '-mt' in task or 'thread' in task]
+        for task in SYSTEM_TASKS + USER_TASKS:
+          if '-mt' in task:
+            skip_tasks.append(task)
+          if 'pthread' in task and 'stub' not in task:
+            skip_tasks.append(task)
+        print('Skipping building of %s, because we don\'t support threads and PIC code.' % ', '.join(skip_tasks))
       # cocos2d: must be ported, errors on
       # "Cannot recognize the target platform; are you targeting an unsupported platform?"
       skip_tasks += ['cocos2d']
-      print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
       tasks = [x for x in tasks if x not in skip_tasks]
     else:
       if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
@@ -219,57 +203,86 @@ def main():
         library.erase()
       library.get_path()
     elif what == 'struct_info':
-      build(C_BARE, ['generated_struct_info.json'])
+      if force:
+        shared.Cache.erase_file('generated_struct_info.json')
+      emscripten.generate_struct_info()
     elif what == 'native_optimizer':
-      build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
+      if force:
+        shared.Cache.erase_file('optimizer.2.exe')
+      js_optimizer.get_native_optimizer()
     elif what == 'icu':
-      build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'], '#include "unicode/ustring.h"')
+      build_port('icu', libname('libicuuc'))
     elif what == 'zlib':
-      build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
+      shared.Settings.USE_ZLIB = 1
+      build_port('zlib', 'libz.a')
+      shared.Settings.USE_ZLIB = 0
     elif what == 'bzip2':
-      build_port('bzip2', 'libbz2.a', ['-s', 'USE_BZIP2=1'])
+      build_port('bzip2', 'libbz2.a')
     elif what == 'bullet':
-      build_port('bullet', libname('libbullet'), ['-s', 'USE_BULLET=1'])
+      build_port('bullet', libname('libbullet'))
     elif what == 'vorbis':
-      build_port('vorbis', libname('libvorbis'), ['-s', 'USE_VORBIS=1'])
+      build_port('vorbis', libname('libvorbis'))
     elif what == 'ogg':
-      build_port('ogg', libname('libogg'), ['-s', 'USE_OGG=1'])
+      build_port('ogg', libname('libogg'))
     elif what == 'libjpeg':
-      build_port('libjpeg', libname('libjpeg'), ['-s', 'USE_LIBJPEG=1'])
+      build_port('libjpeg', libname('libjpeg'))
     elif what == 'libpng':
-      build_port('libpng', libname('libpng'), ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
+      build_port('libpng', libname('libpng'))
     elif what == 'sdl2':
-      build_port('sdl2', libname('libSDL2'), ['-s', 'USE_SDL=2'])
+      build_port('sdl2', libname('libSDL2'))
     elif what == 'sdl2-mt':
-      build_port('sdl2', libname('libSDL2-mt'), ['-s', 'USE_SDL=2', '-s', 'USE_PTHREADS=1'])
+      shared.Settings.USE_PTHREADS = 1
+      build_port('sdl2', libname('libSDL2-mt'))
+      shared.Settings.USE_PTHREADS = 0
     elif what == 'sdl2-gfx':
-      build_port('sdl2-gfx', libname('libSDL2_gfx'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
+      build_port('sdl2_gfx', libname('libSDL2_gfx'))
     elif what == 'sdl2-image':
-      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+      build_port('sdl2_image', libname('libSDL2_image'))
     elif what == 'sdl2-image-png':
-      build_port('sdl2-image', libname('libSDL2_image_png'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
+      shared.Settings.SDL2_IMAGE_FORMATS = ["png"]
+      build_port('sdl2_image', libname('libSDL2_image_png'))
+      shared.Settings.SDL2_IMAGE_FORMATS = []
     elif what == 'sdl2-image-jpg':
-      build_port('sdl2-image', libname('libSDL2_image_jpg'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["jpg"]'])
+      shared.Settings.SDL2_IMAGE_FORMATS = ["jpg"]
+      build_port('sdl2_image', libname('libSDL2_image_jpg'))
+      shared.Settings.SDL2_IMAGE_FORMATS = []
     elif what == 'sdl2-net':
-      build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
+      build_port('sdl2_net', libname('libSDL2_net'))
     elif what == 'sdl2-mixer':
-      build_port('sdl2-mixer', libname('libSDL2_mixer'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
+      old_formats = shared.Settings.SDL2_MIXER_FORMATS
+      shared.Settings.SDL2_MIXER_FORMATS = []
+      build_port('sdl2_mixer', libname('libSDL2_mixer'))
+      shared.Settings.SDL2_MIXER_FORMATS = old_formats
+    elif what == 'sdl2-mixer-ogg':
+      old_formats = shared.Settings.SDL2_MIXER_FORMATS
+      shared.Settings.SDL2_MIXER_FORMATS = ["ogg"]
+      build_port('sdl2_mixer', libname('libSDL2_mixer_ogg'))
+      shared.Settings.SDL2_MIXER_FORMATS = old_formats
+    elif what == 'sdl2-mixer-mp3':
+      old_formats = shared.Settings.SDL2_MIXER_FORMATS
+      shared.Settings.SDL2_MIXER_FORMATS = ["mp3"]
+      build_port('sdl2_mixer', libname('libSDL2_mixer_mp3'))
+      shared.Settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'freetype':
-      build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
+      build_port('freetype', 'libfreetype.a')
     elif what == 'harfbuzz':
-      build_port('harfbuzz', 'libharfbuzz.a', ['-s', 'USE_HARFBUZZ=1'])
+      build_port('harfbuzz', 'libharfbuzz.a')
     elif what == 'harfbuzz-mt':
-      build_port('harfbuzz-mt', 'libharfbuzz-mt.a', ['-s', 'USE_HARFBUZZ=1', '-s', 'USE_PTHREADS=1'])
+      shared.Settings.USE_PTHREADS = 1
+      build_port('harfbuzz', 'libharfbuzz-mt.a')
+      shared.Settings.USE_PTHREADS = 0
     elif what == 'sdl2-ttf':
-      build_port('sdl2-ttf', libname('libSDL2_ttf'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
+      build_port('sdl2_ttf', libname('libSDL2_ttf'))
     elif what == 'cocos2d':
-      build_port('cocos2d', libname('libcocos2d'), ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+      build_port('cocos2d', libname('libcocos2d'))
     elif what == 'regal':
-      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
+      build_port('regal', libname('libregal'))
     elif what == 'regal-mt':
-      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'USE_PTHREADS=1', '-pthread'])
+      shared.Settings.USE_PTHREADS = 1
+      build_port('regal', libname('libregal-mt'))
+      shared.Settings.USE_PTHREADS = 0
     elif what == 'boost_headers':
-      build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
+      build_port('boost_headers', libname('libboost_headers'))
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

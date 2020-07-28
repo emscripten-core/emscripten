@@ -1,15 +1,14 @@
 //===-- asan_descriptions.h -------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
 // This file is a part of AddressSanitizer, an address sanity checker.
 //
-// ASan-private header for asan_descriptions.cc.
+// ASan-private header for asan_descriptions.cpp.
 // TODO(filcab): Most struct definitions should move to the interface headers.
 //===----------------------------------------------------------------------===//
 #ifndef ASAN_DESCRIPTIONS_H
@@ -204,7 +203,7 @@ class AddressDescription {
   AddressDescription() = default;
   // shouldLockThreadRegistry allows us to skip locking if we're sure we already
   // have done it.
-  AddressDescription(uptr addr, bool shouldLockThreadRegistry = true)
+  explicit AddressDescription(uptr addr, bool shouldLockThreadRegistry = true)
       : AddressDescription(addr, 1, shouldLockThreadRegistry) {}
   AddressDescription(uptr addr, uptr access_size,
                      bool shouldLockThreadRegistry = true);

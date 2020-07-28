@@ -6,6 +6,7 @@
 from __future__ import print_function
 import os
 import shutil
+from tools.shared import run_process
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
@@ -116,6 +117,13 @@ class interactive(BrowserCore):
     open(os.path.join(self.get_dir(), 'sdl2_mixer_wav.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer_wav.c')).read()))
 
     Popen([EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer_wav.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432', '--preload-file', 'sound.wav', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl2_mixer_mp3(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'pudinha.mp3'), os.path.join(self.get_dir(), 'sound.mp3'))
+    open(os.path.join(self.get_dir(), 'sdl2_mixer_mp3.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer_mp3.c')).read()))
+
+    run_process([EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer_mp3.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'SDL2_MIXER_FORMATS=["mp3"]', '-s', 'INITIAL_MEMORY=33554432', '--preload-file', 'sound.mp3', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def zzztest_sdl2_audio_beeps(self):

@@ -238,18 +238,6 @@ def get_multiprocessing_pool():
   return multiprocessing_pool
 
 
-# When creating environment variables for Makefiles to execute, we need to
-# doublequote the commands if they have spaces in them..
-def doublequote_spaces(arg):
-  if isinstance(arg, list):
-    return [doublequote_spaces(a) for a in arg]
-
-  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
-    return '"' + arg.replace('"', '\\"') + '"'
-
-  return arg
-
-
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
 # remove them when needed.
 def remove_quotes(arg):
@@ -1479,18 +1467,24 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   return js_file
 
 
+# extract the DWARF info from the main file, and leave the wasm with
+# debug into as a file on the side
+# TODO: emit only debug sections in the side file, and not the entire
+#       wasm as well
 def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
-  # extract the DWARF info from the main file, and leave the wasm with
-  # debug into as a file on the side
-  # TODO: emit only debug sections in the side file, and not the entire
-  #       wasm as well
+  # if the dwarf filename wasn't provided, use the default target + a suffix
+  wasm_file_with_dwarf = shared.Settings.SEPARATE_DWARF
+  if wasm_file_with_dwarf is True:
+    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+  embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
+
   shutil.move(wasm_file, wasm_file_with_dwarf)
   run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
-  filename_bytes = asbytes(wasm_file_with_dwarf)
+  filename_bytes = asbytes(embedded_path)
   contents = WebAssembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:

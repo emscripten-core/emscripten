@@ -167,6 +167,9 @@ UBSAN_SANITIZERS = {
 }
 
 
+VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
+
+
 # this function uses the global 'final' variable, which contains the current
 # final output file. if a method alters final, and calls this method, then it
 # must modify final globally (i.e. it can't receive final as a param and
@@ -271,6 +274,33 @@ def will_metadce(options):
   if shared.Settings.ASSERTIONS:
     return False
   return shared.Settings.OPT_LEVEL >= 3 or shared.Settings.SHRINK_LEVEL >= 1
+
+
+def setup_environment_settings():
+  # Environment setting based on user input
+  environments = shared.Settings.ENVIRONMENT.split(',')
+  if any([x for x in environments if x not in VALID_ENVIRONMENTS]):
+    exit_with_error('Invalid environment specified in "ENVIRONMENT": ' + shared.Settings.ENVIRONMENT + '. Should be one of: ' + ','.join(VALID_ENVIRONMENTS))
+
+  shared.Settings.ENVIRONMENT_MAY_BE_WEB = not shared.Settings.ENVIRONMENT or 'web' in environments
+  shared.Settings.ENVIRONMENT_MAY_BE_WEBVIEW = not shared.Settings.ENVIRONMENT or 'webview' in environments
+  shared.Settings.ENVIRONMENT_MAY_BE_NODE = not shared.Settings.ENVIRONMENT or 'node' in environments
+  shared.Settings.ENVIRONMENT_MAY_BE_SHELL = not shared.Settings.ENVIRONMENT or 'shell' in environments
+
+  # The worker case also includes Node.js workers when pthreads are
+  # enabled and Node.js is one of the supported environments for the build to
+  # run on. Node.js workers are detected as a combination of
+  # ENVIRONMENT_IS_WORKER and ENVIRONMENT_IS_NODE.
+  shared.Settings.ENVIRONMENT_MAY_BE_WORKER = \
+      not shared.Settings.ENVIRONMENT or \
+      'worker' in environments or \
+      (shared.Settings.ENVIRONMENT_MAY_BE_NODE and shared.Settings.USE_PTHREADS)
+
+  if not shared.Settings.ENVIRONMENT_MAY_BE_WORKER and shared.Settings.PROXY_TO_WORKER:
+    exit_with_error('If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
+
+  if not shared.Settings.ENVIRONMENT_MAY_BE_WORKER and shared.Settings.USE_PTHREADS:
+    exit_with_error('When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
 
 class JSOptimizer(object):
@@ -725,7 +755,7 @@ def run(args):
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
   if DEBUG:
-    cmd = ' '.join(args)
+    cmd = shared.shlex_join(args)
     if EMCC_CFLAGS:
       cmd += ' + ' + EMCC_CFLAGS
     logger.warning('invocation: ' + cmd + '  (in ' + os.getcwd() + ')')
@@ -796,8 +826,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # This check comes after check_sanity because test_sanity expects this.
   if not args:
-    logger.warning('no input files')
-    return 1
+    exit_with_error('no input files')
 
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
@@ -820,7 +849,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       lines = [x for x in proc.stderr.splitlines() if clang in x and input_file in x]
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
-      print(' '.join(building.doublequote_spaces(parts[1:])))
+      print(shared.shlex_join(parts[1:]))
     return 0
 
   def get_language_mode(args):
@@ -879,9 +908,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # use node.js raw filesystem access, to behave just like a native executable
     cmd += ['-s', 'NODERAWFS=1']
 
-    logger.debug('just configuring: ' + ' '.join(cmd))
+    logger.debug('just configuring: ' + shared.shlex_join(cmd))
     if debug_configure:
-      open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
+      open(tempout, 'a').write('emcc, just configuring: ' + shared.shlex_join(cmd) + '\n\n')
 
     linking = '-c' not in cmd
     # Last -o directive should take precedence, if multiple are specified
@@ -901,9 +930,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.copyfile(target, unsuffixed(target))
         target = unsuffixed(target)
       src = open(target).read()
-      full_node = ' '.join(shared.NODE_JS)
+      full_node = shared.shlex_join(shared.NODE_JS)
       if os.path.sep not in full_node:
-        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+        # TODO: use whereis etc. And how about non-*NIX?
+        full_node = '/usr/bin/env ' + full_node
       open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
       try:
         os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
@@ -984,6 +1014,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # This needs to run before other cmdline flags have been parsed, so that
     # warnings are properly printed during arg parse.
     newargs = diagnostics.capture_warnings(newargs)
+
+    if not shared.CONFIG_FILE:
+      diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprecated. Please use a file instead.')
+
+    if sys.version_info < (3, 0, 0) and 'EMCC_ALLOW_PYTHON2' not in os.environ:
+      diagnostics.warning('deprecated', 'Support for running emscripten with python2 is deprecated.  Please update to python3 as soon as possible (See https://github.com/emscripten-core/emscripten/issues/7198')
 
     for i in range(len(newargs)):
       if newargs[i] in ('-l', '-L', '-I'):
@@ -1479,6 +1515,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MIN_CHROME_VERSION <= 37:
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
 
+    setup_environment_settings()
+
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if shared.Settings.WASM and not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
@@ -1790,9 +1828,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Enable minification of wasm imports and exports when appropriate, if we
     # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
     # Things that process the JS after this operation would be done must disable this.
-    # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names, and wasm2js
-    # needs to use the getTempRet0 imports (otherwise, it may create new ones to replace
-    # the old, which would break).
+    # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names.
     if will_metadce(options) and \
         shared.Settings.OPT_LEVEL >= 2 and \
         shared.Settings.DEBUG_LEVEL <= 2 and \
@@ -1803,7 +1839,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         not shared.Settings.RELOCATABLE and \
         not target.endswith(WASM_ENDINGS) and \
         not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
-        not shared.Settings.WASM2JS and \
             shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
       shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
       # in fastcomp it's inconvenient to minify module names as there is the
@@ -3383,11 +3418,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
   if shared.Settings.DEBUG_LEVEL >= 3 and shared.Settings.SEPARATE_DWARF and os.path.exists(wasm_binary_target):
-    # if the dwarf filename wasn't provided, use the default target + a suffix
-    dwarf_target = shared.Settings.SEPARATE_DWARF
-    if dwarf_target is True:
-      dwarf_target = wasm_binary_target + '.debug.wasm'
-    building.emit_debug_on_side(wasm_binary_target, dwarf_target)
+    building.emit_debug_on_side(wasm_binary_target, shared.Settings.SEPARATE_DWARF)
 
   if shared.Settings.WASM2C:
     wasm2c.do_wasm2c(wasm_binary_target)

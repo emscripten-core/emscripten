@@ -23,8 +23,10 @@ uintptr_t GetCurrentProcess(void);
 #endif
 
 #if defined(__FreeBSD__) && defined(__arm__)
-#include <machine/sysarch.h>
+// clang-format off
 #include <sys/types.h>
+#include <machine/sysarch.h>
+// clang-format on
 #endif
 
 #if defined(__NetBSD__) && defined(__arm__)
@@ -32,54 +34,16 @@ uintptr_t GetCurrentProcess(void);
 #endif
 
 #if defined(__OpenBSD__) && defined(__mips__)
-#include <machine/sysarch.h>
+// clang-format off
 #include <sys/types.h>
+#include <machine/sysarch.h>
+// clang-format on
 #endif
 
 #if defined(__linux__) && defined(__mips__)
 #include <sys/cachectl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#if defined(__ANDROID__) && defined(__LP64__)
-// clear_mips_cache - Invalidates instruction cache for Mips.
-static void clear_mips_cache(const void *Addr, size_t Size) {
-  __asm__ volatile(
-      ".set push\n"
-      ".set noreorder\n"
-      ".set noat\n"
-      "beq %[Size], $zero, 20f\n" // If size == 0, branch around.
-      "nop\n"
-      "daddu %[Size], %[Addr], %[Size]\n" // Calculate end address + 1
-      "rdhwr $v0, $1\n"                   // Get step size for SYNCI.
-                                          // $1 is $HW_SYNCI_Step
-      "beq $v0, $zero, 20f\n"             // If no caches require
-                                          // synchronization, branch
-                                          // around.
-      "nop\n"
-      "10:\n"
-      "synci 0(%[Addr])\n"            // Synchronize all caches around
-                                      // address.
-      "daddu %[Addr], %[Addr], $v0\n" // Add step size.
-      "sltu $at, %[Addr], %[Size]\n"  // Compare current with end
-                                      // address.
-      "bne $at, $zero, 10b\n"         // Branch if more to do.
-      "nop\n"
-      "sync\n" // Clear memory hazards.
-      "20:\n"
-      "bal 30f\n"
-      "nop\n"
-      "30:\n"
-      "daddiu $ra, $ra, 12\n" // $ra has a value of $pc here.
-                              // Add offset of 12 to point to the
-                              // instruction after the last nop.
-                              //
-      "jr.hb $ra\n"           // Return, clearing instruction
-                              // hazards.
-      "nop\n"
-      ".set pop\n"
-      : [ Addr ] "+r"(Addr), [ Size ] "+r"(Size)::"at", "ra", "v0", "memory");
-}
-#endif
 #endif
 
 // The compiler generates calls to __clear_cache() when creating
@@ -123,40 +87,40 @@ void __clear_cache(void *start, void *end) {
 #elif defined(__linux__) && defined(__mips__)
   const uintptr_t start_int = (uintptr_t)start;
   const uintptr_t end_int = (uintptr_t)end;
-#if defined(__ANDROID__) && defined(__LP64__)
-  // Call synci implementation for short address range.
-  const uintptr_t address_range_limit = 256;
-  if ((end_int - start_int) <= address_range_limit) {
-    clear_mips_cache(start, (end_int - start_int));
-  } else {
-    syscall(__NR_cacheflush, start, (end_int - start_int), BCACHE);
-  }
-#else
   syscall(__NR_cacheflush, start, (end_int - start_int), BCACHE);
-#endif
 #elif defined(__mips__) && defined(__OpenBSD__)
   cacheflush(start, (uintptr_t)end - (uintptr_t)start, BCACHE);
 #elif defined(__aarch64__) && !defined(__APPLE__)
   uint64_t xstart = (uint64_t)(uintptr_t)start;
   uint64_t xend = (uint64_t)(uintptr_t)end;
+
+  // Get Cache Type Info.
+  static uint64_t ctr_el0 = 0;
+  if (ctr_el0 == 0)
+    __asm __volatile("mrs %0, ctr_el0" : "=r"(ctr_el0));
+
+  // The DC and IC instructions must use 64-bit registers so we don't use
+  // uintptr_t in case this runs in an IPL32 environment.
   uint64_t addr;
 
-  // Get Cache Type Info
-  uint64_t ctr_el0;
-  __asm __volatile("mrs %0, ctr_el0" : "=r"(ctr_el0));
-
-  // dc & ic instructions must use 64bit registers so we don't use
-  // uintptr_t in case this runs in an IPL32 environment.
-  const size_t dcache_line_size = 4 << ((ctr_el0 >> 16) & 15);
-  for (addr = xstart & ~(dcache_line_size - 1); addr < xend;
-       addr += dcache_line_size)
-    __asm __volatile("dc cvau, %0" ::"r"(addr));
+  // If CTR_EL0.IDC is set, data cache cleaning to the point of unification
+  // is not required for instruction to data coherence.
+  if (((ctr_el0 >> 28) & 0x1) == 0x0) {
+    const size_t dcache_line_size = 4 << ((ctr_el0 >> 16) & 15);
+    for (addr = xstart & ~(dcache_line_size - 1); addr < xend;
+         addr += dcache_line_size)
+      __asm __volatile("dc cvau, %0" ::"r"(addr));
+  }
   __asm __volatile("dsb ish");
 
-  const size_t icache_line_size = 4 << ((ctr_el0 >> 0) & 15);
-  for (addr = xstart & ~(icache_line_size - 1); addr < xend;
-       addr += icache_line_size)
-    __asm __volatile("ic ivau, %0" ::"r"(addr));
+  // If CTR_EL0.DIC is set, instruction cache invalidation to the point of
+  // unification is not required for instruction to data coherence.
+  if (((ctr_el0 >> 29) & 0x1) == 0x0) {
+    const size_t icache_line_size = 4 << ((ctr_el0 >> 0) & 15);
+    for (addr = xstart & ~(icache_line_size - 1); addr < xend;
+         addr += icache_line_size)
+      __asm __volatile("ic ivau, %0" ::"r"(addr));
+  }
   __asm __volatile("isb sy");
 #elif defined(__powerpc64__)
   const size_t line_size = 32;
@@ -173,6 +137,16 @@ void __clear_cache(void *start, void *end) {
   for (uintptr_t line = start_line; line < end_line; line += line_size)
     __asm__ volatile("icbi 0, %0" : : "r"(line));
   __asm__ volatile("isync");
+#elif defined(__sparc__)
+  const size_t dword_size = 8;
+  const size_t len = (uintptr_t)end - (uintptr_t)start;
+
+  const uintptr_t mask = ~(dword_size - 1);
+  const uintptr_t start_dword = ((uintptr_t)start) & mask;
+  const uintptr_t end_dword = ((uintptr_t)start + len + dword_size - 1) & mask;
+
+  for (uintptr_t dword = start_dword; dword < end_dword; dword += dword_size)
+    __asm__ volatile("flush %0" : : "r"(dword));
 #else
 #if __APPLE__
   // On Darwin, sys_icache_invalidate() provides this functionality
