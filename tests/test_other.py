@@ -9810,8 +9810,12 @@ int main(void) {
         emcc_args.extend(['--embed-file', f])
     self.do_other_test('mmap_and_munmap', emcc_args)
 
-  def test_mmap_and_munmap_anonymous(self):
-    self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+  @parameterized({
+    '': ([],),
+    'asan': (['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'],),
+  })
+  def test_mmap_and_munmap_anonymous(self, args):
+    self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM'] + args)
 
   def test_mmap_memorygrowth(self):
     self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])

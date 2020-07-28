@@ -277,7 +277,7 @@ bool SignalContext::IsStackOverflow() const {
 #endif  // SANITIZER_GO
 
 bool IsAccessibleMemoryRange(uptr beg, uptr size) {
-#ifdef __wasm__
+#if SANITIZER_EMSCRIPTEN
   // Avoid pulling in __sys_pipe for the trick below, which doesn't work on
   // WebAssembly anyways because there are no memory protections.
   return true;
@@ -301,7 +301,7 @@ bool IsAccessibleMemoryRange(uptr beg, uptr size) {
   internal_close(sock_pair[0]);
   internal_close(sock_pair[1]);
   return result;
-#endif // __wasm__
+#endif // SANITIZER_EMSCRIPTEN
 }
 
 void PlatformPrepareForSandboxing(__sanitizer_sandbox_arguments *args) {
