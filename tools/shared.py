@@ -414,7 +414,7 @@ def fix_js_engine(old, new):
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "11.0"
+    return "12.0"
   else:
     return "6.0"
 
@@ -430,6 +430,8 @@ def get_clang_version():
 
 
 def check_llvm_version():
+  # Let LLVM 12 roll in
+  return True
   expected = expected_llvm_version()
   actual = get_clang_version()
   if expected in actual:
@@ -797,6 +799,7 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
+    path_from_root('system', 'lib', 'compiler-rt', 'include'),
     Cache.get_path('include')
   ]
 
