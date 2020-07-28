@@ -946,7 +946,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
     assert(cb, index);
 #endif
-    if (!GL.currArrayBuffer) {
+    if (!GLctx.currentArrayBufferBinding) {
       cb.size = size;
       cb.type = type;
       cb.normalized = false;
