@@ -134,7 +134,7 @@ void InitializeFlags() {
   // Override from Emscripten Module.
 #define MAKE_OPTION_LOAD(parser, name) \
     options = (char*) EM_ASM_INT({ \
-      return _emscripten_with_builtin_malloc(function () { \
+      return withBuiltinMalloc(function () { \
         return allocateUTF8(Module[name] || 0); \
       }); \
     }); \
