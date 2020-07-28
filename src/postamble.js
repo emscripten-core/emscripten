@@ -416,7 +416,7 @@ function exit(status, implicit) {
     PThread.terminateAllThreads();
 #endif
 
-    ABORT = true;
+    ABORT = 2;
     EXITSTATUS = status;
 
     exitRuntime();

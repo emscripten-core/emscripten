@@ -64,8 +64,8 @@ var selfThreadId = 0;
 //========================================
 
 // whether we are quitting the application. no code should run after this.
-// set in exit() and abort()
-var ABORT = false;
+// set to 1 in abort() and to 2 in exit() so we can tell them apart if needed
+var ABORT = 0;
 
 // set by exit() and abort().  Passed to 'onExit' handler.
 // NOTE: This is also used as the process return code code in shell environments
@@ -679,7 +679,7 @@ function abort(what) {
   what += '';
   err(what);
 
-  ABORT = true;
+  ABORT = 1;
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
@@ -800,6 +800,78 @@ function createExportWrapper(name, fixedasm) {
     return asm[name].apply(null, arguments);
   };
 }
+#endif
+
+#if ABORT_ON_WASM_EXCEPTIONS
+// Instrument all the exported functions to:
+// - abort if an unhandled exception occurs
+// - throw an exception if someone tries to call them after the program has aborted
+// Set settings.ABORT_ON_WASM_EXCEPTIONS for more info.
+__ATINIT__.unshift(function () { 
+#if DISABLE_EXCEPTION_CATCHING != 1
+  // With exception catching enabled we only handle exceptions at the top level
+  // so that the exception mechanics can work uninterrupted at the inner level.
+  // Don't do this with exception catching disabled to save some code size.
+  var wrapperDepth = 0;
+#endif
+  var mainFunc = Module["asm"]["main"];
+  var instAsm = {};
+  for (var name in Module['asm']) {
+    (function(name) {
+      var original = Module['asm'][name];
+      
+      // Wrap all functions, copy the other symbols.
+      if (typeof original === 'function') {
+        instAsm[name] = function() {
+          // Don't allow this function to be called if we're aborted!
+          if (ABORT == 1) { 
+#if ASSERTIONS
+            throw "program has already aborted!";
+#else
+            throw "DEAD";	
+#endif
+          }
+          
+#if DISABLE_EXCEPTION_CATCHING != 1
+          wrapperDepth += 1;
+#endif
+          try {
+            return original.apply(null, arguments);
+          }
+          catch (e) {
+            if(
+              original == mainFunc // rethrow any exceptions from main as they are handled in callMain
+              || ABORT === 1 // rethrow exception if abort() was called in the original function call above
+#if DISABLE_EXCEPTION_CATCHING != 1            
+              || wrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled
+#endif
+#if SUPPORT_LONGJMP
+              || e === 'longjmp' // rethrow longjmp if enabled
+#endif
+            ) {
+              throw e;
+            }
+            
+#if ASSERTIONS
+            abort("unhandled exception: " + (typeof e === 'object' && e.stack) ? e + ", " + e.stack : e);
+#else
+            abort("UNH: " + e + ", " + e.stack);
+#endif
+          }
+#if DISABLE_EXCEPTION_CATCHING != 1
+          finally {
+            wrapperDepth -= 1;
+          }
+#endif
+        };
+      }
+      else {
+        instAsm[name] = original;
+      }
+    })(name);
+  }
+  Module['asm'] = instAsm; 
+});
 #endif
 
 #if WASM
