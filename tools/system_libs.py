@@ -1183,6 +1183,14 @@ class libgl(MTLibrary):
     )
 
 
+class libwebgpu_cpp(MTLibrary):
+  name = 'libwebgpu_cpp'
+
+  cflags = ['-std=c++11', '-O2']
+  src_dir = ['system', 'lib', 'webgpu']
+  src_files = ['webgpu_cpp.cpp']
+
+
 class libembind(Library):
   name = 'libembind'
   never_force = True
@@ -1686,6 +1694,9 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       add_library(system_libs_map['libsockets_proxy'])
     else:
       add_library(system_libs_map['libsockets'])
+
+  if shared.Settings.USE_WEBGPU:
+    add_library(system_libs_map['libwebgpu_cpp'])
 
   if not shared.Settings.WASM_BACKEND:
     # With fastcomp, some libraries are basically big object files (.bc) and these need to come

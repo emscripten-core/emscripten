@@ -783,7 +783,6 @@ typedef struct WGPUTextureCopyView {
     WGPUChainedStruct const * nextInChain;
     WGPUTexture texture;
     uint32_t mipLevel;
-    uint32_t arrayLayer;
     WGPUOrigin3D origin;
 } WGPUTextureCopyView;
 
@@ -793,7 +792,6 @@ typedef struct WGPUTextureDescriptor {
     WGPUTextureUsageFlags usage;
     WGPUTextureDimension dimension;
     WGPUExtent3D size;
-    uint32_t arrayLayerCount;
     WGPUTextureFormat format;
     uint32_t mipLevelCount;
     uint32_t sampleCount;
