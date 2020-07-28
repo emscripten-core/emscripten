@@ -1091,6 +1091,8 @@ var LibraryGL = {
                                              "EXT_sRGB", "WEBGL_compressed_texture_etc1", "EXT_disjoint_timer_query",
                                              "WEBGL_compressed_texture_etc", "WEBGL_compressed_texture_astc", "EXT_color_buffer_float",
                                              "WEBGL_compressed_texture_s3tc_srgb", "EXT_disjoint_timer_query_webgl2",
+                                             // WebGL extensions in draft:
+                                             "WEBGL_multi_draw",
                                              // Old style prefixed forms of extensions (but still currently used on e.g. iPhone Xs as
                                              // tested on iOS 12.4.1):
                                              "WEBKIT_WEBGL_compressed_texture_pvrtc"];
