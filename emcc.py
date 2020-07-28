@@ -1988,17 +1988,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
         options.binaryen_passes += backend_binaryen_passes()
-
-      # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
-      # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
-      if shared.Settings.SAFE_HEAP and building.is_wasm_only() and not shared.Settings.WASM_BACKEND:
-        options.binaryen_passes += ['--safe-heap']
-      if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS and not shared.Settings.WASM_BACKEND:
-        # emulated function pointer casts is emulated in fastcomp wasm using a binaryen pass
-        options.binaryen_passes += ['--fpcast-emu']
-        # we also need emulated function pointers for that, as we need a single flat
-        # table, as is standard in wasm, and not asm.js split ones.
-        shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+      else:
+        # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
+        # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
+        if shared.Settings.SAFE_HEAP and building.is_wasm_only():
+          options.binaryen_passes += ['--safe-heap']
+        if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+          # emulated function pointer casts is emulated in fastcomp wasm using a binaryen pass
+          options.binaryen_passes += ['--fpcast-emu']
+          # we also need emulated function pointers for that, as we need a single flat
+          # table, as is standard in wasm, and not asm.js split ones.
+          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
 
     if shared.Settings.WASM2JS:
       if not shared.Settings.WASM_BACKEND:
