@@ -10481,10 +10481,26 @@ int main() {
     err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
     self.assertContained('native function `main` called after runtime exit', err)
 
-  # Tests that environment support is not present when building with -s SUPPORT_POSIX_ENV=0
-  def test_no_environ(self):
-    err = self.expect_fail([EMCC, path_from_root('tests', 'env', 'src-mini.c'), '-s', 'SUPPORT_POSIX_ENV=0'])
-    self.assertContained("undefined symbol: environ", err)
+  # Tests that environment support is not present when building with -s SUPPORT_POSIX_ENV=0, and it shrinks
+  # code size
+  def test_support_posix_env(self):
+    # In unoptimized -O0 the test code should build properly when POSIX environment support is enabled.
+    self.run_process([EMCC, path_from_root('tests', 'env', 'support_posix_env.cpp'), '-s', 'SUPPORT_POSIX_ENV=1'])
+
+    # In unoptimized -O0 the test code should fail to build if when POSIX environment support is disabled.
+    err = self.expect_fail([EMCC, path_from_root('tests', 'env', 'support_posix_env.cpp'), '-s', 'SUPPORT_POSIX_ENV=0'])
+    self.assertContained("undefined symbol: getenv", err)
+
+    # In optimized -O3 the test code should build properly both with and without POSIX environment support, as
+    # the POSIX environment code will be optimized away.
+    self.run_process([EMCC, path_from_root('tests', 'env', 'support_posix_env.cpp'), '-O3', '-s', 'SUPPORT_POSIX_ENV=1', '-o', 'a.html'])
+    self.run_process([EMCC, path_from_root('tests', 'env', 'support_posix_env.cpp'), '-O3', '-s', 'SUPPORT_POSIX_ENV=0', '-o', 'b.html'])
+
+    # However building with SUPPORT_POSIX_ENV=0 should optimize away environment-related code ...
+    self.assertNotContained('environ', open('b.js').read())
+    # ... and the output size should be smaller than what SUPPORT_POSIX_ENV=1 was able to do. (or otherwise -s SUPPORT_POSIX_ENV=0 is redundant option to have)
+    assert os.path.getsize('a.js') > os.path.getsize('b.js') # If this assert fails, it means -s SUPPORT_POSIX_ENV=0 is redundant, or did not work
+
 
   def test_metadce_wasm2js_i64(self):
     # handling i64 unsigned remainder brings in some i64 support code. metadce
