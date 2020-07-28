@@ -10485,7 +10485,7 @@ int main(int argc, char **argv) {
     run_process([EMCC, 'src.cpp', '-O3', '-s', 'WASM=0'])
     self.run_js('a.out.js')
 
-  def test_DETERMINISTIC(self):
+  def test_deterministic(self):
     # test some things that may not be nondeterministic
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
