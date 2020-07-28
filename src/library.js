@@ -4553,7 +4553,7 @@ LibraryManager.library = {
       assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
       // In C varargs, floats and doubles take up 8 bytes, and are 8 byte aligned.
-      // 4 byte padding will precede doubles to align them up.
+      // 4 byte padding will precede doubles to align them up if necessary.
       var isDouble = ch < 105;
       buf += isDouble & buf; // Align up buf pointer to 4/8 bytes for the next element.
       __readAsmConstArgsArray.push(isDouble ? HEAPF64[buf >> 1] : HEAP32[buf]);
