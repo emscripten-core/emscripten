@@ -10513,7 +10513,7 @@ int main () {
   printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
 }
 ''')
-    run_process([EMCC, 'src.cpp', '-sDETERMINISTIC'])
+    self.run_process([EMCC, 'src.cpp', '-sDETERMINISTIC'])
     one = self.run_js('a.out.js')
     # ensure even if the time resolution is 1 second, that if we see the real
     # time we'll see a difference
