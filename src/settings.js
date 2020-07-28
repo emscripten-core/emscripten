@@ -1792,6 +1792,11 @@ var PRINTF_LONG_DOUBLE = 0;
 // which avoids trampling a C file).
 var WASM2C = 0;
 
+// Setting this affects the path emitted in the wasm that refers to the DWARF
+// file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
+// in a custom location.
+var SEPARATE_DWARF_URL = '';
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
