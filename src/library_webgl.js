@@ -1091,8 +1091,6 @@ var LibraryGL = {
                                              "EXT_sRGB", "WEBGL_compressed_texture_etc1", "EXT_disjoint_timer_query",
                                              "WEBGL_compressed_texture_etc", "WEBGL_compressed_texture_astc", "EXT_color_buffer_float",
                                              "WEBGL_compressed_texture_s3tc_srgb", "EXT_disjoint_timer_query_webgl2",
-                                             // WebGL extensions in draft:
-                                             "WEBGL_multi_draw",
                                              // Old style prefixed forms of extensions (but still currently used on e.g. iPhone Xs as
                                              // tested on iOS 12.4.1):
                                              "WEBKIT_WEBGL_compressed_texture_pvrtc"];
@@ -3603,56 +3601,46 @@ var LibraryGL = {
     GLctx.sampleCoverage(value, !!invert);
   },
 
-  glMultiDrawArraysWEBGL: function(mode, firsts, firstsOffset, counts, countsOffset, drawcount) {
-    var firstsList = HEAP32.subarray(firsts >> 2, (firsts >> 2) + drawcount);
-    var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
+  glMultiDrawArraysANGLE: function(mode, firsts, counts, drawcount) {
     GLctx.multiDrawWebgl['multiDrawArraysWEBGL'](
       mode,
-      firstsList,
-      firstsOffset,
-      countsList,
-      countsOffset,
+      HEAP32,
+      firsts >> 2,
+      HEAP32,
+      counts >> 2,
       drawcount);
   },
-  glMultiDrawArraysInstancedWEBGL: function(mode, firsts, firstsOffset, counts, countsOffset, instanceCounts, instanceCountsOffset, drawcount) {
-    var firstsList = HEAP32.subarray(firsts >> 2, (firsts >> 2) + drawcount);
-    var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
-    var instanceCountsList = HEAP32.subarray(instanceCounts >> 2, (instanceCounts >> 2) + drawcount);
+  glMultiDrawArraysInstancedANGLE: function(mode, firsts, counts, instanceCounts, drawcount) {
     GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
       mode,
-      firstsList,
-      firstsOffset,
-      countsList,
-      countsOffset,
-      instanceCountsList,
-      instanceCountsOffset,
+      HEAP32,
+      firsts >> 2,
+      HEAP32,
+      counts >> 2,
+      HEAP32,
+      instanceCounts >> 2,
       drawcount);
   },
-  glMultiDrawElementsWEBGL: function(mode, counts, countsOffset, type, offsets, offsetsOffset, drawcount) {
-    var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
-    var offsetsList = HEAP32.subarray(offsets >> 2, (offsets >> 2) + drawcount);
+  glMultiDrawElementsANGLE: function(mode, counts, type, offsets, drawcount) {
     GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
       mode,
-      countsList,
-      countsOffset,
+      HEAP32,
+      counts >> 2,
       type,
-      offsetsList,
-      offsetsOffset,
+      HEAP32,
+      offsets >> 2,
       drawcount);
   },
-  glMultiDrawElementsInstancedWEBGL: function(mode, counts, countsOffset, type, offsets, offsetsOffset, instanceCounts, instanceCountsOffset, drawcount) {
-    var countsList = HEAP32.subarray(counts >> 2, (counts >> 2) + drawcount);
-    var offsetsList = HEAP32.subarray(offsets >> 2, (offsets >> 2) + drawcount);
-    var instanceCountsList = HEAP32.subarray(instanceCounts >> 2, (instanceCounts >> 2) + drawcount);
+  glMultiDrawElementsInstancedANGLE: function(mode, counts, type, offsets, instanceCounts, drawcount) {
     GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
       mode,
-      countsList,
-      countsOffset,
+      HEAP32,
+      counts >> 2,
       type,
-      offsetsList,
-      offsetsOffset,
-      instanceCountsList,
-      instanceCountsOffset,
+      HEAP32,
+      offsets >> 2,
+      HEAP32,
+      instanceCounts >> 2,
       drawcount);
   },
 

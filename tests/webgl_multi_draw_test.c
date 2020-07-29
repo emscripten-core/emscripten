@@ -137,22 +137,22 @@ int main()
 
 #ifdef MULTI_DRAW_ARRAYS
   glClear(GL_COLOR_BUFFER_BIT);
-  glMultiDrawArraysWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, drawcount);
+  glMultiDrawArraysANGLE(GL_TRIANGLES, firsts, counts, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ARRAYS_INSTANCED
   glClear(GL_COLOR_BUFFER_BIT);
-  glMultiDrawArraysInstancedWEBGL(GL_TRIANGLES, firsts, 0, counts, 0, instanceCounts, 0, drawcount);
+  glMultiDrawArraysInstancedANGLE(GL_TRIANGLES, firsts, counts, instanceCounts, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ELEMENTS
   glClear(GL_COLOR_BUFFER_BIT);
-  glMultiDrawElementsWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, drawcount);
+  glMultiDrawElementsANGLE(GL_TRIANGLES, counts, GL_UNSIGNED_SHORT, offsets, drawcount);
 #endif
 
 #ifdef MULTI_DRAW_ELEMENTS_INSTANCED
   glClear(GL_COLOR_BUFFER_BIT);
-  glMultiDrawElementsInstancedWEBGL(GL_TRIANGLES, counts, 0, GL_UNSIGNED_SHORT, offsets, 0, instanceCounts, 0, drawcount);
+  glMultiDrawElementsInstancedANGLE(GL_TRIANGLES, counts, GL_UNSIGNED_SHORT, offsets, instanceCounts, drawcount);
 #endif
 
 #ifdef EXPLICIT_SWAP
