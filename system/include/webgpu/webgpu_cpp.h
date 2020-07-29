@@ -687,9 +687,9 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         void Destroy() const;
-        void const * GetConstMappedRange() const;
-        void * GetMappedRange() const;
-        void MapAsync(MapMode flags, size_t offset, size_t size, BufferMapCallback callback, void * userdata) const;
+        void const * GetConstMappedRange(size_t offset = 0, size_t size = 0) const;
+        void * GetMappedRange(size_t offset = 0, size_t size = 0) const;
+        void MapAsync(MapMode mode, size_t offset, size_t size, BufferMapCallback callback, void * userdata) const;
         void Unmap() const;
 
       private:
@@ -725,6 +725,7 @@ namespace wgpu {
         void InsertDebugMarker(char const * markerLabel) const;
         void PopDebugGroup() const;
         void PushDebugGroup(char const * groupLabel) const;
+        void ResolveQuerySet(QuerySet const& querySet, uint32_t firstQuery, uint32_t queryCount, Buffer const& destination, uint64_t destinationOffset) const;
         void WriteTimestamp(QuerySet const& querySet, uint32_t queryIndex) const;
 
       private:
@@ -859,7 +860,7 @@ namespace wgpu {
         void Signal(Fence const& fence, uint64_t signalValue) const;
         void Submit(uint32_t commandCount, CommandBuffer const * commands) const;
         void WriteBuffer(Buffer const& buffer, uint64_t bufferOffset, void const * data, size_t size) const;
-        void WriteTexture(TextureCopyView const * destinaton, void const * data, size_t dataSize, TextureDataLayout const * dataLayout, Extent3D const * writeSize) const;
+        void WriteTexture(TextureCopyView const * destination, void const * data, size_t dataSize, TextureDataLayout const * dataLayout, Extent3D const * writeSize) const;
 
       private:
         friend ObjectBase<Queue, WGPUQueue>;
