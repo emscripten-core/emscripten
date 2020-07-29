@@ -1304,12 +1304,12 @@ var LibraryWebGPU = {
 
   // wgpuBuffer
 
-  wgpuBufferGetConstMappedRange: function(bufferId) {
+  wgpuBufferGetConstMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
 
     var mapped;
     try {
-      mapped = bufferWrapper.object["getMappedRange"]();
+      mapped = bufferWrapper.object["getMappedRange"](offset, size);
     } catch (ex) {
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
@@ -1323,7 +1323,7 @@ var LibraryWebGPU = {
     return data;
   },
 
-  wgpuBufferGetMappedRange: function(bufferId) {
+  wgpuBufferGetMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
 
     if (bufferWrapper.mapMode !== 2 /* WGPUMapMode_Write */) {
@@ -1336,7 +1336,7 @@ var LibraryWebGPU = {
 
     var mapped;
     try {
-      mapped = bufferWrapper.object["getMappedRange"]();
+      mapped = bufferWrapper.object["getMappedRange"](offset, size);
     } catch (ex) {
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
