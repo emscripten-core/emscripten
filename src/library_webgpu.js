@@ -1288,6 +1288,20 @@ var LibraryWebGPU = {
     return WebGPU.mgrCommandBuffer.create(commandEncoder["finish"]());
   },
 
+  // wgpuComputePipeline
+
+  wgpuComputePipelineGetBindGroupLayout(pipelineId, groupIndex) {
+    var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
+    return WebGPU.mgrBindGroupLayout.create(pipeline["getBindGroupLayout"](groupIndex));
+  },
+
+  // wgpuRenderPipeline
+
+  wgpuRenderPipelineGetBindGroupLayout(pipelineId, groupIndex) {
+    var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
+    return WebGPU.mgrBindGroupLayout.create(pipeline["getBindGroupLayout"](groupIndex));
+  },
+
   // wgpuBuffer
 
   wgpuBufferGetConstMappedRange: function(bufferId) {
