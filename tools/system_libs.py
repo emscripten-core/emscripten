@@ -1695,8 +1695,8 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     else:
       add_library(system_libs_map['libsockets'])
 
-  if shared.Settings.USE_WEBGPU:
-    add_library(system_libs_map['libwebgpu_cpp'])
+    if shared.Settings.USE_WEBGPU:
+      add_library(system_libs_map['libwebgpu_cpp'])
 
   if not shared.Settings.WASM_BACKEND:
     # With fastcomp, some libraries are basically big object files (.bc) and these need to come
