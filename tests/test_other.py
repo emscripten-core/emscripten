@@ -10520,3 +10520,6 @@ int main () {
     time.sleep(2)
     two = self.run_js('a.out.js')
     self.assertIdentical(one, two)
+
+  def test_err(self):
+    self.do_other_test(os.path.join('other', 'err'))
