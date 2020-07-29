@@ -1940,7 +1940,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             '_emscripten_builtin_memalign',
             '_emscripten_builtin_malloc',
             '_emscripten_builtin_free',
-            '_emscripten_builtin_memset',
             '___data_end',
             '___heap_base',
             '___global_base'
@@ -1966,6 +1965,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.USE_ASAN = 1
 
         shared.Settings.EXPORTED_FUNCTIONS += [
+          '_emscripten_builtin_memset',
           '_asan_c_load_1', '_asan_c_load_1u',
           '_asan_c_load_2', '_asan_c_load_2u',
           '_asan_c_load_4', '_asan_c_load_4u',
