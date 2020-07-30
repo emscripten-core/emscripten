@@ -441,6 +441,7 @@ namespace wgpu {
         Uniform = 0x00000040,
         Storage = 0x00000080,
         Indirect = 0x00000100,
+        QueryResolve = 0x00000200,
     };
 
     enum class ColorWriteMask : uint32_t {
