@@ -9827,7 +9827,6 @@ int main(void) {
   def test_mmap_and_munmap_anonymous_asan(self):
     self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
 
-
   def test_mmap_memorygrowth(self):
     self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
 
