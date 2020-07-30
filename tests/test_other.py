@@ -9417,7 +9417,7 @@ int main () {
             if js:
               slop = 30
             else:
-              slop = 10
+              slop = 20
           else:
             slop = 50
           if size <= expected_size + slop and size >= expected_size - slop:
