@@ -122,7 +122,9 @@ var TOTAL_STACK = 5*1024*1024;
 // In general, if you don't need one of those special modes, and if you don't
 // allocate very many small objects, you should use emmalloc since it's
 // smaller. Otherwise, if you do allocate many small objects, dlmalloc
-// is usually worth the extra size.
+// is usually worth the extra size. dlmalloc is also a good choice if you want
+// the extra security checks it does (such as noticing metadata corruption in
+// its internal data structures, which emmalloc does not do).
 var MALLOC = "dlmalloc";
 
 // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
