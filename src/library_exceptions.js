@@ -268,7 +268,7 @@ var LibraryExceptions = {
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['__exception_caught', 'ExceptionInfo', '__exception_last'],
+  __cxa_rethrow__deps: ['__exception_caught', '__exception_last'],
   __cxa_rethrow: function() {
     var catchInfo = ___exception_caught.pop();
     var info = catchInfo.get_exception_info();
@@ -307,7 +307,7 @@ var LibraryExceptions = {
     return type;
   },
 
-  __cxa_begin_catch__deps: ['ExceptionInfo', 'CatchInfo', '__exception_caught', '__exception_addRef',
+  __cxa_begin_catch__deps: ['CatchInfo', '__exception_caught', '__exception_addRef',
                             '_ZSt18uncaught_exceptionv'],
   __cxa_begin_catch: function(ptr) {
     var catchInfo = new _CatchInfo(ptr);
