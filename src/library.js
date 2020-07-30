@@ -4526,7 +4526,7 @@ LibraryManager.library = {
       _memalign = prev_memalign;
       _free = prev_free;
 #if USE_ASAN
-      _memset = _emscripten_builtin_memset
+      _memset = prev_memset;
 #endif
     }
   },
