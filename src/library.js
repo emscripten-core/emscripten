@@ -547,7 +547,7 @@ LibraryManager.library = {
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
     // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 3a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
+    // 3a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
     // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
@@ -761,7 +761,7 @@ LibraryManager.library = {
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['__environ', '$ENV', '_getExecutableName'
+  __buildEnvironment__deps: ['__environ', '$ENV', '$getExecutableName'
 #if MINIMAL_RUNTIME
     , '$writeAsciiToMemory'
 #endif
@@ -783,7 +783,7 @@ LibraryManager.library = {
       ENV['HOME'] = '/home/web_user';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = __getExecutableName();
+      ENV['_'] = getExecutableName();
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
@@ -1838,12 +1838,12 @@ LibraryManager.library = {
     }
   },
 
-  dladdr__deps: ['$stringToNewUTF8', '_getExecutableName'],
+  dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],
   dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(__getExecutableName()); // XXX leak
+    var fname = stringToNewUTF8(getExecutableName()); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -4063,7 +4063,7 @@ LibraryManager.library = {
 #endif
 
   // Returns [parentFuncArguments, functionName, paramListName]
-  _emscripten_traverse_stack: function(args) {
+  $traverseStack: function(args) {
     if (!args || !args.callee || !args.callee.name) {
       return [null, '', ''];
     }
@@ -4092,7 +4092,7 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack', '$jsStackTrace', '$demangle'
+  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$demangle'
 #if MINIMAL_RUNTIME
     , '$warnOnce'
 #endif
@@ -4117,9 +4117,9 @@ LibraryManager.library = {
     var stack_args = null;
     if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
       // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
-      stack_args = __emscripten_traverse_stack(arguments);
+      stack_args = traverseStack(arguments);
       while (stack_args[1].indexOf('_emscripten_') >= 0)
-        stack_args = __emscripten_traverse_stack(stack_args[0]);
+        stack_args = traverseStack(stack_args[0]);
     }
 
     // Process all lines:
@@ -4189,7 +4189,7 @@ LibraryManager.library = {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
         }
-        stack_args = __emscripten_traverse_stack(stack_args[0]);
+        stack_args = traverseStack(stack_args[0]);
       }
     }
     // Trim extra whitespace at the end of the output.
@@ -4399,7 +4399,7 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', '$withBuiltinMalloc'
 #if MINIMAL_RUNTIME
     , '$allocateUTF8'
 #endif
@@ -4425,7 +4425,7 @@ LibraryManager.library = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    _emscripten_with_builtin_malloc(function () {
+    withBuiltinMalloc(function () {
       if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
       _emscripten_pc_get_function.ret = allocateUTF8(name);
     });
@@ -4464,7 +4464,7 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc',
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', '$withBuiltinMalloc',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
@@ -4473,7 +4473,7 @@ LibraryManager.library = {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    _emscripten_with_builtin_malloc(function () {
+    withBuiltinMalloc(function () {
       if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
       _emscripten_pc_get_file.ret = allocateUTF8(result.file);
     });
@@ -4502,13 +4502,13 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
+  $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
 #if USE_ASAN
-                                         , 'emscripten_builtin_memset'
+                             , 'emscripten_builtin_memset'
 #endif
-                                        ],
-  emscripten_with_builtin_malloc__docs: '/** @suppress{checkTypes} */',
-  emscripten_with_builtin_malloc: function (func) {
+                            ],
+  $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
+  $withBuiltinMalloc: function (func) {
     var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
     var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free !== 'undefined' ? _free : undefined;
@@ -4531,30 +4531,30 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '$syscallMmap2'],
+  emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return _emscripten_with_builtin_malloc(function () {
+    return withBuiltinMalloc(function () {
       return syscallMmap2(addr, len, prot, flags, fd, off);
     });
   },
 
-  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '$syscallMunmap'],
+  emscripten_builtin_munmap__deps: ['$withBuiltinMalloc', '$syscallMunmap'],
   emscripten_builtin_munmap: function (addr, len) {
-    return _emscripten_with_builtin_malloc(function () {
+    return withBuiltinMalloc(function () {
       return syscallMunmap(addr, len);
     });
   },
 
-  _readAsmConstArgsArray: '=[]',
-  $readAsmConstArgs__deps: ['_readAsmConstArgsArray'],
+  $readAsmConstArgsArray: '=[]',
+  $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
-    assert(Array.isArray( __readAsmConstArgsArray));
+    assert(Array.isArray(readAsmConstArgsArray));
     // The input buffer is allocated on the stack, so it must be stack-aligned.
     assert(buf % {{{ STACK_ALIGN }}} == 0);
 #endif
-    __readAsmConstArgsArray.length = 0;
+    readAsmConstArgsArray.length = 0;
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
@@ -4567,10 +4567,10 @@ LibraryManager.library = {
       // will emit padding to avoid that.
       var double = ch < 105;
       if (double && (buf & 1)) buf++;
-      __readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
+      readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
       ++buf;
     }
-    return __readAsmConstArgsArray;
+    return readAsmConstArgsArray;
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -5120,7 +5120,7 @@ LibraryManager.library = {
     abort('stack overflow')
   },
 
-  _getExecutableName: function() {
+  $getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {
