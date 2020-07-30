@@ -5,11 +5,11 @@
  */
 
 var LibraryExceptions = {
-  __exception_last: '0',
-  __exception_caught: ' []',
+  $exceptionLast: '0',
+  $exceptionCaught: ' []',
 
   // Static fields for ExceptionInfo class.
-  __ExceptionInfoAttrs: {
+  $ExceptionInfoAttrs: {
     // ExceptionInfo native structure layout.
     DESTRUCTOR_OFFSET: 0,
     REFCOUNT_OFFSET: Runtime.POINTER_SIZE,
@@ -21,7 +21,7 @@ var LibraryExceptions = {
     SIZE: alignMemory(Runtime.POINTER_SIZE + 10)
   },
 
-  ExceptionInfo__deps: ['__ExceptionInfoAttrs'],
+  $ExceptionInfo__deps: ['$ExceptionInfoAttrs'],
   // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
   // It is allocated in one block among with a thrown object in __cxa_allocate_exception and freed
   // in ___cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
@@ -34,46 +34,46 @@ var LibraryExceptions = {
   // purpose, it references the primary exception.
   //
   // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
-  ExceptionInfo: function(excPtr) {
+  $ExceptionInfo: function(excPtr) {
     this.excPtr = excPtr;
-    this.ptr = excPtr - ___ExceptionInfoAttrs.SIZE;
+    this.ptr = excPtr - ExceptionInfoAttrs.SIZE;
 
     this.set_type = function(type) {
-      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.TYPE_OFFSET', 'type', '*') }}};
+      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.TYPE_OFFSET', 'type', '*') }}};
     };
 
     this.get_type = function() {
-      return {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.TYPE_OFFSET', '*') }}};
+      return {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.TYPE_OFFSET', '*') }}};
     };
 
     this.set_destructor = function(destructor) {
-      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.DESTRUCTOR_OFFSET', 'destructor', '*') }}};
+      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.DESTRUCTOR_OFFSET', 'destructor', '*') }}};
     };
 
     this.get_destructor = function() {
-      return {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.DESTRUCTOR_OFFSET', '*') }}};
+      return {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.DESTRUCTOR_OFFSET', '*') }}};
     };
 
     this.set_refcount = function(refcount) {
-      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'refcount', 'i32') }}};
+      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'refcount', 'i32') }}};
     };
 
     this.set_caught = function (caught) {
       caught = caught ? 1 : 0;
-      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.CAUGHT_OFFSET', 'caught', 'i8') }}};
+      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.CAUGHT_OFFSET', 'caught', 'i8') }}};
     };
 
     this.get_caught = function () {
-      return {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.CAUGHT_OFFSET', 'i8') }}} != 0;
+      return {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.CAUGHT_OFFSET', 'i8') }}} != 0;
     };
 
     this.set_rethrown = function (rethrown) {
       rethrown = rethrown ? 1 : 0;
-      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.RETHROWN_OFFSET', 'rethrown', 'i8') }}};
+      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.RETHROWN_OFFSET', 'rethrown', 'i8') }}};
     };
 
     this.get_rethrown = function () {
-      return {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.RETHROWN_OFFSET', 'i8') }}} != 0;
+      return {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.RETHROWN_OFFSET', 'i8') }}} != 0;
     };
 
     // Initialize native structure fields. Should be called once after allocated.
@@ -87,20 +87,20 @@ var LibraryExceptions = {
 
     this.add_ref = function() {
 #if USE_PTHREADS
-      Atomics.add(HEAP32, (this.ptr + ___ExceptionInfoAttrs.REFCOUNT_OFFSET) >> 2, 1);
+      Atomics.add(HEAP32, (this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET) >> 2, 1);
 #else
-      var value = {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
-      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'value + 1', 'i32') }}};
+      var value = {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
+      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'value + 1', 'i32') }}};
 #endif
     };
 
     // Returns true if last reference released.
     this.release_ref = function() {
 #if USE_PTHREADS
-      var prev = Atomics.sub(HEAP32, (this.ptr + ___ExceptionInfoAttrs.REFCOUNT_OFFSET) >> 2, 1);
+      var prev = Atomics.sub(HEAP32, (this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET) >> 2, 1);
 #else
-      var prev = {{{ makeGetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
-      {{{ makeSetValue('this.ptr', '___ExceptionInfoAttrs.REFCOUNT_OFFSET', 'prev - 1', 'i32') }}};
+      var prev = {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
+      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'prev - 1', 'i32') }}};
 #endif
 #if ASSERTIONS
       assert(prev > 0);
@@ -109,7 +109,7 @@ var LibraryExceptions = {
     };
   },
 
-  CatchInfo__deps: ['ExceptionInfo'],
+  $CatchInfo__deps: ['$ExceptionInfo'],
   // This native structure is returned from __cxa_find_matching_catch, and serves as catching
   // context, i.e. stores information required to proceed with a specific selected catch. It stores
   // base and adjusted pointers of a thrown object. It is allocated dynamically and should be freed
@@ -117,7 +117,7 @@ var LibraryExceptions = {
   // __resumeException when no catch clause matched). The class itself is just a native pointer
   // wrapper, and contains all the necessary accessors for the fields in the native structure.
   // ptr - Native structure pointer to wrap, the structure is allocated when not specified.
-  CatchInfo: function(ptr) {
+  $CatchInfo: function(ptr) {
 
     this.free = function() {
       _free(this.ptr);
@@ -164,7 +164,7 @@ var LibraryExceptions = {
     };
 
     this.get_exception_info = function() {
-      return new _ExceptionInfo(this.get_base_ptr());
+      return new ExceptionInfo(this.get_base_ptr());
     };
 
     if (ptr === undefined) {
@@ -175,19 +175,19 @@ var LibraryExceptions = {
     }
   },
 
-  __exception_addRef: function (info) {
+  $exception_addRef: function (info) {
 #if EXCEPTION_DEBUG
     err('addref ' + info.excPtr);
 #endif
     info.add_ref();
   },
 
-  __exception_decRef__deps: ['__cxa_free_exception'
+  $exception_decRef__deps: ['__cxa_free_exception'
 #if EXCEPTION_DEBUG
-    , '__exception_last', '__exception_caught'
+    , '$exceptionLast', '$exceptionCaught'
 #endif
   ],
-  __exception_decRef: function(info) {
+  $exception_decRef: function(info) {
 #if EXCEPTION_DEBUG
     err('decref ' + info.excPtr);
 #endif
@@ -206,24 +206,24 @@ var LibraryExceptions = {
       }
       ___cxa_free_exception(info.excPtr);
 #if EXCEPTION_DEBUG
-      err('decref freeing exception ' + [info.excPtr, ___exception_last, 'stack', ___exception_caught]);
+      err('decref freeing exception ' + [info.excPtr, exceptionLast, 'stack', exceptionCaught]);
 #endif
     }
   },
 
   // Exceptions
-  __cxa_allocate_exception__deps: ['__ExceptionInfoAttrs'],
+  __cxa_allocate_exception__deps: ['$ExceptionInfoAttrs'],
   __cxa_allocate_exception: function(size) {
     // Thrown object is prepended by exception metadata block
-    return _malloc(size + ___ExceptionInfoAttrs.SIZE) + ___ExceptionInfoAttrs.SIZE;
+    return _malloc(size + ExceptionInfoAttrs.SIZE) + ExceptionInfoAttrs.SIZE;
   },
 
-  __cxa_free_exception__deps: ['ExceptionInfo'],
+  __cxa_free_exception__deps: ['$ExceptionInfo'],
   __cxa_free_exception: function(ptr) {
 #if ABORTING_MALLOC || ASSERTIONS
     try {
 #endif
-      return _free(new _ExceptionInfo(ptr).ptr);
+      return _free(new ExceptionInfo(ptr).ptr);
 #if ABORTING_MALLOC || ASSERTIONS
     } catch(e) {
 #if ASSERTIONS
@@ -233,30 +233,30 @@ var LibraryExceptions = {
 #endif
   },
 
-  __cxa_increment_exception_refcount__deps: ['__exception_addRef', 'ExceptionInfo'],
+  __cxa_increment_exception_refcount__deps: ['$exception_addRef', '$ExceptionInfo'],
   __cxa_increment_exception_refcount: function(ptr) {
     if (!ptr) return;
-    ___exception_addRef(new _ExceptionInfo(ptr));
+    exception_addRef(new ExceptionInfo(ptr));
   },
 
-  __cxa_decrement_exception_refcount__deps: ['__exception_decRef', 'ExceptionInfo'],
+  __cxa_decrement_exception_refcount__deps: ['$exception_decRef', '$ExceptionInfo'],
   __cxa_decrement_exception_refcount: function(ptr) {
     if (!ptr) return;
-    ___exception_decRef(new _ExceptionInfo(ptr));
+    exception_decRef(new ExceptionInfo(ptr));
   },
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
   __cxa_throw__sig: 'viii',
-  __cxa_throw__deps: ['ExceptionInfo', '__exception_last', '_ZSt18uncaught_exceptionv'],
+  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '_ZSt18uncaught_exceptionv'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
     err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
 #endif
-    var info = new _ExceptionInfo(ptr);
+    var info = new ExceptionInfo(ptr);
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
     info.init(type, destructor);
-    ___exception_last = ptr;
+    exceptionLast = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
       __ZSt18uncaught_exceptionv.uncaught_exceptions = 1;
     } else {
@@ -268,35 +268,35 @@ var LibraryExceptions = {
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['__exception_caught', '__exception_last'],
+  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast'],
   __cxa_rethrow: function() {
-    var catchInfo = ___exception_caught.pop();
+    var catchInfo = exceptionCaught.pop();
     var info = catchInfo.get_exception_info();
     var ptr = catchInfo.get_base_ptr();
     if (!info.get_rethrown()) {
       // Only pop if the corresponding push was through rethrow_primary_exception
-      ___exception_caught.push(catchInfo);
+      exceptionCaught.push(catchInfo);
       info.set_rethrown(true);
     } else {
       catchInfo.free();
     }
 #if EXCEPTION_DEBUG
     err('Compiled code RE-throwing an exception, popped ' +
-      [ptr, ___exception_last, 'stack', ___exception_caught]);
+      [ptr, exceptionLast, 'stack', exceptionCaught]);
 #endif
-    ___exception_last = ptr;
+    exceptionLast = ptr;
     {{{ makeThrow('ptr') }}}
   },
 
-  llvm_eh_exception__deps: ['__exception_last'],
+  llvm_eh_exception__deps: ['$exceptionLast'],
   llvm_eh_exception: function() {
-    return ___exception_last;
+    return exceptionLast;
   },
 
   llvm_eh_selector__jsargs: true,
-  llvm_eh_selector__deps: ['__exception_last'],
+  llvm_eh_selector__deps: ['$exceptionLast'],
   llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = ___exception_last;
+    var type = exceptionLast;
     for (var i = 2; i < arguments.length; i++) {
       if (arguments[i] == type) return type;
     }
@@ -307,21 +307,21 @@ var LibraryExceptions = {
     return type;
   },
 
-  __cxa_begin_catch__deps: ['CatchInfo', '__exception_caught', '__exception_addRef',
+  __cxa_begin_catch__deps: ['$CatchInfo', '$exceptionCaught', '$exception_addRef',
                             '_ZSt18uncaught_exceptionv'],
   __cxa_begin_catch: function(ptr) {
-    var catchInfo = new _CatchInfo(ptr);
+    var catchInfo = new CatchInfo(ptr);
     var info = catchInfo.get_exception_info();
     if (!info.get_caught()) {
       info.set_caught(true);
       __ZSt18uncaught_exceptionv.uncaught_exceptions--;
     }
     info.set_rethrown(false);
-    ___exception_caught.push(catchInfo);
+    exceptionCaught.push(catchInfo);
 #if EXCEPTION_DEBUG
-    err('cxa_begin_catch ' + [ptr, 'stack', ___exception_caught]);
+    err('cxa_begin_catch ' + [ptr, 'stack', exceptionCaught]);
 #endif
-    ___exception_addRef(info);
+    exception_addRef(info);
     return catchInfo.get_exception_ptr();
   },
 
@@ -329,8 +329,8 @@ var LibraryExceptions = {
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__exception_caught', '__exception_last', '__exception_decRef',
-                          'CatchInfo'
+  __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '$exception_decRef',
+                          '$CatchInfo'
 #if WASM_BACKEND == 0
   , 'setThrew'
 #endif
@@ -339,25 +339,25 @@ var LibraryExceptions = {
     // Clear state flag.
     _setThrew(0);
 #if ASSERTIONS
-    assert(___exception_caught.length > 0);
+    assert(exceptionCaught.length > 0);
 #endif
     // Call destructor if one is registered then clear it.
-    var catchInfo = ___exception_caught.pop();
+    var catchInfo = exceptionCaught.pop();
 
 #if EXCEPTION_DEBUG
-    err('cxa_end_catch popped ' + [catchInfo, ___exception_last, 'stack', ___exception_caught]);
+    err('cxa_end_catch popped ' + [catchInfo, exceptionLast, 'stack', exceptionCaught]);
 #endif
-    ___exception_decRef(catchInfo.get_exception_info());
+    exception_decRef(catchInfo.get_exception_info());
     catchInfo.free();
-    ___exception_last = 0; // XXX in decRef?
+    exceptionLast = 0; // XXX in decRef?
   },
 
-  __cxa_get_exception_ptr__deps: ['CatchInfo'],
+  __cxa_get_exception_ptr__deps: ['$CatchInfo'],
   __cxa_get_exception_ptr: function(ptr) {
 #if EXCEPTION_DEBUG
     err('cxa_get_exception_ptr ' + ptr);
 #endif
-    return new _CatchInfo(ptr).get_exception_ptr();
+    return new CatchInfo(ptr).get_exception_ptr();
   },
 
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
@@ -377,23 +377,23 @@ var LibraryExceptions = {
     throw exception;
   },
 
-  __cxa_current_primary_exception__deps: ['__exception_caught', '__exception_addRef', 'CatchInfo'],
+  __cxa_current_primary_exception__deps: ['$exceptionCaught', '$exception_addRef', '$CatchInfo'],
   __cxa_current_primary_exception: function() {
-    if (!___exception_caught.length) {
+    if (!exceptionCaught.length) {
       return 0;
     }
-    var catchInfo = ___exception_caught[___exception_caught.length - 1];
-    ___exception_addRef(catchInfo.get_exception_info());
+    var catchInfo = exceptionCaught[exceptionCaught.length - 1];
+    exception_addRef(catchInfo.get_exception_info());
     return catchInfo.get_base_ptr();
   },
 
-  __cxa_rethrow_primary_exception__deps: ['CatchInfo', '__exception_caught', '__cxa_rethrow'],
+  __cxa_rethrow_primary_exception__deps: ['$CatchInfo', '$exceptionCaught', '__cxa_rethrow'],
   __cxa_rethrow_primary_exception: function(ptr) {
     if (!ptr) return;
-    var catchInfo = new _CatchInfo();
+    var catchInfo = new CatchInfo();
     catchInfo.set_base_ptr(ptr);
     var info = catchInfo.get_exception_info();
-    ___exception_caught.push(catchInfo);
+    exceptionCaught.push(catchInfo);
     info.set_rethrown(true);
     ___cxa_rethrow();
   },
@@ -407,16 +407,16 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  __cxa_find_matching_catch__deps: ['__exception_last', 'ExceptionInfo', 'CatchInfo', '__resumeException'],
+  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '$CatchInfo', '__resumeException'],
   __cxa_find_matching_catch: function() {
-    var thrown = ___exception_last;
+    var thrown = exceptionLast;
     if (!thrown) {
       // just pass through the null ptr
       {{{ makeStructuralReturn([0, 0]) }}};
     }
-    var info = new _ExceptionInfo(thrown);
+    var info = new ExceptionInfo(thrown);
     var thrownType = info.get_type();
-    var catchInfo = new _CatchInfo();
+    var catchInfo = new CatchInfo();
     catchInfo.set_base_ptr(thrown);
     if (!thrownType) {
       // just pass through the thrown ptr
@@ -458,15 +458,15 @@ var LibraryExceptions = {
     {{{ makeStructuralReturn(['catchInfo.ptr', 'thrownType']) }}};
   },
 
-  __resumeException__deps: [function() { '__exception_last', 'CatchInfo',
+  __resumeException__deps: [function() { '$exceptionLast', '$CatchInfo',
                                         Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
   __resumeException: function(catchInfoPtr) {
-    var catchInfo = new _CatchInfo(catchInfoPtr);
+    var catchInfo = new CatchInfo(catchInfoPtr);
     var ptr = catchInfo.get_base_ptr();
 #if EXCEPTION_DEBUG
-    out("Resuming exception " + [ptr, ___exception_last]);
+    out("Resuming exception " + [ptr, exceptionLast]);
 #endif
-    if (!___exception_last) { ___exception_last = ptr; }
+    if (!exceptionLast) { exceptionLast = ptr; }
     catchInfo.free();
     {{{ makeThrow('ptr') }}}
   },
