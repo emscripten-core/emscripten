@@ -15,5 +15,5 @@ int main() {
   memchr("hello", 0, 6);
   strchr("hello", 'z');
   strlen("hello");
-  return f(x) + y[9];
+  return ((f(x) + y[9]) % 16) + 1;
 }

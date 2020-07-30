@@ -82,7 +82,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-s-option-value:
 
 ``-s OPTION[=VALUE]``
-  JavaScript code generation option passed into the Emscripten compiler. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
+  Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
 
   .. note:: You can prefix boolean options with ``NO_`` to reverse them. For example, ``-s EXIT_RUNTIME=1`` is the same as ``-s NO_EXIT_RUNTIME=0``.
 
@@ -106,6 +106,9 @@ Options that are modified or new in *emcc* are listed below:
     - In this case the file might contain a JSON-formatted list of functions: ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
 
+  .. note:: Options can be specified as a single argument without a space
+            between the ``-s`` and option name.  e.g. ``-sFOO=1``.
+
 .. _emcc-g:
 
 ``-g``
@@ -116,9 +119,13 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-gseparate-dwarf[=FILENAME]``
   Preserve debug information, but in a separate file on the side. This is the
-  same as ``-g``, but the main file will contain no debug info, while debug
-  info will be present in a file on the side (``FILENAME`` if provided,
-  otherwise the same as the wasm file but with suffix ``.debug.wasm``).
+  same as ``-g``, but the main file will contain no debug info. Instead, debug
+  info will be present in a file on the side, in ``FILENAME`` if provided,
+  otherwise the same as the wasm file but with suffix ``.debug.wasm``. While
+  the main file contains no debug info, it does contain a URL to where the
+  debug file is, so that devtools can find it. You can use
+  ``-s SEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
+  you want to host it on a different server, for example).
 
 .. _emcc-gN:
 
@@ -384,11 +391,6 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--show-ports``
   Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
-
-.. _emcc-save-bc:
-
-``--save-bc PATH``
-  When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.
 
 .. _emcc-memory-init-file:
 

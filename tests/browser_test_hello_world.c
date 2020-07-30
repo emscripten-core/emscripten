@@ -25,7 +25,9 @@ int main() {
     if (Module['prints'].length !== 1) throw 'bad length ' + Module['prints'].length;
     if (Module['prints'][0] !== 'hello, world!') throw 'bad contents: ' + Module['prints'][0];
   });
+#ifdef REPORT_RESULT
   REPORT_RESULT(0);
+#endif
   return 0;
 }
 

@@ -17,19 +17,8 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import shared, building
+from . import shared, building, ports
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
-
-try:
-  from . import ports
-  # it's ok if the ports dir exists but is empty: then there are no ports
-  if not hasattr(ports, 'ports'):
-    ports.ports = []
-except ImportError:
-  # it's ok if the ports dir doesn't exist: then there are no ports
-  class NoPorts:
-    ports = []
-  ports = NoPorts()
 
 stdout = None
 stderr = None
@@ -79,7 +68,7 @@ def get_cflags(force_object_files=False):
 def run_one_command(cmd):
   # Helper function used by run_build_commands.
   if shared.EM_BUILD_VERBOSE:
-    print(' '.join(cmd))
+    print(shared.shlex_join(cmd))
   # building system libraries and ports should be hermetic in that it is not
   # affected by things like EMMAKEN_CFLAGS which the user may have set
   safe_env = os.environ.copy()
@@ -89,6 +78,8 @@ def run_one_command(cmd):
   # Disable certain warnings when we build ports/system libraries we don't want to
   # show them a million times.
   cmd.append('-Wno-fastcomp')
+  # TODO(sbc): Remove this one we remove the test_em_config_env_var test
+  cmd.append('-Wno-deprecated')
   shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
 
 
@@ -688,13 +679,12 @@ class libcompiler_rt(Library):
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   if shared.Settings.WASM_BACKEND:
-    filelist = shared.path_from_root('system', 'lib', 'compiler-rt', 'filelist.txt')
-    src_files = open(filelist).read().splitlines()
+    src_files = glob_in_path(src_dir, '*.c')
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c'))
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   else:
     src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
-  src_files.append('emscripten_setjmp.c')
+  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
@@ -726,7 +716,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # musl modules
     ignore = [
         'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env',
+        'aio', 'exit', 'legacy', 'mq', 'search', 'setjmp', 'env',
         'ldso', 'conf'
     ]
 
@@ -739,6 +729,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
+        # 'process' exclusion
+        'fork.c', 'vfork.c', 'posix_spawn.c', 'execve.c', 'waitid.c', 'system.c'
     ]
 
     ignore += LIBC_SOCKETS
@@ -1016,7 +1008,6 @@ class libcxx(NoBCLibrary, NoExceptLibrary, MTLibrary):
     'vector.cpp',
     os.path.join('experimental', 'memory_resource.cpp'),
     os.path.join('filesystem', 'directory_iterator.cpp'),
-    os.path.join('filesystem', 'int128_builtins.cpp'),
     os.path.join('filesystem', 'operations.cpp')
   ]
 
@@ -1336,19 +1327,20 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
-  includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal']]
+  includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal'],
+              ['system', 'lib', 'compiler-rt', 'lib']]
   never_force = True
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
-  src_glob = '*.cc'
-  src_glob_exclude = ['sanitizer_common_nolibc.cc']
+  src_glob = '*.cpp'
+  src_glob_exclude = ['sanitizer_common_nolibc.cpp']
 
 
 class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  src_glob = '*.cc'
+  src_glob = '*.cpp'
 
 
 class libubsan_rt_wasm(SanitizerLibrary):
@@ -1362,15 +1354,15 @@ class liblsan_common_rt_wasm(SanitizerLibrary):
   name = 'liblsan_common_rt_wasm'
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
-  src_glob = 'lsan_common*.cc'
+  src_glob = 'lsan_common*.cpp'
 
 
 class liblsan_rt_wasm(SanitizerLibrary):
   name = 'liblsan_rt_wasm'
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
-  src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
-                      'lsan_common_emscripten.cc']
+  src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
+                      'lsan_common_emscripten.cpp']
 
 
 class libasan_rt_wasm(SanitizerLibrary):
@@ -1969,47 +1961,93 @@ class Ports(object):
   @staticmethod
   def clear_project_build(name):
     port = ports.ports_by_name[name]
-    port.clear(Ports, shared)
+    port.clear(Ports, shared.Settings, shared)
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
 
 
 # get all ports
 def get_ports(settings):
   ret = []
+  needed = get_needed_ports(settings)
 
-  try:
-    process_dependencies(settings)
-    for port in ports.ports:
-      # ports return their output files, which will be linked, or a txt file
-      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-  except Exception:
-    logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
-    raise
+  for port in dependency_order(needed):
+    if port.needed(settings):
+      try:
+        # ports return their output files, which will be linked, or a txt file
+        ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
+      except Exception:
+        logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
+        raise
 
   ret.reverse()
   return ret
 
 
-def process_dependencies(settings):
-  for port in reversed(ports.ports):
-    if hasattr(port, "process_dependencies"):
-      port.process_dependencies(settings)
+def dependency_order(port_list):
+  # Perform topological sort of ports according to the dependency DAG
+  port_map = {p.name: p for p in port_list}
+
+  # Perform depth first search of dependecy graph adding nodes to
+  # the stack only after all children have been explored.
+  stack = []
+  unsorted = set(port_list)
+
+  def dfs(node):
+    for dep in node.deps:
+      child = port_map[dep]
+      if child in unsorted:
+        unsorted.remove(child)
+        dfs(child)
+    stack.append(node)
+
+  while unsorted:
+    dfs(unsorted.pop())
+
+  return stack
+
+
+def resolve_dependencies(port_set, settings):
+  def add_deps(node):
+    node.process_dependencies(settings)
+    for d in node.deps:
+      dep = ports.ports_by_name[d]
+      if dep not in port_set:
+        port_set.add(dep)
+        add_deps(dep)
+
+  for port in list(port_set):
+    add_deps(port)
+
+
+def get_needed_ports(settings):
+  # Start with directly needed ports, and transitively add dependencies
+  needed = set(p for p in ports.ports if p.needed(settings))
+  resolve_dependencies(needed, settings)
+  return needed
+
+
+def build_port(port_name, settings):
+  port = ports.ports_by_name[port_name]
+  port_set = set((port,))
+  resolve_dependencies(port_set, settings)
+  for port in dependency_order(port_set):
+    port.get(Ports, settings, shared)
 
 
 def process_args(args, settings):
-  process_dependencies(settings)
-  for port in ports.ports:
-    args = port.process_args(Ports, args, settings, shared)
+  # Legacy SDL1 port is not actually a port at all but builtin
+  if settings.USE_SDL == 1:
+    args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
+
+  needed = get_needed_ports(settings)
+
+  # Now get (i.e. build) the ports independency order.  This is important because the
+  # headers from one ports might be needed before we can build the next.
+  for port in dependency_order(needed):
+    port.get(Ports, settings, shared)
+    args += port.process_args(Ports)
+
   return args
-
-
-# get a single port
-def get_port(name, settings):
-  port = ports.ports_by_name[name]
-  if hasattr(port, "process_dependencies"):
-    port.process_dependencies(settings)
-  # ports return their output files, which will be linked, or a txt file
-  return [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
 
 
 def show_ports():

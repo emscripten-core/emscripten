@@ -68,7 +68,7 @@ var LibraryHtml5WebGL = {
 #if LibraryManager.has('library_webgl.js')
   '$GL',
 #endif
-  '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
+  '$JSEvents', '_emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
 #if ASSERTIONS
@@ -92,7 +92,7 @@ var LibraryHtml5WebGL = {
     contextAttributes.proxyContextToMainThread = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)];
     contextAttributes.renderViaOffscreenBackBuffer = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)];
 
-    var canvas = __findCanvasEventTarget(target);
+    var canvas = findCanvasEventTarget(target);
 
 #if GL_DEBUG
     var targetStr = UTF8ToString(target);
@@ -376,7 +376,7 @@ var LibraryHtml5WebGL = {
 #endif
   },
 
-  _registerWebGlEventCallback__deps: ['$JSEvents', '_findEventTarget'],
+  _registerWebGlEventCallback__deps: ['$JSEvents', '$findEventTarget'],
   _registerWebGlEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -397,7 +397,7 @@ var LibraryHtml5WebGL = {
     };
 
     var eventHandler = {
-      target: __findEventTarget(target),
+      target: findEventTarget(target),
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: webGlEventHandlerFunc,

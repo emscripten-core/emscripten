@@ -41,7 +41,7 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 93
+EXPECTED_BINARYEN_VERSION = 94
 SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 
 # can add  %(asctime)s  to see timestamps
@@ -63,7 +63,8 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
-diagnostics.add_warning('undefined')
+diagnostics.add_warning('undefined', error=True)
+diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('fastcomp')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
@@ -107,7 +108,7 @@ class WindowsPopen(object):
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
       self.pid = self.process.pid
     except Exception as e:
-      logger.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e)))
+      logger.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (shlex_join(args), str(e)))
       raise
 
   def communicate(self, input=None):
@@ -143,6 +144,20 @@ def path_from_root(*pathelems):
 
 def root_is_writable():
   return os.access(__rootpath__, os.W_OK)
+
+
+# Switch to shlex.quote once we can depend on python 3
+def shlex_quote(arg):
+  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
+    return '"' + arg.replace('"', '\\"') + '"'
+
+  return arg
+
+
+# Switch to shlex.join once we can depend on python 3.8:
+# https://docs.python.org/3/library/shlex.html#shlex.join
+def shlex_join(cmd):
+  return ' '.join(shlex_quote(x) for x in cmd)
 
 
 # This is a workaround for https://bugs.python.org/issue9400
@@ -186,7 +201,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
   kw.setdefault('universal_newlines', True)
 
-  debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
+  debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
 
   if hasattr(subprocess, "run"):
     ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
@@ -210,9 +225,9 @@ def check_call(cmd, *args, **kw):
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
+    exit_with_error("'%s' failed (%d)", shlex_join(cmd), e.returncode)
   except OSError as e:
-    exit_with_error("'%s' failed: %s", ' '.join(cmd), str(e))
+    exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
 def run_js_tool(filename, jsargs=[], *args, **kw):
@@ -259,18 +274,18 @@ def which(program):
 
 # Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
 # this can most likely be moved into the tests/jsrun.py.
-def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
+def timeout_run(proc, timeout=None, full_output=False, check=True):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
       time.sleep(0.1)
     if proc.poll() is None:
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out: " + note)
+      raise Exception("Timed out")
   stdout, stderr = proc.communicate()
   out = ['' if o is None else o for o in (stdout, stderr)]
-  if throw_on_failure and proc.returncode != 0:
-    raise subprocess.CalledProcessError(proc.returncode, ' '.join(note_args), stdout, stderr)
+  if check and proc.returncode != 0:
+    raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
   if TRACK_PROCESS_SPAWNS:
     logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
   return '\n'.join(out) if full_output else out[0]
@@ -414,7 +429,7 @@ def fix_js_engine(old, new):
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "11.0"
+    return "12.0"
   else:
     return "6.0"
 
@@ -563,7 +578,7 @@ def check_sanity(force=False):
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    sanity_file = CONFIG_FILE + '_sanity'
+    sanity_file = Cache.get_path('sanity.txt', root=True)
     if os.path.exists(sanity_file):
       sanity_data = open(sanity_file).read()
       if sanity_data != expected:
@@ -596,6 +611,7 @@ def check_sanity(force=False):
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
+      Cache.ensure()
       with open(sanity_file, 'w') as f:
         f.write(expected)
 
@@ -631,14 +647,14 @@ def replace_suffix(filename, new_suffix):
   return os.path.splitext(filename)[0] + new_suffix
 
 
-# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
+# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple
+# ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
   return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
-# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
@@ -649,8 +665,10 @@ def safe_ensure_dirs(dirname):
       raise
 
 
-# Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
+# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
+# temp directory (TEMP_DIR/emscripten_temp).
 def get_emscripten_temp_dir():
+  """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global configuration, EMSCRIPTEN_TEMP_DIR
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
@@ -713,7 +731,6 @@ def check_vanilla():
     # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
     # must use wasm (or at least try to). to know that, we have to run llc to
     # see which backends it has. we cache this result.
-    temp_cache = cache.Cache(CACHE, use_subdir=False)
 
     def has_vanilla_targets():
       logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
@@ -722,16 +739,16 @@ def check_vanilla():
 
     def get_vanilla_file():
       logger.debug('regenerating vanilla file: %s' % LLVM_ROOT)
-      saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
+      saved_file = Cache.get_path('is_vanilla.txt', root=True)
       if os.path.exists(saved_file):
         logger.debug('old: %s\n' % open(saved_file).read())
       open(saved_file, 'w').write(('1' if has_vanilla_targets() else '0') + ':' + LLVM_ROOT + '\n')
       return saved_file
 
-    is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
+    is_vanilla_file = Cache.get('is_vanilla.txt', get_vanilla_file, root=True)
     if CONFIG_FILE and os.path.getmtime(CONFIG_FILE) > os.path.getmtime(is_vanilla_file):
       logger.debug('config file changed since we checked vanilla; re-checking')
-      is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
+      is_vanilla_file = Cache.get('is_vanilla.txt', get_vanilla_file, force=True, root=True)
     try:
       contents = open(is_vanilla_file).read().strip()
       middle = contents.index(':')
@@ -739,18 +756,21 @@ def check_vanilla():
       llvm_used = contents[middle + 1:]
       if llvm_used != LLVM_ROOT:
         logger.debug('regenerating vanilla check since other llvm (%s vs %s)`', llvm_used, LLVM_ROOT)
-        temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
+        Cache.get('is_vanilla.txt', get_vanilla_file, force=True, root=True)
         is_vanilla = has_vanilla_targets()
     except Exception as e:
       logger.debug('failed to use vanilla file, will re-check: ' + str(e))
       is_vanilla = has_vanilla_targets()
-    temp_cache = None
     if is_vanilla:
       logger.debug('check tells us to use wasm backend')
       LLVM_TARGET = WASM_TARGET
     else:
       logger.debug('check tells us to use asm.js backend')
       LLVM_TARGET = ASM_JS_TARGET
+
+  if LLVM_TARGET == WASM_TARGET:
+    Settings.WASM_BACKEND = 1
+    reconfigure_cache()
 
 
 def get_llvm_target():
@@ -794,13 +814,14 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
+    path_from_root('system', 'lib', 'compiler-rt', 'include'),
+    path_from_root('system', 'lib', 'libunwind', 'include'),
     Cache.get_path('include')
   ]
 
   cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
     path_from_root('system', 'lib', 'libcxxabi', 'include'),
-    path_from_root('system', 'lib', 'libunwind', 'include')
   ]
 
   def include_directive(paths):
@@ -926,9 +947,6 @@ class SettingsManager(object):
         assert name not in cls.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
         if not cls.attrs['STRICT']:
           cls.attrs[name] = default_value
-
-      if get_llvm_target() == WASM_TARGET:
-        cls.attrs['WASM_BACKEND'] = 1
 
       cls.internal_settings = set(internal_attrs.keys())
 
@@ -1066,7 +1084,7 @@ def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command
   before executing it."""
   if PRINT_STAGES:
-    print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
+    print(' "%s" %s' % (cmd[0], shlex_join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
 
@@ -1512,7 +1530,7 @@ def safe_move(src, dst):
     dst = os.path.join(dst, os.path.basename(src))
   if src == dst:
     return
-  if dst == '/dev/null':
+  if dst == os.devnull:
     return
   logging.debug('move: %s -> %s', src, dst)
   shutil.move(src, dst)
@@ -1525,7 +1543,7 @@ def safe_copy(src, dst):
     dst = os.path.join(dst, os.path.basename(src))
   if src == dst:
     return
-  if dst == '/dev/null':
+  if dst == os.devnull:
     return
   shutil.copyfile(src, dst)
 
@@ -1802,13 +1820,12 @@ apply_configuration()
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-emscripten'
 
-check_vanilla()
-
 Settings = SettingsManager()
 verify_settings()
+Cache = cache.Cache(CACHE)
+check_vanilla()
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
 # compatibility with existing emcc, etc. scripts
-Cache = cache.Cache(CACHE)
 chunkify = cache.chunkify

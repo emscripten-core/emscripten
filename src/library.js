@@ -225,22 +225,16 @@ LibraryManager.library = {
     }
   },
 
-  execl__deps: ['$setErrNo'],
-  execl__sig: 'iiii',
-  execl: function(path, arg0, varArgs) {
-    // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
+  execve__deps: ['$setErrNo'],
+  execve__sig: 'iiii',
+  execve: function(path, argv, envp) {
+    // int execve(const char *pathname, char *const argv[],
+    //            char *const envp[]);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
     // We don't support executing external code.
     setErrNo({{{ cDefine('ENOEXEC') }}});
     return -1;
   },
-  execle: 'execl',
-  execlp: 'execl',
-  execv: 'execl',
-  execve: 'execl',
-  execvp: 'execl',
-  __execvpe: 'execl',
-  fexecve: 'execl',
 
   exit__sig: 'vi',
   exit: function(status) {
@@ -278,11 +272,6 @@ LibraryManager.library = {
   },
   vfork: 'fork',
   posix_spawn: 'fork',
-  posix_spawnp: 'fork',
-  posix_spawn_file_actions_adddup2: 'fork',
-  posix_spawn_file_actions_addopen: 'fork',
-  posix_spawn_file_actions_destroy: 'fork',
-  posix_spawn_file_actions_init: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
@@ -762,15 +751,17 @@ LibraryManager.library = {
 
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv. (This works
-  // in both fastcomp and upstream.
+  // in both fastcomp and upstream).
   $ENV: {},
 
 #if !WASM_BACKEND
+  __environ: "{{{ makeStaticAlloc(Runtime.getNativeTypeSize('i8*')) }}}",
+
   // This implementation of environ/getenv/etc. is used for fastcomp, due
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['$ENV', '_getExecutableName'
+  __buildEnvironment__deps: ['__environ', '$ENV', '$getExecutableName'
 #if MINIMAL_RUNTIME
     , '$writeAsciiToMemory'
 #endif
@@ -782,7 +773,6 @@ LibraryManager.library = {
 
     // Statically allocate memory for the environment.
     var poolPtr;
-    var envPtr;
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
@@ -793,17 +783,17 @@ LibraryManager.library = {
       ENV['HOME'] = '/home/web_user';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = __getExecutableName();
+      ENV['_'] = getExecutableName();
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
-      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
-      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
+      ___environ = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      {{{ makeSetValue('___environ', '0', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, '___environ', 'i8*') }}};
 #endif
     } else {
-      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
-      poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
+      ___environ = {{{ makeGetValue('environ', '0', 'i8**') }}};
+      poolPtr = {{{ makeGetValue('___environ', '0', 'i8*') }}};
     }
 
     // Collect key=value lines.
@@ -825,10 +815,10 @@ LibraryManager.library = {
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
       writeAsciiToMemory(line, poolPtr);
-      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('___environ', 'i * ptrSize', 'poolPtr', 'i8*') }}};
       poolPtr += line.length + 1;
     }
-    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
+    {{{ makeSetValue('___environ', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   getenv__deps: ['$ENV',
 #if MINIMAL_RUNTIME
@@ -1848,12 +1838,12 @@ LibraryManager.library = {
     }
   },
 
-  dladdr__deps: ['$stringToNewUTF8', '_getExecutableName'],
+  dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],
   dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(__getExecutableName()); // XXX leak
+    var fname = stringToNewUTF8(getExecutableName()); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -4073,7 +4063,7 @@ LibraryManager.library = {
 #endif
 
   // Returns [parentFuncArguments, functionName, paramListName]
-  _emscripten_traverse_stack: function(args) {
+  $traverseStack: function(args) {
     if (!args || !args.callee || !args.callee.name) {
       return [null, '', ''];
     }
@@ -4102,7 +4092,7 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack', '$jsStackTrace', '$demangle'
+  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$demangle'
 #if MINIMAL_RUNTIME
     , '$warnOnce'
 #endif
@@ -4127,9 +4117,9 @@ LibraryManager.library = {
     var stack_args = null;
     if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
       // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
-      stack_args = __emscripten_traverse_stack(arguments);
+      stack_args = traverseStack(arguments);
       while (stack_args[1].indexOf('_emscripten_') >= 0)
-        stack_args = __emscripten_traverse_stack(stack_args[0]);
+        stack_args = traverseStack(stack_args[0]);
     }
 
     // Process all lines:
@@ -4199,7 +4189,7 @@ LibraryManager.library = {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
         }
-        stack_args = __emscripten_traverse_stack(stack_args[0]);
+        stack_args = traverseStack(stack_args[0]);
       }
     }
     // Trim extra whitespace at the end of the output.
@@ -4249,11 +4239,8 @@ LibraryManager.library = {
 
   emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
   emscripten_log: function(flags, format, varargs) {
-    var str = '';
     var result = formatString(format, varargs);
-    for (var i = 0 ; i < result.length; ++i) {
-      str += String.fromCharCode(result[i]);
-    }
+    var str = UTF8ArrayToString(result, 0);
     _emscripten_log_js(flags, str);
   },
 
@@ -4412,7 +4399,7 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', '$withBuiltinMalloc'
 #if MINIMAL_RUNTIME
     , '$allocateUTF8'
 #endif
@@ -4438,7 +4425,7 @@ LibraryManager.library = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    _emscripten_with_builtin_malloc(function () {
+    withBuiltinMalloc(function () {
       if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
       _emscripten_pc_get_function.ret = allocateUTF8(name);
     });
@@ -4477,7 +4464,7 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc',
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', '$withBuiltinMalloc',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
@@ -4486,7 +4473,7 @@ LibraryManager.library = {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    _emscripten_with_builtin_malloc(function () {
+    withBuiltinMalloc(function () {
       if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
       _emscripten_pc_get_file.ret = allocateUTF8(result.file);
     });
@@ -4515,9 +4502,9 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
-  emscripten_with_builtin_malloc__docs: '/** @suppress{checkTypes} */',
-  emscripten_with_builtin_malloc: function (func) {
+  $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
+  $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
+  $withBuiltinMalloc: function (func) {
     var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
     var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free !== 'undefined' ? _free : undefined;
@@ -4533,40 +4520,46 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '$syscallMmap2'],
+  emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return _emscripten_with_builtin_malloc(function () {
+    return withBuiltinMalloc(function () {
       return syscallMmap2(addr, len, prot, flags, fd, off);
     });
   },
 
-  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '$syscallMunmap'],
+  emscripten_builtin_munmap__deps: ['$withBuiltinMalloc', '$syscallMunmap'],
   emscripten_builtin_munmap: function (addr, len) {
-    return _emscripten_with_builtin_malloc(function () {
+    return withBuiltinMalloc(function () {
       return syscallMunmap(addr, len);
     });
   },
 
-  _readAsmConstArgsArray: '=[]',
-  $readAsmConstArgs__deps: ['_readAsmConstArgsArray'],
+  $readAsmConstArgsArray: '=[]',
+  $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
-    assert(Array.isArray( __readAsmConstArgsArray));
-    // Input buffer must be a pre-existing varargs buffer, so already aligned to 4 bytes.
-    assert(buf % 4 == 0);
+    assert(Array.isArray(readAsmConstArgsArray));
+    // The input buffer is allocated on the stack, so it must be stack-aligned.
+    assert(buf % {{{ STACK_ALIGN }}} == 0);
 #endif
-    __readAsmConstArgsArray.length = 0;
+    readAsmConstArgsArray.length = 0;
     var ch;
-    buf >>= 2; // Align buf up front to index Int32Array (HEAP32)
+    // Most arguments are i32s, so shift the buffer pointer so it is a plain
+    // index into HEAP32.
+    buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
       assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
-      __readAsmConstArgsArray.push(ch < 105 ? HEAPF64[++buf >> 1] : HEAP32[buf]);
+      // A double takes two 32-bit slots, and must also be aligned - the backend
+      // will emit padding to avoid that.
+      var double = ch < 105;
+      if (double && (buf & 1)) buf++;
+      readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
       ++buf;
     }
-    return __readAsmConstArgsArray;
+    return readAsmConstArgsArray;
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -5116,7 +5109,7 @@ LibraryManager.library = {
     abort('stack overflow')
   },
 
-  _getExecutableName: function() {
+  $getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {

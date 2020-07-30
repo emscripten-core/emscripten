@@ -10,11 +10,14 @@ from tools import building
 TAG = '1.7.5'
 HASH = 'c2c13fc97bb74f0f13092b07804f7087e948bce49793f48b62c2c24a5792523acc0002840bebf21829172bb2e7c3df9f9625250aec6c786a55489667dd04d6a0'
 
+deps = ['freetype']
+
+
+def needed(settings):
+  return settings.USE_HARFBUZZ
+
 
 def get(ports, settings, shared):
-  if settings.USE_HARFBUZZ != 1:
-    return []
-
   ports.fetch_project('harfbuzz', 'https://github.com/harfbuzz/harfbuzz/releases/download/' +
                       TAG + '/harfbuzz-' + TAG + '.tar.bz2', 'harfbuzz-' + TAG, is_tarbz2=True, sha512hash=HASH)
 
@@ -54,20 +57,16 @@ def get(ports, settings, shared):
   return [shared.Cache.get('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a', create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file('libharfbuzz.a')
 
 
 def process_dependencies(settings):
-  if settings.USE_HARFBUZZ == 1:
-    settings.USE_FREETYPE = 1
+  settings.USE_FREETYPE = 1
 
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_HARFBUZZ == 1:
-    get(ports, settings, shared)
-    args += ['-I' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
-  return args
+def process_args(ports):
+  return ['-I' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
 
 
 def show():

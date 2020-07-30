@@ -11,19 +11,25 @@ var WasiLibrary = {
     _exit(code);
   },
 
-  $getEnvStrings__deps: ['$ENV', '_getExecutableName'],
+  $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
   $getEnvStrings: function() {
     if (!getEnvStrings.strings) {
       // Default values.
+#if !DETERMINISTIC
+      // Browser language detection #8751
+      var lang = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
+#else
+      // Deterministic language detection, ignore the browser's language.
+      var lang = 'C.UTF-8';
+#endif
       var env = {
         'USER': 'web_user',
         'LOGNAME': 'web_user',
         'PATH': '/',
         'PWD': '/',
         'HOME': '/home/web_user',
-        // Browser language detection #8751
-        'LANG': ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8',
-        '_': __getExecutableName()
+        'LANG': lang,
+        '_': getExecutableName()
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {

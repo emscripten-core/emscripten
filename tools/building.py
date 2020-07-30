@@ -238,18 +238,6 @@ def get_multiprocessing_pool():
   return multiprocessing_pool
 
 
-# When creating environment variables for Makefiles to execute, we need to
-# doublequote the commands if they have spaces in them..
-def doublequote_spaces(arg):
-  if isinstance(arg, list):
-    return [doublequote_spaces(a) for a in arg]
-
-  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
-    return '"' + arg.replace('"', '\\"') + '"'
-
-  return arg
-
-
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
 # remove them when needed.
 def remove_quotes(arg):
@@ -984,6 +972,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     next = original_filename + '.jso.js'
     configuration.get_temp_files().note(next)
     check_call(cmd, stdout=open(next, 'w'))
+    save_intermediate(next, '%s.js' % passes[0])
     return next
   output = check_call(cmd, stdout=PIPE).stdout
   return output
@@ -1421,7 +1410,11 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     passes = []
     # it may be useful to also run: simplifyIfs, registerize, asmLastOpts
     # passes += ['simplifyExpressions'] # XXX fails on wasm3js.test_sqlite
-    if not debug_info:
+    # TODO: enable name minification with pthreads. atm wasm2js emits pthread
+    # helper functions outside of the asmFunc(), and they mix up minifyGlobals
+    # (which assumes any vars in that area are global, like var HEAP8, but
+    # those helpers have internal vars in a scope it doesn't understand yet)
+    if not debug_info and not Settings.USE_PTHREADS:
       passes += ['minifyNames']
     if minify_whitespace:
       passes += ['minifyWhitespace']
@@ -1474,18 +1467,24 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   return js_file
 
 
+# extract the DWARF info from the main file, and leave the wasm with
+# debug into as a file on the side
+# TODO: emit only debug sections in the side file, and not the entire
+#       wasm as well
 def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
-  # extract the DWARF info from the main file, and leave the wasm with
-  # debug into as a file on the side
-  # TODO: emit only debug sections in the side file, and not the entire
-  #       wasm as well
+  # if the dwarf filename wasn't provided, use the default target + a suffix
+  wasm_file_with_dwarf = shared.Settings.SEPARATE_DWARF
+  if wasm_file_with_dwarf is True:
+    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+  embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
+
   shutil.move(wasm_file, wasm_file_with_dwarf)
   run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
-  filename_bytes = asbytes(wasm_file_with_dwarf)
+  filename_bytes = asbytes(embedded_path)
   contents = WebAssembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:

@@ -327,7 +327,7 @@ var SIMPLIFY_IFS = 1;
 
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
-// 0). See preamble.js for the actual checks performed.
+// 0). See runtime_safe_heap.js for the actual checks performed.
 var SAFE_HEAP = 0;
 
 // Log out all SAFE_HEAP operations
@@ -960,6 +960,12 @@ var PROXY_TO_WORKER_FILENAME = '';
 // something that applications can do manually as well if they wish, this option
 // is provided as convenience.
 //
+// The pthread that main() runs on is a normal pthread in all ways, with the one
+// difference that its stack size is the same as the main thread would normally
+// have, that is, TOTAL_STACK. This makes it easy to flip between
+// PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
+// the same amount of stack.
+//
 // This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
 // is enabled. This has to happen because this is the only chance - this browser
 // main thread does the only pthread_create call that happens on
@@ -1038,7 +1044,11 @@ var SMALL_XHR_CHUNKS = 0;
 var HEADLESS = 0;
 
 // If 1, we force Date.now(), Math.random, etc. to return deterministic results.
-// Good for comparing builds for debugging purposes (and nothing else)
+// This also tries to make execution deterministic across machines and
+// environments, for example, not doing anything different based on the
+// browser's language setting (which would mean you can get different results
+// in different browsers, or in the browser and in node).
+// Good for comparing builds for debugging purposes (and nothing else).
 var DETERMINISTIC = 0;
 
 // By default we emit all code in a straightforward way into the output
@@ -1206,9 +1216,9 @@ var USE_GLFW = 2;
 // the page will be reloaded in Wasm2JS mode.
 var WASM = 1;
 
-// STANDALONE_WASM indicates that we want to emit a wasm file that can run without
-// JavaScript. The file will use standard APIs such as wasi as much as possible
-// to achieve that.
+// STANDALONE_WASM indicates that we want to emit a wasm file that can run
+// without JavaScript. The file will use standard APIs such as wasi as much as
+// possible to achieve that.
 //
 // This option does not guarantee that the wasm can be used by itself - if you
 // use APIs with no non-JS alternative, we will still use those (e.g., OpenGL
@@ -1237,6 +1247,10 @@ var WASM = 1;
 // the WASM_BIGINT option to avoid that problem by using BigInts for i64s which
 // means we don't need to legalize for JS (but this requires a new enough JS
 // VM).
+//
+// Standlone builds by default require a `main` entry point.  If you want to
+// build a library (also known as a reactor) instead you can pass `--no-entry`
+// or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
 var STANDALONE_WASM = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You
@@ -1369,6 +1383,9 @@ var USE_VORBIS = 0;
 // 1 = use ogg from emscripten-ports
 var USE_OGG = 0;
 
+// 1 = use mpg123 from emscripten-ports
+var USE_MPG123 = 0;
+
 // 1 = use freetype from emscripten-ports
 var USE_FREETYPE = 0;
 
@@ -1384,6 +1401,9 @@ var USE_COCOS2D = 0;
 
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
 var SDL2_IMAGE_FORMATS = [];
+
+// Formats to support in SDL2_mixer. Valid values: ogg, mp3
+var SDL2_MIXER_FORMATS = ["ogg"];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.
@@ -1771,6 +1791,11 @@ var PRINTF_LONG_DOUBLE = 0;
 // if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
 // which avoids trampling a C file).
 var WASM2C = 0;
+
+// Setting this affects the path emitted in the wasm that refers to the DWARF
+// file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
+// in a custom location.
+var SEPARATE_DWARF_URL = '';
 
 //===========================================
 // Internal, used for testing only, from here
