@@ -59,7 +59,7 @@ int main()
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
-  GLboolean extAvailable = emscripten_webgl_enable_extension(ctx, "WEBGL_multi_draw");
+  GLboolean extAvailable = emscripten_webgl_enable_WEBGL_multi_draw(ctx);
 
   if (!extAvailable) {
     EM_ASM({

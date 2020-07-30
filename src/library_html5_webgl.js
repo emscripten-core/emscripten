@@ -323,6 +323,7 @@ var LibraryHtml5WebGL = {
 #if MAX_WEBGL_VERSION >= 2
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
 #endif
+    '_webgl_enable_WEBGL_multi_draw',
   ],
   emscripten_webgl_enable_extension__proxy: 'sync_on_webgl_context_handle_thread',
   emscripten_webgl_enable_extension__sig: 'iii',
@@ -348,6 +349,8 @@ var LibraryHtml5WebGL = {
     if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
+    if (extString == 'WEBGL_multi_draw') __webgl_enable_WEBGL_multi_draw(GLctx);
+
 #else
 
 #if ASSERTIONS || GL_ASSERTIONS
@@ -363,14 +366,6 @@ var LibraryHtml5WebGL = {
 #endif
 
     var ext = context.GLctx.getExtension(extString);
-    if (extString == 'WEBGL_multi_draw') {
-      // WEBGL_multi_draw is targeted at both WebGL 1 and WebGL 2.
-      // We currently don't list WEBGL_multi_draw as an automatically enabled extension,
-      // as there's only one browser implementation so we don't know if enabling it would
-      // have extra overhead yet. This extension exposes extra functions so we need to attach
-      // them to multiDrawWebgl under GLctx object for future reference when calling.
-      context.GLctx.multiDrawWebgl = ext;
-    }
     return !!ext;
   },
 
