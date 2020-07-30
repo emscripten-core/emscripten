@@ -3601,7 +3601,7 @@ var LibraryGL = {
     GLctx.sampleCoverage(value, !!invert);
   },
 
-  glMultiDrawArraysANGLE: function(mode, firsts, counts, drawcount) {
+  glMultiDrawArraysWEBGL: function(mode, firsts, counts, drawcount) {
     GLctx.multiDrawWebgl['multiDrawArraysWEBGL'](
       mode,
       HEAP32,
@@ -3610,7 +3610,7 @@ var LibraryGL = {
       counts >> 2,
       drawcount);
   },
-  glMultiDrawArraysInstancedANGLE: function(mode, firsts, counts, instanceCounts, drawcount) {
+  glMultiDrawArraysInstancedWEBGL: function(mode, firsts, counts, instanceCounts, drawcount) {
     GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
       mode,
       HEAP32,
@@ -3621,7 +3621,7 @@ var LibraryGL = {
       instanceCounts >> 2,
       drawcount);
   },
-  glMultiDrawElementsANGLE: function(mode, counts, type, offsets, drawcount) {
+  glMultiDrawElementsWEBGL: function(mode, counts, type, offsets, drawcount) {
     GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
       mode,
       HEAP32,
@@ -3631,7 +3631,7 @@ var LibraryGL = {
       offsets >> 2,
       drawcount);
   },
-  glMultiDrawElementsInstancedANGLE: function(mode, counts, type, offsets, instanceCounts, drawcount) {
+  glMultiDrawElementsInstancedWEBGL: function(mode, counts, type, offsets, instanceCounts, drawcount) {
     GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
       mode,
       HEAP32,
