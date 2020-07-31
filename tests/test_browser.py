@@ -4272,16 +4272,14 @@ window.close = function() {
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
   def test_webgl_multi_draw(self):
-    # for args in [[], ['-DUSE_NATIVE_OPENGL=1']]:
-    for args in [['-DUSE_NATIVE_OPENGL=1']]:
-      self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
-                args=args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
-      self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
-                args=args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
-      self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
-                args=args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
-      self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
-                args=args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+              args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+              args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+              args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+              args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
