@@ -1736,8 +1736,8 @@ int f() {
     self.run_process([EMCC, 'main.cpp'])
     self.assertContained('1234, 1234, 4321\n', self.run_js('a.out.js'))
 
-  def test_sdl2_mixer(self):
-    building.emcc(path_from_root('tests', 'sdl2_mixer.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
+  def test_sdl2_mixer_wav(self):
+    building.emcc(path_from_root('tests', 'sdl2_mixer_wav.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
 
   def test_libpng(self):
     shutil.copyfile(path_from_root('tests', 'pngtest.png'), 'pngtest.png')
@@ -9417,7 +9417,7 @@ int main () {
             if js:
               slop = 30
             else:
-              slop = 10
+              slop = 20
           else:
             slop = 50
           if size <= expected_size + slop and size >= expected_size - slop:
@@ -10495,3 +10495,31 @@ int main(int argc, char **argv) {
 }''')
     self.run_process([EMCC, 'src.cpp', '-O3', '-s', 'WASM=0'])
     self.run_js('a.out.js')
+
+  def test_deterministic(self):
+    # test some things that may not be nondeterministic
+    create_test_file('src.cpp', r'''
+#include <emscripten.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+int main () {
+  timespec now;
+  clock_gettime(CLOCK_REALTIME, &now);
+  printf("C now: %ld %ld\n", now.tv_sec, now.tv_nsec);
+  printf("js now: %f\n", emscripten_get_now());
+  printf("C randoms: %d %d %d\n", rand(), rand(), rand());
+  printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
+}
+''')
+    self.run_process([EMCC, 'src.cpp', '-sDETERMINISTIC'])
+    one = self.run_js('a.out.js')
+    # ensure even if the time resolution is 1 second, that if we see the real
+    # time we'll see a difference
+    time.sleep(2)
+    two = self.run_js('a.out.js')
+    self.assertIdentical(one, two)
+
+  def test_err(self):
+    self.do_other_test(os.path.join('other', 'err'))

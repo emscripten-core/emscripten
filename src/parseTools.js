@@ -13,7 +13,12 @@
 function processMacros(text) {
   return text.replace(/{{{([^}]|}(?!}))+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
-    var ret = eval(str);
+    try {
+      var ret = eval(str);
+    } catch (ex) {
+      ex.stack = 'In the following macro:\n\n' + str + '\n\n' + ex.stack;
+      throw ex;
+    }
     return ret !== null ? ret.toString() : '';
   });
 }
@@ -795,6 +800,9 @@ function asmCoercion(value, type, signedness) {
       }
     }
   } else {
+    if (signedness == 'u') {
+      return '((' + value + ')>>>0)';
+    }
     return '((' + value + ')|0)';
   }
 }
@@ -880,7 +888,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type);
+      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
   var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';

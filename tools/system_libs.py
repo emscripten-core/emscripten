@@ -789,7 +789,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['clock_settime.c'])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
-        filenames=['getpagesize.c'])
+        filenames=['getpagesize.c', 'err.c'])
 
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below

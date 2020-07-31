@@ -5108,7 +5108,8 @@ function safeHeap(ast) {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0]]], ASM_INT);
             }
             case 'HEAPU32': {
-              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT);
+              // Note that a 32-bit unsigned number should not be changed to a signed one.
+              return makeSignedAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT, ASM_UNSIGNED);
             }
             case 'HEAPF32': {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4]]], ASM_DOUBLE);
