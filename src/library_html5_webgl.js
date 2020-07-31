@@ -315,6 +315,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_enable_extension__deps: [
+#if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
 #if MIN_WEBGL_VERSION == 1
     '_webgl_enable_ANGLE_instanced_arrays',
     '_webgl_enable_OES_vertex_array_object',
@@ -324,6 +325,7 @@ var LibraryHtml5WebGL = {
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
 #endif
     '_webgl_enable_WEBGL_multi_draw',
+#endif
   ],
   emscripten_webgl_enable_extension__proxy: 'sync_on_webgl_context_handle_thread',
   emscripten_webgl_enable_extension__sig: 'iii',
@@ -357,6 +359,7 @@ var LibraryHtml5WebGL = {
     if (['ANGLE_instanced_arrays',
          'OES_vertex_array_object',
          'WEBGL_draw_buffers',
+         'WEBGL_multi_draw',
          'WEBGL_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
       console.error('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');

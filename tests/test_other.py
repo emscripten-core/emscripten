@@ -9283,6 +9283,7 @@ int main () {
                                '-s', 'GL_EMULATE_GLES_VERSION_STRING_FORMAT=0',
                                '-s', 'GL_EXTENSIONS_IN_PREFIXED_FORMAT=0',
                                '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0',
+                               '-s', 'GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0',
                                '-s', 'GL_TRACK_ERRORS=0',
                                '-s', 'GL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
                                '-s', 'GL_POOL_TEMP_BUFFERS=0',
