@@ -984,12 +984,12 @@ var LibraryWebGPU = {
     if (sType === {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}) {
       var count = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.codeSize) }}};
       var start = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.code, '*') }}};
-      if (HEAPU8["buffer"] instanceof SharedArrayBuffer) {
-        // Chrome can't currently handle a SharedArrayBuffer view here.
-        desc["code"] = HEAPU32.slice(start >> 2, (start >> 2) + count);
-      } else {
-        desc["code"] = HEAPU32.subarray(start >> 2, (start >> 2) + count);
-      }
+#if USE_PTHREADS
+      // Chrome can't currently handle a SharedArrayBuffer view here, so make a copy.
+      desc["code"] = HEAPU32.slice(start >> 2, (start >> 2) + count);
+#else
+      desc["code"] = HEAPU32.subarray(start >> 2, (start >> 2) + count);
+#endif
     } else if (sType === {{{ gpu.SType.ShaderModuleWGSLDescriptor }}}) {
       var sourcePtr = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.source, '*') }}};
       if (sourcePtr) {
