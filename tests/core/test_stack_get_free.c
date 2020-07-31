@@ -25,6 +25,7 @@ void TestStackValidity() {
 int increment = 256 * 1024;
 
 int main() {
+  emscripten_stack_init();
   TestStackValidity();
 
   uintptr_t origFree = emscripten_stack_get_free();
