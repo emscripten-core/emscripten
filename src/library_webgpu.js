@@ -1691,7 +1691,7 @@ var LibraryWebGPU = {
 #endif
   },
 
-  wgpuInstanceCreateSurface__deps: ['_findCanvasEventTarget'],
+  wgpuInstanceCreateSurface__deps: ['$findCanvasEventTarget'],
   wgpuInstanceCreateSurface: function(instanceId, descriptor) {
     {{{ gpu.makeCheck('descriptor') }}}
     {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
@@ -1706,7 +1706,7 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheckDescriptor('descriptorFromCanvasHTMLSelector') }}}
     var selectorPtr = {{{ makeGetValue('descriptorFromCanvasHTMLSelector', C_STRUCTS.WGPUSurfaceDescriptorFromCanvasHTMLSelector.selector, '*') }}};
     {{{ gpu.makeCheck('selectorPtr') }}}
-    var canvas = __findCanvasEventTarget(selectorPtr);
+    var canvas = findCanvasEventTarget(selectorPtr);
 #if ASSERTIONS
     assert(canvas instanceof HTMLCanvasElement);
 #endif
