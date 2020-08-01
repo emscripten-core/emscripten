@@ -28,10 +28,6 @@ if (!Math.fround) {
 #else // 2
 if (!Math.fround) Math.fround = function(x) { return x };
 #endif
-#else
-#if SIMD
-if (!Math.fround) Math.fround = function(x) { return x };
-#endif
 #endif
 #endif
 

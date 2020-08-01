@@ -11,19 +11,25 @@ var WasiLibrary = {
     _exit(code);
   },
 
-  $getEnvStrings__deps: ['$ENV', '_getExecutableName'],
+  $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
   $getEnvStrings: function() {
     if (!getEnvStrings.strings) {
       // Default values.
+#if !DETERMINISTIC
+      // Browser language detection #8751
+      var lang = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
+#else
+      // Deterministic language detection, ignore the browser's language.
+      var lang = 'C.UTF-8';
+#endif
       var env = {
         'USER': 'web_user',
         'LOGNAME': 'web_user',
         'PATH': '/',
         'PWD': '/',
         'HOME': '/home/web_user',
-        // Browser language detection #8751
-        'LANG': ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8',
-        '_': __getExecutableName()
+        'LANG': lang,
+        '_': getExecutableName()
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {
@@ -100,7 +106,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  $checkWasiClock: function(clk_id) {
+  $checkWasiClock: function(clock_id) {
     return clock_id == {{{ cDefine('__WASI_CLOCKID_REALTIME') }}} ||
            clock_id == {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} ||
            clock_id == {{{ cDefine('__WASI_CLOCKID_PROCESS_CPUTIME_ID') }}} ||
@@ -115,15 +121,17 @@ var WasiLibrary = {
   clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo', '$checkWasiClock'],
   clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
     {{{ receiveI64ParamAsI32s('precision') }}}
+    if (!checkWasiClock(clk_id)) {
+      return {{{ cDefine('EINVAL') }}};
+    }
     var now;
     // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefine('__WASI_CLOCKID_REALTIME') }}}) {
       now = Date.now();
-    } else if (checkWasiClock(clk_id) && _emscripten_get_now_is_monotonic) {
+    } else if (_emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
+      return {{{ cDefine('ENOSYS') }}};
     }
     // "now" is in ms, and wasi times are in ns.
     var nsec = Math.round(now * 1000 * 1000);
@@ -133,17 +141,19 @@ var WasiLibrary = {
   },
 
   clock_res_get__sig: 'iii',
-  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo', '$checkWasiClock'],
+  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$setErrNo', '$checkWasiClock'],
   clock_res_get: function(clk_id, pres) {
+    if (!checkWasiClock(clk_id)) {
+      return {{{ cDefine('EINVAL') }}};
+    }
     var nsec;
     // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (checkWasiClock(clk_id) && _emscripten_get_now_is_monotonic) {
+    } else if (_emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
+      return {{{ cDefine('ENOSYS') }}};
     }
     {{{ makeSetValue('pres', 0, 'nsec >>> 0', 'i32') }}};
     {{{ makeSetValue('pres', 4, '(nsec / Math.pow(2, 32)) >>> 0', 'i32') }}};

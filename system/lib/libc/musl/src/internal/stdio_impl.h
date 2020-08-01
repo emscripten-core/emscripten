@@ -61,7 +61,7 @@ size_t __string_read(FILE *, unsigned char *, size_t);
 int __toread(FILE *);
 int __towrite(FILE *);
 
-#if defined(__PIC__) && (100*__GNUC__+__GNUC_MINOR__ >= 303)
+#if defined(__PIC__) && (100*__GNUC__+__GNUC_MINOR__ >= 303) && !defined(__EMSCRIPTEN__)
 __attribute__((visibility("protected")))
 #endif
 int __overflow(FILE *, int), __uflow(FILE *);

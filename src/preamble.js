@@ -34,11 +34,7 @@ if (Module['doWasm2JS']) {
 
 #if WASM == 1
 if (typeof WebAssembly !== 'object') {
-#if ASSERTIONS
-  abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-#else
-  err('no native wasm support detected');
-#endif
+  abort('no native wasm support detected');
 }
 #endif
 
@@ -52,17 +48,7 @@ var wasmMemory;
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
 #if WASM_BACKEND || WASM
-var wasmTable = new WebAssembly.Table({
-  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#if !ALLOW_TABLE_GROWTH
-#if WASM_BACKEND
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
-#else
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#endif
-#endif // WASM_BACKEND
-  'element': 'anyfunc'
-});
+#include "runtime_init_table.js"
 #endif // WASM_BACKEND || WASM
 
 #if USE_PTHREADS
@@ -422,9 +408,9 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 
 #include "runtime_sab_polyfill.js"
 
-// In standalone mode, the wasm creates the memory, and the user can't provide it.
 #if STANDALONE_WASM
 #if ASSERTIONS
+// In standalone mode, the wasm creates the memory, and the user can't provide it.
 assert(!Module['wasmMemory']);
 #endif // ASSERTIONS
 #else // !STANDALONE_WASM
@@ -518,6 +504,9 @@ function exitRuntime() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   {{{ getQuoted('ATEXITS') }}}
+#if USE_PTHREADS
+  PThread.runExitHandlers();
+#endif
 #endif
   runtimeExited = true;
 }
@@ -690,7 +679,6 @@ function abort(what) {
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif
   what += '';
-  out(what);
   err(what);
 
   ABORT = true;
@@ -703,14 +691,22 @@ function abort(what) {
   what = output;
 #endif // ASSERTIONS
 
-  // Throw a wasm runtime error, because a JS error might be seen as a foreign
+#if WASM
+  // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
-#if WASM
-  throw new WebAssembly.RuntimeError(what);
+  var e = new WebAssembly.RuntimeError(what);
 #else
-  throw what;
+  var e = what;
 #endif
+
+#if MODULARIZE
+  readyPromiseReject(e);
+#endif
+  // Throw the error whether or not MODULARIZE is set because abort is used
+  // in code paths apart from instantiation where an exception is expected
+  // to be thrown when abort is called.
+  throw e;
 }
 
 #if RELOCATABLE
@@ -1010,6 +1006,21 @@ function createWasm() {
 #endif // USE_OFFSET_CONVERTER
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
+
+#if WASM == 2
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+      if (typeof location !== 'undefined') {
+#endif
+        // WebAssembly compilation failed, try running the JS fallback instead.
+        var search = location.search;
+        if (search.indexOf('_rwasm=0') < 0) {
+          location.href += (search ? search + '&' : '?') + '_rwasm=0';
+        }
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+      }
+#endif
+#endif // WASM == 2
+
       abort(reason);
     });
   }
@@ -1040,7 +1051,7 @@ function createWasm() {
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
             err('falling back to ArrayBuffer instantiation');
-            instantiateArrayBuffer(receiveInstantiatedSource);
+            return instantiateArrayBuffer(receiveInstantiatedSource);
           });
       });
     } else {

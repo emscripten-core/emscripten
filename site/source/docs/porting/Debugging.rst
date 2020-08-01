@@ -137,6 +137,59 @@ Debug printouts can even execute arbitrary JavaScript. For example::
   }
 
 
+Handling C++ exceptions from javascript
+=======================================
+
+C++ exceptions are thrown from WebAssembly using exception pointers, which means
+that try/catch/finally blocks in JavaScript will only receive a number, which
+represents a pointer into linear memory. In order to get the exception message,
+the user will need to create some WASM code which will extract the meaning from
+the exception. In the example code below we created a function that receives the
+address of a ``std::exception``, and by casting the pointer
+returns the ``what`` function call result.
+
+.. code-block:: cpp
+
+  #include <bind.h>
+
+  std::string getExceptionMessage(intptr_t exceptionPtr) {
+    return std::string(reinterpret_cast<std::exception *>(exceptionPtr)->what());
+  }
+
+  EMSCRIPTEN_BINDINGS(Bindings) {
+    emscripten::function("getExceptionMessage", &getExceptionMessage);
+  };
+
+Once such a function has been created, exception handling code in javascript
+can call it when receiving an exception from WASM. Here the function is used
+in order to log the thrown exception.
+
+.. code-block:: javascript
+
+  try {
+    ... // some code that calls WebAssembly
+  } catch (exception) {
+    console.error(Module.getExceptionMessage(exception));
+  } finally {
+    ...
+  }
+
+It's important to notice that this example code will work only for thrown
+statically allocated exceptions. If your code throws other objects, such as
+strings or dynamically allocated exceptions, the handling code will need to
+take that into account. For example, if your code needs to handle both native
+C++ exceptions and JavaScript exceptions you could use the following code to
+distinguish between them:
+
+.. code-block:: javascript
+
+  function getExceptionMessage(exception) {
+    return typeof exception === 'number'
+      ? Module.getExceptionMessage(exception)
+      : exception;
+  }
+
+
 Disabling optimizations
 =======================
 
@@ -227,7 +280,7 @@ The *AutoDebugger* is the 'nuclear option' for debugging Emscripten code.
 
 .. warning:: This option is primarily intended for Emscripten core developers.
 
-The *AutoDebugger* will rewrite the LLVM bitcode so it prints out each store to memory. This is useful because you can compare the output for different compiler settings in order to detect regressions, or compare the output of JavaScript and LLVM bitcode compiled using :term:`LLVM Nativizer` or :term:`LLVM interpreter`.
+The *AutoDebugger* will rewrite the output so it prints out each store to memory. This is useful because you can compare the output for different compiler settings in order to detect regressions.
 
 The *AutoDebugger* can potentially find **any** problem in the generated code, so it is strictly more powerful than the ``CHECK_*`` settings and ``SAFE_HEAP``. One use of the *AutoDebugger* is to quickly emit lots of logging output, which can then be reviewed for odd behavior. The *AutoDebugger* is also particularly useful for :ref:`debugging regressions <debugging-autodebugger-regressions>`.
 
@@ -263,14 +316,9 @@ Use the following workflow to find regressions with the *AutoDebugger*:
 
 Any difference between the outputs is likely to be caused by the bug.
 
-.. note:: False positives can be caused by calls to ``clock()``, which will differ slightly between runs.
-
-You can also make native builds using the :term:`LLVM Nativizer` tool. This can be run on the autodebugged **.ll** file, which will be emitted in ``/tmp/emscripten_temp`` when ``EMCC_DEBUG=1`` is set.
-
 .. note::
-
-  - The native build created using the :term:`LLVM Nativizer` will use native system libraries. Direct comparisons of output with Emscripten-compiled code can therefore be misleading.
-  - Attempting to interpret code compiled with ``-g`` using the *LLVM Nativizer* or :term:`lli` may crash, so you may need to build once without ``-g`` for these tools, then build again with ``-g``. Another option is to use `tools/exec_llvm.py <https://github.com/emscripten-core/emscripten/blob/master/tools/exec_llvm.py>`_ in Emscripten, which will run *lli* after cleaning out debug info.
+    You may want to use ``-s DETERMINISTIC`` which will ensure that timing
+    and other issues don't cause false positives.
 
 
 Useful Links
@@ -285,4 +333,3 @@ Need help?
 The :ref:`Emscripten Test Suite <emscripten-test-suite>` contains good examples of almost all functionality offered by Emscripten. If you have a problem, it is a good idea to search the suite to determine whether test code with similar behavior is able to run.
 
 If you've tried the ideas here and you need more help, please :ref:`contact`.
-

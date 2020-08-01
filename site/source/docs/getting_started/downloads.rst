@@ -16,7 +16,7 @@ Download and install
     `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_). (While we
     don't officially support other ways of getting Emscripten, we definitely
     appreciate the efforts by third parties to
-    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#packaging-emscripten>`_
+    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/packaging.md>`_
     for users' convenience, and we'd like to help out, please get in touch if
     you are such a packager!)
 
@@ -49,7 +49,7 @@ Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Git
     # Download and install the latest SDK tools.
     ./emsdk install latest
 
-    # Make the "latest" SDK "active" for the current user. (writes ~/.emscripten file)
+    # Make the "latest" SDK "active" for the current user. (writes .emscripten file)
     ./emsdk activate latest
 
     # Activate PATH and other environment variables in the current terminal
@@ -154,7 +154,7 @@ Linux
 
 .. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
-.. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``~/.emscripten`` file to point to it.
+.. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``.emscripten`` file to point to it.
 
 - *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**:
 

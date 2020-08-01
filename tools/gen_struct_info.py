@@ -394,17 +394,23 @@ def inspect_code(headers, cpp_opts, structs, defines):
   # Compile the program.
   show('Compiling generated code...')
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
-                                                   '-O0', '--js-opts', '0', '--memory-init-file', '0',
-                                                   '-Werror', '-Wno-format',
-                                                   '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                                   '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
-                                                   '-s', 'STRICT=1',
-                                                   '-s', 'SINGLE_FILE=1']
+  cmd = [shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
+                                    '-O0', '--js-opts', '0', '--memory-init-file', '0',
+                                    '-Werror', '-Wno-format',
+                                    '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                    '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
+                                    '-s', 'STRICT=1',
+                                    '-s', 'SINGLE_FILE=1']
+  # Default behavior for emcc is to warn for binaryen version check mismatches
+  # so we should try to match that behavior.
+  cmd += ['-Wno-error=version-check']
+
+  # TODO(sbc): Remove this one we remove the test_em_config_env_var test
+  cmd += ['-Wno-deprecated']
 
   if not shared.Settings.WASM_BACKEND:
     # Avoid the binaryen dependency if we are only using fastcomp
-    cmd += ['-s', 'WASM=0']
+    cmd += ['-s', 'WASM=0', '-Wno-fastcomp']
   if shared.Settings.LTO:
     cmd += ['-flto=' + shared.Settings.LTO]
 
@@ -417,11 +423,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
 
   # Run the compiled program.
   show('Calling generated program... ' + js_file[1])
-  try:
-    info = shared.run_js(js_file[1]).splitlines()
-  except subprocess.CalledProcessError:
-    sys.stderr.write('FAIL: Running the generated program failed!\n')
-    sys.exit(1)
+  info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
 
   # Remove all temporary files.
   os.unlink(src_file[1])

@@ -1,9 +1,8 @@
 //=-- lsan_common.h -------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -22,8 +21,8 @@
 #include "sanitizer_common/sanitizer_stoptheworld.h"
 #include "sanitizer_common/sanitizer_symbolizer.h"
 
-// LeakSanitizer relies on some Glibc's internals (e.g. TLS machinery) thus
-// supported for Linux only. Also, LSan doesn't like 32 bit architectures
+// LeakSanitizer relies on some Glibc's internals (e.g. TLS machinery) on Linux.
+// Also, LSan doesn't like 32 bit architectures
 // because of "small" (4 bytes) pointer size that leads to high false negative
 // ratio on large leaks. But we still want to have it for some 32 bit arches
 // (e.g. x86), see https://github.com/google/sanitizers/issues/403.
@@ -130,8 +129,9 @@ struct RootRegion {
 InternalMmapVector<RootRegion> const *GetRootRegions();
 void ScanRootRegion(Frontier *frontier, RootRegion const &region,
                     uptr region_begin, uptr region_end, bool is_readable);
-// Run stoptheworld while holding any platform-specific locks.
-void DoStopTheWorld(StopTheWorldCallback callback, void* argument);
+// Run stoptheworld while holding any platform-specific locks, as well as the
+// allocator and thread registry locks.
+void LockStuffAndStopTheWorld(StopTheWorldCallback callback, void* argument);
 
 void ScanRangeForPointers(uptr begin, uptr end,
                           Frontier *frontier,

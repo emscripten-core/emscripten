@@ -21,10 +21,10 @@ import logging
 import pprint
 from collections import OrderedDict
 
+from tools import building
 from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
-from tools import jsrun
 from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
@@ -37,15 +37,6 @@ if STDERR_FILE:
   STDERR_FILE = os.path.abspath(STDERR_FILE)
   logger.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
   STDERR_FILE = open(STDERR_FILE, 'w')
-
-
-def get_configuration():
-  if hasattr(get_configuration, 'configuration'):
-    return get_configuration.configuration
-
-  configuration = shared.Configuration(environ=os.environ)
-  get_configuration.configuration = configuration
-  return configuration
 
 
 def quote(prop):
@@ -164,19 +155,24 @@ def parse_fastcomp_output(backend_output, DEBUG):
     metadata['externUses'] += ['Float32Array']
 
   # If we are generating references to Math.fround() from here in emscripten.py, declare it used as well.
-  if provide_fround() or metadata['simd']:
+  if provide_fround():
     metadata['externUses'] += ['Math.fround']
 
   # functions marked llvm.used in the code are exports requested by the user
-  shared.Building.user_requested_exports += metadata['exports']
+  building.user_requested_exports += metadata['exports']
 
-  # In MINIMAL_RUNTIME stackSave() and stackRestore are JS library functions. If LLVM backend generated
+  # stackSave() and stackRestore() are JS library functions. If fastcomp generated
   # calls to invoke_*() functions that save and restore the stack, we must include the stack functions
-  # explicitly into the build. (In traditional runtime the stack functions are always present, so this
-  # tracking is not needed)
-  if shared.Settings.MINIMAL_RUNTIME and (len(metadata['invokeFuncs']) > 0 or shared.Settings.LINKABLE):
-    shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore']
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
+  # explicitly into the build.
+  # In traditional runtime we always require these functions.  For example stackAlloc is used
+  # allocate argv on the stack before calling main.
+  if shared.Settings.MINIMAL_RUNTIME:
+    if len(metadata['invokeFuncs']) > 0 or shared.Settings.LINKABLE:
+      shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
+  else:
+    shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore', 'stackAlloc']
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore', '$stackAlloc']
 
   return funcs, metadata, mem_init
 
@@ -239,8 +235,7 @@ def compiler_glue(metadata, temp_files, DEBUG):
 
   update_settings_glue(metadata, DEBUG)
 
-  assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
-  assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
+  assert not metadata['simd'], 'Obsolete SIMD.js was used'
 
   glue, forwarded_data = compile_settings(temp_files)
 
@@ -318,7 +313,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   pre, funcs_js = get_js_funcs(pre, funcs)
   all_exported_functions = get_all_exported_functions(function_table_data)
   all_implemented = get_all_implemented(forwarded_json, metadata)
-  report_missing_symbols(all_implemented, pre)
+  all_implemented_with_aliases = set(all_implemented).union(set(metadata['aliases'].keys()))
+  report_missing_symbols(all_implemented_with_aliases, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
   pre = apply_table(pre)
@@ -492,9 +488,9 @@ def create_global_initializer(initializers):
   if 'globalCtors' not in global_initializer_funcs(initializers):
     return ''
 
-  global_initializer = '''  function globalCtors() {
-    %s
-  }''' % '\n    '.join(i + '();' for i in initializers)
+  global_initializer = '''function globalCtors() {
+  %s
+}''' % '\n    '.join(i + '();' for i in initializers)
 
   return global_initializer
 
@@ -606,14 +602,14 @@ def create_backend_cmd(infile, temp_js):
   if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
     args += ['-enable-emscripten-cpp-exceptions']
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
+      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_ALLOWED or ['fake'])]
   if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
   if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
     args += ['-emscripten-asmjs-work-around-ios-9-right-shift-bug']
   if shared.Settings.WASM:
     args += ['-emscripten-wasm']
-    if shared.Building.is_wasm_only():
+    if building.is_wasm_only():
       args += ['-emscripten-only-wasm']
   if shared.Settings.CYBERDWARF:
     args += ['-enable-cyberdwarf']
@@ -694,12 +690,6 @@ def update_settings_glue(metadata, DEBUG):
 
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
 
-  if metadata['simd']:
-    shared.Settings.SIMD = 1
-    if shared.Settings.ASM_JS != 2:
-      diagnostics.warning('almost-asm', 'disabling asm.js validation due to use of SIMD')
-      shared.Settings.ASM_JS = 2
-
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
   shared.Settings.WEAK_DECLARES = metadata.get('weakDeclares', [])
@@ -771,9 +761,9 @@ def compile_settings(temp_files):
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
-    out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), shared.NODE_JS,
-                            [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                            cwd=path_from_root('src'), env=env)
+    out = shared.run_js_tool(path_from_root('src', 'compiler.js'),
+                             [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                             cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
@@ -839,9 +829,6 @@ def apply_script_source(js):
 
 
 def memory_and_global_initializers(pre, metadata, mem_init):
-  if shared.Settings.SIMD == 1:
-    pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
-
   staticbump = shared.Settings.STATIC_BUMP
 
   pthread = ''
@@ -904,10 +891,6 @@ def get_all_implemented(forwarded_json, metadata):
 
 
 def report_missing_symbols(all_implemented, pre):
-  # we are not checking anyway, so just skip this
-  if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
-    return
-
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
   missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
@@ -921,8 +904,19 @@ def report_missing_symbols(all_implemented, pre):
       continue
     diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
 
-  # Handle main specially, unless IGNORE_MISSING_MAIN is set
-  if shared.Settings.EXPECT_MAIN and '_main' not in all_implemented and not shared.Settings.IGNORE_MISSING_MAIN:
+  # Special hanlding for the `_main` symbol
+
+  if shared.Settings.STANDALONE_WASM:
+    # standalone mode doesn't use main, and it always reports missing entry point at link time.
+    # In this mode we never expect _main in the export list.
+    return
+
+  if shared.Settings.IGNORE_MISSING_MAIN:
+    # The default mode for emscripten is to ignore the missing main function allowing
+    # maximum compatibility.
+    return
+
+  if shared.Settings.EXPECT_MAIN and '_main' not in all_implemented:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
@@ -948,8 +942,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
 
   if shared.Settings.ALLOW_MEMORY_GROWTH:
     funcs.append('_emscripten_replace_memory')
-  if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
   if shared.Settings.USE_PTHREADS:
     funcs += ['asmJsEstablishStackFrame']
 
@@ -1364,7 +1356,6 @@ def create_asm_global_funcs(bg_funcs, metadata):
       asm_global_funcs += '  var ' + math.replace('.', '_') + '=global' + access_quote(math) + ';\n'
 
   asm_global_funcs += ''.join(['  var ' + unminified + '=env' + access_quote(math_fix(minified)) + ';\n' for (minified, unminified) in bg_funcs])
-  asm_global_funcs += global_simd_funcs(access_quote, metadata)
   if shared.Settings.USE_PTHREADS:
     asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
   return asm_global_funcs
@@ -1379,138 +1370,13 @@ def create_asm_global_vars(bg_vars):
   return asm_global_vars
 
 
-def global_simd_funcs(access_quote, metadata):
-  # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
-  if not (metadata['simd'] or shared.Settings.SIMD):
-    return ''
-
-  def string_contains_any(s, str_list):
-    return any(sub in s for sub in str_list)
-
-  nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
-  nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
-  nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
-  nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
-
-  simd = make_simd_types(metadata)
-
-  simd_func_text = ''
-  simd_func_text += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simd['types']])
-
-  def generate_symbols(types, funcs):
-    symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in types for g in funcs]
-    symbols = [x for x in symbols if not string_contains_any(x, nonexisting_simd_symbols)]
-    return ''.join(symbols)
-
-  simd_func_text += generate_symbols(simd['int_types'], simd['int_funcs'])
-  simd_func_text += generate_symbols(simd['float_types'], simd['float_funcs'])
-  simd_func_text += generate_symbols(simd['bool_types'], simd['bool_funcs'])
-
-  # SIMD conversions (not bitcasts) between same lane sizes:
-  def add_simd_cast(dst, src):
-    return '  var SIMD_' + dst + '_from' + src + '=SIMD_' + dst + '.from' + src + ';\n'
-
-  def add_simd_casts(t1, t2):
-    return add_simd_cast(t1, t2) + add_simd_cast(t2, t1)
-
-  # Bug: Skip importing conversions for int<->uint for now, they don't validate
-  # as asm.js. https://bugzilla.mozilla.org/show_bug.cgi?id=1313512
-  # This is not an issue when building SSEx code, because it doesn't use these.
-  # (but it will be an issue if using SIMD.js intrinsics from vector.h to
-  # explicitly call these)
-  # if metadata['simdInt8x16'] and metadata['simdUint8x16']:
-  #   simd_func_text += add_simd_casts('Int8x16', 'Uint8x16')
-  # if metadata['simdInt16x8'] and metadata['simdUint16x8']:
-  #   simd_func_text += add_simd_casts('Int16x8', 'Uint16x8')
-  # if metadata['simdInt32x4'] and metadata['simdUint32x4']:
-  #   simd_func_text += add_simd_casts('Int32x4', 'Uint32x4')
-
-  if metadata['simdInt32x4'] and metadata['simdFloat32x4']:
-    simd_func_text += add_simd_casts('Int32x4', 'Float32x4')
-  if metadata['simdUint32x4'] and metadata['simdFloat32x4']:
-    simd_func_text += add_simd_casts('Uint32x4', 'Float32x4')
-  if metadata['simdInt32x4'] and metadata['simdFloat64x2']:
-    simd_func_text += add_simd_cast('Int32x4', 'Float64x2') # Unofficial, needed for emscripten_int32x4_fromFloat64x2
-  if metadata['simdUint32x4'] and metadata['simdFloat64x2']:
-    simd_func_text += add_simd_cast('Uint32x4', 'Float64x2') # Unofficial, needed for emscripten_uint32x4_fromFloat64x2
-
-  # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
-  if metadata['simdFloat64x2']:
-    simd_func_text += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n'
-  return simd_func_text
-
-
-def make_simd_types(metadata):
-  simd_float_types = []
-  simd_int_types = []
-  simd_bool_types = []
-  simd_funcs = ['splat', 'check', 'extractLane', 'replaceLane']
-  simd_intfloat_funcs = ['add', 'sub', 'neg', 'mul',
-                         'equal', 'lessThan', 'greaterThan',
-                         'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
-                         'select', 'swizzle', 'shuffle',
-                         'load', 'store', 'load1', 'store1', 'load2', 'store2']
-  simd_intbool_funcs = ['and', 'xor', 'or', 'not']
-  if metadata['simdUint8x16']:
-    simd_int_types += ['Uint8x16']
-    simd_intfloat_funcs += ['fromUint8x16Bits']
-  if metadata['simdInt8x16']:
-    simd_int_types += ['Int8x16']
-    simd_intfloat_funcs += ['fromInt8x16Bits']
-  if metadata['simdUint16x8']:
-    simd_int_types += ['Uint16x8']
-    simd_intfloat_funcs += ['fromUint16x8Bits']
-  if metadata['simdInt16x8']:
-    simd_int_types += ['Int16x8']
-    simd_intfloat_funcs += ['fromInt16x8Bits']
-  if metadata['simdUint32x4']:
-    simd_int_types += ['Uint32x4']
-    simd_intfloat_funcs += ['fromUint32x4Bits']
-  if metadata['simdInt32x4'] or shared.Settings.SIMD:
-    # Always import Int32x4 when building with -s SIMD=1, since memcpy is SIMD optimized.
-    simd_int_types += ['Int32x4']
-    simd_intfloat_funcs += ['fromInt32x4Bits']
-  if metadata['simdFloat32x4']:
-    simd_float_types += ['Float32x4']
-    simd_intfloat_funcs += ['fromFloat32x4Bits']
-  if metadata['simdFloat64x2']:
-    simd_float_types += ['Float64x2']
-    simd_intfloat_funcs += ['fromFloat64x2Bits']
-  if metadata['simdBool8x16']:
-    simd_bool_types += ['Bool8x16']
-  if metadata['simdBool16x8']:
-    simd_bool_types += ['Bool16x8']
-  if metadata['simdBool32x4']:
-    simd_bool_types += ['Bool32x4']
-  if metadata['simdBool64x2']:
-    simd_bool_types += ['Bool64x2']
-
-  simd_float_funcs = simd_funcs + simd_intfloat_funcs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                                         'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
-  simd_int_funcs = simd_funcs + simd_intfloat_funcs + simd_intbool_funcs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
-  simd_bool_funcs = simd_funcs + simd_intbool_funcs + ['anyTrue', 'allTrue']
-  simd_types = simd_float_types + simd_int_types + simd_bool_types
-  return {
-    'types': simd_types,
-    'float_types': simd_float_types,
-    'int_types': simd_int_types,
-    'bool_types': simd_bool_types,
-    'funcs': simd_funcs,
-    'float_funcs': simd_float_funcs,
-    'int_funcs': simd_int_funcs,
-    'bool_funcs': simd_bool_funcs,
-    'intfloat_funcs': simd_intfloat_funcs,
-    'intbool_funcs': simd_intbool_funcs,
-  }
-
-
 def asm_safe_heap():
   """optimized safe heap in asm, when we can"""
   return shared.Settings.SAFE_HEAP and not shared.Settings.SAFE_HEAP_LOG and not shared.Settings.RELOCATABLE
 
 
 def provide_fround():
-  return shared.Settings.PRECISE_F32 or shared.Settings.SIMD
+  return shared.Settings.PRECISE_F32
 
 
 def create_asm_setup(debug_tables, function_table_data, invoke_function_names, metadata):
@@ -1597,7 +1463,7 @@ def setup_function_pointers(function_table_sigs):
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
   basic_funcs = shared.Settings.RUNTIME_FUNCS_TO_IMPORT
-  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.MINIMAL_RUNTIME:
+  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.MINIMAL_RUNTIME and shared.Settings.SIDE_MODULE:
     basic_funcs += ['abortStackOverflow']
   if shared.Settings.SAFE_HEAP:
     if asm_safe_heap():
@@ -1638,8 +1504,7 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
 
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata):
-  asm_runtime_funcs = create_asm_runtime_funcs()
-  all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data)
+  all_exported = exported_implemented_functions + function_tables(function_table_data)
   # In asm.js + emulated function pointers, export all the table because we use
   # JS to add the asm.js module's functions to the table (which is external
   # in this mode). In wasm, we don't need that since wasm modules can
@@ -1664,13 +1529,6 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   return '{ ' + ', '.join(exports) + ' }'
 
 
-def create_asm_runtime_funcs():
-  funcs = []
-  if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
-  return funcs
-
-
 def function_tables(function_table_data):
   if not asm_js_emulated_function_pointers():
     return ['dynCall_' + table for table in function_table_data]
@@ -1689,9 +1547,6 @@ def create_the_global(metadata):
     if asm_backend_uses(metadata, f):
       fundamentals += [f]
 
-  if metadata['simd'] or shared.Settings.SIMD:
-    # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
-    fundamentals += ['SIMD']
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
@@ -1726,7 +1581,6 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
         else:
           receiving += '\n'.join(make_export_wrappers(module_exports, delay_assignment))
     else:
-      receiving += 'Module["asm"] = asm;\n'
       receiving += '\n'.join(make_export_wrappers(module_exports, delay_assignment))
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
@@ -1834,33 +1688,7 @@ for (var named in NAMED_GLOBALS) {
 
 
 def create_runtime_funcs_asmjs(exports, metadata):
-  if shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2:
-    stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
-  else:
-    stack_check = ''
-
-  funcs = ['''
-function stackAlloc(size) {
-  size = size|0;
-  var ret = 0;
-  ret = STACKTOP;
-  STACKTOP = (STACKTOP + size)|0;
-  STACKTOP = (STACKTOP + 15)&-16;
-  %s
-  return ret|0;
-}
-function stackSave() {
-  return STACKTOP|0;
-}
-function stackRestore(top) {
-  top = top|0;
-  STACKTOP = top;
-}
-''' % stack_check]
-
-  if shared.Settings.MINIMAL_RUNTIME:
-    # MINIMAL_RUNTIME moves stack functions to library.
-    funcs = []
+  funcs = []
 
   if shared.Settings.USE_PTHREADS:
     funcs.append('''
@@ -2213,9 +2041,6 @@ def emscript_wasm_backend(infile, outfile, memfile, temp_files, DEBUG):
   pre = None
 
   invoke_funcs = metadata['invokeFuncs']
-  if shared.Settings.RELOCATABLE:
-    invoke_funcs.append('invoke_X')
-
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
   except KeyError:
@@ -2249,19 +2074,19 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   basename = shared.unsuffixed(outfile.name)
   wasm = basename + '.wasm'
   base_wasm = infile
-  shared.Building.save_intermediate(infile, 'base.wasm')
+  building.save_intermediate(infile, 'base.wasm')
 
   args = ['--detect-features']
 
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
-    shared.Building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
-    shared.Building.save_intermediate(base_wasm + '.map', 'base_wasm.map')
+    building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
+    building.save_intermediate(base_wasm + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
 
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD:
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
@@ -2274,7 +2099,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   else:
     # --global-base is used by wasm-emscripten-finalize to calculate the size
     # of the static data used.  The argument we supply here needs to match the
-    # global based used by lld (see Building.link_lld).  For relocatable this is
+    # global based used by lld (see building.link_lld).  For relocatable this is
     # zero for the global base although at runtime __memory_base is used.
     # For non-relocatable output we used shared.Settings.GLOBAL_BASE.
     # TODO(sbc): Can we remove this argument infer this from the segment
@@ -2294,14 +2119,14 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('--pass-arg=legalize-js-interface-export-originals')
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
-  stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
-                                                infile=base_wasm,
-                                                outfile=wasm,
-                                                args=args,
-                                                stdout=subprocess.PIPE)
+  stdout = building.run_binaryen_command('wasm-emscripten-finalize',
+                                         infile=base_wasm,
+                                         outfile=wasm,
+                                         args=args,
+                                         stdout=subprocess.PIPE)
   if write_source_map:
-    shared.Building.save_intermediate(wasm + '.map', 'post_finalize.map')
-  shared.Building.save_intermediate(wasm, 'post_finalize.wasm')
+    building.save_intermediate(wasm + '.map', 'post_finalize.map')
+  building.save_intermediate(wasm, 'post_finalize.wasm')
 
   if not shared.Settings.MEM_INIT_IN_WASM:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,
@@ -2351,16 +2176,21 @@ def create_asm_consts_wasm(forwarded_json, metadata):
         # ... over to the negative integers starting at -1.
         preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { ' +
                      proxy_debug_print(sync_proxy) +
-                     'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
-                     str(int(sync_proxy)) +
-                     ', code, sigPtr, argbuf); }')
+                     'return _emscripten_proxy_to_main_thread_js.apply(null, ' +
+                     '[-1 - code, ' + str(int(sync_proxy)) + '].concat(args)) }')
 
     if shared.Settings.RELOCATABLE:
       preamble += '\n  code -= %s;\n' % shared.Settings.GLOBAL_BASE
 
+    # EM_ASM functions are variadic, receiving the actual arguments as a buffer
+    # in memory. the last parameter (argBuf) points to that data. We need to
+    # alwayd un-variadify that, as in the async case this is a stack allocation
+    # that LLVM made, which may go away before the main thread gets the message.
+    # the readAsmConstArgs helper does so.
     asm_const_funcs.append(r'''
-function %s(code, sigPtr, argbuf) {%s
+function %s(code, sigPtr, argbuf) {
   var args = readAsmConstArgs(sigPtr, argbuf);
+%s
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   asm_consts = [(key, value) for key, value in asm_consts.items()]
@@ -2628,7 +2458,6 @@ def create_receiving_wasm(exports, initializers):
       else:
         receiving += make_export_wrappers(exports, delay_assignment)
   else:
-    receiving.append('Module["asm"] = asm;')
     receiving += make_export_wrappers(exports, delay_assignment)
 
   return '\n'.join(receiving) + '\n'
@@ -2667,7 +2496,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'declares': [],
     'implementedFunctions': [],
     'externs': [],
-    'simd': False,
+    'simd': False, # Obsolete, always False
     'maxGlobalAlign': 0,
     'staticBump': 0,
     'tableSize': 0,
@@ -2709,7 +2538,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in shared.Settings.EXPORTED_FUNCTIONS]
-  shared.Building.user_requested_exports += unexpected_exports
+  building.user_requested_exports += unexpected_exports
 
   # With the wasm backend the set of implemented functions is identical to the set of exports
   # Set this key here simply so that the shared code that handle it.
@@ -2752,7 +2581,7 @@ def generate_struct_info():
 
 
 def run(infile, outfile, memfile):
-  temp_files = get_configuration().get_temp_files()
+  temp_files = shared.configuration.get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
   generate_struct_info()
 

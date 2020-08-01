@@ -76,4 +76,29 @@ EM_ASM_DOUBLE :
     returned: 6.000000
   5.5 + 14.375
     returned: 19.875000
+idii
+a 1
+b 3.14159
+c 3
+d 4
+diii
+a 3.14159
+b 2
+c 3
+d 4
+iidi
+a 1
+b 2
+c 3.14159
+d 4
+ddii
+a 3.14159
+b 2.1828
+c 3
+d 4
+iddi
+a 1
+b 3.14159
+c 2.1828
+d 4
 END

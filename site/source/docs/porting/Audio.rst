@@ -36,20 +36,29 @@ The following extensions are supported by Emscripten's OpenAL implementation.
 Guidelines for Audio on Emscripten
 ==================================
 
-Know that your application needs to yield to the Javascript main loop for audio processing to take place (See :ref:`Browser main loop <emscripten-runtime-environment-main-loop>`).
-
-Put simply, this kind of code will block indefinitely :
+Know that your application needs to yield to the Javascript main loop for audio
+processing to take place
+(See :ref:`Browser main loop <emscripten-runtime-environment-main-loop>`). Put
+simply, this kind of code will block indefinitely:
 
 .. code-block:: c
 
     while(nframes < THE_NUMBER_OF_FRAMES_WE_WANT)
         alcGetIntegerv(device, ALC_CAPTURE_SAMPLES, 1, &nframes);
 
-The above snippet usually works in native applications because most OpenAL implementations own and manage one or more separate threads. This is **not** the case in Emscripten.
+The above snippet usually works in native applications because most OpenAL
+implementations own and manage one or more separate threads. This is **not** the
+case in Emscripten. What you must do instead is perform each such query only
+once per "main loop iteration" (i.e the callback you provide via
+:c:func:`emscripten_set_main_loop` or :c:func:`emscripten_set_main_loop_arg`).
 
-
-What you must do instead is perform each such query only once per "main loop iteration" (i.e the callback you provide via :c:func:`emscripten_set_main_loop` or :c:func:`emscripten_set_main_loop_arg`).
-
+Another issue you may experience is that browsers will not allow audio to play
+before user input. This prevents pages from auto-playing media, which can be
+annoying if you didn't want that. Emscripten's OpenAL implementation (and also
+SDL1) will automatically listen for a user click or keypress on the document
+and the canvas, and resume audio for you. That means that audio should start
+to play once the user does something on the page. (See
+``autoResumeAudioContext()`` for how this is done internally.)
 
 .. _Audio-openal-capture-behavior-g:
 

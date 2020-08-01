@@ -107,7 +107,9 @@ static const unsigned char states[]['z'-'A'+1] = {
 		S('E') = DBL, S('F') = DBL, S('G') = DBL, S('A') = DBL,
 		S('c') = CHAR, S('C') = INT,
 		S('s') = PTR, S('S') = PTR, S('p') = UIPTR, S('n') = PTR,
+#ifndef __EMSCRIPTEN__ // 'm' is a gnu extension, and strerror brings in 2.5K of strings
 		S('m') = NOARG,
+#endif
 		S('l') = LPRE, S('h') = HPRE, S('L') = BIGLPRE,
 		S('z') = ZTPRE, S('j') = JPRE, S('t') = ZTPRE,
 	}, { /* 1: l-prefixed */

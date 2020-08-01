@@ -17,12 +17,98 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- The mmap method of JavaScript filesysem drivers (based on library_fs.js) no
-  longer takes a target memory.  Its safer/cleaner/smaller to assume the target
+- If input files don't have a known extension assume they are object files
+  (linker inputs) rather then source files.  This matches gcc/clang behaviour.
+  See #10560.
+
+1.40.0: 07/30/2020
+------------------
+- Last release that still has optional support for the old fastcomp backend.
+  The new upstream backend, which has been the default for a long time, will
+  be the only one supported from 2.0.0 and onward (#11319).
+- The `EM_CONFIG` environment variable and `--em-config` command line option no
+  longer support a literal python string. Instead the name of a config file is
+  required. Since all config file settings are individually override-able using
+  `EM_FOO` this should be enough.
+- Running emscripten under python2 is now deprecated.  It will show up as a
+  warning (which can be disabled with `-Wno-deprecated`).  Please update to
+  python3 as we hope to remove support completely in the next releaase.
+
+1.39.20: 07/20/2020
+-------------------
+- Remove the `--save-bc` command line option.  This was specific to fastcomp,
+  which is deprecated, and for debugging purposes we already have `EMCC_DEBUG`
+  which saves all intermediate files.
+- It is now an error if a function listed in the `EXPORTED_FUNCTIONS` list is
+  missing from the build (can be disabled via `-Wno-undefined`)
+  (ERROR_ON_UNDEFINED_SYMBOLS and WARN_ON_UNDEFINED_SYMBOLS no longer apply
+  to these symbols which are explicly exported).
+- Support for pthreads with wasm2js (`WASM=0`; #11505).
+- Rename `emscripten/math.h` to `emscripten/em_math.h` because if a user adds
+  `emscripten/` as an include path with `-I`, that can override libc math.h,
+  which leads to very confusing errors.
+
+1.39.19: 07/07/2020
+-------------------
+- In standalone mode make `main` mandatory by default (#11536). To build a
+  library ("reactor"), use `--no-entry`. The compiler will suggest that if
+  `main` is not present.
+- Automatically resume AudioContexts on user input in SDL and OpenAL (#10843).
+- Asyncify now does liveness analysis to find which locals to save
+  (Binaryen#2890).
+- Settings on the command line no longer require a space between the `-s` and
+  the name of the setting.   For example, `-sEXPORT_ALL` is now equivalent to
+  `-s EXPORT_ALL`.
+- Rename `EXCEPTION_CATCHING_WHITELIST` to `EXCEPTION_CATCHING_ALLOWED`. The
+  functionality is unchanged, and the old name will be allowed as an alias
+  for a few releases to give users time to migrate.
+- Add support for the new add-list in Asyncify and update existing list names
+  following the updates in Binaryen, so that now we have `ASYNCIFY_ADD` to
+  add a function, `ASYNCIFY_REMOVE` to remove one (previously this was
+  called `ASYNCIFY_BLACKLIST`), and `ASYNCIFY_ONLY` to set a list of the
+  only functions to instrument and no others (previously this was called
+  `ASYNCIFY_WHITELIST`). The updated lists also handle indirect calls properly,
+  so that if you use `ASYNCIFY_IGNORE_INDIRECT` and then add (using either the
+  add-list or the only-list) all the functions that are on the stack when
+  pausing, then things will work (for more, see
+  https://github.com/WebAssembly/binaryen/pull/2913).
+
+1.39.18: 06/12/2020
+-------------------
+- Disable `LIBCXX_ABI_OPTIMIZED_FUNCTION` which is an ABI change in libc++
+  (changing the layout of the `std::function` object) (#11403).
+- New `WASM2C` option that integrates with wabt's wasm2c tool in order to
+  compile everything into a single C file (#11213).
+
+1.39.17: 06/05/2020
+-------------------
+- Use Promise polyfill for MODULARIZE when supporting legacy browsers. (#11320)
+- Fix minification of wasm2js output when using --emit-symbol-map. (#11279)
+- On first use, emscripten creates a sample config file.  This config file
+  is now created in the emscripten directory by default.  The traditional
+  `~/.emscripten` config file in the `$HOME` directory is still supported and
+  the sample config will still be written there in the case that the emscripten
+  root is read-only.
+- The default location for downloaded ports is now a directory called "ports"
+  within the cache directory.  In practice these means by default they live
+  in `cache/ports` inside the emscripten source directory.  This can be
+  controlled by setting the location of the cache directory, or for even more
+  fine grained control the `EM_PORTS` environment variable and the `PORTS`
+  config setting can be used.
+- Added support for compiling SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE 4.2 and
+  128-bit wide AVX intrinsics, emulated on top of Wasm SIMD instruction set.
+  (#11193, #11243, #11290, #11327). Pass -msimd128 -msse<version> to enable
+  targeting SSE.
+- Removed obsolete SIMD.js support (-s SIMD=1). Use -msimd128 to target Wasm
+  SIMD. (#11180)
+- Add warning about fastcomp deprecation (can be disabled via `-Wno-fastcomp`).
+- The mmap method of JavaScript filesystem drivers (based on library_fs.js) no
+  longer takes a target memory.  It's safer/cleaner/smaller to assume the target
   is the global memory buffer.
-- Remove emterpreter and ``EMTERPRETIFY`` settings.  Emterpreter has largerly
+- Remove emterpreter and `EMTERPRETIFY` settings.  Emterpreter has largely
   been replaced by asyncify and is fastcomp only so due for removing in
   the near future anyway.
+- Upgrade various musl string functions to 1.2 to fix aliasing issues. (#11215)
 
 1.39.16: 05/15/2020
 -------------------
@@ -230,13 +316,15 @@ v1.39.9: 03/05/2020
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
-- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+- Add a check in Asyncify builds with `ASSERTIONS` that we do not have
   compiled code on the stack when starting to rewind, which is dangerous.
 - Implement libc system() for node.js (#10547).
 - Standalone mode improvements, time (#10530, #10536), sysconf (#10535),
   getpagesize (#10533), _Exit (#10534)
 - Fix many closure compiler warnings (e.g. #10525).
 - Avoid unnecessary syscall proxying (#10511).
+- Added new link time command line option -jsDfoo=val to allow specifying
+  custom preprocessor options to JS library files. (#10624, #10580)
 
 v1.39.8: 02/14/2020
 -------------------
@@ -458,6 +546,12 @@ v1.38.41: 08/07/2019
    print for parse error reporting. (#9088)
  - Internal API update: one can now specialize embind's (un)marshalling for a
    group of types via SFINAE, instead of a single type. (#9089)
+ - Options passed on the `Module` object during startup, like `Module.arguments`,
+   are now copied to a local (in order to avoid writing `Module.*` everywhere,
+   which wastes space). You can still provide them as always, but you can't
+   modify `Module.arguments` and other things *after* startup (which is now
+   after we've finished processing them). In a build with assertions enabled you
+   will get an error if you access those properties after startup. (#9072)
 
 v1.38.40: 07/24/2019
 --------------------

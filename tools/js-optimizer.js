@@ -4655,7 +4655,7 @@ function minifyLocals(ast) {
       if (asm) {
         return name in asmData.vars || name in asmData.params;
       } else {
-        return name in localNames;
+        return Object.prototype.hasOwnProperty.call(localNames, name);
       }
     }
     traverse(fun, function(node, type) {
@@ -5108,7 +5108,8 @@ function safeHeap(ast) {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0]]], ASM_INT);
             }
             case 'HEAPU32': {
-              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT);
+              // Note that a 32-bit unsigned number should not be changed to a signed one.
+              return makeSignedAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT, ASM_UNSIGNED);
             }
             case 'HEAPF32': {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4]]], ASM_DOUBLE);
@@ -5321,12 +5322,13 @@ function ilog2(x) {
   throw 'ilog2 is not smart enough for ' + x;
 }
 
-// emits which functions are directly reachable from, except for some blacklist
+// emits which functions are directly reachable, except for some that are
+// ignored
 function findReachable(ast) {
-  var BLACKLIST = set(extraInfo.blacklist);
+  var IGNORED = set(extraInfo.ignored);
   var reachable = {};
   traverseGeneratedFunctions(ast, function(func) {
-    if (func[1] in BLACKLIST) return;
+    if (func[1] in IGNORED) return;
     traverse(func, function(node, type) {
       if (type === 'call' && node[1][0] === 'name') {
         reachable[node[1][1]] = 1;

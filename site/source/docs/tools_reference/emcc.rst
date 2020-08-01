@@ -82,7 +82,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-s-option-value:
 
 ``-s OPTION[=VALUE]``
-  JavaScript code generation option passed into the Emscripten compiler. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
+  Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
 
   .. note:: You can prefix boolean options with ``NO_`` to reverse them. For example, ``-s EXIT_RUNTIME=1`` is the same as ``-s NO_EXIT_RUNTIME=0``.
 
@@ -106,6 +106,9 @@ Options that are modified or new in *emcc* are listed below:
     - In this case the file might contain a JSON-formatted list of functions: ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
 
+  .. note:: Options can be specified as a single argument without a space
+            between the ``-s`` and option name.  e.g. ``-sFOO=1``.
+
 .. _emcc-g:
 
 ``-g``
@@ -116,9 +119,13 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-gseparate-dwarf[=FILENAME]``
   Preserve debug information, but in a separate file on the side. This is the
-  same as ``-g``, but the main file will contain no debug info, while debug
-  info will be present in a file on the side (``FILENAME`` if provided,
-  otherwise the same as the wasm file but with suffix ``.debug.wasm``).
+  same as ``-g``, but the main file will contain no debug info. Instead, debug
+  info will be present in a file on the side, in ``FILENAME`` if provided,
+  otherwise the same as the wasm file but with suffix ``.debug.wasm``. While
+  the main file contains no debug info, it does contain a URL to where the
+  debug file is, so that devtools can find it. You can use
+  ``-s SEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
+  you want to host it on a different server, for example).
 
 .. _emcc-gN:
 
@@ -351,32 +358,39 @@ Options that are modified or new in *emcc* are listed below:
   If using this in combination with ``--clear-cache``, be sure to specify
   this argument first.
 
-  The Emscripten cache defaults to being located in the path name stored
-  in the ``EM_CACHE`` environment variable or ``~/.emscripten_cache``.
+  The Emscripten cache defaults to ``emscripten/cache`` but can be overridden
+  using the ``EM_CACHE`` environment variable or ``CACHE`` config setting.
 
 .. _emcc-clear-cache:
 
 ``--clear-cache``
-  Manually clears the cache of compiled Emscripten system libraries (libc++, libc++abi, libc).
+  Manually clears the cache of compiled Emscripten system libraries (libc++,
+  libc++abi, libc).
 
-  This is normally handled automatically, but if you update LLVM in-place (instead of having a different directory for a new version), the caching mechanism can get confused. Clearing the cache can fix weird problems related to cache incompatibilities, like *Clang* failing to link with library files. This also clears other cached data. After the cache is cleared, this process will exit.
+  This is normally handled automatically, but if you update LLVM in-place
+  (instead of having a different directory for a new version), the caching
+  mechanism can get confused. Clearing the cache can fix weird problems related
+  to cache incompatibilities, like *Clang* failing to link with library files.
+  This also clears other cached data. After the cache is cleared, this process
+  will exit.
+
+  By default this will also clear any download ports since the ports directory
+  is usually within the cache directory.
 
 .. _emcc-clear-ports:
 
 ``--clear-ports``
-  Manually clears the local copies of ports from the Emscripten Ports repos (sdl2, etc.). This also clears the cache, to remove their builds.
+  Manually clears the local copies of ports from the Emscripten Ports repos
+  (sdl2, etc.). This also clears the cache, to remove their builds.
 
-  You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
+  You should only need to do this if a problem happens and you want all ports
+  that you use to be downloaded and built from scratch. After this operation is
+  complete, this process will exit.
 
 .. _emcc-show-ports:
 
 ``--show-ports``
   Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
-
-.. _emcc-save-bc:
-
-``--save-bc PATH``
-  When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.
 
 .. _emcc-memory-init-file:
 
@@ -420,7 +434,10 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-config:
 
 ``--em-config``
-  Specifies the location of the **.emscripten** configuration file for the current compiler run. If not specified, the environment variable ``EM_CONFIG`` is first read for this location. If neither are specified, the default location **~/.emscripten** is used.
+  Specifies the location of the **.emscripten** configuration file.  If not
+  specified emscripten will search for ``.emscripten`` first in the emscripten
+  directory itself, and then in the user's home directory (``~/.emscripten``).
+  This can be overridden using the ``EM_CONFIG`` environment variable.
 
 ``--default-obj-ext .ext``
   Specifies the file suffix to generate if the location of a directory name is passed to the ``-o`` directive.
@@ -433,7 +450,9 @@ Options that are modified or new in *emcc* are listed below:
 
 
 ``--valid-abspath path``
-  Whitelist an absolute path to prevent warnings about absolute include paths.
+  Note an allowed absolute path, which we should not warn about (absolute
+  include paths normally are warned about, since they may refer to the
+  local system headers etc. which we need to avoid when cross-compiling).
 
 .. _emcc-o-target:
 

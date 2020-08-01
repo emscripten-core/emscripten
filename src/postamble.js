@@ -6,7 +6,10 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if !WASM_BACKEND && !WASM
+// asm.js startup is synchronous
 Module['asm'] = asm;
+#endif
 
 {{{ exportRuntime() }}}
 
@@ -406,16 +409,14 @@ function exit(status, implicit) {
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
 #if MODULARIZE
       readyPromiseReject(msg);
-#else
-      err(msg);
 #endif // MODULARIZE
+      err(msg);
 #else
       var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
 #if MODULARIZE
       readyPromiseReject(msg);
-#else
-      err(msg);
 #endif // MODULARIZE
+      err(msg);
 #endif // EXIT_RUNTIME
     }
 #endif // ASSERTIONS
@@ -547,4 +548,8 @@ var workerResponded = false, workerCallbackId = -1;
   }
 })();
 
+#endif
+
+#if STANDALONE_WASM && ASSERTIONS && !WASM_BIGINT
+err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
 #endif

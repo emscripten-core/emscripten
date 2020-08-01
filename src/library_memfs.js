@@ -326,8 +326,10 @@ mergeInto(LibraryManager.library, {
 
         // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
         MEMFS.expandFileStorage(node, position+length);
-        if (node.contents.subarray && buffer.subarray) node.contents.set(buffer.subarray(offset, offset + length), position); // Use typed array write if available.
-        else {
+        if (node.contents.subarray && buffer.subarray) {
+          // Use typed array write which is available.
+          node.contents.set(buffer.subarray(offset, offset + length), position);
+        } else {
           for (var i = 0; i < length; i++) {
            node.contents[position + i] = buffer[offset + i]; // Or fall back to manual write if not.
           }
@@ -380,7 +382,7 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
-          ptr = _malloc(length);
+          ptr = FS.mmapAlloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }

@@ -105,9 +105,9 @@ struct_ptr_array[0]->attr2 == 101
 4 : 0.25
 9 : 0.01
 10 : -20.42
-Assertion failed: [CHECK FAILED] Parent::Parent(val:val): Expecting <integer>
 Parent:42
-Assertion failed: [CHECK FAILED] Parent::voidStar(something:something): Expecting <pointer>
-Assertion failed: [CHECK FAILED] StringUser::Print(anotherString:anotherString): Expecting <string>
 
 done.
+Assertion failed: [CHECK FAILED] Parent::Parent(val:val): Expecting <integer>
+Assertion failed: [CHECK FAILED] Parent::voidStar(something:something): Expecting <pointer>
+Assertion failed: [CHECK FAILED] StringUser::Print(anotherString:anotherString): Expecting <string>

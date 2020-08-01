@@ -13,7 +13,12 @@
 function processMacros(text) {
   return text.replace(/{{{([^}]|}(?!}))+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
-    var ret = eval(str);
+    try {
+      var ret = eval(str);
+    } catch (ex) {
+      ex.stack = 'In the following macro:\n\n' + str + '\n\n' + ex.stack;
+      throw ex;
+    }
     return ret !== null ? ret.toString() : '';
   });
 }
@@ -795,6 +800,9 @@ function asmCoercion(value, type, signedness) {
       }
     }
   } else {
+    if (signedness == 'u') {
+      return '((' + value + ')>>>0)';
+    }
     return '((' + value + ')|0)';
   }
 }
@@ -880,7 +888,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type);
+      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
   var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
@@ -1528,18 +1536,18 @@ function getQuoted(str) {
 }
 
 function makeRetainedCompilerSettings() {
-  var blacklist = set('STRUCT_INFO');
+  var ignore = set('STRUCT_INFO');
   if (STRICT) {
     for (var i in LEGACY_SETTINGS) {
       var name = LEGACY_SETTINGS[i][0];
-      blacklist[name] = 0;
+      ignore[name] = 0;
     }
   }
 
   var ret = {};
   for (var x in this) {
     try {
-      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
+      if (x[0] !== '_' && !(x in ignore) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
     } catch(e){}
   }
   return ret;
@@ -1603,7 +1611,7 @@ function expectToReceiveOnModule(name) {
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + " (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)') } });";
 }
 
 // Make code to receive a value on the incoming Module object.

@@ -92,7 +92,7 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    exitHandlers: null, // An array of C functions to run when this thread exits.
+    threadExitHandlers: [], // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
@@ -163,11 +163,8 @@ var LibraryPThread = {
 #endif
 
     runExitHandlers: function() {
-      if (PThread.exitHandlers !== null) {
-        while (PThread.exitHandlers.length > 0) {
-          PThread.exitHandlers.pop()();
-        }
-        PThread.exitHandlers = null;
+      while (PThread.threadExitHandlers.length > 0) {
+        PThread.threadExitHandlers.pop()();
       }
 
       // Call into the musl function that runs destructors of all thread-specific data.
@@ -391,7 +388,14 @@ var LibraryPThread = {
         // independently load up the same main application file.
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
 #if WASM
+#if WASM2JS
+        // the polyfill WebAssembly.Memory instance has function properties,
+        // which will fail in postMessage, so just send a custom object with the
+        // property we need, the buffer
+        'wasmMemory': { 'buffer': wasmMemory.buffer },
+#else // WASM2JS
         'wasmMemory': wasmMemory,
+#endif // WASM2JS
         'wasmModule': wasmModule,
 #if LOAD_SOURCE_MAP
         'wasmSourceMap': wasmSourceMap,
@@ -534,12 +538,13 @@ var LibraryPThread = {
         'selfThreadId': threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
         'parentThreadId': threadParams.parent_pthread_ptr,
         'stackBase': threadParams.stackBase,
-        'stackSize': threadParams.stackSize,
+        'stackSize': threadParams.stackSize
+    };
 #if OFFSCREENCANVAS_SUPPORT
-        'moduleCanvasId': threadParams.moduleCanvasId,
-        'offscreenCanvases': threadParams.offscreenCanvases,
+    // Note that we do not need to quote these names because they are only used in this file, and not from the external worker.js.
+    msg.moduleCanvasId = threadParams.moduleCanvasId;
+    msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-      };
     worker.runPthread = function() {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();
@@ -787,7 +792,7 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_NODE) return;
 #endif
 
-    if (ENVIRONMENT_IS_PTHREAD) return; // Blocking in a pthread is fine.
+    if (ENVIRONMENT_IS_WORKER) return; // Blocking in a worker/pthread is fine.
 
     warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #if !ALLOW_BLOCKING_ON_MAIN_THREAD
@@ -1078,20 +1083,13 @@ var LibraryPThread = {
     return 0;
   },
 
+  pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
-    if (PThread.exitHandlers === null) {
-      PThread.exitHandlers = [];
-#if EXIT_RUNTIME
-      if (!ENVIRONMENT_IS_PTHREAD) {
-        __ATEXIT__.push(function() { PThread.runExitHandlers(); });
-      }
-#endif
-    }
-    PThread.exitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
+    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
   },
 
   pthread_cleanup_pop: function(execute) {
-    var routine = PThread.exitHandlers.pop();
+    var routine = PThread.threadExitHandlers.pop();
     if (execute) routine();
   },
 
@@ -1307,17 +1305,6 @@ var LibraryPThread = {
     // EM_ASMs as negative values (see include_asm_consts)
     var isEmAsmConst = index < 0;
     var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
-#if WASM_BACKEND
-    if (isEmAsmConst) {
-      // EM_ASM arguments are stored in their own buffer in memory, that we need
-      // to unpack in order to call. The proxied arguments are the code index,
-      // signature pointer, and vararg buffer pointer, in that order.
-      var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
-      var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
-      var constArgs = readAsmConstArgs(sigPtr, varargPtr);
-      return func.apply(null, constArgs);
-    }
-#endif
 #if ASSERTIONS
     assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif

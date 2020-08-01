@@ -10,6 +10,10 @@
 # `tools/create_entry_points.py`
 
 if [ -z "$PYTHON" ]; then
+  PYTHON=$EMSDK_PYTHON
+fi
+
+if [ -z "$PYTHON" ]; then
   PYTHON=$(which python3 2> /dev/null)
 fi
 
@@ -22,7 +26,7 @@ if [ -z "$PYTHON" ]; then
 fi
 
 if [ -z "$PYTHON" ]; then
-  print 'unable to find python in $PATH'
+  echo 'unable to find python in $PATH'
   exit 1
 fi
 

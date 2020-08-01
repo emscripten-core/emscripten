@@ -194,9 +194,6 @@ var SEPARATE_DWARF = 0;
 // New WebAssembly exception handling (experimental)
 var EXCEPTION_HANDLING = 0;
 
-// Enabled when building C++ code (for example via em++ or via -c c++)
-var USE_CXX = 0;
-
 // Used internally when running the JS compiler simply to generate list of all
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
 // JS library symbols.
@@ -206,7 +203,7 @@ var ONLY_CALC_JS_SYMBOLS = 0;
 var STACK_BASE = 0;
 
 // Set to true if the program has a main function.  By default this is
-// enabled, but if `--no-entry` is passed, or if `_main` is not part of 
+// enabled, but if `--no-entry` is passed, or if `_main` is not part of
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = 1;
 

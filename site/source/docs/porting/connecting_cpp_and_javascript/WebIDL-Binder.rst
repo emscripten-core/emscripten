@@ -270,7 +270,7 @@ Attributes that correspond to const data members must be specified with the ``re
 
 This will generate a ``get_numericalConstant()`` method in the bindings, but not a corresponding setter. The attribute will also be defined as read-only in JavaScript, meaning that trying to set it will have no effect on the value, and will throw an error in strict mode.
 
-.. tip:: It is possible for a return type to have multiple specifiers. For example, an method that returns a contant reference would be marked up in the IDL using ``[Ref, Const]``.
+.. tip:: It is possible for a return type to have multiple specifiers. For example, a method that returns a constant reference would be marked up in the IDL using ``[Ref, Const]``.
 
 
 Un-deletable classes (NoDelete)
