@@ -7,7 +7,6 @@ exclude =
  ./tests/third_party/, # third-party code
  ./site/source/conf.py,
  ./tools/debug/,
- ./tools/emdump.py,
  ./tools/webidl_binder.py,
  ./tools/create_dom_pk_codes.py,
  ./tools/asm_module.py,
