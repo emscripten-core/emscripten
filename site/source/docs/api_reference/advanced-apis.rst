@@ -91,7 +91,7 @@ Advanced File System API
 
 .. js:function:: FS.getMode(canRead, canWrite)
   FS.joinPath(parts, forceRelative)
-  FS.absolutePath(relative, base)
+  FS.absolutePath(relative)
   FS.standardizePath(path)
   FS.findObject(path, dontResolveLastLink)
   FS.createFolder(parent, name, canRead, canWrite)

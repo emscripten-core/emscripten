@@ -1548,8 +1548,8 @@ FS.staticInit();` +
       if (forceRelative && path[0] == '/') path = path.substr(1);
       return path;
     },
-    absolutePath: function(relative, base) {
-      return PATH_FS.resolve(base, relative);
+    absolutePath: function(relative) {
+      return PATH_FS.resolve(relative);
     },
     standardizePath: function(path) {
       return PATH.normalize(path);

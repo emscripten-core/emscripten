@@ -159,6 +159,10 @@ function loadDynamicLibrary(lib, flags) {
     return flags.loadAsync ? Promise.resolve(handle) : handle;
   }
 
+  if (flags.fs) {
+    lib = flags.fs.absolutePath(lib);
+  }
+
   // allocate new DSO & handle
   handle = LDSO.nextHandle++;
   dso = {

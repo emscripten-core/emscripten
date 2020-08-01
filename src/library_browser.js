@@ -238,7 +238,7 @@ var LibraryBrowser = {
       wasmPlugin['asyncWasmLoadPromise'] = new Promise(
         function(resolve, reject) { return resolve(); });
       wasmPlugin['canHandle'] = function(name) {
-        return !Module.noWasmDecoding && name.endsWith('.so');
+        return !Module.noWasmDecoding && (name.endsWith('.so') || name.endsWith('.wasm'));
       };
       wasmPlugin['handle'] = function(byteArray, name, onload, onerror) {
         // loadWebAssemblyModule can not load modules out-of-order, so rather
