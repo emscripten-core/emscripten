@@ -18,11 +18,19 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
-1.40.0: 07/30/2020
+1.40.1: 08/01/2020
 ------------------
 - Last release that still has optional support for the old fastcomp backend.
   The new upstream backend, which has been the default for a long time, will
   be the only one supported from 2.0.0 and onward (#11319).
+- Fix the WebGL2 regression in 1.40.0 due to #11738 (#11780).
+- If input files don't have a known extension assume they are object files
+  (linker inputs) rather then source files.  This matches gcc/clang behaviour.
+  See #10560.
+
+1.40.0: 07/30/2020
+------------------
+- This release contains a WebGL2 regression due to #11738.
 - The `EM_CONFIG` environment variable and `--em-config` command line option no
   longer support a literal python string. Instead the name of a config file is
   required. Since all config file settings are individually override-able using

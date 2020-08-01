@@ -1009,10 +1009,10 @@ int main() {
     due to the inappropriate file suffix on foobar.xxx."""
     create_test_file('foobar.c', 'int main(){ return 0; }')
     os.symlink('foobar.c', 'foobar.xxx')
-    proc = self.run_process([EMCC, 'foobar.xxx', '-o', 'foobar.bc'] + flags, check=expect_success, stderr=PIPE)
+    proc = self.run_process([EMCC, 'foobar.xxx', '-o', 'foobar.js'] + flags, check=expect_success, stderr=PIPE)
     if not expect_success:
       self.assertNotEqual(proc.returncode, 0)
-      self.assertContained("unknown suffix", proc.stderr)
+      self.assertContained('unknown file type: foobar.xxx', proc.stderr)
 
   def test_multiply_defined_libsymbols(self):
     lib_name = 'libA.c'
@@ -7372,10 +7372,10 @@ int main() {
 }
     ''')
     self.run_process([EMCC, '-Wall', '-x', 'c++', 'src_tmp_fixed_lang'])
-    self.assertContained("Test_source_fixed_lang_hello", self.run_js('a.out.js'))
+    self.assertContained('Test_source_fixed_lang_hello', self.run_js('a.out.js'))
 
     stderr = self.expect_fail([EMCC, '-Wall', 'src_tmp_fixed_lang'])
-    self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
+    self.assertContained('unknown file type: src_tmp_fixed_lang', stderr)
 
   def test_disable_inlining(self):
     create_test_file('test.c', r'''
@@ -8218,7 +8218,7 @@ int main() {
   def test_native_link_error_message(self):
     self.run_process([CLANG_CC, '-c', path_from_root('tests', 'hello_123.c'), '-o', 'hello_123.o'])
     err = self.expect_fail([EMCC, 'hello_123.o', '-o', 'hello_123.js'])
-    self.assertContained('hello_123.o is not a valid input', err)
+    self.assertContained('unknown file type: hello_123.o', err)
 
   # Tests that we should give a clear error on INITIAL_MEMORY not being enough for static initialization + stack
   def test_clear_error_on_massive_static_data(self):
@@ -10133,29 +10133,28 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.assertContained('success', self.run_js('a.out.js'))
 
   def test_warning_flags(self):
-    create_test_file('not_object.bc', 'some text')
     self.run_process([EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')])
-    cmd = [EMCC, 'hello.o', 'not_object.bc', '-o', 'a.wasm']
+    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure', '1']
 
     # warning that is enabled by default
     stderr = self.run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+    self.assertContained('emcc: warning: disabling closure because debug info was requested [-Wemcc]', stderr)
 
     # -w to suppress warnings
     stderr = self.run_process(cmd + ['-w'], stderr=PIPE).stderr
     self.assertNotContained('warning', stderr)
 
     # -Wno-invalid-input to suppress just this one warning
-    stderr = self.run_process(cmd + ['-Wno-invalid-input'], stderr=PIPE).stderr
+    stderr = self.run_process(cmd + ['-Wno-emcc'], stderr=PIPE).stderr
     self.assertNotContained('warning', stderr)
 
     # with -Werror should fail
     stderr = self.expect_fail(cmd + ['-Werror'])
-    self.assertContained('emcc: error: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
+    self.assertContained('error: disabling closure because debug info was requested [-Wemcc] [-Werror]', stderr)
 
     # with -Werror + -Wno-error=<type> should only warn
-    stderr = self.run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+    stderr = self.run_process(cmd + ['-Werror', '-Wno-error=emcc'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: disabling closure because debug info was requested [-Wemcc]', stderr)
 
     # check that `-Werror=foo` also enales foo
     stderr = self.expect_fail(cmd + ['-Werror=legacy-settings', '-s', 'TOTAL_MEMORY=1'])
