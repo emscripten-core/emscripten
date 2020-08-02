@@ -33,7 +33,7 @@ static void draw();
 
 int main() {
     /* setup WebGL2 context */
-    emsc_init("#canvas", EMSC_TRY_WEBGL2|EMSC_ANTIALIAS);
+    emsc_init("#canvas", EMSC_TRY_WEBGL2);
     /* setup sokol_gfx */
     sg_desc desc = {
         .context.gl.force_gles2 = emsc_webgl_fallback()

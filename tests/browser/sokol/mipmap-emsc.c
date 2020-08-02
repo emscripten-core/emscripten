@@ -51,7 +51,7 @@ static void draw();
 
 int main() {
     /* try to setup WebGL2 context (for the mipmap min/max lod stuff) */
-    emsc_init("#canvas", EMSC_TRY_WEBGL2|EMSC_ANTIALIAS);
+    emsc_init("#canvas", EMSC_TRY_WEBGL2);
 
     /* setup sokol_gfx */
     sg_desc desc = {
@@ -172,7 +172,7 @@ int main() {
 }
 
 void draw() {
-    for (int i = 0; i < 400; i++) {
+    for (int t = 0; t < 400; t++) {
         /* view-projection matrix */
         hmm_mat4 proj = HMM_Perspective(90.0f, (float)emsc_width()/(float)emsc_height(), 0.01f, 10.0f);
         hmm_mat4 view = HMM_LookAt(HMM_Vec3(0.0f, 0.0f, 5.0f), HMM_Vec3(0.0f, 0.0f, 0.0f), HMM_Vec3(0.0f, 1.0f, 0.0f));
@@ -191,11 +191,13 @@ void draw() {
             vs_params.mvp = HMM_MultiplyMat4(view_proj, model);
 
             bind.fs_images[0] = img[i];
-            sg_apply_bindings(&bind);
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &vs_params, sizeof(vs_params));
-            sg_draw(0, 4, 1);
+            if (t == 399) {
+              sg_apply_bindings(&bind);
+              sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &vs_params, sizeof(vs_params));
+              sg_draw(0, 4, 1);
+            }
         }
         sg_end_pass();
-        sg_commit();
     }
+    sg_commit();
 }

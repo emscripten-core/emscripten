@@ -2688,7 +2688,7 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_webgl2_sokol_mipmap(self):
-    self.btest(path_from_root('tests', 'browser', 'sokol', 'mipmap-emsc.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'],
+    self.btest(path_from_root('tests', 'browser', 'sokol', 'mipmap-emsc.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-O1'],
                reference=os.path.join('browser', 'sokol', 'mipmap-emsc.png'))
 
   @requires_graphics_hardware
