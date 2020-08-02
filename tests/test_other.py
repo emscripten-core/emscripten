@@ -2218,12 +2218,18 @@ int f() {
         check_js(output, expected)
 
   @no_fastcomp('wasm2js-only')
-  def test_js_optimizer_wasm2js(self):
-    # run the js optimizer in a similar way as wasm2js does
-    shutil.copyfile(path_from_root('tests', 'optimizer', 'wasm2js.js'), 'wasm2js.js')
-    self.run_process([PYTHON, path_from_root('tools', 'js_optimizer.py'), 'wasm2js.js', 'minifyNames', 'last'])
-    with open(path_from_root('tests', 'optimizer', 'wasm2js-output.js')) as expected:
-      with open('wasm2js.js.jsopt.js') as actual:
+  @parameterized({
+    'wasm2js': ('wasm2js', ['minifyNames', 'last']),
+    'constructor': ('constructor', ['minifyNames'])
+  })
+  def test_js_optimizer_py(self, name, passes):
+    # run the js optimizer python script. this differs from test_js_optimizer
+    # which runs the internal js optimizer JS script directly (which the python
+    # script calls)
+    shutil.copyfile(path_from_root('tests', 'optimizer', name + '.js'), name + '.js')
+    self.run_process([PYTHON, path_from_root('tools', 'js_optimizer.py'), name + '.js'] + passes)
+    with open(path_from_root('tests', 'optimizer', name + '-output.js')) as expected:
+      with open(name + '.js.jsopt.js') as actual:
         self.assertIdentical(expected.read(), actual.read())
 
   def test_m_mm(self):
