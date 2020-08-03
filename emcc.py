@@ -1306,7 +1306,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       cflags.append('-DEMSCRIPTEN')
 
-    # Treat the empty extension as an executable, to handle the commond case of `emcc -o foo foo.c`
     link_to_object = False
     if options.shared or options.relocatable:
       # Until we have a better story for actually producing runtime shared libraries
@@ -1316,13 +1315,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if final_suffix in EXECUTABLE_ENDINGS:
         diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
       else:
+        if options.shared:
+          diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
         link_to_object = True
-
-    if not link_to_object and not compile_only and final_suffix not in EXECUTABLE_ENDINGS and not shared.Settings.SIDE_MODULE:
-      # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
-      # file output with an explicit `-c` or `-r`.
-      diagnostics.warning('emcc', 'assuming object file output, based on output filename alone.  Add an explict `-c`, `-r` or `-shared` to avoid this warning')
-      link_to_object = True
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
@@ -2013,8 +2008,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if link_to_object:
       with ToolchainProfiler.profile_block('linking to object file'):
-        if final_suffix.lower() in ('.so', '.dylib', '.dll'):
-          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits a standard object file. This can then be linked into an emscripten SIDE_MODULE (using that flag) with suffix .wasm. You may also want to adapt your build system to use the more standard suffix for an object file (\'.o\'), which would avoid this warning.')
         logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
         if len(temp_files) == 1:
           temp_file = temp_files[0][1]
@@ -2024,6 +2017,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           building.link_to_object(linker_inputs, target)
         logger.debug('stopping after linking to object file')
         return 0
+
+    if final_suffix in ('.o', '.bc', '.so', '.dylib') and not shared.Settings.SIDE_MODULE:
+     diagnostics.warning('emcc', 'generating an executable with an object extension (%s).  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
 
     ## Continue on to create JavaScript
 
