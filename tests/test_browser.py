@@ -2686,11 +2686,13 @@ Module["preRun"].push(function () {
   def test_webgl2_pbo(self):
     self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
+  @no_firefox('fails on CI likely due to GPU drivers there')
   @requires_graphics_hardware
   def test_webgl2_sokol_mipmap(self):
     self.btest(path_from_root('tests', 'browser', 'sokol', 'mipmap-emsc.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-O1'],
                reference=os.path.join('browser', 'sokol', 'mipmap-emsc.png'))
 
+  @no_firefox('fails on CI likely due to GPU drivers there')
   @requires_graphics_hardware
   def test_webgl2_sokol_mrt(self):
     self.btest(path_from_root('tests', 'browser', 'sokol', 'mrt-emcc.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'],
