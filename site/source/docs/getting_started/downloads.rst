@@ -219,4 +219,4 @@ The entire Emscripten SDK is also available in the form of a `docker image
   docker run --rm -v $(pwd):/src -u $(id -u):$(id -g) \
     emscripten/emsdk emcc helloworld.cpp -o helloworld.js
 
-See the docker hub page for more details and examples.
+See the Docker Hub page for more details and examples.
