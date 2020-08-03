@@ -505,7 +505,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # We also support building without the `-r` flag but expect a warning
     err = self.run_process([EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined2.o'], stderr=PIPE).stderr
     self.assertBinaryEqual('combined.o', 'combined2.o')
-    self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
+    self.assertContained('warning: assuming object file output', err)
 
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
@@ -10114,7 +10114,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # Most compilers require the `-c` to be explicit.
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'hello1.o'])
     err = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'], stderr=PIPE).stderr
-    self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
+    self.assertContained('warning: assuming object file output', err)
     self.assertBinaryEqual('hello1.o', 'hello2.o')
 
   def test_empty_output_extension(self):
