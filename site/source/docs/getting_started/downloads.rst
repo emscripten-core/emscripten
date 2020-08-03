@@ -213,10 +213,10 @@ It is also possible to :ref:`remove specific tools in the SDK using emsdk
 Using the Docker image
 ======================
 
-The entire Emscripten SDK is also available in the form a `docker image
+The entire Emscripten SDK is also available in the form of a `docker image
 <https://hub.docker.com/r/emscripten/emsdk>`_.  For example::
 
   docker run --rm -v $(pwd):/src -u $(id -u):$(id -g) \
     emscripten/emsdk emcc helloworld.cpp -o helloworld.js
 
-See the docker hub for more details and examples.
+See the docker hub page for more details and examples.
