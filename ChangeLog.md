@@ -18,6 +18,15 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+- Implicitly linking to an object file (without `-shared`, `-c` or `-r`) is no
+  longer supported.  Previously emscripten would output an object file rather
+  than an executable based on the name of the output file.  e.g. `emcc foo.c -o
+  foo` previously produced and object file called `goo`. Now it generates an JS
+  executable called `foo`.  This is true even when the name of the output file
+  could be an object file: `emcc foo.c -o foo.o`.  This might surprise some
+  users (although it matches the behavior of existing toolchains) so we now
+  produce a warning in this case.
+
 1.40.1: 08/01/2020
 ------------------
 - Last release that still has optional support for the old fastcomp backend.
