@@ -257,9 +257,6 @@ class EmccOptions(object):
     # Linux & MacOS)
     self.output_eol = os.linesep
     self.binaryen_passes = []
-    # Whether we will expand the full path of any input files to remove any
-    # symlinks.
-    self.expand_symlinks = True
     self.no_entry = False
 
 
@@ -1158,8 +1155,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # https://bugs.python.org/issue1311
         if not os.path.exists(arg) and arg != os.devnull:
           exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
-        if options.expand_symlinks and os.path.islink(arg):
-          arg = os.path.realpath(arg)
         file_suffix = get_file_suffix(arg)
         if file_suffix in SOURCE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or building.is_ar(arg):
           # we already removed -o <target>, so all these should be inputs
@@ -3141,8 +3136,6 @@ def parse_args(newargs):
     elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
       colored_logger.disable()
       diagnostics.color_enabled = False
-    elif newargs[i] == '-no-canonical-prefixes':
-      options.expand_symlinks = False
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
     elif newargs[i] == '-frtti':
