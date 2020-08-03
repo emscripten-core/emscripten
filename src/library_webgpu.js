@@ -1309,10 +1309,16 @@ var LibraryWebGPU = {
   wgpuBufferGetConstMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
 
+    // TODO: if the sentinel value becomes WGPU_WHOLE_SIZE instead of 0, update this.
+    if (size === 0) size = undefined;
+
     var mapped;
     try {
       mapped = bufferWrapper.object["getMappedRange"](offset, size);
     } catch (ex) {
+#if ASSERTIONS
+      err("wgpuBufferGetConstMappedRange(" + offset + ", " + size + ") failed: " + ex);
+#endif
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
     }
@@ -1328,6 +1334,9 @@ var LibraryWebGPU = {
   wgpuBufferGetMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
 
+    // TODO: if the sentinel value becomes WGPU_WHOLE_SIZE instead of 0, update this.
+    if (size === 0) size = undefined;
+
     if (bufferWrapper.mapMode !== 2 /* WGPUMapMode_Write */) {
 #if ASSERTIONS
       abort("GetMappedRange called, but buffer not mapped for writing");
@@ -1340,6 +1349,9 @@ var LibraryWebGPU = {
     try {
       mapped = bufferWrapper.object["getMappedRange"](offset, size);
     } catch (ex) {
+#if ASSERTIONS
+      err("wgpuBufferGetMappedRange(" + offset + ", " + size + ") failed: " + ex);
+#endif
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
     }
