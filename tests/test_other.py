@@ -161,6 +161,12 @@ def parse_wasm(filename):
 
 
 class other(RunnerCore):
+  def assertIsObjectFile(self, filename):
+    if self.is_wasm_backend():
+      self.assertTrue(building.is_wasm(filename))
+    else:
+      self.assertTrue(building.is_bitcode(filename))
+
   # Utility to run a simple test in this suite. This receives a directory which
   # should contain a test.cpp and test.out files, compiles the cpp, and runs it
   # to verify the output, with optional compile and run arguments.
@@ -499,7 +505,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # We also support building without the `-r` flag but expect a warning
     err = self.run_process([EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined2.o'], stderr=PIPE).stderr
     self.assertBinaryEqual('combined.o', 'combined2.o')
-    self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
+    self.assertContained('warning: assuming object file output', err)
 
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
@@ -703,10 +709,7 @@ f.close()
     for x in os.listdir('.'):
       if x.endswith('.o'):
         found = True
-        if self.is_wasm_backend():
-          assert building.is_wasm(x)
-        else:
-          assert building.is_bitcode(x)
+        self.assertIsObjectFile(x)
     assert found
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON
@@ -715,11 +718,7 @@ f.close()
     self.clear()
     self.run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
     self.run_process(['cmake', '--build', '.'])
-    if self.is_wasm_backend():
-      assert building.is_wasm('libstatic_lib.bc')
-    else:
-      assert building.is_bitcode('libstatic_lib.bc')
-    assert not building.is_ar('libstatic_lib.bc')
+    self.assertIsObjectFile('libstatic_lib.bc')
 
     # Test that one is able to fake custom suffixes for static libraries.
     # (sometimes projects want to emulate stuff, and do weird things like files
@@ -10115,7 +10114,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # Most compilers require the `-c` to be explicit.
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'hello1.o'])
     err = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'], stderr=PIPE).stderr
-    self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
+    self.assertContained('warning: assuming object file output', err)
     self.assertBinaryEqual('hello1.o', 'hello2.o')
 
   def test_empty_output_extension(self):
@@ -10214,12 +10213,6 @@ int main() {
     with open(path_from_root('tests', 'hello_world.cpp')) as f:
       self.run_process([EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', self.run_js('a.out.js'))
-
-  def is_object_file(self, filename):
-    if self.is_wasm_backend():
-      return building.is_wasm('-')
-    else:
-      return building.is_bitcode('-')
 
   def test_stdout_link(self):
     # linking to stdout `-` doesn't work, we have no way to pass such an output filename
@@ -10522,3 +10515,8 @@ int main () {
 
   def test_err(self):
     self.do_other_test(os.path.join('other', 'err'))
+
+  def test_shared_flag(self):
+    # Test that `-shared` forces object file output regardless of output filename
+    self.run_process([EMCC, '-shared', path_from_root('tests', 'hello_world.c'), '-o', 'out.js'])
+    self.assertIsObjectFile('out.js')

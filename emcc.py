@@ -1193,6 +1193,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           newargs[i] = ''
           input_files.append((i, arg))
+      elif arg == '-shared':
+        # Until we have a better story for actually producing runtime shared libraries
+        # we support a compatibility mode where shared libraries are actually just
+        # object files linked with `wasm-ld --reloctable` or `llvm-link` in the case
+        # of LTO.
+        link_to_object = True
+        newargs[i] = ''
       elif arg == '-r':
         link_to_object = True
         newargs[i] = ''
@@ -1464,7 +1471,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not link_to_object and not compile_only and final_suffix not in executable_endings:
       # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
       # file output with an explicit `-c` or `-r`.
-      diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
+      diagnostics.warning('emcc', 'assuming object file output, based on output filename alone.  Add an explict `-c`, `-r` or `-shared` to avoid this warning')
       link_to_object = True
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
