@@ -291,11 +291,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-    for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so']]:
+    for args in [[], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so']]:
       print('args:', args)
       target = args[1] if len(args) == 2 else 'hello_world.o'
       self.clear()
-      self.run_process([compiler, path_from_root('tests', 'hello_world' + suffix)] + args)
+      self.run_process([compiler, '-c', path_from_root('tests', 'hello_world' + suffix)] + args)
       syms = building.llvm_nm(target)
       self.assertIn('main', syms.defs)
       if self.is_wasm_backend():
@@ -356,12 +356,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       (['-o', 'something.js', '-Os'],                   2, None, 0, 1),
       (['-o', 'something.js', '-O3'],                   3, None, 0, 1),
       # and, test compiling to bitcode first
-      (['-o', 'something.bc'], 0, [],      0, 0),
-      (['-o', 'something.bc', '-O0'], 0, [], 0, 0),
-      (['-o', 'something.bc', '-O1'], 1, ['-O1'], 0, 0),
-      (['-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
-      (['-o', 'something.bc', '-O3'], 3, ['-O3'], 0, 0),
-      (['-O1', '-o', 'something.bc'], 1, [], 0, 0),
+      (['-c', '-o', 'something.bc'], 0, [],      0, 0),
+      (['-c', '-o', 'something.bc', '-O0'], 0, [], 0, 0),
+      (['-c', '-o', 'something.bc', '-O1'], 1, ['-O1'], 0, 0),
+      (['-c', '-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
+      (['-c', '-o', 'something.bc', '-O3'], 3, ['-O3'], 0, 0),
+      (['-c', '-O1', '-o', 'something.bc'], 1, [], 0, 0),
       # non-wasm
       (['-s', 'WASM=0', '-o', 'something.js'],                          0, None, 0, 1),
       (['-s', 'WASM=0', '-o', 'something.js', '-O0'],                   0, None, 0, 0),
@@ -796,7 +796,7 @@ f.close()
     for suffix in ['lo']:
       self.clear()
       print(suffix)
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'binary.' + suffix])
+      self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-shared', '-o', 'binary.' + suffix])
       self.run_process([EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', self.run_js('a.out.js'))
 
@@ -908,7 +908,7 @@ f.close()
     -L.
     -lfoo
     ''')
-    self.run_process([EMCC, '-o', 'libfile.o', 'libfile.cpp'])
+    self.run_process([EMCC, '-o', 'libfile.o', '-c', 'libfile.cpp'])
     self.run_process([EMAR, 'cr', 'libfoo.a', 'libfile.o'])
     self.run_process([EMCC, 'main.cpp', '-L.', '-lfoo'])
     self.run_process([EMCC, 'main.cpp', '-Wl,-L.', '-Wl,-lfoo'])
@@ -977,9 +977,9 @@ int main() {
 }
 ''')
 
-    self.run_process([EMCC, '-o', 'a.o', 'a.c'])
+    self.run_process([EMCC, '-o', 'a.o', '-c', 'a.c'])
     self.run_process([EMAR, 'rv', 'library.a', 'a.o'])
-    self.run_process([EMCC, '-o', 'main.o', 'main.c'])
+    self.run_process([EMCC, '-o', 'main.o', '-c', 'main.c'])
     self.run_process([EMCC, '-o', 'a.js', 'main.o', 'library.a'])
     self.assertContained('|0|', self.run_js('a.js'))
 
@@ -994,7 +994,7 @@ int main() {
     In this case, we should always successfully compile the code."""
     create_test_file('foobar.xxx', 'int main(){ return 0; }')
     os.symlink('foobar.xxx', 'foobar.c')
-    self.run_process([EMCC, 'foobar.c', '-o', 'foobar.bc'] + flags)
+    self.run_process([EMCC, 'foobar.c', '-c', '-o', 'foobar.o'] + flags)
 
   @parameterized({
     'expand_symlinks': ([], True),
@@ -1030,10 +1030,10 @@ int main() {
       }
     ''')
 
-    building.emcc(lib_name, output_filename='libA.so')
+    building.emcc(lib_name, ['-shared'], output_filename='libA.so')
 
-    building.emcc(a2_name, ['-L.', '-lA'])
-    building.emcc(b2_name, ['-L.', '-lA'])
+    building.emcc(a2_name, ['-r', '-L.', '-lA'])
+    building.emcc(b2_name, ['-r', '-L.', '-lA'])
 
     building.emcc(main_name, ['-L.', '-lA', a2_name + '.o', b2_name + '.o'], output_filename='a.out.js')
 
@@ -1062,9 +1062,9 @@ int main() {
     main_name = 'main.c'
     create_test_file(main_name, main)
 
-    building.emcc(a_name) # a.c.o
-    building.emcc(b_name) # b.c.o
-    building.emcc(c_name) # c.c.o
+    building.emcc(a_name, ['-c']) # a.c.o
+    building.emcc(b_name, ['-c']) # b.c.o
+    building.emcc(c_name, ['-c']) # c.c.o
     lib_name = 'libLIB.a'
     building.emar('cr', lib_name, [a_name + '.o', b_name + '.o']) # libLIB.a with a and b
 
@@ -1158,10 +1158,10 @@ int f() {
 }
 ''')
 
-    self.run_process([EMCC, '-o', '1.o', '1.c'])
-    self.run_process([EMCC, '-o', '2.o', '2.c'])
+    self.run_process([EMCC, '-o', '1.o', '-c', '1.c'])
+    self.run_process([EMCC, '-o', '2.o', '-c', '2.c'])
     self.run_process([EMAR, 'crs', '2.a', '2.o'])
-    self.run_process([EMCC, '-o', 'out.bc', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
+    self.run_process([EMCC, '-r', '-o', 'out.bc', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
     self.run_process([EMCC, 'out.bc'])
     self.assertContained('Hello', self.run_js('a.out.js'))
 
@@ -1383,7 +1383,7 @@ int f() {
       }
     ''')
 
-    self.run_process([EMCC, 'libfile.cpp', '-o', 'libfile.so'], stderr=PIPE)
+    self.run_process([EMCC, 'libfile.cpp', '-shared', '-o', 'libfile.so'], stderr=PIPE)
     self.run_process([EMCC, 'main.cpp', os.path.join('subdir', 'libfile.so'), '-L.'])
     self.assertContained('hello from lib', self.run_js('a.out.js'))
 
@@ -1409,8 +1409,8 @@ int f() {
 
     # ditto with first creating .o files
     try_delete('a.out.js')
-    self.run_process([EMCC, os.path.join('foo', 'main.cpp'), '-o', os.path.join('foo', 'main.o')])
-    self.run_process([EMCC, os.path.join('bar', 'main.cpp'), '-o', os.path.join('bar', 'main.o')])
+    self.run_process([EMCC, '-c', os.path.join('foo', 'main.cpp'), '-o', os.path.join('foo', 'main.o')])
+    self.run_process([EMCC, '-c', os.path.join('bar', 'main.cpp'), '-o', os.path.join('bar', 'main.o')])
     self.run_process([EMCC, os.path.join('foo', 'main.o'), os.path.join('bar', 'main.o')])
     self.assertContained('hello there', self.run_js('a.out.js'))
 
@@ -1688,9 +1688,9 @@ int f() {
       compiler = [EMCC]
 
       # Build libfile normally into an .so
-      self.run_process(compiler + [os.path.join('libdir', 'libfile.cpp'), '-o', os.path.join('libdir', 'libfile.so' + lib_suffix)])
+      self.run_process(compiler + [os.path.join('libdir', 'libfile.cpp'), '-shared', '-o', os.path.join('libdir', 'libfile.so' + lib_suffix)])
       # Build libother and dynamically link it to libfile
-      self.run_process(compiler + [os.path.join('libdir', 'libother.cpp')] + link_cmd + ['-o', os.path.join('libdir', 'libother.so')])
+      self.run_process(compiler + [os.path.join('libdir', 'libother.cpp')] + link_cmd + ['-shared', '-o', os.path.join('libdir', 'libother.so')])
       # Build the main file, linking in both the libs
       self.run_process(compiler + [os.path.join('main.cpp')] + link_cmd + ['-lother', '-c'])
       print('...')
@@ -2229,8 +2229,8 @@ int f() {
     create_test_file('foo.c', '#include <emscripten.h>')
     for opt in ['M', 'MM']:
       proc = self.run_process([EMCC, 'foo.c', '-' + opt], stdout=PIPE, stderr=PIPE)
-      assert 'foo.o: ' in proc.stdout, '-%s failed to produce the right output: %s' % (opt, proc.stdout)
-      assert 'error' not in proc.stderr, 'Unexpected stderr: ' + proc.stderr
+      self.assertContained('foo.o: ', proc.stdout)
+      self.assertNotContained('error', proc.stderr)
 
   @uses_canonical_tmp
   def test_emcc_debug_files(self):
@@ -2459,8 +2459,8 @@ int f() {
         }
       }
     ''')
-    self.run_process([EMCC, 'main.cpp', '-o', 'main.o'])
-    self.run_process([EMCC, 'supp.cpp', '-o', 'supp.o'])
+    self.run_process([EMCC, '-c', 'main.cpp', '-o', 'main.o'])
+    self.run_process([EMCC, '-c', 'supp.cpp', '-o', 'supp.o'])
 
     self.run_process([EMCC, 'main.o', '-s', 'supp.o', '-s', 'SAFE_HEAP=1'])
     self.assertContained('yello', self.run_js('a.out.js'))
@@ -3781,9 +3781,14 @@ int main()
   def test_warn_dylibs(self):
     shared_suffixes = ['.so', '.dylib', '.dll']
 
-    for suffix in ['.o', '.a', '.bc', '.so', '.lib', '.dylib', '.js', '.html']:
+    for suffix in ['.o', '.bc', '.so', '.dylib', '.js', '.html']:
       print(suffix)
-      err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out' + suffix], stderr=PIPE).stderr
+      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out' + suffix]
+      if suffix in ['.o', '.bc']:
+        cmd.append('-c')
+      if suffix in ['.dylib', '.so']:
+        cmd.append('-shared')
+      err = self.run_process(cmd, stderr=PIPE).stderr
       warning = 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js).'
       self.assertContainedIf(warning, err, suffix in shared_suffixes)
 
@@ -3963,7 +3968,7 @@ EM_ASM({ _middle() });
     # emit the bc)
     self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c')])
     self.assertExists('hello_world.o')
-    self.run_process([EMCC, 'hello_world.o', '-o', 'hello_world.bc'])
+    self.run_process([EMCC, '-r', 'hello_world.o', '-o', 'hello_world.bc'])
     self.assertExists('hello_world.o')
     self.assertExists('hello_world.bc')
 
@@ -5216,7 +5221,7 @@ main(const int argc, const char * const * const argv)
         assert len(clutter) == 0, 'should not leave clutter ' + str(clutter)
       else:
          assert len(clutter) == 2, 'should leave .o files'
-    test(['-o', 'c.bc'], True)
+    test(['-o', 'c.so', '-r'], True)
     test(['-o', 'c.js'], True)
     test(['-o', 'c.html'], True)
     test(['-c'], False)
@@ -5261,12 +5266,12 @@ main(const int argc, const char * const * const argv)
   def test_dash_g_bc(self):
     def test(opts):
       print(opts)
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts)
+      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts)
       sizes = {'_': os.path.getsize('a_.bc')}
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts)
+      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts)
       sizes['g'] = os.path.getsize('ag.bc')
       for i in range(0, 5):
-        self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts)
+        self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts)
         sizes[i] = os.path.getsize('a' + str(i) + '.bc')
       print('  ', sizes)
       assert sizes['_'] == sizes[0] == sizes[1] == sizes[2], 'no debug means no llvm debug info ' + str(sizes)
@@ -5456,9 +5461,9 @@ int main(void) {
   return testy() + init_weakref(5, 6);
 }
 ''')
-    self.run_process([EMCC, 'x.c', '-o', 'x.o'])
-    self.run_process([EMCC, 'y.c', '-o', 'y.o'])
-    self.run_process([EMCC, 'z.c', '-o', 'z.o'])
+    self.run_process([EMCC, '-c', 'x.c', '-o', 'x.o'])
+    self.run_process([EMCC, '-c', 'y.c', '-o', 'y.o'])
+    self.run_process([EMCC, '-c', 'z.c', '-o', 'z.o'])
     try_delete('libtest.a')
     self.run_process([EMAR, 'rc', 'libtest.a', 'y.o'])
     self.run_process([EMAR, 'rc', 'libtest.a', 'x.o'])
@@ -7390,7 +7395,7 @@ int main() {
 }
 ''')
     # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
-    cmd = [EMCC, 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1']
+    cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1']
     if self.is_wasm_backend():
       cmd += ['-flto']
     self.run_process(cmd)
@@ -10125,7 +10130,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
   def test_backwards_deps_in_archive(self):
     # Test that JS dependencies from deps_info.json work for code linked via
     # static archives using -l<name>
-    self.run_process([EMCC, path_from_root('tests', 'sockets', 'test_gethostbyname.c'), '-o', 'a.o'])
+    self.run_process([EMCC, '-c', path_from_root('tests', 'sockets', 'test_gethostbyname.c'), '-o', 'a.o'])
     self.run_process([LLVM_AR, 'cr', 'liba.a', 'a.o'])
     create_test_file('empty.c', 'static int foo = 0;')
     self.run_process([EMCC, 'empty.c', '-la', '-L.'])

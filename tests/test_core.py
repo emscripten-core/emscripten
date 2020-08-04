@@ -814,11 +814,11 @@ class TestCoreBase(RunnerCore):
       }
     ''')
 
-    building.emcc('a1.c')
-    building.emcc('a2.c')
-    building.emcc('b1.c')
-    building.emcc('b2.c')
-    building.emcc('main.c')
+    building.emcc('a1.c', ['-c'])
+    building.emcc('a2.c', ['-c'])
+    building.emcc('b1.c', ['-c'])
+    building.emcc('b2.c', ['-c'])
+    building.emcc('main.c', ['-c'])
 
     building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
     building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
@@ -3690,8 +3690,9 @@ ok
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
       # side is just a library
-      try_delete('liblib.cpp.o.' + side_suffix)
-      self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)])
+      out_file = os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)
+      try_delete(out_file)
+      self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
       base = 'liblib.cpp' if not force_c else 'liblib.c'
       try_delete(base + '.o.' + side_suffix)
