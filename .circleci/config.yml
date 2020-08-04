@@ -520,6 +520,16 @@ jobs:
       - run-tests:
           # TODO: test wasms
           test_targets: "wasm3"
+  test-asan: # Temporary
+    executor: bionic
+    steps:
+      - run-tests:
+          test_targets: "asan"
+  test-lsan: # Temporary
+    executor: bionic
+    steps:
+      - run-tests:
+          test_targets: "lsan"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -665,6 +675,12 @@ workflows:
           requires:
             - build-linux
       - test-wasm3:
+          requires:
+            - build-linux
+      - test-asan: # Temporary
+          requires:
+            - build-linux
+      - test-lsan: # Temporary
           requires:
             - build-linux
       - test-wasm2js1:
