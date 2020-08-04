@@ -1661,20 +1661,21 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
     if shared.Settings.WASM_BACKEND:
       add_library(system_libs_map['libc_rt_wasm'])
 
-    if shared.Settings.UBSAN_RUNTIME == 1:
-      add_library(system_libs_map['libubsan_minimal_rt_wasm'])
-    elif shared.Settings.UBSAN_RUNTIME == 2:
-      add_library(system_libs_map['libubsan_rt_wasm'])
-
-    if shared.Settings.USE_LSAN:
-      force_include.add('liblsan_rt_wasm')
-      add_library(system_libs_map['liblsan_rt_wasm'])
-
     if shared.Settings.USE_ASAN:
       force_include.add('libasan_rt_wasm')
       add_library(system_libs_map['libasan_rt_wasm'])
       add_library(system_libs_map['libubsan_rt_wasm'])
       add_library(system_libs_map['libasan_js'])
+    else:
+      # The only need to be included if ASan was not already included
+      if shared.Settings.UBSAN_RUNTIME == 1:
+        add_library(system_libs_map['libubsan_minimal_rt_wasm'])
+      elif shared.Settings.UBSAN_RUNTIME == 2:
+        add_library(system_libs_map['libubsan_rt_wasm'])
+
+      if shared.Settings.USE_LSAN:
+        force_include.add('liblsan_rt_wasm')
+        add_library(system_libs_map['liblsan_rt_wasm'])
 
     if shared.Settings.USE_LSAN or shared.Settings.USE_ASAN:
       add_library(system_libs_map['liblsan_common_rt_wasm'])
