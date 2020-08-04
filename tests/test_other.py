@@ -996,22 +996,14 @@ int main() {
     os.symlink('foobar.xxx', 'foobar.c')
     self.run_process([EMCC, 'foobar.c', '-c', '-o', 'foobar.o'] + flags)
 
-  @parameterized({
-    'expand_symlinks': ([], True),
-    'no_canonical_prefixes': (['-no-canonical-prefixes'], False),
-  })
   @no_windows('Windows does not support symlinks')
-  def test_symlink_has_bad_suffix(self, flags, expect_success):
-    """Tests compiling a symlink where foobar.xxx points to foobar.c.
-
-    In this case, setting -no-canonical-prefixes will result in a build failure
-    due to the inappropriate file suffix on foobar.xxx."""
+  def test_symlink_has_bad_suffix(self):
+    """Tests that compiling foobar.xxx fails even if it points to foobar.c.
+    """
     create_test_file('foobar.c', 'int main(){ return 0; }')
     os.symlink('foobar.c', 'foobar.xxx')
-    proc = self.run_process([EMCC, 'foobar.xxx', '-o', 'foobar.js'] + flags, check=expect_success, stderr=PIPE)
-    if not expect_success:
-      self.assertNotEqual(proc.returncode, 0)
-      self.assertContained('unknown file type: foobar.xxx', proc.stderr)
+    err = self.expect_fail([EMCC, 'foobar.xxx', '-o', 'foobar.js'])
+    self.assertContained('unknown file type: foobar.xxx', err)
 
   def test_multiply_defined_libsymbols(self):
     lib_name = 'libA.c'
