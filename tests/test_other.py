@@ -502,6 +502,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Combining object files into another object should also work, using the `-r` flag
     self.run_process([EMCC, '-r', 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'])
+    # We also support building without the `-r` flag but expect a warning
+    err = self.run_process([EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined2.o'], stderr=PIPE).stderr
+    self.assertBinaryEqual('combined.o', 'combined2.o')
+    self.assertContained('warning: assuming object file output', err)
 
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
