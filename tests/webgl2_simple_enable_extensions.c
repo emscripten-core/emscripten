@@ -55,11 +55,15 @@ int main()
   if (hasext(exts, "WEBGL_draw_instanced_base_vertex_base_instance"))
     assert(emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(context));
 
+  if (hasext(exts, "WEBGL_multi_draw"))
+    assert(emscripten_webgl_enable_WEBGL_multi_draw(context));
+
 #if WEBGL_SIMPLE_ENABLE_EXTENSION
   assert(hasext(exts, "ANGLE_instanced_arrays") == emscripten_webgl_enable_extension(context, "ANGLE_instanced_arrays"));
   assert(hasext(exts, "OES_vertex_array_object") == emscripten_webgl_enable_extension(context, "OES_vertex_array_object"));
   assert(hasext(exts, "WEBGL_draw_buffers") == emscripten_webgl_enable_extension(context, "WEBGL_draw_buffers"));
   assert(hasext(exts, "WEBGL_draw_instanced_base_vertex_base_instance") == emscripten_webgl_enable_extension(context, "WEBGL_draw_instanced_base_vertex_base_instance"));
+  assert(hasext(exts, "WEBGL_multi_draw") == emscripten_webgl_enable_extension(context, "WEBGL_multi_draw"));
 #endif
 
 #ifdef REPORT_RESULT
