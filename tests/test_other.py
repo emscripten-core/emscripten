@@ -8113,7 +8113,7 @@ int main() {
       # specified target
       print('building: ' + target)
       self.clear()
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1'] + opts)
+      self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-Werror'] + opts)
       for x in os.listdir('.'):
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module: ' + x
       self.assertIn(b'dylink', open(target, 'rb').read())

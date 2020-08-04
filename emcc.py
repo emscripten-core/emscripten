@@ -958,26 +958,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- End configs -------------
 
-  # Check if a target is specified on the command line
-  specified_target, args = find_output_arg(args)
-
-  # specified_target is the user-specified one, target is what we will generate
-  if specified_target:
-    target = specified_target
-    # check for the existence of the output directory now, to avoid having
-    # to do so repeatedly when each of the various output files (.mem, .wasm,
-    # etc) are written. This gives a more useful error message than the
-    # IOError and python backtrace that users would otherwise see.
-    dirname = os.path.dirname(target)
-    if dirname and not os.path.isdir(dirname):
-      exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
-  else:
-    target = 'a.out.js'
-
-  shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
-
-  final_suffix = suffix(target)
-
   temp_dir = shared.get_emscripten_temp_dir()
 
   def in_temp(name):
@@ -1231,6 +1211,68 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] = ''
     newargs = [a for a in newargs if a]
 
+    # Libraries are searched before settings_changes are applied, so apply the
+    # value for STRICT from command line already now.
+
+    def get_last_setting_change(setting):
+      return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
+
+    strict_cmdline = get_last_setting_change('STRICT')
+    if strict_cmdline:
+      shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
+
+    # Apply optimization level settings
+    shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
+
+    # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
+    # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
+    if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
+      shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
+
+    if not shared.Settings.WASM_BACKEND:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['memset', 'memcpy', 'emscripten_get_heap_size']
+
+    if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
+      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
+
+    # Set ASM_JS default here so that we can override it from the command line.
+    shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
+
+    # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
+    # We do this before the user settings are applied so it affects the default value only and a
+    # user could use `--no-entry` and still export main too.
+    if options.no_entry:
+      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
+
+    # Apply -s settings in newargs here (after optimization levels, so they can override them)
+    apply_settings(settings_changes)
+
+    # Check if a target is specified on the command line
+    specified_target, args = find_output_arg(args)
+
+    # specified_target is the user-specified one, target is what we will generate
+    if specified_target:
+      target = specified_target
+      # check for the existence of the output directory now, to avoid having
+      # to do so repeatedly when each of the various output files (.mem, .wasm,
+      # etc) are written. This gives a more useful error message than the
+      # IOError and python backtrace that users would otherwise see.
+      dirname = os.path.dirname(target)
+      if dirname and not os.path.isdir(dirname):
+        exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
+    elif shared.Settings.SIDE_MODULE and shared.Settings.WASM:
+      target = 'a.out.wasm'
+    else:
+      target = 'a.out.js'
+
+    shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
+
+    final_suffix = suffix(target)
+
+    if options.separate_asm and final_suffix != '.html':
+      diagnostics.warning('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
+
     if has_dash_c or has_dash_S or has_dash_E:
       if has_dash_c:
         if '-emit-llvm' in newargs:
@@ -1271,46 +1313,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       diagnostics.warning('emcc', 'forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 was passed.')
     if options.separate_asm:
       shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
-
-    # Libraries are searched before settings_changes are applied, so apply the
-    # value for STRICT from command line already now.
-
-    def get_last_setting_change(setting):
-      return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
-
-    strict_cmdline = get_last_setting_change('STRICT')
-    if strict_cmdline:
-      shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
-
-    if options.separate_asm and final_suffix != '.html':
-      diagnostics.warning('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
-
-    # Apply optimization level settings
-    shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
-
-    # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
-    # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
-    if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
-      shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
-
-    if not shared.Settings.WASM_BACKEND:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['memset', 'memcpy', 'emscripten_get_heap_size']
-
-    if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
-      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-    # Set ASM_JS default here so that we can override it from the command line.
-    shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
-
-    # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
-    # We do this before the user settings are applied so it affects the default value only and a
-    # user could use `--no-entry` and still export main too.
-    if options.no_entry:
-      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
-
-    # Apply -s settings in newargs here (after optimization levels, so they can override them)
-    apply_settings(settings_changes)
 
     # Apply user -jsD settings
     for s in user_js_defines:
