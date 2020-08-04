@@ -1298,12 +1298,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
 
-    if final_suffix in ('.mjs', '.js', ''):
-      js_target = target
-    else:
-      js_target = unsuffixed(target) + '.js'
-
-    asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
+    asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
     wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
@@ -1319,6 +1314,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.attrs[s[0]] = s[1]
 
     shared.verify_settings()
+
+    if final_suffix in WASM_ENDINGS and shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
+      # if the output is just a wasm file, it will normally be a standalone one,
+      # as there is no JS. an exception are side modules, as we can't tell at
+      # compile time whether JS will be involved or not - the main module may
+      # have JS, and the side module is expected to link against that.
+      # we also do not support standalone mode in fastcomp.
+      shared.Settings.STANDALONE_WASM = 1
 
     # We allow this warning to be supressed by the environment so that we can run the test
     # suite against fastcomp while supressing this warning.
@@ -1880,16 +1883,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MODULARIZE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
-
-    if final_suffix in WASM_ENDINGS:
-      # if the output is just a wasm file, it will normally be a standalone one,
-      # as there is no JS. an exception are side modules, as we can't tell at
-      # compile time whether JS will be involved or not - the main module may
-      # have JS, and the side module is expected to link against that.
-      # we also do not support standalone mode in fastcomp.
-      if shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
-        shared.Settings.STANDALONE_WASM = 1
-      js_target = misc_temp_files.get(suffix='.js').name
 
     if shared.Settings.STANDALONE_WASM:
       if not shared.Settings.WASM_BACKEND:
@@ -2821,6 +2814,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                     wasm_text_target, wasm_source_map_target, misc_temp_files,
                     optimizer)
+        # If we are building a wasm side module then we are all done now
+        if shared.Settings.SIDE_MODULE:
+          return
 
       if shared.Settings.MODULARIZE:
         modularize()
@@ -2850,6 +2846,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         save_intermediate('extern-pre-post')
 
       shared.JS.handle_license(final)
+
+      if final_suffix in ('.mjs', '.js', ''):
+        js_target = target
+      elif final_suffix in WASM_ENDINGS:
+        js_target = misc_temp_files.get(suffix='.js').name
+      else:
+        js_target = unsuffixed(target) + '.js'
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
@@ -3327,7 +3330,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shared.WebAssembly.add_emscripten_metadata(final, wasm_binary_target)
 
   if shared.Settings.SIDE_MODULE:
-    sys.exit(0) # and we are done.
+    return # and we are done.
 
   # pthreads memory growth requires some additional JS fixups
   if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
