@@ -356,6 +356,7 @@ def parse_config_file():
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
     'JAVA',
+    'JS_ENGINE',
     'JS_ENGINES',
     'WASMER',
     'WASMTIME',
@@ -401,11 +402,13 @@ def fix_js_engine(old, new):
 
 def normalize_config_settings():
   global CACHE, PORTS, JAVA, CLOSURE_COMPILER
-  global NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+  global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
   if not JS_ENGINES:
     JS_ENGINES = [NODE_JS]
+  if not JS_ENGINE:
+    JS_ENGINE = JS_ENGINES[0]
 
   # Engine tweaks
   if SPIDERMONKEY_ENGINE:
@@ -415,6 +418,7 @@ def normalize_config_settings():
     SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
+  JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
   if not CACHE:
@@ -1726,6 +1730,7 @@ CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
+JS_ENGINE = None
 JS_ENGINES = []
 WASMER = None
 WASMTIME = None

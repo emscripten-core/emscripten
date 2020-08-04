@@ -10524,3 +10524,11 @@ int main () {
     # Test that `-shared` forces object file output regardless of output filename
     self.run_process([EMCC, '-shared', path_from_root('tests', 'hello_world.c'), '-o', 'out.js'])
     self.assertIsObjectFile('out.js')
+
+  @no_windows('windows does not support shbang syntax')
+  @with_env_modify({'EMMAKEN_JUST_CONFIGURE': '1'})
+  def test_autoconf_mode(self):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
+    # Test that output name is just `a.out` and that it is directly executable
+    output = self.run_process([os.path.abspath('a.out')], stdout=PIPE).stdout
+    self.assertContained('hello, world!', output)
