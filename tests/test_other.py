@@ -10521,9 +10521,14 @@ int main () {
     self.do_other_test(os.path.join('other', 'err'))
 
   def test_shared_flag(self):
-    # Test that `-shared` forces object file output regardless of output filename
-    self.run_process([EMCC, '-shared', path_from_root('tests', 'hello_world.c'), '-o', 'out.js'])
-    self.assertIsObjectFile('out.js')
+    self.run_process([EMCC, '-shared', path_from_root('tests', 'hello_world.c'), '-o', 'out.foo'])
+    self.assertIsObjectFile('out.foo')
+
+    # Test that using an exectuable output name overides the `-shared` flag, but produces a warning.
+    err = self.run_process([EMCC, '-shared', path_from_root('tests', 'hello_world.c'), '-o', 'out.js'],
+                           stderr=PIPE).stderr
+    self.assertContained('warning: -shared/-r used with executable output suffix', err)
+    self.run_js('out.js')
 
   @no_windows('windows does not support shbang syntax')
   @with_env_modify({'EMMAKEN_JUST_CONFIGURE': '1'})
