@@ -27,6 +27,7 @@ Module['ready'] = new Promise(function(resolve, reject) {
 #endif
 #endif
 
+#if !DISABLE_ENVIRONMENT_RUNTIME_DETECTION
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = typeof process === 'object';
 #endif
@@ -43,6 +44,7 @@ var ENVIRONMENT_IS_WEB = true
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
 #else
 var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_SHELL;
+#endif
 #endif
 #endif
 #endif

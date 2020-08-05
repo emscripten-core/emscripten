@@ -83,6 +83,7 @@ var quit_ = function(status, toThrow) {
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
+#if !DISABLE_ENVIRONMENT_RUNTIME_DETECTION
 #if ENVIRONMENT && ENVIRONMENT.indexOf(',') < 0
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
@@ -100,6 +101,7 @@ ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
 ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 #endif // ENVIRONMENT
+#endif // DISABLE_ENVIRONMENT_RUNTIME_DETECTION
 
 #if ASSERTIONS
 if (Module['ENVIRONMENT']) {

@@ -631,6 +631,11 @@ var LEGACY_VM_SUPPORT = 0;
 //    at compile time, there is no runtime behavior change.
 var ENVIRONMENT = '';
 
+// Disables the runtime detection of the environment. Use this option if you
+// want to distribute separate files for each environment, you can use an
+// external tool to define the ENVIRONMENT_IS_* variables as globals.
+var DISABLE_ENVIRONMENT_RUNTIME_DETECTION = 0;
+
 // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
 // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
 // If you run the file packager separately, you still need to build the main program with this flag,
