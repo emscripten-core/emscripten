@@ -72,6 +72,7 @@ SPECIAL_ENDINGLESS_FILENAMES = (os.devnull,)
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ASSEMBLY_CPP_ENDINGS
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
+JS_ENDINGS = ('.js', '.mjs', '.out', '')
 JS_CONTAINING_ENDINGS = ('.js', '.mjs', '.html')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
@@ -737,6 +738,23 @@ def backend_binaryen_passes():
   return passes
 
 
+def make_js_executable(script):
+  src = open(script).read()
+  cmd = shared.shlex_join(shared.JS_ENGINE)
+  if not os.path.isabs(shared.JS_ENGINE[0]):
+    # TODO: use whereis etc. And how about non-*NIX?
+    cmd = '/usr/bin/env -S ' + cmd
+  logger.debug('adding `#!` to JavaScript file: %s' % cmd)
+  # add shebang
+  with open(script, 'w') as f:
+    f.write('#!%s\n' % cmd)
+    f.write(src)
+  try:
+    os.chmod(script, stat.S_IMODE(os.stat(script).st_mode) | stat.S_IXUSR) # make executable
+  except OSError:
+    pass # can fail if e.g. writing the executable to /dev/null
+
+
 run_via_emxx = False
 
 
@@ -868,70 +886,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       arg = args[i][2:]
     return arg.split('=')[0].isupper()
-
-  CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args
-  if CONFIGURE_CONFIG and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE'):
-    # XXX use this to debug configure stuff. ./configure's generally hide our
-    # normal output including stderr so we write to a file
-    debug_configure = 0
-
-    if debug_configure:
-      tempout = '/tmp/emscripten_temp/out'
-      if not os.path.exists(tempout):
-        open(tempout, 'w').write('//\n')
-
-    if debug_configure:
-      for arg in args:
-        if arg.endswith(SOURCE_ENDINGS):
-          try:
-            src = open(arg).read()
-            open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
-          except IOError:
-            pass
-
-    if run_via_emxx:
-      compiler = [shared.EMXX]
-    else:
-      compiler = [shared.EMCC]
-
-    cmd = compiler + [a for a in args if a != '--tracing']
-    # configure tests want a more shell-like style, where we emit return codes on exit()
-    cmd += ['-s', 'EXIT_RUNTIME=1']
-    # use node.js raw filesystem access, to behave just like a native executable
-    cmd += ['-s', 'NODERAWFS=1']
-
-    logger.debug('just configuring: ' + shared.shlex_join(cmd))
-    if debug_configure:
-      open(tempout, 'a').write('emcc, just configuring: ' + shared.shlex_join(cmd) + '\n\n')
-
-    linking = '-c' not in cmd
-    # Last -o directive should take precedence, if multiple are specified
-    if linking:
-      target = 'a.out.js'
-      for i in reversed(range(len(cmd) - 1)):
-        if cmd[i] == '-o':
-          if linking:
-            cmd[i + 1] += '.js'
-          target = cmd[i + 1]
-          break
-    env = os.environ.copy()
-    env['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
-    ret = run_process(cmd, check=False, env=env).returncode
-    if ret == 0 and linking:
-      if target.endswith('.js'):
-        shutil.copyfile(target, unsuffixed(target))
-        target = unsuffixed(target)
-      src = open(target).read()
-      full_node = shared.shlex_join(shared.NODE_JS)
-      if os.path.sep not in full_node:
-        # TODO: use whereis etc. And how about non-*NIX?
-        full_node = '/usr/bin/env ' + full_node
-      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-      try:
-        os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
-      except OSError:
-        pass # can fail if e.g. writing the executable to /dev/null
-    return ret
 
   CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
   CC = cxx_to_c_compiler(CXX)
@@ -1246,6 +1200,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Check if a target is specified on the command line
     specified_target, args = find_output_arg(args)
 
+    make_output_executable = False
+
+    if os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args:
+      # configure tests want a more shell-like style, where we emit return codes on exit()
+      shared.Settings.EXIT_RUNTIME = 1
+      # use node.js raw filesystem access, to behave just like a native executable
+      shared.Settings.NODERAWFS = 1
+      # Add `#!` line to output JS and make it executable.
+      make_output_executable = True
+      # Autoconf expects the executable output file to be called `a.out`
+      default_target_name = 'a.out'
+    elif shared.Settings.SIDE_MODULE and shared.Settings.WASM:
+      default_target_name = 'a.out.wasm'
+    else:
+      default_target_name = 'a.out.js'
+
     # specified_target is the user-specified one, target is what we will generate
     if specified_target:
       target = specified_target
@@ -1256,10 +1226,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       dirname = os.path.dirname(target)
       if dirname and not os.path.isdir(dirname):
         exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
-    elif shared.Settings.SIDE_MODULE and shared.Settings.WASM:
-      target = 'a.out.wasm'
     else:
-      target = 'a.out.js'
+      target = default_target_name
 
     shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
 
@@ -1467,7 +1435,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       cflags.append('-DEMSCRIPTEN')
 
     # Treat the empty extension as an executable, to handle the commond case of `emcc -o foo foo.c`
-    executable_endings = JS_CONTAINING_ENDINGS + WASM_ENDINGS + ('',)
+    executable_endings = JS_CONTAINING_ENDINGS + WASM_ENDINGS + JS_ENDINGS
     if not link_to_object and not compile_only and final_suffix not in executable_endings:
       # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
       # file output with an explicit `-c` or `-r`.
@@ -2362,13 +2330,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
         if final_suffix.lower() in ('.so', '.dylib', '.dll'):
           diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
-        logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + specified_target)
+        logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
         if len(temp_files) == 1:
           temp_file = temp_files[0][1]
           # skip running the linker and just copy the object file
-          shutil.copyfile(temp_file, specified_target)
+          shutil.copyfile(temp_file, target)
         else:
-          building.link_to_object(linker_inputs, specified_target)
+          building.link_to_object(linker_inputs, target)
         logger.debug('stopping after linking to object file')
         return 0
 
@@ -2842,7 +2810,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       shared.JS.handle_license(final)
 
-      if final_suffix in ('.mjs', '.js', ''):
+      if final_suffix in JS_ENDINGS:
         js_target = target
       elif final_suffix in WASM_ENDINGS:
         js_target = misc_temp_files.get(suffix='.js').name
@@ -2869,6 +2837,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       for f in generated_text_files_with_native_eols:
         tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
+
+      if make_output_executable:
+        make_js_executable(js_target)
+
     log_time('final emitting')
     # exit block 'final emitting'
 
