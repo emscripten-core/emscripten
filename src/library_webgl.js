@@ -12,14 +12,14 @@ var LibraryGL = {
 
   // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
   // create a set of short fixed-length arrays to avoid having to generate any garbage when calling those functions.
-  _tempFixedLengthArray__postset: 'for (var i = 0; i < 32; ++i) __tempFixedLengthArray.push(new Array(i));',
-  _tempFixedLengthArray: [],
+  $tempFixedLengthArray__postset: 'for (var i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
+  $tempFixedLengthArray: [],
 
-  _miniTempWebGLFloatBuffers: [],
-  _miniTempWebGLFloatBuffers__postset:
-      'var __miniTempWebGLFloatBuffersStorage = new Float32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
+  $miniTempWebGLFloatBuffers: [],
+  $miniTempWebGLFloatBuffers__postset:
+      'var miniTempWebGLFloatBuffersStorage = new Float32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
     + 'for (/**@suppress{duplicate}*/var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++i) {\n'
-    + '__miniTempWebGLFloatBuffers[i] = __miniTempWebGLFloatBuffersStorage.subarray(0, i+1);\n'
+    + 'miniTempWebGLFloatBuffers[i] = miniTempWebGLFloatBuffersStorage.subarray(0, i+1);\n'
     + '}\n',
 
   _miniTempWebGLIntBuffers: [],
@@ -29,7 +29,7 @@ var LibraryGL = {
     + '__miniTempWebGLIntBuffers[i] = __miniTempWebGLIntBuffersStorage.subarray(0, i+1);\n'
     + '}\n',
 
-  _heapObjectForWebGLType: function(type) {
+  $heapObjectForWebGLType: function(type) {
     // Micro-optimization for size: Subtract lowest GL enum number (0x1400/* GL_BYTE */) from type to compare
     // smaller values for the heap, for shorter generated code size.
     // Also the type HEAPU16 is not tested for explicitly, but any unrecognized type will return out HEAPU16.
@@ -68,13 +68,13 @@ var LibraryGL = {
         && type != {{{ 0x8034 - 0x1400 /* GL_UNSIGNED_SHORT_5_5_5_1 */ }}}
         && type != {{{ 0x8363 - 0x1400 /* GL_UNSIGNED_SHORT_5_6_5 */ }}}
         && type != {{{ 0x8D61 - 0x1400 /* GL_HALF_FLOAT_OES */ }}}) {
-        err('Invalid WebGL type 0x' + (type+0x1400).toString() + ' passed to _heapObjectForWebGLType!');
+        err('Invalid WebGL type 0x' + (type+0x1400).toString() + ' passed to $heapObjectForWebGLType!');
       }
 #endif
     return HEAPU16;
   },
 
-  _heapAccessShiftForWebGLHeap: function(heap) {
+  $heapAccessShiftForWebGLHeap: function(heap) {
     return 31 - Math.clz32(heap.BYTES_PER_ELEMENT);
   },
 
@@ -127,6 +127,16 @@ var LibraryGL = {
   },
 #endif
 
+  _webgl_enable_WEBGL_multi_draw: function(ctx) {
+    // Closure is expected to be allowed to minify the '.multiDrawWebgl' property, so not accessing it quoted.
+    return !!(ctx.multiDrawWebgl = ctx.getExtension('WEBGL_multi_draw'));
+  },
+
+  emscripten_webgl_enable_WEBGL_multi_draw__deps: ['_webgl_enable_WEBGL_multi_draw'],
+  emscripten_webgl_enable_WEBGL_multi_draw: function(ctx) {
+    return __webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx);
+  },
+
   $GL__postset: 'var GLctx;',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
@@ -139,6 +149,7 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
 #endif
+    '_webgl_enable_WEBGL_multi_draw',
     ],
 #endif
   $GL: {
@@ -1073,6 +1084,7 @@ var LibraryGL = {
 #endif
 
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+      __webgl_enable_WEBGL_multi_draw(GLctx);
 
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
@@ -1475,7 +1487,7 @@ var LibraryGL = {
     GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
   },
 
-  _computeUnpackAlignedImageSize: function(width, height, sizePerPixel, alignment) {
+  $computeUnpackAlignedImageSize: function(width, height, sizePerPixel, alignment) {
     function roundedToNextMultipleOf(x, y) {
 #if GL_ASSERTIONS
       assert((y & (y-1)) === 0, 'Unpack alignment must be a power of 2! (Allowed values per WebGL spec are 1, 2, 4 or 8)');
@@ -1521,13 +1533,13 @@ var LibraryGL = {
     return colorChannels[format - 0x1902]||1;
   },
 
-  $emscriptenWebGLGetTexPixelData__deps: ['_computeUnpackAlignedImageSize', '_colorChannelsInGlTextureFormat', '_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'],
+  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '_colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
-    var heap = __heapObjectForWebGLType(type);
-    var shift = __heapAccessShiftForWebGLHeap(heap);
+    var heap = heapObjectForWebGLType(type);
+    var shift = heapAccessShiftForWebGLHeap(heap);
     var byteSize = 1<<shift;
     var sizePerPixel = __colorChannelsInGlTextureFormat(format) * byteSize;
-    var bytes = __computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+    var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
 #if GL_ASSERTIONS
     assert((pixels >> shift) << shift == pixels, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
 #endif
@@ -1537,7 +1549,7 @@ var LibraryGL = {
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'
+                       , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
 #endif
   ],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
@@ -1565,8 +1577,8 @@ var LibraryGL = {
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels) {
-        var heap = __heapObjectForWebGLType(type);
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
+        var heap = heapObjectForWebGLType(type);
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
       } else {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
       }
@@ -1579,7 +1591,7 @@ var LibraryGL = {
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                          , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'
+                          , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
 #endif
   ],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
@@ -1597,8 +1609,8 @@ var LibraryGL = {
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
       } else if (pixels) {
-        var heap = __heapObjectForWebGLType(type);
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
+        var heap = heapObjectForWebGLType(type);
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
       } else {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
       }
@@ -1613,7 +1625,7 @@ var LibraryGL = {
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'
+                       , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
 #endif
   ],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
@@ -1622,8 +1634,8 @@ var LibraryGL = {
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
-        var heap = __heapObjectForWebGLType(type);
-        GLctx.readPixels(x, y, width, height, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
+        var heap = heapObjectForWebGLType(type);
+        GLctx.readPixels(x, y, width, height, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
       }
       return;
     }
@@ -2392,7 +2404,7 @@ var LibraryGL = {
 
   glUniform1fv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform1fv__deps: ['_miniTempWebGLFloatBuffers'],
+  glUniform1fv__deps: ['$miniTempWebGLFloatBuffers'],
 #endif
   glUniform1fv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2414,7 +2426,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLFloatBuffers[count-1];
+      var view = miniTempWebGLFloatBuffers[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
       }
@@ -2432,7 +2444,7 @@ var LibraryGL = {
 
   glUniform2fv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform2fv__deps: ['_miniTempWebGLFloatBuffers'],
+  glUniform2fv__deps: ['$miniTempWebGLFloatBuffers'],
 #endif
   glUniform2fv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2454,7 +2466,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLFloatBuffers[2*count-1];
+      var view = miniTempWebGLFloatBuffers[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2473,7 +2485,7 @@ var LibraryGL = {
 
   glUniform3fv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform3fv__deps: ['_miniTempWebGLFloatBuffers'],
+  glUniform3fv__deps: ['$miniTempWebGLFloatBuffers'],
 #endif
   glUniform3fv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2495,7 +2507,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLFloatBuffers[3*count-1];
+      var view = miniTempWebGLFloatBuffers[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2515,7 +2527,7 @@ var LibraryGL = {
 
   glUniform4fv__sig: 'viii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniform4fv__deps: ['_miniTempWebGLFloatBuffers'],
+  glUniform4fv__deps: ['$miniTempWebGLFloatBuffers'],
 #endif
   glUniform4fv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -2537,7 +2549,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLFloatBuffers[4*count-1];
+      var view = miniTempWebGLFloatBuffers[4*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value >>= 2;
@@ -2562,7 +2574,7 @@ var LibraryGL = {
 
   glUniformMatrix2fv__sig: 'viiii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniformMatrix2fv__deps: ['_miniTempWebGLFloatBuffers'],
+  glUniformMatrix2fv__deps: ['$miniTempWebGLFloatBuffers'],
 #endif
   glUniformMatrix2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -2584,7 +2596,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLFloatBuffers[4*count-1];
+      var view = miniTempWebGLFloatBuffers[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2605,7 +2617,7 @@ var LibraryGL = {
 
   glUniformMatrix3fv__sig: 'viiii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniformMatrix3fv__deps: ['_miniTempWebGLFloatBuffers'],
+  glUniformMatrix3fv__deps: ['$miniTempWebGLFloatBuffers'],
 #endif
   glUniformMatrix3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -2627,7 +2639,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 9 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLFloatBuffers[9*count-1];
+      var view = miniTempWebGLFloatBuffers[9*count-1];
       for (var i = 0; i < 9*count; i += 9) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2653,7 +2665,7 @@ var LibraryGL = {
 
   glUniformMatrix4fv__sig: 'viiii',
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-  glUniformMatrix4fv__deps: ['_miniTempWebGLFloatBuffers'],
+  glUniformMatrix4fv__deps: ['$miniTempWebGLFloatBuffers'],
 #endif
   glUniformMatrix4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -2675,7 +2687,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 16 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLFloatBuffers[16*count-1];
+      var view = miniTempWebGLFloatBuffers[16*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value >>= 2;
@@ -2961,15 +2973,17 @@ var LibraryGL = {
 #if GL_ASSERTIONS || GL_TRACK_ERRORS
       if (log === null) log = '(unknown error)';
 #endif
-      if (log.length === 0) {
-        // GLES2 specification says that if the shader has no information log, a value of 0 is returned.
-        {{{ makeSetValue('p', '0', '0', 'i32') }}};
-      } else {
-        {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
-      }
+      // The GLES2 specification says that if the shader has an empty info log,
+      // a value of 0 is returned. Otherwise the log has a null char appended.
+      // (An empty string is falsey, so we can just check that instead of
+      // looking at log.length.)
+      var logLength = log ? log.length + 1 : 0;
+      {{{ makeSetValue('p', '0', 'logLength', 'i32') }}};
     } else if (pname == 0x8B88) { // GL_SHADER_SOURCE_LENGTH
       var source = GLctx.getShaderSource(GL.shaders[shader]);
-      var sourceLength = (source === null || source.length == 0) ? 0 : source.length + 1;
+      // source may be a null, or the empty string, both of which are falsey
+      // values that we report a 0 length for.
+      var sourceLength = source ? source.length + 1 : 0;
       {{{ makeSetValue('p', '0', 'sourceLength', 'i32') }}};
     } else {
       {{{ makeSetValue('p', '0', 'GLctx.getShaderParameter(GL.shaders[shader], pname)', 'i32') }}};
@@ -3559,17 +3573,17 @@ var LibraryGL = {
   glDrawElementsInstancedANGLE: 'glDrawElementsInstanced',
 
 
-  glDrawBuffers__deps: ['_tempFixedLengthArray'],
+  glDrawBuffers__deps: ['$tempFixedLengthArray'],
   glDrawBuffers__sig: 'vii',
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
     assert(GLctx['drawBuffers'], 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
 #if GL_ASSERTIONS
-    assert(n < __tempFixedLengthArray.length, 'Invalid count of numBuffers=' + n + ' passed to glDrawBuffers (that many draw buffer points do not exist in GL)');
+    assert(n < tempFixedLengthArray.length, 'Invalid count of numBuffers=' + n + ' passed to glDrawBuffers (that many draw buffer points do not exist in GL)');
 #endif
 
-    var bufArray = __tempFixedLengthArray[n];
+    var bufArray = tempFixedLengthArray[n];
     for (var i = 0; i < n; i++) {
       bufArray[i] = {{{ makeGetValue('bufs', 'i*4', 'i32') }}};
     }
@@ -3597,6 +3611,62 @@ var LibraryGL = {
   glSampleCoverage__sig: 'vii',
   glSampleCoverage: function(value, invert) {
     GLctx.sampleCoverage(value, !!invert);
+  },
+
+  glMultiDrawArraysWEBGL__sig: 'viiii',
+  glMultiDrawArrays: 'glMultiDrawArraysWEBGL',
+  glMultiDrawArraysANGLE: 'glMultiDrawArraysWEBGL',
+  glMultiDrawArraysWEBGL: function(mode, firsts, counts, drawcount) {
+    GLctx.multiDrawWebgl['multiDrawArraysWEBGL'](
+      mode,
+      HEAP32,
+      firsts >> 2,
+      HEAP32,
+      counts >> 2,
+      drawcount);
+  },
+
+  glMultiDrawArraysInstancedWEBGL__sig: 'viiiii',
+  glMultiDrawArraysInstancedANGLE: 'glMultiDrawArraysInstancedWEBGL',
+  glMultiDrawArraysInstancedWEBGL: function(mode, firsts, counts, instanceCounts, drawcount) {
+    GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
+      mode,
+      HEAP32,
+      firsts >> 2,
+      HEAP32,
+      counts >> 2,
+      HEAP32,
+      instanceCounts >> 2,
+      drawcount);
+  },
+
+  glMultiDrawElementsWEBGL__sig: 'viiiii',
+  glMultiDrawElements: 'glMultiDrawElementsWEBGL',
+  glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
+  glMultiDrawElementsWEBGL: function(mode, counts, type, offsets, drawcount) {
+    GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
+      mode,
+      HEAP32,
+      counts >> 2,
+      type,
+      HEAP32,
+      offsets >> 2,
+      drawcount);
+  },
+
+  glMultiDrawElementsInstancedWEBGL__sig: 'viiiiii',
+  glMultiDrawElementsInstancedANGLE: 'glMultiDrawElementsInstancedWEBGL',
+  glMultiDrawElementsInstancedWEBGL: function(mode, counts, type, offsets, instanceCounts, drawcount) {
+    GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
+      mode,
+      HEAP32,
+      counts >> 2,
+      type,
+      HEAP32,
+      offsets >> 2,
+      HEAP32,
+      instanceCounts >> 2,
+      drawcount);
   },
 
   // As a small peculiarity, we currently allow building with -s FULL_ES3=1 to emulate client side arrays,

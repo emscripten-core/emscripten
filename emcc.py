@@ -73,7 +73,6 @@ SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECI
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
 JS_CONTAINING_ENDINGS = ('.js', '.mjs', '.html')
-OBJECT_FILE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll', '.s')
@@ -167,6 +166,9 @@ UBSAN_SANITIZERS = {
 }
 
 
+VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
+
+
 # this function uses the global 'final' variable, which contains the current
 # final output file. if a method alters final, and calls this method, then it
 # must modify final globally (i.e. it can't receive final as a param and
@@ -255,9 +257,6 @@ class EmccOptions(object):
     # Linux & MacOS)
     self.output_eol = os.linesep
     self.binaryen_passes = []
-    # Whether we will expand the full path of any input files to remove any
-    # symlinks.
-    self.expand_symlinks = True
     self.no_entry = False
 
 
@@ -271,6 +270,33 @@ def will_metadce(options):
   if shared.Settings.ASSERTIONS:
     return False
   return shared.Settings.OPT_LEVEL >= 3 or shared.Settings.SHRINK_LEVEL >= 1
+
+
+def setup_environment_settings():
+  # Environment setting based on user input
+  environments = shared.Settings.ENVIRONMENT.split(',')
+  if any([x for x in environments if x not in VALID_ENVIRONMENTS]):
+    exit_with_error('Invalid environment specified in "ENVIRONMENT": ' + shared.Settings.ENVIRONMENT + '. Should be one of: ' + ','.join(VALID_ENVIRONMENTS))
+
+  shared.Settings.ENVIRONMENT_MAY_BE_WEB = not shared.Settings.ENVIRONMENT or 'web' in environments
+  shared.Settings.ENVIRONMENT_MAY_BE_WEBVIEW = not shared.Settings.ENVIRONMENT or 'webview' in environments
+  shared.Settings.ENVIRONMENT_MAY_BE_NODE = not shared.Settings.ENVIRONMENT or 'node' in environments
+  shared.Settings.ENVIRONMENT_MAY_BE_SHELL = not shared.Settings.ENVIRONMENT or 'shell' in environments
+
+  # The worker case also includes Node.js workers when pthreads are
+  # enabled and Node.js is one of the supported environments for the build to
+  # run on. Node.js workers are detected as a combination of
+  # ENVIRONMENT_IS_WORKER and ENVIRONMENT_IS_NODE.
+  shared.Settings.ENVIRONMENT_MAY_BE_WORKER = \
+      not shared.Settings.ENVIRONMENT or \
+      'worker' in environments or \
+      (shared.Settings.ENVIRONMENT_MAY_BE_NODE and shared.Settings.USE_PTHREADS)
+
+  if not shared.Settings.ENVIRONMENT_MAY_BE_WORKER and shared.Settings.PROXY_TO_WORKER:
+    exit_with_error('If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
+
+  if not shared.Settings.ENVIRONMENT_MAY_BE_WORKER and shared.Settings.USE_PTHREADS:
+    exit_with_error('When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
 
 class JSOptimizer(object):
@@ -794,10 +820,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   shared.check_sanity(force=DEBUG)
 
-  # This check comes after check_sanity because test_sanity expects this.
-  if not args:
-    exit_with_error('no input files')
-
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
     return 0
@@ -932,26 +954,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return unsuffixed(name) + '_' + seen_names[name] + suffix(name)
 
   # ---------------- End configs -------------
-
-  # Check if a target is specified on the command line
-  specified_target, args = find_output_arg(args)
-
-  # specified_target is the user-specified one, target is what we will generate
-  if specified_target:
-    target = specified_target
-    # check for the existence of the output directory now, to avoid having
-    # to do so repeatedly when each of the various output files (.mem, .wasm,
-    # etc) are written. This gives a more useful error message than the
-    # IOError and python backtrace that users would otherwise see.
-    dirname = os.path.dirname(target)
-    if dirname and not os.path.isdir(dirname):
-      exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
-  else:
-    target = 'a.out.js'
-
-  shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
-
-  final_suffix = suffix(target)
 
   temp_dir = shared.get_emscripten_temp_dir()
 
@@ -1127,18 +1129,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                  '-Xlinker', '-Xclang'):
         skip = True
 
-      if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
-        arg = os.path.realpath(arg)
-
       if not arg.startswith('-'):
         # os.devnul should always be reported as existing but there is bug in windows
         # python before 3.8:
         # https://bugs.python.org/issue1311
         if not os.path.exists(arg) and arg != os.devnull:
           exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
-
         file_suffix = get_file_suffix(arg)
-        if file_suffix in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+        if file_suffix in SOURCE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or building.is_ar(arg):
+          # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
           if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
@@ -1148,8 +1147,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif file_suffix in ASSEMBLY_ENDINGS or building.is_bitcode(arg) or building.is_ar(arg):
             input_files.append((i, arg))
           elif building.is_wasm(arg):
-            if not shared.Settings.WASM_BACKEND:
-              exit_with_error('fastcomp is not compatible with wasm object files:' + arg)
             input_files.append((i, arg))
           elif file_suffix in (STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
@@ -1161,22 +1158,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                 libname = libname[len(prefix):]
                 break
             libs.append((i, libname))
-            newargs[i] = ''
-          else:
-            diagnostics.warning('invalid-input', arg + ' is not a valid input file')
         elif file_suffix in STATICLIB_ENDINGS:
           if not building.is_ar(arg):
             if building.is_bitcode(arg):
-              message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(OBJECT_FILE_ENDINGS)
+              message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
             else:
               message = arg + ': Unknown format, not a static library!'
             exit_with_error(message)
         else:
-          if language_mode:
-            newargs[i] = ''
-            input_files.append((i, arg))
-          else:
-            exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
+          newargs[i] = ''
+          input_files.append((i, arg))
+      elif arg == '-shared':
+        # Until we have a better story for actually producing runtime shared libraries
+        # we support a compatibility mode where shared libraries are actually just
+        # object files linked with `wasm-ld --reloctable` or `llvm-link` in the case
+        # of LTO.
+        link_to_object = True
+        newargs[i] = ''
       elif arg == '-r':
         link_to_object = True
         newargs[i] = ''
@@ -1208,47 +1206,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] = ''
     newargs = [a for a in newargs if a]
 
-    if has_dash_c or has_dash_S or has_dash_E:
-      if has_dash_c:
-        if '-emit-llvm' in newargs:
-          final_suffix = '.bc'
-        else:
-          final_suffix = options.default_object_extension
-        target = target_basename + final_suffix
-      elif has_dash_S:
-        if '-emit-llvm' in newargs:
-          final_suffix = '.ll'
-        else:
-          final_suffix = '.s'
-        target = target_basename + final_suffix
-
-      if len(input_files) > 1 and specified_target:
-        exit_with_error('cannot specify -o with -c/-S/-E and multiple source files')
-
-    if '-M' in newargs or '-MM' in newargs:
-      final_suffix = '.mout' # not bitcode, not js; but just dependency rule of the input file
-
-    # target is now finalized, can finalize other _target s
-    if final_suffix == '.mjs':
-      shared.Settings.EXPORT_ES6 = 1
-      shared.Settings.MODULARIZE = 1
-
-    if final_suffix in ('.mjs', '.js', ''):
-      js_target = target
-    else:
-      js_target = unsuffixed(target) + '.js'
-
-    asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
-    wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
-    wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
-    wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
-
-    if final_suffix == '.html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
-      options.separate_asm = True
-      diagnostics.warning('emcc', 'forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 was passed.')
-    if options.separate_asm:
-      shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
-
     # Libraries are searched before settings_changes are applied, so apply the
     # value for STRICT from command line already now.
 
@@ -1258,9 +1215,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     strict_cmdline = get_last_setting_change('STRICT')
     if strict_cmdline:
       shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
-
-    if options.separate_asm and final_suffix != '.html':
-      diagnostics.warning('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
 
     # Apply optimization level settings
     shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
@@ -1289,11 +1243,80 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
 
+    # Check if a target is specified on the command line
+    specified_target, args = find_output_arg(args)
+
+    # specified_target is the user-specified one, target is what we will generate
+    if specified_target:
+      target = specified_target
+      # check for the existence of the output directory now, to avoid having
+      # to do so repeatedly when each of the various output files (.mem, .wasm,
+      # etc) are written. This gives a more useful error message than the
+      # IOError and python backtrace that users would otherwise see.
+      dirname = os.path.dirname(target)
+      if dirname and not os.path.isdir(dirname):
+        exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
+    elif shared.Settings.SIDE_MODULE and shared.Settings.WASM:
+      target = 'a.out.wasm'
+    else:
+      target = 'a.out.js'
+
+    shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
+
+    final_suffix = suffix(target)
+
+    if options.separate_asm and final_suffix != '.html':
+      diagnostics.warning('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
+
+    if has_dash_c or has_dash_S or has_dash_E:
+      if has_dash_c:
+        if '-emit-llvm' in newargs:
+          final_suffix = '.bc'
+        else:
+          final_suffix = options.default_object_extension
+        target = target_basename + final_suffix
+      elif has_dash_S:
+        if '-emit-llvm' in newargs:
+          final_suffix = '.ll'
+        else:
+          final_suffix = '.s'
+        target = target_basename + final_suffix
+
+      if len(input_files) > 1 and specified_target:
+        exit_with_error('cannot specify -o with -c/-S/-E and multiple source files')
+
+    if '-M' in newargs or '-MM' in newargs:
+      final_suffix = '.mout' # not bitcode, not js; but just dependency rule of the input file
+
+    # target is now finalized, can finalize other _target s
+    if final_suffix == '.mjs':
+      shared.Settings.EXPORT_ES6 = 1
+      shared.Settings.MODULARIZE = 1
+
+    asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
+    wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
+    wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
+    wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
+
+    if final_suffix == '.html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
+      options.separate_asm = True
+      diagnostics.warning('emcc', 'forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 was passed.')
+    if options.separate_asm:
+      shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
+
     # Apply user -jsD settings
     for s in user_js_defines:
       shared.Settings.attrs[s[0]] = s[1]
 
     shared.verify_settings()
+
+    if final_suffix in WASM_ENDINGS and shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
+      # if the output is just a wasm file, it will normally be a standalone one,
+      # as there is no JS. an exception are side modules, as we can't tell at
+      # compile time whether JS will be involved or not - the main module may
+      # have JS, and the side module is expected to link against that.
+      # we also do not support standalone mode in fastcomp.
+      shared.Settings.STANDALONE_WASM = 1
 
     # We allow this warning to be supressed by the environment so that we can run the test
     # suite against fastcomp while supressing this warning.
@@ -1331,7 +1354,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     input_files = filter_out_dynamic_libs(input_files)
 
     if not input_files and not link_flags:
-      exit_with_error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
+      exit_with_error('no input files')
 
     # Note the exports the user requested
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -1448,7 +1471,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not link_to_object and not compile_only and final_suffix not in executable_endings:
       # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
       # file output with an explicit `-c` or `-r`.
-      diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
+      diagnostics.warning('emcc', 'assuming object file output, based on output filename alone.  Add an explict `-c`, `-r` or `-shared` to avoid this warning')
       link_to_object = True
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
@@ -1484,6 +1507,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MIN_CHROME_VERSION <= 37:
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
+
+    setup_environment_settings()
 
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if shared.Settings.WASM and not shared.Settings.WASM2JS:
@@ -1854,16 +1879,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
-    if final_suffix in WASM_ENDINGS:
-      # if the output is just a wasm file, it will normally be a standalone one,
-      # as there is no JS. an exception are side modules, as we can't tell at
-      # compile time whether JS will be involved or not - the main module may
-      # have JS, and the side module is expected to link against that.
-      # we also do not support standalone mode in fastcomp.
-      if shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
-        shared.Settings.STANDALONE_WASM = 1
-      js_target = misc_temp_files.get(suffix='.js').name
-
     if shared.Settings.STANDALONE_WASM:
       if not shared.Settings.WASM_BACKEND:
         exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
@@ -1988,17 +2003,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
         options.binaryen_passes += backend_binaryen_passes()
-
-      # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
-      # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
-      if shared.Settings.SAFE_HEAP and building.is_wasm_only() and not shared.Settings.WASM_BACKEND:
-        options.binaryen_passes += ['--safe-heap']
-      if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS and not shared.Settings.WASM_BACKEND:
-        # emulated function pointer casts is emulated in fastcomp wasm using a binaryen pass
-        options.binaryen_passes += ['--fpcast-emu']
-        # we also need emulated function pointers for that, as we need a single flat
-        # table, as is standard in wasm, and not asm.js split ones.
-        shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+      else:
+        # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
+        # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
+        if shared.Settings.SAFE_HEAP and building.is_wasm_only():
+          options.binaryen_passes += ['--safe-heap']
+        if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+          # emulated function pointer casts is emulated in fastcomp wasm using a binaryen pass
+          options.binaryen_passes += ['--fpcast-emu']
+          # we also need emulated function pointers for that, as we need a single flat
+          # table, as is standard in wasm, and not asm.js split ones.
+          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
 
     if shared.Settings.WASM2JS:
       if not shared.Settings.WASM_BACKEND:
@@ -2239,9 +2254,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(input_file)
         if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
           compile_source_file(i, input_file)
-        elif file_suffix in OBJECT_FILE_ENDINGS:
-          logger.debug('using object file: ' + input_file)
-          temp_files.append((i, input_file))
         elif file_suffix in DYNAMICLIB_ENDINGS:
           logger.debug('using shared library: ' + input_file)
           temp_files.append((i, input_file))
@@ -2250,8 +2262,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           ensure_archive_index(input_file)
           temp_files.append((i, input_file))
         elif file_suffix in ASSEMBLY_ENDINGS:
-          temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
           if file_suffix == '.ll':
+            temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
             logger.debug('assembling assembly file: ' + input_file)
             building.llvm_as(input_file, temp_file)
             temp_files.append((i, temp_file))
@@ -2264,7 +2276,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         elif input_file == '-':
           exit_with_error('-E or -x required when input is from standard input')
         else:
-          exit_with_error(input_file + ': unknown input file suffix')
+          if not shared.Settings.WASM_BACKEND and building.is_wasm(input_file):
+            exit_with_error('fastcomp is not compatible with wasm object files:' + input_file)
+          # Default to assuming the inputs are object files and pass them to the linker
+          logger.debug('using object file: ' + input_file)
+          temp_files.append((i, input_file))
 
     # exit block 'compile inputs'
     log_time('compile inputs')
@@ -2399,9 +2415,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
       perform_link = len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND
       if not perform_link:
-        is_bc = suffix(temp_files[0][1]) in OBJECT_FILE_ENDINGS
         is_dylib = suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
         is_ar = building.is_ar(temp_files[0][1])
+        is_bc = not is_ar and not is_dylib
         perform_link = not (is_bc or is_dylib) and is_ar
       if perform_link:
         logger.debug('linking: ' + str(linker_inputs))
@@ -2566,7 +2582,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args.append('--lz4')
         if options.use_preload_plugins:
           file_args.append('--use-preload-plugins')
-        file_code = run_process([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
+        file_code = shared.check_call([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
         options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
       # Apply pre and postjs files
@@ -2793,6 +2809,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                     wasm_text_target, wasm_source_map_target, misc_temp_files,
                     optimizer)
+        # If we are building a wasm side module then we are all done now
+        if shared.Settings.SIDE_MODULE:
+          return
 
       if shared.Settings.MODULARIZE:
         modularize()
@@ -2822,6 +2841,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         save_intermediate('extern-pre-post')
 
       shared.JS.handle_license(final)
+
+      if final_suffix in ('.mjs', '.js', ''):
+        js_target = target
+      elif final_suffix in WASM_ENDINGS:
+        js_target = misc_temp_files.get(suffix='.js').name
+      else:
+        js_target = unsuffixed(target) + '.js'
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
@@ -3115,8 +3141,6 @@ def parse_args(newargs):
     elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
       colored_logger.disable()
       diagnostics.color_enabled = False
-    elif newargs[i] == '-no-canonical-prefixes':
-      options.expand_symlinks = False
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
     elif newargs[i] == '-frtti':
@@ -3299,7 +3323,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shared.WebAssembly.add_emscripten_metadata(final, wasm_binary_target)
 
   if shared.Settings.SIDE_MODULE:
-    sys.exit(0) # and we are done.
+    return # and we are done.
 
   # pthreads memory growth requires some additional JS fixups
   if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
@@ -3386,11 +3410,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
   if shared.Settings.DEBUG_LEVEL >= 3 and shared.Settings.SEPARATE_DWARF and os.path.exists(wasm_binary_target):
-    # if the dwarf filename wasn't provided, use the default target + a suffix
-    dwarf_target = shared.Settings.SEPARATE_DWARF
-    if dwarf_target is True:
-      dwarf_target = wasm_binary_target + '.debug.wasm'
-    building.emit_debug_on_side(wasm_binary_target, dwarf_target)
+    building.emit_debug_on_side(wasm_binary_target, shared.Settings.SEPARATE_DWARF)
 
   if shared.Settings.WASM2C:
     wasm2c.do_wasm2c(wasm_binary_target)

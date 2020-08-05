@@ -228,6 +228,16 @@ WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getSupportedAstcProfiles(GLsizei
 #define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT 0x8C4E
 #define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
 
+// 40. https://www.khronos.org/registry/webgl/extensions/WEBGL_multi_draw/
+WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawArraysWEBGL(GLenum mode, const GLint* firsts, const GLsizei* counts, GLsizei drawcount);
+WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawArraysInstancedWEBGL(GLenum mode, const GLint* firsts, const GLsizei* counts, const GLsizei* instanceCounts, GLsizei drawcount);
+WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawElementsWEBGL(GLenum mode, const GLsizei* counts, GLenum type, const GLsizei* offsets, GLsizei drawcount);
+WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawElementsInstancedWEBGL(GLenum mode, const GLsizei* counts, GLenum type, const GLsizei* offsets, const GLsizei* instanceCounts, GLsizei drawcount);
+WEBGL_APICALL void GL_APIENTRY glMultiDrawArraysWEBGL(GLenum mode, const GLint* firsts, const GLsizei* counts, GLsizei drawcount);
+WEBGL_APICALL void GL_APIENTRY glMultiDrawArraysInstancedWEBGL(GLenum mode, const GLint* firsts, const GLsizei* counts, const GLsizei* instanceCounts, GLsizei drawcount);
+WEBGL_APICALL void GL_APIENTRY glMultiDrawElementsWEBGL(GLenum mode, const GLsizei* counts, GLenum type, const GLsizei* offsets, GLsizei drawcount);
+WEBGL_APICALL void GL_APIENTRY glMultiDrawElementsInstancedWEBGL(GLenum mode, const GLsizei* counts, GLenum type, const GLsizei* offsets, const GLsizei* instanceCounts, GLsizei drawcount);
+
 // 44. https://www.khronos.org/registry/webgl/extensions/EXT_texture_norm16/
 #define GL_R16_EXT 0x822A
 #define GL_RG16_EXT 0x822C

@@ -3201,19 +3201,26 @@ window.close = function() {
     self.run_browser('test.html', '...', '/report_result?1')
 
   @requires_sound_hardware
-  def test_sdl2_mixer(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), 'sound.ogg')
-    self.btest('sdl2_mixer.c', expected='1', args=['--preload-file', 'sound.ogg', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432'])
-
-  @requires_sound_hardware
   def test_sdl2_mixer_wav(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), 'sound.wav')
     self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432'])
 
+  @parameterized({
+    'ogg': ('ogg', 'alarmvictory_1.ogg'),
+    'mp3': ('mp3', 'pudinha.mp3'),
+  })
   @requires_sound_hardware
-  def test_sdl2_mixer_mp3(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'pudinha.mp3'), 'sound.mp3')
-    self.btest('sdl2_mixer_mp3.c', expected='1', args=['--preload-file', 'sound.mp3', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'SDL2_MIXER_FORMATS=["mp3"]', '-s', 'INITIAL_MEMORY=33554432'])
+  def test_sdl2_mixer_music(self, fmt, music_name):
+    shutil.copyfile(path_from_root('tests', 'sounds', music_name), music_name)
+    self.btest('sdl2_mixer_music.c', expected='1', args=[
+      '--preload-file', music_name,
+      '-DSOUND_PATH=' + json.dumps(music_name),
+      '-DFLAGS=' + ('MIX_INIT_' + fmt.upper() if fmt else '0'),
+      '-s', 'USE_SDL=2',
+      '-s', 'USE_SDL_MIXER=2',
+      '-s', 'SDL2_MIXER_FORMATS=' + json.dumps([fmt] if fmt else []),
+      '-s', 'INITIAL_MEMORY=33554432'
+    ])
 
   @no_wasm_backend('cocos2d needs to be ported')
   @requires_graphics_hardware
@@ -4259,6 +4266,20 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-s', 'FULL_ES2=1'])
+
+  # Tests for WEBGL_multi_draw extension
+  # For testing WebGL draft extensions like this, if using chrome as the browser,
+  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
+  @requires_graphics_hardware
+  def test_webgl_multi_draw(self):
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware

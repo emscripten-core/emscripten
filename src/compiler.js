@@ -98,33 +98,6 @@ load('parseTools.js');
 load('jsifier.js');
 load('runtime.js');
 
-// State computations
-
-var ENVIRONMENTS = ENVIRONMENT.split(',');
-ENVIRONMENT_MAY_BE_WEB     = !ENVIRONMENT || ENVIRONMENTS.indexOf('web') >= 0;
-ENVIRONMENT_MAY_BE_WEBVIEW = !ENVIRONMENT || ENVIRONMENTS.indexOf('webview') >= 0;
-ENVIRONMENT_MAY_BE_NODE    = !ENVIRONMENT || ENVIRONMENTS.indexOf('node') >= 0;
-ENVIRONMENT_MAY_BE_SHELL   = !ENVIRONMENT || ENVIRONMENTS.indexOf('shell') >= 0;
-
-// The worker case also includes Node.js workers when pthreads are
-// enabled and Node.js is one of the supported environments for the build to
-// run on. Node.js workers are detected as a combination of
-// ENVIRONMENT_IS_WORKER and ENVIRONMENT_IS_NODE.
-ENVIRONMENT_MAY_BE_WORKER = !ENVIRONMENT || ENVIRONMENTS.indexOf('worker') >= 0 ||
-                            (ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS);
-
-if (ENVIRONMENT && !(ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || ENVIRONMENT_MAY_BE_WEBVIEW)) {
-  throw 'Invalid environment specified in "ENVIRONMENT": ' + ENVIRONMENT + '. Should be one of: web, webview, worker, node, shell.';
-}
-
-if (!ENVIRONMENT_MAY_BE_WORKER && PROXY_TO_WORKER) {
-  throw 'If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)';
-}
-
-if (!ENVIRONMENT_MAY_BE_WORKER && USE_PTHREADS) {
-  throw 'When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)';
-}
-
 //===============================
 // Main
 //===============================

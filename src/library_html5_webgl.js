@@ -68,7 +68,7 @@ var LibraryHtml5WebGL = {
 #if LibraryManager.has('library_webgl.js')
   '$GL',
 #endif
-  '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
+  '$JSEvents', '_emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
 #if ASSERTIONS
@@ -92,7 +92,7 @@ var LibraryHtml5WebGL = {
     contextAttributes.proxyContextToMainThread = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)];
     contextAttributes.renderViaOffscreenBackBuffer = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)];
 
-    var canvas = __findCanvasEventTarget(target);
+    var canvas = findCanvasEventTarget(target);
 
 #if GL_DEBUG
     var targetStr = UTF8ToString(target);
@@ -315,6 +315,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_enable_extension__deps: [
+#if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
 #if MIN_WEBGL_VERSION == 1
     '_webgl_enable_ANGLE_instanced_arrays',
     '_webgl_enable_OES_vertex_array_object',
@@ -322,6 +323,8 @@ var LibraryHtml5WebGL = {
 #endif
 #if MAX_WEBGL_VERSION >= 2
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+#endif
+    '_webgl_enable_WEBGL_multi_draw',
 #endif
   ],
   emscripten_webgl_enable_extension__proxy: 'sync_on_webgl_context_handle_thread',
@@ -348,12 +351,15 @@ var LibraryHtml5WebGL = {
     if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
+    if (extString == 'WEBGL_multi_draw') __webgl_enable_WEBGL_multi_draw(GLctx);
+
 #else
 
 #if ASSERTIONS || GL_ASSERTIONS
     if (['ANGLE_instanced_arrays',
          'OES_vertex_array_object',
          'WEBGL_draw_buffers',
+         'WEBGL_multi_draw',
          'WEBGL_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
       console.error('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
@@ -376,7 +382,7 @@ var LibraryHtml5WebGL = {
 #endif
   },
 
-  _registerWebGlEventCallback__deps: ['$JSEvents', '_findEventTarget'],
+  _registerWebGlEventCallback__deps: ['$JSEvents', '$findEventTarget'],
   _registerWebGlEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -397,7 +403,7 @@ var LibraryHtml5WebGL = {
     };
 
     var eventHandler = {
-      target: __findEventTarget(target),
+      target: findEventTarget(target),
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: webGlEventHandlerFunc,

@@ -1383,6 +1383,36 @@ var LibraryBrowser = {
     exit(status);
   },
 
+  emscripten_get_window_title__proxy: 'sync',
+  emscripten_get_window_title__sig: 'iv',
+  emscripten_get_window_title: function() {
+    var buflen = 256;
+
+    if (!_emscripten_get_window_title.buffer) {
+      _emscripten_get_window_title.buffer = _malloc(buflen);
+    }
+
+    writeAsciiToMemory(
+      document.title.slice(0, buflen - 1),
+      _emscripten_get_window_title.buffer
+    );
+
+    return _emscripten_get_window_title.buffer;
+  },
+
+  emscripten_set_window_title__proxy: 'sync',
+  emscripten_set_window_title__sig: 'vi',
+  emscripten_set_window_title: function(title) {
+    setWindowTitle(AsciiToString(title));
+  },
+
+  emscripten_get_screen_size__proxy: 'sync',
+  emscripten_get_screen_size__sig: 'vii',
+  emscripten_get_screen_size: function(width, height) {
+    {{{ makeSetValue('width', '0', 'screen.width', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'screen.height', 'i32') }}};
+  },
+
   emscripten_hide_mouse__proxy: 'sync',
   emscripten_hide_mouse__sig: 'v',
   emscripten_hide_mouse: function() {
