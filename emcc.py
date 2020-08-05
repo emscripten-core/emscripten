@@ -1435,7 +1435,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case
       # of LTO.
       if final_suffix in executable_endings:
-        diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an exectuable or avoid the executable suffset (%s) when building object files.' % final_suffix)
+        diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
       else:
         link_to_object = True
 
