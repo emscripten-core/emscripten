@@ -259,6 +259,8 @@ class EmccOptions(object):
     self.output_eol = os.linesep
     self.binaryen_passes = []
     self.no_entry = False
+    self.shared = False
+    self.relocatable = False
 
 
 def use_source_map(options):
@@ -1049,7 +1051,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
     has_dash_E = '-E' in newargs
-    link_to_object = False
+
     compile_only = has_dash_c or has_dash_S or has_dash_E
 
     def add_link_flag(i, f):
@@ -1122,16 +1124,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           newargs[i] = ''
           input_files.append((i, arg))
-      elif arg == '-shared':
-        # Until we have a better story for actually producing runtime shared libraries
-        # we support a compatibility mode where shared libraries are actually just
-        # object files linked with `wasm-ld --reloctable` or `llvm-link` in the case
-        # of LTO.
-        link_to_object = True
-        newargs[i] = ''
-      elif arg == '-r':
-        link_to_object = True
-        newargs[i] = ''
       elif arg.startswith('-L'):
         add_link_flag(i, arg)
         newargs[i] = ''
@@ -1436,6 +1428,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Treat the empty extension as an executable, to handle the commond case of `emcc -o foo foo.c`
     executable_endings = JS_CONTAINING_ENDINGS + WASM_ENDINGS + JS_ENDINGS
+    link_to_object = False
+    if options.shared or options.relocatable:
+      # Until we have a better story for actually producing runtime shared libraries
+      # we support a compatibility mode where shared libraries are actually just
+      # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case
+      # of LTO.
+      if final_suffix in executable_endings:
+        diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an exectuable or avoid the executable suffset (%s) when building object files.' % final_suffix)
+      else:
+        link_to_object = True
+
     if not link_to_object and not compile_only and final_suffix not in executable_endings:
       # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
       # file output with an explicit `-c` or `-r`.
@@ -3138,6 +3141,12 @@ def parse_args(newargs):
       if key in shared.Settings.attrs:
         exit_with_error(newargs[i] + ': cannot change built-in settings values with a -jsD directive. Pass -s ' + key + '=' + value + ' instead!')
       user_js_defines += [(key, value)]
+      newargs[i] = ''
+    elif newargs[i] == '-shared':
+      options.shared = True
+      newargs[i] = ''
+    elif newargs[i] == '-r':
+      options.relocatable = True
       newargs[i] = ''
 
   if should_exit:
