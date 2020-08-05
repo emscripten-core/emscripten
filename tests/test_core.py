@@ -35,6 +35,7 @@ import clang_native
 
 def wasm_simd(f):
   def decorated(self):
+    self.skipTest("All Wasm SIMD tests disabled while upstream breakage is being resolved")
     if not self.is_wasm_backend():
       self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
@@ -6031,7 +6032,6 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @wasm_simd
-  @unittest.skip("Allow qfma opcode change to roll in")
   def test_wasm_builtin_simd(self):
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
@@ -6041,7 +6041,6 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
-  @unittest.skip("Allow qfma opcode change to roll in")
   def test_wasm_intrinsics_simd(self):
     def run():
       self.do_run(
