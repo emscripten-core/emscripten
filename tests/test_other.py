@@ -346,7 +346,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX]})
   def test_emcc_4(self, compiler):
     # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
-    for params, opt_level, bc_params, closure, has_malloc in [ # bc params are used after compiling to bitcode
+    for params, opt_level, obj_params, closure, has_malloc in [ # obj_params are used after compiling first
       (['-o', 'something.js'],                          0, None, 0, 1),
       (['-o', 'something.js', '-O0'],                   0, None, 0, 0),
       (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
@@ -355,13 +355,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
       (['-o', 'something.js', '-Os'],                   2, None, 0, 1),
       (['-o', 'something.js', '-O3'],                   3, None, 0, 1),
-      # and, test compiling to bitcode first
-      (['-c', '-o', 'something.bc'], 0, [],      0, 0),
-      (['-c', '-o', 'something.bc', '-O0'], 0, [], 0, 0),
-      (['-c', '-o', 'something.bc', '-O1'], 1, ['-O1'], 0, 0),
-      (['-c', '-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
-      (['-c', '-o', 'something.bc', '-O3'], 3, ['-O3'], 0, 0),
-      (['-c', '-O1', '-o', 'something.bc'], 1, [], 0, 0),
+      # and, test compiling first
+      (['-c', '-o', 'something.o'], 0, [],      0, 0),
+      (['-c', '-o', 'something.o', '-O0'], 0, [], 0, 0),
+      (['-c', '-o', 'something.o', '-O1'], 1, ['-O1'], 0, 0),
+      (['-c', '-o', 'something.o', '-O2'], 2, ['-O2'], 0, 0),
+      (['-c', '-o', 'something.o', '-O3'], 3, ['-O3'], 0, 0),
+      (['-O1', '-c', '-o', 'something.o'], 1, [], 0, 0),
       # non-wasm
       (['-s', 'WASM=0', '-o', 'something.js'],                          0, None, 0, 1),
       (['-s', 'WASM=0', '-o', 'something.js', '-O0'],                   0, None, 0, 0),
@@ -372,27 +372,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       (['-s', 'WASM=0', '-o', 'something.js', '-Os'],                   2, None, 0, 1),
       (['-s', 'WASM=0', '-o', 'something.js', '-O3'],                   3, None, 0, 1),
       # and, test compiling to bitcode first
-      (['-s', 'WASM=0', '-o', 'something.bc'],        0, ['-s', 'WASM=0'],        0, 0),
-      (['-s', 'WASM=0', '-o', 'something.bc', '-O0'], 0, ['-s', 'WASM=0'],        0, 0),
-      (['-s', 'WASM=0', '-o', 'something.bc', '-O1'], 1, ['-s', 'WASM=0', '-O1'], 0, 0),
-      (['-s', 'WASM=0', '-o', 'something.bc', '-O2'], 2, ['-s', 'WASM=0', '-O2'], 0, 0),
-      (['-s', 'WASM=0', '-o', 'something.bc', '-O3'], 3, ['-s', 'WASM=0', '-O3'], 0, 0),
-      (['-s', 'WASM=0', '-O1', '-o', 'something.bc'], 1, ['-s', 'WASM=0'],        0, 0),
+      (['-s', 'WASM=0', '-c', '-o', 'something.o'],        0, ['-s', 'WASM=0'],        0, 0),
+      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O0'], 0, ['-s', 'WASM=0'],        0, 0),
+      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O1'], 1, ['-s', 'WASM=0', '-O1'], 0, 0),
+      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O2'], 2, ['-s', 'WASM=0', '-O2'], 0, 0),
+      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O3'], 3, ['-s', 'WASM=0', '-O3'], 0, 0),
+      (['-s', 'WASM=0', '-O1', '-c', '-o', 'something.o'], 1, ['-s', 'WASM=0'],        0, 0),
     ]:
       if 'WASM=0' in params and self.is_wasm_backend():
         continue
-      print(params, opt_level, bc_params, closure, has_malloc)
+      print(params, opt_level, obj_params, closure, has_malloc)
       self.clear()
       keep_debug = '-g' in params
       args = [compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params
       print('..', args)
       output = self.run_process(args, stdout=PIPE, stderr=PIPE)
       assert len(output.stdout) == 0, output.stdout
-      if bc_params is not None:
-        self.assertExists('something.bc', output.stderr)
-        bc_args = [compiler, 'something.bc', '-o', 'something.js'] + bc_params
-        print('....', bc_args)
-        output = self.run_process(bc_args, stdout=PIPE, stderr=PIPE)
+      if obj_params is not None:
+        self.assertExists('something.o', output.stderr)
+        obj_args = [compiler, 'something.o', '-o', 'something.js'] + obj_params
+        print('....', obj_args)
+        output = self.run_process(obj_args, stdout=PIPE, stderr=PIPE)
       self.assertExists('something.js', output.stderr)
       self.assertContained('hello, world!', self.run_js('something.js'))
 
@@ -1080,7 +1080,7 @@ int main() {
       }
     ''')
 
-    building.emcc(lib_src_name) # lib.c.o
+    building.emcc(lib_src_name, ['-c']) # lib.c.o
     lib_name = 'libLIB.a'
     building.emar('cr', lib_name, [lib_src_name + '.o']) # libLIB.a with lib.c.o
 
@@ -1175,9 +1175,9 @@ int f() {
       }
     ''')
 
-    building.emcc('a.c') # a.c.o
-    building.emcc('b.c') # b.c.o
-    building.emcc('c.c')
+    building.emcc('a.c', ['-c']) # a.c.o
+    building.emcc('b.c', ['-c']) # b.c.o
+    building.emcc('c.c', ['-c'])
     building.emar('cr', 'libA.a', ['a.c.o', 'c.c.o'])
     building.emar('cr', 'libB.a', ['b.c.o', 'c.c.o'])
 
@@ -1222,7 +1222,7 @@ int f() {
     main_name = 'main.c'
     create_test_file(main_name, main)
 
-    building.emcc(lib_name, output_filename='libA.so')
+    building.emcc(lib_name, ['-shared'], output_filename='libA.so')
 
     building.emcc(main_name, ['libA.so', 'libA.so'], output_filename='a.out.js')
 
@@ -6175,8 +6175,8 @@ main(int argc,char** argv)
 }
 ''')
 
-    self.run_process([EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'])
-    self.run_process([EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, '-o', 'libhello1.wasm', 'hello1.c', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, '-o', 'libhello2.wasm', 'hello2.c', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'])
     self.run_process([EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
                       '--embed-file', 'libhello1.wasm',
                       '--embed-file', 'libhello2.wasm'])
@@ -6923,7 +6923,7 @@ int main() {
       }
     ''')
 
-    building.emcc(os.path.join(with_space, 'main.cpp'), ['-g'])
+    building.emcc(os.path.join(with_space, 'main.cpp'), ['-c', '-g'])
 
     with chdir(with_space):
       link_args = building.link(['main.cpp.o'], 'all.bc', just_calculate=True)
@@ -7421,7 +7421,7 @@ int main() {
           self.run_process(cmd)
           for f in files:
             print(str(cmd) + ' ' + str(params) + ' ' + eol + ' ' + f)
-            assert os.path.isfile(f)
+            self.assertExists(f)
             if eol == 'linux':
               expected_ending = '\n'
             else:
@@ -7964,7 +7964,7 @@ int main() {
       print(args)
       try_delete('a.out.wasm')
       try_delete('a.out.wat')
-      cmd = [EMCC, path_from_root('tests', 'other', 'ffi.c'), '-g', '-o', 'a.out.js'] + args
+      cmd = [EMCC, path_from_root('tests', 'other', 'ffi.c'), '-g', '-o', 'a.out.wasm'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
       self.run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
@@ -8113,7 +8113,7 @@ int main() {
       self.clear()
       self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-Werror'] + opts)
       for x in os.listdir('.'):
-        assert not x.endswith('.js'), 'we should not emit js when making a wasm side module: ' + x
+        self.assertFalse(x.endswith('.js'))
       self.assertIn(b'dylink', open(target, 'rb').read())
 
   @no_fastcomp('test wasm object files')

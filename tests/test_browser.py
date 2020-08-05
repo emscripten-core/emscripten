@@ -1748,13 +1748,13 @@ keydown(100);keyup(100); // trigger the end
     self.emcc_args.remove('-Werror')
     self.emcc_args += ['-Wno-pointer-sign', '-Wno-int-conversion']
     programs = self.get_library('glbook', [
-      os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.bc'),
-      os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.bc'),
-      os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.bc'),
-      os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.bc'),
-      os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.bc'),
-      os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.bc'),
-      os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.bc'),
+      os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.o'),
+      os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.o'),
+      os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.o'),
+      os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.o'),
+      os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.o'),
+      os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.o'),
+      os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.o'),
     ], configure=None)
 
     def book_path(*pathelems):
@@ -1764,16 +1764,16 @@ keydown(100);keyup(100); // trigger the end
       print(program)
       basename = os.path.basename(program)
       args = ['-lGL', '-lEGL', '-lX11']
-      if basename == 'CH10_MultiTexture.bc':
+      if basename == 'CH10_MultiTexture.o':
         shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'basemap.tga'), 'basemap.tga')
         shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'lightmap.tga'), 'lightmap.tga')
         args += ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
-      elif basename == 'CH13_ParticleSystem.bc':
+      elif basename == 'CH13_ParticleSystem.o':
         shutil.copyfile(book_path('Chapter_13', 'ParticleSystem', 'smoke.tga'), 'smoke.tga')
         args += ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
       self.btest(program,
-                 reference=book_path(basename.replace('.bc', '.png')),
+                 reference=book_path(basename.replace('.o', '.png')),
                  args=args)
 
   @requires_graphics_hardware
@@ -3196,7 +3196,7 @@ window.close = function() {
     print('also test building to object files first')
     src = open(path_from_root('tests', 'sdl2_misc.c')).read()
     create_test_file('test.c', self.with_report_result(src))
-    self.run_process([EMCC, 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
+    self.run_process([EMCC, '-c', 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
     self.compile_btest(['test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
 
