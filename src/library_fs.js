@@ -726,6 +726,9 @@ FS.staticInit();` +
         lookup = FS.lookupPath(new_path, { parent: true });
         new_dir = lookup.node;
       } catch (e) {
+        // do not override failing error
+        if (e instanceof FS.ErrnoError)
+          throw e;
         throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
       if (!old_dir || !new_dir) throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
