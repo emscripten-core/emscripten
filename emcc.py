@@ -1292,9 +1292,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # See https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md
       # For a command we always want EXIT_RUNTIME=1
       # For a reactor we always want EXIT_RUNTIME=0
-      if 'EXIT_RUNTIME' in settings_changes:
+      if 'EXIT_RUNTIME' in settings_key_changes:
         exit_with_error('Explictly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
-      shared.Settings.EXIT_RUNTIME = not shared.Settings.EXPECT_MAIN
+      shared.Settings.EXIT_RUNTIME = shared.Settings.EXPECT_MAIN
 
     def filter_out_dynamic_libs(inputs):
       # If not compiling to JS, then we are compiling to an intermediate bitcode
