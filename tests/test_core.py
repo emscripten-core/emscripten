@@ -2458,7 +2458,9 @@ The current type of b is: 9
   @also_with_standalone_wasm()
   def test_atexit(self):
     # Confirms they are called in the proper reverse order
-    self.set_setting('EXIT_RUNTIME', 1)
+    if not self.get_setting('STANDALONE_WASM'):
+      # STANDALONE_WASM mode always sets EXIT_RUNTIME if main exists
+      self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
   def test_atexit_threads(self):
