@@ -35,7 +35,6 @@ import clang_native
 
 def wasm_simd(f):
   def decorated(self):
-    self.skipTest("All Wasm SIMD tests disabled while upstream breakage is being resolved")
     if not self.is_wasm_backend():
       self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
