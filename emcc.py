@@ -73,12 +73,12 @@ SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECI
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
 JS_ENDINGS = ('.js', '.mjs', '.out', '')
-JS_CONTAINING_ENDINGS = ('.js', '.mjs', '.html')
+WASM_ENDINGS = ('.wasm',)
+EXECUTABLE_ENDINGS = JS_ENDINGS + WASM_ENDINGS + ('.html',)
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll', '.s')
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
-WASM_ENDINGS = ('.wasm',)
 
 # Supported LLD flags which we will pass through to the linker.
 SUPPORTED_LINKER_FLAGS = (
@@ -1223,7 +1223,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
 
-    final_suffix = suffix(target)
+    final_suffix = get_file_suffix(target)
 
     if options.separate_asm and final_suffix != '.html':
       diagnostics.warning('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
@@ -1300,7 +1300,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # If not compiling to JS, then we are compiling to an intermediate bitcode
       # objects or library, so ignore dynamic linking, since multiple dynamic
       # linkings can interfere with each other
-      if get_file_suffix(target) not in JS_CONTAINING_ENDINGS or options.ignore_dynamic_linking:
+      if final_suffix not in EXECUTABLE_ENDINGS or options.ignore_dynamic_linking:
         def check(input_file):
           if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS:
             if not options.ignore_dynamic_linking:
@@ -1427,19 +1427,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       cflags.append('-DEMSCRIPTEN')
 
     # Treat the empty extension as an executable, to handle the commond case of `emcc -o foo foo.c`
-    executable_endings = JS_CONTAINING_ENDINGS + WASM_ENDINGS + JS_ENDINGS
     link_to_object = False
     if options.shared or options.relocatable:
       # Until we have a better story for actually producing runtime shared libraries
       # we support a compatibility mode where shared libraries are actually just
       # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case
       # of LTO.
-      if final_suffix in executable_endings:
+      if final_suffix in EXECUTABLE_ENDINGS:
         diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
       else:
         link_to_object = True
 
-    if not link_to_object and not compile_only and final_suffix not in executable_endings:
+    if not link_to_object and not compile_only and final_suffix not in EXECUTABLE_ENDINGS:
       # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
       # file output with an explicit `-c` or `-r`.
       diagnostics.warning('emcc', 'assuming object file output, based on output filename alone.  Add an explict `-c`, `-r` or `-shared` to avoid this warning')
@@ -1487,7 +1486,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
-    if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_ENDINGS:
+    if shared.Settings.STB_IMAGE and final_suffix in EXECUTABLE_ENDINGS:
       input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
       next_arg_index += 1
       shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
@@ -1502,7 +1501,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     forced_stdlibs = []
 
-    if shared.Settings.ASMFS and final_suffix in JS_CONTAINING_ENDINGS:
+    if shared.Settings.ASMFS and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libasmfs')
       cflags.append('-D__EMSCRIPTEN_ASMFS__=1')
       next_arg_index += 1
@@ -1518,7 +1517,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MALLOC == 'emmalloc':
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_emmalloc.js')))
 
-    if shared.Settings.FETCH and final_suffix in JS_CONTAINING_ENDINGS:
+    if shared.Settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libfetch')
       next_arg_index += 1
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_fetch.js')))
