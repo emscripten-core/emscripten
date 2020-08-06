@@ -34,10 +34,9 @@ uintptr_t emscripten_stack_get_current(void);
 // https://github.com/emscripten-core/emscripten/issues/11773
 void emscripten_stack_init(void);
 
-// Returns the number of free bytes left on the stack. This is required to be
-// fast so that it can be called frequetly. To enable it to the fewest wasm
-// instructions possible this function currently relies on
-// `emscripten_stack_init` being called because it returns meaningful vaules.
+// Returns the number of free bytes left on the stack.  This is required to be
+// fast so that it can be called frequently and requires `emscripten_stack_init`
+// to be called before it will return accurate values.
 size_t emscripten_stack_get_free(void);
 
 #ifdef __cplusplus
