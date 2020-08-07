@@ -18,15 +18,6 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
-2.0.0: ??/??/????
------------------
-- First release that only supports the new upstream wasm backend (which has been
-  the default for a long time) and no longer supports the old fastcomp backend.
-  (#11319)
-- Store exceptions metadata in wasm memory instead of JS. This makes exception
-  handling almost 100% thread-safe. (#11518)
-
-
 1.40.1: 08/01/2020
 ------------------
 - Last release that still has optional support for the old fastcomp backend.
