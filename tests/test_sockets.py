@@ -285,11 +285,11 @@ class sockets(BrowserCore):
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
     shared.try_delete('enet')
-    shutil.copytree(path_from_root('tests', 'enet'), 'enet')
+    shutil.copytree(path_from_root('tests', 'third_party', 'enet'), 'enet')
     with chdir('enet'):
       self.run_process([path_from_root('emconfigure'), './configure'])
       self.run_process([path_from_root('emmake'), 'make'])
-      enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
+      enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
     for harness in [
       CompiledServerHarness(os.path.join('sockets', 'test_enet_server.c'), enet, 49210)
