@@ -93,27 +93,6 @@ def uses_canonical_tmp(func):
   return decorated
 
 
-def is_python3_version_supported():
-  """Retuns True if the installed python3 version is supported by emscripten.
-
-  Note: Emscripten requires python3.5 or above since python3.4 and below do not
-  support circular dependencies."""
-  try:
-    print('is_python3_version_supported')
-    python3 = shared.which('python3')
-    print('  python3 =', python3)
-    output = shared.run_process([python3, '--version'], stdout=PIPE).stdout
-    print('  output =', output, output.split())
-    output = output.split()[1]
-    # ignore final component which can contains non-integers (e.g 'rc1')
-    version = [int(x) for x in output.split('.')[:2]]
-    return version >= [3, 5]
-  except Exception:
-    # If anything goes wrong (no python3, unexpected output format), then we do
-    # not support this python3
-    return False
-
-
 def encode_leb(number):
   # TODO(sbc): handle larger numbers
   assert(number < 255)
@@ -6822,28 +6801,6 @@ high = 1234
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp'), '-sEXPORTED_FUNCTIONS=["foo"]'])
     self.assertContained('error: undefined exported function: "foo"', err)
 
-  def test_python_2_3(self):
-    # check emcc/em++ can be called by any python
-    def trim_py_suffix(filename):
-      """remove .py from EMCC(=emcc.py)"""
-      return filename[:-3] if filename.endswith('.py') else filename
-
-    def run(python):
-      if python == 'python3':
-        has = is_python3_version_supported()
-      else:
-        has = shared.which(python) is not None
-      print(python, has)
-      if has:
-        print('  checking emcc.py...')
-        self.run_process([python, path_from_root('emcc.py'), '--version'], stdout=PIPE)
-        print('  checking em++.py...')
-        self.run_process([python, path_from_root('em++.py'), '--version'], stdout=PIPE)
-
-    run('python')
-    run('python2')
-    run('python3')
-
   def test_zeroinit(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
@@ -8500,14 +8457,8 @@ end
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
     expected = ': supported targets:.* elf'
-    for python in [PYTHON, 'python', 'python2', 'python3']:
-      if not shared.which(python):
-        continue
-      if python == 'python3' and not is_python3_version_supported():
-        continue
-      print(python)
-      out = self.run_process([python, path_from_root('emcc.py'), '--help'], stdout=PIPE, env=env).stdout
-      assert re.search(expected, out)
+    out = self.run_process([EMCC, '--help'], stdout=PIPE, env=env).stdout
+    assert re.search(expected, out)
 
   def test_ioctl_window_size(self):
       self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
