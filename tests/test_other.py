@@ -8457,12 +8457,8 @@ end
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
     expected = ': supported targets:.* elf'
-    for python in [PYTHON, 'python', 'python3']:
-      if not shared.which(python):
-        continue
-      print(python)
-      out = self.run_process([python, path_from_root('emcc.py'), '--help'], stdout=PIPE, env=env).stdout
-      assert re.search(expected, out)
+    out = self.run_process([EMCC, '--help'], stdout=PIPE, env=env).stdout
+    assert re.search(expected, out)
 
   def test_ioctl_window_size(self):
       self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
