@@ -115,7 +115,7 @@ Windows
 macOS
 +++++
 
-If you the Emscripten SDK it includes a bundled version of Python 3.  Otherwise
+If you use the Emscripten SDK it includes a bundled version of Python 3.  Otherwise
 you will need to manually install and use Python 3.5 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
