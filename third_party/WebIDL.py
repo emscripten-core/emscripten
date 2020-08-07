@@ -4910,11 +4910,12 @@ class Parser(Tokenizer):
 
     def __init__(self, outputdir='', lexer=None):
         Tokenizer.__init__(self, outputdir, lexer)
-        self.parser = yacc.yacc(module=self,
+        self.parser = yacc.yacc(debug=0,
+                                module=self,
                                 outputdir=outputdir,
                                 tabmodule='webidlyacc',
-                                errorlog=yacc.NullLogger(),
-                                picklefile='WebIDLGrammar.pkl')
+                                write_tables=0,
+                                errorlog=yacc.NullLogger())
         self._globalScope = IDLScope(BuiltinLocation("<Global Scope>"), None, None)
         self._installBuiltins(self._globalScope)
         self._productions = []
