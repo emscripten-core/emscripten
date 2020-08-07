@@ -32,7 +32,7 @@ commands:
     steps:
       - run: npm ci
   build:
-    description: "Install emsdk build all libraries using embuilder"
+    description: "Install emsdk"
     steps:
       - run:
           name: install emsdk
@@ -77,6 +77,9 @@ commands:
             # debugging the issue is tricky.
             [ "$CIRCLE_JOB" != "build-windows" ] && $PYTHON_BIN ./tools/gen_struct_info.py > out.json
             $PYTHON_BIN ./emcc.py --clear-cache
+  build-libs-and-freeze:
+    description: "Build all libraries, and freeze the cache"
+    steps:
       - run:
           name: embuilder build ALL
           command: |
@@ -101,6 +104,8 @@ commands:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
+  persist:
+    description: "Persist the emsdk, libraries, and engines"
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -360,6 +365,8 @@ jobs:
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8
       - build
+      - build-libs-and-freeze
+      - persist
   test-wasm0:
     executor: bionic
     steps:
@@ -419,6 +426,9 @@ jobs:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - persist
   test-minimal-windows:
     environment:
       # on windows the python binary is always called python.exe and never
@@ -451,6 +461,9 @@ jobs:
           command: brew install python3 cmake
       - checkout
       - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - persist
   test-other-mac:
     executor: mac
     steps:
