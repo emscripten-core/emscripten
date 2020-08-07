@@ -188,15 +188,16 @@ class sanity(RunnerCore):
     for command in commands:
       wipe()
 
+      def make_executable(name):
+        with open(os.path.join(temp_bin, name), 'w') as f:
+          os.fchmod(f.fileno(), stat.S_IRWXU)
+
       env = os.environ.copy()
       if 'EM_CONFIG' in env:
         del env['EM_CONFIG']
 
       try:
         temp_bin = tempfile.mkdtemp()
-        def make_executable(name):
-          with open(os.path.join(temp_bin, name), 'w') as f:
-            os.fchmod(f.fileno(), stat.S_IRWXU)
         make_executable('llvm-dis')
         make_executable('node')
         env['PATH'] = temp_bin + os.pathsep + os.environ['PATH']
