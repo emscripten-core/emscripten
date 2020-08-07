@@ -106,6 +106,7 @@ commands:
             echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
   persist:
     description: "Persist the emsdk, libraries, and engines"
+    steps:
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
