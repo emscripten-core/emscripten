@@ -86,10 +86,10 @@ endif()
 
 # Specify the compilers to use for C and C++
 if ("${CMAKE_C_COMPILER}" STREQUAL "")
-  set(CMAKE_C_COMPILER "${EMSCRIPTEN_ROOT_PATH}/emcc${EMCC_SUFFIX}")
+  set(CMAKE_C_COMPILER "${EMSCRIPTEN_ROOT_PATH}/emcc${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten emcc")
 endif()
 if ("${CMAKE_CXX_COMPILER}" STREQUAL "")
-  set(CMAKE_CXX_COMPILER "${EMSCRIPTEN_ROOT_PATH}/em++${EMCC_SUFFIX}")
+  set(CMAKE_CXX_COMPILER "${EMSCRIPTEN_ROOT_PATH}/em++${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten em++")
 endif()
 
 if ("${CMAKE_AR}" STREQUAL "")
