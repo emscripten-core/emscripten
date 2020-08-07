@@ -54,11 +54,15 @@ mergeInto(LibraryManager.library, {
 
   // With the wasm backend, these functions are implemented as native
   // functions in compiler-rt/stack_ops.s
+  emscripten_stack_init__sig: 'v',
+  emscripten_stack_init: function() { },
+
   emscripten_stack_get_current__asm: true,
   emscripten_stack_get_current__sig: 'i',
   emscripten_stack_get_current: function() {
     return STACKTOP|0;
   },
+
   emscripten_stack_get_free__asm: true,
   emscripten_stack_get_free__sig: 'i',
   emscripten_stack_get_free: function() {
