@@ -13,6 +13,7 @@ executors:
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
+      EMCC_ALLOW_FASTCOMP: "1"
   mac:
     environment:
       EMSDK_NOTTY: "1"

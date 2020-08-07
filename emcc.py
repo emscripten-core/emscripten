@@ -1278,10 +1278,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
-    # We allow this warning to be supressed by the environment so that we can run the test
-    # suite against fastcomp while supressing this warning.
+    # We allow this error to be supressed by the environment so that we can run the test
+    # suite against fastcomp for the time being.
+    # See: https://github.com/emscripten-core/emscripten/issues/11319
     if not shared.Settings.WASM_BACKEND and 'EMCC_ALLOW_FASTCOMP' not in os.environ:
-      diagnostics.warning('fastcomp', 'the fastomp compiler is deprecated.  Please switch to the upstream llvm backend as soon as possible and open issues if you have trouble doing so')
+      exit_with_error('the fastcomp compiler is no longer available in emscripten.  Please use the upstream llvm backend or use an older (< 2.0.0) version of emscripten.')
 
     if options.no_entry or ('_main' not in shared.Settings.EXPORTED_FUNCTIONS and
                             '__start' not in shared.Settings.EXPORTED_FUNCTIONS):
