@@ -25,7 +25,7 @@ void send_msg(ENetPeer *peer) {
   /* Extend the packet so and append the string "foo", so it now */
   /* contains "packetfoo\0" */
   enet_packet_resize (packet, strlen ("packetfoo") + 1);
-  strcpy (& packet -> data [strlen ("packet")], "foo");
+  strcpy ((char*)& packet -> data [strlen ("packet")], "foo");
   /* Send the packet to the peer over channel id 0. */
   /* One could also broadcast the packet by */
   /* enet_host_broadcast (host, 0, packet); */
@@ -64,16 +64,16 @@ printf("enet host, got event of type %d\n", event.type);
 
       break;
     case ENET_EVENT_TYPE_RECEIVE:
-      printf ("A packet of length %u containing %s was received from %s on channel %u.\n",
+      printf ("A packet of length %zu containing %s was received from %s on channel %u.\n",
               event.packet -> dataLength,
-              event.packet -> data,
-              event.peer -> data,
+              (char*)event.packet -> data,
+              (char*)event.peer -> data,
               event.channelID);
       /* Clean up the packet now that we're done using it. */
       enet_packet_destroy (event.packet);
       break;
     case ENET_EVENT_TYPE_DISCONNECT:
-      printf ("%s disconected.\n", event.peer -> data);
+      printf ("%s disconected.\n", (char*)event.peer -> data);
       /* Reset the peer's client information. */
       event.peer -> data = NULL;
       enet_host_destroy(host);
