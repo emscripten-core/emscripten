@@ -16,12 +16,13 @@ import sys
 from os import path
 
 # Why are the packages being stupid
-# from . import shared
+# from .shared import get_emscripten_temp_dir
+
 
 tmpdir = "/tmp"
 emdir = path.join(path.dirname(path.realpath(__file__)), "..")
 
-def main():
+def main(simde_path=None):
   #tmpdir = get_emscripten_temp_dir()
   print(tmpdir)
 
@@ -30,12 +31,12 @@ def main():
     os.system("git clone git@github.com:simd-everywhere/simde " + path.join(tmpdir, "simde"))
   except FileExistsError as e:
     if not path.isdir(path.join(tmpdir, "simde")):
-      print("/tmpdir/simde not a directory, exiting...")
+      print("/tmp/simde not a directory, exiting...")
       return 1
     else:
       print("simde repository already found in tmpdir, using found repository")
       os.system("git -C " + path.join(tmpdir, "simde") + " pull")
-      
+
   simde_dir = path.join(tmpdir, "simde")
 
   try:

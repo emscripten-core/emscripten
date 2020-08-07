@@ -39,7 +39,7 @@ DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 94
 SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
-SIMD_NEON_FLAGS = ['-mpu=neon']
+SIMD_NEON_FLAGS = ['-mfpu=neon']
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -865,9 +865,9 @@ def emsdk_cflags(user_args, cxx):
         return True
 
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER):
+  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_FEATURE_TOWER) + ' flags also requires passing -msimd128!')
+      exit_with_error('Passing any of ' + ', '.join(SIMD_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
     c_opts += ['-D__SSE__=1']
 
   if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[1:]):
