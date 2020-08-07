@@ -39,6 +39,7 @@ DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 94
 SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_NEON_FLAGS = ['-mpu=neon']
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -841,6 +842,7 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
+    path_from_root('system', 'include', 'neon'),
     path_from_root('system', 'lib', 'compiler-rt', 'include'),
     path_from_root('system', 'lib', 'libunwind', 'include'),
     Cache.get_path('include')
@@ -861,6 +863,7 @@ def emsdk_cflags(user_args, cxx):
     for n in needles:
       if n in hay:
         return True
+
 
   if array_contains_any_of(user_args, SIMD_FEATURE_TOWER):
     if '-msimd128' not in user_args:
@@ -884,6 +887,9 @@ def emsdk_cflags(user_args, cxx):
 
   if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[6:]):
     c_opts += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    c_opts += ['-D__ARM_NEON__=1']
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if cxx:
