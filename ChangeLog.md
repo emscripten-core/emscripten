@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Python2 is no longer supported by Emscripten.  Emsdk now includes a bundled
+  copy of Python3 on both macOS and Windows.  This means that only non-emsdk
+  users and linux users should be effected by this change.
 
 1.40.1: 08/01/2020
 ------------------

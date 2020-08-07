@@ -21,12 +21,8 @@ import time
 import sys
 import tempfile
 
-if sys.version_info < (2, 7, 0):
-  print('emscripten requires python 2.7.0 or above (python 2.7.12 or newer is recommended, older python versions are known to run into SSL related issues, https://github.com/emscripten-core/emscripten/issues/6275)', file=sys.stderr)
-  sys.exit(1)
-
-if sys.version_info[0] == 3 and sys.version_info < (3, 5):
-  print('emscripten requires at least python 3.5 (or python 2.7.12 or above)', file=sys.stderr)
+if sys.version_info < (3, 5):
+  print('error: emscripten requires python 3.5 or above', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler

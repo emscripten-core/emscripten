@@ -200,7 +200,7 @@ class sanity(RunnerCore):
         temp_bin = tempfile.mkdtemp()
         make_executable('llvm-dis')
         make_executable('node')
-        make_executable('python2')
+        make_executable('python3')
         env['PATH'] = temp_bin + os.pathsep + os.environ['PATH']
         output = self.do(command, env=env)
       finally:
