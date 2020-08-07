@@ -2670,6 +2670,12 @@ Module["preRun"].push(function () {
     self.btest(path_from_root('tests', 'webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'], expected='0')
 
   @requires_graphics_hardware
+  def test_webgl2_runtime_no_context(self):
+    # tests that if we support WebGL1 and 2, and WebGL2RenderingContext exists,
+    # but context creation fails, that we then try to create a WebGL1 context.
+    self.btest(path_from_root('tests', 'test_webgl2_runtime_no_context.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'], expected='1')
+
+  @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
     self.btest(path_from_root('tests', 'webgl2_invalid_teximage2d_type.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'], expected='0')
 
