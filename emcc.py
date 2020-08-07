@@ -1279,7 +1279,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STANDALONE_WASM = 1
 
     # We allow this error to be supressed by the environment so that we can run the test
-    # suite against fastcomp for a time being.
+    # suite against fastcomp for the time being.
     # See: https://github.com/emscripten-core/emscripten/issues/11319
     if not shared.Settings.WASM_BACKEND and 'EMCC_ALLOW_FASTCOMP' not in os.environ:
       exit_with_error('the fastomp compiler not longer available in emscripten.  Please the upstream llvm backend or use a old (< 2.0.0) version of emscripten.')
