@@ -103,10 +103,10 @@ if os.name == 'nt':
   WINDOWS = True
   try:
     import winreg
-  except ImportError
+  except ImportError:
     # In python2 this is called _winreg. Remove once we fully drop python2 support.
     # See https://docs.python.org/2/library/_winreg.html
-    import _winreg
+    import _winreg as winreg
 elif platform.system() == 'Linux':
   LINUX = True
 elif platform.mac_ver()[0] != '':
