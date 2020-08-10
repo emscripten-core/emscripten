@@ -440,8 +440,10 @@ notation, that is, without a space:
 
 ::
 
+  # same as before but no space after -s
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
-  target_link_options(example PRIVATE -sEXPORTED_FUNCTIONS=[_main])
+  # example of target_link_options with a list of names
+  target_link_options(example PRIVATE "-sEXPORTED_FUNCTIONS=[_main]")
 
 Note also that ``_main`` does not need to be quoted, even though it's a string
 name (``emcc`` knows that the argument to ``EXPORTED_FUNCTIONS`` is a list of
