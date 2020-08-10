@@ -1,6 +1,7 @@
 #define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES
+#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
-/* fdd1ffb440301f2fb67c442eb6b6de41ccfb5eaf */
+/* 0990b98cce9ad954dd12788a7ea2b0e0ef449a8e */
 /* :: Begin ../../../../../../../tmp/simde/simde/arm/neon.h :: */
 /* SPDX-License-Identifier: MIT
  *

@@ -23,26 +23,34 @@ tmpdir = "/tmp"
 emdir = path.join(path.dirname(path.realpath(__file__)), "..")
 
 def main(simde_path=None):
-  #tmpdir = get_emscripten_temp_dir()
-  print(tmpdir)
+  if len(sys.argv) == 2:
+    simde_dir = sys.argv[1]
+  elif len(sys.argv) == 1:
+    simde_dir = None
+  else:
+    print('''USAGE:
+./simde_update.py [SIMDE_REPO_DIRECTORY]''')
 
-  try:
-    os.mkdir(path.join(tmpdir, "simde"))
-    os.system("git clone git@github.com:simd-everywhere/simde " + path.join(tmpdir, "simde"))
-  except FileExistsError as e:
-    if not path.isdir(path.join(tmpdir, "simde")):
-      print("/tmp/simde not a directory, exiting...")
-      return 1
-    else:
-      print("simde repository already found in tmpdir, using found repository")
-      os.system("git -C " + path.join(tmpdir, "simde") + " pull")
+  if not simde_dir:
+    try:
+      os.mkdir(path.join(tmpdir, "simde"))
+      os.system("git clone git@github.com:simd-everywhere/simde " + path.join(tmpdir, "simde"))
+    except FileExistsError as e:
+      if not path.isdir(path.join(tmpdir, "simde")):
+        print("/tmp/simde not a directory, exiting...")
+        return 1
+      else:
+        print("simde repository already found in tmpdir, using found repository")
+        os.system("git -C " + path.join(tmpdir, "simde") + " pull")
 
-  simde_dir = path.join(tmpdir, "simde")
+    simde_dir = path.join(tmpdir, "simde")
+  else:
+    print("Using provided repository without updating [make sure it's up to date!]")
 
   try:
     neon_h_buf = subprocess.check_output([path.join(simde_dir, "amalgamate.py"), path.join(simde_dir, "simde", "arm", "neon.h")])
-  except CalledProcessError as e:
-    print("amalgamate.py returned error: " + e)
+  except subprocess.CalledProcessError as e:
+    print("amalgamate.py returned error: " + str(e))
     return 1
 
   try:
