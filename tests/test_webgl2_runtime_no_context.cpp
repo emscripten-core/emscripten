@@ -29,16 +29,21 @@ int main()
 
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
-  // Request WebGL2, but compiled to allow 1 or 2.
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
+
+  // Request WebGL2 in a build compiled to allow 1 or 2. This should fail
+  // because we forced it to in that EM_ASM.
   attrs.majorVersion = 2;
   attrs.minorVersion = 0;
+  context = emscripten_webgl_create_context("#canvas", &attrs);
+  assert(!context);
 
-  // Create the context.
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
+  // Request WebGL1, which succeeds.
+  attrs.majorVersion = 1;
+  context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context);
 
-  // Check if it's WebGL1 or 2. It should be 1 as we failed to create a context
-  // for 2, but then fell back to 1 which works.
+  // Verify it is indeed WebGL1.
   EmscriptenWebGLContextAttributes outAttrs;
   EMSCRIPTEN_RESULT res = emscripten_webgl_get_context_attributes(context, &outAttrs);
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);
