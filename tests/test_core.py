@@ -6063,7 +6063,7 @@ return malloc(size);
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.append('-mfpu=neon')
-    self.emcc_args.append('-munimplemented-simd128')
+    self.emcc_args.append('-msimd128')
     self.do_run(open(path_from_root('tests', 'neon', 'test_neon_wasm_simd.cpp')).read(), 'Success!')
     self.build(open(path_from_root('tests', 'neon', 'test_neon_wasm_simd.cpp')).read(),
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
