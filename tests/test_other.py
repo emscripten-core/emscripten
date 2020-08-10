@@ -7493,7 +7493,7 @@ int main() {
                            [], [], 128), # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 198), # noqa
+                           [], [], 174), # noqa
   })
   def test_metadce_libcxxabi_message(self, filename, *args):
     self.run_metadce_test(filename, *args)

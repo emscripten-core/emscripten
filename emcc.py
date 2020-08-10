@@ -1529,20 +1529,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EMBIND:
       forced_stdlibs.append('libembind')
 
-    if not shared.Settings.MINIMAL_RUNTIME and not shared.Settings.STANDALONE_WASM:
-      # The normal JS runtime depends on malloc and free so always keep them alive.
-      # MINIMAL_RUNTIME avoids this dependency as does STANDALONE_WASM mode (since it has no
-      # JS runtime at all).
-      shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
-
     if shared.Settings.WASM_BACKEND:
-      shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
       # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
       # the STATIC_BUMP value.
       shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
-      if not shared.Settings.STANDALONE_WASM:
-        # in standalone mode, crt1 will call the constructors from inside the wasm
-        shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
+
+    # In STANDALONE_WASM we try to avoid exports the stack allocations functions
+    # unless we know we will need them (e.g. for invoke_xxx)
+    if shared.Settings.SUPPORT_LONGJMP or not shared.Settings.STANDALONE_WASM:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
+
+    if not shared.Settings.STANDALONE_WASM:
+      # in standalone mode, crt1 will call the constructors from inside the wasm
+      shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
+      if not shared.Settings.MINIMAL_RUNTIME:
+        # The normal JS runtime depends on malloc and free so always keep them alive.
+        # MINIMAL_RUNTIME avoids this dependency as does STANDALONE_WASM mode (since it has no
+        # JS runtime at all).
+        shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
       exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
@@ -1589,7 +1593,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # no longer always bundled in)
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
 
-    if shared.Settings.FILESYSTEM:
+    if shared.Settings.FILESYSTEM and not shared.Settings.STANDALONE_WASM:
       # to flush streams on FS exit, we need to be able to call fflush
       # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
