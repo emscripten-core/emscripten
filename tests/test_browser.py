@@ -2690,7 +2690,7 @@ Module["preRun"].push(function () {
   @requires_graphics_hardware
   def test_webgl2_sokol_mipmap(self):
     self.btest(path_from_root('tests', 'third_party', 'sokol', 'mipmap-emsc.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-O1'],
-               reference=os.path.join('third_party', 'sokol', 'mipmap-emsc.png'))
+               reference=os.path.join('third_party', 'sokol', 'mipmap-emsc.png'), reference_slack=2)
 
   @no_firefox('fails on CI likely due to GPU drivers there')
   @requires_graphics_hardware
