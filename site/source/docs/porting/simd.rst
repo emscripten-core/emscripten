@@ -1015,3 +1015,150 @@ The following table highlights the availability and expected performance of diff
      - 💣 emulated with complex SIMD+scalar sequence
 
 Only the 128-bit wide instructions from AVX instruction set are available. 256-bit wide AVX instructions are not provided.
+
+
+====================================================== 
+Compiling SIMD code targeting ARM NEON instruction set
+======================================================
+
+Emscripten supports compiling existing codebases that use ARM NEON by passing the `-mfpu=neon` directive to the compiler, and including the header `<arm_neon.h>`.
+
+The following table highlights the availability of various intrinsics. 
+
+For detailed information on each intrinsic function, refer to `NEON Intrinsics Reference <https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/intrinsics>`_.
+
+
+Function groups:
+
+.. list-table:: NEON Intrinsic classes available
+   :header-rows: 1
+
+ * [ ] vaba
+ * [ ] vabal
+ * [ ] vabd
+ * [ ] vabdl
+ * [x] vabs
+ * [x] vadd
+ * [ ] vaddl
+ * [ ] vaddlv
+ * [ ] vaddv
+ * [x] vaddw 
+ * [x] vand 
+ * [ ] vbic
+ * [x] vbsl
+ * [x] vcagt
+ * [x] vceq
+ * [x] vceqz
+ * [x] vcge
+ * [x] vcgez
+ * [x] vcgt
+ * [x] vcgtz
+ * [x] vcle
+ * [x] vclez
+ * [ ] vcls
+ * [x] vclt
+ * [x] vcltz 
+ * [ ] vcnt
+ * [ ] vclz
+ * [x] vcombine 
+ * [x] vcreate
+ * [x] vdot
+ * [x] vdot_lane
+ * [ ] vdup
+ * [x] vdup_n
+ * [x] veor
+ * [ ] vext
+ * [x] vget_lane
+ * [ ] vhadd
+ * [ ] vhsub
+ * [x] vld1
+ * [ ] vld2
+ * [ ] vld3
+ * [ ] vld4
+ * [ ] vmax
+ * [ ] vmaxv
+ * [x] vmin
+ * [ ] vminv
+ * [x] vmla 
+ * [ ] vmlal
+ * [ ] vmls
+ * [ ] vmlsl
+ * [ ] vmovl
+ * [x] vmul
+ * [x] vmull 
+ * [ ] vmull_n
+ * [ ] vmull_high
+ * [x] vmvn
+ * [x] vneg
+ * [ ] vorn
+ * [x] vorr
+ * [x] vpadal
+ * [x] vpadd
+ * [x] vpaddl 
+ * [ ] vpmax
+ * [x] vpmin
+ * [ ] vpminnm
+ * [ ] vqabs
+ * [ ] vqabsb
+ * [x] vqadd 
+ * [ ] vqaddb
+ * [x] vqdmulh  
+ * [ ] vqneg
+ * [ ] vqnegb
+ * [ ] vqrdmulh WIP: @seanptmaher 
+ * [ ] vqrshl
+ * [ ] vqrshlb
+ * [ ] vqshl
+ * [ ] vqshlb
+ * [ ] vqsub
+ * [ ] vqsubb
+ * [x] vqtbl1
+ * [x] vqtbl2
+ * [x] vqtbl3
+ * [x] vqtbl4
+ * [x] vqtbx1
+ * [x] vqtbx2
+ * [x] vqtbx3
+ * [x] vqtbx4
+ * [x] vrbit
+ * [x] vreinterpret
+ * [x] vrev16
+ * [x] vrev32
+ * [x] vrev64
+ * [x] vrhadd
+ * [x] vrshl
+ * [x] vrshr_n
+ * [x] vrsra_n
+ * [x] vset_lane
+ * [x] vshl
+ * [x] vshl_n
+ * [x] vshr_n
+ * [x] vsra_n
+ * [x] vst1
+ * [x] vst1_lane
+ * [ ] vst2
+ * [ ] vst3
+ * [ ] vst4
+ * [x] vsub
+ * [ ] vsubl
+ * [ ] vsubw
+ * [x] vtbl1
+ * [x] vtbl2
+ * [x] vtbl3
+ * [x] vtbl4
+ * [x] vtbx1
+ * [x] vtbx2
+ * [x] vtbx3
+ * [x] vtbx4
+ * [x] vtrn
+ * [x] vtrn1
+ * [x] vtrn2
+ * [x] vtst
+ * [ ] vuqadd
+ * [ ] vuqaddb
+ * [x] vuzp
+ * [x] vuzp1
+ * [x] vuzp2
+ * [x] vzip
+ * [x] vzip1
+ * [x] vzip2
