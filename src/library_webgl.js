@@ -659,19 +659,7 @@ var LibraryGL = {
         return 0;
       }
 #else
-      if (!ctx) {
-#if MIN_WEBGL_VERSION == 1 && MAX_WEBGL_VERSION >= 2
-        // If we failed to create a WebGL2 context, it is still worth trying to
-        // create a WebGL1 one (as WebGL2RenderingContext may be defined, but
-        // fail to create a context if the browser supports WebGL2 in general
-        // but at runtime decides it can't support it).
-        if (webGLContextAttributes.majorVersion === 2) {
-          webGLContextAttributes.majorVersion = 1;
-          return GL.createContext(canvas, webGLContextAttributes);
-        }
-#endif
-        return 0;
-      }
+      if (!ctx) return 0;
 #endif
 
       var handle = GL.registerContext(ctx, webGLContextAttributes);
