@@ -10,7 +10,7 @@
 #include <emscripten/fetch.h>
 
 void downloadSucceeded(emscripten_fetch_t *fetch) {
-    printf("User Data: %s\n", fetch->userData);
+    printf("User Data: %s\n", (char*)fetch->userData);
     printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
     emscripten_fetch_close(fetch);
 }
@@ -21,7 +21,7 @@ void downloadFailed(emscripten_fetch_t *fetch) {
 }
 
 int main() {
-    char *str = "this is user data";
+    char *str = (char*)"this is user data";
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
     strcpy(attr.requestMethod, "GET");
