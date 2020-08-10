@@ -25,7 +25,7 @@ from runner import no_fastcomp, no_wasm_backend, create_test_file, parameterized
 from tools import building
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
-from tools.shared import try_delete, run_process
+from tools.shared import try_delete
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -403,7 +403,7 @@ If manually bisecting:
 
     data_file = os.path.join(abs_d, 'file with ' + tricky_part + '.data')
     data_js_file = os.path.join(abs_d, 'file with ' + tricky_part + '.js')
-    run_process([PYTHON, FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file])
+    self.run_process([PYTHON, FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file])
     page_file = os.path.join(d, 'file with ' + tricky_part + '.html')
     abs_page_file = os.path.join(self.get_dir(), page_file)
     self.compile_btest([cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM=1'])
@@ -513,7 +513,7 @@ If manually bisecting:
     ''')
 
     make_main('somefile.txt')
-    run_process([PYTHON, FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
+    self.run_process([PYTHON, FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
     self.compile_btest(['main.cpp', '--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
@@ -1361,7 +1361,7 @@ keydown(100);keyup(100); // trigger the end
     create_test_file('file1.txt', 'first')
     ensure_dir('sub')
     open(os.path.join('sub', 'file2.txt'), 'w').write('second')
-    run_process([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js'])
+    self.run_process([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js'])
     self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
@@ -1415,7 +1415,7 @@ keydown(100);keyup(100); // trigger the end
     # the main program, and when we are run later
 
     create_test_file('data.dat', ' ')
-    run_process([PYTHON, FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
+    self.run_process([PYTHON, FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
     self.btest(os.path.join('browser', 'separate_metadata_later.cpp'), '1', args=['-s', 'FORCE_FILESYSTEM=1'])
 
   def test_idbstore(self):
@@ -1748,13 +1748,13 @@ keydown(100);keyup(100); // trigger the end
     self.emcc_args.remove('-Werror')
     self.emcc_args += ['-Wno-pointer-sign', '-Wno-int-conversion']
     programs = self.get_library('glbook', [
-      os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.bc'),
-      os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.bc'),
-      os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.bc'),
-      os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.bc'),
-      os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.bc'),
-      os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.bc'),
-      os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.bc'),
+      os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.o'),
+      os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.o'),
+      os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.o'),
+      os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.o'),
+      os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.o'),
+      os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.o'),
+      os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.o'),
     ], configure=None)
 
     def book_path(*pathelems):
@@ -1764,16 +1764,16 @@ keydown(100);keyup(100); // trigger the end
       print(program)
       basename = os.path.basename(program)
       args = ['-lGL', '-lEGL', '-lX11']
-      if basename == 'CH10_MultiTexture.bc':
+      if basename == 'CH10_MultiTexture.o':
         shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'basemap.tga'), 'basemap.tga')
         shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'lightmap.tga'), 'lightmap.tga')
         args += ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
-      elif basename == 'CH13_ParticleSystem.bc':
+      elif basename == 'CH13_ParticleSystem.o':
         shutil.copyfile(book_path('Chapter_13', 'ParticleSystem', 'smoke.tga'), 'smoke.tga')
         args += ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
       self.btest(program,
-                 reference=book_path(basename.replace('.bc', '.png')),
+                 reference=book_path(basename.replace('.o', '.png')),
                  args=args)
 
   @requires_graphics_hardware
@@ -1824,14 +1824,14 @@ keydown(100);keyup(100); // trigger the end
       create_test_file('file2.txt', 'second')
 
     setup()
-    run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
+    self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
     self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
 
     # check using file packager to another dir
     self.clear()
     setup()
     ensure_dir('sub')
-    run_process([PYTHON, FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
+    self.run_process([PYTHON, FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
     shutil.copyfile(os.path.join('sub', 'test.data'), 'test.data')
     self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
 
@@ -2472,12 +2472,12 @@ void *getBindBuffer() {
   def test_emrun_info(self):
     if not has_browser():
       self.skipTest('need a browser')
-    result = run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
+    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
     assert 'CPU' in result
     assert 'Browser' in result
     assert 'Traceback' not in result
 
-    result = run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
+    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
     assert 'Traceback' not in result
 
   # Deliberately named as test_zzz_emrun to make this test the last one
@@ -2516,7 +2516,7 @@ void *getBindBuffer() {
     ]:
       args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
       print(' '.join(args))
-      proc = run_process(args, check=False)
+      proc = self.run_process(args, check=False)
       stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
       stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
       assert proc.returncode == 100
@@ -2746,7 +2746,7 @@ Module["preRun"].push(function () {
       '''))
       create_test_file('data.txt', 'load me right before...')
       create_test_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
-      run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
+      self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
       # put pre.js first, then the file packager data, so locateFile is there for the file loading code
       self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1', '-s', 'WASM=' + str(wasm)])
       ensure_dir('sub')
@@ -3196,24 +3196,31 @@ window.close = function() {
     print('also test building to object files first')
     src = open(path_from_root('tests', 'sdl2_misc.c')).read()
     create_test_file('test.c', self.with_report_result(src))
-    run_process([EMCC, 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
+    self.run_process([EMCC, '-c', 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
     self.compile_btest(['test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
-
-  @requires_sound_hardware
-  def test_sdl2_mixer(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), 'sound.ogg')
-    self.btest('sdl2_mixer.c', expected='1', args=['--preload-file', 'sound.ogg', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432'])
 
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), 'sound.wav')
     self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432'])
 
+  @parameterized({
+    'ogg': ('ogg', 'alarmvictory_1.ogg'),
+    'mp3': ('mp3', 'pudinha.mp3'),
+  })
   @requires_sound_hardware
-  def test_sdl2_mixer_mp3(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'pudinha.mp3'), 'sound.mp3')
-    self.btest('sdl2_mixer_mp3.c', expected='1', args=['--preload-file', 'sound.mp3', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'SDL2_MIXER_FORMATS=["mp3"]', '-s', 'INITIAL_MEMORY=33554432'])
+  def test_sdl2_mixer_music(self, fmt, music_name):
+    shutil.copyfile(path_from_root('tests', 'sounds', music_name), music_name)
+    self.btest('sdl2_mixer_music.c', expected='1', args=[
+      '--preload-file', music_name,
+      '-DSOUND_PATH=' + json.dumps(music_name),
+      '-DFLAGS=' + ('MIX_INIT_' + fmt.upper() if fmt else '0'),
+      '-s', 'USE_SDL=2',
+      '-s', 'USE_SDL_MIXER=2',
+      '-s', 'SDL2_MIXER_FORMATS=' + json.dumps([fmt] if fmt else []),
+      '-s', 'INITIAL_MEMORY=33554432'
+    ])
 
   @no_wasm_backend('cocos2d needs to be ported')
   @requires_graphics_hardware
@@ -3427,9 +3434,9 @@ window.close = function() {
 
   def test_webidl(self):
     # see original in test_core.py
-    run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
-                 path_from_root('tests', 'webidl', 'test.idl'),
-                 'glue'])
+    self.run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                     path_from_root('tests', 'webidl', 'test.idl'),
+                     'glue'])
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
     for opts in [[], ['-O1'], ['-O2']]:
@@ -3475,7 +3482,7 @@ window.close = function() {
         return ret;
       }
     ''')
-    run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
     print('wasm in worker (we can read binary data synchronously there)')
@@ -3483,7 +3490,7 @@ window.close = function() {
     create_test_file('pre.js', '''
       var Module = { dynamicLibraries: ['side.wasm'] };
   ''')
-    run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
 
     print('wasm (will auto-preload since no sync binary reading)')
@@ -3576,7 +3583,7 @@ window.close = function() {
         return (const char *)glGetString(GL_EXTENSIONS);
       }
     ''')
-    run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL=1'])
 
     self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
@@ -4099,7 +4106,7 @@ window.close = function() {
       self.run_browser('one.html', None, '/report_result?0')
 
       print('run two')
-      run_process([PYTHON, path_from_root('tools', 'separate_asm.py'), 'test.js', 'asm.js', 'rest.js'])
+      self.run_process([PYTHON, path_from_root('tools', 'separate_asm.py'), 'test.js', 'asm.js', 'rest.js'])
       create_test_file('two.html', '''
         <script>
           var Module = {};
@@ -4259,6 +4266,20 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-s', 'FULL_ES2=1'])
+
+  # Tests for WEBGL_multi_draw extension
+  # For testing WebGL draft extensions like this, if using chrome as the browser,
+  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
+  @requires_graphics_hardware
+  def test_webgl_multi_draw(self):
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
@@ -4725,7 +4746,7 @@ window.close = function() {
     # or lack thereof
     for file_packager_args in [[], ['--no-heap-copy']]:
       print(file_packager_args)
-      run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'] + file_packager_args)
+      self.run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'] + file_packager_args)
       self.compile_btest(['page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
       self.run_browser('page.html', 'hello from file', '/report_result?15')
 
@@ -4939,7 +4960,7 @@ window.close = function() {
       self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
     except Exception as e:
       # dump the wasm file; this is meant to help debug #10539 on the bots
-      print(run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout)
+      print(self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout)
       raise e
 
   # Tests emscripten_unwind_to_js_event_loop() behavior

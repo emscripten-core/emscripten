@@ -65,7 +65,7 @@ from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
 from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, run_process, try_delete
+from tools.shared import asstr, get_canonical_temp_dir, try_delete
 from tools.shared import asbytes, safe_copy, Settings
 from tools import shared, line_endings, building
 
@@ -710,7 +710,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
-        run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
+        self.run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
         self.assertExists(f + '.o')
 
       # Link all files
@@ -736,7 +736,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
 
-      run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
+      self.run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
       self.assertExists(filename + suffix)
 
     if post_build:
@@ -788,7 +788,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return num_funcs
 
   def count_wasm_contents(self, wasm_binary, what):
-    out = run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
+    out = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
     # output is something like
     # [?]        : 125
     for line in out.splitlines():
@@ -798,7 +798,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
-    return run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+    return self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
 
   def is_exported_in_wasm(self, name, wasm):
     wat = self.get_wasm_text(wasm)
@@ -808,9 +808,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
-    # Make sure that we produced proper line endings to the .js file we are about to run.
-    if not filename.endswith('.wasm'):
-      self.assertEqual(line_endings.check_line_endings(filename), 0)
     error = None
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
@@ -821,6 +818,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                    assert_returncode=assert_returncode)
     except subprocess.CalledProcessError as e:
       error = e
+
+    # Make sure that we produced proper line endings to the .js file we are about to run.
+    if not filename.endswith('.wasm'):
+      self.assertEqual(line_endings.check_line_endings(filename), 0)
 
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
@@ -981,6 +982,18 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
+  def run_process(self, cmd, check=True, **args):
+    # Wrapper around shared.run_process.  This is desirable so that the tests
+    # can fail (in the unittest sense) rather than error'ing.
+    # In the long run it would nice to completely remove the dependency on
+    # core emscripten code (shared.py) here.
+    try:
+      return shared.run_process(cmd, check=check, **args)
+    except subprocess.CalledProcessError as e:
+      if check and e.returncode != 0:
+        self.fail('subprocess exited with non-zero return code(%d): `%s`' %
+                  (e.returncode, shared.shlex_join(cmd)))
+
   # Shared test code between main suite and others
 
   def expect_fail(self, cmd, **args):
@@ -988,7 +1001,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     Return the stderr of the subprocess.
     """
-    proc = run_process(cmd, check=False, stderr=PIPE, **args)
+    proc = self.run_process(cmd, check=False, stderr=PIPE, **args)
     self.assertNotEqual(proc.returncode, 0, 'subprocess unexpectedly succeeded. stderr:\n' + proc.stderr)
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,
@@ -1124,7 +1137,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     def ccshared(src, linkto=[]):
       cmdv = [EMCC, src, '-o', os.path.splitext(src)[0] + so] + self.get_emcc_args()
       cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
-      run_process(cmdv)
+      self.run_process(cmdv)
 
     ccshared('liba.cpp')
     ccshared('libb.cpp', ['liba' + so])
@@ -1257,7 +1270,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         c = shared.unsuffixed(js_file) + '.wasm.c'
         executable = shared.unsuffixed(js_file) + '.exe'
         cmd = [shared.CLANG_CC, c, '-o', executable] + clang_native.get_clang_native_args()
-        shared.run_process(cmd, env=clang_native.get_clang_native_env())
+        self.run_process(cmd, env=clang_native.get_clang_native_env())
         # we can now run the executable directly, without an engine, which
         # we indicate with None as the engine
         engines += [[None]]
@@ -1703,7 +1716,7 @@ class BrowserCore(RunnerCore):
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
   def compile_btest(self, args):
-    run_process([EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
+    self.run_process([EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,

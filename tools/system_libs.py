@@ -68,16 +68,18 @@ def get_cflags(force_object_files=False):
 def run_one_command(cmd):
   # Helper function used by run_build_commands.
   if shared.EM_BUILD_VERBOSE:
-    print(' '.join(cmd))
+    print(shared.shlex_join(cmd))
   # building system libraries and ports should be hermetic in that it is not
   # affected by things like EMMAKEN_CFLAGS which the user may have set
   safe_env = os.environ.copy()
-  for opt in ['EMMAKEN_CFLAGS']:
+  for opt in ['EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   # Disable certain warnings when we build ports/system libraries we don't want to
   # show them a million times.
   cmd.append('-Wno-fastcomp')
+  # TODO(sbc): Remove this one we remove the test_em_config_env_var test
+  cmd.append('-Wno-deprecated')
   shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
 
 
@@ -787,7 +789,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['clock_settime.c'])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
-        filenames=['getpagesize.c'])
+        filenames=['getpagesize.c', 'err.c'])
 
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
@@ -1181,6 +1183,14 @@ class libgl(MTLibrary):
     )
 
 
+class libwebgpu_cpp(MTLibrary):
+  name = 'libwebgpu_cpp'
+
+  cflags = ['-std=c++11', '-O2']
+  src_dir = ['system', 'lib', 'webgpu']
+  src_files = ['webgpu_cpp.cpp']
+
+
 class libembind(Library):
   name = 'libembind'
   never_force = True
@@ -1320,7 +1330,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal']
-  src_files = ['ubsan_minimal_handlers.cc']
+  src_files = ['ubsan_minimal_handlers.cpp']
 
 
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
@@ -1330,15 +1340,15 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   never_force = True
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
-  src_glob = '*.cc'
-  src_glob_exclude = ['sanitizer_common_nolibc.cc']
+  src_glob = '*.cpp'
+  src_glob_exclude = ['sanitizer_common_nolibc.cpp']
 
 
 class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  src_glob = '*.cc'
+  src_glob = '*.cpp'
 
 
 class libubsan_rt_wasm(SanitizerLibrary):
@@ -1352,15 +1362,15 @@ class liblsan_common_rt_wasm(SanitizerLibrary):
   name = 'liblsan_common_rt_wasm'
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
-  src_glob = 'lsan_common*.cc'
+  src_glob = 'lsan_common*.cpp'
 
 
 class liblsan_rt_wasm(SanitizerLibrary):
   name = 'liblsan_rt_wasm'
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
-  src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
-                      'lsan_common_emscripten.cc']
+  src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
+                      'lsan_common_emscripten.cpp']
 
 
 class libasan_rt_wasm(SanitizerLibrary):
@@ -1684,6 +1694,9 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       add_library(system_libs_map['libsockets_proxy'])
     else:
       add_library(system_libs_map['libsockets'])
+
+    if shared.Settings.USE_WEBGPU:
+      add_library(system_libs_map['libwebgpu_cpp'])
 
   if not shared.Settings.WASM_BACKEND:
     # With fastcomp, some libraries are basically big object files (.bc) and these need to come

@@ -113,13 +113,13 @@ var LibraryWebGL2 = {
     writeI53ToI64(data, GLctx.getBufferParameter(target, value));
   },
 
-  glInvalidateFramebuffer__deps: ['_tempFixedLengthArray'],
+  glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
   glInvalidateFramebuffer__sig: 'viii',
   glInvalidateFramebuffer: function(target, numAttachments, attachments) {
 #if GL_ASSERTIONS
-    assert(numAttachments < __tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)');
+    assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)');
 #endif
-    var list = __tempFixedLengthArray[numAttachments];
+    var list = tempFixedLengthArray[numAttachments];
     for (var i = 0; i < numAttachments; i++) {
       list[i] = {{{ makeGetValue('attachments', 'i*4', 'i32') }}};
     }
@@ -127,13 +127,13 @@ var LibraryWebGL2 = {
     GLctx['invalidateFramebuffer'](target, list);
   },
 
-  glInvalidateSubFramebuffer__deps: ['_tempFixedLengthArray'],
+  glInvalidateSubFramebuffer__deps: ['$tempFixedLengthArray'],
   glInvalidateSubFramebuffer__sig: 'viiiiiii',
   glInvalidateSubFramebuffer: function(target, numAttachments, attachments, x, y, width, height) {
 #if GL_ASSERTIONS
-    assert(numAttachments < __tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)');
+    assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)');
 #endif
-    var list = __tempFixedLengthArray[numAttachments];
+    var list = tempFixedLengthArray[numAttachments];
     for (var i = 0; i < numAttachments; i++) {
       list[i] = {{{ makeGetValue('attachments', 'i*4', 'i32') }}};
     }
@@ -142,26 +142,26 @@ var LibraryWebGL2 = {
   },
 
   glTexImage3D__sig: 'viiiiiiiiii',
-  glTexImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'],
+  glTexImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, pixels);
     } else if (pixels) {
-      var heap = __heapObjectForWebGLType(type);
-      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
+      var heap = heapObjectForWebGLType(type);
+      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
     } else {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, null);
     }
   },
 
   glTexSubImage3D__sig: 'viiiiiiiiiii',
-  glTexSubImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'],
+  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
-      var heap = __heapObjectForWebGLType(type);
-      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
+      var heap = heapObjectForWebGLType(type);
+      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
     } else {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
@@ -946,7 +946,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
     assert(cb, index);
 #endif
-    if (!GL.currArrayBuffer) {
+    if (!GLctx.currentArrayBufferBinding) {
       cb.size = size;
       cb.type = type;
       cb.normalized = false;
@@ -991,7 +991,7 @@ var LibraryWebGL2 = {
 
   emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance__deps: ['_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
-    __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
+    return __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
   },
 
   glVertexAttribI4i__sig: 'viiiii',

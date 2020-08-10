@@ -18,7 +18,7 @@ from runner import RunnerCore, path_from_root, env_modify, chdir
 from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
-from tools.shared import run_process, try_delete
+from tools.shared import try_delete
 from tools.shared import expected_llvm_version, Cache, Settings
 from tools import shared, system_libs
 
@@ -162,7 +162,7 @@ class sanity(RunnerCore):
     if type(command) is not list:
       command = [command]
 
-    return run_process(command, stdout=PIPE, stderr=STDOUT, check=False, env=env).stdout
+    return self.run_process(command, stdout=PIPE, stderr=STDOUT, check=False, env=env).stdout
 
   def check_working(self, command, expected=None):
     if type(command) is not list:
@@ -200,7 +200,6 @@ class sanity(RunnerCore):
         temp_bin = tempfile.mkdtemp()
         make_executable('llvm-dis')
         make_executable('node')
-        make_executable('python2')
         env['PATH'] = temp_bin + os.pathsep + os.environ['PATH']
         output = self.do(command, env=env)
       finally:
@@ -235,7 +234,7 @@ class sanity(RunnerCore):
       # The guessed config should be ok
       # XXX This depends on your local system! it is possible `which` guesses wrong
       # try_delete('a.out.js')
-      # output = run_process([EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).output
+      # output = self.run_process([EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).output
       # self.assertContained('hello, world!', self.run_js('a.out.js'), output)
 
       # Second run, with bad EM_CONFIG
@@ -435,7 +434,7 @@ fi
 
     wipe()
     with env_modify({'EM_CONFIG': get_basic_config()}):
-      run_process([EMCC, 'main.cpp', '-o', 'a.out.js'])
+      self.run_process([EMCC, 'main.cpp', '-Wno-deprecated', '-o', 'a.out.js'])
 
     self.assertContained('hello from emcc with no config file', self.run_js('a.out.js'))
 
@@ -527,7 +526,7 @@ fi
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = run_process([EMCC, 'test.c', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        p = self.run_process([EMCC, 'test.c', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)
@@ -561,7 +560,7 @@ fi
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
     with chdir(temp_dir):
-      run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
+      self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
 
     self.assertContained('hello, world!', result)
@@ -826,10 +825,10 @@ fi
     restore_and_set_up()
     # the --lto flag makes us build wasm-bc
     self.do([EMCC, '--clear-cache'])
-    run_process([EMBUILDER, 'build', 'libemmalloc'])
+    self.run_process([EMBUILDER, 'build', 'libemmalloc'])
     self.assertExists(os.path.join(shared.CACHE, 'wasm'))
     self.do([EMCC, '--clear-cache'])
-    run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
+    self.run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
     self.assertExists(os.path.join(shared.CACHE, 'wasm-lto'))
 
   def test_binaryen_version(self):

@@ -11,7 +11,7 @@ var WasiLibrary = {
     _exit(code);
   },
 
-  $getEnvStrings__deps: ['$ENV', '_getExecutableName'],
+  $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
   $getEnvStrings: function() {
     if (!getEnvStrings.strings) {
       // Default values.
@@ -29,7 +29,7 @@ var WasiLibrary = {
         'PWD': '/',
         'HOME': '/home/web_user',
         'LANG': lang,
-        '_': __getExecutableName()
+        '_': getExecutableName()
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {

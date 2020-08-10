@@ -30,19 +30,16 @@ Catching Null Dereference
 -------------------------
 
 By default, with Emscripten, dereferencing a null pointer does not immediately
-cause a segmentation fault, unlike traditional platforms. Instead, it checks
-a magic cookie stored at address 0 at the end of the program execution.
+cause a segmentation fault, unlike traditional platforms, as 0 is just a normal
+address in a WebAssembly memory. 0 is also a normal location in a
+JavaScript Typed Array, which is an issue in the JavaScript alongside the
+WebAssembly (runtime support code, JS library methods, ``EM_ASM/EM_JS``, etc.),
+and also for the compiled code if you build with ``-s WASM=0``.
 
-This only detects null pointer writes, and not reads, and it's rather difficult
-to find where the null pointer write occurred.
-
-Emscripten provides a ``SAFE_HEAP`` mode, which can be activated by running
-``emcc`` with ``-s SAFE_HEAP=1``. This will catch both null pointer reads and
-writes, and causes an exception, but it is slower, and does not tell you the
-exact line numbers unless you compile with ``-g``.
-
-UBSan will tell you exactly where the null deference happened, and works for
-both reads and writes, with much less performance penalty than ``SAFE_HEAP``.
+In builds with ``ASSERTIONS`` enabled, a magic cookie stored at address 0 is
+checked at the end of the program execution. That is, it will notify you if
+anything wrote to that location while the program ran. This only detects writes,
+not reads, and does not help to find where the bad write actually is.
 
 Consider the following program, ``null-assign.c``:
 
@@ -53,7 +50,7 @@ Consider the following program, ``null-assign.c``:
       *a = 0;
   }
 
-Without UBSan or ``SAFE_HEAP``, you get an error when the program exits:
+Without UBSan you get an error when the program exits:
 
 .. code-block:: console
 
@@ -79,7 +76,7 @@ Consider the following program, ``null-read.c``:
       b = *a;
   }
 
-Without UBSan or ``SAFE_HEAP``, there is no feedback:
+Without UBSan there is no feedback:
 
 .. code-block:: console
 
@@ -140,7 +137,9 @@ you will receive an error message that looks something like:
   runtime, or (3) if you want malloc to return NULL (0) instead of this abort,
   compile with  -s ABORTING_MALLOC=0
 
-ASan fully supports multi-thread environments.
+ASan fully supports multi-thread environments. ASan also operates on the JS
+support code, that is, if JS tries to read from a memory address that is not
+valid, it will be caught, just like if that access happened from wasm.
 
 Examples
 --------
@@ -274,6 +273,8 @@ by doing:
 
 .. code-block:: c
 
+  #include <sanitizer/lsan_interface.h>
+
   #if defined(__has_feature)
   #if __has_feature(address_sanitizer)
     // code for ASan-enabled builds
@@ -375,6 +376,59 @@ option ``malloc_context_size=0``, like this:
 
   Module.ASAN_OPTIONS = 'malloc_context_size=0';
 
-This prevents ASan from reporting the location of memory leaks, as well as
-offer insight into where the memory for a heap-based memory error originated,
+This prevents ASan from reporting the location of memory leaks or offering
+insight into where the memory for a heap-based memory error originated,
 but may provide tremendous speed ups.
+
+Comparison to ``SAFE_HEAP``
+---------------------------
+
+Emscripten provides a ``SAFE_HEAP`` mode, which can be activated by running
+``emcc`` with ``-s SAFE_HEAP``. This does several things, some of which overlap
+with sanitizers.
+
+In general, ``SAFE_HEAP`` focuses on the specific pain points that come up when
+targeting wasm. The sanitizers on the other hand focus on the specific pain points that are
+involved with using languages like C/C++. Those two sets overlap, but are not
+identical. Which you should use depends on which types of problems you are
+looking for. You may want to test with all sanitizers and with ``SAFE_HEAP``
+for maximal coverage, but you may need to build separately for each mode, since
+not all sanitizers are compatible with each other, and not all of them are
+compatible with ``SAFE_HEAP`` (because the sanitizers do some pretty radical
+things!). You will get a compiler error if there is an issue with the flags you
+passed. A reasonable set of separate test builds to do might be: ASan, UBsan,
+and ``SAFE_HEAP``.
+
+The specific things ``SAFE_HEAP`` errors on include:
+
+* **NULL pointer (address 0) reads or writes**. As mentioned earlier, this is
+  annoying in WebAssembly and JavaScript because 0 is just a normal address, so
+  you don't get an immediate segfault, which can be confusing.
+* **Unaligned reads or writes**. These work in WebAssembly, but on some platforms
+  an incorrectly-aligned read or write may be much slower, and with wasm2js
+  (``WASM=0``) it will be incorrect, as JavaScript Typed Arrays do not allow
+  unaligned operations.
+* **Reads or writes past the top of valid memory** as managed by ``sbrk()``, that is,
+  memory that was not properly allocated by ``malloc()``. This is not specific
+  to wasm, however, in JavaScript if the address is big enough to be outside the
+  Typed Array, ``undefined`` is returned which can be very confusing, which is
+  why this was added (in wasm at least an error is thrown; ``SAFE_HEAP`` still
+  helps with wasm though, by checking the area between the top of ``sbrk()``'s
+  memory and the end of the wasm Memory).
+
+``SAFE_HEAP`` does these checks by instrumenting every single load and store.
+That has the cost of slowing things down, but it does give a simple guarantee
+of finding *all* such problems. It can also be done after compilation, on an
+arbitrary wasm binary, while the sanitizers must be done when compiling from
+source.
+
+In comparison, UBSan can also find null pointer reads and writes. It does not
+instrument every single load and store, however, as it is done during
+compilation of the source code, so the checks are added where clang knows they
+are needed. This is much more efficient, but there is a risk of codegen and
+optimizations changing something, or clang missing a specific location.
+
+ASan can find reads or writes of unallocated memory, which includes addresses
+above the ``sbrk()``-managed memory. It may be more efficient than ``SAFE_HEAP``
+in some cases: while it also checks every load and store, the LLVM
+optimizer is run after it adds those checks, which can remove some of them.

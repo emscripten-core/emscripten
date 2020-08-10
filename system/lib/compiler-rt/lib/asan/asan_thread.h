@@ -8,7 +8,7 @@
 //
 // This file is a part of AddressSanitizer, an address sanity checker.
 //
-// ASan-private header for asan_thread.cc.
+// ASan-private header for asan_thread.cpp.
 //===----------------------------------------------------------------------===//
 
 #ifndef ASAN_THREAD_H
@@ -29,13 +29,7 @@ struct DTLS;
 namespace __asan {
 
 const u32 kInvalidTid = 0xffffff;  // Must fit into 24 bits.
-#if SANITIZER_EMSCRIPTEN && !defined(USE_THREADS)
-const u32 kMaxNumberOfThreads = 1;
-#elif SANITIZER_EMSCRIPTEN
-const u32 kMaxNumberOfThreads = 128;
-#else
 const u32 kMaxNumberOfThreads = (1 << 22);  // 4M
-#endif
 
 class AsanThread;
 

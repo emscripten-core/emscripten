@@ -48,17 +48,7 @@ var wasmMemory;
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
 #if WASM_BACKEND || WASM
-var wasmTable = new WebAssembly.Table({
-  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#if !ALLOW_TABLE_GROWTH
-#if WASM_BACKEND
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
-#else
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#endif
-#endif // WASM_BACKEND
-  'element': 'anyfunc'
-});
+#include "runtime_init_table.js"
 #endif // WASM_BACKEND || WASM
 
 #if USE_PTHREADS

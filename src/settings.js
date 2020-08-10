@@ -122,7 +122,9 @@ var TOTAL_STACK = 5*1024*1024;
 // In general, if you don't need one of those special modes, and if you don't
 // allocate very many small objects, you should use emmalloc since it's
 // smaller. Otherwise, if you do allocate many small objects, dlmalloc
-// is usually worth the extra size.
+// is usually worth the extra size. dlmalloc is also a good choice if you want
+// the extra security checks it does (such as noticing metadata corruption in
+// its internal data structures, which emmalloc does not do).
 var MALLOC = "dlmalloc";
 
 // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
@@ -327,7 +329,7 @@ var SIMPLIFY_IFS = 1;
 
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
-// 0). See preamble.js for the actual checks performed.
+// 0). See runtime_safe_heap.js for the actual checks performed.
 var SAFE_HEAP = 0;
 
 // Log out all SAFE_HEAP operations
@@ -485,11 +487,11 @@ var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
 // If true, the function emscripten_webgl_enable_extension() can be called to
 // enable any WebGL extension. If false, to save code size,
 // emscripten_webgl_enable_extension() cannot be called to enable any of extensions
-// 'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers' or
-// 'WEBGL_draw_instanced_base_vertex_base_instance', but the dedicated functions
-// emscripten_webgl_enable_*() found in html5.h are used to enable each of those
-// extensions. This way code size is increased only for the extensions that are
-// actually used.
+// 'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers',
+// 'WEBGL_multi_draw', or 'WEBGL_draw_instanced_base_vertex_base_instance',
+// but the dedicated functions emscripten_webgl_enable_*()
+// found in html5.h are used to enable each of those extensions.
+// This way code size is increased only for the extensions that are actually used.
 // N.B. if setting this to 0, GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS must be set
 // to zero as well.
 var GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS = 1;
@@ -1791,6 +1793,11 @@ var PRINTF_LONG_DOUBLE = 0;
 // if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
 // which avoids trampling a C file).
 var WASM2C = 0;
+
+// Setting this affects the path emitted in the wasm that refers to the DWARF
+// file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
+// in a custom location.
+var SEPARATE_DWARF_URL = '';
 
 //===========================================
 // Internal, used for testing only, from here
