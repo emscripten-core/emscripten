@@ -11,8 +11,8 @@
 #include <emscripten/fetch.h>
 
 void downloadSucceeded(emscripten_fetch_t *fetch) {
-    assert(strcmp((char*)fetch->userData, "User Data") == 0);
     assert(strcmp(fetch->url, "gears.png") == 0);
+    printf("User data: %s\n", (char*)fetch->userData);
     printf("Finished downloading %llu bytes.\n", fetch->numBytes);
     emscripten_fetch_close(fetch);
 }
