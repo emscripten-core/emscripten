@@ -72,7 +72,7 @@ def run_one_command(cmd):
   # building system libraries and ports should be hermetic in that it is not
   # affected by things like EMMAKEN_CFLAGS which the user may have set
   safe_env = os.environ.copy()
-  for opt in ['EMMAKEN_CFLAGS']:
+  for opt in ['EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   # Disable certain warnings when we build ports/system libraries we don't want to

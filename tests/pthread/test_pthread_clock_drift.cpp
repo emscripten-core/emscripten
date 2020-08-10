@@ -7,6 +7,7 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 #include <math.h>
+#include <stdio.h>
 
 volatile int threadStarted = 0;
 volatile int timeReceived = 0;

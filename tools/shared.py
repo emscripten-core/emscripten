@@ -21,12 +21,8 @@ import time
 import sys
 import tempfile
 
-if sys.version_info < (2, 7, 0):
-  print('emscripten requires python 2.7.0 or above (python 2.7.12 or newer is recommended, older python versions are known to run into SSL related issues, https://github.com/emscripten-core/emscripten/issues/6275)', file=sys.stderr)
-  sys.exit(1)
-
-if sys.version_info[0] == 3 and sys.version_info < (3, 5):
-  print('emscripten requires at least python 3.5 (or python 2.7.12 or above)', file=sys.stderr)
+if sys.version_info < (3, 5):
+  print('error: emscripten requires python 3.5 or above', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
@@ -337,8 +333,6 @@ def parse_config_file():
 
   Also also EM_<KEY> environment variables to override specific config keys.
   """
-  global JS_ENGINES, JAVA, CLOSURE_COMPILER
-
   config = {}
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   try:
@@ -358,6 +352,7 @@ def parse_config_file():
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
     'JAVA',
+    'JS_ENGINE',
     'JS_ENGINES',
     'WASMER',
     'WASMTIME',
@@ -386,17 +381,63 @@ def parse_config_file():
   if not NODE_JS:
     exit_with_error('NODE_JS is not defined in %s', config_file_location())
 
+
+def listify(x):
+  if type(x) is not list:
+    return [x]
+  return x
+
+
+def fix_js_engine(old, new):
+  global JS_ENGINES
+  if old is None:
+    return
+  JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
+  return new
+
+
+def normalize_config_settings():
+  global CACHE, PORTS, JAVA, CLOSURE_COMPILER
+  global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+
   # EM_CONFIG stuff
   if not JS_ENGINES:
     JS_ENGINES = [NODE_JS]
+  if not JS_ENGINE:
+    JS_ENGINE = JS_ENGINES[0]
+
+  # Engine tweaks
+  if SPIDERMONKEY_ENGINE:
+    new_spidermonkey = SPIDERMONKEY_ENGINE
+    if '-w' not in str(new_spidermonkey):
+      new_spidermonkey += ['-w']
+    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
+  NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
+  V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
+  JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
+  JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
+  WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+  if not CACHE:
+    if root_is_writable():
+      CACHE = path_from_root('cache')
+    else:
+      # Use the legacy method of putting the cache in the user's home directory
+      # if the emscripten root is not writable.
+      # This is useful mostly for read-only installation and perhaps could
+      # be removed in the future since such installations should probably be
+      # setting a specific cache location.
+      logger.debug('Using home-directory for emscripten cache due to read-only root')
+      CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+  if not PORTS:
+    PORTS = os.path.join(CACHE, 'ports')
 
   if CLOSURE_COMPILER is None:
     if WINDOWS:
       CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
     else:
       # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-      # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
-      CLOSURE_COMPILER = [NODE_JS, '--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
+     # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
+      CLOSURE_COMPILER = NODE_JS + ['--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
     logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
@@ -411,20 +452,6 @@ def config_file_location():
     return '<inline config>'
 
   return CONFIG_FILE
-
-
-def listify(x):
-  if type(x) is not list:
-    return [x]
-  return x
-
-
-def fix_js_engine(old, new):
-  if old is None:
-    return
-  global JS_ENGINES
-  JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
-  return new
 
 
 def expected_llvm_version():
@@ -1699,6 +1726,7 @@ CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
+JS_ENGINE = None
 JS_ENGINES = []
 WASMER = None
 WASMTIME = None
@@ -1722,29 +1750,7 @@ else:
     exit_with_error('emscripten config file not found: ' + CONFIG_FILE)
 
 parse_config_file()
-# Engine tweaks
-if SPIDERMONKEY_ENGINE:
-  new_spidermonkey = SPIDERMONKEY_ENGINE
-  if '-w' not in str(new_spidermonkey):
-    new_spidermonkey += ['-w']
-  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
-NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
-V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
-WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
-if not CACHE:
-  if root_is_writable():
-    CACHE = path_from_root('cache')
-  else:
-    # Use the legacy method of putting the cache in the user's home directory
-    # if the emscripten root is not writable.
-    # This is useful mostly for read-only installation and perhaps could
-    # be removed in the future since such installations should probably be
-    # setting a specific cache location.
-    logger.debug('Using home-directory for emscripten cache due to read-only root')
-    CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
-if not PORTS:
-  PORTS = os.path.join(CACHE, 'ports')
+normalize_config_settings()
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.

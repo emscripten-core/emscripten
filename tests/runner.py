@@ -808,9 +808,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
-    # Make sure that we produced proper line endings to the .js file we are about to run.
-    if not filename.endswith('.wasm'):
-      self.assertEqual(line_endings.check_line_endings(filename), 0)
     error = None
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
@@ -821,6 +818,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                    assert_returncode=assert_returncode)
     except subprocess.CalledProcessError as e:
       error = e
+
+    # Make sure that we produced proper line endings to the .js file we are about to run.
+    if not filename.endswith('.wasm'):
+      self.assertEqual(line_endings.check_line_endings(filename), 0)
 
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()

@@ -814,11 +814,11 @@ class TestCoreBase(RunnerCore):
       }
     ''')
 
-    building.emcc('a1.c')
-    building.emcc('a2.c')
-    building.emcc('b1.c')
-    building.emcc('b2.c')
-    building.emcc('main.c')
+    building.emcc('a1.c', ['-c'])
+    building.emcc('a2.c', ['-c'])
+    building.emcc('b1.c', ['-c'])
+    building.emcc('b2.c', ['-c'])
+    building.emcc('main.c', ['-c'])
 
     building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
     building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
@@ -2458,7 +2458,9 @@ The current type of b is: 9
   @also_with_standalone_wasm()
   def test_atexit(self):
     # Confirms they are called in the proper reverse order
-    self.set_setting('EXIT_RUNTIME', 1)
+    if not self.get_setting('STANDALONE_WASM'):
+      # STANDALONE_WASM mode always sets EXIT_RUNTIME if main exists
+      self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
   def test_atexit_threads(self):
@@ -3690,8 +3692,9 @@ ok
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
       # side is just a library
-      try_delete('liblib.cpp.o.' + side_suffix)
-      self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)])
+      out_file = os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)
+      try_delete(out_file)
+      self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
       base = 'liblib.cpp' if not force_c else 'liblib.c'
       try_delete(base + '.o.' + side_suffix)
@@ -6030,7 +6033,6 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @wasm_simd
-  @unittest.skip("Allow qfma opcode change to roll in")
   def test_wasm_builtin_simd(self):
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
@@ -6040,7 +6042,6 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
-  @unittest.skip("Allow qfma opcode change to roll in")
   def test_wasm_intrinsics_simd(self):
     def run():
       self.do_run(

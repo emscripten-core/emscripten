@@ -416,20 +416,20 @@ var LibraryWebGPU = {
       'depth32float',
       'depth24plus',
       'depth24plus-stencil8',
-      'bc1rgba-unorm',
-      'bc1rgba-unorm-srgb',
-      'bc2rgba-unorm',
-      'bc2rgba-unorm-srgb',
-      'bc3rgba-unorm',
-      'bc3rgba-unorm-srgb',
-      'bc4r-unorm',
-      'bc4r-snorm',
-      'bc5rg-unorm',
-      'bc5rg-snorm',
+      'bc1-rgba-unorm',
+      'bc1-rgba-unorm-srgb',
+      'bc2-rgba-unorm',
+      'bc2-rgba-unorm-srgb',
+      'bc3-rgba-unorm',
+      'bc3-rgba-unorm-srgb',
+      'bc4-r-unorm',
+      'bc4-r-snorm',
+      'bc5-rg-unorm',
+      'bc5-rg-snorm',
       'bc6h-rgb-ufloat',
       'bc6h-rgb-sfloat',
-      'bc7rgba-unorm',
-      'bc7rgba-unorm-srgb',
+      'bc7-rgba-unorm',
+      'bc7-rgba-unorm-srgb',
     ],
     TextureViewDimension: [
       undefined,
@@ -1309,10 +1309,16 @@ var LibraryWebGPU = {
   wgpuBufferGetConstMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
 
+    // TODO: if the sentinel value becomes WGPU_WHOLE_SIZE instead of 0, update this.
+    if (size === 0) size = undefined;
+
     var mapped;
     try {
       mapped = bufferWrapper.object["getMappedRange"](offset, size);
     } catch (ex) {
+#if ASSERTIONS
+      err("wgpuBufferGetConstMappedRange(" + offset + ", " + size + ") failed: " + ex);
+#endif
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
     }
@@ -1328,6 +1334,9 @@ var LibraryWebGPU = {
   wgpuBufferGetMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
 
+    // TODO: if the sentinel value becomes WGPU_WHOLE_SIZE instead of 0, update this.
+    if (size === 0) size = undefined;
+
     if (bufferWrapper.mapMode !== 2 /* WGPUMapMode_Write */) {
 #if ASSERTIONS
       abort("GetMappedRange called, but buffer not mapped for writing");
@@ -1340,6 +1349,9 @@ var LibraryWebGPU = {
     try {
       mapped = bufferWrapper.object["getMappedRange"](offset, size);
     } catch (ex) {
+#if ASSERTIONS
+      err("wgpuBufferGetMappedRange(" + offset + ", " + size + ") failed: " + ex);
+#endif
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
     }
