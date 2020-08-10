@@ -22,10 +22,6 @@ if [ -z "$PYTHON" ]; then
 fi
 
 if [ -z "$PYTHON" ]; then
-  PYTHON=$(which python2 2> /dev/null)
-fi
-
-if [ -z "$PYTHON" ]; then
   echo 'unable to find python in $PATH'
   exit 1
 fi

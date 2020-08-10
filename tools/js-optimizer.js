@@ -4580,7 +4580,7 @@ function minifyGlobals(ast) {
   var minified = {};
   var next = 0;
   function getMinified(name) {
-    if (minified[name]) return minified[name];
+    if (minified.hasOwnProperty(name)) return minified[name];
     ensureMinifiedNames(next);
     return minified[name] = minifiedNames[next++];
   }
@@ -4706,10 +4706,9 @@ function minifyLocals(ast) {
     }
 
     // Traverse and minify all names.
-    if (fun[1] in extraInfo.globals) {
-      fun[1] = extraInfo.globals[fun[1]];
-      assert(fun[1]);
-    }
+    assert(extraInfo.globals.hasOwnProperty(fun[1]));
+    fun[1] = extraInfo.globals[fun[1]];
+    assert(fun[1] && typeof fun[1] === 'string');
     if (fun[2]) {
       for (var i = 0; i < fun[2].length; i++) {
         var minified = getNextMinifiedName();
@@ -5108,7 +5107,8 @@ function safeHeap(ast) {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0]]], ASM_INT);
             }
             case 'HEAPU32': {
-              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT);
+              // Note that a 32-bit unsigned number should not be changed to a signed one.
+              return makeSignedAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT, ASM_UNSIGNED);
             }
             case 'HEAPF32': {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4]]], ASM_DOUBLE);

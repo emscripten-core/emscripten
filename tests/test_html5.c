@@ -413,7 +413,19 @@ int main()
   ret = emscripten_set_webglcontextrestored_callback("#canvas", 0, 1, webglcontext_callback);
   TEST_RESULT(emscripten_set_webglcontextrestored_callback);
 
-  /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means. 
+  char *source_window_title = "test window title";
+  emscripten_set_window_title(source_window_title);
+  char *current_window_title = emscripten_get_window_title();
+  ret = (strcmp(source_window_title, current_window_title) == 0 \
+		  ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED);
+  TEST_RESULT(emscripten_get_window_title);
+
+  int width, height;
+  emscripten_get_screen_size(&width, &height);
+  ret = (width && height) ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED;
+  TEST_RESULT(emscripten_get_screen_size);
+
+  /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means.
      Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
   EM_ASM(noExitRuntime = true);
 

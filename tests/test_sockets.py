@@ -118,7 +118,7 @@ class CompiledServerHarness(object):
       npm_checked = True
 
     # compile the server
-    proc = run_process([EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
+    proc = run_process([EMCC, '-Werror', path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
     process = Popen(NODE_JS + ['server.js'])
@@ -285,11 +285,11 @@ class sockets(BrowserCore):
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
     shared.try_delete('enet')
-    shutil.copytree(path_from_root('tests', 'enet'), 'enet')
+    shutil.copytree(path_from_root('tests', 'third_party', 'enet'), 'enet')
     with chdir('enet'):
       self.run_process([path_from_root('emconfigure'), './configure'])
       self.run_process([path_from_root('emmake'), 'make'])
-      enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
+      enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
     for harness in [
       CompiledServerHarness(os.path.join('sockets', 'test_enet_server.c'), enet, 49210)
@@ -398,8 +398,8 @@ class sockets(BrowserCore):
       };
     ''')
 
-    self.run_process([EMCC, temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
-    self.run_process([EMCC, temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
+    self.run_process([EMCC, '-Werror', temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
+    self.run_process([EMCC, '-Werror', temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
 
     # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
     self.run_process([NPM, 'install', path_from_root('tests', 'sockets', 'p2p')])
@@ -429,7 +429,7 @@ class sockets(BrowserCore):
     # Basic test of node client against both a Websockified and compiled echo server.
     for harness, datagram in harnesses:
       with harness:
-        self.run_process([EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], stdout=PIPE, stderr=PIPE)
+        self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], stdout=PIPE, stderr=PIPE)
 
         out = self.run_js('client.js')
         self.assertContained('do_msg_read: read 14 bytes', out)
@@ -443,7 +443,7 @@ class sockets(BrowserCore):
         WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
       ]:
         with harness:
-          self.run_process([EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
+          self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
 
           out = self.run_js('client.js')
           self.assertContained('do_msg_read: read 14 bytes', out)
@@ -466,7 +466,7 @@ class sockets(BrowserCore):
           };
           ''')
 
-          self.run_process([EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
+          self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
 
           out = self.run_js('client.js')
           self.assertContained('do_msg_read: read 14 bytes', out)
