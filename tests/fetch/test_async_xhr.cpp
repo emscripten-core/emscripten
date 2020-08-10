@@ -7,21 +7,24 @@
 #include <string.h>
 #include <future>
 #include <iostream>
+#include <assert.h>
 #include <emscripten/fetch.h>
 
 void downloadSucceeded(emscripten_fetch_t *fetch) {
-    printf("User Data: %s\n", (char*)fetch->userData);
-    printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
+    assert(strcmp((char*)fetch->userData, "User Data") == 0);
+    assert(strcmp(fetch->url, "gears.png") == 0);
+    printf("Finished downloading %llu bytes.\n", fetch->numBytes);
     emscripten_fetch_close(fetch);
 }
 
 void downloadFailed(emscripten_fetch_t *fetch) {
-    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);
+    assert(strcmp(fetch->url, "gears.png") == 0);
+    printf("Downloading failed, HTTP failure status code: %d.\n", fetch->status);
     emscripten_fetch_close(fetch);
 }
 
 int main() {
-    char *str = (char*)"this is user data";
+    char *str = (char*)"User Data";
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
     strcpy(attr.requestMethod, "GET");
@@ -29,6 +32,5 @@ int main() {
     attr.userData = str;
     attr.onsuccess = downloadSucceeded;
     attr.onerror = downloadFailed;
-
     emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
 }
