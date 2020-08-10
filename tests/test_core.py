@@ -6057,6 +6057,17 @@ return malloc(size);
     self.build(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
+  # Tests invoking the NEON SIMD API via arm_neon.h header 
+  @wasm_simd
+  def test_neon_wasm_simd(self):
+    # Improves test readability
+    self.emcc_args.append('-Wno-c++11-narrowing')
+    self.emcc_args.append('-mfpu=neon')
+    self.emcc_args.append('-munimplemented-simd128')
+    self.do_run(open(path_from_root('tests', 'neon', 'test_neon_wasm_simd.cpp')).read(), 'Success!')
+    self.build(open(path_from_root('tests', 'neon', 'test_neon_wasm_simd.cpp')).read(),
+               self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
+
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
