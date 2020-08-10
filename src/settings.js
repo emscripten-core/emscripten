@@ -530,6 +530,11 @@ var MIN_WEBGL_VERSION = 1;
 // Specifies the highest WebGL version to target. Pass -s MAX_WEBGL_VERSION=2
 // to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
 // will default to creating a WebGL 2 context if no version is specified.
+// Note that there is no automatic fallback to WebGL1 if WebGL2 is not supported
+// in the browser at runtime, even if you build with both WebGL1 and WebGL2
+// support, as that may not always be what the application wants. If you want
+// such a fallback, you can try to create a context with WebGL2, and if that
+// fails try to create one with WebGL1.
 var MAX_WEBGL_VERSION = 1;
 
 // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that
