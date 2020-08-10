@@ -286,14 +286,12 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     onerror(fetch, 0, 'no url specified!');
     return;
   }
-
   var url_ = UTF8ToString(url);
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var requestMethod = UTF8ToString(fetch_attr);
   if (!requestMethod) requestMethod = 'GET';
   var userData = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.userData }}} >> 2];
-  console.log(getValue(userData, 'i32'));
   var fetchAttributes = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.attributes }}} >> 2];
   var timeoutMsecs = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.timeoutMSecs }}} >> 2];
   var withCredentials = !!HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.withCredentials }}} >> 2];

@@ -95,7 +95,6 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
   memset(fetch, 0, sizeof(emscripten_fetch_t));
   fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
   fetch->userData = fetch_attr->userData;
-  fetch->__attributes.userData = fetch_attr->userData;
   fetch->__attributes.timeoutMSecs = fetch_attr->timeoutMSecs;
   fetch->__attributes.attributes = fetch_attr->attributes;
   fetch->__attributes.withCredentials = fetch_attr->withCredentials;
@@ -174,7 +173,6 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
   } else
 #endif
     emscripten_start_fetch(fetch);
-  EM_ASM(console.log($0, $1), fetch->userData, *(int*)fetch->userData);
   return fetch;
 }
 
