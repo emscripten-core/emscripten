@@ -16,11 +16,11 @@ import sys
 
 from os import path
 
-# Why are the packages being stupid
-# from .shared import get_emscripten_temp_dir
+sys.path.insert(1, path.dirname(path.dirname(path.abspath(__file__))))
+from tools.shared import get_emscripten_temp_dir
 
 
-tmpdir = "/tmp"
+tmpdir = get_emscripten_temp_dir()
 emdir = path.join(path.dirname(path.realpath(__file__)), "..")
 
 def main(simde_path=None):
@@ -66,7 +66,7 @@ def main(simde_path=None):
   except subprocess.CalledProcessError as e:
     print("amalgamate.py returned error: " + str(e))
     return 1
-
+  
   try:
     os.mkdir(path.join(emdir, "system", "include", "neon"))
   except FileExistsError as e:
