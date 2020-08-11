@@ -238,27 +238,6 @@ var ALLOW_TABLE_GROWTH = 0;
 // default, any other value will be used as an override
 var GLOBAL_BASE = -1;
 
-// where the stack will begin. -1 means use the default. if the stack cannot
-// start at the value specified here, it may start at a higher location.
-// this is useful when debugging two builds that may differ in their static
-// allocations, by forcing the stack to start in the same place their
-// memory usage patterns would be the same.
-
-// How to load and store 64-bit doubles.  A potential risk is that doubles may
-// be only 32-bit aligned. Forcing 64-bit alignment in Clang itself should be
-// able to solve that, or as a workaround in DOUBLE_MODE 1 we will carefully
-// load in parts, in a way that requires only 32-bit alignment. In DOUBLE_MODE 0
-// we will simply store and load doubles as 32-bit floats, so when they are
-// stored/loaded they will truncate from 64 to 32 bits, and lose precision. This
-// is faster, and might work for some code (but probably that code should just
-// use floats and not doubles anyhow).  Note that a downside of DOUBLE_MODE 1 is
-// that we currently store the double in parts, then load it aligned, and that
-// load-store will make JS engines alter it if it is being stored to a typed
-// array for security reasons. That will 'fix' the number from being a NaN or an
-// infinite number.
-// [fastcomp-only]
-var DOUBLE_MODE = 1;
-
 // Warn at compile time about instructions that LLVM tells us are not fully
 // aligned.  This is useful to find places in your code where you might refactor
 // to ensure proper alignment.  This is currently only supported in asm.js, not
