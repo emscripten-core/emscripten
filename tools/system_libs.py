@@ -1765,13 +1765,16 @@ class Ports(object):
       except ImportError:
         try:
           from urllib.request import urlopen
-          f = urlopen(url)
-          data = f.read()
         except ImportError:
           # Python 2 compatibility
           from urllib2 import urlopen
-          f = urlopen(url)
-          data = f.read()
+        try:
+          import certifi
+          cafile = certifi.where()
+        except ImportError:
+          cafile = None
+        f = urlopen(url, cafile=cafile)
+        data = f.read()
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
