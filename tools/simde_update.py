@@ -10,6 +10,7 @@
 
 
 import os
+import shutil
 import subprocess
 import sys
 
@@ -41,7 +42,20 @@ def main(simde_path=None):
         return 1
       else:
         print("simde repository already found in tmpdir, using found repository")
-        os.system("git -C " + path.join(tmpdir, "simde") + " pull")
+        # check for git pull error
+        if 0 != os.system("git -C " + path.join(tmpdir, "simde") + " pull"):
+          print("*** Error while updating the git repository at " + path.join(tmpdir, "simde") + " ***")
+          print("Would you like to delete the folder and redownload it (0), or exit and resolve the error yourself (1), or continue (2)?")
+          print("[0,1,2] > ", end="")
+          while (it := input()) not in ("0", "1", "2"):
+            print("[0,1,2] > ", end="")
+          if it == "0":
+            shutil.rmtree(path.join(tmpdir, "simde"))
+            os.system("git clone git@github.com:simd-everywhere/simde " + path.join(tmpdir, "simde"))
+          elif it == "1":
+            return 1
+          elif it == "2":
+            pass
 
     simde_dir = path.join(tmpdir, "simde")
   else:
@@ -65,6 +79,8 @@ def main(simde_path=None):
       f.write(b"#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
       f.write(b"#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
       f.write(neon_h_buf)
+      f.write(b"#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write(b"#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
       print("'system/include/neon/arm_neon.h' updated")
     except:
       print("error writing 'system/include/neon/arm_neon.h'")

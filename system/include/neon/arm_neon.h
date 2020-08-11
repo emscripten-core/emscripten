@@ -1,7 +1,7 @@
 #define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES
 #define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
-/* 0990b98cce9ad954dd12788a7ea2b0e0ef449a8e */
+/* 222227da9f109df58347db52b047690e3048e61f */
 /* :: Begin ../../../../../../../tmp/simde/simde/arm/neon.h :: */
 /* SPDX-License-Identifier: MIT
  *
@@ -43365,3 +43365,5 @@ HEDLEY_DIAGNOSTIC_POP
 
 #endif /* SIMDE_ARM_NEON_H */
 /* :: End ../../../../../../../tmp/simde/simde/arm/neon.h :: */
+#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES
+#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES
