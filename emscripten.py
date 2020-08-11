@@ -510,7 +510,7 @@ def create_module_asmjs(function_table_sigs, metadata,
       stack += apply_memory('  var STACK_MAX = {{{ STACK_MAX }}};\n')
 
   if 'tempFloat' in shared.Settings.ASM_PRIMITIVE_VARS:
-    temp_float = '  var tempFloat = %s;\n' % 'Math_fround(0)')
+    temp_float = '  var tempFloat = %s;\n' % 'Math_fround(0)'
   else:
     temp_float = ''
   f0_fround = '  const f0 = Math_fround(0);\n'
