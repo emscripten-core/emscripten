@@ -313,8 +313,7 @@ var SAFE_HEAP = 0;
 var SAFE_HEAP_LOG = 0;
 
 // In asm.js mode, we cannot simply add function pointers to function tables, so
-// we reserve some slots for them. An alternative to this is to use
-// EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
+// we reserve some slots for them.
 // [fastcomp-only]
 var RESERVED_FUNCTION_POINTERS = 0;
 
@@ -323,27 +322,6 @@ var RESERVED_FUNCTION_POINTERS = 0;
 // compares function pointers across different types.
 // [fastcomp-only]
 var ALIASING_FUNCTION_POINTERS = 0;
-
-// asm.js: By default we implement function pointers using asm.js function
-// tables, which is very fast. With this option, we implement them more flexibly
-// by emulating them: we call out into JS, which handles the function tables.
-//  1: Full emulation. This means you can modify the
-//     table in JS fully dynamically, not just add to
-//     the end.
-//  2: Optimized emulation. Assumes once something is
-//     added to the table, it will not change. This allows
-//     dynamic linking while keeping performance fast,
-//     as we can do a fast call into the internal table
-//     if the fp is in the right range. Shared modules
-//     (MAIN_MODULE, SIDE_MODULE) do this by default.
-//     This requires RELOCATABLE to be set.
-// wasm:
-// By default we use a wasm Table for function pointers, which is fast and
-// efficient. When enabling emulation, we also use the Table *outside* the wasm
-// module, exactly as when emulating in asm.js, just replacing the plain JS
-// array with a Table.
-// [fastcomp-only]
-var EMULATED_FUNCTION_POINTERS = 0;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
