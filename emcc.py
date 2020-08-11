@@ -1738,9 +1738,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
 
     if shared.Settings.WASM:
-      if not building.need_asm_js_file():
-        asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-        misc_temp_files.note(asm_target)
+      asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
+      misc_temp_files.note(asm_target)
 
     if shared.Settings.WASM:
       if shared.Settings.INITIAL_MEMORY % 65536 != 0:
