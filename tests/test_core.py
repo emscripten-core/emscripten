@@ -5976,19 +5976,6 @@ return malloc(size);
 
     test()
 
-    def count_relocations():
-      generated = open('src.cpp.o.js').read()
-      generated = re.sub(r'\n+[ \n]*\n+', '\n', generated)
-      start = '\nfunction __apply_relocations() {'
-      relocs_start = generated.find(start)
-      if relocs_start == -1:
-        return "", 0
-      relocs_start += len(start)
-      relocs_end = generated.find('\n}', relocs_start)
-      relocs = generated[relocs_start:relocs_end]
-      num_relocs = relocs.count('\n')
-      return relocs, num_relocs
-
     print('asyncify') # extra coverage
     self.emcc_args += ['-s', 'ASYNCIFY=1']
     test()
