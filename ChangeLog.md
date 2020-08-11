@@ -18,7 +18,7 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
-2.0.0: ??/??/????
+2.0.0: 08/10/2020
 -----------------
 - First release that only supports the new upstream wasm backend (which has been
   the default for a long time) and no longer supports the old fastcomp backend.
