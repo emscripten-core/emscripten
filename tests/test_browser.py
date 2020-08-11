@@ -2718,17 +2718,6 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'], expected='0')
 
-  @no_wasm_backend('asm.js-specific')
-  def test_codemods(self):
-    # tests asm.js client-side code modifications
-    for opt_level in [0, 2]:
-      print('opt level', opt_level)
-      opts = ['-O' + str(opt_level), '-s', 'WASM=0']
-      # sanity checks, building with and without precise float semantics generates different results
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=opts)
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=1'])
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=2', '--separate-asm']) # empty polyfill, but browser has support, so semantics are like float
-
   @no_fastcomp("no asyncify support")
   def test_wget(self):
     create_test_file('test.txt', 'emscripten')
@@ -3670,12 +3659,11 @@ window.close = function() {
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
     for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-O3', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1'], ['-Os']]:
       for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
-        for f32 in [[], ['-s', 'PRECISE_F32=1', '--separate-asm', '-s', 'WASM=0']]:
-          args = opt + debug + f32
-          print(args)
-          if self.is_wasm_backend() and '--separate-asm' in args or 'AGGRESSIVE_VARIABLE_ELIMINATION=1' in args:
-            continue
-          self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+        args = opt + debug
+        print(args)
+        if self.is_wasm_backend() and 'AGGRESSIVE_VARIABLE_ELIMINATION=1' in args:
+          continue
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @requires_threads
