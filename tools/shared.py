@@ -38,7 +38,7 @@ LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 94
-SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 
 # can add  %(asctime)s  to see timestamps
@@ -865,27 +865,27 @@ def emsdk_cflags(user_args, cxx):
         return True
 
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
+      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
     c_opts += ['-D__SSE__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[1:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
     c_opts += ['-D__SSE2__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[2:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
     c_opts += ['-D__SSE3__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[3:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
     c_opts += ['-D__SSSE3__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[4:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
     c_opts += ['-D__SSE4_1__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[5:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
     c_opts += ['-D__SSE4_2__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[6:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
     c_opts += ['-D__AVX__=1']
 
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
