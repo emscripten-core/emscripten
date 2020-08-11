@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
+#if !WASM_BACKEND
 var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
-#endif // !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
+#endif // !WASM_BACKEND
 
 #if WASM
 // Wraps a JS function as a wasm function with a given signature.
@@ -197,7 +197,6 @@ function addFunction(func, sig) {
   return addFunctionWasm(func, sig);
 #else
 
-#if EMULATED_FUNCTION_POINTERS == 0
   var base = 0;
   for (var i = base; i < base + {{{ RESERVED_FUNCTION_POINTERS }}}; i++) {
     if (!functionPointers[i]) {
@@ -207,24 +206,6 @@ function addFunction(func, sig) {
   }
   throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 
-#else // EMULATED_FUNCTION_POINTERS == 0
-
-#if WASM
-  return addFunctionWasm(func, sig);
-#else
-  alignFunctionTables(); // TODO: we should rely on this being an invariant
-  var tables = getFunctionTables();
-  var ret = -1;
-  for (var signature in tables) {
-    var table = tables[signature];
-    if (ret < 0) ret = table.length;
-    else assert(ret === table.length);
-    table.push(func);
-  }
-  return ret;
-#endif // WASM
-
-#endif // EMULATED_FUNCTION_POINTERS == 0
 #endif // WASM_BACKEND
 }
 
@@ -232,20 +213,6 @@ function removeFunction(index) {
 #if WASM_BACKEND
   removeFunctionWasm(index);
 #else
-
-#if EMULATED_FUNCTION_POINTERS == 0
   functionPointers[index-jsCallStartIndex] = null;
-#else
-#if WASM
-  removeFunctionWasm(index);
-#else
-  alignFunctionTables(); // XXX we should rely on this being an invariant
-  var tables = getFunctionTables();
-  for (var sig in tables) {
-    tables[sig][index] = null;
-  }
-#endif // WASM
-
-#endif // EMULATE_FUNCTION_POINTER_CASTS == 0
 #endif // WASM_BACKEND
 }

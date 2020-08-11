@@ -1466,14 +1466,7 @@ function asmFFICoercion(value, type) {
 }
 
 function makeDynCall(sig) {
-  // asm.js function tables have one table in each linked asm.js module, so we
-  // can't just dynCall into them - ftCall exists for that purpose. In wasm,
-  // even linked modules share the table, so it's all fine.
-  if (EMULATED_FUNCTION_POINTERS && !WASM) {
-    return 'ftCall_' + sig;
-  } else {
-    return 'dynCall_' + sig;
-  }
+  return 'dynCall_' + sig;
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr

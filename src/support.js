@@ -617,65 +617,6 @@ Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
 #endif // WASM
 #endif // RELOCATABLE
 
-#if EMULATED_FUNCTION_POINTERS
-#if WASM == 0
-/** @param {Object=} module */
-function getFunctionTables(module) {
-  if (!module) module = Module;
-  var tables = {};
-  for (var t in module) {
-    if (/^FUNCTION_TABLE_.*/.test(t)) {
-      var table = module[t];
-      if (typeof table === 'object') tables[t.substr('FUNCTION_TABLE_'.length)] = table;
-    }
-  }
-  return tables;
-}
-
-/** @param {Object=} module */
-function alignFunctionTables(module) {
-  var tables = getFunctionTables(module);
-  var maxx = 0;
-  for (var sig in tables) {
-    maxx = Math.max(maxx, tables[sig].length);
-  }
-  assert(maxx >= 0);
-  for (var sig in tables) {
-    var table = tables[sig];
-    while (table.length < maxx) table.push(0);
-  }
-  return maxx;
-}
-#endif // WASM == 0
-
-#if RELOCATABLE
-// register functions from a new module being loaded
-function registerFunctions(sigs, newModule) {
-  sigs.forEach(function(sig) {
-    if (!Module['FUNCTION_TABLE_' + sig]) {
-      Module['FUNCTION_TABLE_' + sig] = [];
-    }
-  });
-  var oldMaxx = alignFunctionTables(); // align the new tables we may have just added
-  var newMaxx = alignFunctionTables(newModule);
-  var maxx = oldMaxx + newMaxx;
-  sigs.forEach(function(sig) {
-    var newTable = newModule['FUNCTION_TABLE_' + sig];
-    var oldTable = Module['FUNCTION_TABLE_' + sig];
-    assert(newTable !== oldTable);
-    assert(oldTable.length === oldMaxx);
-    for (var i = 0; i < newTable.length; i++) {
-      oldTable.push(newTable[i]);
-    }
-    assert(oldTable.length === maxx);
-  });
-  assert(maxx === alignFunctionTables()); // align the ones we didn't touch
-}
-// export this so side modules can use it
-Module['registerFunctions'] = registerFunctions;
-#endif // RELOCATABLE
-#endif // EMULATED_FUNCTION_POINTERS
-
 #include "runtime_functions.js"
 
 var funcWrappers = {};
