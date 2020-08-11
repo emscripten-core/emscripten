@@ -1412,19 +1412,6 @@ var PTHREADS_DEBUG = 0;
 // If true, building against Emscripten's asm.js/wasm heap memory profiler.
 var MEMORYPROFILER = 0;
 
-// Duplicate function elimination. This coalesces function bodies that are
-// identical, which can happen e.g. if two methods have different C/C++ or LLVM
-// types, but end up identical at the asm.js level (all pointers are the same as
-// int32_t in asm.js, for example).
-//
-// This option is quite slow to run, as it processes and hashes all methods in
-// the codebase in multiple passes.
-//
-// [fastcomp-only]
-var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
-var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
-var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
-
 // This tries to evaluate global ctors at compile-time, applying their effects
 // into the mem init file. This saves running code during startup, and also
 // allows removing the global ctor functions and other code that only they used,

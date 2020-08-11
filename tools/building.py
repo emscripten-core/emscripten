@@ -986,11 +986,6 @@ def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
   check_call(cmd)
 
 
-def eliminate_duplicate_funcs(filename):
-  from . import duplicate_function_eliminator
-  duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
-
-
 def calculate_reachable_functions(infile, initial_list, can_reach=True):
   with ToolchainProfiler.profile_block('calculate_reachable_functions'):
     from . import asm_module

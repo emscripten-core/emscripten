@@ -9035,7 +9035,7 @@ int main () {
                                '-DNDEBUG',
                                '-ffast-math']
 
-    asmjs = ['-s', 'WASM=0', '--separate-asm', '-s', 'ELIMINATE_DUPLICATE_FUNCTIONS=1', '--memory-init-file', '1']
+    asmjs = ['-s', 'WASM=0', '--separate-asm', '-s', '--memory-init-file', '1']
     wasm2js = ['-s', 'WASM=0', '--memory-init-file', '1']
 
     hello_world_sources = [path_from_root('tests', 'small_hello_world.c'),

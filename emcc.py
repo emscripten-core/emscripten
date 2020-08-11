@@ -1869,9 +1869,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
         shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
       shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
-      if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
-        diagnostics.warning('emcc', 'for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
-        shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
       if options.js_opts and not options.force_js_opts:
         options.js_opts = None
         logger.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
@@ -2694,12 +2691,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             optimizer.queue += ['registerizeHarder']
           else:
             optimizer.queue += ['registerize']
-
-        # NOTE: Important that this comes after registerize/registerizeHarder
-        if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and shared.Settings.OPT_LEVEL >= 2:
-          optimizer.flush()
-          building.eliminate_duplicate_funcs(final)
-          save_intermediate('dfe')
 
       if shared.Settings.EVAL_CTORS and options.memory_init_file and not use_source_map(options) and not shared.Settings.WASM:
         optimizer.flush()
