@@ -1226,7 +1226,7 @@ class JS(object):
     settings = settings or Settings
     if sig == 'i':
       return '0'
-    elif sig == 'f' and settings.get('PRECISE_F32'):
+    elif sig == 'f':
       return 'Math_fround(0)'
     elif sig == 'j':
       if settings:
@@ -1246,7 +1246,7 @@ class JS(object):
       return value + '|0'
     if sig in JS.FLOAT_SIGS and convert_from == 'i':
       value = '(' + value + '|0)'
-    if sig == 'f' and settings.get('PRECISE_F32'):
+    if sig == 'f':
       if ffi_arg:
         return '+Math_fround(' + value + ')'
       elif ffi_result:

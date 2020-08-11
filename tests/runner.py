@@ -310,7 +310,6 @@ else:
     'asm2',
     'asm3',
     'asm2g',
-    'asm2f',
   ]
 
 # The default core test mode, used when none is specified

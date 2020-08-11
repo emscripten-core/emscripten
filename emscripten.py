@@ -154,10 +154,6 @@ def parse_fastcomp_output(backend_output, DEBUG):
   if 'Float64Array' in metadata['externUses']:
     metadata['externUses'] += ['Float32Array']
 
-  # If we are generating references to Math.fround() from here in emscripten.py, declare it used as well.
-  if provide_fround():
-    metadata['externUses'] += ['Math.fround']
-
   # functions marked llvm.used in the code are exports requested by the user
   building.user_requested_exports += metadata['exports']
 
@@ -512,10 +508,10 @@ def create_module_asmjs(function_table_sigs, metadata,
       stack += apply_memory('  var STACK_MAX = {{{ STACK_MAX }}};\n')
 
   if 'tempFloat' in shared.Settings.ASM_PRIMITIVE_VARS:
-    temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
+    temp_float = '  var tempFloat = %s;\n' % 'Math_fround(0)'
   else:
     temp_float = ''
-  f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround() else ''
+  f0_fround = '  const f0 = Math_fround(0);\n'
 
   replace_memory = create_replace_memory(metadata)
 
@@ -562,8 +558,6 @@ def create_backend_cmd(infile, temp_js):
     '-emscripten-stack-size=%d' % shared.Settings.TOTAL_STACK,
     '-O%s' % shared.Settings.OPT_LEVEL,
   ]
-  if shared.Settings.PRECISE_F32:
-    args += ['-emscripten-precise-f32']
   if shared.Settings.USE_PTHREADS:
     args += ['-emscripten-enable-pthreads']
   if shared.Settings.WARN_UNALIGNED:
@@ -1328,9 +1322,7 @@ def asm_backend_uses(metadata, symbol):
 
 
 def create_asm_global_funcs(bg_funcs, metadata):
-  maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
-  if provide_fround():
-    maths += ['Math.fround']
+  maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32', 'fround']]
 
   asm_global_funcs = ''
   for math in maths:
@@ -1355,10 +1347,6 @@ def create_asm_global_vars(bg_vars):
 def asm_safe_heap():
   """optimized safe heap in asm, when we can"""
   return shared.Settings.SAFE_HEAP and not shared.Settings.SAFE_HEAP_LOG and not shared.Settings.RELOCATABLE
-
-
-def provide_fround():
-  return shared.Settings.PRECISE_F32
 
 
 def create_asm_setup(debug_tables, function_table_data, invoke_function_names, metadata):

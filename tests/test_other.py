@@ -2020,14 +2020,6 @@ int f() {
        ['asm', 'registerize', 'minifyLocals']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyLocals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyLocals-output.js')).read(),
        ['minifyLocals']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre.js'), [open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-output.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-output2.js')).read()],
-       ['asm', 'simplifyExpressions']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-output-f32.js')).read(),
-       ['asm', 'asmPreciseF32', 'simplifyExpressions', 'optimizeFrounds']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-output-f32-nosimp.js')).read(),
-       ['asm', 'asmPreciseF32', 'optimizeFrounds']),
-      (path_from_root('tests', 'optimizer', 'test-reduce-dead-float-return.js'), open(path_from_root('tests', 'optimizer', 'test-reduce-dead-float-return-output.js')).read(),
-       ['asm', 'optimizeFrounds', 'registerizeHarder']),
       (path_from_root('tests', 'optimizer', 'test-no-reduce-dead-float-return-to-nothing.js'), open(path_from_root('tests', 'optimizer', 'test-no-reduce-dead-float-return-to-nothing-output.js')).read(),
        ['asm', 'registerizeHarder']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-lastOpts-output.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-lastOpts-output2.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-lastOpts-output3.js')).read()],
@@ -5574,12 +5566,6 @@ Descriptor desc;
     self.run_process([EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL'])
     self.assertExists('a.out.js')
 
-  @no_wasm_backend('tests PRECISE_F32=1')
-  def test_f0(self):
-    self.run_process([EMCC, path_from_root('tests', 'fasta.cpp'), '-O2', '-s', 'PRECISE_F32=1', '-profiling', '-s', 'WASM=0'])
-    src = open('a.out.js').read()
-    assert ' = f0;' in src or ' = f0,' in src
-
   def test_emmake_emconfigure(self):
     def check(what, args, fail=True, expect=''):
       args = [what] + args
@@ -6815,31 +6801,6 @@ int main() {
     # size should be much smaller than the size of that zero-initialized buffer
     self.assertLess(size, 123456 / 2)
 
-  @no_wasm_backend('asm.js')
-  def test_separate_asm_warning(self):
-    # Test that -s PRECISE_F32=2 raises a warning that --separate-asm is implied.
-    stderr = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-s', 'PRECISE_F32=2', '-o', 'a.html'], stderr=PIPE).stderr
-    self.assertContained('forcing separate asm output', stderr)
-
-    # Test that -s PRECISE_F32=2 --separate-asm should not post a warning.
-    stderr = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-s', 'PRECISE_F32=2', '-o', 'a.html', '--separate-asm'], stderr=PIPE).stderr
-    self.assertNotContained('forcing separate asm output', stderr)
-
-    # Test that -s PRECISE_F32=1 should not post a warning.
-    stderr = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-s', 'PRECISE_F32=1', '-o', 'a.html'], stderr=PIPE).stderr
-    self.assertNotContained('forcing separate asm output', stderr)
-
-    # Manually doing separate asm should show a warning, if not targeting html
-    warning = '--separate-asm works best when compiling to HTML'
-    stderr = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '--separate-asm'], stderr=PIPE).stderr
-    self.assertContained(warning, stderr)
-    stderr = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '--separate-asm', '-o', 'a.html'], stderr=PIPE).stderr
-    self.assertNotContained(warning, stderr)
-
-    # test that the warning can be suppressed
-    stderr = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '--separate-asm', '-Wno-separate-asm'], stderr=PIPE).stderr
-    self.assertNotContained(warning, stderr)
-
   def test_canonicalize_nan_warning(self):
     create_test_file('src.cpp', r'''
 #include <stdio.h>
@@ -7424,20 +7385,6 @@ int main() {
           opts_str = args[0]
           assert opts_str.startswith('-O')
           assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
-
-  @no_wasm_backend('fastcomp specific')
-  def test_binaryen_and_precise_f32(self):
-    for args, expect in [
-        ([], True),
-        (['-s', 'PRECISE_F32=0'], True), # disabled, but no asm.js, so we definitely want f32
-        (['-s', 'PRECISE_F32=1'], True),
-        (['-s', 'PRECISE_F32=2'], True),
-      ]:
-      print(args, expect)
-      try_delete('a.out.js')
-      err = self.run_process([EMCC, '-v', path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1'] + args, stderr=PIPE).stderr
-      assert expect == (' -emscripten-precise-f32' in err), err
-      self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_binaryen_names(self):
     sizes = {}
