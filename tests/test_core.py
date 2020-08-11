@@ -6060,7 +6060,6 @@ return malloc(size);
   # Tests invoking the NEON SIMD API via arm_neon.h header 
   @wasm_simd
   def test_neon_wasm_simd(self):
-    # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.append('-mfpu=neon')
     self.emcc_args.append('-msimd128')
