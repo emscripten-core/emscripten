@@ -3836,13 +3836,6 @@ window.close = function() {
     for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_supported.cpp'), expected='0', args=['-O3'] + args)
 
-  # Test that --separate-asm works with -s USE_PTHREADS=1.
-  @no_wasm_backend('asm.js')
-  @requires_threads
-  def test_pthread_separate_asm_pthreads(self):
-    for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'] + modularize)
-
   # Test the operation of Module.pthreadMainPrefixURL variable
   @no_wasm_backend('uses js')
   @requires_threads
@@ -3898,7 +3891,7 @@ window.close = function() {
       print('aborting malloc=' + str(aborting_malloc))
       # With aborting malloc = 1, test allocating memory in threads
       # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'INITIAL_MEMORY=128MB'])
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'INITIAL_MEMORY=128MB'])
 
   # Test that -s ABORTING_MALLOC=0 works in both pthreads and non-pthreads builds. (sbrk fails gracefully)
   @requires_threads
@@ -4089,48 +4082,6 @@ window.close = function() {
 
   def test_custom_messages_proxy(self):
     self.btest(path_from_root('tests', 'custom_messages_proxy.c'), expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests', 'custom_messages_proxy_shell.html'), '--post-js', path_from_root('tests', 'custom_messages_proxy_postjs.js')])
-
-  # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s WASM=0 --separate-asm as well.
-  @no_wasm_backend('asm.js')
-  def test_minimal_runtime_separate_asm(self):
-    for opts in [['-s', 'MINIMAL_RUNTIME=1']]:
-      print(opts)
-      create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-      self.compile_btest(['src.cpp', '-o', 'test.html', '-s', 'WASM=0', '--separate-asm'] + opts)
-      self.run_browser('test.html', None, '/report_result?0')
-
-  @no_wasm_backend('asm.js')
-  def test_separate_asm(self):
-    for opts in [['-O0'], ['-O1'], ['-O2'], ['-O2', '--closure', '1']]:
-      print(opts)
-      create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-      self.compile_btest(['src.cpp', '-o', 'test.html', '-s', 'WASM=0'] + opts)
-      self.run_browser('test.html', None, '/report_result?0')
-
-      print('run one')
-      create_test_file('one.html', '<script src="test.js"></script>')
-      self.run_browser('one.html', None, '/report_result?0')
-
-      print('run two')
-      self.run_process([PYTHON, path_from_root('tools', 'separate_asm.py'), 'test.js', 'asm.js', 'rest.js'])
-      create_test_file('two.html', '''
-        <script>
-          var Module = {};
-        </script>
-        <script src="asm.js"></script>
-        <script src="rest.js"></script>
-      ''')
-      self.run_browser('two.html', None, '/report_result?0')
-
-      print('run hello world')
-      self.clear()
-      assert not os.path.exists('tests.asm.js')
-      self.btest('browser_test_hello_world.c', expected='0', args=opts + ['-s', 'WASM=0', '--separate-asm'])
-      self.assertExists('test.asm.js')
-      os.unlink('test.asm.js')
-
-      print('see a fail')
-      self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
 
   def test_vanilla_html_when_proxying(self):
     for opts in [0, 1, 2]:
@@ -4561,7 +4512,7 @@ window.close = function() {
   @requires_threads
   def test_pthread_run_script(self):
     for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_script.cpp'), expected='1', args=['-O3', '--separate-asm'] + args)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_script.cpp'), expected='1', args=['-O3'] + args)
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_threads
@@ -4575,7 +4526,7 @@ window.close = function() {
       ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'OFFSCREENCANVAS_SUPPORT'],
     ]:
-      cmd = ['-lGL', '-O3', '-g2', '--shell-file', path_from_root('tests', 'canvas_animate_resize_shell.html'), '--separate-asm', '-s', 'GL_DEBUG=1', '--threadprofiler'] + args
+      cmd = ['-lGL', '-O3', '-g2', '--shell-file', path_from_root('tests', 'canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG=1', '--threadprofiler'] + args
       print(' '.join(cmd))
       self.btest('canvas_animate_resize.cpp', expected='1', args=cmd)
 
@@ -4899,39 +4850,6 @@ window.close = function() {
   def test_closure_in_web_only_target_environment_webgl(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
 
-  # Tests that it is possible to load two asm.js compiled programs to one page when both --separate-asm and MODULARIZE=1 is used, by assigning
-  # the pages different asm module names to ensure they do not conflict when being XHRed in.
-  @no_wasm_backend('this tests asm.js support')
-  def test_two_separate_asm_files_on_same_page(self):
-    html_file = open('main.html', 'w')
-    html_file.write(open(path_from_root('tests', 'two_separate_asm_files.html')).read().replace('localhost:8888', 'localhost:%s' % self.port))
-    html_file.close()
-
-    cmd = [EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page1.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module1', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage1["asm"]']
-    print(cmd)
-    subprocess.check_call(cmd)
-
-    cmd = [EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page2.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module2', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage2["asm"]']
-    print(cmd)
-    subprocess.check_call(cmd)
-
-    self.run_browser('main.html', None, '/report_result?1')
-
-  # Tests that it is possible to encapsulate asm.js compiled programs by using --separate-asm + MODULARIZE=1. See
-  # encapsulated_asmjs_page_load.html for the example.
-  @no_wasm_backend('this tests asm.js support')
-  def test_encapsulated_asmjs_page_load(self):
-    html_file = open('main.html', 'w')
-    html_file.write(open(path_from_root('tests', 'encapsulated_asmjs_page_load.html')).read().replace('localhost:8888', 'localhost:%s' % self.port))
-    html_file.close()
-
-    cmd = [EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'a.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=EmscriptenCode', '-s', 'SEPARATE_ASM_MODULE_NAME="var EmscriptenCode"']
-    print(cmd)
-    subprocess.check_call(cmd)
-
-    self.run_browser('main.html', None, '/report_result?1')
-
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_no_declare_asm_module_exports_asmjs(self):
     for minimal_runtime in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
       self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'WASM=0'] + minimal_runtime)

@@ -1046,16 +1046,6 @@ var DETERMINISTIC = 0;
 // code, allowing better dead code elimination and minification.
 var MODULARIZE = 0;
 
-// If we separate out asm.js with the --separate-asm option,
-// this is the name of the variable where the generated asm.js
-// Module is assigned to. This name can either be a property
-// of Module, or a freestanding variable name, like "var asmJs".
-// If you are XHRing in multiple asm.js built files, use this option to
-// assign the generated asm.js modules to different variable names
-// so that they do not conflict. Default name is 'Module["asm"]' if a custom
-// name is not passed in.
-var SEPARATE_ASM_MODULE_NAME = '';
-
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports.
 var EXPORT_ES6 = 0;
@@ -1079,10 +1069,6 @@ var ASM_JS = 1;
 // optimizer sees 5.0 as just 5).
 // [fastcomp-only]
 var FINALIZE_ASM_JS = 1;
-
-// see emcc --separate-asm
-// [fastcomp-only]
-var SEPARATE_ASM = 0;
 
 // JS library functions on this list are not converted to JS, and calls to them
 // are turned into abort()s. This is potentially useful for reducing code size.

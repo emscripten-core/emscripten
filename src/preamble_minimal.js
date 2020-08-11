@@ -4,10 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if SEPARATE_ASM && ASSERTIONS && WASM == 0 && MODULARIZE
-if (!({{{ASM_MODULE_NAME}}})) throw 'Must load asm.js Module in to variable {{{ASM_MODULE_NAME}}} before adding compiled output .js script to the DOM';
-#endif
-
 #include "runtime_safe_heap.js"
 
 #if ASSERTIONS
