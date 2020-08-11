@@ -33,7 +33,7 @@ if __name__ == '__main__':
 from tools.shared import try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
-from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
+from tools.shared import NODE_JS, JS_ENGINES, WASM_ENGINES, V8_ENGINE
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
 from runner import js_engines_modify, NON_ZERO
@@ -535,8 +535,6 @@ f.close()
           print('    engine', engine)
           out = self.run_js('a.out.js', engine=engine)
           self.assertContained('hello, world!', out)
-          if not wasm and engine == SPIDERMONKEY_ENGINE:
-            self.validate_asmjs(out)
         if not wasm and not self.is_wasm_backend():
           src = open('a.out.js').read()
           if opts == []:
@@ -805,68 +803,6 @@ f.close()
     print('debug', debug_size)
     self.assertGreater(debug_size, unminified_size)
     self.assertContained('function _malloc', src)
-
-  @no_wasm_backend('tests fastcomp extra assertions for function pointer errors - do we need these?')
-  def test_dangerous_func_cast(self):
-    src = r'''
-      #include <stdio.h>
-      typedef void (*voidfunc)();
-      int my_func() {
-        printf("my func\n");
-        return 10;
-      }
-      int main(int argc, char **argv) {
-        voidfunc fps[10];
-        for (int i = 0; i < 10; i++)
-          fps[i] = (i == argc) ? (void (*)())my_func : NULL;
-        fps[2 * (argc-1) + 1]();
-        return 0;
-      }
-    '''
-    create_test_file('src.c', src)
-
-    def test(args, expected, assert_returncode):
-      print(args, expected)
-      self.run_process([EMCC, 'src.c'] + args, stderr=PIPE)
-      self.assertContained(expected, self.run_js('a.out.js', assert_returncode=assert_returncode))
-      if self.is_wasm_backend():
-        return
-      print('in asm.js')
-      self.run_process([EMCC, 'src.c', '-s', 'WASM=0'] + args, stderr=PIPE)
-      self.assertContained(expected, self.run_js('a.out.js', assert_returncode=assert_returncode))
-      # TODO: emulation function support in wasm is imperfect
-      print('with emulated function pointers in asm.js')
-      self.run_process([EMCC, '-s', 'WASM=0', 'src.c', '-s', 'ASSERTIONS=1'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE)
-      out = self.run_js('a.out.js', assert_returncode=assert_returncode)
-      self.assertContained(expected, out)
-
-    # fastcomp. all asm, so it can't just work with wrong sigs. but,
-    # ASSERTIONS=2 gives much better info to debug
-    # Case 1: No useful info, but does mention ASSERTIONS
-    test(['-O1'], 'ASSERTIONS', NON_ZERO)
-    # Case 2: Some useful text
-    test(['-O1', '-s', 'ASSERTIONS=1'], [
-        'Invalid function pointer',
-        "called with signature 'v'. Perhaps this is an invalid value",
-        'Build with ASSERTIONS=2 for more info'
-    ], NON_ZERO)
-    # Case 3: actually useful identity of the bad pointer, with comparisons to
-    # what it would be in other types/tables
-    test(['-O1', '-s', 'ASSERTIONS=2'], [
-        'Invalid function pointer',
-        "called with signature 'v'. Perhaps this is an invalid value",
-        'This pointer might make sense in another type signature:',
-        'Invalid function pointer',
-        "called with signature 'v'. Perhaps this is an invalid value",
-        "i: asm['_my_func']"
-    ], NON_ZERO)
-    # Case 4: emulate so it works
-    test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], 'my func\n', 0)
-
-  @no_wasm_backend('uses EMULATED_FUNCTION_POINTERS')
-  def test_emulate_function_pointer_casts_assertions_2(self):
-    # check empty tables work with assertions 2 in this mode (#6554)
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMULATED_FUNCTION_POINTERS=1', '-s', 'ASSERTIONS=2'])
 
   def test_wl_linkflags(self):
     # Test path -L and -l via -Wl, arguments and -Wl, response files
@@ -3962,43 +3898,40 @@ int main() {
     for opts in [0, 1, 2]:
       for safe in [0, 1]:
         for emulate_casts in [0, 1]:
-          for emulate_fps in [0, 1]:
-            for relocatable in [0, 1]:
-              for wasm in [0, 1]:
-                if self.is_wasm_backend() and (not wasm or emulate_fps):
-                  continue
-                cmd = [EMCC, 'src.cpp', '-O' + str(opts)]
-                if not wasm:
-                  cmd += ['-s', 'WASM=0']
-                if safe:
-                  cmd += ['-s', 'SAFE_HEAP']
-                if emulate_casts:
-                  cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS']
-                if emulate_fps:
-                  cmd += ['-s', 'EMULATED_FUNCTION_POINTERS']
-                if relocatable:
-                  cmd += ['-s', 'RELOCATABLE'] # disables asm-optimized safe heap
-                print(cmd)
-                self.run_process(cmd)
-                returncode = 0 if emulate_casts else NON_ZERO
-                output = self.run_js('a.out.js', assert_returncode=returncode)
-                if emulate_casts:
-                  # success!
-                  self.assertContained('Hello, world.', output)
+          for relocatable in [0, 1]:
+            for wasm in [0, 1]:
+              if self.is_wasm_backend() and not wasm:
+                continue
+              cmd = [EMCC, 'src.cpp', '-O' + str(opts)]
+              if not wasm:
+                cmd += ['-s', 'WASM=0']
+              if safe:
+                cmd += ['-s', 'SAFE_HEAP']
+              if emulate_casts:
+                cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS']
+              if relocatable:
+                cmd += ['-s', 'RELOCATABLE'] # disables asm-optimized safe heap
+              print(cmd)
+              self.run_process(cmd)
+              returncode = 0 if emulate_casts else NON_ZERO
+              output = self.run_js('a.out.js', assert_returncode=returncode)
+              if emulate_casts:
+                # success!
+                self.assertContained('Hello, world.', output)
+              else:
+                # otherwise, the error depends on the mode we are in
+                if self.is_wasm_backend() or (wasm and relocatable):
+                  # wasm trap raised by the vm
+                  self.assertContained('function signature mismatch', output)
+                elif opts == 0 and safe and not wasm:
+                  # non-wasm safe mode checks asm.js function table masks
+                  self.assertContained('Function table mask error', output)
+                elif opts == 0:
+                  # informative error message (assertions are enabled in -O0)
+                  self.assertContained('Invalid function pointer', output)
                 else:
-                  # otherwise, the error depends on the mode we are in
-                  if self.is_wasm_backend() or (wasm and (relocatable or emulate_fps)):
-                    # wasm trap raised by the vm
-                    self.assertContained('function signature mismatch', output)
-                  elif opts == 0 and safe and not wasm:
-                    # non-wasm safe mode checks asm.js function table masks
-                    self.assertContained('Function table mask error', output)
-                  elif opts == 0:
-                    # informative error message (assertions are enabled in -O0)
-                    self.assertContained('Invalid function pointer', output)
-                  else:
-                    # non-informative error
-                    self.assertContained(('abort(', 'exception'), output)
+                  # non-informative error
+                  self.assertContained(('abort(', 'exception'), output)
 
   @no_wasm_backend('asm.js function table feature')
   def test_aliased_func_pointers(self):
@@ -5810,85 +5743,6 @@ int main(int argc, char** argv) {
     self.assertGreater(vector, 1000)
     # we can strip out almost all of libcxx when just using vector
     self.assertLess(2.25 * vector, iostream)
-
-  @no_wasm_backend('relies on EMULATED_FUNCTION_POINTERS')
-  def test_emulated_function_pointers(self):
-    create_test_file('src.c', r'''
-      #include <emscripten.h>
-      typedef void (*fp)();
-      int main(int argc, char **argv) {
-        volatile fp f = 0;
-        EM_ASM({
-          if (typeof FUNCTION_TABLE_v !== 'undefined') {
-            out('function table: ' + FUNCTION_TABLE_v);
-          } else {
-            out('no visible function tables');
-          }
-        });
-        if (f) f();
-        return 0;
-      }
-      ''')
-
-    def test(args, expected):
-      print(args, expected)
-      self.run_process([EMCC, 'src.c', '-s', 'WASM=0'] + args, stderr=PIPE)
-      self.assertContained(expected, self.run_js('a.out.js'))
-
-    for opts in [0, 1, 2, 3]:
-      test(['-O' + str(opts)], 'no visible function tables')
-      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=1'], 'function table: ')
-
-  @no_wasm_backend('relies on EMULATED_FUNCTION_POINTERS')
-  def test_emulated_function_pointers_2(self):
-    create_test_file('src.c', r'''
-      #include <emscripten.h>
-      typedef void (*fp)();
-      static void one() { EM_ASM( out('one') ); }
-      static void two() { EM_ASM( out('two') ); }
-      void test() {
-        volatile fp f = one;
-        f();
-        f = two;
-        f();
-      }
-      int main(int argc, char **argv) {
-        test();
-        // swap them!
-        EM_ASM_INT({
-          var one = $0;
-          var two = $1;
-          if (typeof FUNCTION_TABLE_v === 'undefined') {
-            out('no');
-            return;
-          }
-          var temp = FUNCTION_TABLE_v[one];
-          FUNCTION_TABLE_v[one] = FUNCTION_TABLE_v[two];
-          FUNCTION_TABLE_v[two] = temp;
-        }, (int)&one, (int)&two);
-        test();
-        return 0;
-      }
-      ''')
-
-    flipped = 'one\ntwo\ntwo\none\n'
-    unchanged = 'one\ntwo\none\ntwo\n'
-    no_table = 'one\ntwo\nno\none\ntwo\n'
-
-    def test(args, expected):
-      print(args, expected.replace('\n', ' '))
-      self.run_process([EMCC, 'src.c', '-s', 'WASM=0'] + args)
-      self.assertContained(expected, self.run_js('a.out.js'))
-
-    for opts in [0, 1, 2]:
-      test(['-O' + str(opts)], no_table)
-      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped)
-      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=2'], flipped)
-      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=1', '-s', 'RELOCATABLE=1'], flipped)
-      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=2', '-s', 'RELOCATABLE=1'], unchanged) # with both of those, we optimize and you cannot flip them
-      test(['-O' + str(opts), '-s', 'MAIN_MODULE=1'], unchanged) # default for modules is optimized
-      test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=2'], unchanged)
-      test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped) # but you can disable that
 
   def test_minimal_dynamic(self):
     def run(wasm):
@@ -7750,8 +7604,6 @@ int main() {
 
   @parameterized({
     'normal': (['-O2'], ['abort'], ['waka'], 186423),
-    'emulated_function_pointers':
-              (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'], ['abort'], ['waka'], 188310),
   })
   @no_wasm_backend()
   def test_metadce_cxx_fastcomp(self, *args):

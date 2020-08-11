@@ -1100,9 +1100,6 @@ def verify_settings():
       # Requesting both Wasm and Wasm2JS support
       Settings.WASM2JS = 1
 
-    if Settings.EMULATED_FUNCTION_POINTERS:
-      exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')
-
 
 def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command

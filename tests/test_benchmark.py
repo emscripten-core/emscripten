@@ -829,10 +829,6 @@ class benchmark(runner.RunnerCore):
   def test_fasta_double(self):
     self.fasta('fasta_double', 'double')
 
-  @non_core
-  def test_fasta_double_full(self):
-    self.fasta('fasta_double_full', 'double', emcc_args=['-s', 'DOUBLE_MODE=1'])
-
   def test_skinning(self):
     src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
     self.do_benchmark('skinning', src, 'blah=0.000000')

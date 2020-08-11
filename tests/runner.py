@@ -746,16 +746,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       # side memory init file, or an empty one in the js
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
-  def validate_asmjs(self, err):
-    # check for asm.js validation
-    if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
-      print("[was asm.js'ified]", file=sys.stderr)
-    # check for an asm.js validation error, if we expect one
-    elif 'asm.js' in err and not self.is_wasm() and self.get_setting('ASM_JS') == 1:
-      self.fail("did NOT asm.js'ify: " + err)
-    err = '\n'.join([line for line in err.split('\n') if 'uccessfully compiled asm.js code' not in line])
-    return err
-
   def get_func(self, src, name):
     start = src.index('function ' + name + '(')
     t = start
@@ -824,8 +814,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
-    if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
-      err = self.validate_asmjs(err)
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:

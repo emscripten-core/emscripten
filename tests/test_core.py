@@ -475,16 +475,6 @@ class TestCoreBase(RunnerCore):
   def test_bswap64(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_bswap64')
 
-  @no_wasm_backend('uses EMULATED_FUNCTION_POINTERS')
-  def test_bswap64_emulate_fps(self):
-    # extra coverages
-    for emulate_casts in [0, 1]:
-      for emulate_fps in [0, 1, 2]:
-        print(emulate_casts, emulate_fps)
-        self.set_setting('EMULATE_FUNCTION_POINTER_CASTS', emulate_casts)
-        self.set_setting('EMULATED_FUNCTION_POINTERS', emulate_fps)
-        self.do_run_in_out_file_test('tests', 'core', 'test_bswap64')
-
   def test_sha1(self):
     self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
@@ -1788,19 +1778,6 @@ int main() {
   def test_mod_globalstruct(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct')
 
-  @no_wasm_backend('long doubles are f128s in wasm backend')
-  def test_pystruct(self):
-    def test():
-      self.do_run_in_out_file_test('tests', 'test_pystruct')
-
-    test()
-
-    print('relocatable') # this tests recursive global structs => nontrivial postSets for relocation
-    assert self.get_setting('RELOCATABLE') == self.get_setting('EMULATED_FUNCTION_POINTERS') == 0
-    self.set_setting('RELOCATABLE', 1)
-    self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
-    test()
-
   def test_sizeof(self):
       # Has invalid writes between printouts
       self.set_setting('SAFE_HEAP', 0)
@@ -2900,11 +2877,6 @@ The current type of b is: 9
     self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
                 output_nicerizer=lambda x, err: x.replace('\n', '*'))
 
-    if self.get_setting('ASM_JS') and SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
-      out = self.run_js('liblib.so', engine=SPIDERMONKEY_ENGINE)
-      if 'asm' in out:
-        self.validate_asmjs(out)
-
   @needs_dlfcn
   def test_dlfcn_data_and_fptr(self):
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
@@ -3694,10 +3666,6 @@ ok
       self.build(side, self.get_dir(), base, js_outfile=(side_suffix == 'js'))
       if force_c:
         shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
-    if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
-      out = self.run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE)
-      if 'asm' in out:
-        self.validate_asmjs(out)
     shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
 
     # main settings
@@ -5990,33 +5958,9 @@ return malloc(size);
 
     test()
 
-    def count_relocations():
-      generated = open('src.cpp.o.js').read()
-      generated = re.sub(r'\n+[ \n]*\n+', '\n', generated)
-      start = '\nfunction __apply_relocations() {'
-      relocs_start = generated.find(start)
-      if relocs_start == -1:
-        return "", 0
-      relocs_start += len(start)
-      relocs_end = generated.find('\n}', relocs_start)
-      relocs = generated[relocs_start:relocs_end]
-      num_relocs = relocs.count('\n')
-      return relocs, num_relocs
-
-    # TODO: wrappers for wasm modules
-    if not self.get_setting('WASM') and not self.is_wasm_backend():
-      print('relocatable')
-      assert self.get_setting('RELOCATABLE') == self.get_setting('EMULATED_FUNCTION_POINTERS') == 0
-      self.set_setting('RELOCATABLE', 1)
-      self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
-      test()
-      self.set_setting('RELOCATABLE', 0)
-      self.set_setting('EMULATED_FUNCTION_POINTERS', 0)
-
-    if self.is_wasm_backend():
-      print('asyncify') # extra coverage
-      self.emcc_args += ['-s', 'ASYNCIFY=1']
-      test()
+    print('asyncify') # extra coverage
+    self.emcc_args += ['-s', 'ASYNCIFY=1']
+    test()
 
   @needs_dlfcn
   def test_relocatable_void_function(self):
@@ -7003,13 +6947,6 @@ return malloc(size);
     else:
       self.do_run(open(src).read(), 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.', assert_returncode=NON_ZERO)
       self.assertNotContained('jsCall_', open('src.cpp.o.js').read())
-
-    if not self.get_setting('WASM') and not self.is_wasm_backend():
-      # with emulation, we don't need to reserve, except with wasm where
-      # we still do.
-      print('- with function pointer emulation')
-      self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
-      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
 
   def test_getFuncWrapper_sig_alias(self):
     src = r'''
