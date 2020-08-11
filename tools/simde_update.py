@@ -33,31 +33,10 @@ def main(simde_path=None):
 ./simde_update.py [SIMDE_REPO_DIRECTORY]''')
 
   if not simde_dir:
-    try:
-      os.mkdir(path.join(tmpdir, "simde"))
-      os.system("git clone git@github.com:simd-everywhere/simde " + path.join(tmpdir, "simde"))
-    except FileExistsError as e:
-      if not path.isdir(path.join(tmpdir, "simde")):
-        print("/tmp/simde not a directory, exiting...")
-        return 1
-      else:
-        print("simde repository already found in tmpdir, using found repository")
-        # check for git pull error
-        if 0 != os.system("git -C " + path.join(tmpdir, "simde") + " pull"):
-          print("*** Error while updating the git repository at " + path.join(tmpdir, "simde") + " ***")
-          print("Would you like to delete the folder and redownload it (0), or exit and resolve the error yourself (1), or continue (2)?")
-          print("[0,1,2] > ", end="")
-          while (it := input()) not in ("0", "1", "2"):
-            print("[0,1,2] > ", end="")
-          if it == "0":
-            shutil.rmtree(path.join(tmpdir, "simde"))
-            os.system("git clone git@github.com:simd-everywhere/simde " + path.join(tmpdir, "simde"))
-          elif it == "1":
-            return 1
-          elif it == "2":
-            pass
-
+    os.mkdir(path.join(tmpdir, "simde"))
+    os.system("git clone git@github.com:simd-everywhere/simde " + path.join(tmpdir, "simde"))
     simde_dir = path.join(tmpdir, "simde")
+    
   else:
     print("Using provided repository without updating [make sure it's up to date!]")
 
