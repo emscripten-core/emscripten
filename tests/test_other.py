@@ -7123,18 +7123,6 @@ mergeInto(LibraryManager.library, {
                                          'test-function-eliminator-replace-variable-value-output.js',
                                          use_hash_info=True)
 
-  @no_wasm_backend('uses CYBERDWARF')
-  def test_cyberdwarf_pointers(self):
-    self.run_process([EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                      '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'])
-    self.run_js('test_pointers.js')
-
-  @no_wasm_backend('uses CYBERDWARF')
-  def test_cyberdwarf_union(self):
-    self.run_process([EMCC, path_from_root('tests', 'debugger', 'test_union.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                      '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js'])
-    self.run_js('test_union.js')
-
   def test_source_file_with_fixed_language_mode(self):
     create_test_file('src_tmp_fixed_lang', '''
 #include <string>

@@ -123,10 +123,6 @@ if (memoryInitializer) {
 #endif
 #endif // MEM_INIT_IN_WASM == 0
 
-#if CYBERDWARF
-  Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
-#endif
-
 var calledRun;
 
 /**
