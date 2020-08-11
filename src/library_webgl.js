@@ -1086,36 +1086,74 @@ var LibraryGL = {
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
       __webgl_enable_WEBGL_multi_draw(GLctx);
 
+#if GL_AUTOMATIC_ENABLE_ALL_EXTENSIONS
+      // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      var exts = GLctx.getSupportedExtensions() || [];
+      exts.forEach(function(ext) {
+        // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+        GLctx.getExtension(ext);
+      });
+#else
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
       // As new extensions are ratified at http://www.khronos.org/registry/webgl/extensions/ , feel free to add your new extensions
       // here, as long as they don't produce a performance impact for users that might not be using those extensions.
       // E.g. debugging-related extensions should probably be off by default.
-      var automaticallyEnabledExtensions = [ // Khronos ratified WebGL extensions ordered by number (no debug extensions):
-                                             "OES_texture_float", "OES_texture_half_float", "OES_standard_derivatives",
-                                             "OES_vertex_array_object", "WEBGL_compressed_texture_s3tc", "WEBGL_depth_texture",
-                                             "OES_element_index_uint", "EXT_texture_filter_anisotropic", "EXT_frag_depth",
-                                             "WEBGL_draw_buffers", "ANGLE_instanced_arrays", "OES_texture_float_linear",
-                                             "OES_texture_half_float_linear", "EXT_blend_minmax", "EXT_shader_texture_lod",
-                                             "EXT_texture_norm16",
-                                             // Community approved WebGL extensions ordered by number:
-                                             "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
-                                             "EXT_sRGB", "WEBGL_compressed_texture_etc1", "EXT_disjoint_timer_query",
-                                             "WEBGL_compressed_texture_etc", "WEBGL_compressed_texture_astc", "EXT_color_buffer_float",
-                                             "WEBGL_compressed_texture_s3tc_srgb", "EXT_disjoint_timer_query_webgl2",
-                                             // Old style prefixed forms of extensions (but still currently used on e.g. iPhone Xs as
-                                             // tested on iOS 12.4.1):
-                                             "WEBKIT_WEBGL_compressed_texture_pvrtc"];
+      var automaticallyEnabledExtensions = [
 
-      function shouldEnableAutomatically(extension) {
-        var ret = false;
-        automaticallyEnabledExtensions.forEach(function(include) {
-          if (extension.indexOf(include) != -1) {
-            ret = true;
-          }
-        });
-        return ret;
-      }
+        // Khronos ratified WebGL extensions ordered by number (no debug extensions):
+        /*   1. */ "OES_texture_float",
+        /*   2. */ "OES_texture_half_float",
+        /*   3. */ // "WEBGL_lose_context",
+        /*   4. */ "OES_standard_derivatives",
+        /*   5. */ "OES_vertex_array_object",
+        /*   6. */ // "WEBGL_debug_renderer_info",
+        /*   7. */ // "WEBGL_debug_shaders",
+        /*   8. */ "WEBGL_compressed_texture_s3tc",
+        /*   9. */ "WEBGL_depth_texture",
+        /*  10. */ "OES_element_index_uint",
+        /*  11. */ "EXT_texture_filter_anisotropic",
+        /*  16. */ "EXT_frag_depth",
+        /*  18. */ "WEBGL_draw_buffers",
+        /*  19. */ "ANGLE_instanced_arrays",
+        /*  20. */ "OES_texture_float_linear",
+        /*  21. */ "OES_texture_half_float_linear",
+        /*  25. */ "EXT_blend_minmax",
+        /*  27. */ "EXT_shader_texture_lod",
+
+        // Community approved WebGL extensions ordered by number:
+        /*  13. */ "WEBGL_compressed_texture_pvrtc",
+        /*  14. */ "EXT_color_buffer_half_float",
+        /*  15. */ "WEBGL_color_buffer_float",
+        /*  17. */ "EXT_sRGB",
+        /*  24. */ "WEBGL_compressed_texture_etc1",
+        /*  26. */ "EXT_disjoint_timer_query",
+        /*  28. */ "OES_fbo_render_mipmap",
+        /*  29. */ "WEBGL_compressed_texture_etc",
+        /*  30. */ "WEBGL_compressed_texture_astc",
+        /*  31. */ "EXT_color_buffer_float",
+        /*  32. */ "WEBGL_compressed_texture_s3tc_srgb",
+        /*  33. */ "EXT_disjoint_timer_query_webgl2",
+        /*  35. */ "EXT_float_blend",
+        /*  36. */ "OVR_multiview2",
+        /*  37. */ "KHR_parallel_shader_compile",
+        /*  38. */ "EXT_texture_compression_bptc",
+        /*  39. */ "EXT_texture_compression_rgtc",
+        /*  40. */ "WEBGL_multi_draw",
+
+#if GL_AUTOMATIC_ENABLE_DRAFT_EXTENSIONS
+        // Draft WebGL extensions ordered by number:
+        /*  42. */ "WEBGL_blend_equation_advanced_coherent",
+        /*  43. */ "EXT_clip_cull_distance",
+        /*  44. */ "EXT_texture_norm16",
+        /*  45. */ "OES_draw_buffers_indexed",
+        /*  46. */ "WEBGL_draw_instanced_base_vertex_base_instance",
+        /*  47. */ "WEBGL_multi_draw_instanced_base_vertex_base_instance",
+#endif
+
+        // Old style prefixed forms of extensions (but still currently used on e.g. iPhone Xs as tested on iOS 12.4.1):
+        /*  13. */ "WEBKIT_WEBGL_compressed_texture_pvrtc",
+      ];
 
       var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
       exts.forEach(function(ext) {
@@ -1123,6 +1161,7 @@ var LibraryGL = {
           GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
         }
       });
+#endif
     },
 #endif
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.

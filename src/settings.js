@@ -413,10 +413,20 @@ var GL_EMULATE_GLES_VERSION_STRING_FORMAT = 1;
 // format, but also in desktop/mobile GLES/GL extension format with "GL_" prefix.
 var GL_EXTENSIONS_IN_PREFIXED_FORMAT = 1;
 
-// If true, adds support for automatically enabling all GL extensions for
-// GLES/GL emulation purposes. This takes up code size. If you set this to 0,
-// you will need to manually enable the extensions you need.
+// If true, adds support for automatically enabling GL extensions for GLES/GL
+// emulation purposes. This takes up code size. If you set this to 0,  you will
+// need to manually enable the extensions you need.
 var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
+
+// If true, all available extensions will be automatically enabled. Otherwise,
+// only known Khronos ratified and community approved extensions are enabled,
+// excluding debug extensions.
+var GL_AUTOMATIC_ENABLE_ALL_EXTENSIONS = 0;
+
+// If true, known draft WebGL extensions will be automatically enabled as well.
+// Ignored if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is 0 or if
+// GL_AUTOMATIC_ENABLE_ALL_EXTENSIONS is 1.
+var GL_AUTOMATIC_ENABLE_DRAFT_EXTENSIONS = 0;
 
 // If true, the function emscripten_webgl_enable_extension() can be called to
 // enable any WebGL extension. If false, to save code size,
