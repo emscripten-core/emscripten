@@ -784,10 +784,6 @@ Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
-#if CYBERDWARF
-var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
-#endif
-
 #include "URIUtils.js"
 
 #if ASSERTIONS

@@ -1533,14 +1533,6 @@ var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 // the ctors.
 var EVAL_CTORS = 0;
 
-// see http://kripken.github.io/emscripten-site/docs/debugging/CyberDWARF.html
-// [fastcomp-only]
-var CYBERDWARF = 0;
-
-// Path to the CyberDWARF debug file passed to the compiler
-// [fastcomp-only]
-var BUNDLED_CD_DEBUG_FILE = "";
-
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
