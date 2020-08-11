@@ -344,8 +344,6 @@ class TestCoreBase(RunnerCore):
 
   def test_int53(self):
     self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$convertI32PairToI53,$convertU32PairToI53,$readI53FromU64,$readI53FromI64,$writeI53ToI64,$writeI53ToI64Clamped,$writeI53ToU64Clamped,$writeI53ToI64Signaling,$writeI53ToU64Signaling]']
-    if not self.is_wasm_backend():
-      self.emcc_args += ['-s', 'BINARYEN_TRAP_MODE=js']
     self.do_run_in_out_file_test('tests', 'core', 'test_int53')
 
   def test_i64(self):
@@ -8202,34 +8200,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate', assert_returncode=NON_ZERO)
-
-  @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
-  def test_binaryen_trap_mode(self):
-    if not self.is_wasm():
-      self.skipTest('wasm test')
-    TRAP_OUTPUTS = ('trap', 'RuntimeError')
-    default = 'allow'
-    print('default is', default)
-    for mode in ['js', 'clamp', 'allow', '']:
-      if mode == 'js' and self.is_wasm_backend():
-        # wasm backend does not use asm2wasm imports, which js trap mode requires
-        continue
-      print('mode:', mode)
-      self.set_setting('BINARYEN_TRAP_MODE', mode or default)
-      if not mode:
-        mode = default
-      print('  idiv')
-      self.do_run(open(path_from_root('tests', 'wasm', 'trap-idiv.cpp')).read(), {
-          'js': '|0|',
-          'clamp': '|0|',
-          'allow': TRAP_OUTPUTS
-        }[mode], assert_returncode=NON_ZERO if mode == 'allow' else 0)
-      print('  f2i')
-      self.do_run(open(path_from_root('tests', 'wasm', 'trap-f2i.cpp')).read(), {
-          'js': '|1337|\n|4294967295|', # JS did an fmod 2^32 | normal
-          'clamp': '|-2147483648|\n|4294967295|',
-          'allow': TRAP_OUTPUTS
-        }[mode], assert_returncode=NON_ZERO if mode == 'allow' else 0)
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):

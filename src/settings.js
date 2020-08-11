@@ -1203,17 +1203,6 @@ var BINARYEN_SCRIPTS = "";
 // codebase it may help reduce code size a little bit.
 var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 
-// How we handle wasm operations that may trap, which includes integer
-// div/rem of 0 and float-to-int of values too large to fit in an int.
-//   js: do exactly what js does. this can be slower.
-//   clamp: avoid traps by clamping to a reasonable value. this can be
-//          faster than "js".
-//   allow: allow creating operations that can trap. this is the most
-//          compact, as we just emit a single wasm operation, with no
-//          guards to trapping values, and also often the fastest.
-// [fastcomp-only]
-var BINARYEN_TRAP_MODE = "allow";
-
 // A comma-separated list of extra passes to run in the binaryen optimizer,
 // Setting this does not override/replace the default passes. It is appended at
 // the end of the list of passes.
