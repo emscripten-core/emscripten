@@ -40,7 +40,7 @@ import base64
 from subprocess import PIPE
 
 import emscripten
-from tools import shared, system_libs, client_mods, js_optimizer
+from tools import shared, system_libs, js_optimizer
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
@@ -3509,8 +3509,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 
-  asm_mods = []
-
   if options.proxy_to_worker:
     proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
     worker_js = worker_js_script(proxy_worker_filename)
@@ -3535,10 +3533,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     # Normal code generation path
     script.src = base_js_target
 
-    asm_mods = client_mods.get_mods(shared.Settings,
-                                    minified='minifyNames' in optimizer.queue_history,
-                                    separate_asm=options.separate_asm)
-
   if not shared.Settings.SINGLE_FILE:
     if options.memory_init_file and not shared.Settings.MEM_INIT_IN_WASM:
       # start to load the memory init file in the HTML, in parallel with the JS
@@ -3556,13 +3550,11 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
     # of the wasm run methods.
     if not options.separate_asm or shared.Settings.WASM:
-      if len(asm_mods):
-         exit_with_error('no --separate-asm means no client code mods are possible')
+      pass
     else:
       script.un_src()
-      if len(asm_mods) == 0:
-        # just load the asm, then load the rest
-        script.inline = '''
+      # just load the asm, then load the rest
+      script.inline = '''
     var filename = '%s';
     var fileBytes = tryParseAsDataURI(filename);
     var script = document.createElement('script');
@@ -3578,38 +3570,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     };
     document.body.appendChild(script);
 ''' % (shared.JS.get_subresource_location(asm_target), script.inline)
-      else:
-        # may need to modify the asm code, load it as text, modify, and load asynchronously
-        script.inline = '''
-    var codeURL = '%s';
-    var codeXHR = new XMLHttpRequest();
-    codeXHR.open('GET', codeURL, true);
-    codeXHR.onload = function() {
-      var code;
-      if (codeXHR.status === 200 || codeXHR.status === 0) {
-        code = codeXHR.responseText;
-      } else {
-        var codeURLBytes = tryParseAsDataURI(codeURL);
-        if (codeURLBytes) {
-          code = intArrayToString(codeURLBytes);
-        }
-      }
-      %s
-      var blob = new Blob([code], { type: 'text/javascript' });
-      codeXHR = null;
-      var src = URL.createObjectURL(blob);
-      var script = document.createElement('script');
-      script.src = src;
-      script.onload = function() {
-        setTimeout(function() {
-          %s
-        }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
-        URL.revokeObjectURL(script.src);
-      };
-      document.body.appendChild(script);
-    };
-    codeXHR.send(null);
-''' % (shared.JS.get_subresource_location(asm_target), '\n'.join(asm_mods), script.inline)
 
     if shared.Settings.WASM and not shared.Settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
