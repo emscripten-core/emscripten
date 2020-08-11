@@ -7,10 +7,10 @@ Download and install
 .. note:: You can also :ref:`build Emscripten from source <installing-from-source>` if you prefer that to downloading binaries using the emsdk.
 
 .. note:: There are additional ways to install Emscripten than the instructions
-    below, for example, using brew on MacOS, the package manager on your linux
-    distro, or a Docker image, etc. However, the emsdk is the only officially
-    supported way to use Emscripten that is supported by the Emscripten
-    project, and the only one that we constantly test
+    below, for example, using Homebrew on MacOS, the package manager on your linux
+    distro. However, the emsdk is the only officially supported way to use
+    Emscripten that is supported by the Emscripten project, and the only one
+    that we constantly test
     (`emsdk CI <https://github.com/emscripten-core/emsdk/blob/master/.circleci/config.yml>`_,
     `Emscripten GitHub CI <https://github.com/emscripten-core/emscripten/blob/master/.circleci/config.yml>`_,
     `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_). (While we
@@ -27,7 +27,8 @@ Installation instructions
 
 First check the :ref:`Platform-specific notes <platform-notes-installation_instructions-SDK>` below and install any prerequisites.
 
-The core Emscripten SDK (emsdk) driver is a Python script. You can get it for the first time with
+The core Emscripten SDK (emsdk) driver is a Python script. You can get it for
+the first time with
 
   ::
 
@@ -64,7 +65,8 @@ If you change the location of the SDK (e.g. take it to another computer on an US
 Emsdk install targets
 ---------------------
 
-In the description above we asked the emsdk to install and activate ``latest``, which is the latest tagged release. That is often what you want.
+In the description above we asked the emsdk to install and activate ``latest``,
+which is the latest tagged release. That is often what you want.
 
 You can also install a specific version by specifying it, for example,
 
@@ -101,7 +103,7 @@ There are also "tip-of-tree builds", which are the very latest code that passes 
 .. _platform-notes-installation_instructions-SDK:
 
 Platform-specific notes
-----------------------------
+-----------------------
 
 Windows
 +++++++
@@ -113,7 +115,8 @@ Windows
 macOS
 +++++
 
-If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
+If you use the Emscripten SDK it includes a bundled version of Python 3.  Otherwise
+you will need to manually install and use Python 3.5 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
@@ -132,10 +135,8 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
   -  Download and install latest CMake from `Kitware CMake downloads <http://www.cmake.org/download/>`_.
 
-  .. _getting-started-on-macos-install-python2:
-
 Linux
-++++++++
++++++
 
 .. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
@@ -144,15 +145,13 @@ Linux
   ::
 
     # Install Python
-    sudo apt-get install python2.7
+    sudo apt-get install python3
 
     # Install CMake (optional, only needed for tests and building Binaryen)
     sudo apt-get install cmake
 
     # Install Java (optional, only needed for Closure Compiler minification)
     sudo apt-get install default-jre
-
-.. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
 .. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``.emscripten`` file to point to it.
 
@@ -169,7 +168,9 @@ Verifying the installation
 
 The easiest way to verify the installation is to compile some code using Emscripten.
 
-You can jump ahead to the :ref:`Tutorial`, but if you have any problems building you should run through the basic tests and troubleshooting instructions in :ref:`verifying-the-emscripten-environment`.
+You can jump ahead to the :ref:`Tutorial`, but if you have any problems building
+you should run through the basic tests and troubleshooting instructions in
+:ref:`verifying-the-emscripten-environment`.
 
 
 .. _updating-the-emscripten-sdk:
@@ -198,8 +199,21 @@ The package manager can do many other maintenance tasks ranging from fetching sp
 .. _downloads-uninstall-the-sdk:
 
 Uninstalling the Emscripten SDK
-========================================================
+===============================
 
-If you want to remove the whole SDK, just delete the directory containing the SDK.
+If you want to remove the whole SDK, just delete the directory containing the
+SDK.
 
-It is also possible to :ref:`remove specific tools in the SDK using emsdk <emsdk-remove-tool-sdk>`.
+It is also possible to :ref:`remove specific tools in the SDK using emsdk
+<emsdk-remove-tool-sdk>`.
+
+Using the Docker image
+======================
+
+The entire Emscripten SDK is also available in the form of a `docker image
+<https://hub.docker.com/r/emscripten/emsdk>`_.  For example::
+
+  docker run --rm -v $(pwd):/src -u $(id -u):$(id -g) \
+    emscripten/emsdk emcc helloworld.cpp -o helloworld.js
+
+See the Docker Hub page for more details and examples.

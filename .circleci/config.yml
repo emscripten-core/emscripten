@@ -32,7 +32,7 @@ commands:
     steps:
       - run: npm ci
   build:
-    description: "Install emsdk build all libraries using embuilder"
+    description: "Install emsdk"
     steps:
       - run:
           name: install emsdk
@@ -77,6 +77,9 @@ commands:
             # debugging the issue is tricky.
             [ "$CIRCLE_JOB" != "build-windows" ] && $PYTHON_BIN ./tools/gen_struct_info.py > out.json
             $PYTHON_BIN ./emcc.py --clear-cache
+  build-libs-and-freeze:
+    description: "Build all libraries, and freeze the cache"
+    steps:
       - run:
           name: embuilder build ALL
           command: |
@@ -101,6 +104,9 @@ commands:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
+  persist:
+    description: "Persist the emsdk, libraries, and engines"
+    steps:
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -310,49 +316,6 @@ commands:
             python3 tests/runner.py sockets
 
 jobs:
-  build-fastcomp:
-    executor: bionic
-    steps:
-      - checkout
-      - run:
-          name: install emsdk
-          command: |
-            curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
-            tar -C ~ -xf ~/emsdk-master.tar.gz
-            mv ~/emsdk-master ~/emsdk
-            cd ~/emsdk
-            ./emsdk update-tags
-            ./emsdk install tot-fastcomp
-            ./emsdk activate tot-fastcomp
-            # Remove the emsdk version of emscripten to save space in the
-            # persistent workspace and to avoid any confusion with the version
-            # we are trying to test.
-            rm -Rf emscripten
-            # We use an out-of-tree cache directory so it can be part of the
-            # persisted workspace (see below).
-            echo "import os" >> .emscripten
-            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
-            cd -
-            echo "final .emscripten:"
-            cat ~/emsdk/.emscripten
-      - emsdk-env
-      - npm-install
-      - run:
-          name: embuilder build ALL
-          command: |
-            python3 ./embuilder.py build ALL
-            python3 tests/runner.py test_hello_world
-      - run:
-          name: freeze cache
-          command: |
-            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
-      - persist_to_workspace:
-          # Must be an absolute path, or relative path from working_directory
-          root: ~/
-          # Must be relative path from root
-          paths:
-            - emsdk/
-            - cache/
   build-docs:
     executor: bionic
     steps:
@@ -367,96 +330,8 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: pip2 install flake8==3.7.8
       - run: pip3 install flake8==3.7.8
-      - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
-  test-fastcomp-other:
-    executor: bionic
-    steps:
-      - run-tests:
-          # some native-dependent tests fail because of the lack of native
-          # headers on emsdk-bundled clang>
-          # CircleCI actively kills memory-over-consuming process skip llvm-lit
-          # tests which need lit, and pip to get lit, but pip has broken on CI
-          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
-  test-fastcomp-browser-firefox:
-    executor: bionic
-    steps:
-      - test-firefox
-  test-fastcomp-browser-chrome:
-    executor: bionic
-    steps:
-      - test-chrome
-  test-fastcomp-ab:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_a* asm*.test_b*"
-  test-fastcomp-c:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_c*"
-  test-fastcomp-d:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*"
-  test-fastcomp-e:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_e*"
-  test-fastcomp-f:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_f*"
-  test-fastcomp-ghi:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_g* asm*.test_h* asm*.test_i*"
-  test-fastcomp-jklmno:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
-  test-fastcomp-p:
-    executor: bionic
-    environment:
-      # Without this test_poppler can cause timeouts because it takes more then
-      # 10 minutes without outputing anything.
-      EM_BUILD_VERBOSE: "2"
-    steps:
-      - run-tests:
-          test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
-  test-fastcomp-qrst:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*"
-  test-fastcomp-uvwxyz:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*"
-  test-fastcomp-wasm0:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm0"
-  test-fastcomp-wasm2:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm2"
-  test-fastcomp-wasm3:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm3"
   test-sanity:
     executor: bionic
     steps:
@@ -491,19 +366,8 @@ jobs:
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8
       - build
-  test-minimal-python2:
-    environment:
-      # PTYHON_BIN is used in this file to control which version of python
-      # we use to run the test runner, and EMSDK_PYTHON is used by emcc and
-      # other tools to determine which version of python to use internally.
-      # These can, by design, vary independently.
-      PYTHON_BIN: "python2"
-      EMSDK_PYTHON: "python2"
-      EMCC_ALLOW_PYTHON2: "1"
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm2.test_hello_world other.test_emcc_size_parsing"
+      - build-libs-and-freeze
+      - persist
   test-wasm0:
     executor: bionic
     steps:
@@ -529,7 +393,8 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          # see explanations in the fastcomp skips for these, earlier
+          # some native-dependent tests fail because of the lack of native
+          # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
@@ -562,6 +427,9 @@ jobs:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - persist
   test-minimal-windows:
     environment:
       # on windows the python binary is always called python.exe and never
@@ -594,6 +462,9 @@ jobs:
           command: brew install python3 cmake
       - checkout
       - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - persist
   test-other-mac:
     executor: mac
     steps:
@@ -605,55 +476,6 @@ workflows:
     jobs:
       - flake8
       - build-docs
-      - build-fastcomp
-      - test-fastcomp-other:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-browser-firefox:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-browser-chrome:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-ab:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-c:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-d:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-e:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-f:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-ghi:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-jklmno:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-p:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-qrst:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-uvwxyz:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-wasm0:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-wasm2:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-wasm3:
-          requires:
-            - build-fastcomp
       - build-linux
       - test-sanity:
           requires:
@@ -680,9 +502,6 @@ workflows:
           requires:
             - build-linux
       - test-sockets-chrome:
-          requires:
-            - build-linux
-      - test-minimal-python2:
           requires:
             - build-linux
       - build-windows

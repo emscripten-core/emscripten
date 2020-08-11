@@ -423,6 +423,33 @@ You may need to quote things like this:
 
 The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
 
+
+How do I specify ``-s`` options in a CMake project?
+===================================================
+
+Simple things like this should just work in a ``CMakeLists.txt`` file:
+
+::
+
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
+
+However, some ``-s`` options may require quoting, or the space between ``-s``
+and the next argument may confuse CMake, when using things like
+``target_link_options``. To avoid those problems, you can use ``-sX=Y``
+notation, that is, without a space:
+
+::
+
+  # same as before but no space after -s
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
+  # example of target_link_options with a list of names
+  target_link_options(example PRIVATE "-sEXPORTED_FUNCTIONS=[_main]")
+
+Note also that ``_main`` does not need to be quoted, even though it's a string
+name (``emcc`` knows that the argument to ``EXPORTED_FUNCTIONS`` is a list of
+strings, so it accepts ``[a]`` or ``[a,b]`` etc.).
+
+
 Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
 =============================================================================
 

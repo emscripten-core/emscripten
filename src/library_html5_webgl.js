@@ -125,7 +125,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
 #endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+      return 0;
     }
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -151,7 +151,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
         console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
-        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+        return 0;
 #endif
       }
 
@@ -170,7 +170,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
           console.error('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
 #endif
-          return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+          return 0;
         }
         canvas = GL.offscreenCanvases[canvas.id];
       }
@@ -188,7 +188,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
 #endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+      return 0;
     }
 #endif // ~!OFFSCREEN_FRAMEBUFFER
 
@@ -315,6 +315,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_enable_extension__deps: [
+#if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
 #if MIN_WEBGL_VERSION == 1
     '_webgl_enable_ANGLE_instanced_arrays',
     '_webgl_enable_OES_vertex_array_object',
@@ -322,6 +323,8 @@ var LibraryHtml5WebGL = {
 #endif
 #if MAX_WEBGL_VERSION >= 2
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+#endif
+    '_webgl_enable_WEBGL_multi_draw',
 #endif
   ],
   emscripten_webgl_enable_extension__proxy: 'sync_on_webgl_context_handle_thread',
@@ -348,12 +351,15 @@ var LibraryHtml5WebGL = {
     if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
+    if (extString == 'WEBGL_multi_draw') __webgl_enable_WEBGL_multi_draw(GLctx);
+
 #else
 
 #if ASSERTIONS || GL_ASSERTIONS
     if (['ANGLE_instanced_arrays',
          'OES_vertex_array_object',
          'WEBGL_draw_buffers',
+         'WEBGL_multi_draw',
          'WEBGL_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
       console.error('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');

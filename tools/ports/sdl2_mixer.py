@@ -39,7 +39,8 @@ def get(ports, settings, shared):
 
     flags = [
       '-s', 'USE_SDL=2',
-      '-O2'
+      '-O2',
+      '-DMUSIC_WAV',
     ]
 
     if "ogg" in settings.SDL2_MIXER_FORMATS:
@@ -84,7 +85,7 @@ def clear(ports, settings, shared):
 
 def process_dependencies(settings):
   global deps
-  deps = ['vorbis', 'mpg123', 'sdl2']
+  deps = ['sdl2']
   settings.USE_SDL = 2
   if "ogg" in settings.SDL2_MIXER_FORMATS:
     deps.append('vorbis')

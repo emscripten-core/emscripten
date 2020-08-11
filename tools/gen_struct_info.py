@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
@@ -401,6 +401,9 @@ def inspect_code(headers, cpp_opts, structs, defines):
                                     '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
                                     '-s', 'STRICT=1',
                                     '-s', 'SINGLE_FILE=1']
+  # Default behavior for emcc is to warn for binaryen version check mismatches
+  # so we should try to match that behavior.
+  cmd += ['-Wno-error=version-check']
 
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd += ['-Wno-deprecated']

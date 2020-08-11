@@ -814,11 +814,11 @@ class TestCoreBase(RunnerCore):
       }
     ''')
 
-    building.emcc('a1.c')
-    building.emcc('a2.c')
-    building.emcc('b1.c')
-    building.emcc('b2.c')
-    building.emcc('main.c')
+    building.emcc('a1.c', ['-c'])
+    building.emcc('a2.c', ['-c'])
+    building.emcc('b1.c', ['-c'])
+    building.emcc('b2.c', ['-c'])
+    building.emcc('main.c', ['-c'])
 
     building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
     building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
@@ -2458,7 +2458,9 @@ The current type of b is: 9
   @also_with_standalone_wasm()
   def test_atexit(self):
     # Confirms they are called in the proper reverse order
-    self.set_setting('EXIT_RUNTIME', 1)
+    if not self.get_setting('STANDALONE_WASM'):
+      # STANDALONE_WASM mode always sets EXIT_RUNTIME if main exists
+      self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
   def test_atexit_threads(self):
@@ -3690,8 +3692,9 @@ ok
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
       # side is just a library
-      try_delete('liblib.cpp.o.' + side_suffix)
-      self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)])
+      out_file = os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)
+      try_delete(out_file)
+      self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
       base = 'liblib.cpp' if not force_c else 'liblib.c'
       try_delete(base + '.o.' + side_suffix)
@@ -6217,9 +6220,14 @@ return malloc(size);
     # newer clang has a warning for implicit conversions that lose information,
     # which happens in sqlite (see #9138)
     self.emcc_args += ['-Wno-implicit-int-float-conversion']
-    # temporarily ignore unknown flags, which lets the above flag be used on our CI which doesn't
-    # yet have the new clang with that flag
+    # newer clang warns about "suspicious concatenation of string literals in an
+    # array initialization; did you mean to separate the elements with a comma?"
+    self.emcc_args += ['-Wno-string-concatenation']
+    # ignore unknown flags, which lets the above flags be used on github CI
+    # before the LLVM change rolls in (the same LLVM change that adds the
+    # warning also starts to warn on it)
     self.emcc_args += ['-Wno-unknown-warning-option']
+
     self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'sqlite')]
 
     src = '''

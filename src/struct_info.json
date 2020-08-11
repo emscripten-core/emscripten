@@ -1657,7 +1657,7 @@
     },
     // ===========================================
     // WebGPU
-    //   This COULD BE auto-generated:
+    //   NOTE: This can be (mostly) auto-generated:
     //   https://dawn.googlesource.com/dawn/+/refs/heads/master/generator/templates/webgpu_struct_info.json
     // ===========================================
     {
@@ -1689,6 +1689,7 @@
                 "visibility",
                 "type",
                 "hasDynamicOffset",
+                "minBufferBindingSize",
                 "multisampled",
                 "viewDimension",
                 "textureComponentType",
@@ -1699,18 +1700,12 @@
                 "srcFactor",
                 "dstFactor"
             ],
-            "WGPUBufferCopyView": [
-                "nextInChain",
-                "buffer",
-                "offset",
-                "bytesPerRow",
-                "rowsPerImage"
-            ],
             "WGPUBufferDescriptor": [
                 "nextInChain",
                 "label",
                 "usage",
-                "size"
+                "size",
+                "mappedAtCreation"
             ],
             "WGPUColor": [
                 "r",
@@ -1730,14 +1725,6 @@
                 "nextInChain",
                 "label"
             ],
-            "WGPUCreateBufferMappedResult": [
-                "buffer",
-                "dataLength",
-                "data"
-            ],
-            // "WGPUDeviceDescriptor": [
-            //     "nextInChain"
-            // ],
             "WGPUExtent3D": [
                 "width",
                 "height",
@@ -1767,12 +1754,14 @@
                 "module",
                 "entryPoint"
             ],
-            // "WGPUQuerySetDescriptor": [
-            //     "nextInChain",
-            //     "label",
-            //     "type",
-            //     "count"
-            // ],
+            "WGPUQuerySetDescriptor": [
+                "nextInChain",
+                "label",
+                "type",
+                "count",
+                "pipelineStatistics",
+                "pipelineStatisticsCount"
+            ],
             "WGPURasterizationStateDescriptor": [
                 "nextInChain",
                 "frontFace",
@@ -1798,14 +1787,12 @@
                 "depthLoadOp",
                 "depthStoreOp",
                 "clearDepth",
+                "depthReadOnly",
                 "stencilLoadOp",
                 "stencilStoreOp",
-                "clearStencil"
+                "clearStencil",
+                "stencilReadOnly"
             ],
-            // "WGPURequestAdapterOptions": [
-            //     "nextInChain",
-            //     "compatibleSurface"
-            // ],
             "WGPUSamplerDescriptor": [
                 "nextInChain",
                 "label",
@@ -1842,9 +1829,9 @@
                 "nextInChain",
                 "label"
             ],
-            "WGPUSurfaceDescriptorFromHTMLCanvasId": [
+            "WGPUSurfaceDescriptorFromCanvasHTMLSelector": [
                 "chain",
-                "id"
+                "selector"
             ],
             "WGPUSwapChainDescriptor": [
                 "nextInChain",
@@ -1854,6 +1841,12 @@
                 "width",
                 "height",
                 "presentMode"
+            ],
+            "WGPUTextureDataLayout": [
+                "nextInChain",
+                "offset",
+                "bytesPerRow",
+                "rowsPerImage"
             ],
             "WGPUTextureViewDescriptor": [
                 "nextInChain",
@@ -1883,6 +1876,11 @@
                 "label",
                 "entryCount",
                 "entries"
+            ],
+            "WGPUBufferCopyView": [
+                "nextInChain",
+                "layout",
+                "buffer"
             ],
             "WGPUColorStateDescriptor": [
                 "nextInChain",
@@ -1918,7 +1916,6 @@
                 "nextInChain",
                 "texture",
                 "mipLevel",
-                "arrayLayer",
                 "origin"
             ],
             "WGPUTextureDescriptor": [
@@ -1927,7 +1924,6 @@
                 "usage",
                 "dimension",
                 "size",
-                "arrayLayerCount",
                 "format",
                 "mipLevelCount",
                 "sampleCount"
@@ -1943,8 +1939,8 @@
                 "label",
                 "colorAttachmentCount",
                 "colorAttachments",
-                "depthStencilAttachment"
-                // "occlusionQuerySet"
+                "depthStencilAttachment",
+                "occlusionQuerySet"
             ],
             "WGPUVertexStateDescriptor": [
                 "nextInChain",

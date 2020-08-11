@@ -127,6 +127,16 @@ var LibraryGL = {
   },
 #endif
 
+  _webgl_enable_WEBGL_multi_draw: function(ctx) {
+    // Closure is expected to be allowed to minify the '.multiDrawWebgl' property, so not accessing it quoted.
+    return !!(ctx.multiDrawWebgl = ctx.getExtension('WEBGL_multi_draw'));
+  },
+
+  emscripten_webgl_enable_WEBGL_multi_draw__deps: ['_webgl_enable_WEBGL_multi_draw'],
+  emscripten_webgl_enable_WEBGL_multi_draw: function(ctx) {
+    return __webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx);
+  },
+
   $GL__postset: 'var GLctx;',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
@@ -139,6 +149,7 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
 #endif
+    '_webgl_enable_WEBGL_multi_draw',
     ],
 #endif
   $GL: {
@@ -1073,6 +1084,7 @@ var LibraryGL = {
 #endif
 
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+      __webgl_enable_WEBGL_multi_draw(GLctx);
 
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
@@ -3599,6 +3611,62 @@ var LibraryGL = {
   glSampleCoverage__sig: 'vii',
   glSampleCoverage: function(value, invert) {
     GLctx.sampleCoverage(value, !!invert);
+  },
+
+  glMultiDrawArraysWEBGL__sig: 'viiii',
+  glMultiDrawArrays: 'glMultiDrawArraysWEBGL',
+  glMultiDrawArraysANGLE: 'glMultiDrawArraysWEBGL',
+  glMultiDrawArraysWEBGL: function(mode, firsts, counts, drawcount) {
+    GLctx.multiDrawWebgl['multiDrawArraysWEBGL'](
+      mode,
+      HEAP32,
+      firsts >> 2,
+      HEAP32,
+      counts >> 2,
+      drawcount);
+  },
+
+  glMultiDrawArraysInstancedWEBGL__sig: 'viiiii',
+  glMultiDrawArraysInstancedANGLE: 'glMultiDrawArraysInstancedWEBGL',
+  glMultiDrawArraysInstancedWEBGL: function(mode, firsts, counts, instanceCounts, drawcount) {
+    GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
+      mode,
+      HEAP32,
+      firsts >> 2,
+      HEAP32,
+      counts >> 2,
+      HEAP32,
+      instanceCounts >> 2,
+      drawcount);
+  },
+
+  glMultiDrawElementsWEBGL__sig: 'viiiii',
+  glMultiDrawElements: 'glMultiDrawElementsWEBGL',
+  glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
+  glMultiDrawElementsWEBGL: function(mode, counts, type, offsets, drawcount) {
+    GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
+      mode,
+      HEAP32,
+      counts >> 2,
+      type,
+      HEAP32,
+      offsets >> 2,
+      drawcount);
+  },
+
+  glMultiDrawElementsInstancedWEBGL__sig: 'viiiiii',
+  glMultiDrawElementsInstancedANGLE: 'glMultiDrawElementsInstancedWEBGL',
+  glMultiDrawElementsInstancedWEBGL: function(mode, counts, type, offsets, instanceCounts, drawcount) {
+    GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
+      mode,
+      HEAP32,
+      counts >> 2,
+      type,
+      HEAP32,
+      offsets >> 2,
+      HEAP32,
+      instanceCounts >> 2,
+      drawcount);
   },
 
   // As a small peculiarity, we currently allow building with -s FULL_ES3=1 to emulate client side arrays,

@@ -4,9 +4,10 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
+import json
 import os
 import shutil
-from tools.shared import run_process
+from runner import parameterized
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
@@ -105,26 +106,34 @@ class interactive(BrowserCore):
     self.compile_btest(['sdl_audio_beep.cpp', '-O2', '--closure', '1', '--minify', '0', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
-  def test_sdl2_mixer(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
-    open(os.path.join(self.get_dir(), 'sdl2_mixer.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer.c')).read()))
-
-    Popen([EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432', '--preload-file', 'sound.ogg', '-o', 'page.html']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
   def test_sdl2_mixer_wav(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'sound.wav'))
-    open(os.path.join(self.get_dir(), 'sdl2_mixer_wav.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer_wav.c')).read()))
+    self.btest('sdl2_mixer_wav.c', expected='1', args=[
+      '-O2',
+      '-s', 'USE_SDL=2',
+      '-s', 'USE_SDL_MIXER=2',
+      '-s', 'INITIAL_MEMORY=33554432',
+      '--preload-file', 'sound.wav'
+    ])
 
-    Popen([EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer_wav.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432', '--preload-file', 'sound.wav', '-o', 'page.html']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
-  def test_sdl2_mixer_mp3(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'pudinha.mp3'), os.path.join(self.get_dir(), 'sound.mp3'))
-    open(os.path.join(self.get_dir(), 'sdl2_mixer_mp3.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer_mp3.c')).read()))
-
-    run_process([EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer_mp3.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'SDL2_MIXER_FORMATS=["mp3"]', '-s', 'INITIAL_MEMORY=33554432', '--preload-file', 'sound.mp3', '-o', 'page.html'])
-    self.run_browser('page.html', '', '/report_result?1')
+  @parameterized({
+    'wav': ([],         '0',            'the_entertainer.wav'),
+    'ogg': (['ogg'],    'MIX_INIT_OGG', 'alarmvictory_1.ogg'),
+    'mp3': (['mp3'],    'MIX_INIT_MP3', 'pudinha.mp3'),
+  })
+  def test_sdl2_mixer_music(self, formats, flags, music_name):
+    shutil.copyfile(path_from_root('tests', 'sounds', music_name), music_name)
+    self.btest('sdl2_mixer_music.c', expected='1', args=[
+      '-O2',
+      '--minify', '0',
+      '--preload-file', music_name,
+      '-DSOUND_PATH=' + json.dumps(music_name),
+      '-DFLAGS=' + flags,
+      '-s', 'USE_SDL=2',
+      '-s', 'USE_SDL_MIXER=2',
+      '-s', 'SDL2_MIXER_FORMATS=' + json.dumps(formats),
+      '-s', 'INITIAL_MEMORY=33554432'
+    ])
 
   def zzztest_sdl2_audio_beeps(self):
     open(os.path.join(self.get_dir(), 'sdl2_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_audio_beep.cpp')).read()))

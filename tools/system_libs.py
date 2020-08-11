@@ -72,7 +72,7 @@ def run_one_command(cmd):
   # building system libraries and ports should be hermetic in that it is not
   # affected by things like EMMAKEN_CFLAGS which the user may have set
   safe_env = os.environ.copy()
-  for opt in ['EMMAKEN_CFLAGS']:
+  for opt in ['EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   # Disable certain warnings when we build ports/system libraries we don't want to
@@ -789,7 +789,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['clock_settime.c'])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
-        filenames=['getpagesize.c'])
+        filenames=['getpagesize.c', 'err.c'])
 
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
@@ -1181,6 +1181,14 @@ class libgl(MTLibrary):
       is_full_es3=shared.Settings.FULL_ES3,
       **kwargs
     )
+
+
+class libwebgpu_cpp(MTLibrary):
+  name = 'libwebgpu_cpp'
+
+  cflags = ['-std=c++11', '-O2']
+  src_dir = ['system', 'lib', 'webgpu']
+  src_files = ['webgpu_cpp.cpp']
 
 
 class libembind(Library):
@@ -1686,6 +1694,9 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
       add_library(system_libs_map['libsockets_proxy'])
     else:
       add_library(system_libs_map['libsockets'])
+
+    if shared.Settings.USE_WEBGPU:
+      add_library(system_libs_map['libwebgpu_cpp'])
 
   if not shared.Settings.WASM_BACKEND:
     # With fastcomp, some libraries are basically big object files (.bc) and these need to come

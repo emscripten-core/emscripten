@@ -1748,13 +1748,13 @@ keydown(100);keyup(100); // trigger the end
     self.emcc_args.remove('-Werror')
     self.emcc_args += ['-Wno-pointer-sign', '-Wno-int-conversion']
     programs = self.get_library('glbook', [
-      os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.bc'),
-      os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.bc'),
-      os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.bc'),
-      os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.bc'),
-      os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.bc'),
-      os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.bc'),
-      os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.bc'),
+      os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.o'),
+      os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.o'),
+      os.path.join('Chapter_9', 'Simple_Texture2D', 'CH09_SimpleTexture2D.o'),
+      os.path.join('Chapter_9', 'Simple_TextureCubemap', 'CH09_TextureCubemap.o'),
+      os.path.join('Chapter_9', 'TextureWrap', 'CH09_TextureWrap.o'),
+      os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.o'),
+      os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.o'),
     ], configure=None)
 
     def book_path(*pathelems):
@@ -1764,16 +1764,16 @@ keydown(100);keyup(100); // trigger the end
       print(program)
       basename = os.path.basename(program)
       args = ['-lGL', '-lEGL', '-lX11']
-      if basename == 'CH10_MultiTexture.bc':
+      if basename == 'CH10_MultiTexture.o':
         shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'basemap.tga'), 'basemap.tga')
         shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'lightmap.tga'), 'lightmap.tga')
         args += ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
-      elif basename == 'CH13_ParticleSystem.bc':
+      elif basename == 'CH13_ParticleSystem.o':
         shutil.copyfile(book_path('Chapter_13', 'ParticleSystem', 'smoke.tga'), 'smoke.tga')
         args += ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
       self.btest(program,
-                 reference=book_path(basename.replace('.bc', '.png')),
+                 reference=book_path(basename.replace('.o', '.png')),
                  args=args)
 
   @requires_graphics_hardware
@@ -2686,6 +2686,23 @@ Module["preRun"].push(function () {
   def test_webgl2_pbo(self):
     self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
+  @no_firefox('fails on CI likely due to GPU drivers there')
+  @requires_graphics_hardware
+  def test_webgl2_sokol_mipmap(self):
+    self.btest(path_from_root('tests', 'third_party', 'sokol', 'mipmap-emsc.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-O1'],
+               reference=os.path.join('third_party', 'sokol', 'mipmap-emsc.png'), reference_slack=2)
+
+  @no_firefox('fails on CI likely due to GPU drivers there')
+  @requires_graphics_hardware
+  def test_webgl2_sokol_mrt(self):
+    self.btest(path_from_root('tests', 'third_party', 'sokol', 'mrt-emcc.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'],
+               reference=os.path.join('third_party', 'sokol', 'mrt-emcc.png'))
+
+  @requires_graphics_hardware
+  def test_webgl2_sokol_arraytex(self):
+    self.btest(path_from_root('tests', 'third_party', 'sokol', 'arraytex-emsc.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'],
+               reference=os.path.join('third_party', 'sokol', 'arraytex-emsc.png'))
+
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print(opts)
@@ -3196,24 +3213,32 @@ window.close = function() {
     print('also test building to object files first')
     src = open(path_from_root('tests', 'sdl2_misc.c')).read()
     create_test_file('test.c', self.with_report_result(src))
-    self.run_process([EMCC, 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
+    self.run_process([EMCC, '-c', 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
     self.compile_btest(['test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
-
-  @requires_sound_hardware
-  def test_sdl2_mixer(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), 'sound.ogg')
-    self.btest('sdl2_mixer.c', expected='1', args=['--preload-file', 'sound.ogg', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432'])
 
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), 'sound.wav')
     self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432'])
 
+  @parameterized({
+    'wav': ([],         '0',            'the_entertainer.wav'),
+    'ogg': (['ogg'],    'MIX_INIT_OGG', 'alarmvictory_1.ogg'),
+    'mp3': (['mp3'],    'MIX_INIT_MP3', 'pudinha.mp3'),
+  })
   @requires_sound_hardware
-  def test_sdl2_mixer_mp3(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'pudinha.mp3'), 'sound.mp3')
-    self.btest('sdl2_mixer_mp3.c', expected='1', args=['--preload-file', 'sound.mp3', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'SDL2_MIXER_FORMATS=["mp3"]', '-s', 'INITIAL_MEMORY=33554432'])
+  def test_sdl2_mixer_music(self, formats, flags, music_name):
+    shutil.copyfile(path_from_root('tests', 'sounds', music_name), music_name)
+    self.btest('sdl2_mixer_music.c', expected='1', args=[
+      '--preload-file', music_name,
+      '-DSOUND_PATH=' + json.dumps(music_name),
+      '-DFLAGS=' + flags,
+      '-s', 'USE_SDL=2',
+      '-s', 'USE_SDL_MIXER=2',
+      '-s', 'SDL2_MIXER_FORMATS=' + json.dumps(formats),
+      '-s', 'INITIAL_MEMORY=33554432'
+    ])
 
   @no_wasm_backend('cocos2d needs to be ported')
   @requires_graphics_hardware
@@ -4259,6 +4284,20 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-s', 'FULL_ES2=1'])
+
+  # Tests for WEBGL_multi_draw extension
+  # For testing WebGL draft extensions like this, if using chrome as the browser,
+  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
+  @requires_graphics_hardware
+  def test_webgl_multi_draw(self):
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
+    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware

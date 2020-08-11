@@ -101,37 +101,21 @@ LINUX = False
 MACOS = False
 if os.name == 'nt':
   WINDOWS = True
+  try:
+    import winreg
+  except ImportError:
+    # In python2 this is called _winreg. Remove once we fully drop python2 support.
+    # See https://docs.python.org/2/library/_winreg.html
+    import _winreg as winreg
 elif platform.system() == 'Linux':
   LINUX = True
 elif platform.mac_ver()[0] != '':
   MACOS = True
-
   import plistlib
 
 # If you are running on an OS that is not any of these, must add explicit support for it.
 if not WINDOWS and not LINUX and not MACOS:
   raise Exception("Unknown OS!")
-
-import_win32api_modules_warned_once = False
-
-
-def import_win32api_modules():
-  try:
-    global win32api, winreg, GetObject
-    import win32api
-    from win32com.client import GetObject
-    try:
-      import winreg
-    except ImportError:
-      import _winreg as winreg
-
-  except Exception as e:
-    global import_win32api_modules_warned_once
-    if not import_win32api_modules_warned_once:
-      print(str(e), file=sys.stderr)
-      print("Importing Python win32 modules failed! This most likely occurs if you do not have PyWin32 installed! Get it from https://github.com/mhammond/pywin32/releases", file=sys.stderr)
-      import_win32api_modules_warned_once = True
-    raise
 
 
 # Returns wallclock time in seconds.
@@ -737,7 +721,7 @@ def get_cpu_info():
   frequency = 0
   try:
     if WINDOWS:
-      import_win32api_modules()
+      from win32com.client import GetObject
       root_winmgmts = GetObject('winmgmts:root\\cimv2')
       cpus = root_winmgmts.ExecQuery('Select * from Win32_Processor')
       cpu_name = cpus[0].Name + ', ' + platform.processor()
@@ -797,11 +781,6 @@ def win_get_gpu_info():
       if gpu['model'] == model:
         return gpu
     return None
-
-  try:
-    import_win32api_modules()
-  except Exception:
-    return []
 
   for i in range(0, 16):
     try:
@@ -914,6 +893,7 @@ def get_gpu_info():
 def get_executable_version(filename):
   try:
     if WINDOWS:
+      import win32api
       info = win32api.GetFileVersionInfo(filename, "\\")
       ms = info['FileVersionMS']
       ls = info['FileVersionLS']
@@ -982,32 +962,29 @@ def win_get_file_properties(fname):
 
   props = {'FixedFileInfo': None, 'StringFileInfo': None, 'FileVersion': None}
 
-  try:
-    import win32api
-    # backslash as parm returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struc
-    fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
-    props['FixedFileInfo'] = fixedInfo
-    props['FileVersion'] = "%d.%d.%d.%d" % (fixedInfo['FileVersionMS'] / 65536,
-                                            fixedInfo['FileVersionMS'] % 65536,
-                                            fixedInfo['FileVersionLS'] / 65536,
-                                            fixedInfo['FileVersionLS'] % 65536)
+  import win32api
+  # backslash as parm returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struc
+  fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
+  props['FixedFileInfo'] = fixedInfo
+  props['FileVersion'] = "%d.%d.%d.%d" % (fixedInfo['FileVersionMS'] / 65536,
+                                          fixedInfo['FileVersionMS'] % 65536,
+                                          fixedInfo['FileVersionLS'] / 65536,
+                                          fixedInfo['FileVersionLS'] % 65536)
 
-    # \VarFileInfo\Translation returns list of available (language, codepage)
-    # pairs that can be used to retreive string info. We are using only the first pair.
-    lang, codepage = win32api.GetFileVersionInfo(fname, '\\VarFileInfo\\Translation')[0]
+  # \VarFileInfo\Translation returns list of available (language, codepage)
+  # pairs that can be used to retreive string info. We are using only the first pair.
+  lang, codepage = win32api.GetFileVersionInfo(fname, '\\VarFileInfo\\Translation')[0]
 
-    # any other must be of the form \StringfileInfo\%04X%04X\parm_name, middle
-    # two are language/codepage pair returned from above
+  # any other must be of the form \StringfileInfo\%04X%04X\parm_name, middle
+  # two are language/codepage pair returned from above
 
-    strInfo = {}
-    for propName in propNames:
-      strInfoPath = u'\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
-      ## print str_info
-      strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
+  strInfo = {}
+  for propName in propNames:
+    strInfoPath = u'\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
+    ## print str_info
+    strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
 
-    props['StringFileInfo'] = strInfo
-  except Exception:
-    pass
+  props['StringFileInfo'] = strInfo
 
   return props
 
@@ -1064,7 +1041,6 @@ def get_os_version():
   bitness = ' (64bit)' if platform.machine() in ['AMD64', 'x86_64'] else ' (32bit)'
   try:
     if WINDOWS:
-      import_win32api_modules()
       versionHandle = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
       productName = winreg.QueryValueEx(versionHandle, "ProductName")
 
@@ -1097,6 +1073,7 @@ def get_system_memory():
         if str(sline[0]) == 'MemTotal:':
           return int(sline[1]) * 1024
     elif WINDOWS:
+      import win32api
       return win32api.GlobalMemoryStatusEx()['TotalPhys']
     elif MACOS:
       return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
@@ -1132,7 +1109,6 @@ def which(program):
 
 
 def win_get_default_browser():
-  import_win32api_modules()
   # Look in the registry for the default system browser on Windows without relying on
   # 'start %1' since that method has an issue, see comment below.
   try:
