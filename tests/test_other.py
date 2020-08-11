@@ -9240,7 +9240,6 @@ int main () {
                                '-s', 'GL_TRACK_ERRORS=0',
                                '-s', 'GL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
                                '-s', 'GL_POOL_TEMP_BUFFERS=0',
-                               '-s', 'FAST_UNROLLED_MEMCPY_AND_MEMSET=0',
                                '-s', 'MIN_CHROME_VERSION=58',
                                '-s', 'NO_FILESYSTEM=1',
                                '--output_eol', 'linux',

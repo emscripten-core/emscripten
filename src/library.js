@@ -991,29 +991,6 @@ LibraryManager.library = {
         num = (num-1)|0;
       }
       aligned_dest_end = (dest_end & -4)|0;
-#if FAST_UNROLLED_MEMCPY_AND_MEMSET
-      block_aligned_dest_end = (aligned_dest_end - 64)|0;
-      while ((dest|0) <= (block_aligned_dest_end|0) ) {
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 4, makeGetValueAsm('src', 4, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 8, makeGetValueAsm('src', 8, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 12, makeGetValueAsm('src', 12, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 16, makeGetValueAsm('src', 16, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 20, makeGetValueAsm('src', 20, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 24, makeGetValueAsm('src', 24, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 28, makeGetValueAsm('src', 28, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 32, makeGetValueAsm('src', 32, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 36, makeGetValueAsm('src', 36, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 40, makeGetValueAsm('src', 40, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 44, makeGetValueAsm('src', 44, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 48, makeGetValueAsm('src', 48, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 52, makeGetValueAsm('src', 52, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 56, makeGetValueAsm('src', 56, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 60, makeGetValueAsm('src', 60, 'i32'), 'i32') }}};
-        dest = (dest+64)|0;
-        src = (src+64)|0;
-      }
-#endif
       while ((dest|0) < (aligned_dest_end|0) ) {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         dest = (dest+4)|0;
@@ -1084,30 +1061,6 @@ LibraryManager.library = {
 
       aligned_end = (end & -4)|0;
       value4 = value | (value << 8) | (value << 16) | (value << 24);
-
-#if FAST_UNROLLED_MEMCPY_AND_MEMSET
-      block_aligned_end = (aligned_end - 64)|0;
-
-      while((ptr|0) <= (block_aligned_end|0)) {
-        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 8, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 12, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 16, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 20, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 24, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 28, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 32, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 36, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 40, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 44, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 48, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 52, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 56, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 60, 'value4', 'i32') }}};
-        ptr = (ptr + 64)|0;
-      }
-#endif
 
       while ((ptr|0) < (aligned_end|0) ) {
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
