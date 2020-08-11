@@ -265,29 +265,6 @@ var DOUBLE_MODE = 1;
 // wasm.
 var WARN_UNALIGNED = 0;
 
-// 0: Use JS numbers for floating-point values. These are 64-bit and do not model C++
-//    floats exactly, which are 32-bit.
-// 1: Model C++ floats precisely, using Math.fround, polyfilling when necessary. This
-//    can be slow if the polyfill is used on heavy float32 computation. See note on
-//    browser support below.
-// 2: Model C++ floats precisely using Math.fround if available in the JS engine, otherwise
-//    use an empty polyfill. This will have much less of a speed penalty than using the full
-//    polyfill in cases where engine support is not present. In addition, we can
-//    remove the empty polyfill calls themselves on the client when generating html,
-//    which should mean that this gives you the best of both worlds of 0 and 1, and is
-//    therefore recommended, *unless* you need a guarantee of proper float32 precision
-//    (in that case, use option 1).
-// XXX Note: To optimize float32-using code, we use the 'const' keyword in the emitted
-//           code. This allows us to avoid unnecessary calls to Math.fround, which would
-//           slow down engines not yet supporting that function. 'const' is present in
-//           all modern browsers, including Firefox, Chrome and Safari, but in IE is only
-//           present in IE11 and above. Therefore if you need to support legacy versions of
-//           IE, you should not enable PRECISE_F32 1 or 2.
-// [fastcomp-only]
-// With upstream backend and WASM=0, JS output always uses Math.fround for consistent
-// behavior with WebAssembly.
-var PRECISE_F32 = 0;
-
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
 

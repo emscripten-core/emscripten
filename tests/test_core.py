@@ -419,7 +419,6 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy')
 
   def test_llvm_fabs(self):
-    self.set_setting('PRECISE_F32', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs')
 
   def test_double_varargs(self):
@@ -449,7 +448,6 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_double_i64_conversion')
 
   def test_float32_precise(self):
-    self.set_setting('PRECISE_F32', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_float32_precise')
 
   def test_negative_zero(self):
@@ -763,7 +761,6 @@ class TestCoreBase(RunnerCore):
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=NON_ZERO)
 
-  # Test that fmodf with -s PRECISE_F32=1 properly validates as asm.js (% operator cannot take in f32, only f64)
   def test_math_fmodf(self):
     self.do_run_in_out_file_test('tests', 'math', 'fmodf')
 
@@ -773,11 +770,7 @@ class TestCoreBase(RunnerCore):
   def test_rounding(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    for precise_f32 in [0, 1]:
-      print(precise_f32)
-      self.set_setting('PRECISE_F32', precise_f32)
-
-      self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
+    self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
 
   def test_fcvt(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_fcvt')
@@ -5856,15 +5849,13 @@ int main(void) {
 
     def test(extra_args):
       self.emcc_args = old + extra_args
-      for precision in [0, 1, 2]:
-        self.set_setting('PRECISE_F32', precision)
-        for t in ['float', 'double']:
-          print(precision, t)
-          src = orig_src.replace('double', t)
-          self.build(src, self.get_dir(), 'fasta.cpp')
-          for arg, output in results:
-            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
-          shutil.copyfile('fasta.cpp.o.js', '%d_%s.js' % (precision, t))
+      for t in ['float', 'double']:
+        print(t)
+        src = orig_src.replace('double', t)
+        self.build(src, self.get_dir(), 'fasta.cpp')
+        for arg, output in results:
+          self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
+        shutil.copyfile('fasta.cpp.o.js', '%d_%s.js' % t)
 
     test([])
 
@@ -6257,8 +6248,6 @@ return malloc(size);
 
     if self.run_name == 'asm2g':
       self.emcc_args += ['-g4'] # more source maps coverage
-    if self.run_name == 'asm2f':
-      return self.skipTest('asm2f affects cflags in a way that changes zlib compile flag reporting, so the stdout is different')
 
     if use_cmake:
       make_args = []
@@ -6635,7 +6624,7 @@ return malloc(size);
         if os.path.basename(name).startswith('temp_fuzzcode'):
           continue
         # pnacl legalization issue, see https://code.google.com/p/nativeclient/issues/detail?id=4027
-        if x == 'lto' and self.run_name in ['default', 'asm2f'] and os.path.basename(name) in ['8.c']:
+        if x == 'lto' and self.run_name in ['default'] and os.path.basename(name) in ['8.c']:
           continue
         if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in skip_lto_tests:
           continue
@@ -8906,7 +8895,6 @@ simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 
 # asm.js
-asm2f = make_run('asm2f', emcc_args=['-Oz', '-Wno-almost-asm'], settings={'PRECISE_F32': 1, 'ALLOW_MEMORY_GROWTH': 1, 'WASM': 0})
 asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
