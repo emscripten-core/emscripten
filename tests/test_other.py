@@ -33,7 +33,7 @@ if __name__ == '__main__':
 from tools.shared import try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
-from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
+from tools.shared import NODE_JS, JS_ENGINES, WASM_ENGINES, V8_ENGINE
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
 from runner import js_engines_modify, NON_ZERO
@@ -535,8 +535,6 @@ f.close()
           print('    engine', engine)
           out = self.run_js('a.out.js', engine=engine)
           self.assertContained('hello, world!', out)
-          if not wasm and engine == SPIDERMONKEY_ENGINE:
-            self.validate_asmjs(out)
         if not wasm and not self.is_wasm_backend():
           src = open('a.out.js').read()
           if opts == []:
