@@ -5855,7 +5855,7 @@ int main(void) {
         self.build(src, self.get_dir(), 'fasta.cpp')
         for arg, output in results:
           self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
-        shutil.copyfile('fasta.cpp.o.js', '%d_%s.js' % t)
+        shutil.copyfile('fasta.cpp.o.js', '%s.js' % t)
 
     test([])
 
