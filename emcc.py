@@ -2826,6 +2826,9 @@ def parse_args(newargs):
         options.requested_level = 2
         shared.Settings.SHRINK_LEVEL = 2
         settings_changes.append('INLINING_LIMIT=25')
+      elif options.requested_level == 'fast':
+        options.llvm_opts = ['-Ofast']
+        options.requested_level = 3
       shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif check_arg('--js-opts'):
       options.js_opts = int(consume_arg())
