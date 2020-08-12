@@ -6,11 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if !WASM_BACKEND && !WASM
-// asm.js startup is synchronous
-Module['asm'] = asm;
-#endif
-
 {{{ exportRuntime() }}}
 
 #if MEM_INIT_IN_WASM == 0
@@ -194,7 +189,7 @@ function callMain(args) {
     var start = Date.now();
 #endif
 
-#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+#if STACK_OVERFLOW_CHECK >= 2
     Module['___set_stack_limit'](STACK_MAX);
 #endif
 
