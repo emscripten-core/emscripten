@@ -26,7 +26,7 @@ int main()
   };
   printf("Fetch is started!\n");
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
-  // #ifdef REPORT_RESULT
-  //   REPORT_RESULT(fetch->status);
-  // #endif
+  #ifdef REPORT_RESULT
+    REPORT_RESULT(fetch->status);
+  #endif
 }
