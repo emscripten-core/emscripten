@@ -29,8 +29,8 @@
 //
 // In general it is best to pass the same arguments at both compile and link
 // time, as whether wasm object files are used or not affects when codegen
-// happens (without wasm object files, or when using fastcomp, codegen is all
-// during link; otherwise, it is during compile). Flags affecting codegen must
+// happens (without wasm object files, codegen is done entirely during
+// link; otherwise, it is during compile). Flags affecting codegen must
 // be passed when codegen happens, so to let a build easily switch when codegen
 // happens (LTO vs normal), pass the flags at both times. The flags are also
 // annotated in this file:
@@ -148,12 +148,6 @@ var MALLOC = "dlmalloc";
 //
 // [link]
 var ABORTING_MALLOC = 1;
-
-// If 1, generated a version of memcpy() and memset() that unroll their
-// copy sizes. If 0, optimizes for size instead to generate a smaller memcpy.
-// This flag only has effect when targeting asm.js.
-// [fastcomp-only]
-var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 
 // The initial amount of memory to use. Using more memory than this will
 // cause us to expand the heap, which can be costly with typed arrays:
@@ -1453,14 +1447,6 @@ var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 // the ctors.
 var EVAL_CTORS = 0;
 
-// see http://kripken.github.io/emscripten-site/docs/debugging/CyberDWARF.html
-// [fastcomp-only]
-var CYBERDWARF = 0;
-
-// Path to the CyberDWARF debug file passed to the compiler
-// [fastcomp-only]
-var BUNDLED_CD_DEBUG_FILE = "";
-
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
@@ -1778,4 +1764,7 @@ var LEGACY_SETTINGS = [
   ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
   ['SEPARATE_ASM', [0], 'Separate asm.js only made sense for fastcomp with asm.js output'],
   ['SEPARATE_ASM_MODULE_NAME', [''], 'Separate asm.js only made sense for fastcomp with asm.js output'],
+  ['FAST_UNROLLED_MEMCPY_AND_MEMSET', [0, 1], 'The wasm backend implements memcpy/memset in C'],
+  ['DOUBLE_MODE', [0, 1], 'The wasm backend always implements doubles normally'],
+  ['PRECISE_F32', [0, 1, 2], 'The wasm backend always implements floats normally'],
 ];

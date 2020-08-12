@@ -21,7 +21,7 @@ def get(ports, settings, shared):
     ports.clear_project_build('bzip2')
 
     source_path = os.path.join(ports.get_dir(), 'bzip2', 'bzip2-' + VERSION)
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'bzip2')
+    dest_path = os.path.join(ports.get_build_dir(), 'bzip2')
     shared.try_delete(dest_path)
     os.makedirs(dest_path)
     shutil.rmtree(dest_path, ignore_errors=True)

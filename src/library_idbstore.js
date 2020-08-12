@@ -55,7 +55,7 @@ var LibraryIDBStore = {
     });
   },
 
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
   emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
@@ -166,7 +166,7 @@ var LibraryIDBStore = {
   emscripten_idb_exists: function() {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_exists, etc.';
   },
-#endif // WASM_BACKEND && ASYNCIFY
+#endif // ASYNCIFY
 };
 
 autoAddDeps(LibraryIDBStore, '$IDBStore');

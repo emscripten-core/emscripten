@@ -277,6 +277,11 @@ bool SignalContext::IsStackOverflow() const {
 #endif  // SANITIZER_GO
 
 bool IsAccessibleMemoryRange(uptr beg, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  // Avoid pulling in __sys_pipe for the trick below, which doesn't work on
+  // WebAssembly anyways because there are no memory protections.
+  return true;
+#else
   uptr page_size = GetPageSizeCached();
   // Checking too large memory ranges is slow.
   CHECK_LT(size, page_size * 10);
@@ -296,6 +301,7 @@ bool IsAccessibleMemoryRange(uptr beg, uptr size) {
   internal_close(sock_pair[0]);
   internal_close(sock_pair[1]);
   return result;
+#endif // SANITIZER_EMSCRIPTEN
 }
 
 void PlatformPrepareForSandboxing(__sanitizer_sandbox_arguments *args) {

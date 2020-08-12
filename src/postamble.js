@@ -123,10 +123,6 @@ if (memoryInitializer) {
 #endif
 #endif // MEM_INIT_IN_WASM == 0
 
-#if CYBERDWARF
-  Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
-#endif
-
 var calledRun;
 
 /**
@@ -224,16 +220,16 @@ function callMain(args) {
     // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
     // off to a pthread.
 #if !PROXY_TO_PTHREAD
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
     if (!noExitRuntime) {
-#endif // WASM_BACKEND && ASYNCIFY
+#endif // ASYNCIFY
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
     }
-#endif // WASM_BACKEND && ASYNCIFY
+#endif // ASYNCIFY
   }
   catch(e) {
     if (e instanceof ExitStatus) {

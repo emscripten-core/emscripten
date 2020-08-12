@@ -7123,18 +7123,6 @@ mergeInto(LibraryManager.library, {
                                          'test-function-eliminator-replace-variable-value-output.js',
                                          use_hash_info=True)
 
-  @no_wasm_backend('uses CYBERDWARF')
-  def test_cyberdwarf_pointers(self):
-    self.run_process([EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                      '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'])
-    self.run_js('test_pointers.js')
-
-  @no_wasm_backend('uses CYBERDWARF')
-  def test_cyberdwarf_union(self):
-    self.run_process([EMCC, path_from_root('tests', 'debugger', 'test_union.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                      '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js'])
-    self.run_js('test_union.js')
-
   def test_source_file_with_fixed_language_mode(self):
     create_test_file('src_tmp_fixed_lang', '''
 #include <string>
@@ -9039,7 +9027,6 @@ int main () {
                                '-s', 'GL_TRACK_ERRORS=0',
                                '-s', 'GL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
                                '-s', 'GL_POOL_TEMP_BUFFERS=0',
-                               '-s', 'FAST_UNROLLED_MEMCPY_AND_MEMSET=0',
                                '-s', 'MIN_CHROME_VERSION=58',
                                '-s', 'NO_FILESYSTEM=1',
                                '--output_eol', 'linux',
@@ -9575,6 +9562,10 @@ int main(void) {
 
   def test_mmap_and_munmap_anonymous(self):
     self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM'])
+
+  @no_fastcomp('asan is not supported on fastcomp')
+  def test_mmap_and_munmap_anonymous_asan(self):
+    self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
 
   def test_mmap_memorygrowth(self):
     self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])

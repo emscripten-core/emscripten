@@ -441,8 +441,6 @@ def finalize_output(outfile, post, function_table_data, bundled_args, metadata, 
   if DEBUG:
     logger.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
 
-  write_cyberdwarf_data(outfile, metadata)
-
 
 # Given JS code that consists only exactly of a series of "var a = ...;\n var b = ...;" statements,
 # this function collapses the redundant 'var ' statements at the beginning of each line to a
@@ -545,16 +543,6 @@ def write_output_file(outfile, post, module):
   outfile.write(post)
 
 
-def write_cyberdwarf_data(outfile, metadata):
-  if not shared.Settings.CYBERDWARF:
-    return
-
-  assert('cyberdwarf_data' in metadata)
-  cd_file_name = outfile.name + ".cd"
-  with open(cd_file_name, 'w') as f:
-    json.dump({'cyberdwarf': metadata['cyberdwarf_data']}, f)
-
-
 def create_backend_cmd(infile, temp_js):
   """Create asm.js backend command from settings dict"""
   args = [
@@ -595,8 +583,6 @@ def create_backend_cmd(infile, temp_js):
     args += ['-emscripten-wasm']
     if building.is_wasm_only():
       args += ['-emscripten-only-wasm']
-  if shared.Settings.CYBERDWARF:
-    args += ['-enable-cyberdwarf']
   return args
 
 
@@ -654,10 +640,6 @@ def align_static_bump(metadata):
 
 def update_settings_glue(metadata, DEBUG):
   optimize_syscalls(metadata['declares'], DEBUG)
-
-  if shared.Settings.CYBERDWARF:
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append("cyberdwarf_Debugger")
-    shared.Settings.EXPORTED_FUNCTIONS.append("cyberdwarf_Debugger")
 
   # Integrate info from backend
   if shared.Settings.SIDE_MODULE:
