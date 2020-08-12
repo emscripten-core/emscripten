@@ -24,10 +24,6 @@
 // (using makeStaticAlloc)
 
 LibraryManager.library = {
-#if !WASM_BACKEND
-  __dso_handle: '{{{ makeStaticAlloc(1) }}}',
-#endif
-
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
   // ==========================================================================
@@ -754,171 +750,6 @@ LibraryManager.library = {
   // in both fastcomp and upstream).
   $ENV: {},
 
-#if !WASM_BACKEND
-  __environ: "{{{ makeStaticAlloc(Runtime.getNativeTypeSize('i8*')) }}}",
-
-  // This implementation of environ/getenv/etc. is used for fastcomp, due
-  // to limitations in the system libraries (we can't easily add a global
-  // ctor to create the environment without it always being linked in with
-  // libc).
-  __buildEnvironment__deps: ['__environ', '$ENV', '$getExecutableName'
-#if MINIMAL_RUNTIME
-    , '$writeAsciiToMemory'
-#endif
-  ],
-  __buildEnvironment: function(environ) {
-    // WARNING: Arbitrary limit!
-    var MAX_ENV_VALUES = 64;
-    var TOTAL_ENV_SIZE = 1024;
-
-    // Statically allocate memory for the environment.
-    var poolPtr;
-    if (!___buildEnvironment.called) {
-      ___buildEnvironment.called = true;
-      // Set default values. Use string keys for Closure Compiler compatibility.
-      ENV['USER'] = 'web_user';
-      ENV['LOGNAME'] = 'web_user';
-      ENV['PATH'] = '/';
-      ENV['PWD'] = '/';
-      ENV['HOME'] = '/home/web_user';
-      // Browser language detection #8751
-      ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = getExecutableName();
-      // Allocate memory.
-#if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
-      poolPtr = getMemory(TOTAL_ENV_SIZE);
-      ___environ = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
-      {{{ makeSetValue('___environ', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue('environ', 0, '___environ', 'i8*') }}};
-#endif
-    } else {
-      ___environ = {{{ makeGetValue('environ', '0', 'i8**') }}};
-      poolPtr = {{{ makeGetValue('___environ', '0', 'i8*') }}};
-    }
-
-    // Collect key=value lines.
-    var strings = [];
-    var totalSize = 0;
-    for (var key in ENV) {
-      if (typeof ENV[key] === 'string') {
-        var line = key + '=' + ENV[key];
-        strings.push(line);
-        totalSize += line.length;
-      }
-    }
-    if (totalSize > TOTAL_ENV_SIZE) {
-      throw new Error('Environment size exceeded TOTAL_ENV_SIZE!');
-    }
-
-    // Make new.
-    var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
-    for (var i = 0; i < strings.length; i++) {
-      var line = strings[i];
-      writeAsciiToMemory(line, poolPtr);
-      {{{ makeSetValue('___environ', 'i * ptrSize', 'poolPtr', 'i8*') }}};
-      poolPtr += line.length + 1;
-    }
-    {{{ makeSetValue('___environ', 'strings.length * ptrSize', '0', 'i8*') }}};
-  },
-  getenv__deps: ['$ENV',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
-  getenv__proxy: 'sync',
-  getenv__sig: 'ii',
-  getenv: function(name) {
-    // char *getenv(const char *name);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
-    if (name === 0) return 0;
-    name = UTF8ToString(name);
-    if (!ENV.hasOwnProperty(name)) return 0;
-
-    if (_getenv.ret) _free(_getenv.ret);
-    _getenv.ret = allocateUTF8(ENV[name]);
-    return _getenv.ret;
-  },
-  clearenv__deps: ['$ENV', '__buildEnvironment'],
-  clearenv__proxy: 'sync',
-  clearenv__sig: 'i',
-  clearenv: function() {
-    // int clearenv (void);
-    // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
-    ENV = {};
-    ___buildEnvironment(__get_environ());
-    return 0;
-  },
-  setenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
-  setenv__proxy: 'sync',
-  setenv__sig: 'iiii',
-  setenv: function(envname, envval, overwrite) {
-    // int setenv(const char *envname, const char *envval, int overwrite);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
-    if (envname === 0) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    var name = UTF8ToString(envname);
-    var val = UTF8ToString(envval);
-    if (name === '' || name.indexOf('=') !== -1) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    if (ENV.hasOwnProperty(name) && !overwrite) return 0;
-    ENV[name] = val;
-    ___buildEnvironment(__get_environ());
-    return 0;
-  },
-  unsetenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
-  unsetenv__proxy: 'sync',
-  unsetenv__sig: 'ii',
-  unsetenv: function(name) {
-    // int unsetenv(const char *name);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
-    if (name === 0) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    name = UTF8ToString(name);
-    if (name === '' || name.indexOf('=') !== -1) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    if (ENV.hasOwnProperty(name)) {
-      delete ENV[name];
-      ___buildEnvironment(__get_environ());
-    }
-    return 0;
-  },
-  putenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
-  putenv__proxy: 'sync',
-  putenv__sig: 'ii',
-  putenv: function(string) {
-    // int putenv(char *string);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/putenv.html
-    // WARNING: According to the standard (and the glibc implementation), the
-    //          string is taken by reference so future changes are reflected.
-    //          We copy it instead, possibly breaking some uses.
-    if (string === 0) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    string = UTF8ToString(string);
-    var splitPoint = string.indexOf('=')
-    if (string === '' || string.indexOf('=') === -1) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    var name = string.slice(0, splitPoint);
-    var value = string.slice(splitPoint + 1);
-    if (!(name in ENV) || ENV[name] !== value) {
-      ENV[name] = value;
-      ___buildEnvironment(__get_environ());
-    }
-    return 0;
-  },
-#endif
-
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);
     // http://linux.die.net/man/3/getloadavg
@@ -962,119 +793,6 @@ LibraryManager.library = {
     HEAPU8.copyWithin(dest, src, src + num);
   },
 #endif
-
-#if !WASM_BACKEND
-  memcpy__asm: true,
-  memcpy__sig: 'iiii',
-  memcpy__deps: ['emscripten_memcpy_big', 'Int8Array', 'Int32Array'],
-  memcpy: function(dest, src, num) {
-    dest = dest|0; src = src|0; num = num|0;
-    var ret = 0;
-    var aligned_dest_end = 0;
-    var block_aligned_dest_end = 0;
-    var dest_end = 0;
-    // Test against a benchmarked cutoff limit for when HEAPU8.copyWithin() becomes faster to use.
-    if ((num|0) >= 512) {
-      _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
-      return dest|0;
-    }
-
-    ret = dest|0;
-    dest_end = (dest + num)|0;
-    if ((dest&3) == (src&3)) {
-      // The initial unaligned < 4-byte front.
-      while (dest & 3) {
-        if ((num|0) == 0) return ret|0;
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
-        dest = (dest+1)|0;
-        src = (src+1)|0;
-        num = (num-1)|0;
-      }
-      aligned_dest_end = (dest_end & -4)|0;
-      while ((dest|0) < (aligned_dest_end|0) ) {
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
-        dest = (dest+4)|0;
-        src = (src+4)|0;
-      }
-    } else {
-      // In the unaligned copy case, unroll a bit as well.
-      aligned_dest_end = (dest_end - 4)|0;
-      while ((dest|0) < (aligned_dest_end|0) ) {
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
-        {{{ makeSetValueAsm('dest', 1, makeGetValueAsm('src', 1, 'i8'), 'i8') }}};
-        {{{ makeSetValueAsm('dest', 2, makeGetValueAsm('src', 2, 'i8'), 'i8') }}};
-        {{{ makeSetValueAsm('dest', 3, makeGetValueAsm('src', 3, 'i8'), 'i8') }}};
-        dest = (dest+4)|0;
-        src = (src+4)|0;
-      }
-    }
-    // The remaining unaligned < 4 byte tail.
-    while ((dest|0) < (dest_end|0)) {
-      {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
-      dest = (dest+1)|0;
-      src = (src+1)|0;
-    }
-    return ret|0;
-  },
-
-  memmove__sig: 'iiii',
-  memmove__asm: true,
-  memmove__deps: ['memcpy'],
-  memmove: function(dest, src, num) {
-    dest = dest|0; src = src|0; num = num|0;
-    var ret = 0;
-    if (((src|0) < (dest|0)) & ((dest|0) < ((src + num)|0))) {
-      // Unlikely case: Copy backwards in a safe manner
-      ret = dest;
-      src = (src + num)|0;
-      dest = (dest + num)|0;
-      while ((num|0) > 0) {
-        dest = (dest - 1)|0;
-        src = (src - 1)|0;
-        num = (num - 1)|0;
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
-      }
-      dest = ret;
-    } else {
-      _memcpy(dest, src, num) | 0;
-    }
-    return dest | 0;
-  },
-
-  memset__inline: function(ptr, value, num, align) {
-    return makeSetValues(ptr, 0, value, 'null', num, align);
-  },
-  memset__sig: 'iiii',
-  memset__asm: true,
-  memset__deps: ['Int8Array', 'Int32Array'],
-  memset: function(ptr, value, num) {
-    ptr = ptr|0; value = value|0; num = num|0;
-    var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
-    end = (ptr + num)|0;
-
-    value = value & 0xff;
-    if ((num|0) >= 67 /* 64 bytes for an unrolled loop + 3 bytes for unaligned head*/) {
-      while ((ptr&3) != 0) {
-        {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
-        ptr = (ptr+1)|0;
-      }
-
-      aligned_end = (end & -4)|0;
-      value4 = value | (value << 8) | (value << 16) | (value << 24);
-
-      while ((ptr|0) < (aligned_end|0) ) {
-        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
-        ptr = (ptr+4)|0;
-      }
-    }
-    // The remaining bytes.
-    while ((ptr|0) < (end|0)) {
-      {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
-      ptr = (ptr+1)|0;
-    }
-    return (end-num)|0;
-  },
-#endif // !WASM_BACKEND
 
   memcpy__sig: 'iiii',
   memmove__sig: 'iiii',
@@ -1259,19 +977,6 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
-#if WASM_BACKEND == 0
-  setThrew__asm: true,
-  setThrew__sig: 'vii',
-  setThrew: function(threw, value) {
-    threw = threw|0;
-    value = value|0;
-    if ((__THREW__|0) == 0) {
-      __THREW__ = threw;
-      threwValue = value;
-    }
-  },
-#endif
-
   terminate__sig: 'vi',
   terminate: '__cxa_call_unexpected',
 
@@ -1281,9 +986,6 @@ LibraryManager.library = {
   __gcc_personality_v0: function() {
   },
 
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  llvm_stacksave__deps: ['$stackSave'],
-#endif
   llvm_stacksave: function() {
     var self = _llvm_stacksave;
     if (!self.LLVM_SAVEDSTACKS) {
@@ -1293,9 +995,6 @@ LibraryManager.library = {
     return self.LLVM_SAVEDSTACKS.length-1;
   },
 
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  llvm_stackrestore__deps: ['$stackRestore'],
-#endif
   llvm_stackrestore: function(p) {
     var self = _llvm_stacksave;
     var ret = self.LLVM_SAVEDSTACKS[p];
@@ -1713,11 +1412,9 @@ LibraryManager.library = {
 
     var mangled = '_' + symbol;
     var modSymbol = mangled;
-#if WASM_BACKEND
     if (!isMainModule) {
       modSymbol = symbol;
     }
-#endif
 
     if (!lib.module.hasOwnProperty(modSymbol)) {
       DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + modSymbol +
@@ -1730,11 +1427,7 @@ LibraryManager.library = {
     // Attempt to get the real "unwrapped" symbol so we have more chance of
     // getting wasm function which can be added to a table.
     if (isMainModule) {
-#if WASM_BACKEND
       var asmSymbol = symbol;
-#else
-      var asmSymbol = mangled;
-#endif
       if (lib.module["asm"][asmSymbol]) {
         result = lib.module["asm"][asmSymbol];
       }
@@ -1999,11 +1692,7 @@ LibraryManager.library = {
     return _ctime_r(timer, ___tm_current);
   },
 
-  ctime_r__deps: ['localtime_r', 'asctime_r'
-#if !WASM_BACKEND
-    , '$stackSave', '$stackAlloc', '$stackRestore'
-#endif
-  ],
+  ctime_r__deps: ['localtime_r', 'asctime_r'],
   ctime_r: function(time, buf) {
     var stack = stackSave();
     var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
@@ -2780,9 +2469,6 @@ LibraryManager.library = {
   // sys/times.h
   // ==========================================================================
 
-#if !WASM_BACKEND
-  times__deps: ['memset'],
-#endif
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
@@ -2818,11 +2504,6 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if SUPPORT_LONGJMP
-  longjmp__deps: [
-#if WASM_BACKEND == 0
-  , 'setThrew'
-#endif
-  ],
   longjmp: function(env, value) {
     _setThrew(env, value || 1);
     throw 'longjmp';
@@ -3113,15 +2794,6 @@ LibraryManager.library = {
 #if ASSERTIONS
     err('failed to set errno from JS');
 #endif
-    return 0;
-  },
-#endif
-
-#if !WASM_BACKEND
-  // ==========================================================================
-  // sched.h (stubs only - no thread support yet!)
-  // ==========================================================================
-  sched_yield: function() {
     return 0;
   },
 #endif
@@ -4530,12 +4202,10 @@ LibraryManager.library = {
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
   $exportAsmFunctions: function(asm) {
-#if WASM_BACKEND
     var asmjsMangle = function(x) {
       var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
       return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
     };
-#endif
 
 #if ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_WEB
@@ -4548,11 +4218,7 @@ LibraryManager.library = {
 #endif
 
     for (var __exportedFunc in asm) {
-#if WASM_BACKEND
       var jsname = asmjsMangle(__exportedFunc);
-#else
-      var jsname = __exportedFunc;
-#endif
 #if MINIMAL_RUNTIME
       global_object[jsname] = asm[__exportedFunc];
 #else
@@ -4702,9 +4368,6 @@ LibraryManager.library = {
 
   // special runtime support
 
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  emscripten_scan_stack__deps: ['$stackSave'],
-#endif
   emscripten_scan_stack: function(func) {
     var base = STACK_BASE; // TODO verify this is right on pthreads
     var end = stackSave();
@@ -4746,328 +4409,6 @@ LibraryManager.library = {
   emscripten_asm_const_int_sync_on_main_thread: function() {},
   emscripten_asm_const_double_sync_on_main_thread: function() {},
   emscripten_asm_const_async_on_main_thread: function() {},
-
-#if !WASM_BACKEND
-  // ======== compiled code from system/lib/compiler-rt , see readme therein
-  __muldsi3__asm: true,
-  __muldsi3__sig: 'iii',
-  __muldsi3__deps: ['Math_imul'],
-  __muldsi3: function($a, $b) {
-    $a = $a | 0;
-    $b = $b | 0;
-    var $1 = 0, $2 = 0, $3 = 0, $6 = 0, $8 = 0, $11 = 0, $12 = 0;
-    $1 = $a & 65535;
-    $2 = $b & 65535;
-    $3 = Math_imul($2, $1) | 0;
-    $6 = $a >>> 16;
-    $8 = ($3 >>> 16) + (Math_imul($2, $6) | 0) | 0;
-    $11 = $b >>> 16;
-    $12 = Math_imul($11, $1) | 0;
-    return ({{{ makeSetTempRet0('(($8 >>> 16) + (Math_imul($11, $6) | 0) | 0) + ((($8 & 65535) + $12 | 0) >>> 16) | 0') }}}, 0 | ($8 + $12 << 16 | $3 & 65535)) | 0;
-  },
-  __divdi3__sig: 'iiiii',
-  __divdi3__asm: true,
-  __divdi3__deps: ['__udivmoddi4', 'i64Subtract'],
-  __divdi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $1$0 = 0, $1$1 = 0, $2$0 = 0, $2$1 = 0, $4$0 = 0, $4$1 = 0, $6$0 = 0, $7$0 = 0, $7$1 = 0, $8$0 = 0, $10$0 = 0;
-    $1$0 = $a$1 >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
-    $1$1 = (($a$1 | 0) < 0 ? -1 : 0) >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
-    $2$0 = $b$1 >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
-    $2$1 = (($b$1 | 0) < 0 ? -1 : 0) >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
-    $4$0 = _i64Subtract($1$0 ^ $a$0 | 0, $1$1 ^ $a$1 | 0, $1$0 | 0, $1$1 | 0) | 0;
-    $4$1 = {{{ makeGetTempRet0() }}};
-    $6$0 = _i64Subtract($2$0 ^ $b$0 | 0, $2$1 ^ $b$1 | 0, $2$0 | 0, $2$1 | 0) | 0;
-    $7$0 = $2$0 ^ $1$0;
-    $7$1 = $2$1 ^ $1$1;
-    $8$0 = ___udivmoddi4($4$0, $4$1, $6$0, {{{ makeGetTempRet0() }}}, 0) | 0;
-    $10$0 = _i64Subtract($8$0 ^ $7$0 | 0, {{{ makeGetTempRet0() }}} ^ $7$1 | 0, $7$0 | 0, $7$1 | 0) | 0;
-    return $10$0 | 0;
-  },
-  __remdi3__sig: 'iiiii',
-  __remdi3__asm: true,
-  __remdi3__deps: ['__udivmoddi4', 'i64Subtract'],
-  __remdi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $rem = 0, $1$0 = 0, $1$1 = 0, $2$0 = 0, $2$1 = 0, $4$0 = 0, $4$1 = 0, $6$0 = 0, $10$0 = 0, $10$1 = 0, __stackBase__ = 0;
-    __stackBase__ = STACKTOP;
-    STACKTOP = STACKTOP + 16 | 0;
-    $rem = __stackBase__ | 0;
-    $1$0 = $a$1 >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
-    $1$1 = (($a$1 | 0) < 0 ? -1 : 0) >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
-    $2$0 = $b$1 >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
-    $2$1 = (($b$1 | 0) < 0 ? -1 : 0) >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
-    $4$0 = _i64Subtract($1$0 ^ $a$0 | 0, $1$1 ^ $a$1 | 0, $1$0 | 0, $1$1 | 0) | 0;
-    $4$1 = {{{ makeGetTempRet0() }}};
-    $6$0 = _i64Subtract($2$0 ^ $b$0 | 0, $2$1 ^ $b$1 | 0, $2$0 | 0, $2$1 | 0) | 0;
-    ___udivmoddi4($4$0, $4$1, $6$0, {{{ makeGetTempRet0() }}}, $rem) | 0;
-    $10$0 = _i64Subtract(HEAP32[$rem >> 2] ^ $1$0 | 0, HEAP32[$rem + 4 >> 2] ^ $1$1 | 0, $1$0 | 0, $1$1 | 0) | 0;
-    $10$1 = {{{ makeGetTempRet0() }}};
-    STACKTOP = __stackBase__;
-    return ({{{ makeSetTempRet0('$10$1') }}}, $10$0) | 0;
-  },
-  __muldi3__sig: 'iiiii',
-  __muldi3__asm: true,
-  __muldi3__deps: ['__muldsi3', 'Math_imul'],
-  __muldi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $x_sroa_0_0_extract_trunc = 0, $y_sroa_0_0_extract_trunc = 0, $1$0 = 0, $1$1 = 0, $2 = 0;
-    $x_sroa_0_0_extract_trunc = $a$0;
-    $y_sroa_0_0_extract_trunc = $b$0;
-    $1$0 = ___muldsi3($x_sroa_0_0_extract_trunc, $y_sroa_0_0_extract_trunc) | 0;
-    $1$1 = {{{ makeGetTempRet0() }}};
-    $2 = Math_imul($a$1, $y_sroa_0_0_extract_trunc) | 0;
-    return ({{{ makeSetTempRet0('((Math_imul($b$1, $x_sroa_0_0_extract_trunc) | 0) + $2 | 0) + $1$1 | $1$1 & 0') }}}, 0 | $1$0 & -1) | 0;
-  },
-  __udivdi3__sig: 'iiiii',
-  __udivdi3__asm: true,
-  __udivdi3__deps: ['__udivmoddi4'],
-  __udivdi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $1$0 = 0;
-    $1$0 = ___udivmoddi4($a$0, $a$1, $b$0, $b$1, 0) | 0;
-    return $1$0 | 0;
-  },
-  __uremdi3__sig: 'iiiii',
-  __uremdi3__asm: true,
-  __uremdi3__deps: ['__udivmoddi4'],
-  __uremdi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $rem = 0, __stackBase__ = 0;
-    __stackBase__ = STACKTOP;
-    STACKTOP = STACKTOP + 16 | 0;
-    $rem = __stackBase__ | 0;
-    ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) | 0;
-    STACKTOP = __stackBase__;
-    return ({{{ makeSetTempRet0('HEAP32[$rem + 4 >> 2] | 0') }}}, HEAP32[$rem >> 2] | 0) | 0;
-  },
-  __udivmoddi4__sig: 'iiiiii',
-  __udivmoddi4__asm: true,
-  __udivmoddi4__deps: ['i64Add', 'i64Subtract', 'llvm_cttz_i32', 'Math_clz32'],
-  __udivmoddi4: function($a$0, $a$1, $b$0, $b$1, $rem) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    $rem = $rem | 0;
-    var $n_sroa_0_0_extract_trunc = 0, $n_sroa_1_4_extract_shift$0 = 0, $n_sroa_1_4_extract_trunc = 0, $d_sroa_0_0_extract_trunc = 0, $d_sroa_1_4_extract_shift$0 = 0, $d_sroa_1_4_extract_trunc = 0, $4 = 0, $17 = 0, $37 = 0, $49 = 0, $51 = 0, $57 = 0, $58 = 0, $66 = 0, $78 = 0, $86 = 0, $88 = 0, $89 = 0, $91 = 0, $92 = 0, $95 = 0, $105 = 0, $117 = 0, $119 = 0, $125 = 0, $126 = 0, $130 = 0, $q_sroa_1_1_ph = 0, $q_sroa_0_1_ph = 0, $r_sroa_1_1_ph = 0, $r_sroa_0_1_ph = 0, $sr_1_ph = 0, $d_sroa_0_0_insert_insert99$0 = 0, $d_sroa_0_0_insert_insert99$1 = 0, $137$0 = 0, $137$1 = 0, $carry_0203 = 0, $sr_1202 = 0, $r_sroa_0_1201 = 0, $r_sroa_1_1200 = 0, $q_sroa_0_1199 = 0, $q_sroa_1_1198 = 0, $147 = 0, $149 = 0, $r_sroa_0_0_insert_insert42$0 = 0, $r_sroa_0_0_insert_insert42$1 = 0, $150$1 = 0, $151$0 = 0, $152 = 0, $154$0 = 0, $r_sroa_0_0_extract_trunc = 0, $r_sroa_1_4_extract_trunc = 0, $155 = 0, $carry_0_lcssa$0 = 0, $carry_0_lcssa$1 = 0, $r_sroa_0_1_lcssa = 0, $r_sroa_1_1_lcssa = 0, $q_sroa_0_1_lcssa = 0, $q_sroa_1_1_lcssa = 0, $q_sroa_0_0_insert_ext75$0 = 0, $q_sroa_0_0_insert_ext75$1 = 0, $q_sroa_0_0_insert_insert77$1 = 0, $_0$0 = 0, $_0$1 = 0;
-    $n_sroa_0_0_extract_trunc = $a$0;
-    $n_sroa_1_4_extract_shift$0 = $a$1;
-    $n_sroa_1_4_extract_trunc = $n_sroa_1_4_extract_shift$0;
-    $d_sroa_0_0_extract_trunc = $b$0;
-    $d_sroa_1_4_extract_shift$0 = $b$1;
-    $d_sroa_1_4_extract_trunc = $d_sroa_1_4_extract_shift$0;
-    if (($n_sroa_1_4_extract_trunc | 0) == 0) {
-      $4 = ($rem | 0) != 0;
-      if (($d_sroa_1_4_extract_trunc | 0) == 0) {
-        if ($4) {
-          HEAP32[$rem >> 2] = ($n_sroa_0_0_extract_trunc >>> 0) % ($d_sroa_0_0_extract_trunc >>> 0);
-          HEAP32[$rem + 4 >> 2] = 0;
-        }
-        $_0$1 = 0;
-        $_0$0 = ($n_sroa_0_0_extract_trunc >>> 0) / ($d_sroa_0_0_extract_trunc >>> 0) >>> 0;
-        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-      } else {
-        if (!$4) {
-          $_0$1 = 0;
-          $_0$0 = 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        HEAP32[$rem >> 2] = $a$0 & -1;
-        HEAP32[$rem + 4 >> 2] = $a$1 & 0;
-        $_0$1 = 0;
-        $_0$0 = 0;
-        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-      }
-    }
-    $17 = ($d_sroa_1_4_extract_trunc | 0) == 0;
-    do {
-      if (($d_sroa_0_0_extract_trunc | 0) == 0) {
-        if ($17) {
-          if (($rem | 0) != 0) {
-            HEAP32[$rem >> 2] = ($n_sroa_1_4_extract_trunc >>> 0) % ($d_sroa_0_0_extract_trunc >>> 0);
-            HEAP32[$rem + 4 >> 2] = 0;
-          }
-          $_0$1 = 0;
-          $_0$0 = ($n_sroa_1_4_extract_trunc >>> 0) / ($d_sroa_0_0_extract_trunc >>> 0) >>> 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        if (($n_sroa_0_0_extract_trunc | 0) == 0) {
-          if (($rem | 0) != 0) {
-            HEAP32[$rem >> 2] = 0;
-            HEAP32[$rem + 4 >> 2] = ($n_sroa_1_4_extract_trunc >>> 0) % ($d_sroa_1_4_extract_trunc >>> 0);
-          }
-          $_0$1 = 0;
-          $_0$0 = ($n_sroa_1_4_extract_trunc >>> 0) / ($d_sroa_1_4_extract_trunc >>> 0) >>> 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        $37 = $d_sroa_1_4_extract_trunc - 1 | 0;
-        if (($37 & $d_sroa_1_4_extract_trunc | 0) == 0) {
-          if (($rem | 0) != 0) {
-            HEAP32[$rem >> 2] = 0 | $a$0 & -1;
-            HEAP32[$rem + 4 >> 2] = $37 & $n_sroa_1_4_extract_trunc | $a$1 & 0;
-          }
-          $_0$1 = 0;
-          $_0$0 = $n_sroa_1_4_extract_trunc >>> ((_llvm_cttz_i32($d_sroa_1_4_extract_trunc | 0) | 0) >>> 0);
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        $49 = Math_clz32($d_sroa_1_4_extract_trunc | 0) | 0;
-        $51 = $49 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
-        if ($51 >>> 0 <= 30) {
-          $57 = $51 + 1 | 0;
-          $58 = 31 - $51 | 0;
-          $sr_1_ph = $57;
-          $r_sroa_0_1_ph = $n_sroa_1_4_extract_trunc << $58 | $n_sroa_0_0_extract_trunc >>> ($57 >>> 0);
-          $r_sroa_1_1_ph = $n_sroa_1_4_extract_trunc >>> ($57 >>> 0);
-          $q_sroa_0_1_ph = 0;
-          $q_sroa_1_1_ph = $n_sroa_0_0_extract_trunc << $58;
-          break;
-        }
-        if (($rem | 0) == 0) {
-          $_0$1 = 0;
-          $_0$0 = 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        HEAP32[$rem >> 2] = 0 | $a$0 & -1;
-        HEAP32[$rem + 4 >> 2] = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
-        $_0$1 = 0;
-        $_0$0 = 0;
-        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-      } else {
-        if (!$17) {
-          $117 = Math_clz32($d_sroa_1_4_extract_trunc | 0) | 0;
-          $119 = $117 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
-          if ($119 >>> 0 <= 31) {
-            $125 = $119 + 1 | 0;
-            $126 = 31 - $119 | 0;
-            $130 = $119 - 31 >> 31;
-            $sr_1_ph = $125;
-            $r_sroa_0_1_ph = $n_sroa_0_0_extract_trunc >>> ($125 >>> 0) & $130 | $n_sroa_1_4_extract_trunc << $126;
-            $r_sroa_1_1_ph = $n_sroa_1_4_extract_trunc >>> ($125 >>> 0) & $130;
-            $q_sroa_0_1_ph = 0;
-            $q_sroa_1_1_ph = $n_sroa_0_0_extract_trunc << $126;
-            break;
-          }
-          if (($rem | 0) == 0) {
-            $_0$1 = 0;
-            $_0$0 = 0;
-            return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-          }
-          HEAP32[$rem >> 2] = 0 | $a$0 & -1;
-          HEAP32[$rem + 4 >> 2] = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
-          $_0$1 = 0;
-          $_0$0 = 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        $66 = $d_sroa_0_0_extract_trunc - 1 | 0;
-        if (($66 & $d_sroa_0_0_extract_trunc | 0) != 0) {
-          $86 = (Math_clz32($d_sroa_0_0_extract_trunc | 0) | 0) + 33 | 0;
-          $88 = $86 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
-          $89 = 64 - $88 | 0;
-          $91 = 32 - $88 | 0;
-          $92 = $91 >> 31;
-          $95 = $88 - 32 | 0;
-          $105 = $95 >> 31;
-          $sr_1_ph = $88;
-          $r_sroa_0_1_ph = $91 - 1 >> 31 & $n_sroa_1_4_extract_trunc >>> ($95 >>> 0) | ($n_sroa_1_4_extract_trunc << $91 | $n_sroa_0_0_extract_trunc >>> ($88 >>> 0)) & $105;
-          $r_sroa_1_1_ph = $105 & $n_sroa_1_4_extract_trunc >>> ($88 >>> 0);
-          $q_sroa_0_1_ph = $n_sroa_0_0_extract_trunc << $89 & $92;
-          $q_sroa_1_1_ph = ($n_sroa_1_4_extract_trunc << $89 | $n_sroa_0_0_extract_trunc >>> ($95 >>> 0)) & $92 | $n_sroa_0_0_extract_trunc << $91 & $88 - 33 >> 31;
-          break;
-        }
-        if (($rem | 0) != 0) {
-          HEAP32[$rem >> 2] = $66 & $n_sroa_0_0_extract_trunc;
-          HEAP32[$rem + 4 >> 2] = 0;
-        }
-        if (($d_sroa_0_0_extract_trunc | 0) == 1) {
-          $_0$1 = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
-          $_0$0 = 0 | $a$0 & -1;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        } else {
-          $78 = _llvm_cttz_i32($d_sroa_0_0_extract_trunc | 0) | 0;
-          $_0$1 = 0 | $n_sroa_1_4_extract_trunc >>> ($78 >>> 0);
-          $_0$0 = $n_sroa_1_4_extract_trunc << 32 - $78 | $n_sroa_0_0_extract_trunc >>> ($78 >>> 0) | 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-      }
-    } while (0);
-    if (($sr_1_ph | 0) == 0) {
-      $q_sroa_1_1_lcssa = $q_sroa_1_1_ph;
-      $q_sroa_0_1_lcssa = $q_sroa_0_1_ph;
-      $r_sroa_1_1_lcssa = $r_sroa_1_1_ph;
-      $r_sroa_0_1_lcssa = $r_sroa_0_1_ph;
-      $carry_0_lcssa$1 = 0;
-      $carry_0_lcssa$0 = 0;
-    } else {
-      $d_sroa_0_0_insert_insert99$0 = 0 | $b$0 & -1;
-      $d_sroa_0_0_insert_insert99$1 = $d_sroa_1_4_extract_shift$0 | $b$1 & 0;
-      $137$0 = _i64Add($d_sroa_0_0_insert_insert99$0 | 0, $d_sroa_0_0_insert_insert99$1 | 0, -1, -1) | 0;
-      $137$1 = {{{ makeGetTempRet0() }}};
-      $q_sroa_1_1198 = $q_sroa_1_1_ph;
-      $q_sroa_0_1199 = $q_sroa_0_1_ph;
-      $r_sroa_1_1200 = $r_sroa_1_1_ph;
-      $r_sroa_0_1201 = $r_sroa_0_1_ph;
-      $sr_1202 = $sr_1_ph;
-      $carry_0203 = 0;
-      while (1) {
-        $147 = $q_sroa_0_1199 >>> 31 | $q_sroa_1_1198 << 1;
-        $149 = $carry_0203 | $q_sroa_0_1199 << 1;
-        $r_sroa_0_0_insert_insert42$0 = 0 | ($r_sroa_0_1201 << 1 | $q_sroa_1_1198 >>> 31);
-        $r_sroa_0_0_insert_insert42$1 = $r_sroa_0_1201 >>> 31 | $r_sroa_1_1200 << 1 | 0;
-        _i64Subtract($137$0 | 0, $137$1 | 0, $r_sroa_0_0_insert_insert42$0 | 0, $r_sroa_0_0_insert_insert42$1 | 0) | 0;
-        $150$1 = {{{ makeGetTempRet0() }}};
-        $151$0 = $150$1 >> 31 | (($150$1 | 0) < 0 ? -1 : 0) << 1;
-        $152 = $151$0 & 1;
-        $154$0 = _i64Subtract($r_sroa_0_0_insert_insert42$0 | 0, $r_sroa_0_0_insert_insert42$1 | 0, $151$0 & $d_sroa_0_0_insert_insert99$0 | 0, ((($150$1 | 0) < 0 ? -1 : 0) >> 31 | (($150$1 | 0) < 0 ? -1 : 0) << 1) & $d_sroa_0_0_insert_insert99$1 | 0) | 0;
-        $r_sroa_0_0_extract_trunc = $154$0;
-        $r_sroa_1_4_extract_trunc = {{{ makeGetTempRet0() }}};
-        $155 = $sr_1202 - 1 | 0;
-        if (($155 | 0) == 0) {
-          break;
-        } else {
-          $q_sroa_1_1198 = $147;
-          $q_sroa_0_1199 = $149;
-          $r_sroa_1_1200 = $r_sroa_1_4_extract_trunc;
-          $r_sroa_0_1201 = $r_sroa_0_0_extract_trunc;
-          $sr_1202 = $155;
-          $carry_0203 = $152;
-        }
-      }
-      $q_sroa_1_1_lcssa = $147;
-      $q_sroa_0_1_lcssa = $149;
-      $r_sroa_1_1_lcssa = $r_sroa_1_4_extract_trunc;
-      $r_sroa_0_1_lcssa = $r_sroa_0_0_extract_trunc;
-      $carry_0_lcssa$1 = 0;
-      $carry_0_lcssa$0 = $152;
-    }
-    $q_sroa_0_0_insert_ext75$0 = $q_sroa_0_1_lcssa;
-    $q_sroa_0_0_insert_ext75$1 = 0;
-    $q_sroa_0_0_insert_insert77$1 = $q_sroa_1_1_lcssa | $q_sroa_0_0_insert_ext75$1;
-    if (($rem | 0) != 0) {
-      HEAP32[$rem >> 2] = 0 | $r_sroa_0_1_lcssa;
-      HEAP32[$rem + 4 >> 2] = $r_sroa_1_1_lcssa | 0;
-    }
-    $_0$1 = (0 | $q_sroa_0_0_insert_ext75$0) >>> 31 | $q_sroa_0_0_insert_insert77$1 << 1 | ($q_sroa_0_0_insert_ext75$1 << 1 | $q_sroa_0_0_insert_ext75$0 >>> 31) & 0 | $carry_0_lcssa$1;
-    $_0$0 = ($q_sroa_0_0_insert_ext75$0 << 1 | 0 >>> 31) & -2 | $carry_0_lcssa$0;
-    return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-  },
-  // =======================================================================
-#endif
 
   __handle_stack_overflow: function() {
     abort('stack overflow')
