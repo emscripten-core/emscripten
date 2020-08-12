@@ -1565,7 +1565,7 @@ var SyscallsLibrary = {
   fd_sync__sig: 'ii',
   fd_sync: function(fd) {
     var stream = SYSCALLS.getStreamFromFD(fd);
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
       var mount = stream.node.mount;
       if (!mount.type.syncfs) {
@@ -1586,7 +1586,7 @@ var SyscallsLibrary = {
       return -stream.stream_ops.fsync(stream);
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif // WASM_BACKEND && ASYNCIFY
+#endif // ASYNCIFY
   },
 
 #if !WASM_BACKEND
