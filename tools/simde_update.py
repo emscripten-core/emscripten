@@ -19,7 +19,6 @@ from os import path
 sys.path.insert(1, path.dirname(path.dirname(path.abspath(__file__))))
 from tools.shared import get_emscripten_temp_dir
 
-
 tmpdir = get_emscripten_temp_dir()
 emdir = path.join(path.dirname(path.realpath(__file__)), "..")
 
