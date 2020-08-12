@@ -4349,6 +4349,12 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  # Tests that passes userData when uses Fetch API
+  @requires_threads
+  def test_fetch_user_data(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
+    self.btest('fetch/fetch_user_data.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
