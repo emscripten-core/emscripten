@@ -4455,7 +4455,11 @@ LibraryManager.library = {
 #endif
   },
 
-  $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
+  $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
+#if USE_ASAN
+                             , 'emscripten_builtin_memset'
+#endif
+                            ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: function (func) {
     var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
@@ -4464,12 +4468,19 @@ LibraryManager.library = {
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
+#if USE_ASAN
+    var prev_memset = typeof _memset !== 'undefined' ? _memset : undefined
+    _memset = _emscripten_builtin_memset;
+#endif
     try {
       return func();
     } finally {
       _malloc = prev_malloc;
       _memalign = prev_memalign;
       _free = prev_free;
+#if USE_ASAN
+      _memset = prev_memset;
+#endif
     }
   },
 
