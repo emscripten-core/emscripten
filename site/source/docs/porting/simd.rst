@@ -1030,6 +1030,10 @@ instructions which operate on 128-bit wide vectors are supported
 cleanly. This means that nearly any instruction which is not of a "q"
 variant (i.e. "vaddq" as opposed to "vadd") will be scalarized.
 
+These are pulled from `SIMDe repository on Github
+<https://github.com/simd-everywhere/simde>`_. To update emscripten
+with the latest SIMDe version, run `tools/simde_update.py`.
+
 The following table highlights the availability of various 128-bit
 wide intrinsics.
 
