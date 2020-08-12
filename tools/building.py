@@ -870,13 +870,6 @@ def can_inline():
   return Settings.INLINING_LIMIT == 0
 
 
-def need_asm_js_file():
-  # Explicitly separate asm.js requires it
-  if Settings.SEPARATE_ASM:
-    return True
-  return False
-
-
 def is_wasm_only():
   # not even wasm, much less wasm-only
   if not Settings.WASM:
@@ -984,11 +977,6 @@ def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
     cmd += get_binaryen_feature_flags()
   print_compiler_stage(cmd)
   check_call(cmd)
-
-
-def eliminate_duplicate_funcs(filename):
-  from . import duplicate_function_eliminator
-  duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
 
 
 def calculate_reachable_functions(infile, initial_list, can_reach=True):

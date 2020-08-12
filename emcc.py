@@ -251,7 +251,6 @@ class EmccOptions(object):
     self.proxy_to_worker = False
     self.default_object_extension = '.o'
     self.valid_abspaths = []
-    self.separate_asm = False
     self.cfi = False
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
@@ -1223,9 +1222,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     final_suffix = get_file_suffix(target)
 
-    if options.separate_asm and final_suffix != '.html':
-      diagnostics.warning('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
-
     if has_dash_c or has_dash_S or has_dash_E:
       if has_dash_c:
         if '-emit-llvm' in newargs:
@@ -1255,9 +1251,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
     wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
-
-    if options.separate_asm:
-      shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
 
     # Apply user -jsD settings
     for s in user_js_defines:
@@ -1745,9 +1738,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
 
     if shared.Settings.WASM:
-      if not building.need_asm_js_file():
-        asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-        misc_temp_files.note(asm_target)
+      asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
+      misc_temp_files.note(asm_target)
 
     if shared.Settings.WASM:
       if shared.Settings.INITIAL_MEMORY % 65536 != 0:
@@ -1803,23 +1795,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         shared.Settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
-    # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as
-    # the JS module. This allows code to share same loading function for both JS and asm.js modules,
-    # to save code size. The intent is that loader code captures the function variable from global
-    # scope to XHR loader local scope when it finishes loading, to avoid polluting global JS scope
-    # with variables. This provides safety via encapsulation. See src/shell_minimal_runtime.html for
-    # an example.
-    if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.SEPARATE_ASM_MODULE_NAME and not shared.Settings.WASM and shared.Settings.MODULARIZE:
-      shared.Settings.SEPARATE_ASM_MODULE_NAME = 'var ' + shared.Settings.EXPORT_NAME
-
-    if shared.Settings.MODULARIZE and shared.Settings.SEPARATE_ASM and not shared.Settings.WASM and not shared.Settings.SEPARATE_ASM_MODULE_NAME:
-      exit_with_error('Targeting asm.js with --separate-asm and -s MODULARIZE=1 requires specifying the target variable name to which the asm.js module is loaded into. See https://github.com/emscripten-core/emscripten/pull/7949 for details')
-    # Apply default option if no custom name is provided
-    if not shared.Settings.SEPARATE_ASM_MODULE_NAME:
-      shared.Settings.SEPARATE_ASM_MODULE_NAME = 'Module["asm"]'
-    elif shared.Settings.WASM:
-      exit_with_error('-s SEPARATE_ASM_MODULE_NAME option only applies to when targeting asm.js, not with WebAssembly!')
-
     if shared.Settings.MINIMAL_RUNTIME:
       # Minimal runtime uses a different default shell file
       if options.shell_path == shared.path_from_root('src', 'shell.html'):
@@ -1869,9 +1844,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
         shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
       shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
-      if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
-        diagnostics.warning('emcc', 'for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
-        shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
       if options.js_opts and not options.force_js_opts:
         options.js_opts = None
         logger.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
@@ -1898,9 +1870,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
         diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
-
-      if options.separate_asm:
-        exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
 
       sanitize = set()
 
@@ -2695,12 +2664,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           else:
             optimizer.queue += ['registerize']
 
-        # NOTE: Important that this comes after registerize/registerizeHarder
-        if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and shared.Settings.OPT_LEVEL >= 2:
-          optimizer.flush()
-          building.eliminate_duplicate_funcs(final)
-          save_intermediate('dfe')
-
       if shared.Settings.EVAL_CTORS and options.memory_init_file and not use_source_map(options) and not shared.Settings.WASM:
         optimizer.flush()
         building.eval_ctors(final, memfile)
@@ -2744,11 +2707,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      if (options.separate_asm or shared.Settings.WASM) and not shared.Settings.WASM_BACKEND:
-        separate_asm_js(final, asm_target)
-        if not shared.Settings.SINGLE_FILE:
-          generated_text_files_with_native_eols += [asm_target]
-
       if shared.Settings.WASM:
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                     wasm_text_target, wasm_source_map_target, misc_temp_files,
@@ -2769,9 +2727,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # here, so that it will not confuse the hacky script.
         shared.JS.handle_license(final)
         shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final])
-        # Process .asm.js file
-        if not shared.Settings.WASM and shared.Settings.SEPARATE_ASM:
-          shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), asm_target])
 
       # Apply pre and postjs files
       if options.extern_pre_js or options.extern_post_js:
@@ -3024,8 +2979,7 @@ def parse_args(newargs):
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i] == '--separate-asm':
-      options.separate_asm = True
-      newargs[i] = ''
+      exit_with_error('cannot --separate-asm with the wasm backend, since not emitting asm.js')
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if os.path.isabs(path_name) and not is_valid_abspath(options, path_name):
@@ -3136,12 +3090,6 @@ def emit_js_source_maps(target, js_transform_tempfiles):
                      ['--sourceRoot', os.getcwd(),
                       '--mapFileBaseName', target,
                       '--offset', '0'])
-
-
-def separate_asm_js(final, asm_target):
-  """Separate out the asm.js code, if asked. Or, if necessary for another option"""
-  logger.debug('separating asm')
-  shared.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final, shared.Settings.SEPARATE_ASM_MODULE_NAME])
 
 
 def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
@@ -3532,30 +3480,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
           meminitXHR.responseType = 'arraybuffer';
           meminitXHR.send(null);
 ''' % shared.JS.get_subresource_location(memfile)) + script.inline
-
-    # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
-    # of the wasm run methods.
-    if not options.separate_asm or shared.Settings.WASM:
-      pass
-    else:
-      script.un_src()
-      # just load the asm, then load the rest
-      script.inline = '''
-    var filename = '%s';
-    var fileBytes = tryParseAsDataURI(filename);
-    var script = document.createElement('script');
-    if (fileBytes) {
-      script.innerHTML = intArrayToString(fileBytes);
-    } else {
-      script.src = filename;
-    }
-    script.onload = function() {
-      setTimeout(function() {
-        %s
-      }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
-    };
-    document.body.appendChild(script);
-''' % (shared.JS.get_subresource_location(asm_target), script.inline)
 
     if shared.Settings.WASM and not shared.Settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize

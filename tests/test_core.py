@@ -264,18 +264,6 @@ class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.is_wasm_backend() and not self.get_setting('WASM')
 
-  # whether the test mode supports duplicate function elimination in js
-  def supports_js_dfe(self):
-    # wasm does this when optimizing anyhow, and the wasm backend always
-    # optimizes the wasm even if it does wasm2js later
-    if self.is_wasm() or self.is_wasm_backend():
-      return False
-    supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
-    for opt_level in supported_opt_levels:
-      if opt_level in self.emcc_args:
-        return True
-    return False
-
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
     if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
@@ -6258,14 +6246,6 @@ return malloc(size);
 
     test()
 
-    if self.supports_js_dfe():
-      print("Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1", file=sys.stderr)
-      num_original_funcs = self.count_funcs('src.cpp.o.js')
-      self.set_setting('ELIMINATE_DUPLICATE_FUNCTIONS', 1)
-      test()
-      # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
-      assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
-
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
@@ -8289,14 +8269,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('ENVIRONMENT', right + ',' + wrong)
       print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
-
-  def test_dfe(self):
-    if not self.supports_js_dfe():
-      self.skipTest('dfe-only')
-    self.set_setting('ELIMINATE_DUPLICATE_FUNCTIONS', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
-    self.emcc_args += ['-g2'] # test for issue #6331
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   def test_postrun_exception(self):
     # verify that an exception thrown in postRun() will not trigger the

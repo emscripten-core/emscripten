@@ -1040,16 +1040,6 @@ var DETERMINISTIC = 0;
 // code, allowing better dead code elimination and minification.
 var MODULARIZE = 0;
 
-// If we separate out asm.js with the --separate-asm option,
-// this is the name of the variable where the generated asm.js
-// Module is assigned to. This name can either be a property
-// of Module, or a freestanding variable name, like "var asmJs".
-// If you are XHRing in multiple asm.js built files, use this option to
-// assign the generated asm.js modules to different variable names
-// so that they do not conflict. Default name is 'Module["asm"]' if a custom
-// name is not passed in.
-var SEPARATE_ASM_MODULE_NAME = '';
-
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports.
 var EXPORT_ES6 = 0;
@@ -1073,10 +1063,6 @@ var ASM_JS = 1;
 // optimizer sees 5.0 as just 5).
 // [fastcomp-only]
 var FINALIZE_ASM_JS = 1;
-
-// see emcc --separate-asm
-// [fastcomp-only]
-var SEPARATE_ASM = 0;
 
 // JS library functions on this list are not converted to JS, and calls to them
 // are turned into abort()s. This is potentially useful for reducing code size.
@@ -1411,19 +1397,6 @@ var PTHREADS_DEBUG = 0;
 
 // If true, building against Emscripten's asm.js/wasm heap memory profiler.
 var MEMORYPROFILER = 0;
-
-// Duplicate function elimination. This coalesces function bodies that are
-// identical, which can happen e.g. if two methods have different C/C++ or LLVM
-// types, but end up identical at the asm.js level (all pointers are the same as
-// int32_t in asm.js, for example).
-//
-// This option is quite slow to run, as it processes and hashes all methods in
-// the codebase in multiple passes.
-//
-// [fastcomp-only]
-var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
-var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
-var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 
 // This tries to evaluate global ctors at compile-time, applying their effects
 // into the mem init file. This saves running code during startup, and also
@@ -1766,6 +1739,9 @@ var LEGACY_SETTINGS = [
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
   ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
   ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
+  ['ELIMINATE_DUPLICATE_FUNCTIONS', [0, 1], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
+  ['ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS', [0], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
+  ['ELIMINATE_DUPLICATE_FUNCTIONS_PASSES', [5], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
   // WASM_OBJECT_FILES is handled in emcc.py, supporting both 0 and 1 for now.
   ['WASM_OBJECT_FILES', [0, 1], 'For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow'],
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
@@ -1776,6 +1752,8 @@ var LEGACY_SETTINGS = [
   ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
   ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],
   ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
+  ['SEPARATE_ASM', [0], 'Separate asm.js only made sense for fastcomp with asm.js output'],
+  ['SEPARATE_ASM_MODULE_NAME', [''], 'Separate asm.js only made sense for fastcomp with asm.js output'],
   ['FAST_UNROLLED_MEMCPY_AND_MEMSET', [0, 1], 'The wasm backend implements memcpy/memset in C'],
   ['DOUBLE_MODE', [0, 1], 'The wasm backend always implements doubles normally'],
   ['PRECISE_F32', [0, 1, 2], 'The wasm backend always implements floats normally'],
