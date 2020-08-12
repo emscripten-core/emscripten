@@ -1776,4 +1776,7 @@ var LEGACY_SETTINGS = [
   ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
   ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],
   ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
+  ['FAST_UNROLLED_MEMCPY_AND_MEMSET', [0, 1], 'The wasm backend implements memcpy/memset in C'],
+  ['DOUBLE_MODE', [0, 1], 'The wasm backend always implements doubles normally'],
+  ['PRECISE_F32', [0, 1, 2], 'The wasm backend always implements floats normally'],
 ];
