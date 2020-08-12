@@ -1779,5 +1779,4 @@ var LEGACY_SETTINGS = [
   ['FAST_UNROLLED_MEMCPY_AND_MEMSET', [0, 1], 'The wasm backend implements memcpy/memset in C'],
   ['DOUBLE_MODE', [0, 1], 'The wasm backend always implements doubles normally'],
   ['PRECISE_F32', [0, 1, 2], 'The wasm backend always implements floats normally'],
-  ['EMULATED_FUNCTION_POINTERS', [0, 1], 'The wasm backend always implements function pointers using a Table'],
 ];
