@@ -1447,9 +1447,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          not shared.Settings.USE_PTHREADS:
         shared.Settings.EXPORT_READY_PROMISE = 0
 
-    if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-      shared.Settings.ALIASING_FUNCTION_POINTERS = 0
-
     if shared.Settings.LEGACY_VM_SUPPORT:
       if not shared.Settings.WASM or shared.Settings.WASM2JS:
         shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1

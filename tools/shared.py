@@ -1001,7 +1001,6 @@ class SettingsManager(object):
       if opt_level >= 1:
         cls.attrs['ASM_JS'] = 1
         cls.attrs['ASSERTIONS'] = 0
-        cls.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2:
         cls.attrs['EVAL_CTORS'] = 1
 

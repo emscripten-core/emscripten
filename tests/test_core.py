@@ -6093,10 +6093,6 @@ return malloc(size);
   @needs_make('configure script')
   @is_slow_test
   def test_freetype(self):
-    if self.run_name == 'asm2g':
-      # flip for some more coverage here
-      self.set_setting('ALIASING_FUNCTION_POINTERS', 1 - self.get_setting('ALIASING_FUNCTION_POINTERS'))
-
     self.add_pre_run("FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
       list(bytearray(open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read()))
     ))
@@ -6907,11 +6903,6 @@ return malloc(size);
       self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
       self.emcc_args = old
       print(old)
-
-    print('with ALIASING_FUNCTION_POINTERS')
-    self.set_setting('ALIASING_FUNCTION_POINTERS', 1)
-    self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
-    self.clear_setting('ALIASING_FUNCTION_POINTERS')
 
     print('with RESERVED_FUNCTION_POINTERS=0')
     self.set_setting('RESERVED_FUNCTION_POINTERS', 0)

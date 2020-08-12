@@ -53,70 +53,6 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript_fastcomp(infile, outfile, memfile, temp_files, DEBUG):
-  """Runs the emscripten LLVM-to-JS compiler.
-
-  Args:
-    infile: The path to the input LLVM assembly file.
-    outfile: An open file object where the output is written.
-  """
-
-  assert shared.Settings.ASM_JS, 'fastcomp is asm.js-only (mode 1 or 2)'
-
-  success = False
-
-  try:
-
-    # Overview:
-    #   * Run LLVM backend to emit JS. JS includes function bodies, memory initializer,
-    #     and various metadata
-    #   * Run compiler.js on the metadata to emit the shell js code, pre/post-ambles,
-    #     JS library dependencies, etc.
-
-    # metadata is modified by reference in some of the below
-    # these functions are split up to force variables to go out of scope and allow
-    # memory to be reclaimed
-
-    with ToolchainProfiler.profile_block('get_and_parse_backend'):
-      backend_output = compile_js(infile, temp_files, DEBUG)
-      funcs, metadata, mem_init = parse_fastcomp_output(backend_output, DEBUG)
-      fixup_metadata_tables(metadata)
-      funcs = fixup_functions(funcs, metadata)
-    with ToolchainProfiler.profile_block('compiler_glue'):
-      glue, forwarded_data = compiler_glue(metadata, temp_files, DEBUG)
-
-    with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      (post, function_table_data, bundled_args) = (
-          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG))
-    with ToolchainProfiler.profile_block('write_output_file'):
-      finalize_output(outfile, post, function_table_data, bundled_args, metadata, DEBUG)
-    success = True
-
-  finally:
-    outfile.close()
-    if not success:
-      shared.try_delete(outfile.name) # remove partial output
-
-
-def compile_js(infile, temp_files, DEBUG):
-  """Compile infile with asm.js backend, return the contents of the compiled js"""
-  with temp_files.get_file('.4.js') as temp_js:
-    backend_cmd = create_backend_cmd(infile, temp_js)
-
-    if DEBUG:
-      logger.debug('emscript: llvm backend: ' + ' '.join(backend_cmd))
-      t = time.time()
-    shared.print_compiler_stage(backend_cmd)
-    with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-      shared.check_call(backend_cmd)
-    if DEBUG:
-      logger.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
-
-    # Split up output
-    backend_output = open(temp_js).read()
-  return backend_output
-
-
 def parse_fastcomp_output(backend_output, DEBUG):
   start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
@@ -541,49 +477,6 @@ def write_output_file(outfile, post, module):
 
   post = normalize_line_endings(post)
   outfile.write(post)
-
-
-def create_backend_cmd(infile, temp_js):
-  """Create asm.js backend command from settings dict"""
-  args = [
-    shared.LLVM_COMPILER, infile, '-march=js', '-filetype=asm', '-o', temp_js,
-    '-emscripten-stack-size=%d' % shared.Settings.TOTAL_STACK,
-    '-O%s' % shared.Settings.OPT_LEVEL,
-  ]
-  if shared.Settings.USE_PTHREADS:
-    args += ['-emscripten-enable-pthreads']
-  if shared.Settings.WARN_UNALIGNED:
-    args += ['-emscripten-warn-unaligned']
-  if shared.Settings.RESERVED_FUNCTION_POINTERS > 0:
-    args += ['-emscripten-reserved-function-pointers=%d' % shared.Settings.RESERVED_FUNCTION_POINTERS]
-  if shared.Settings.ASSERTIONS > 0:
-    args += ['-emscripten-assertions=%d' % shared.Settings.ASSERTIONS]
-  if shared.Settings.ALIASING_FUNCTION_POINTERS == 0:
-    args += ['-emscripten-no-aliasing-function-pointers']
-  if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-    args += ['-emscripten-emulate-function-pointer-casts']
-  if shared.Settings.RELOCATABLE:
-    args += ['-emscripten-relocatable']
-    args += ['-emscripten-global-base=0']
-  elif shared.Settings.GLOBAL_BASE >= 0:
-    args += ['-emscripten-global-base=%d' % shared.Settings.GLOBAL_BASE]
-  if shared.Settings.SIDE_MODULE:
-    args += ['-emscripten-side-module']
-  if shared.Settings.LEGALIZE_JS_FFI != 1:
-    args += ['-emscripten-legalize-javascript-ffi=0']
-  if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
-    args += ['-enable-emscripten-cpp-exceptions']
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_ALLOWED or ['fake'])]
-  if not shared.Settings.EXIT_RUNTIME:
-    args += ['-emscripten-no-exit-runtime']
-  if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
-    args += ['-emscripten-asmjs-work-around-ios-9-right-shift-bug']
-  if shared.Settings.WASM:
-    args += ['-emscripten-wasm']
-    if building.is_wasm_only():
-      args += ['-emscripten-only-wasm']
-  return args
 
 
 def optimize_syscalls(declares, DEBUG):
@@ -2444,7 +2337,7 @@ def run(infile, outfile, memfile):
 
   outfile_obj = open(outfile, 'w')
 
-  emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
+  emscripter = emscript_wasm_backend
   return temp_files.run_and_clean(lambda: emscripter(
       infile, outfile_obj, memfile, temp_files, shared.DEBUG)
   )

@@ -3932,56 +3932,6 @@ int main() {
                   # non-informative error
                   self.assertContained(('abort(', 'exception'), output)
 
-  @no_wasm_backend('asm.js function table feature')
-  def test_aliased_func_pointers(self):
-    create_test_file('src.cpp', r'''
-#include <stdio.h>
-
-int impl1(int foo) { return foo; }
-float impla(float foo) { return foo; }
-int impl2(int foo) { return foo+1; }
-float implb(float foo) { return foo+1; }
-int impl3(int foo) { return foo+2; }
-float implc(float foo) { return foo+2; }
-
-int main(int argc, char **argv) {
-  volatile void *f = (void*)impl1;
-  if (argc == 50) f = (void*)impla;
-  if (argc == 51) f = (void*)impl2;
-  if (argc == 52) f = (void*)implb;
-  if (argc == 53) f = (void*)impl3;
-  if (argc == 54) f = (void*)implc;
-  return (int)f;
-}
-''')
-
-    print('aliasing')
-
-    sizes_ii = {}
-    sizes_dd = {}
-
-    for alias in [None, 0, 1]:
-      cmd = [EMCC, 'src.cpp', '-O1', '-s', 'WASM=0']
-      if alias is not None:
-        cmd += ['-s', 'ALIASING_FUNCTION_POINTERS=' + str(alias)]
-      else:
-        alias = -1
-      print(cmd)
-      self.run_process(cmd)
-      src = open('a.out.js').read().split('\n')
-      for line in src:
-        if line.strip().startswith('var FUNCTION_TABLE_ii = '):
-          sizes_ii[alias] = line.count(',')
-        if line.strip().startswith('var FUNCTION_TABLE_dd = '):
-          sizes_dd[alias] = line.count(',')
-
-    print('ii', sizes_ii)
-    print('dd', sizes_dd)
-
-    for sizes in [sizes_ii, sizes_dd]:
-      self.assertEqual(sizes[-1], sizes[1]) # default is to alias
-      self.assertLess(sizes[1], sizes[0]) # without aliasing, we have more unique values and fat tables
-
   def test_bad_export(self):
     for m in ['', ' ']:
       self.clear()
