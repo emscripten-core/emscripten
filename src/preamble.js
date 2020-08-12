@@ -137,7 +137,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
-#if ASYNCIFY && WASM_BACKEND
+#if ASYNCIFY
   var asyncMode = opts && opts.async;
   var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
   var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0;
@@ -163,7 +163,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if ASYNCIFY && WASM_BACKEND
+#if ASYNCIFY
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -906,7 +906,7 @@ function createWasm() {
 #if RELOCATABLE
     exports = relocateExports(exports, GLOBAL_BASE, 0);
 #endif
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
@@ -1122,7 +1122,7 @@ function createWasm() {
   if (Module['instantiateWasm']) {
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
 #endif
       return exports;
