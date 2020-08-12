@@ -2995,6 +2995,8 @@ def parse_args(newargs):
       options.valid_abspaths.append(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
+    elif newargs[i] == '--separate-asm':
+      exit_with_error('cannot --separate-asm with the wasm backend, since not emitting asm.js')
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if os.path.isabs(path_name) and not is_valid_abspath(options, path_name):
