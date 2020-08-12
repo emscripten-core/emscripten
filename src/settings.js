@@ -1058,12 +1058,6 @@ var BENCHMARK = 0;
 // [fastcomp-only]
 var ASM_JS = 1;
 
-// If 1, will finalize the final emitted code, including operations that prevent
-// later js optimizer passes from running, like converting +5 into 5.0 (the js
-// optimizer sees 5.0 as just 5).
-// [fastcomp-only]
-var FINALIZE_ASM_JS = 1;
-
 // JS library functions on this list are not converted to JS, and calls to them
 // are turned into abort()s. This is potentially useful for reducing code size.
 // If a dead function is actually called, you will get a runtime error.
@@ -1749,6 +1743,7 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
   ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
+  ['FINALIZE_ASM_JS', [0, 1], 'asm.js output is not supported any more'],
   ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
   ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],
   ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
