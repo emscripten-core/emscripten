@@ -938,7 +938,6 @@ var LibraryPThread = {
   pthread_exit: function(status) {
     if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
     else PThread.threadExit(status);
-#if WASM_BACKEND
     // pthread_exit is marked noReturn, so we must not return from it.
     if (ENVIRONMENT_IS_NODE) {
       // exit the pthread properly on node, as a normal JS exception will halt
@@ -946,7 +945,6 @@ var LibraryPThread = {
       process.exit(status);
     }
     throw 'unwind';
-#endif
   },
 
   _pthread_ptr: 0,
@@ -1262,9 +1260,6 @@ var LibraryPThread = {
 #endif
   },
 
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  emscripten_proxy_to_main_thread_js__deps: ['$stackSave', '$stackAlloc', '$stackRestore'],
-#endif
   emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -1315,28 +1310,12 @@ var LibraryPThread = {
     STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
 
-#if !WASM_BACKEND
-    // In fastcomp backend, locate tempDoublePtr memory area at the bottom of the stack, and bump up
-    // the stack by the bytes used.
-    tempDoublePtr = STACK_BASE;
-#if ASSERTIONS
-    assert(tempDoublePtr % 16 == 0);
-#endif
-    STACK_BASE += 16;
-    STACKTOP += 16;
-#endif
-
-#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+#if STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limit(STACK_MAX);
 #endif
 
-#if WASM_BACKEND
     // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
     stackRestore(stackTop);
-#else
-    // In old asm.js backend, use a dedicated function to establish the stack frame.
-    asmJsEstablishStackFrame(stackTop, stackMax);
-#endif
 
 #if STACK_OVERFLOW_CHECK
     // Write the stack cookie last, after we have set up the proper bounds and
