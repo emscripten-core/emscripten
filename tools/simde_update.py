@@ -8,9 +8,7 @@
 (https://github.com/simd-everywhere/simde) in system/include/neon
 """
 
-
 import os
-import shutil
 import subprocess
 import sys
 
@@ -21,6 +19,7 @@ from tools.shared import get_emscripten_temp_dir
 
 tmpdir = get_emscripten_temp_dir()
 emdir = path.join(path.dirname(path.realpath(__file__)), "..")
+
 
 def main(simde_path=None):
   if len(sys.argv) == 2:
@@ -35,7 +34,7 @@ def main(simde_path=None):
     os.mkdir(path.join(tmpdir, "simde"))
     os.system("git clone git@github.com:simd-everywhere/simde " + path.join(tmpdir, "simde"))
     simde_dir = path.join(tmpdir, "simde")
-    
+
   else:
     print("Using provided repository without updating [make sure it's up to date!]")
 
@@ -44,10 +43,10 @@ def main(simde_path=None):
   except subprocess.CalledProcessError as e:
     print("amalgamate.py returned error: " + str(e))
     return 1
-  
+
   try:
     os.mkdir(path.join(emdir, "system", "include", "neon"))
-  except FileExistsError as e:
+  except FileExistsError:
     if not path.isdir(path.join(emdir, "system", "include", "neon")):
       print("system/include/neon exists and is not a directory, exiting...")
       return 1
@@ -60,7 +59,7 @@ def main(simde_path=None):
       f.write(b"#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
       f.write(b"#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
       print("'system/include/neon/arm_neon.h' updated")
-    except:
+    except Exception:
       print("error writing 'system/include/neon/arm_neon.h'")
       return 1
 
