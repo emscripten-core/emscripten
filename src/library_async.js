@@ -8,6 +8,10 @@
 // Async support via ASYNCIFY
 //
 
+if (!ASYNCIFY) {
+  throw "To link with the async library you must use -s ASYNCIFY";
+}
+
 mergeInto(LibraryManager.library, {
   // error handling
 
@@ -19,7 +23,6 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-#if ASYNCIFY
   $Asyncify__deps: ['$Browser', '$runAndAbortIfError'],
   $Asyncify: {
     State: {
@@ -489,50 +492,6 @@ mergeInto(LibraryManager.library, {
       Asyncify.currData = null;
     }
   },
-
-  emscripten_coroutine_create: function() {
-    throw 'emscripten_coroutine_create has been removed. Please use the Fibers API';
-  },
-  emscripten_coroutine_next: function() {
-    throw 'emscripten_coroutine_next has been removed. Please use the Fibers API';
-  },
-  emscripten_yield: function() {
-    throw 'emscripten_yield has been removed. Please use the Fibers API';
-  },
-#else // ASYNCIFY
-  emscripten_sleep: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
-  },
-  emscripten_coroutine_create: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_create';
-  },
-  emscripten_coroutine_next: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_next';
-  },
-  emscripten_yield: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_yield';
-  },
-  emscripten_wget: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
-  },
-  emscripten_wget_data: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
-  },
-  emscripten_scan_registers: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
-  },
-  emscripten_fiber_init: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init';
-  },
-  emscripten_fiber_init_from_current_context: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init_from_current_context';
-  },
-  emscripten_fiber_swap: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
-  },
-#endif // ASYNCIFY
 });
 
-if (ASYNCIFY) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Asyncify');
-}
+DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Asyncify');
