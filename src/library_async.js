@@ -489,28 +489,9 @@ mergeInto(LibraryManager.library, {
       Asyncify.currData = null;
     }
   },
-
-  emscripten_coroutine_create: function() {
-    throw 'emscripten_coroutine_create has been removed. Please use the Fibers API';
-  },
-  emscripten_coroutine_next: function() {
-    throw 'emscripten_coroutine_next has been removed. Please use the Fibers API';
-  },
-  emscripten_yield: function() {
-    throw 'emscripten_yield has been removed. Please use the Fibers API';
-  },
 #else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
-  },
-  emscripten_coroutine_create: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_create';
-  },
-  emscripten_coroutine_next: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_next';
-  },
-  emscripten_yield: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_yield';
   },
   emscripten_wget: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
