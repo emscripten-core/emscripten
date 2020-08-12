@@ -345,7 +345,9 @@ mergeInto(LibraryManager.library, {
       // We must first unwind, so things are spilled to the stack. We
       // can resume right after unwinding, no need for a timeout.
       Asyncify.afterUnwind = function() {
-        {{{ makeDynCall('vii') }}}(func, Asyncify.currData + 8, HEAP32[Asyncify.currData >> 2]);
+        var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
+        var stackEnd = HEAP32[Asyncify.currData >> 2];
+        {{{ makeDynCall('vii') }}}(func, stackBegin, stackEnd);
         wakeUp();
       };
     });
@@ -408,7 +410,7 @@ mergeInto(LibraryManager.library, {
         var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
         {{{ makeDynCall('vi') }}}(entryPoint, userData);
       } else {
-        var asyncifyData = newFiber + 20;
+        var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;
 
 #if ASYNCIFY_DEBUG
@@ -487,36 +489,17 @@ mergeInto(LibraryManager.library, {
       Asyncify.currData = null;
     }
   },
-
-  emscripten_coroutine_create: function() {
-    throw 'emscripten_coroutine_create has been removed. Please use the Fibers API';
-  },
-  emscripten_coroutine_next: function() {
-    throw 'emscripten_coroutine_next has been removed. Please use the Fibers API';
-  },
-  emscripten_yield: function() {
-    throw 'emscripten_yield has been removed. Please use the Fibers API';
-  },
 #else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
-  emscripten_coroutine_create: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_create';
-  },
-  emscripten_coroutine_next: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_next';
-  },
-  emscripten_yield: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_yield';
-  },
-  emscripten_wget: function(url, file) {
+  emscripten_wget: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
   },
-  emscripten_wget_data: function(url, file) {
+  emscripten_wget_data: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
   },
-  emscripten_scan_registers: function(url, file) {
+  emscripten_scan_registers: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
   emscripten_fiber_init: function() {
