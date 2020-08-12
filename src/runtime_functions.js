@@ -4,11 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if !WASM_BACKEND
-var jsCallStartIndex = 1;
-var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
-#endif // !WASM_BACKEND
-
 #if WASM
 // Wraps a JS function as a wasm function with a given signature.
 function convertJsFunctionToWasm(func, sig) {
@@ -147,11 +142,7 @@ function addFunctionWasm(func, sig) {
       if (!(err instanceof RangeError)) {
         throw err;
       }
-#if WASM_BACKEND
       throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
-#else
-      throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
-#endif
     }
   }
 
@@ -193,26 +184,9 @@ function addFunction(func, sig) {
 #endif // ASSERTIONS == 2
 #endif // ASSERTIONS
 
-#if WASM_BACKEND
   return addFunctionWasm(func, sig);
-#else
-
-  var base = 0;
-  for (var i = base; i < base + {{{ RESERVED_FUNCTION_POINTERS }}}; i++) {
-    if (!functionPointers[i]) {
-      functionPointers[i] = func;
-      return jsCallStartIndex + i;
-    }
-  }
-  throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
-
-#endif // WASM_BACKEND
 }
 
 function removeFunction(index) {
-#if WASM_BACKEND
   removeFunctionWasm(index);
-#else
-  functionPointers[index-jsCallStartIndex] = null;
-#endif // WASM_BACKEND
 }
