@@ -23,7 +23,7 @@ def get(ports, settings, shared):
     logging.info('building port: mpg123')
 
     source_path = os.path.join(ports.get_dir(), 'mpg123', 'mpg123-' + TAG)
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'mpg123')
+    dest_path = os.path.join(ports.get_build_dir(), 'mpg123')
 
     sauce_path = os.path.join(dest_path, 'src')
     libmpg123_path = os.path.join(sauce_path, 'libmpg123')

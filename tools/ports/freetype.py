@@ -21,7 +21,7 @@ def get(ports, settings, shared):
     ports.clear_project_build('freetype')
 
     source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'freetype')
+    dest_path = os.path.join(ports.get_build_dir(), 'freetype')
     shared.try_delete(dest_path)
     os.makedirs(dest_path)
     shutil.rmtree(dest_path, ignore_errors=True)
