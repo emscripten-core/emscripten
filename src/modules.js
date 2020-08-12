@@ -130,18 +130,18 @@ var LibraryManager = {
         'library_uuid.js',
         'library_glew.js',
         'library_idbstore.js',
+        'library_async.js'
       ]);
     } else {
+      if (ASYNCIFY) {
+        libraries.push('library_async.js');
+      }
       if (USE_SDL == 1) {
         libraries.push('library_sdl.js');
       }
       if (USE_SDL == 2) {
         libraries.push('library_egl.js', 'library_webgl.js', 'library_html5_webgl.js');
       }
-    }
-
-    if (ASYNCIFY) {
-      libraries.push('library_async.js');
     }
 
     // Add any explicitly specified system JS libraries to link to, add those to link.
