@@ -870,13 +870,6 @@ def can_inline():
   return Settings.INLINING_LIMIT == 0
 
 
-def need_asm_js_file():
-  # Explicitly separate asm.js requires it
-  if Settings.SEPARATE_ASM:
-    return True
-  return False
-
-
 def is_wasm_only():
   # not even wasm, much less wasm-only
   if not Settings.WASM:

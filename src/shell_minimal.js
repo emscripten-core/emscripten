@@ -69,9 +69,6 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 #endif
 #else
-#if SEPARATE_ASM
-  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
-#endif
 #endif
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
@@ -105,9 +102,6 @@ if (ENVIRONMENT_IS_SHELL) {
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
-#if SEPARATE_ASM
-  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
-#endif
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
 #endif

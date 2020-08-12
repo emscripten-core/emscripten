@@ -49,10 +49,6 @@ def generate_minimal_runtime_load_statement(target_basename):
       then_statements += ["Module.mem = r[%d];" % len(files_to_load)]
     files_to_load += ["binary('%s')" % (target_basename + '.mem')]
 
-  # Download separate .asm.fs file when building with --separate-asm
-  if shared.Settings.SEPARATE_ASM:
-    files_to_load += ["script('%s')" % (target_basename + '.asm.js')]
-
   # Download .wasm file
   if shared.Settings.WASM == 1 or not download_wasm:
     if shared.Settings.MODULARIZE:
