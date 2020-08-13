@@ -8591,7 +8591,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     def post(filename):
       with open(filename, 'a') as f:
         f.write('\n\n')
-        f.write('createModule().then();\n')
+        # the bug is that createModule() returns undefined, instead of the
+        # proper Promise object.
+        f.write('if (!(createModule() instanceof Promise)) throw "Promise was not returned :(";\n')
 
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(),
                 post_build=post,
