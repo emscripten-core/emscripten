@@ -8776,6 +8776,26 @@ int main () {
     return 0;
 }''', '', force_c=True)
 
+  def test_linking_recv(self):
+    self.do_run(r'''
+      #include <sys/types.h>
+      #include <sys/socket.h>
+      int main(void) {
+        recv(0, 0, 0, 0);
+        return 0;
+      }
+    ''', '', force_c=True)
+
+  def test_linking_send(self):
+    self.do_run(r'''
+      #include <sys/types.h>
+      #include <sys/socket.h>
+      int main(void) {
+        send(0, 0, 0, 0);
+        return 0;
+      }
+    ''', '', force_c=True)
+
   # This test verifies that function names embedded into the build with --js-library (JS functions imported to asm.js/wasm)
   # are minified when -O3 is used
   def test_js_function_names_are_minified(self):
