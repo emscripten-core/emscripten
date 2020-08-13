@@ -8643,17 +8643,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthreads_create(self):
-    if not self.is_wasm_backend():
-      self.skipTest('only supported on wasm backend')
-
     def test():
       self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create')
+
     test()
 
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.emcc_args += ['-DPOOL']
     test()
+
+  @node_pthreads
+  def test_pthreads_create_lto(self):
+    self.emcc_args += ['-flto']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create')
 
   @no_fastcomp('new wasm backend atomics')
   def test_emscripten_atomics_stub(self):
