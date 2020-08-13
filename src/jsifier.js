@@ -41,11 +41,6 @@ var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*
 // map: pair(sig, syncOrAsync) -> function body
 var proxiedFunctionInvokers = {};
 
-// We include asm2wasm imports if the trap mode is 'js' (to call out to JS to do some math stuff).
-// However, we always need some of them (like the frem import because % is in asm.js but not in wasm).
-// But we can avoid emitting all the others in many cases.
-var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
-
 // Used internally. set when there is a main() function.
 // Also set when in a linkable module, as the main() function might
 // arrive from a dynamically-linked library, and not necessarily

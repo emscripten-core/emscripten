@@ -34,7 +34,7 @@ from tools.shared import try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, JS_ENGINES, WASM_ENGINES, V8_ENGINE
-from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
+from runner import RunnerCore, path_from_root, no_wasm_backend, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
 from runner import js_engines_modify, NON_ZERO
 from tools import shared, building
@@ -2114,7 +2114,6 @@ int f() {
         output = self.run_process([tools.js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
         check_js(output, expected)
 
-  @no_fastcomp('wasm2js-only')
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
     'constructor': ('constructor', ['minifyNames'])
@@ -2191,7 +2190,6 @@ int f() {
         else:
           self.assertIn('strip-debug', err)
 
-  @no_fastcomp()
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
       do_compile([])
@@ -2229,7 +2227,6 @@ int f() {
     self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
-  @no_fastcomp()
   def test_dwarf(self):
     def compile_with_dwarf(args, output):
       # Test that -g enables dwarf info in object files and linked wasm
@@ -6004,7 +6001,6 @@ main(int argc,char** argv)
     self.assertContained('hello1_val by hello1:3', out)
     self.assertContained('hello1_val by hello2:3', out)
 
-  @no_fastcomp()
   def test_main_module_without_exceptions_message(self):
     # A side module that needs exceptions needs a main module with that
     # support enabled; show a clear message in that case.
@@ -6267,7 +6263,6 @@ mergeInto(LibraryManager.library, {
     err = self.expect_fail([EMCC, 'test.cpp'])
     self.assertContained('undefined symbol: my_js', err)
 
-  @no_fastcomp('fastcomp links in memset in JS in a hackish way')
   def test_js_lib_to_system_lib(self):
     # memset is in compiled code, so a js library __deps can't access it. it
     # would need to be in deps_info.json or EXPORTED_FUNCTIONS
@@ -6498,7 +6493,6 @@ Resolved: "/" => "/"
     run([])
     run(['-O2'])
 
-  @no_fastcomp("fastcomp doesn't support 2GB+")
   def test_emmalloc_2GB(self):
     def test(args, text=None):
       if text:
@@ -6514,7 +6508,6 @@ Resolved: "/" => "/"
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=1GB'])
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=3GB'], 'emmalloc only works on <2GB of memory. Use the default allocator, or decrease MAXIMUM_MEMORY')
 
-  @no_fastcomp("fastcomp doesn't support 2GB+")
   def test_2GB_plus(self):
     # when the heap size can be over 2GB, we rewrite pointers to be unsigned
     def test(page_diff):
@@ -6538,7 +6531,6 @@ Resolved: "/" => "/"
     # default maximum memory is 2GB.
     self.assertEqual(less, none)
 
-  @no_fastcomp('depends on wasm-emscripten-finalize')
   @parameterized({
     'normal': (['-s', 'WASM_BIGINT=0'], 'testbind.js'),
     'bigint': (['-s', 'WASM_BIGINT=1'], 'testbind_bigint.js'),
@@ -7318,7 +7310,6 @@ int main() {
     # sizes must be different, as the flag has an impact
     self.assertEqual(len(set(sizes)), 2)
 
-  @no_fastcomp('BINARYEN_EXTRA_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
   def test_binaryen_passes_extra(self):
     def build(args=[]):
       return self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-O3'] + args, stdout=PIPE).stdout
@@ -7448,7 +7439,6 @@ int main() {
     'Oz': (['-Oz'], [], [],          85), # noqa
     'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 85), # noqa
   })
-  @no_fastcomp()
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
@@ -7473,7 +7463,6 @@ int main() {
     'mangle':   (['-O2', '-fexceptions',
                   '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 408028), # noqa
   })
-  @no_fastcomp()
   def test_metadce_cxx(self, *args):
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
@@ -7501,7 +7490,6 @@ int main() {
     # larger for wasm backend.
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10652, True, True, True, False), # noqa
   })
-  @no_fastcomp()
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
@@ -7546,7 +7534,6 @@ int main() {
                           ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM', '-flto'],
                            [], [], 4971),         # noqa
   })
-  @no_fastcomp()
   def test_metadce_mem(self, filename, *args):
     self.run_metadce_test(filename, *args)
 
@@ -7557,7 +7544,6 @@ int main() {
     'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
                            [], [], 198), # noqa
   })
-  @no_fastcomp()
   def test_metadce_libcxxabi_message(self, filename, *args):
     self.run_metadce_test(filename, *args)
 
@@ -7735,7 +7721,6 @@ int main() {
         self.assertFalse(x.endswith('.js'))
       self.assertIn(b'dylink', open(target, 'rb').read())
 
-  @no_fastcomp('test wasm object files')
   def test_wasm_backend_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
 
@@ -7772,11 +7757,9 @@ int main() {
     'except': [],
     'noexcept': ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
   })
-  @no_fastcomp('test wasm object files')
   def test_wasm_backend_lto_libcxx(self, *args):
     self.run_process([EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-flto'] + list(args))
 
-  @no_fastcomp('wasm backend lto specific')
   def test_lto_flags(self):
     for flags, expect_bitcode in [
       ([], False),
@@ -7995,7 +7978,6 @@ end
     # The default behavior is to add archive indexes automatically.
     self.run_process([EMCC, 'libfoo.a', 'hello_world.o'])
 
-  @no_fastcomp('AUTO_ARCHIVE_INDEXES only applies to wasm backend')
   def test_archive_non_objects(self):
     create_test_file('file.txt', 'test file')
     # llvm-nm has issues with files that start with two or more null bytes since it thinks they
@@ -8182,7 +8164,6 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                              ^
 '''), stderr)
 
-  @no_fastcomp('wasm2js only')
   def test_js_optimizer_chunk_size_determinism(self):
     def build():
       self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '-s', 'WASM=0'])
@@ -8287,7 +8268,6 @@ int main() {
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
-  @no_fastcomp()
   def test_wasm_sourcemap_relative_paths(self):
     def test(infile, source_map_added_dir=''):
       expected_source_map_path = 'a.cpp'
@@ -8311,7 +8291,6 @@ int main() {
     ensure_dir('inner')
     test('inner/a.cpp', 'inner')
 
-  @no_fastcomp('dwarf')
   def test_separate_dwarf(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')
@@ -8326,7 +8305,6 @@ int main() {
       self.assertIn(b'external_debug_info', wasm)
       self.assertIn(b'a.out.wasm.debug.wasm', wasm)
 
-  @no_fastcomp('dwarf')
   def test_separate_dwarf_with_filename(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
     self.assertNotExists('a.out.wasm.debug.wasm')
@@ -8336,7 +8314,6 @@ int main() {
       stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), invalid])
       self.assertContained('invalid -gseparate-dwarf=FILENAME notation', stderr)
 
-  @no_fastcomp('dwarf')
   def test_separate_dwarf_with_filename_and_path(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
     with open('a.out.wasm', 'rb') as f:
@@ -8423,7 +8400,6 @@ T6:(else) !ASSERTIONS""", output)
     self.assertContained('hello, world!', ret)
 
   # Tests that a pthreads + modularize build can be run in node js
-  @no_fastcomp('node pthreads only supported on wasm backend')
   def test_node_js_pthread_module(self):
     # create module loader script
     moduleLoader = 'moduleLoader.js'
@@ -8519,14 +8495,12 @@ test_module().then((test_module_instance) => {
         self.assertNotEqual(proc.returncode, 0)
         self.assertContained(expected, proc.stderr)
 
-  @no_fastcomp('uses new ASYNCIFY')
   def test_asyncify_escaping(self):
     proc = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_ONLY=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
     self.assertContained('emcc: ASYNCIFY list contains an item without balanced parentheses', proc.stderr)
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
     self.assertContained('Try to quote the entire argument', proc.stderr)
 
-  @no_fastcomp('uses new ASYNCIFY')
   def test_asyncify_response_file(self):
     return self.skipTest(' TODO remove the support for multiple binaryen versions warning output ("function name" vs "pattern" etc).')
     create_test_file('a.txt', r'''[
@@ -8776,6 +8750,26 @@ int main () {
     return 0;
 }''', '', force_c=True)
 
+  def test_linking_recv(self):
+    self.do_run(r'''
+      #include <sys/types.h>
+      #include <sys/socket.h>
+      int main(void) {
+        recv(0, 0, 0, 0);
+        return 0;
+      }
+    ''', '', force_c=True)
+
+  def test_linking_send(self):
+    self.do_run(r'''
+      #include <sys/types.h>
+      #include <sys/socket.h>
+      int main(void) {
+        send(0, 0, 0, 0);
+        return 0;
+      }
+    ''', '', force_c=True)
+
   # This test verifies that function names embedded into the build with --js-library (JS functions imported to asm.js/wasm)
   # are minified when -O3 is used
   def test_js_function_names_are_minified(self):
@@ -8844,7 +8838,6 @@ int main () {
     'O2_closure_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1']), # noqa
     'O2_closure_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1', '-s', 'WASM=0']), # noqa
   })
-  @no_fastcomp('EMIT_EMSCRIPTEN_LICENSE is upstream only')
   def test_emscripten_license(self, expect_license, args):
     # fastcomp does not support the new license flag
     if not self.is_wasm_backend():
@@ -9068,7 +9061,6 @@ int main () {
     self.run_process([EMCC, '-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1', path_from_root('tests', 'hello_world.c')])
     self.run_process([EMCC, '-s', 'PRECISE_I64_MATH=2', path_from_root('tests', 'hello_world.c')])
 
-  @no_fastcomp('depends on wasm backend .a linking')
   def test_jsmath(self):
     self.run_process([EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'normal.js', '--closure', '0'])
     normal_js_size = os.path.getsize('normal.js')
@@ -9192,7 +9184,6 @@ int main () {
       self.set_setting('WASM', 0)
       self.do_run(src, 'SAFE_HEAP load: ')
 
-  @no_fastcomp('iprintf/__small_printf are wasm-backend-only features')
   def test_mini_printfs(self):
     def test(code):
       with open('src.c', 'w') as f:
@@ -9234,7 +9225,6 @@ int main () {
 0.000051 => -5.123719300544352710023893104250e-05
 '''),
   })
-  @no_fastcomp('float128 is wasm backend only')
   def test_long_double_printing(self, args, expected):
     create_test_file('src.cpp', r'''
 #include <stdio.h>
@@ -9260,7 +9250,6 @@ int main(void) {
     'c': ['c'],
     'cpp': ['cpp'],
   })
-  @no_fastcomp('lsan not supported on fastcomp')
   def test_lsan_leaks(self, ext):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
@@ -9286,7 +9275,6 @@ int main(void) {
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:11:3$',
     ]],
   })
-  @no_fastcomp('lsan not supported on fastcomp')
   def test_lsan_stack_trace(self, ext, regexes):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-g4'],
@@ -9300,13 +9288,11 @@ int main(void) {
     'c': ['c'],
     'cpp': ['cpp'],
   })
-  @no_fastcomp('lsan not supported on fastcomp')
   def test_lsan_no_leak(self, ext):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_no_leak.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ASSERTIONS=0'],
                        regexes=[r'^\s*$'])
 
-  @no_fastcomp('lsan not supported on fastcomp')
   def test_lsan_no_stack_trace(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT'],
@@ -9315,7 +9301,6 @@ int main(void) {
       'SUMMARY: LeakSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
-  @no_fastcomp('asan is not supported on fastcomp')
   def test_asan_null_deref(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_null_deref.c'),
                        emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'],
@@ -9323,7 +9308,6 @@ int main(void) {
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
-  @no_fastcomp('asan is not supported on fastcomp')
   def test_asan_no_stack_trace(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
                        emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
@@ -9332,7 +9316,6 @@ int main(void) {
       'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
-  @no_fastcomp('asan is not supported on fastcomp')
   def test_asan_pthread_stubs(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
 
@@ -9346,13 +9329,11 @@ int main(void) {
     'async': ['-s', 'WASM_ASYNC_COMPILATION=1'],
     'sync': ['-s', 'WASM_ASYNC_COMPILATION=0'],
   })
-  @no_fastcomp('offset converter is not supported on fastcomp')
   def test_offset_converter(self, *args):
     self.do_smart_test(path_from_root('tests', 'other', 'test_offset_converter.c'),
                        emcc_args=['-s', 'USE_OFFSET_CONVERTER', '-g4'] + list(args), literals=['ok'])
 
   @no_windows('ptys and select are not available on windows')
-  @no_fastcomp('fastcomp clang detects colors differently')
   def test_build_error_color(self):
     create_test_file('src.c', 'int main() {')
     returncode, output = self.run_on_pty([EMCC, 'src.c'])
@@ -9373,7 +9354,6 @@ int main(void) {
     self.assertNotEqual(returncode, 0)
     self.assertNotIn(b'\x1b', output)
 
-  @no_fastcomp('sanitizers are not supported on fastcomp')
   def test_sanitizer_color(self):
     create_test_file('src.c', '''
       #include <emscripten.h>
@@ -9387,7 +9367,6 @@ int main(void) {
     output = self.run_js('a.out.js')
     self.assertIn('\x1b[1msrc.c', output)
 
-  @no_fastcomp('main param optimizations are upstream-only')
   def test_main_reads_params(self):
     create_test_file('no.c', '''
       int main() {
@@ -9408,7 +9387,6 @@ int main(void) {
     # otherwise in such a trivial program).
     self.assertLess(no, 0.95 * yes)
 
-  @no_fastcomp('not optimized in fastcomp')
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
       self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '--closure', '1'] + args)
@@ -9438,7 +9416,6 @@ int main(void) {
   def test_mmap_and_munmap_anonymous(self):
     self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM'])
 
-  @no_fastcomp('asan is not supported on fastcomp')
   def test_mmap_and_munmap_anonymous_asan(self):
     self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
 
@@ -9469,7 +9446,6 @@ int main(void) {
     test_error('Module = { preRun: [] };')
     test_error('Module.preRun = [];')
 
-  @no_fastcomp('fastcomp defines this in the backend itself, so it is always on there')
   def test_EMSCRIPTEN_and_STRICT(self):
     # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
     # code, unless STRICT is enabled.
@@ -9492,7 +9468,6 @@ int main(void) {
       else:
         self.run_process(cmd)
 
-  @no_fastcomp('new clang feature')
   def test_fignore_exceptions(self):
     # the new clang flag -fignore-exceptions basically is the same as -s DISABLE_EXCEPTION_CATCHING=1,
     # that is, it allows throwing, but emits no support code for catching.
@@ -9505,7 +9480,6 @@ int main(void) {
     self.assertGreater(enable_size, disable_size)
     self.assertEqual(disable_size, ignore_size)
 
-  @no_fastcomp('assumes wasm object files')
   def test_f_exception(self):
     create_test_file('src.cpp', r'''
       #include <stdio.h>
@@ -9654,7 +9628,6 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.do_smart_test(path_from_root('tests', 'test_boost_graph.cpp'),
                        emcc_args=['-s', 'USE_BOOST_HEADERS=1'])
 
-  @no_fastcomp('EM_ASM and setjmp works fine on fastcomp')
   def test_setjmp_em_asm(self):
     create_test_file('src.c', '''
       #include <emscripten.h>
@@ -9679,7 +9652,6 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # error out when linking with these flags.
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-lm', '-ldl', '-lrt', '-lpthread'])
 
-  @no_fastcomp('lld-specific')
   def test_supported_linker_flags(self):
     out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--print-map'], stderr=PIPE).stderr
     self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
@@ -9706,7 +9678,6 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-version-script,foo'], stderr=PIPE).stderr
     self.assertContained('warning: ignoring unsupported linker flag: `-version-script`', out)
 
-  @no_fastcomp('lld-specific')
   def test_linker_flags_pass_through(self):
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
@@ -9869,7 +9840,6 @@ int main() {
 ''')
     self.run_process([EMCC, 'errno_type.c'])
 
-  @no_fastcomp("uses standalone mode")
   def test_standalone_syscalls(self):
     self.run_process([EMCC, path_from_root('tests', 'other', 'standalone_syscalls', 'test.cpp'), '-o', 'test.wasm'])
     with open(path_from_root('tests', 'other', 'standalone_syscalls', 'test.out')) as f:
@@ -9878,7 +9848,6 @@ int main() {
         self.assertContained(expected, self.run_js('test.wasm', engine))
 
   @requires_native_clang
-  @no_fastcomp("uses standalone mode")
   def test_wasm2c_reactor(self):
     # test compiling an unsafe library using wasm2c, then using it from a
     # main program. this shows it is easy to use wasm2c as a sandboxing
@@ -9903,7 +9872,6 @@ int main() {
     'wasm2js': (['-s', 'WASM=0'], ''),
     'modularize': (['-s', 'MODULARIZE'], 'Module()'),
   })
-  @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self, constant_args, extern_post_js):
     def test(args, expect_fail):
       # legacy browsers may lack Promise, which wasm2js depends on. see what
@@ -9926,7 +9894,6 @@ int main() {
     for args in [[], ['-s', 'ASSERTIONS=1']]:
       self.run_process([EMCC, path_from_root('tests', 'webgpu_dummy.cpp'), '-s', 'USE_WEBGPU=1'] + args)
 
-  @no_fastcomp('lld only')
   def test_signature_mismatch(self):
     create_test_file('a.c', 'void foo(); int main() { foo(); return 0; }')
     create_test_file('b.c', 'int foo() { return 1; }')
@@ -9935,14 +9902,12 @@ int main() {
     self.expect_fail([EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
     self.expect_fail([EMCC, '-s', 'STRICT', 'a.c', 'b.c'])
 
-  @no_fastcomp('lld only')
   def test_lld_report_undefined(self):
     create_test_file('main.c', 'void foo(); int main() { foo(); return 0; }')
     stderr = self.expect_fail([EMCC, '-s', 'LLD_REPORT_UNDEFINED', 'main.c'])
     self.assertContained('wasm-ld: error:', stderr)
     self.assertContained('main_0.o: undefined symbol: foo', stderr)
 
-  @no_fastcomp('wasm backend only')
   def test_4GB(self):
     stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
     self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
@@ -9957,7 +9922,6 @@ int main() {
 
     self.expect_fail([EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=error'])
 
-  @no_fastcomp('test wasm object files')
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
     create_test_file('main.c', 'void foo(); int main() { return 0; }')
@@ -10034,7 +9998,6 @@ int main() {
     # Verify the JS output was smaller
     self.assertLess(os.path.getsize('src.c.o.js'), size_default)
 
-  @no_fastcomp('no .s file support')
   def test_assembly(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
     src = path_from_root('tests', 'other', 'test_asm.c')
@@ -10042,7 +10005,6 @@ int main() {
     self.emcc_args.append('foo.o')
     self.do_run_from_file(src, output)
 
-  @no_fastcomp('no .s file support')
   def test_assembly_preprocessed(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm_cpp.S'), '-o', 'foo.o'])
     src = path_from_root('tests', 'other', 'test_asm.c')
@@ -10055,7 +10017,6 @@ int main() {
     output = path_from_root('tests', 'other', 'test_export_global_address.out')
     self.do_run_from_file(src, output)
 
-  @no_fastcomp('wasm-ld only')
   def test_linker_version(self):
     out = self.run_process([EMCC, '-Wl,--version'], stdout=PIPE).stdout
     self.assertContained('LLD ', out)

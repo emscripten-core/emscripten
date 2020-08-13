@@ -164,14 +164,6 @@ def no_wasm_backend(note=''):
   return decorated
 
 
-def no_fastcomp(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm_backend', note, negate=True)
-  return decorated
-
-
 def no_windows(note=''):
   assert not callable(note)
   if WINDOWS:

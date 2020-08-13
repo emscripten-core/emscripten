@@ -25,7 +25,7 @@ from tools.shared import try_delete, PIPE
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
-from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
 from runner import NON_ZERO
 import clang_native
@@ -332,8 +332,6 @@ class TestCoreBase(RunnerCore):
 
   def test_int53(self):
     self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$convertI32PairToI53,$convertU32PairToI53,$readI53FromU64,$readI53FromI64,$writeI53ToI64,$writeI53ToI64Clamped,$writeI53ToU64Clamped,$writeI53ToI64Signaling,$writeI53ToU64Signaling]']
-    if not self.is_wasm_backend():
-      self.emcc_args += ['-s', 'BINARYEN_TRAP_MODE=js']
     self.do_run_in_out_file_test('tests', 'core', 'test_int53')
 
   def test_i64(self):
@@ -395,7 +393,6 @@ class TestCoreBase(RunnerCore):
                                  args='waka fleefl asdfasdfasdfasdf'
                                       .split(' '))
 
-  @no_fastcomp('wasm bigint')
   @no_wasm2js('wasm_bigint')
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT', 1)
@@ -931,7 +928,6 @@ base align: 0, 0, 0, 0'''])
 
     self.do_run_in_out_file_test('tests', 'core', 'test_malloc_usable_size')
 
-  @no_fastcomp('this feature works in fastcomp, but test outputs are sensitive to wasm backend')
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -942,7 +938,6 @@ base align: 0, 0, 0, 0'''])
 
     self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_memory_statistics')
 
-  @no_fastcomp('this feature works in fastcomp, but test outputs are sensitive to wasm backend')
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -1858,7 +1853,6 @@ int main() {
     self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
     self.do_run(open(src).read(), open(output).read().replace('waka', shared.EMSCRIPTEN_VERSION))
 
-  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_emscripten_has_asyncify(self):
     src = r'''
       #include <stdio.h>
@@ -4638,7 +4632,6 @@ res64 - external 64\n''', header='''
   #                              open(path_from_root('tests', 'bullet', 'output3.txt')).read()])
 
   @needs_dlfcn
-  @no_fastcomp('https://github.com/emscripten-core/emscripten/issues/8376')
   def test_dylink_rtti(self):
     # Verify that objects created in one module and be dynamic_cast<> correctly
     # in the another module.
@@ -5820,7 +5813,6 @@ int main(void) {
     self.emcc_args += ['-mnontrapping-fptoint']
     self.test_fasta()
 
-  @no_fastcomp('RuntimeError: float unrepresentable in integer range')
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
 
@@ -6616,7 +6608,6 @@ return malloc(size);
 
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   @no_asan('autodebug logging interferes with asan')
-  @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
     # Autodebug does not work with too much shadow memory.
@@ -6692,7 +6683,6 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
 
-  @no_fastcomp('fails mysteriously on fastcomp (dynCall_viji is not defined); ignored, because fastcomp is deprecated')
   @no_minimal_runtime('MINIMAL_RUNTIME does not blindly export all symbols to Module to save code size')
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
@@ -7477,7 +7467,6 @@ someweirdtext
       assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
 
   @no_wasm2js('TODO: source maps in wasm2js')
-  @no_fastcomp('DWARF is only supported in upstream')
   def test_dwarf(self):
     self.emcc_args.append('-g')
 
@@ -7852,18 +7841,15 @@ Module['onRuntimeInitialized'] = function() {
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
-  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_fastcomp('Fibers are not implemented for fastcomp')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY', 1)
     src = open(path_from_root('tests', 'test_fibers.cpp')).read()
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
-  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
     self.set_setting('ASYNCIFY', 1)
@@ -7882,7 +7868,6 @@ Module['onRuntimeInitialized'] = function() {
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
-  @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_test_file('response.file', response)
@@ -7904,7 +7889,6 @@ Module['onRuntimeInitialized'] = function() {
     'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD=["main","virt()"]'], True),
   })
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
-  @no_fastcomp('new asyncify only')
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY', 1)
     self.emcc_args += args
@@ -7918,12 +7902,10 @@ Module['onRuntimeInitialized'] = function() {
         raise
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_fastcomp('wasm-backend specific feature')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY', 1)
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
 
-  @no_fastcomp('wasm-backend specific feature')
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
@@ -7931,7 +7913,6 @@ Module['onRuntimeInitialized'] = function() {
     self.do_run_in_out_file_test('tests', 'core', 'asyncify_assertions')
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_fastcomp('wasm-backend specific feature')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
@@ -8015,7 +7996,6 @@ Module['onRuntimeInitialized'] = function() {
       verify_broken()
 
   # Test basic wasm2js functionality in all core compilation modes.
-  @no_fastcomp('wasm-backend specific feature')
   @no_asan('no wasm2js support yet in asan')
   def test_wasm2js(self):
     if self.get_setting('WASM') == 0:
@@ -8030,7 +8010,6 @@ Module['onRuntimeInitialized'] = function() {
       with open('src.c.o.js.mem', 'rb') as f:
         self.assertTrue(f.read()[-1] != b'\0')
 
-  @no_fastcomp('wasm-backend specific feature')
   @no_asan('no wasm2js support yet in asan')
   def test_maybe_wasm2js(self):
     if self.get_setting('WASM') == 0:
@@ -8048,7 +8027,6 @@ Module['onRuntimeInitialized'] = function() {
     # verify that it runs
     self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
 
-  @no_fastcomp('wasm-backend specific feature')
   @no_asan('no wasm2js support yet in asan')
   def test_wasm2js_fallback(self):
     if self.get_setting('WASM') == 0:
@@ -8183,34 +8161,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate', assert_returncode=NON_ZERO)
 
-  @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
-  def test_binaryen_trap_mode(self):
-    if not self.is_wasm():
-      self.skipTest('wasm test')
-    TRAP_OUTPUTS = ('trap', 'RuntimeError')
-    default = 'allow'
-    print('default is', default)
-    for mode in ['js', 'clamp', 'allow', '']:
-      if mode == 'js' and self.is_wasm_backend():
-        # wasm backend does not use asm2wasm imports, which js trap mode requires
-        continue
-      print('mode:', mode)
-      self.set_setting('BINARYEN_TRAP_MODE', mode or default)
-      if not mode:
-        mode = default
-      print('  idiv')
-      self.do_run(open(path_from_root('tests', 'wasm', 'trap-idiv.cpp')).read(), {
-          'js': '|0|',
-          'clamp': '|0|',
-          'allow': TRAP_OUTPUTS
-        }[mode], assert_returncode=NON_ZERO if mode == 'allow' else 0)
-      print('  f2i')
-      self.do_run(open(path_from_root('tests', 'wasm', 'trap-f2i.cpp')).read(), {
-          'js': '|1337|\n|4294967295|', # JS did an fmod 2^32 | normal
-          'clamp': '|-2147483648|\n|4294967295|',
-          'allow': TRAP_OUTPUTS
-        }[mode], assert_returncode=NON_ZERO if mode == 'allow' else 0)
-
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
     self.emcc_args += ['-s', 'USE_PTHREADS=1']
@@ -8344,14 +8294,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
 
   @no_wasm2js('wasm2js wasm emulation does not include custom sections')
-  @no_fastcomp('return address not supported on fastcomp')
   @no_optimize('return address test cannot work with optimizations')
   def test_return_address(self):
     self.emcc_args += ['-s', 'USE_OFFSET_CONVERTER']
     self.do_run(open(path_from_root('tests', 'core', 'test_return_address.cpp')).read(), 'passed')
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_fastcomp('ubsan not supported on fastcomp')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
@@ -8364,7 +8312,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                 expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_fastcomp('ubsan not supported on fastcomp')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
@@ -8381,7 +8328,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_integer': (['-fsanitize=integer'],),
     'fsanitize_overflow': (['-fsanitize=signed-integer-overflow'],),
   })
-  @no_fastcomp('ubsan not supported on fastcomp')
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_overflow(self, args):
     self.emcc_args += args
@@ -8396,7 +8342,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_return': (['-fsanitize=return'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_fastcomp('ubsan not supported on fastcomp')
   def test_ubsan_full_no_return(self, args):
     self.emcc_args += ['-Wno-return-type'] + args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_no_return.c')).read(),
@@ -8407,7 +8352,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_integer': (['-fsanitize=integer'],),
     'fsanitize_shift': (['-fsanitize=shift'],),
   })
-  @no_fastcomp('ubsan not supported on fastcomp')
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_left_shift(self, args):
     self.emcc_args += args
@@ -8421,7 +8365,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_undefined': (['-fsanitize=undefined'],),
     'fsanitize_null': (['-fsanitize=null'],),
   })
-  @no_fastcomp('ubsan not supported on fastcomp')
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_null_ref(self, args):
     self.emcc_args += args
@@ -8436,7 +8379,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_undefined': (['-fsanitize=undefined'],),
     'fsanitize_vptr': (['-fsanitize=vptr'],),
   })
-  @no_fastcomp('ubsan not supported on fastcomp')
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_static_cast(self, args):
     self.emcc_args += args
@@ -8457,7 +8399,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       'src.cpp:3:8'
     ]),
   })
-  @no_fastcomp('ubsan not supported on fastcomp')
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_stack_trace(self, g_flag, expected_output):
     self.emcc_args += ['-fsanitize=null', g_flag, '-s', 'ALLOW_MEMORY_GROWTH=1']
@@ -8486,7 +8427,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'c': ['test_asan_no_error.c'],
     'cpp': ['test_asan_no_error.cpp'],
   })
-  @no_fastcomp('asan not supported on fastcomp')
   def test_asan_no_error(self, name):
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
@@ -8549,7 +8489,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       'AddressSanitizer: container-overflow on address'
     ]),
   })
-  @no_fastcomp('asan not supported on fastcomp')
   def test_asan(self, name, expected_output, cflags=None):
     if '-Oz' in self.emcc_args:
       self.skipTest('-Oz breaks source maps')
@@ -8566,27 +8505,42 @@ NODEFS is no longer included by default; build with -lnodefs.js
                 check_for_error=False, assert_returncode=NON_ZERO)
 
   @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_fastcomp('asan not supported on fastcomp')
   def test_asan_js_stack_op(self):
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
                 basename='src.c', expected_output='Hello, World!')
 
   @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_fastcomp('asan not supported on fastcomp')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_run_in_out_file_test('tests', 'core', 'test_asan_api')
 
-  @no_fastcomp('WASM backend stack protection')
+  @no_wasm2js('TODO: ASAN in wasm2js')
+  def test_asan_modularized_with_closure(self):
+    self.emcc_args.append('-sMODULARIZE=1')
+    self.emcc_args.append('-sEXPORT_NAME="createModule"')
+    self.emcc_args.append('-sUSE_CLOSURE_COMPILER=1')
+    self.emcc_args.append('-fsanitize=address')
+    self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+
+    def post(filename):
+      with open(filename, 'a') as f:
+        f.write('\n\n')
+        # the bug is that createModule() returns undefined, instead of the
+        # proper Promise object.
+        f.write('if (!(createModule() instanceof Promise)) throw "Promise was not returned :(";\n')
+
+    self.do_run(open(path_from_root('tests', 'hello_world.c')).read(),
+                post_build=post,
+                expected_output='hello, world!')
+
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack.c')).read(),
                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
 
-  @no_fastcomp('WASM backend stack protection')
   def test_safe_stack_alloca(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
@@ -8594,7 +8548,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
 
   @needs_dlfcn
-  @no_fastcomp('WASM backend stack protection')
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
@@ -8637,12 +8590,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DPOOL']
     test()
 
-  @no_fastcomp('new wasm backend atomics')
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics')
 
   @no_asan('incompatibility with atomics')
-  @no_fastcomp('new wasm backend atomics')
   @node_pthreads
   def test_emscripten_atomics(self):
     self.set_setting('USE_PTHREADS', '1')
