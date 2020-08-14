@@ -36,19 +36,6 @@ function warnOnce(text) {
   }
 }
 
-#if !WASM_BACKEND
-var asm2wasmImports = { // special asm2wasm imports
-    "f64-rem": function(x, y) {
-        return x % y;
-    },
-    "debugger": function() {
-#if ASSERTIONS // Disable debugger; statement from being present in release builds to avoid Firefox deoptimizations, see https://bugzilla.mozilla.org/show_bug.cgi?id=1538375
-        debugger;
-#endif
-    }
-};
-#endif
-
 #if RELOCATABLE
 // dynamic linker/loader (a-la ld.so on ELF systems)
 var LDSO = {
@@ -86,12 +73,8 @@ function fetchBinary(url) {
 }
 
 function asmjsMangle(x) {
-#if WASM_BACKEND
   var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
   return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-#else
-  return x;
-#endif
 }
 
 // loadDynamicLibrary loads dynamic library @ lib URL / path and returns handle for loaded DSO.
@@ -242,18 +225,6 @@ function loadDynamicLibrary(lib, flags) {
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
 
       var module_sym = asmjsMangle(sym);
-#if !WASM_BACKEND
-      // Module of SIDE_MODULE has not only the symbols (which should be copied)
-      // but also others (print*, asmGlobal*, FUNCTION_TABLE_**, NAMED_GLOBALS, and so on).
-      //
-      // When the symbol (which should be copied) is method, Module.* 's type becomes function.
-      // When the symbol (which should be copied) is variable, Module.* 's type becomes number.
-      // Except for the symbol prefix (_), there is no difference in the symbols (which should be copied) and others.
-      // So this just copies over compiled symbols (which start with _).
-      if (!sym.startsWith('dynCall_') && sym[0] !== '_') {
-        continue;
-      }
-#endif
 
       if (!Module.hasOwnProperty(module_sym)) {
         Module[module_sym] = libModule[sym];
@@ -316,11 +287,7 @@ function relocateExports(exports, memoryBase, tableBase, moduleLocal) {
     }
     relocated[e] = value;
     if (moduleLocal) {
-#if WASM_BACKEND
       moduleLocal['_' + e] = value;
-#else
-      moduleLocal[e] = value;
-#endif
     }
   }
   return relocated;
@@ -531,9 +498,6 @@ function loadWebAssemblyModule(binary, flags) {
       'global.Math': Math,
       env: proxy,
       {{{ WASI_MODULE_NAME }}}: proxy,
-#if !WASM_BACKEND
-      'asm2wasm': asm2wasmImports
-#endif
     };
 #if ASSERTIONS
     var oldTable = [];
@@ -693,7 +657,7 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}};
 GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 #endif
 
-#if WASM_BACKEND && USE_PTHREADS
+#if USE_PTHREADS
 // JS library code refers to Atomics in the manner used from asm.js, provide
 // the same API here.
 var Atomics_load = Atomics.load;
