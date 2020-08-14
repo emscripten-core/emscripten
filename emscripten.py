@@ -1777,14 +1777,13 @@ def emscript_wasm_backend(infile, outfile, memfile, temp_files, DEBUG):
 
   report_missing_symbols(set([asmjs_mangle(f) for f in exports]), pre)
 
-  asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
+  asm_consts = create_asm_consts_wasm(forwarded_json, metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   pre = pre.replace(
     '// === Body ===',
     ('// === Body ===\n\n' + asm_const_map +
-     asstr('\n'.join(asm_const_funcs)) +
      '\n'.join(em_js_funcs) + '\n'))
   pre = apply_table(pre)
   outfile.write(pre)
@@ -1890,7 +1889,6 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
 
 def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = {}
-  all_sigs = []
   for k, v in metadata['asmConsts'].items():
     const, sigs, call_types = v
     const = asstr(const)
@@ -1905,47 +1903,9 @@ def create_asm_consts_wasm(forwarded_json, metadata):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') {' + const + '}'
     asm_consts[int(k)] = const
-    for sig, call_type in zip(sigs, call_types):
-      all_sigs.append((sig, call_type))
-
-  asm_const_funcs = []
-
-  for sig, call_type in set(all_sigs):
-    const_name = '_emscripten_asm_const_' + call_type + sig
-    forwarded_json['Functions']['libraryFunctions'][const_name] = 1
-
-    preamble = ''
-    if shared.Settings.USE_PTHREADS:
-      sync_proxy = call_type == 'sync_on_main_thread_'
-      async_proxy = call_type == 'async_on_main_thread_'
-      proxied = sync_proxy or async_proxy
-      if proxied:
-        # In proxied function calls, positive integers 1, 2, 3, ... denote pointers
-        # to regular C compiled functions. Negative integers -1, -2, -3, ... denote
-        # indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2,
-        # ... over to the negative integers starting at -1.
-        preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { ' +
-                     proxy_debug_print(sync_proxy) +
-                     'return _emscripten_proxy_to_main_thread_js.apply(null, ' +
-                     '[-1 - code, ' + str(int(sync_proxy)) + '].concat(args)) }')
-
-    if shared.Settings.RELOCATABLE:
-      preamble += '\n  code -= %s;\n' % shared.Settings.GLOBAL_BASE
-
-    # EM_ASM functions are variadic, receiving the actual arguments as a buffer
-    # in memory. the last parameter (argBuf) points to that data. We need to
-    # alwayd un-variadify that, as in the async case this is a stack allocation
-    # that LLVM made, which may go away before the main thread gets the message.
-    # the readAsmConstArgs helper does so.
-    asm_const_funcs.append(r'''
-function %s(code, sigPtr, argbuf) {
-  var args = readAsmConstArgs(sigPtr, argbuf);
-%s
-  return ASM_CONSTS[code].apply(null, args);
-}''' % (const_name, preamble))
   asm_consts = [(key, value) for key, value in asm_consts.items()]
   asm_consts.sort()
-  return asm_consts, asm_const_funcs
+  return asm_consts
 
 
 def create_em_js(forwarded_json, metadata):
@@ -2099,13 +2059,9 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  em_asm_sigs = [zip(sigs, call_types) for _, sigs, call_types in metadata['asmConsts'].values()]
-  # flatten em_asm_sigs
-  em_asm_sigs = [sig for sigs in em_asm_sigs for sig in sigs]
-  em_asm_funcs = ['_emscripten_asm_const_' + call_type + sig for sig, call_type in em_asm_sigs]
   em_js_funcs = list(metadata['emJsFuncs'].keys())
   declared_items = ['_' + item for item in metadata['declares']]
-  send_items = set(basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
+  send_items = set(basic_funcs + invoke_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
     if g.startswith('Math_'):

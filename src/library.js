@@ -4526,6 +4526,26 @@ LibraryManager.library = {
     return readAsmConstArgsArray;
   },
 
+  emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
+    var args = readAsmConstArgs(sigPtr, argbuf);
+    return ASM_CONSTS[code].apply(null, args);
+  },
+  emscripten_asm_const_double: 'emscripten_asm_const_int',
+  emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
+  emscripten_asm_const_int_sync_on_main_thread__proxy: 'sync',
+  emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
+    var args = readAsmConstArgs(sigPtr, argbuf);
+    return ASM_CONSTS[code].apply(null, args);
+  },
+  emscripten_asm_const_double_sync_on_main_thread__proxy: 'sync',
+  emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
+  emscripten_asm_const_async_on_main_thread__proxy: 'async',
+  emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
+    var args = readAsmConstArgs(sigPtr, argbuf);
+    return ASM_CONSTS[code].apply(null, args);
+  },
+
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
@@ -4740,12 +4760,6 @@ LibraryManager.library = {
   llvm_dbg_value: function() {},
   llvm_debugtrap: function() {},
   llvm_ctlz_i32: function() {},
-  emscripten_asm_const: function() {},
-  emscripten_asm_const_int: function() {},
-  emscripten_asm_const_double: function() {},
-  emscripten_asm_const_int_sync_on_main_thread: function() {},
-  emscripten_asm_const_double_sync_on_main_thread: function() {},
-  emscripten_asm_const_async_on_main_thread: function() {},
 
 #if !WASM_BACKEND
   // ======== compiled code from system/lib/compiler-rt , see readme therein
