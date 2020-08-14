@@ -290,12 +290,6 @@ var SAFE_HEAP_LOG = 0;
 // [fastcomp-only]
 var RESERVED_FUNCTION_POINTERS = 0;
 
-// Whether to allow function pointers to alias if they have a different type.
-// This can greatly decrease table sizes in asm.js, but can break code that
-// compares function pointers across different types.
-// [fastcomp-only]
-var ALIASING_FUNCTION_POINTERS = 0;
-
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
 // normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
@@ -1745,4 +1739,5 @@ var LEGACY_SETTINGS = [
   ['FAST_UNROLLED_MEMCPY_AND_MEMSET', [0, 1], 'The wasm backend implements memcpy/memset in C'],
   ['DOUBLE_MODE', [0, 1], 'The wasm backend always implements doubles normally'],
   ['PRECISE_F32', [0, 1, 2], 'The wasm backend always implements floats normally'],
+  ['ALIASING_FUNCTION_POINTERS', [0, 1], 'The wasm backend always uses a single index space for function pointers, in a single Table'],
 ];
