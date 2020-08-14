@@ -7831,19 +7831,6 @@ Module['onRuntimeInitialized'] = function() {
 ''')
       self.do_run(src, 'first\nsecond\n6.4')
 
-  @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
-  def do_test_coroutine(self, additional_settings):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
-    src = open(path_from_root('tests', 'test_coroutines.cpp')).read()
-    for (k, v) in additional_settings.items():
-      self.set_setting(k, v)
-    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
-
-  @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
-  def test_coroutine_asyncify(self):
-    self.do_test_coroutine({'ASYNCIFY': 1})
-
   @no_asan('asyncify stack operations confuse asan')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY', 1)
