@@ -1868,6 +1868,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('--pass-arg=legalize-js-interface-export-originals')
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
+  args.append('--minimize-wasm-changes')
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
                                          infile=base_wasm,
                                          outfile=wasm,
