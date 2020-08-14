@@ -4528,12 +4528,18 @@ LibraryManager.library = {
 
   emscripten_asm_const_int__sig: 'iiii',
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
     var args = readAsmConstArgs(sigPtr, argbuf);
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
   emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
   emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
     var args = readAsmConstArgs(sigPtr, argbuf);
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -4553,6 +4559,9 @@ LibraryManager.library = {
   },
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
   emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
     var args = readAsmConstArgs(sigPtr, argbuf);
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
