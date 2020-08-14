@@ -4533,16 +4533,32 @@ LibraryManager.library = {
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
   emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
-  emscripten_asm_const_int_sync_on_main_thread__proxy: 'sync',
   emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
     var args = readAsmConstArgs(sigPtr, argbuf);
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      // EM_ASM functions are variadic, receiving the actual arguments as a buffer
+      // in memory. the last parameter (argBuf) points to that data. We need to
+      // always un-variadify that, *before proxying*, as in the async case this
+      // is a stack allocation that LLVM made, which may go away before the main
+      // thread gets the message. For that reason we handle proxying *after* the
+      // call to readAsmConstArgs, and therefore we do that manually here instead
+      // of using __proxy. (And dor simplicity, do the same in the sync
+      // case as well, even though it's not strictly necessary, to keep the two
+      // code paths as similar as possible on both sides.)
+      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, 1].concat(args));
+    }
+#endif
     return ASM_CONSTS[code].apply(null, args);
   },
-  emscripten_asm_const_double_sync_on_main_thread__proxy: 'sync',
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
-  emscripten_asm_const_async_on_main_thread__proxy: 'async',
   emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
     var args = readAsmConstArgs(sigPtr, argbuf);
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, 0].concat(args));
+    }
+#endif
     return ASM_CONSTS[code].apply(null, args);
   },
 
