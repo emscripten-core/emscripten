@@ -398,7 +398,7 @@ class JSOptimizer(object):
 
     if self.use_closure_compiler == 1:
       self.queue += ['closure']
-    elif shared.Settings.DEBUG_LEVEL <= 2 and shared.Settings.FINALIZE_ASM_JS and not self.use_closure_compiler:
+    elif shared.Settings.DEBUG_LEVEL <= 2 and not self.use_closure_compiler:
       self.cleanup_shell = True
 
 
@@ -2673,9 +2673,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         if shared.Settings.OPT_LEVEL >= 2:
           optimizer.queue += ['asmLastOpts']
-
-        if shared.Settings.FINALIZE_ASM_JS:
-          optimizer.queue += ['last']
 
         optimizer.flush()
 
