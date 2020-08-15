@@ -3486,16 +3486,8 @@ int main()
       if suffix in ['.dylib', '.so']:
         cmd.append('-shared')
       err = self.run_process(cmd, stderr=PIPE).stderr
-      warning = 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js).'
+      warning = 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits a standard object file. This can then be linked into an emscripten SIDE_MODULE (using that flag) with suffix .wasm.'
       self.assertContainedIf(warning, err, suffix in shared_suffixes)
-
-  def test_side_module_without_proper_target(self):
-    # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
-    # otherwise, we are just linking bitcode, and should show an error
-    for wasm in [0, 1]:
-      print(wasm)
-      stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-o', 'a.so', '-s', 'WASM=%d' % wasm])
-      self.assertContained('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file', stderr)
 
   @no_wasm_backend('asm.js optimizations')
   def test_simplify_ifs(self):
@@ -7262,13 +7254,17 @@ int main() {
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target
-    for opts, target in [([], 'a.out.wasm'), (['-o', 'lib.wasm'], 'lib.wasm')]:
+    for opts, target in [([], 'a.out.wasm'),
+                         (['-o', 'lib.wasm'], 'lib.wasm'),
+                         (['-o', 'lib.so'], 'lib.so'),
+                         (['-o', 'foo.bar'], 'foo.bar')]:
       # specified target
       print('building: ' + target)
       self.clear()
       self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-Werror'] + opts)
       for x in os.listdir('.'):
         self.assertFalse(x.endswith('.js'))
+      self.assertTrue(building.is_wasm(target))
       self.assertIn(b'dylink', open(target, 'rb').read())
 
   def test_wasm_backend_lto(self):
