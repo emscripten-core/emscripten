@@ -62,8 +62,8 @@ import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
-from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
-from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
+from tools.shared import LLVM_TARGET, EMSCRIPTEN_TEMP_DIR
+from tools.shared import SPIDERMONKEY_ENGINE, WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
 from tools.shared import asbytes, safe_copy, Settings
@@ -590,18 +590,17 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     # Recompiling just for dfe in ll_opts is too costly
 
     def fix_target(ll_filename):
-      if LLVM_TARGET == ASM_JS_TARGET:
-         return
       with open(ll_filename) as f:
         contents = f.read()
       if LLVM_TARGET in contents:
         return
+      asmjs_target = 'asmjs-unknown-emscripten'
       asmjs_layout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
       wasm_layout = "e-m:e-p:32:32-i64:64-n32:64-S128"
-      assert(ASM_JS_TARGET in contents)
+      assert(asmjs_target in contents)
       assert(asmjs_layout in contents)
       contents = contents.replace(asmjs_layout, wasm_layout)
-      contents = contents.replace(ASM_JS_TARGET, WASM_TARGET)
+      contents = contents.replace(asmjs_target, LLVM_TARGET)
       with open(ll_filename, 'w') as f:
         f.write(contents)
 
