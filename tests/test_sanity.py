@@ -266,11 +266,8 @@ class sanity(RunnerCore):
       f.write('LLVM_ROOT = "' + self.in_dir('fake') + '"')
 
     real_version_x, real_version_y = (int(x) for x in EXPECTED_LLVM_VERSION.split('.'))
-    if shared.get_llvm_target() == shared.WASM_TARGET:
-      make_fake_llc(self.in_dir('fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
-      make_fake_lld(self.in_dir('fake', 'wasm-ld'))
-    else:
-      make_fake_llc(self.in_dir('fake', 'llc'), 'js - JavaScript (asm.js, emscripten)')
+    make_fake_llc(self.in_dir('fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
+    make_fake_lld(self.in_dir('fake', 'wasm-ld'))
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for inc_x in range(-2, 3):
@@ -694,20 +691,6 @@ fi
     restore_and_set_up()
     Cache.erase()
 
-    with env_modify({'EMCC_DEBUG': '1'}):
-      # see that we test vanilla status, and just once
-      TESTING = 'testing for asm.js target'
-      print(self.check_working(EMCC, TESTING))
-
-      for i in range(3):
-        output = self.check_working(EMCC, 'check tells us to use')
-        self.assertNotContained(TESTING, output)
-      # if env var tells us, do what it says
-      with env_modify({'EMCC_WASM_BACKEND': '1'}):
-        self.check_working(EMCC, 'EMCC_WASM_BACKEND tells us to use wasm backend')
-      with env_modify({'EMCC_WASM_BACKEND': '0'}):
-        self.check_working(EMCC, 'EMCC_WASM_BACKEND tells us to use asm.js backend')
-
     def make_fake(report):
       with open(CONFIG_FILE, 'a') as f:
         f.write('LLVM_ROOT = "' + self.in_dir('fake', 'bin') + '"\n')
@@ -719,87 +702,14 @@ fi
       make_fake_llc(self.in_dir('fake', 'bin', 'llc'), report)
       make_fake_lld(self.in_dir('fake', 'bin', 'wasm-ld'))
 
-    with env_modify({'EMCC_DEBUG': '1'}):
-      make_fake('wasm32-unknown-unknown-elf')
-      # see that we request the right backend from llvm
-      with env_modify({'EMCC_WASM_BACKEND': '1'}):
-        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'wasm32-unknown-unknown-elf')
-      make_fake('asmjs-unknown-emscripten')
-      with env_modify({'EMCC_WASM_BACKEND': '0'}):
-        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'asmjs-unknown-emscripten')
-      # check the current installed one is ok
-      restore_and_set_up()
-      self.check_working(EMCC)
-      output = self.check_working(EMCC, 'check tells us to use')
-      if 'wasm backend' in output:
-        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'wasm32-unknown-emscripten')
-      else:
-        assert 'asm.js backend' in output
-        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'asmjs-unknown-emscripten')
-
     # fake llc output
 
     def test_with_fake(report, expected):
       make_fake(report)
       with env_modify({'EMCC_DEBUG': '1'}):
-        output = self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], expected)
-        self.assertContained('config file changed since we checked vanilla', output)
+        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], expected)
 
-    test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'check tells us to use asm.js backend')
-    test_with_fake('got wasm32 backend! WebAssembly 32-bit',                  'check tells us to use wasm backend')
-
-    # use LLVM env var to modify LLVM between vanilla checks
-
-    assert not os.environ.get('EM_LLVM_ROOT'), 'we need to modify EM_LLVM_ROOT env var for this'
-
-    f = open(CONFIG_FILE, 'a')
-    f.write('LLVM_ROOT = "' + self.in_dir('fake1', 'bin') + '"\n')
-    f.close()
-
-    ensure_dir(self.in_dir('fake1', 'bin'))
-    f = open(self.in_dir('fake1', 'bin', 'llc'), 'w')
-    f.write('#!/bin/sh\n')
-    f.write('echo "llc fake1 output\nRegistered Targets:\n%s"' % 'got js backend! JavaScript (asm.js, emscripten) backend')
-    f.close()
-    os.chmod(self.in_dir('fake1', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-
-    ensure_dir(self.in_dir('fake2', 'bin'))
-    f = open(self.in_dir('fake2', 'bin', 'llc'), 'w')
-    f.write('#!/bin/sh\n')
-    f.write('echo "llc fake2 output\nRegistered Targets:\n%s"' % 'got wasm32 backend! WebAssembly 32-bit')
-    f.close()
-    os.chmod(self.in_dir('fake2', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-
-    with env_modify({'EMCC_DEBUG': '1'}):
-      self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'use asm.js backend')
-      with env_modify({'EM_LLVM_ROOT': self.in_dir('fake2', 'bin')}):
-        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'regenerating vanilla check since other llvm')
-
-    try_delete(CANONICAL_TEMP_DIR)
-    return # TODO: the rest of this
-
-    # check separate cache dirs are used
-
-    restore_and_set_up()
-    self.check_working([EMCC], '')
-
-    root_cache = os.path.expanduser('~/.emscripten_cache')
-    if os.path.exists(os.path.join(root_cache, 'asmjs')):
-      shutil.rmtree(os.path.join(root_cache, 'asmjs'))
-    if os.path.exists(os.path.join(root_cache, 'wasm')):
-      shutil.rmtree(os.path.join(root_cache, 'wasm'))
-
-    with env_modify({'EMCC_WASM_BACKEND': '1'}):
-      self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
-      self.assertExists(os.path.join(root_cache, 'wasm'))
-
-    with env_modify({'EMCC_WASM_BACKEND': '0'}):
-      self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
-      self.assertExists(os.path.join(root_cache, 'asmjs'))
-      shutil.rmtree(os.path.join(root_cache, 'asmjs'))
-
-    self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
-    self.assertExists(os.path.join(root_cache, 'asmjs'))
+    test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
 
   def test_required_config_settings(self):
     # with no binaryen root, an error is shown
