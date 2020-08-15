@@ -14,7 +14,6 @@ var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
 if (ENVIRONMENT_IS_PTHREAD) {
   // Grab imports from the pthread to local scope.
   buffer = Module['buffer'];
-  // Note that not all runtime fields are imported above. Values for STACK_BASE, STACKTOP and STACK_MAX are not yet known at worker.js load time.
-  // These will be filled in at pthread startup time (the 'run' message for a pthread - pthread start establishes the stack frame)
+  // Note that not all runtime fields are imported above
 }
 

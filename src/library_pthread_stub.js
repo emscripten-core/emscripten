@@ -59,8 +59,8 @@ var LibraryPThreadStub = {
        void **restrict stackaddr, size_t *restrict stacksize); */
     /*FIXME: assumes that there is only one thread, and that attr is the
       current thread*/
-    {{{ makeSetValue('stackaddr', '0', 'STACK_BASE', 'i8*') }}};
-    {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}};
+    {{{ makeSetValue('stackaddr', '0', '_emscripten_stack_get_base()', 'i8*') }}};
+    {{{ makeSetValue('stacksize', '0', TOTAL_STACK, 'i32') }}};
     return 0;
   },
   pthread_attr_getdetachstate: function(attr, detachstate) {

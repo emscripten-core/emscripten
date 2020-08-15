@@ -3653,12 +3653,6 @@ LibraryManager.library = {
 
   // special runtime support
 
-  emscripten_scan_stack: function(func) {
-    var base = STACK_BASE; // TODO verify this is right on pthreads
-    var end = stackSave();
-    {{{ makeDynCall('vii', 'func') }}}(Math.min(base, end), Math.max(base, end));
-  },
-
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow: function() {
     abort('stack overflow')

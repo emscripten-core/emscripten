@@ -216,10 +216,10 @@ class Memory():
 def apply_memory(js, memory):
   # Apply the statically-at-compile-time computed memory locations.
   # Write it all out
-  js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
-  js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
   if shared.Settings.RELOCATABLE:
     js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
+    js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
+    js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
 
   logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
   return js
@@ -419,6 +419,7 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
     pre += '\n' + global_initializers + '\n'
 
   pre = apply_memory(pre, memory)
+  post = apply_memory(post, memory)
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
 
@@ -771,7 +772,10 @@ def make_export_wrappers(exports, delay_assignment):
   wrappers = []
   for name in exports:
     mangled = asmjs_mangle(name)
-    if shared.Settings.ASSERTIONS:
+    # The emscripten stack functions are called very early (by writeStackCookie) before
+    # the runtime is initialized so we can't create these wrappers that check for
+    # runtimeInitialized.
+    if shared.Settings.ASSERTIONS and not name.startswith('emscripten_stack_'):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       if delay_assignment:

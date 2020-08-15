@@ -5088,6 +5088,10 @@ main( int argv, char ** argc ) {
   @also_with_noderawfs
   @is_slow_test
   def test_fs_nodefs_rw(self):
+    # TODO(sbc): This test exposes in issue in the way we run closure compiler and
+    # causes it to generate non-ES5 output.
+    # Remove this line once we fix: https://github.com/emscripten-core/emscripten/issues/12628
+    self.uses_es6 = True
     self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG', 1)
     self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'success')
@@ -7568,9 +7572,9 @@ Module['onRuntimeInitialized'] = function() {
     create_test_file('lib.js', '''
       mergeInto(LibraryManager.library, {
         check_memprof_requirements: function() {
-          if (typeof STACK_BASE === 'number' &&
-              typeof STACK_MAX === 'number' &&
-              typeof STACKTOP === 'number' &&
+          if (typeof _emscripten_stack_get_base === 'function' &&
+              typeof _emscripten_stack_get_end === 'function' &&
+              typeof _emscripten_stack_get_current === 'function' &&
               typeof Module['___heap_base'] === 'number') {
              out('able to run memprof');
            } else {

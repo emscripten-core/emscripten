@@ -281,17 +281,8 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-var STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
-    STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getQuoted('STACK_MAX') }}};
-
-
-#if ASSERTIONS
-assert(STACK_BASE % 16 === 0, 'stack must start aligned');
-#endif
-
 #if RELOCATABLE
-var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STACK_BASE);
+var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ getQuoted('STACK_BASE') }}});
 
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
@@ -300,18 +291,6 @@ var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STAC
 // global, basically).
 Module['___heap_base'] = {{{ getQuoted('HEAP_BASE') }}};
 #endif // RELOCATABLE
-
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  // At the 'load' stage of Worker startup, we are just loading this script
-  // but not ready to run yet. At 'run' we receive proper values for the stack
-  // etc. and can launch a pthread. Set some fake values there meanwhile to
-  // catch bugs, then set the real values in establishStackSpace later.
-#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
-  STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
-#endif
-}
-#endif
 
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
@@ -402,7 +381,7 @@ function initRuntime() {
 #endif
   runtimeInitialized = true;
 #if STACK_OVERFLOW_CHECK >= 2
-  Module['___set_stack_limits'](STACK_BASE, STACK_MAX);
+  Module['___set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
   {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);

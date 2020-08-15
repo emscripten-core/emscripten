@@ -381,11 +381,12 @@ mergeInto(LibraryManager.library, {
      * NOTE: This function is the asynchronous part of emscripten_fiber_swap.
      */
     finishContextSwitch: function(newFiber) {
-      STACK_BASE = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'i32') }}};
-      STACK_MAX =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'i32') }}};
+      var stack_base = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'i32') }}};
+      var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'i32') }}};
+      _emscripten_stack_set_limits(stack_base, stack_max);
 
 #if STACK_OVERFLOW_CHECK >= 2
-      Module['___set_stack_limits'](STACK_BASE, STACK_MAX);
+      Module['___set_stack_limits'](stack_base, stack_max);
 #endif
 
       stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
@@ -440,8 +441,8 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_init_from_current_context__sig: 'vii',
   emscripten_fiber_init_from_current_context__deps: ['$Asyncify'],
   emscripten_fiber_init_from_current_context: function(fiber, asyncStack, asyncStackSize) {
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'STACK_BASE', 'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'STACK_MAX',  'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  '_emscripten_stack_get_base()', 'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, '_emscripten_stack_get_end()',  'i32') }}};
     {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.entry,       0,            'i32') }}};
 
     var asyncifyData = fiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};

@@ -8,6 +8,9 @@ $__unlock
 $__unlockfile
 $__wasm_call_ctors
 $add
+$emscripten_stack_get_end
+$emscripten_stack_get_free
+$emscripten_stack_init
 $fflush
 $stackAlloc
 $stackRestore

@@ -6672,7 +6672,7 @@ int main() {
       self.assertFileContents(filename, data)
 
   @parameterized({
-    'O0': ([],      [], ['waka'],   743), # noqa
+    'O0': ([],      [], ['waka'],   847), # noqa
     'O1': (['-O1'], [], ['waka'],   303), # noqa
     'O2': (['-O2'], [], ['waka'],   265), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want

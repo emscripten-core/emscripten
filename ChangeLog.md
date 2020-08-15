@@ -23,6 +23,19 @@ Current Trunk
 - dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
   or RTDL_NOW flags ar set.  Previously, it was possible set nether of these
   without generating an error.
+- Support added for INPUT_JS_VERSION and OUTPUT_JS_VERSION settings.  These
+  control is/when we use the closure compiler to transpile the resulting
+  output.  If you use `--closure` compiler today we no longer default to
+  accepting `EMCASCRIPT_2020`.  If you want to use any langueage features
+  more recent than `ECMASCRIPT5` in your JS library code or inline JS assembly
+  code then you now need to pass a more recent version on the command line.
+  e.g. `-sINPUT_JS_VERSION=ECMASCRIPT2015`.  See #
+- Stack state is no longer stored in JavaScript.  The following variables have
+  been replaced with native functions in `<emscripten/stack.h>`:
+  - STACK_BASE
+  - STACK_MAX
+  - STACKTOP
+  - TOTAL_STACK
 
 2.0.8: 10/24/2020
 -----------------

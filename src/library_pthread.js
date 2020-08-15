@@ -1462,11 +1462,9 @@ var LibraryPThread = {
   },
 
   $establishStackSpace: function(stackTop, stackMax) {
-    STACK_BASE = STACKTOP = stackTop;
-    STACK_MAX = stackMax;
-
+    _emscripten_stack_set_limits(stackTop, stackMax);
 #if STACK_OVERFLOW_CHECK >= 2
-    ___set_stack_limits(STACK_BASE, STACK_MAX);
+    ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
