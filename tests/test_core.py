@@ -35,11 +35,9 @@ import clang_native
 
 def wasm_simd(f):
   def decorated(self):
-    if not self.is_wasm_backend():
-      self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm simd only supported in d8 for now')
-    if self.is_wasm_backend() and not self.get_setting('WASM'):
+    if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
@@ -50,11 +48,9 @@ def wasm_simd(f):
 
 def bleeding_edge_wasm_backend(f):
   def decorated(self):
-    if not self.is_wasm_backend():
-      self.skipTest('only works in wasm backend')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('only works in d8 for now')
-    if self.is_wasm_backend() and not self.get_setting('WASM'):
+    if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     with js_engines_modify([V8_ENGINE]):
       f(self)
@@ -65,7 +61,7 @@ def also_with_wasm_bigint(f):
   def decorated(self):
     self.set_setting('WASM_BIGINT', 0)
     f(self)
-    if self.is_wasm_backend() and self.get_setting('WASM'):
+    if self.get_setting('WASM'):
       self.set_setting('WASM_BIGINT', 1)
       with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
         f(self)
@@ -94,7 +90,7 @@ def with_both_exception_handling(f):
     f(self)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     # Wasm EH is currently supported only in wasm backend and V8
-    if self.is_wasm_backend() and V8_ENGINE and \
+    if V8_ENGINE and \
        V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):
       self.emcc_args.append('-fwasm-exceptions')
       with js_engines_modify([V8_ENGINE + ['--experimental-wasm-eh']]):
@@ -123,8 +119,7 @@ def sync(f):
   assert callable(f)
 
   def decorated(self, *args, **kwargs):
-    if self.get_setting('WASM') or self.is_wasm_backend():
-      self.emcc_args += ['-s', 'WASM_ASYNC_COMPILATION=0'] # test is set up synchronously
+    self.emcc_args += ['-s', 'WASM_ASYNC_COMPILATION=0'] # test is set up synchronously
     f(self, *args, **kwargs)
   return decorated
 
@@ -141,7 +136,7 @@ def also_with_noderawfs(func):
 
 
 def can_do_standalone(self):
-  return self.is_wasm_backend() and self.get_setting('WASM') and \
+  return self.get_setting('WASM') and \
       not self.get_setting('SAFE_STACK') and \
       '-fsanitize=address' not in self.emcc_args
 
@@ -180,8 +175,6 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
-    if not self.get_setting('WASM') and not self.is_wasm_backend():
-      self.skipTest("pthreads doesn't work in non-wasm fastcomp")
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('asan ends up using atomics that are not yet supported in node 12')
     with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
@@ -262,7 +255,7 @@ def no_minimal_runtime(note):
 
 class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
-    return self.is_wasm_backend() and not self.get_setting('WASM')
+    return not self.get_setting('WASM')
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
@@ -730,12 +723,6 @@ class TestCoreBase(RunnerCore):
   def test_math_lgamma(self):
     self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=NON_ZERO)
 
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm() and \
-       not self.is_wasm_backend():
-      print('main module')
-      self.set_setting('MAIN_MODULE', 1)
-      self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=NON_ZERO)
-
   def test_math_fmodf(self):
     self.do_run_in_out_file_test('tests', 'math', 'fmodf')
 
@@ -831,17 +818,14 @@ base align: 0, 0, 0, 0'''])
   @no_asan('asan does not support main modules')
   @no_wasm2js('MAIN_MODULE support')
   def test_stack_placement_pic(self):
-    if not self.is_wasm_backend() and self.get_setting('ALLOW_MEMORY_GROWTH'):
-      self.skipTest('memory growth is not compatible with MAIN_MODULE')
     self.set_setting('TOTAL_STACK', 1024)
     self.set_setting('MAIN_MODULE')
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
 
+  @no_wasm_backend('generated code not available in wasm')
   def test_stack_restore(self):
-    if self.get_setting('WASM') or self.is_wasm_backend():
-      self.skipTest('generated code not available in wasm')
     self.emcc_args += ['-g3'] # to be able to find the generated code
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_restore')
@@ -1296,10 +1280,7 @@ int main(int argc, char **argv)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["__Z12somefunctionv"])
-    else:
-      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
 
@@ -1339,10 +1320,7 @@ int main(int argc, char **argv)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_main"])
-    else:
-      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
@@ -1353,10 +1331,7 @@ int main(int argc, char **argv)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    if not self.is_wasm_backend():
-      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["__Z4testv"])
-    else:
-      self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
@@ -1565,8 +1540,6 @@ int main() {
 
   def test_float_builtins(self):
     # tests wasm_libc_rt
-    if not self.is_wasm_backend():
-      self.skipTest('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
   @no_asan('SAFE_HEAP cannot be used with ASan')
@@ -2177,11 +2150,10 @@ int main(int argc, char **argv) {
   @no_wasm2js('massive switches can break js engines')
   @is_slow_test
   def test_biggerswitch(self):
-    if self.is_wasm_backend():
-      if not is_optimizing(self.emcc_args):
-        self.skipTest('nodejs takes >6GB to compile this if the wasm is not optimized, which OOMs, see https://github.com/emscripten-core/emscripten/issues/7928#issuecomment-458308453')
-      if '-Os' in self.emcc_args:
-        self.skipTest('hangs in recent upstream clang, see https://bugs.llvm.org/show_bug.cgi?id=43468')
+    if not is_optimizing(self.emcc_args):
+      self.skipTest('nodejs takes >6GB to compile this if the wasm is not optimized, which OOMs, see https://github.com/emscripten-core/emscripten/issues/7928#issuecomment-458308453')
+    if '-Os' in self.emcc_args:
+      self.skipTest('hangs in recent upstream clang, see https://bugs.llvm.org/show_bug.cgi?id=43468')
     num_cases = 20000
     switch_case = self.run_process([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).stdout
     self.do_run(switch_case, '''58996: 589965899658996
@@ -3111,10 +3083,7 @@ Var: 42
       exports.sort()
       self.assertGreater(len(exports), 20)
       # wasm backend includes alias in NAMED_GLOBALS
-      if self.is_wasm_backend():
-        self.assertLess(len(exports), 56)
-      else:
-        self.assertLess(len(exports), 33)
+      self.assertLess(len(exports), 56)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
@@ -5571,9 +5540,6 @@ main( int argv, char ** argc ) {
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c')).read()
     expected = open(path_from_root('tests', 'env', 'output.txt')).read()
-    if not self.is_wasm_backend():
-      # the fastcomp implementation is incorrect in one way
-      expected = expected.replace('after alteration: Qest5', 'after alteration: test5')
     self.do_run(src, [
       expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.cpp.o.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
@@ -5618,16 +5584,8 @@ PORT: 3979
 
   def test_atomic_cxx(self):
     # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
-    is_lock_free = self.is_wasm_backend()
-    self.emcc_args += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
+    self.emcc_args += ['-DIS_64BIT_LOCK_FREE=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
-
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm() \
-       and not self.is_wasm_backend():
-      print('main module')
-      self.set_setting('MAIN_MODULE', 1)
-      self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
-
     # TODO: test with USE_PTHREADS in wasm backend as well
 
   def test_phiundef(self):
@@ -6558,7 +6516,7 @@ return malloc(size);
     run_all('lto')
 
   def test_autodebug_bitcode(self):
-    if self.is_wasm_backend() and '-flto' not in self.get_emcc_args():
+    if '-flto' not in self.get_emcc_args():
       return self.skipTest('must use bitcode object files for bitcode autodebug')
 
     self.emcc_args += ['--llvm-opts', '0']
@@ -6886,28 +6844,16 @@ return malloc(size);
     print('basics')
     self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
 
-    if '-g' not in self.emcc_args and not self.is_wasm_backend():
-      print('with --closure')
-      old = list(self.emcc_args)
-      self.emcc_args += ['--closure', '1']
-      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
-      self.emcc_args = old
-      print(old)
-
     print('with RESERVED_FUNCTION_POINTERS=0')
     self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
 
-    if self.is_wasm_backend():
-      self.do_run(open(src).read(), 'Unable to grow wasm table', assert_returncode=NON_ZERO)
-      print('- with table growth')
-      self.set_setting('ALLOW_TABLE_GROWTH', 1)
-      self.emcc_args += ['-DGROWTH']
-      # enable costly assertions to verify correct table behavior
-      self.set_setting('ASSERTIONS', 2)
-      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
-    else:
-      self.do_run(open(src).read(), 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.', assert_returncode=NON_ZERO)
-      self.assertNotContained('jsCall_', open('src.cpp.o.js').read())
+    self.do_run(open(src).read(), 'Unable to grow wasm table', assert_returncode=NON_ZERO)
+    print('- with table growth')
+    self.set_setting('ALLOW_TABLE_GROWTH', 1)
+    self.emcc_args += ['-DGROWTH']
+    # enable costly assertions to verify correct table behavior
+    self.set_setting('ASSERTIONS', 2)
+    self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
 
   def test_getFuncWrapper_sig_alias(self):
     src = r'''
@@ -7063,13 +7009,11 @@ return malloc(size);
 
     do_test(test1)
 
-    if self.is_wasm_backend():
-      # The wasm backend currently exports a single initalizer so the ctor
-      # evaluation is all or nothing.  As well as that it doesn't currently
-      # do DCE of libcxx symbols (because the are marked as visibility(defaault)
-      # and because of that we end up not being able to eval ctors unless all
-      # libcxx constrcutors can be eval'd
-      return
+    # The wasm backend currently exports a single initalizer so the ctor
+    # evaluation is all or nothing.  As well as that it doesn't currently
+    # do DCE of libcxx symbols (because the are marked as visibility(defaault)
+    # and because of that we end up not being able to eval ctors unless all
+    # libcxx constrcutors can be eval'd
 
     print('libcxx - remove 2 ctors from iostream code')
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
@@ -7723,12 +7667,8 @@ Success!
   def test_async(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
+    self.set_setting('ASYNCIFY', 1)
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
-
-    if self.is_wasm_backend():
-      self.set_setting('ASYNCIFY', 1)
-    else:
-      self.skipTest('fastcomp Asyncify was removed')
 
     src = r'''
 #include <stdio.h>
@@ -7749,9 +7689,8 @@ int main() {
 
     self.do_run(src, 'HelloWorld!99')
 
-    if self.is_wasm_backend():
-      print('check bad ccall use')
-      src = r'''
+    print('check bad ccall use')
+    src = r'''
 #include <stdio.h>
 #include <emscripten.h>
 int main() {
@@ -7760,9 +7699,9 @@ int main() {
   printf("World\n");
 }
 '''
-      self.set_setting('ASSERTIONS', 1)
-      self.set_setting('INVOKE_RUN', 0)
-      create_test_file('pre.js', '''
+    self.set_setting('ASSERTIONS', 1)
+    self.set_setting('INVOKE_RUN', 0)
+    create_test_file('pre.js', '''
 Module['onRuntimeInitialized'] = function() {
   try {
     ccall('main', 'number', ['number', 'string'], [2, 'waka']);
@@ -7773,11 +7712,11 @@ Module['onRuntimeInitialized'] = function() {
   }
 };
 ''')
-      self.emcc_args += ['--pre-js', 'pre.js']
-      self.do_run(src, 'The call to main is running asynchronously.')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_run(src, 'The call to main is running asynchronously.')
 
-      print('check reasonable ccall use')
-      src = r'''
+    print('check reasonable ccall use')
+    src = r'''
 #include <stdio.h>
 #include <emscripten.h>
 int main() {
@@ -7786,16 +7725,16 @@ int main() {
   printf("World\n");
 }
 '''
-      create_test_file('pre.js', '''
+    create_test_file('pre.js', '''
 Module['onRuntimeInitialized'] = function() {
   ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 };
 ''')
-      self.do_run(src, 'HelloWorld')
+    self.do_run(src, 'HelloWorld')
 
-      print('check ccall promise')
-      self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
-      src = r'''
+    print('check ccall promise')
+    self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
+    src = r'''
 #include <stdio.h>
 #include <emscripten.h>
 extern "C" {
@@ -7811,7 +7750,7 @@ extern "C" {
   }
 }
 '''
-      create_test_file('pre.js', r'''
+    create_test_file('pre.js', r'''
 Module['onRuntimeInitialized'] = function() {
   ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
     .then(function(val) {
@@ -7820,7 +7759,7 @@ Module['onRuntimeInitialized'] = function() {
     });
 };
 ''')
-      self.do_run(src, 'first\nsecond\n6.4')
+    self.do_run(src, 'first\nsecond\n6.4')
 
   @no_asan('asyncify stack operations confuse asan')
   def test_fibers_asyncify(self):
@@ -8556,9 +8495,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthreads_create(self):
-    if not self.is_wasm_backend():
-      self.skipTest('only supported on wasm backend')
-
     def test():
       self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create')
     test()
