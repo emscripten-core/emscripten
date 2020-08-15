@@ -19,7 +19,7 @@ from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import try_delete
-from tools.shared import expected_llvm_version, Cache, Settings
+from tools.shared import EXPECTED_LLVM_VERSION, Cache, Settings
 from tools import shared, system_libs
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt', root=True)
@@ -265,7 +265,7 @@ class sanity(RunnerCore):
     with open(CONFIG_FILE, 'a') as f:
       f.write('LLVM_ROOT = "' + self.in_dir('fake') + '"')
 
-    real_version_x, real_version_y = (int(x) for x in expected_llvm_version().split('.'))
+    real_version_x, real_version_y = (int(x) for x in EXPECTED_LLVM_VERSION.split('.'))
     if shared.get_llvm_target() == shared.WASM_TARGET:
       make_fake_llc(self.in_dir('fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
       make_fake_lld(self.in_dir('fake', 'wasm-ld'))
@@ -315,7 +315,7 @@ class sanity(RunnerCore):
       f.write('LLVM_ROOT = "' + self.in_dir('fake', 'bin') + '"')
     # print '1', open(CONFIG_FILE).read()
 
-    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
+    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
     make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'no j-s backend for you!')
     self.check_working(EMCC, WARNING)
 
@@ -484,7 +484,7 @@ fi
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     restore_and_set_up()
     self.ensure_cache()
-    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
+    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
     make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'got wasm32 backend! WebAssembly 32-bit')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
@@ -715,7 +715,7 @@ fi
         # doesn't actually use it.
         f.write('BINARYEN_ROOT= "%s"\n' % self.in_dir('fake', 'bin'))
 
-      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
+      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
       make_fake_llc(self.in_dir('fake', 'bin', 'llc'), report)
       make_fake_lld(self.in_dir('fake', 'bin', 'wasm-ld'))
 
