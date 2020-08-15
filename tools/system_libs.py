@@ -693,16 +693,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     ignore += LIBC_SOCKETS
 
-    # individual math files
-    ignore += [
-        'abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
-        'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c',
-        'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c',
-        'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c',
-        'logl.c', 'sqrtl.c', 'round.c', 'roundf.c',
-        'fabsl.c', 'ceill.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c',
-    ]
-
     if self.is_asan:
       # With ASan, we need to use specialized implementations of certain libc
       # functions that do not rely on undefined behavior, for example, reading
@@ -789,22 +779,6 @@ class libsockets_proxy(MuslInternalLibrary, MTLibrary):
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp'),
             shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network', 'inet_addr.c')]
-
-
-class libc_wasm(MuslInternalLibrary):
-  name = 'libc-wasm'
-  cflags = ['-O2', '-fno-builtin']
-  src_dir = ['system', 'lib', 'libc', 'musl', 'src', 'math']
-  src_files = ['cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
-               'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
-               'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
-               'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
-               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c',
-               'sqrtl.c', 'ceill.c', 'floorl.c', 'fabsl.c']
-
-  def can_use(self):
-    # if building to wasm, we need more math code, since we have fewer builtins
-    return super(libc_wasm, self).can_use() and shared.Settings.WASM
 
 
 class crt1(MuslInternalLibrary):
@@ -1550,8 +1524,6 @@ def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
 
     add_library(system_libs_map['libc'])
     add_library(system_libs_map['libcompiler_rt'])
-    if shared.Settings.WASM:
-      add_library(system_libs_map['libc-wasm'])
     if cxx:
       add_library(system_libs_map['libc++'])
     if cxx or sanitize:
