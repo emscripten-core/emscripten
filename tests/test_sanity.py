@@ -296,32 +296,6 @@ class sanity(RunnerCore):
     add_to_config("EMSCRIPTEN_ROOT = '%s'" % (path_from_root() + os.path.sep))
     self.check_working(EMCC)
 
-  def test_llvm_fastcomp(self):
-    WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
-
-    restore_and_set_up()
-
-    # Should see js backend during sanity check
-    self.assertTrue(shared.check_llvm())
-    output = self.check_working(EMCC)
-    self.assertNotIn(WARNING, output)
-
-    # Fake incorrect llc output, no mention of js backend
-    restore_and_set_up()
-    with open(CONFIG_FILE, 'a') as f:
-      f.write('LLVM_ROOT = "' + self.in_dir('fake', 'bin') + '"')
-    # print '1', open(CONFIG_FILE).read()
-
-    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
-    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'no j-s backend for you!')
-    self.check_working(EMCC, WARNING)
-
-    # fake some more
-    for fake in ['llvm-link', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
-      open(self.in_dir('fake', 'bin', fake), 'w').write('.')
-    try_delete(SANITY_FILE)
-    self.check_working(EMCC, WARNING)
-
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
     NODE_WARNING_2 = 'cannot check node version'
@@ -710,6 +684,7 @@ fi
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], expected)
 
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
+    try_delete(CANONICAL_TEMP_DIR)
 
   def test_required_config_settings(self):
     # with no binaryen root, an error is shown
