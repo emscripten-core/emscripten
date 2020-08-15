@@ -7662,7 +7662,7 @@ int main() {
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target
-    for opts, target in [([], 'a.out.wasm'), (['-o', 'lib.wasm'], 'lib.wasm')]:
+    for opts, target in [([], 'a.out.wasm'), (['-o', 'lib.wasm'], 'lib.wasm'), (['-o', 'lib.so'], 'lib.so')]:
       # specified target
       print('building: ' + target)
       self.clear()
