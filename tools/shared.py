@@ -38,6 +38,7 @@ LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 95
+EXPECTED_LLVM_VERSION = "12.0"
 SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 
 # can add  %(asctime)s  to see timestamps
@@ -454,13 +455,6 @@ def config_file_location():
   return CONFIG_FILE
 
 
-def expected_llvm_version():
-  if get_llvm_target() == WASM_TARGET:
-    return "12.0"
-  else:
-    return "6.0"
-
-
 def get_clang_version():
   if not hasattr(get_clang_version, 'found_version'):
     if not os.path.exists(CLANG_CC):
@@ -472,11 +466,10 @@ def get_clang_version():
 
 
 def check_llvm_version():
-  expected = expected_llvm_version()
   actual = get_clang_version()
-  if expected in actual:
+  if EXPECTED_LLVM_VERSION in actual:
     return True
-  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
+  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, EXPECTED_LLVM_VERSION)
   return False
 
 
