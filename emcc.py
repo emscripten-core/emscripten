@@ -1246,7 +1246,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
-    wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
+    if shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS:
+      wasm_binary_target = target
+    else:
+      wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
     wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
 
     # Apply user -jsD settings
@@ -2114,7 +2117,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return 0
 
       # Precompiled headers support
-      if has_header_inputs:
+      if has_header_inputs or 'header' in language_mode:
         headers = [header for _, header in input_files]
         for header in headers:
           if not header.endswith(HEADER_ENDINGS):
@@ -2732,12 +2735,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       shared.JS.handle_license(final)
 
-      if final_suffix in JS_ENDINGS:
-        js_target = target
-      elif final_suffix in WASM_ENDINGS:
+      if final_suffix in WASM_ENDINGS:
         js_target = misc_temp_files.get(suffix='.js').name
-      else:
+      elif final_suffix == '.html':
         js_target = unsuffixed(target) + '.js'
+      else:
+        js_target = target
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
