@@ -431,9 +431,6 @@ class TestCoreBase(RunnerCore):
   def test_negative_zero(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_negative_zero')
 
-  def test_line_endings(self):
-    self.build(open(path_from_root('tests', 'hello_world.cpp')).read(), self.get_dir(), 'hello_world.cpp')
-
   def test_literal_negative_zero(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_literal_negative_zero')
 
