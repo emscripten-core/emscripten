@@ -63,7 +63,7 @@ import parallel_testsuite
 from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import LLVM_TARGET, EMSCRIPTEN_TEMP_DIR
-from tools.shared import SPIDERMONKEY_ENGINE, WINDOWS
+from tools.shared import WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
 from tools.shared import asbytes, safe_copy, Settings
@@ -156,12 +156,12 @@ def is_slow_test(func):
   return decorated
 
 
+# Today we only support the wasm backend so any tests that is disabled under the llvm
+# backend is always disabled.
+# TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
 def no_wasm_backend(note=''):
   assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm_backend', note)
-  return decorated
+  return unittest.skip(note)
 
 
 def no_windows(note=''):
@@ -430,9 +430,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def is_wasm(self):
     return self.get_setting('WASM') != 0
-
-  def is_wasm_backend(self):
-    return self.get_setting('WASM_BACKEND')
 
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
@@ -1229,12 +1226,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.assertExists(js_file)
 
     engines = self.filtered_js_engines(js_engines)
-    # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
     if len(engines) > 1 and not self.use_all_engines:
-      if SPIDERMONKEY_ENGINE in engines and not self.is_wasm_backend():
-        engines = [SPIDERMONKEY_ENGINE]
-      else:
-        engines = engines[:1]
+      engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines

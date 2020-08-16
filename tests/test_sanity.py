@@ -507,10 +507,7 @@ fi
     # The cache directory must exist after the build
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc
-    if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm', 'libc.a')))
-    else:
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
+    self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm', 'libc.a')))
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
 

@@ -823,7 +823,6 @@ window.close = function() {
     self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js', '-lSDL', '-lGL'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
   def get_async_args(self):
-    assert self.is_wasm_backend()
     return ['-s', 'ASYNCIFY']
 
   def test_sdl_key(self):
@@ -2216,14 +2215,10 @@ void *getBindBuffer() {
     self.btest('openal_capture_sanity.c', expected='0')
 
   def test_runtimelink(self):
-    for wasm in [0, 1]:
-      if not wasm and self.is_wasm_backend():
-        continue
-      print(wasm)
-      main, supp = self.setup_runtimelink_test()
-      create_test_file('supp.cpp', supp)
-      self.compile_btest(['supp.cpp', '-o', 'supp.' + ('wasm' if wasm else 'js'), '-s', 'SIDE_MODULE=1', '-O2', '-s', 'WASM=%d' % wasm, '-s', 'EXPORT_ALL=1'])
-      self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'WASM=%d' % wasm, '-s', 'RUNTIME_LINKED_LIBS=["supp.' + ('wasm' if wasm else 'js') + '"]', '-s', 'EXPORT_ALL=1'], expected='76')
+    main, supp = self.setup_runtimelink_test()
+    create_test_file('supp.cpp', supp)
+    self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE=1', '-O2', '-s', 'EXPORT_ALL=1'])
+    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL=1'], expected='76')
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
@@ -2376,8 +2371,6 @@ void *getBindBuffer() {
       ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
     ]:
       for mode in [[], ['-s', 'WASM=0']]:
-        if 'WASM=0' in mode and self.is_wasm_backend():
-          continue
         print('\n', filename, extra_args, mode)
         print('mem init, so async, call too early')
         create_test_file('post.js', post_prep + post_test + post_hook)
@@ -2721,7 +2714,7 @@ Module["preRun"].push(function () {
     self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2'] + self.get_async_args())
 
   def test_locate_file(self):
-    for wasm in ([0, 1] if not self.is_wasm_backend() else [1]):
+    for wasm in [0, 1]:
       print('wasm', wasm)
       self.clear()
       create_test_file('src.cpp', self.with_report_result(r'''
@@ -3635,12 +3628,10 @@ window.close = function() {
   def test_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
-    for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-O3', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1'], ['-Os']]:
+    for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os']]:
       for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
         args = opt + debug
         print(args)
-        if self.is_wasm_backend() and 'AGGRESSIVE_VARIABLE_ELIMINATION=1' in args:
-          continue
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
@@ -3847,8 +3838,7 @@ window.close = function() {
     create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html'])
     shutil.move('test.worker.js', os.path.join('cdn', 'test.worker.js'))
-    if self.is_wasm_backend():
-      shutil.copyfile('test.html.mem', os.path.join('cdn', 'test.html.mem'))
+    shutil.copyfile('test.html.mem', os.path.join('cdn', 'test.html.mem'))
     self.run_browser('test.html', '', '/report_result?1')
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
@@ -3911,9 +3901,6 @@ window.close = function() {
   @requires_threads
   def test_pthread_global_data_initialization(self):
     mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
-    if not self.is_wasm_backend():
-      mem_init_modes += [['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]
-
     for mem_init_mode in mem_init_modes:
       for args in [['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')], ['-O3']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
@@ -3922,9 +3909,6 @@ window.close = function() {
   @requires_sync_compilation
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
-    if not self.is_wasm_backend():
-      mem_init_modes += [['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]
-
     for mem_init_mode in mem_init_modes:
       args = ['-s', 'WASM_ASYNC_COMPILATION=0']
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
@@ -4262,9 +4246,8 @@ window.close = function() {
     for asyncify in [0, 1]:
       cmd = ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1']
       if asyncify:
-        if not self.is_wasm_backend():
-          continue
-        # given the synchronous render loop here, asyncify is needed to see intermediate frames and the gradual color change
+        # given the synchronous render loop here, asyncify is needed to see intermediate frames and
+        # the gradual color change
         cmd += ['-s', 'ASYNCIFY', '-DASYNCIFY']
       print(str(cmd))
       self.btest('gl_in_proxy_pthread.cpp', expected='1', args=cmd)
