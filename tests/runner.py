@@ -581,7 +581,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     create_test_file('onexit.js', 'Module.onExit = function() { %s }' % code)
     self.emcc_args += ['--pre-js', 'onexit.js']
 
-  def prep_ll_file(self, output_file, input_file, force_recompile=False, build_ll_hook=None):
+  def prep_ll_file(self, output_file, input_file, force_recompile=False):
     # force_recompile = force_recompile or os.path.getsize(filename + '.ll') > 50000
     # If the file is big, recompile just to get ll_opts
     # Recompiling just for dfe in ll_opts is too costly
@@ -604,7 +604,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     output_obj = output_file + '.o'
     output_ll = output_file + '.ll'
 
-    if force_recompile or build_ll_hook:
+    if force_recompile:
       if input_file.endswith(('.bc', '.o')):
         if input_file != output_obj:
           shutil.copy(input_file, output_obj)
@@ -613,17 +613,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         shutil.copy(input_file, output_ll)
         fix_target(output_ll)
 
-      if build_ll_hook:
-        need_post = build_ll_hook(output_file)
       building.llvm_as(output_ll, output_obj)
       shutil.move(output_ll, output_ll + '.pre') # for comparisons later
       building.llvm_dis(output_obj, output_ll)
-      if build_ll_hook and need_post:
-        build_ll_hook(output_file)
-        building.llvm_as(output_ll, output_obj)
-        shutil.move(output_ll, output_ll + '.post') # for comparisons later
-        building.llvm_dis(output_obj, output_ll)
-
       building.llvm_as(output_ll, output_obj)
     else:
       if input_file.endswith('.ll'):
@@ -651,7 +643,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, main_file=None,
-            additional_files=[], libraries=[], includes=[], build_ll_hook=None,
+            additional_files=[], libraries=[], includes=[],
             post_build=None, js_outfile=True):
 
     # Copy over necessary files for compiling the source
@@ -682,49 +674,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     else:
       compiler = EMCC
 
-    if build_ll_hook:
-      # "slow", old path: build to bc, then build to JS
+    all_files = all_sources + libraries
+    args = [compiler] + self.get_emcc_args(main_file=True) + \
+        ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
+        ['-I' + include for include in includes] + \
+        all_files + ['-o', filename + suffix]
 
-      # C++ => LLVM binary
-
-      for f in all_sources:
-        try:
-          # Make sure we notice if compilation steps failed
-          os.remove(f + '.o')
-        except OSError:
-          pass
-        args = [compiler] + self.get_emcc_args(main_file=True) + \
-               ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
-               ['-I' + include for include in includes] + \
-               ['-c', f, '-o', f + '.o']
-        self.run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
-        self.assertExists(f + '.o')
-
-      # Link all files
-      object_file = filename + '.o'
-      if len(additional_files) + len(libraries):
-        shutil.move(object_file, object_file + '.alone')
-        inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
-        building.link_to_object(inputs, object_file)
-        if not os.path.exists(object_file):
-          print("Failed to link LLVM binaries:\n\n", object_file)
-          self.fail("Linkage error")
-
-      # Finalize
-      self.prep_ll_file(filename, object_file, build_ll_hook=build_ll_hook)
-
-      # BC => JS
-      building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
-    else:
-      # "fast", new path: just call emcc and go straight to JS
-      all_files = all_sources + libraries
-      args = [compiler] + self.get_emcc_args(main_file=True) + \
-          ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
-          ['-I' + include for include in includes] + \
-          all_files + ['-o', filename + suffix]
-
-      self.run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
-      self.assertExists(filename + suffix)
+    self.run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
+    self.assertExists(filename + suffix)
 
     if post_build:
       post_build(filename + suffix)
@@ -1204,7 +1161,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
-             includes=[], force_c=False, build_ll_hook=None,
+             includes=[], force_c=False,
              assert_returncode=0, assert_identical=False, assert_all=False,
              check_for_error=True):
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -1221,7 +1178,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.build(src, dirname, filename, main_file=main_file,
                  additional_files=additional_files, libraries=libraries,
                  includes=includes,
-                 build_ll_hook=build_ll_hook, post_build=post_build)
+                 post_build=post_build)
       js_file = filename + '.o.js'
     self.assertExists(js_file)
 
