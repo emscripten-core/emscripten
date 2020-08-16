@@ -5,15 +5,6 @@
  */
 
 var LibraryStackTrace = {
-
-  $demangle__deps: [
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  '$stackSave', '$stackAlloc', '$stackRestore'
-#if ASSERTIONS
-    , '$warnOnce'
-#endif
-#endif
-  ],
   $demangle: function(func) {
 #if DEMANGLE_SUPPORT
     // If demangle has failed before, stop demangling any further function names
@@ -54,11 +45,7 @@ var LibraryStackTrace = {
 
   $demangleAll: function(text) {
     var regex =
-#if WASM_BACKEND
       /\b_Z[\w\d_]+/g;
-#else
-      /\b__Z[\w\d_]+/g;
-#endif
     return text.replace(regex,
       function(x) {
         var y = demangle(x);

@@ -65,11 +65,7 @@ var emscriptenMemoryProfiler = {
   totalTimesFreeCalled: 0,
 
   // Tracks the highest seen location of the STACKTOP variable.
-#if WASM_BACKEND
   stackTopWatermark: Infinity,
-#else
-  stackTopWatermark: 0,
-#endif
 
   // The canvas DOM element to which to draw the allocation map.
   canvas: null,
@@ -160,11 +156,7 @@ var emscriptenMemoryProfiler = {
 
   recordStackWatermark: function() {
     var self = emscriptenMemoryProfiler;
-#if WASM_BACKEND
     self.stackTopWatermark = Math.min(self.stackTopWatermark, STACKTOP);
-#else
-    self.stackTopWatermark = Math.max(self.stackTopWatermark, STACKTOP);
-#endif
   },
 
   onMalloc: function onMalloc(ptr, size) {
