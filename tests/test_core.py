@@ -6376,32 +6376,14 @@ return malloc(size);
     test_path = path_from_root('tests', 'core', 'test_structs')
     src = test_path + '.c'
     output = test_path + '.out'
-    # Add an ll hook, to force ll generation
-    self.do_run_from_file(src, output, build_ll_hook=lambda x: False)
+    self.do_run_from_file(src, output)
 
-    filename = 'src.c'
+    filename = 'out'
+    self.run_process([EMCC, '-c', src, '-o', filename + '.o'] + self.get_emcc_args())
     do_autodebug(filename)
 
     # Compare to each other, and to expected output
     self.do_ll_run(filename + '.auto.ll', 'AD:-1,1')
-
-    # Test using build_ll_hook
-    src = '''
-        #include <stdio.h>
-
-        char cache[256], *next = cache;
-
-        int main()
-        {
-          cache[10] = 25;
-          next[20] = 51;
-          int x = cache[10];
-          double y = 11.52;
-          printf("*%d,%d,%.2f*\\n", x, cache[20], y);
-          return 0;
-        }
-      '''
-    self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
 
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   @no_asan('autodebug logging interferes with asan')
