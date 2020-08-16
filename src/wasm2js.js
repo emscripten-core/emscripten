@@ -48,7 +48,7 @@ WebAssembly = {
 #else
 #if ASSERTIONS // without assertions we'll throw on calling the missing function
     ret.grow = function(by) {
-      abort('Build with ALLOW_TABLE_GROWTH to allow table growth.')
+      abort('Unable to grow wasm table. Build with ALLOW_TABLE_GROWTH.')
     };
 #endif // ASSERTIONS
 #endif // ALLOW_TABLE_GROWTH

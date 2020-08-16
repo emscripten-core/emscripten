@@ -6689,8 +6689,15 @@ return malloc(size);
 
     print('with RESERVED_FUNCTION_POINTERS=0')
     self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
+    expected = 'Unable to grow wasm table'
+    if self.is_wasm2js() and is_optimizing(self.emcc_args):
+      # in wasm2js the error message doesn't come from the VM, but from our
+      # emulation code. when ASSERTIONS are enabled we show a clear message, but
+      # in optimized builds we don't waste code size on that, and the JS engine
+      # shows a generic error.
+      expected = 'table.grow is not a function'
+    self.do_run(open(src).read(), expected, assert_returncode=NON_ZERO)
 
-    self.do_run(open(src).read(), 'Unable to grow wasm table', assert_returncode=NON_ZERO)
     print('- with table growth')
     self.set_setting('ALLOW_TABLE_GROWTH', 1)
     self.emcc_args += ['-DGROWTH']
