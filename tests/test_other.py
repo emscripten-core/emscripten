@@ -3273,6 +3273,8 @@ int main(int argc, char **argv) {
           # The wasm backend uses atexit to register destructors when
           # constructors are called  There is currently no way to exclude
           # these destructors from the wasm binary.
+          # TODO(sbc): Re-enabled these assertions once the wasm backend
+          # is able to eliminate these.
           # assert ('atexit(' in src) == exit, 'atexit should not appear in src when EXIT_RUNTIME=0'
           # assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit:\n' + src
 
@@ -6625,6 +6627,7 @@ mergeInto(LibraryManager.library, {
       # disabled in the wasm backend
       self.assertContained('Ctor evalling in the wasm backend is disabled', err)
       self.assertNotContained('ctor_evaller: not successful', err) # with logging
+      # TODO(sbc): Re-enable onece ctor evaluation is working with llvm backend.
       # self.assertContained('external_thing', err) # the failing call should be mentioned
 
   def test_override_js_execution_environment(self):
