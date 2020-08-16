@@ -984,10 +984,6 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
     start = raw.index('[')
     end = raw.rindex(']')
     body = raw[start + 1:end].split(',')
-    for j in range(shared.Settings.RESERVED_FUNCTION_POINTERS):
-      curr = 'jsCall_%s_%s' % (sig, j)
-      body[1 + j] = curr
-      implemented_functions.add(curr)
     Counter.next_item = 0
 
     def fix_item(item):
@@ -1092,15 +1088,6 @@ function dynCall_%s(index%s%s) {
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
 
     ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], ffi_arg=True) for i in range(1, len(sig))])
-    for i in range(shared.Settings.RESERVED_FUNCTION_POINTERS):
-      jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], ffi_result=True)
-      function_tables_impls.append('''
-function jsCall_%s_%s(%s) {
-  %s
-  %s;
-}
-
-''' % (sig, i, args, arg_coercions, jsret))
   return function_tables_impls
 
 
@@ -1223,16 +1210,7 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
     ''' % (fullname, key, check(barename), side, barename, barename, sig, key, key)
 
   asm_setup += create_invoke_wrappers(invoke_function_names)
-  asm_setup += setup_function_pointers(function_table_sigs)
 
-  return asm_setup
-
-
-def setup_function_pointers(function_table_sigs):
-  asm_setup = ''
-  for sig in function_table_sigs:
-    if shared.Settings.RESERVED_FUNCTION_POINTERS:
-      asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
   return asm_setup
 
 
@@ -1255,9 +1233,6 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
 
   basic_funcs += invoke_function_names
 
-  for sig in function_table_sigs:
-    if shared.Settings.RESERVED_FUNCTION_POINTERS:
-      basic_funcs.append('jsCall_%s' % sig)
   return basic_funcs
 
 

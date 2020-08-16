@@ -43,8 +43,8 @@ WebAssembly = {
     var ret = new Array(opts['initial']);
     ret.grow = function(by) {
 #if !ALLOW_TABLE_GROWTH
-      if (ret.length >= {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}}) {
-        abort('Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.')
+      if (ret.length >= {{{ getQuoted('WASM_TABLE_SIZE') }}}) {
+        abort('Unable to grow wasm table. Build with ALLOW_TABLE_GROWTH.')
       }
 #endif
       ret.push(null);
