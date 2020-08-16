@@ -143,18 +143,6 @@ Running by itself
 If you hit memory limits in browsers, it can help to run your project by itself, as opposed to inside a web page containing other content. If you open a new web page (as a new tab, or a new window) that contains just your project, then you have the best chance at avoiding memory fragmentation issues.
 
 
-.. _optimizing-code-aggressive-variable-elimination:
-
-Aggressive variable elimination
--------------------------------
-
-Aggressive variable elimination is an asm.js feature (not relevant for wasm) that attempts to remove variables whenever possible, even at the cost of increasing code size by duplicating expressions. This can improve speed in cases where you have extremely large functions. For example it can make sqlite (which has a huge interpreter loop with thousands of lines in it) 7% faster.
-
-You can enable aggressive variable elimination with ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1``.
-
-.. note:: This setting can be harmful in some cases. Test before using it.
-
-
 Other optimization issues
 =========================
 

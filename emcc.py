@@ -2633,10 +2633,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.OPT_LEVEL >= 2:
           optimizer.queue += [get_eliminate()]
 
-          if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
-            # note that this happens before registerize/minification, which can obfuscate the name of 'label', which is tricky
-            optimizer.queue += ['aggressiveVariableElimination']
-
           optimizer.queue += ['simplifyExpressions']
 
       if shared.Settings.OPT_LEVEL >= 1 and options.js_opts:
