@@ -269,10 +269,6 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 // [compile+link]
 var INLINING_LIMIT = 0;
 
-// Run aggressiveVariableElimination in js-optimizer.js
-// [fastcomp-only]
-var AGGRESSIVE_VARIABLE_ELIMINATION = 0;
-
 // Whether to simplify ifs in js-optimizer.js
 // [fastcomp-only]
 var SIMPLIFY_IFS = 1;
@@ -1739,4 +1735,5 @@ var LEGACY_SETTINGS = [
   ['DOUBLE_MODE', [0, 1], 'The wasm backend always implements doubles normally'],
   ['PRECISE_F32', [0, 1, 2], 'The wasm backend always implements floats normally'],
   ['ALIASING_FUNCTION_POINTERS', [0, 1], 'The wasm backend always uses a single index space for function pointers, in a single Table'],
+  ['AGGRESSIVE_VARIABLE_ELIMINATION', [0, 1], 'Wasm ignores asm.js-specific optimization flags'],
 ];

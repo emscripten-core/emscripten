@@ -508,7 +508,6 @@ Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscript
 
   - ASSERTIONS
   - SAFE_HEAP
-  - AGGRESSIVE_VARIABLE_ELIMINATION=1
   - -s DISABLE_EXCEPTION_CATCHING=0.
   - INLINING_LIMIT=
 
