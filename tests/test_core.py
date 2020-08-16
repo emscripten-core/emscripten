@@ -747,11 +747,6 @@ class TestCoreBase(RunnerCore):
     building.emcc(obj_file, self.get_emcc_args(), js_file)
     self.do_run(js_file, expected_output, no_build=True, **kwargs)
 
-  def do_ll_run(self, filename, expected_output=None, **kwargs):
-    output_base = os.path.basename(filename)
-    objfile = self.prep_ll_file(output_base, filename)
-    self.do_run_object(objfile, expected_output, **kwargs)
-
   def test_multiply_defined_symbols(self):
     create_test_file('a1.c', 'int f() { return 1; }')
     create_test_file('a2.c', 'void x() {}')
@@ -6364,14 +6359,6 @@ return malloc(size);
 
     self.emcc_args += ['--llvm-opts', '0']
 
-    # Autodebug the code
-    def do_autodebug(filename):
-      building.llvm_dis(filename + '.o', filename + '.ll')
-      self.run_process([PYTHON, AUTODEBUGGER, filename + '.ll', filename + '.auto.ll'])
-      # rebuild .bc
-      # TODO: use code in do_autodebug_post for this
-      self.prep_ll_file(filename, filename + '.auto.ll', force_recompile=True)
-
     # Run a test that should work, generating some code
     test_path = path_from_root('tests', 'core', 'test_structs')
     src = test_path + '.c'
@@ -6380,10 +6367,13 @@ return malloc(size);
 
     filename = 'out'
     self.run_process([EMCC, '-c', src, '-o', filename + '.o'] + self.get_emcc_args())
-    do_autodebug(filename)
 
-    # Compare to each other, and to expected output
-    self.do_ll_run(filename + '.auto.ll', 'AD:-1,1')
+    # Autodebug the code
+    objfile = filename + '.o'
+    building.llvm_dis(objfile, filename + '.ll')
+    self.run_process([PYTHON, AUTODEBUGGER, filename + '.ll', filename + '.auto.ll'])
+    building.llvm_as(filename + '.auto.ll', objfile)
+    self.do_run_object(objfile, 'AD:-1,1')
 
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   @no_asan('autodebug logging interferes with asan')
