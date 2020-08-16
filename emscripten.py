@@ -1087,7 +1087,6 @@ function dynCall_%s(index%s%s) {
 }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
 
-    ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], ffi_arg=True) for i in range(1, len(sig))])
   return function_tables_impls
 
 
