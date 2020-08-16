@@ -63,10 +63,6 @@ upgrade from fastcomp to upstream:
     (``-flto``, ``-flto=full``, ``-flto=thin``, at both compile and link times).
     These flags will make the wasm backend behave more like fastcomp.
 
-  * With fastcomp LTO optimization passes will not be run by default;
-    for that you must pass ``--llvm-lto 1``.  With the llvm backend
-    LTO passes will be run on any object files that are in bitcode format.
-
   * Another thing you might notice is that fastcomp's link stage is able to
     perform some minor types of link time optimization even without LTO being
     set. The LLVM backend requires actually setting LTO for those things.

@@ -3254,7 +3254,7 @@ int main(int argc, char **argv) {
 
     for wasm in [0, 1]:
       for no_exit in [1, 0]:
-        for opts in [[], ['-O1'], ['-O2', '-g2'], ['-O2', '-g2', '--llvm-lto', '1']]:
+        for opts in [[], ['-O1'], ['-O2', '-g2'], ['-O2', '-g2', '-flto']]:
           print(wasm, no_exit, opts)
           cmd = [EMCC] + opts + ['code.cpp', '-s', 'EXIT_RUNTIME=' + str(1 - no_exit), '-s', 'WASM=' + str(wasm)]
           if wasm:
@@ -3411,8 +3411,8 @@ Waste<3> *getMore() {
       (['-O2', '-g'], False),
       (['-Os', '-g', '-s', 'EXIT_RUNTIME=1'], True),
       (['-Os', '-g'], False),
-      (['-O2', '-g', '--llvm-lto', '1', '-s', 'EXIT_RUNTIME=1'], True),
-      (['-O2', '-g', '--llvm-lto', '1'], False),
+      (['-O2', '-g', '-flto', '-s', 'EXIT_RUNTIME=1'], True),
+      (['-O2', '-g', '-flto'], False),
     ]:
       print(opts, has_global)
       self.run_process([EMCC, 'main.cpp', '-c'] + opts)
