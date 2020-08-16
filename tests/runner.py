@@ -62,11 +62,11 @@ import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
-from tools.shared import LLVM_TARGET, EMSCRIPTEN_TEMP_DIR
+from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes, safe_copy, Settings
+from tools.shared import asbytes, Settings
 from tools import shared, line_endings, building
 
 
@@ -580,52 +580,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def add_on_exit(self, code):
     create_test_file('onexit.js', 'Module.onExit = function() { %s }' % code)
     self.emcc_args += ['--pre-js', 'onexit.js']
-
-  def prep_ll_file(self, output_file, input_file, force_recompile=False):
-    # force_recompile = force_recompile or os.path.getsize(filename + '.ll') > 50000
-    # If the file is big, recompile just to get ll_opts
-    # Recompiling just for dfe in ll_opts is too costly
-
-    def fix_target(ll_filename):
-      with open(ll_filename) as f:
-        contents = f.read()
-      if LLVM_TARGET in contents:
-        return
-      asmjs_target = 'asmjs-unknown-emscripten'
-      asmjs_layout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
-      wasm_layout = "e-m:e-p:32:32-i64:64-n32:64-S128"
-      assert(asmjs_target in contents)
-      assert(asmjs_layout in contents)
-      contents = contents.replace(asmjs_layout, wasm_layout)
-      contents = contents.replace(asmjs_target, LLVM_TARGET)
-      with open(ll_filename, 'w') as f:
-        f.write(contents)
-
-    output_obj = output_file + '.o'
-    output_ll = output_file + '.ll'
-
-    if force_recompile:
-      if input_file.endswith(('.bc', '.o')):
-        if input_file != output_obj:
-          shutil.copy(input_file, output_obj)
-        building.llvm_dis(output_obj, output_ll)
-      else:
-        shutil.copy(input_file, output_ll)
-        fix_target(output_ll)
-
-      building.llvm_as(output_ll, output_obj)
-      shutil.move(output_ll, output_ll + '.pre') # for comparisons later
-      building.llvm_dis(output_obj, output_ll)
-      building.llvm_as(output_ll, output_obj)
-    else:
-      if input_file.endswith('.ll'):
-        safe_copy(input_file, output_ll)
-        fix_target(output_ll)
-        building.llvm_as(output_ll, output_obj)
-      else:
-        safe_copy(input_file, output_obj)
-
-    return output_obj
 
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
