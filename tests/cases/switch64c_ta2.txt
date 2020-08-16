@@ -1,3 +1,0 @@
-hello, world: 5
-hello, world: 10
-hello, world: 1
