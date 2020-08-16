@@ -2172,13 +2172,6 @@ void *getBindBuffer() {
   @no_chrome('see #7117')
   @requires_graphics_hardware
   def test_aniso(self):
-    if SPIDERMONKEY_ENGINE in JS_ENGINES:
-      # asm.js-ification check
-      self.compile_btest([path_from_root('tests', 'aniso.c'), '-O2', '-g2', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
-      self.set_setting('ASM_JS', 1)
-      self.run_js('a.out.js', SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
-      print('passed asm test')
-
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
     self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
 

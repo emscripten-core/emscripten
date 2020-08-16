@@ -607,11 +607,9 @@ var NODEJS_CATCH_EXIT = 1;
 // make the process exit immediately with a non-0 return code.
 var NODEJS_CATCH_REJECTION = 1;
 
-// Whether to enable asyncify transformation
-// This allows to inject some async functions to the C code that appear to be sync
-// e.g. emscripten_sleep
-// On fastcomp this uses the Asyncify IR transform.
-// On upstream this uses the Asyncify pass in Binaryen.
+// Whether to transform the code using asyncify. This makes it possible to
+// call JS functions from synchronous-looking code in C/C++.
+// See https://emscripten.org/docs/porting/asyncify.html
 var ASYNCIFY = 0;
 
 // Imports which can do an sync operation, in addition to the default ones that
@@ -1043,11 +1041,6 @@ var USE_ES6_IMPORT_META = 1;
 // anything at all whatsoever. This is useful for benchmarking.
 var BENCHMARK = 0;
 
-// If 1, generate code in asm.js format. If 2, emits the same code except for
-// omitting 'use asm'.
-// [fastcomp-only]
-var ASM_JS = 1;
-
 // JS library functions on this list are not converted to JS, and calls to them
 // are turned into abort()s. This is potentially useful for reducing code size.
 // If a dead function is actually called, you will get a runtime error.
@@ -1100,8 +1093,8 @@ var EMSCRIPTEN_TRACING = 0;
 // for GLFW3.
 var USE_GLFW = 2;
 
-// Whether to use compile code to WebAssembly. Set this to 0 to compile to
-// asm.js in fastcomp, or JS in upstream.
+// Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
+// instead of wasm.
 //
 // Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
 // startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
@@ -1725,6 +1718,7 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
   ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
+  ['ASM_JS', [1], 'asm.js output is not supported any more'],
   ['FINALIZE_ASM_JS', [0, 1], 'asm.js output is not supported any more'],
   ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
   ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],

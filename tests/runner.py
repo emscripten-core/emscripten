@@ -285,24 +285,13 @@ core_test_modes = [
   'wasms',
   'wasmz',
   'strict'
+  'wasm2js0',
+  'wasm2js1',
+  'wasm2js2',
+  'wasm2js3',
+  'wasm2jss',
+  'wasm2jsz',
 ]
-
-if Settings.WASM_BACKEND:
-  core_test_modes += [
-    'wasm2js0',
-    'wasm2js1',
-    'wasm2js2',
-    'wasm2js3',
-    'wasm2jss',
-    'wasm2jsz',
-  ]
-else:
-  core_test_modes += [
-    'asm0',
-    'asm2',
-    'asm3',
-    'asm2g',
-  ]
 
 # The default core test mode, used when none is specified
 default_core_test_mode = 'wasm0'

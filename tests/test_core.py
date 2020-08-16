@@ -6077,7 +6077,7 @@ return malloc(size);
   def test_sqlite(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
-    if self.get_setting('ASM_JS') == 1 and '-g' in self.emcc_args:
+    if '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT', 50)
 
@@ -7385,9 +7385,6 @@ someweirdtext
   def test_emscripten_log(self):
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
-    if self.get_setting('ASM_JS'):
-      # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
-      self.banned_js_engines += [SPIDERMONKEY_ENGINE]
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
     self.emcc_args += ['-DRUN_FROM_JS_SHELL']
@@ -8446,13 +8443,6 @@ def make_run(name, emcc_args, settings=None, env=None):
 
   return TT
 
-
-# Main asm.js test modes
-if not shared.Settings.WASM_BACKEND:
-  asm0 = make_run('asm0', emcc_args=[], settings={'ASM_JS': 2, 'WASM': 0})
-  asm2 = make_run('asm2', emcc_args=['-O2'], settings={'WASM': 0})
-  asm3 = make_run('asm3', emcc_args=['-O3'], settings={'WASM': 0})
-  asm2g = make_run('asm2g', emcc_args=['-O2', '-g'], settings={'WASM': 0, 'ASSERTIONS': 1, 'SAFE_HEAP': 1})
 
 # Main wasm test modes
 wasm0 = make_run('wasm0', emcc_args=['-O0'])

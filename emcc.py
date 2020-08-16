@@ -324,7 +324,7 @@ class JSOptimizer(object):
     if self.extra_info is not None and len(self.extra_info) == 0:
       self.extra_info = None
 
-    if len(self.queue) and not(not shared.Settings.ASM_JS and len(self.queue) == 1 and self.queue[0] == 'last'):
+    if len(self.queue):
       passes = self.queue[:]
 
       if DEBUG != 2 or len(passes) < 2:
@@ -1171,9 +1171,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
-    # Set ASM_JS default here so that we can override it from the command line.
-    shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
-
     # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
     # We do this before the user settings are applied so it affects the default value only and a
     # user could use `--no-entry` and still export main too.
@@ -1355,11 +1352,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if options.use_closure_compiler:
       shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
-      # when we emit asm.js, closure 2 would break that, so warn (note that
-      # with wasm2js in the wasm backend, we don't emit asm.js anyhow)
-      if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1 and not shared.Settings.WASM_BACKEND:
-        diagnostics.warning('almost-asm', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
-        shared.Settings.ASM_JS = 2
 
     if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('Invalid option -s CLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % shared.Settings.CLOSURE_WARNINGS)
@@ -1374,7 +1366,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.memory_init_file = False
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
-      assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
       if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
         shared.Settings.LINKABLE = 1
         shared.Settings.EXPORT_ALL = 1
@@ -1837,7 +1828,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
         shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
         shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
-      shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
       if options.js_opts and not options.force_js_opts:
         options.js_opts = None
         logger.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
@@ -1958,14 +1948,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # memory growth does not work in dynamic linking, except for wasm
     if (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE) and shared.Settings.ALLOW_MEMORY_GROWTH and not shared.Settings.WASM:
       exit_with_error('memory growth is not supported with shared asm.js modules')
-
-    if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
-      # this is an issue in asm.js, but not wasm
-      if not shared.Settings.WASM:
-        # memory growth does not validate as asm.js
-        # http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
-        diagnostics.warning('almost-asm', 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.')
-        shared.Settings.ASM_JS = 2
 
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:

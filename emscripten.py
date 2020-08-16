@@ -363,21 +363,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   return (post, function_table_data, bundled_args)
 
 
-def finalize_output(outfile, post, function_table_data, bundled_args, metadata, DEBUG):
-  function_table_sigs = function_table_data.keys()
-  module = create_module_asmjs(function_table_sigs, metadata, *bundled_args)
-
-  if DEBUG:
-    logger.debug('emscript: python processing: finalize')
-    t = time.time()
-
-  write_output_file(outfile, post, module)
-  module = None
-
-  if DEBUG:
-    logger.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
-
-
 # Given JS code that consists only exactly of a series of "var a = ...;\n var b = ...;" statements,
 # this function collapses the redundant 'var ' statements at the beginning of each line to a
 # single var a =..., b=..., c=...; statement.
@@ -415,59 +400,6 @@ def create_global_initializer(initializers):
 }''' % '\n    '.join(i + '();' for i in initializers)
 
   return global_initializer
-
-
-def create_module_asmjs(function_table_sigs, metadata,
-                        funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                        asm_global_funcs, pre_tables, final_function_tables, exports):
-  receiving += create_named_globals(metadata)
-  runtime_funcs = create_runtime_funcs_asmjs(exports, metadata)
-
-  asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata)
-  memory_views = create_memory_views(metadata)
-  asm_temp_vars = create_asm_temp_vars(metadata)
-  asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
-
-  stack = ''
-  if not shared.Settings.RELOCATABLE and not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-    if 'STACKTOP' in shared.Settings.ASM_PRIMITIVE_VARS:
-      stack += apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n')
-    if 'STACK_MAX' in shared.Settings.ASM_PRIMITIVE_VARS:
-      stack += apply_memory('  var STACK_MAX = {{{ STACK_MAX }}};\n')
-
-  if 'tempFloat' in shared.Settings.ASM_PRIMITIVE_VARS:
-    temp_float = '  var tempFloat = %s;\n' % 'Math_fround(0)'
-  else:
-    temp_float = ''
-  f0_fround = '  const f0 = Math_fround(0);\n'
-
-  replace_memory = create_replace_memory(metadata)
-
-  start_funcs_marker = '\n// EMSCRIPTEN_START_FUNCS\n'
-
-  asm_end = create_asm_end(exports)
-
-  asm_variables = collapse_redundant_vars(memory_views + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs + stack + temp_float + f0_fround)
-  asm_global_initializer = create_global_initializer(metadata['initializers'])
-
-  module = [
-    asm_start_pre,
-    asm_variables,
-    replace_memory,
-    start_funcs_marker,
-    asm_global_initializer
-  ] + runtime_funcs + funcs_js + [
-    '\n  ',
-    pre_tables, final_function_tables, asm_end,
-    '\n', receiving, ';\n'
-  ]
-
-  if shared.Settings.SIDE_MODULE:
-    module.append('''
-parentModule['registerFunctions'](%s, Module);
-''' % str([str(f) for f in function_table_sigs]))
-
-  return module
 
 
 def write_output_file(outfile, post, module):
@@ -538,10 +470,6 @@ def update_settings_glue(metadata, DEBUG):
   if shared.Settings.SIDE_MODULE:
     # we don't need any JS library contents in side modules
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-  if metadata.get('cantValidate') and shared.Settings.ASM_JS != 2:
-    diagnostics.warning('almost-asm', 'disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
-    shared.Settings.ASM_JS = 2
 
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
   implemented_funcs = [x[1:] for x in metadata['implementedFunctions']]
@@ -1533,33 +1461,6 @@ function SAFE_FT_MASK(value, mask) {
 ''' % {'brk_check': brk_check})
 
   return funcs
-
-
-def create_asm_start_pre(asm_setup, the_global, sending, metadata):
-  shared_array_buffer = ''
-  if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    shared_array_buffer = "asmGlobalArg['Atomics'] = Atomics;"
-
-  module_global = 'var asmGlobalArg = ' + the_global + ';'
-  module_library = 'var asmLibraryArg = ' + sending + ';'
-
-  asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
-                      'var asm = (/** @suppress {uselessCode} */ function(global, env, buffer) {')
-
-  use_asm = "'almost asm';"
-  if shared.Settings.ASM_JS == 1:
-    use_asm = "'use asm';"
-
-  lines = [
-    asm_setup,
-    module_global,
-    shared_array_buffer,
-    module_library,
-    asm_function_top,
-    use_asm,
-    create_first_in_asm(),
-  ]
-  return '\n'.join(lines)
 
 
 def create_asm_temp_vars(metadata):
