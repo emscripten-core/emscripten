@@ -596,30 +596,16 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return args
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, main_file=None,
+  def build(self, src, dirname, filename,
             additional_files=[], libraries=[], includes=[],
             post_build=None, js_outfile=True):
-
-    # Copy over necessary files for compiling the source
-    if main_file is None:
-      with open(filename, 'w') as f:
-        f.write(src)
-      final_additional_files = []
-      for f in additional_files:
-        final_additional_files.append(os.path.join(dirname, os.path.basename(f)))
-        shutil.copyfile(f, final_additional_files[-1])
-      additional_files = final_additional_files
-    else:
-      # copy whole directory, and use a specific main .cpp file
-      # (rmtree() fails on Windows if the current working directory is inside the tree.)
-      if os.getcwd().startswith(os.path.abspath(dirname)):
-        os.chdir(os.path.join(dirname, '..'))
-      shutil.rmtree(dirname)
-      shutil.copytree(src, dirname)
-      shutil.move(os.path.join(dirname, main_file), filename)
-      # the additional files were copied; alter additional_files to point to their full paths now
-      additional_files = [os.path.join(dirname, f) for f in additional_files]
-      os.chdir(self.get_dir())
+    with open(filename, 'w') as f:
+      f.write(src)
+    final_additional_files = []
+    for f in additional_files:
+      final_additional_files.append(os.path.join(dirname, os.path.basename(f)))
+      shutil.copyfile(f, final_additional_files[-1])
+    additional_files = final_additional_files
 
     suffix = '.o.js' if js_outfile else '.o.wasm'
     all_sources = [filename] + additional_files
@@ -1113,12 +1099,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
-             no_build=False, main_file=None, additional_files=[],
+             no_build=False, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False,
              assert_returncode=0, assert_identical=False, assert_all=False,
              check_for_error=True):
-    if force_c or (main_file is not None and main_file[-2:]) == '.c':
+    if force_c:
       basename = 'src.c'
 
     if no_build:
@@ -1129,7 +1115,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     else:
       dirname = self.get_dir()
       filename = os.path.join(dirname, basename)
-      self.build(src, dirname, filename, main_file=main_file,
+      self.build(src, dirname, filename,
                  additional_files=additional_files, libraries=libraries,
                  includes=includes,
                  post_build=post_build)
