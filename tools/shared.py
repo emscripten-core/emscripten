@@ -1511,39 +1511,6 @@ def read_and_preprocess(filename, expand_macros=False):
   return out
 
 
-# Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
-# and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web
-# worker in -s ASMFS=1 mode.
-def make_fetch_worker(source_file, output_file):
-  src = open(source_file, 'r').read()
-  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_browser_thread', '_emscripten_futex_wait', '_emscripten_get_sbrk_ptr']
-  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock', '_pthread_mutexattr_init', '_pthread_mutex_init']
-  function_prologue = '''this.onerror = function(e) {
-  console.error(e);
-}
-
-'''
-  asm_start = src.find('// EMSCRIPTEN_START_ASM')
-  for func in funcs_to_import + asm_funcs_to_import:
-    loc = src.find('function ' + func + '(', asm_start if func in asm_funcs_to_import else 0)
-    if loc == -1:
-      exit_with_error('failed to find function %s!', func)
-    end_loc = src.find('{', loc) + 1
-    nesting_level = 1
-    while nesting_level > 0:
-      if src[end_loc] == '{':
-        nesting_level += 1
-      if src[end_loc] == '}':
-        nesting_level -= 1
-      end_loc += 1
-
-    func_code = src[loc:end_loc]
-    function_prologue = function_prologue + '\n' + func_code
-
-  fetch_worker_src = function_prologue + '\n' + read_and_preprocess(path_from_root('src', 'fetch-worker.js'), expand_macros=True)
-  open(output_file, 'w').write(fetch_worker_src)
-
-
 # ============================================================================
 # End declarations.
 # ============================================================================

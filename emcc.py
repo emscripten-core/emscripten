@@ -1497,18 +1497,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 
-    if not shared.Settings.USE_PTHREADS or not shared.Settings.FETCH:
-      shared.Settings.USE_FETCH_WORKER = 0
-
-    # In asm.js+pthreads we can use a fetch worker, which is made from the main
-    # asm.js code. That lets us do sync operations by blocking on the worker etc.
-    # In the wasm backend we don't have a fetch worker implemented yet, however,
-    # we can still do basic synchronous fetches in the same places: if we can
-    # block on another thread then we aren't the main thread, and if we aren't
-    # the main thread then synchronous xhrs are legitimate.
-    if shared.Settings.FETCH and shared.Settings.WASM_BACKEND:
-      shared.Settings.USE_FETCH_WORKER = 0
-
     if shared.Settings.DEMANGLE_SUPPORT:
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
 
@@ -2513,10 +2501,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1) and not shared.Settings.DEBUG_LEVEL:
           minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
           open(worker_output, 'w').write(minified_worker)
-
-      # Generate the fetch.js worker script for multithreaded emscripten_fetch() support if targeting pthreads.
-      if shared.Settings.USE_FETCH_WORKER:
-        shared.make_fetch_worker(final, shared.Settings.FETCH_WORKER_FILE)
 
     # exit block 'memory initializer'
     log_time('memory initializer')

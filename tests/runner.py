@@ -284,7 +284,7 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
-  'strict'
+  'strict',
   'wasm2js0',
   'wasm2js1',
   'wasm2js2',
