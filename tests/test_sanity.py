@@ -432,7 +432,7 @@ fi
     for i in range(3):
       print(i)
       self.clear()
-      output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+      output = self.do([EMCC, '-O' + str(i), path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
       print('\n\n\n', output)
       self.assertContainedIf(BUILDING_MESSAGE.replace('X', libname), output, i == 0)
       self.assertContained('hello, world!', self.run_js('a.out.js'))

@@ -6309,8 +6309,8 @@ return malloc(size);
 
     for lto in [0, 1]:
       print('lto:', lto)
-      if lto == 1:
-        self.emcc_args += ['--llvm-lto', '1']
+      if lto:
+        self.emcc_args += ['-flto']
       self.do_run_object(bitcode, pyoutput, args=['-S', '-c', pyscript])
 
   @no_asan('call stack exceeded on some versions of node')
@@ -6352,7 +6352,7 @@ return malloc(size);
 
     run_all('normal')
 
-    self.emcc_args += ['--llvm-lto', '1']
+    self.emcc_args += ['-flto']
 
     run_all('lto')
 
@@ -8464,12 +8464,12 @@ wasm3 = make_run('wasm3', emcc_args=['-O3'])
 wasms = make_run('wasms', emcc_args=['-Os'])
 wasmz = make_run('wasmz', emcc_args=['-Oz'])
 
-wasmlto0 = make_run('wasmlto0', emcc_args=['-flto', '-O0', '--llvm-lto', '1'])
-wasmlto1 = make_run('wasmlto1', emcc_args=['-flto', '-O1', '--llvm-lto', '1'])
-wasmlto2 = make_run('wasmlto2', emcc_args=['-flto', '-O2', '--llvm-lto', '1'])
-wasmlto3 = make_run('wasmlto3', emcc_args=['-flto', '-O3', '--llvm-lto', '1'])
-wasmltos = make_run('wasmltos', emcc_args=['-flto', '-Os', '--llvm-lto', '1'])
-wasmltoz = make_run('wasmltoz', emcc_args=['-flto', '-Oz', '--llvm-lto', '1'])
+wasmlto0 = make_run('wasmlto0', emcc_args=['-flto', '-O0'])
+wasmlto1 = make_run('wasmlto1', emcc_args=['-flto', '-O1'])
+wasmlto2 = make_run('wasmlto2', emcc_args=['-flto', '-O2'])
+wasmlto3 = make_run('wasmlto3', emcc_args=['-flto', '-O3'])
+wasmltos = make_run('wasmltos', emcc_args=['-flto', '-Os'])
+wasmltoz = make_run('wasmltoz', emcc_args=['-flto', '-Oz'])
 
 if shared.Settings.WASM_BACKEND:
   wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})

@@ -226,7 +226,6 @@ class EmccOptions(object):
     self.js_opts = None
     self.force_js_opts = False
     self.llvm_opts = None
-    self.llvm_lto = None
     self.use_closure_compiler = None
     self.closure_args = []
     self.js_transform = None
@@ -2372,71 +2371,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # exit block 'link'
     log_time('link')
 
-    if not shared.Settings.WASM_BACKEND:
-      with ToolchainProfiler.profile_block('post-link'):
-        if DEBUG:
-          logger.debug('saving intermediate processing steps to %s', shared.get_emscripten_temp_dir())
-          save_intermediate('basebc', 'bc')
-
-        # Optimize, if asked to
-        # remove LLVM debug if we are not asked for it
-        link_opts = []
-        if not need_llvm_debug_info(options):
-          link_opts += ['-strip-debug']
-        if not shared.Settings.ASSERTIONS:
-          link_opts += ['-disable-verify']
-        else:
-          # when verifying, LLVM debug info has some tricky linking aspects, and llvm-link will
-          # disable the type map in that case. we added linking to opt, so we need to do
-          # something similar, which we can do with a param to opt
-          link_opts += ['-disable-debug-info-type-map']
-
-        if options.llvm_lto is not None and options.llvm_lto >= 2 and optimizing(options.llvm_opts):
-          logger.debug('running LLVM opts as pre-LTO')
-          final = building.llvm_opt(final, options.llvm_opts, DEFAULT_FINAL)
-          save_intermediate('opt', 'bc')
-
-        # If we can LTO, do it before dce, since it opens up dce opportunities
-        if (not shared.Settings.LINKABLE) and options.llvm_lto and options.llvm_lto != 2:
-          if not building.can_inline():
-            link_opts.append('-disable-inlining')
-          # add a manual internalize with the proper things we need to be kept alive during lto
-          link_opts += building.get_safe_internalize() + ['-std-link-opts']
-          # execute it now, so it is done entirely before we get to the stage of legalization etc.
-          final = building.llvm_opt(final, link_opts, DEFAULT_FINAL)
-          save_intermediate('lto', 'bc')
-          link_opts = []
-        else:
-          # At minimum remove dead functions etc., this potentially saves a
-          # lot in the size of the generated code (and the time to compile it)
-          link_opts += building.get_safe_internalize() + ['-globaldce']
-
-        if options.cfi:
-          link_opts.append("-wholeprogramdevirt")
-          link_opts.append("-lowertypetests")
-
-        if shared.Settings.AUTODEBUG:
-          # let llvm opt directly emit ll, to skip writing and reading all the bitcode
-          link_opts += ['-S']
-          final = building.llvm_opt(final, link_opts, get_final() + '.link.ll')
-          save_intermediate('linktime', 'll')
-        else:
-          if len(link_opts) > 0:
-            final = building.llvm_opt(final, link_opts, DEFAULT_FINAL)
-            save_intermediate('linktime', 'bc')
-
-        if shared.Settings.AUTODEBUG:
-          logger.debug('autodebug')
-          next = get_final() + '.ad.ll'
-          run_process([shared.PYTHON, shared.AUTODEBUGGER, final, next])
-          final = next
-          save_intermediate('autodebug', 'll')
-
-        assert not isinstance(final, list), 'we must have linked the final files, if linking was deferred, by this point'
-
-      # exit block 'post-link'
-      log_time('post-link')
-
     if target == os.devnull:
       # TODO(sbc): In theory we should really run the whole pipeline even if the output is
       # /dev/null, but that will take some refactoring
@@ -2826,9 +2760,7 @@ def parse_args(newargs):
       else:
         shared.Settings.LTO = "full"
     elif check_arg('--llvm-lto'):
-      if shared.Settings.WASM_BACKEND:
-        logger.warning('--llvm-lto ignored when using llvm backend')
-      options.llvm_lto = int(consume_arg())
+      logger.warning('--llvm-lto ignored when using llvm backend')
     elif check_arg('--closure-args'):
       args = consume_arg()
       options.closure_args += shlex.split(args)
