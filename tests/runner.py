@@ -597,30 +597,23 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename,
-            additional_files=[], libraries=[], includes=[],
+            libraries=[], includes=[],
             post_build=None, js_outfile=True):
     with open(filename, 'w') as f:
       f.write(src)
-    final_additional_files = []
-    for f in additional_files:
-      final_additional_files.append(os.path.join(dirname, os.path.basename(f)))
-      shutil.copyfile(f, final_additional_files[-1])
-    additional_files = final_additional_files
 
     suffix = '.o.js' if js_outfile else '.o.wasm'
-    all_sources = [filename] + additional_files
-    if any(os.path.splitext(s)[1] in ('.cc', '.cxx', '.cpp') for s in all_sources):
+    if os.path.splitext(filename)[1] in ('.cc', '.cxx', '.cpp'):
       compiler = EMXX
     else:
       compiler = EMCC
 
-    all_files = all_sources + libraries
-    args = [compiler] + self.get_emcc_args(main_file=True) + \
+    cmd = [compiler, filename, '-o', filename + suffix] + self.get_emcc_args(main_file=True) + \
         ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
         ['-I' + include for include in includes] + \
-        all_files + ['-o', filename + suffix]
+        libraries
 
-    self.run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
+    self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(filename + suffix)
 
     if post_build:
@@ -1099,7 +1092,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
-             no_build=False, additional_files=[],
+             no_build=False,
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False,
              assert_returncode=0, assert_identical=False, assert_all=False,
@@ -1116,7 +1109,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       dirname = self.get_dir()
       filename = os.path.join(dirname, basename)
       self.build(src, dirname, filename,
-                 additional_files=additional_files, libraries=libraries,
+                 libraries=libraries,
                  includes=includes,
                  post_build=post_build)
       js_file = filename + '.o.js'
