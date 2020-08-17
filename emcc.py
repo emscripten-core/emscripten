@@ -2734,6 +2734,7 @@ def parse_args(newargs):
         shared.Settings.LTO = "full"
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
+      consume_arg()
     elif check_arg('--closure-args'):
       args = consume_arg()
       options.closure_args += shlex.split(args)
