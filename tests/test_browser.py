@@ -20,11 +20,11 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, NON_ZERO
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
+from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
 from tools.shared import try_delete
 
 try:
