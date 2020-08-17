@@ -2028,16 +2028,21 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
+    var currentYear = new Date().getFullYear();
+    var winter = new Date(currentYear, 0, 1);
+    var summer = new Date(currentYear, 6, 1);
+
+    Date.prototype.stdTimezoneOffset = function() {
+        return Math.max(winter.getTimezoneOffset(), summer.getTimezoneOffset());
+    }
+
     // timezone is specified as seconds west of UTC ("The external variable
     // `timezone` shall be set to the difference, in seconds, between
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by getTimezoneOffset().
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
+    {{{ makeSetValue('__get_timezone()', '0', '(new Date().stdTimezoneOffset()) * 60', 'i32') }}};
 
-    var currentYear = new Date().getFullYear();
-    var winter = new Date(currentYear, 0, 1);
-    var summer = new Date(currentYear, 6, 1);
     {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
 
     function extractZone(date) {
