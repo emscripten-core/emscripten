@@ -187,9 +187,6 @@ var LibraryJSEvents = {
     },
 
 #if USE_PTHREADS
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-    queueEventHandlerOnThread_iiii__deps: ['$stackSave', '$stackAlloc', '$stackRestore'],
-#endif
     queueEventHandlerOnThread_iiii: function(targetThread, eventHandlerFunc, eventTypeId, eventData, userData) {
       var stackTop = stackSave();
       var varargs = stackAlloc(12);
@@ -2456,11 +2453,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', '_emscripten_call_on_thread'
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  , '$stackSave', '$stackAlloc', '$stackRestore'
-#endif
-  ],
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', '_emscripten_call_on_thread'],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
     var stackTop = stackSave();
     var varargs = stackAlloc(12);
@@ -2519,11 +2512,7 @@ var LibraryJSEvents = {
   },
 #endif
 
-  _set_canvas_element_size__deps: ['emscripten_set_canvas_element_size'
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  , '$stackSave', '$stackAlloc', '$stackRestore'
-#endif
-  ],
+  _set_canvas_element_size__deps: ['emscripten_set_canvas_element_size'],
   _set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
     console.error('_set_canvas_element_size(target='+target+',width='+width+',height='+height);
@@ -2596,11 +2585,7 @@ var LibraryJSEvents = {
 #endif
 
   // JavaScript-friendly API, returns pair [width, height]
-  _get_canvas_element_size__deps: ['emscripten_get_canvas_element_size'
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  , '$stackSave', '$stackAlloc', '$stackRestore'
-#endif
-  ],
+  _get_canvas_element_size__deps: ['emscripten_get_canvas_element_size'],
   _get_canvas_element_size: function(target) {
     var stackTop = stackSave();
     var w = stackAlloc(8);

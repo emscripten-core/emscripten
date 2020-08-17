@@ -24,7 +24,7 @@ def get(ports, settings, shared):
     logging.info('building port: libjpeg')
 
     source_path = os.path.join(ports.get_dir(), 'libjpeg', 'jpeg-9c')
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'libjpeg')
+    dest_path = os.path.join(ports.get_build_dir(), 'libjpeg')
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)

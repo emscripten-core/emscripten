@@ -27,7 +27,7 @@ The optimization level you should use depends mostly on the current stage of dev
 - Building with ``-O3`` or ``-Os`` can produce an ever better build than ``-O2``, and are worth considering for release builds. ``-O3`` builds are even more optimized than ``-O2``, but at the cost of significantly longer compilation time and potentially larger code size. ``-Os`` is similar in increasing compile times, but focuses on reducing code size while doing additional optimization. It's worth trying these different optimization options to see what works best for your application.
 - Other optimizations are discussed in the following sections.
 
-In addition to the ``-Ox`` options, there are separate compiler options that can be used to control the JavaScript optimizer (:ref:`js-opts <emcc-js-opts>`), LLVM optimizations (:ref:`llvm-opts <emcc-llvm-opts>`) and LLVM link-time optimizations (:ref:`llvm-lto <emcc-llvm-lto>`).
+In addition to the ``-Ox`` options, there are separate compiler options that can be used to control the JavaScript optimizer (:ref:`js-opts <emcc-js-opts>`), LLVM optimizations (:ref:`llvm-opts <emcc-llvm-opts>`) and LLVM link-time optimizations (:ref:`lto <emcc-lto>`).
 
 .. note::
 
@@ -86,27 +86,19 @@ The following compiler settings can help (see ``src/settings.js`` for more detai
 - Disable inlining when possible, using ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
 - You can use the ``-s FILESYSTEM=0`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
 - The ``ENVIRONMENT`` flag lets you specify that the output will only run on the web, or only run in node.js, etc. This prevents the compiler from emitting code to support all possible runtime environments, saving ~2KB.
-- You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. (This is already done by default for wasm, in ``-O1`` and above.)
 
 LTO
 ===
 
 Link Time Optimization (LTO) lets the compiler do more optimizations, as it can
-inline across separate compilation units, and even with system libraries. For
-fastcomp the :ref:`main relevant flag <emcc-llvm-lto>` is ``--llvm-lto 1`` at
-link time.
-
-With the LLVM wasm backend, LTO triggered by compiling objects files with
-``-flto``.  The effect of this flag is to emit LTO object files (technically
-this means emitting bitcode).  The linker can handle a mix wasm object files
-and LTO object files.  Passing ``-flto`` at link time will also trigger LTO
-system libraries to be used.
+inline across separate compilation units, and even with system libraries.
+LTO is enabled by compiling objects files with ``-flto``.  The effect of this
+flag is to emit LTO object files (technically this means emitting bitcode).  The
+linker can handle a mix wasm object files and LTO object files.  Passing
+``-flto`` at link time will also trigger LTO system libraries to be used.
 
 Thus, to allow maximal LTO opportunities with the LLVM wasm backend, build all
 source files with ``-flto`` and also link with ``flto``.
-
-Note that older versions of LLVM had bugs in this area. With the older fastcomp
-backend LTO should be used carefully.
 
 Very large codebases
 ====================
@@ -142,18 +134,6 @@ Running by itself
 -----------------
 
 If you hit memory limits in browsers, it can help to run your project by itself, as opposed to inside a web page containing other content. If you open a new web page (as a new tab, or a new window) that contains just your project, then you have the best chance at avoiding memory fragmentation issues.
-
-
-.. _optimizing-code-aggressive-variable-elimination:
-
-Aggressive variable elimination
--------------------------------
-
-Aggressive variable elimination is an asm.js feature (not relevant for wasm) that attempts to remove variables whenever possible, even at the cost of increasing code size by duplicating expressions. This can improve speed in cases where you have extremely large functions. For example it can make sqlite (which has a huge interpreter loop with thousands of lines in it) 7% faster.
-
-You can enable aggressive variable elimination with ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1``.
-
-.. note:: This setting can be harmful in some cases. Test before using it.
 
 
 Other optimization issues
@@ -195,7 +175,6 @@ Unsafe optimizations
 A few **UNSAFE** optimizations you might want to try are:
 
 - ``--closure 1``: This can help with reducing the size of the non-generated (support/glue) JS code, and with startup. However it can break if you do not do proper :term:`Closure Compiler` annotations and exports. But it's worth it!
-- ``--llvm-lto 1``: This enables LLVM's link-time optimizations, which can help in some cases. However there are known issues with these optimizations, so code must be extensively tested. See :ref:`llvm-lto <emcc-llvm-lto>` for information about the other modes.
 
 .. _optimizing-code-profiling:
 

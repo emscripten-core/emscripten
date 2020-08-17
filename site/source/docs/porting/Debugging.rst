@@ -251,13 +251,10 @@ In order to debug these sorts of issues:
 - Compile with ``-Werror``. This turns warnings into errors, which can be useful as some cases of undefined behavior would otherwise show warnings.
 - Use ``-s ASSERTIONS=2`` to get some useful information about the function pointer being called, and its type.
 - Look at the browser stack trace to see where the error occurs and which function should have been called.
-- Build with :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>` and function pointer aliasing disabled (``ALIASING_FUNCTION_POINTERS=0``). This should make it impossible for a function pointer to be called with the wrong type without raising an error: ``-s SAFE_HEAP=1 -s ALIASING_FUNCTION_POINTERS=0``
-
+- Build with :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>`.
+- :ref:`Sanitizers` can help here, in particular UBSan.
 
 Another function pointer issue is when the wrong function is called. :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>` can help with this as it detects some possible errors with function table accesses.
-
-``ALIASING_FUNCTION_POINTERS=0`` is also useful because it ensures that calls to function pointer addresses in the wrong table result in clear errors. Without this setting such calls just execute whatever function is at the address, which can be much harder to debug.
-
 
 
 Infinite loops

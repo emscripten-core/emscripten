@@ -17,9 +17,17 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.0: 08/10/2020
+-----------------
+- First release that only supports the new upstream wasm backend (which has been
+  the default for a long time) and no longer supports the old fastcomp backend.
+  (#11319)
 - Python2 is no longer supported by Emscripten.  Emsdk now includes a bundled
   copy of Python3 on both macOS and Windows.  This means that only non-emsdk
   users and linux users should be effected by this change.
+- Store exceptions metadata in wasm memory instead of JS. This makes exception
+  handling almost 100% thread-safe. (#11518)
 
 1.40.1: 08/01/2020
 ------------------
