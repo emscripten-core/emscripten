@@ -718,33 +718,6 @@ f.close()
       self.run_process([EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-  @no_wasm_backend('asm.js minification')
-  def test_asm_minify(self):
-    def test(args):
-      self.run_process([EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp'), '-s', 'WASM=0'] + args)
-      self.assertContained('hello, world!', self.run_js('a.out.js'))
-      return open('a.out.js').read()
-
-    src = test([])
-    assert 'function _malloc' in src
-
-    src = test(['-O2', '-s', 'ASM_JS=1'])
-    normal_size = len(src)
-    print('normal', normal_size)
-    assert 'function _malloc' not in src
-
-    src = test(['-O2', '-s', 'ASM_JS=1', '--minify', '0'])
-    unminified_size = len(src)
-    print('unminified', unminified_size)
-    assert unminified_size > normal_size
-    assert 'function _malloc' not in src
-
-    src = test(['-O2', '-s', 'ASM_JS=1', '-g'])
-    debug_size = len(src)
-    print('debug', debug_size)
-    self.assertGreater(debug_size, unminified_size)
-    self.assertContained('function _malloc', src)
-
   def test_wl_linkflags(self):
     # Test path -L and -l via -Wl, arguments and -Wl, response files
     create_test_file('main.cpp', '''

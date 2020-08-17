@@ -20,11 +20,11 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, NON_ZERO
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, V8_ENGINE, JS_ENGINES
+from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
 from tools.shared import try_delete
 
 try:
@@ -2172,13 +2172,6 @@ void *getBindBuffer() {
   @no_chrome('see #7117')
   @requires_graphics_hardware
   def test_aniso(self):
-    if SPIDERMONKEY_ENGINE in JS_ENGINES:
-      # asm.js-ification check
-      self.compile_btest([path_from_root('tests', 'aniso.c'), '-O2', '-g2', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
-      self.set_setting('ASM_JS', 1)
-      self.run_js('a.out.js', SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
-      print('passed asm test')
-
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
     self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
 

@@ -918,7 +918,6 @@ class SettingsManager(object):
     @classmethod
     def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
       if opt_level >= 1:
-        cls.attrs['ASM_JS'] = 1
         cls.attrs['ASSERTIONS'] = 0
       if shrink_level >= 2:
         cls.attrs['EVAL_CTORS'] = 1
@@ -998,9 +997,6 @@ class SettingsManager(object):
 
 
 def verify_settings():
-  if Settings.ASM_JS not in [1, 2]:
-    exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
-
   if Settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
