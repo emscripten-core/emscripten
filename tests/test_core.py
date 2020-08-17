@@ -2597,10 +2597,10 @@ The current type of b is: 9
     if self.get_setting('WASM'):
       # emcc emits a wasm in this case
       self.build(filename, js_outfile=False)
-      shutil.move(os.path.splitext(filename)[0] + '.wasm', 'liblib.so')
+      shutil.move(shared.unsuffixed(filename) + '.wasm', 'liblib.so')
     else:
       self.build(filename)
-      shutil.move(os.path.splitext(filename)[0] + '.js', 'liblib.so')
+      shutil.move(shared.unsuffixed(filename) + '.js', 'liblib.so')
 
   @needs_dlfcn
   def test_dlfcn_missing(self):

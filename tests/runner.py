@@ -595,7 +595,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       compiler = EMCC
 
     dirname, basename = os.path.split(filename)
-    output = os.path.splitext(basename)[0] + suffix
+    output = shared.unsuffixed(basename) + suffix
     cmd = [compiler, filename, '-o', output] + self.get_emcc_args(main_file=True) + \
         ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
         ['-I' + include for include in includes] + \
@@ -988,7 +988,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=[]):
-      cmdv = [EMCC, src, '-o', os.path.splitext(src)[0] + so] + self.get_emcc_args()
+      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so] + self.get_emcc_args()
       cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
       self.run_process(cmdv)
 
@@ -1092,14 +1092,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if src:
         js_file = src
       else:
-        js_file = os.path.splitext(basename)[0] + '.js'
+        js_file = shared.unsuffixed(basename) + '.js'
     else:
       dirname = self.get_dir()
       filename = os.path.join(dirname, basename)
       with open(filename, 'w') as f:
         f.write(src)
       self.build(filename, libraries=libraries, includes=includes, post_build=post_build)
-      js_file = os.path.splitext(filename)[0] + '.js'
+      js_file = shared.unsuffixed(filename) + '.js'
     self.assertExists(js_file)
 
     engines = self.filtered_js_engines(js_engines)
