@@ -2593,14 +2593,14 @@ The current type of b is: 9
 ''' % str(list(bytearray(open('liblib.so', 'rb').read()))))
     self.emcc_args += ['--pre-js', 'lib_so_pre.js']
 
-  def build_dlfcn_lib(self, lib_src, dirname, filename):
+  def build_dlfcn_lib(self, filename):
     if self.get_setting('WASM'):
       # emcc emits a wasm in this case
-      self.build(lib_src, dirname, filename, js_outfile=False)
-      shutil.move(filename + '.o.wasm', os.path.join(dirname, 'liblib.so'))
+      self.build(filename, js_outfile=False)
+      shutil.move(filename + '.o.wasm', 'liblib.so')
     else:
-      self.build(lib_src, dirname, filename)
-      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+      self.build(filename)
+      shutil.move(filename + '.o.js', 'liblib.so')
 
   @needs_dlfcn
   def test_dlfcn_missing(self):
@@ -2628,7 +2628,7 @@ The current type of b is: 9
   @needs_dlfcn
   def test_dlfcn_basic(self):
     self.prep_dlfcn_lib()
-    lib_src = '''
+    create_test_file('liblib.cpp', '''
       #include <cstdio>
 
       class Foo {
@@ -2639,10 +2639,8 @@ The current type of b is: 9
       };
 
       Foo global;
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+      ''')
+    self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
     src = '''
@@ -2669,14 +2667,12 @@ The current type of b is: 9
   def test_dlfcn_i64(self):
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
-    lib_src = '''
+    create_test_file('liblib.c', '''
       int foo(int x) {
         return (long long)x / (long long)1234;
       }
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+      ''')
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     self.clear_setting('EXPORTED_FUNCTIONS')
@@ -2714,7 +2710,7 @@ The current type of b is: 9
   @no_wasm('EM_ASM in shared wasm modules, stored inside the wasm somehow')
   def test_dlfcn_em_asm(self):
     self.prep_dlfcn_lib()
-    lib_src = '''
+    create_test_file('liblib.cpp', '''
       #include <emscripten.h>
       class Foo {
       public:
@@ -2723,9 +2719,8 @@ The current type of b is: 9
         }
       };
       Foo global;
-      '''
-    filename = 'liblib.cpp'
-    self.build_dlfcn_lib(lib_src, self.get_dir(), filename)
+      ''')
+    self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
     src = '''
@@ -2750,7 +2745,7 @@ The current type of b is: 9
   def test_dlfcn_qsort(self):
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_cmp'])
-    lib_src = '''
+    create_test_file('liblib.cpp', '''
       int lib_cmp(const void* left, const void* right) {
         const int* a = (const int*) left;
         const int* b = (const int*) right;
@@ -2764,10 +2759,8 @@ The current type of b is: 9
       extern "C" CMP_TYPE get_cmp() {
         return lib_cmp;
       }
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+      ''')
+    self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
@@ -2830,7 +2823,7 @@ The current type of b is: 9
       self.banned_js_engines = [V8_ENGINE]
 
     self.prep_dlfcn_lib()
-    lib_src = r'''
+    create_test_file('liblib.cpp', r'''
       #include <stdio.h>
 
       int theglobal = 42;
@@ -2855,11 +2848,9 @@ The current type of b is: 9
         fptr();
         return lib_fptr;
       }
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_func'])
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2931,16 +2922,14 @@ Var: 42
     # to be loaded, not load and successfully see the parent print_ints func
 
     self.prep_dlfcn_lib()
-    lib_src = r'''
+    create_test_file('liblib.cpp', r'''
       void print_ints(int n, ...);
       extern "C" void func() {
         print_ints(2, 13, 42);
       }
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_func'])
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2979,16 +2968,14 @@ Var: 42
   def test_dlfcn_alignment_and_zeroing(self):
     self.prep_dlfcn_lib()
     self.set_setting('INITIAL_MEMORY', 16 * 1024 * 1024)
-    lib_src = r'''
+    create_test_file('liblib.cpp', r'''
       extern "C" {
         int prezero = 0;
         __attribute__((aligned(1024))) int superAligned = 12345;
         int postzero = 0;
       }
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+      ''')
+    self.build_dlfcn_lib('liblib.cpp')
     for i in range(10):
       curr = '%d.so' % i
       shutil.copyfile('liblib.so', curr)
@@ -3082,17 +3069,15 @@ Var: 42
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):
     self.prep_dlfcn_lib()
-    lib_src = '''
+    create_test_file('liblib.c', r'''
       #include <stdio.h>
 
       int myfunc(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m) {
         return 13;
       }
-      '''
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_myfunc'])
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = '''
@@ -3125,17 +3110,15 @@ Var: 42
   def test_dlfcn_info(self):
 
     self.prep_dlfcn_lib()
-    lib_src = '''
+    create_test_file('liblib.c', r'''
       #include <stdio.h>
 
       int myfunc(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m) {
         return 13;
       }
-      '''
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_myfunc'])
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = '''
@@ -3182,7 +3165,7 @@ Var: 42
   @needs_dlfcn
   def test_dlfcn_stacks(self):
     self.prep_dlfcn_lib()
-    lib_src = '''
+    create_test_file('liblib.c', r'''
       #include <assert.h>
       #include <stdio.h>
       #include <string.h>
@@ -3196,11 +3179,9 @@ Var: 42
         snprintf(bigstack, sizeof(bigstack), input);
         return strlen(bigstack);
       }
-      '''
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_myfunc'])
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = '''
@@ -3240,7 +3221,7 @@ Var: 42
   @needs_dlfcn
   def test_dlfcn_funcs(self):
     self.prep_dlfcn_lib()
-    lib_src = r'''
+    create_test_file('liblib.c', r'''
       #include <assert.h>
       #include <stdio.h>
       #include <string.h>
@@ -3270,10 +3251,9 @@ Var: 42
           default: return NULL;
         }
       }
-      '''
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_callvoid', '_callint', '_getvoid', '_getint'])
-    dirname = self.get_dir()
-    self.build_dlfcn_lib(lib_src, dirname, os.path.join(dirname, 'liblib.c'))
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3340,7 +3320,7 @@ ok
     self.set_setting('INITIAL_MEMORY', 64 * 1024 * 1024)
 
     self.prep_dlfcn_lib()
-    lib_src = r'''
+    create_test_file('liblib.c', r'''
       #include <assert.h>
       #include <stdio.h>
       #include <string.h>
@@ -3348,11 +3328,9 @@ ok
 
       void *mallocproxy(int n) { return malloc(n); }
       void freeproxy(void *p) { free(p); }
-      '''
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_mallocproxy', '_freeproxy'])
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = open(path_from_root('tests', 'dlmalloc_proxy.c')).read()
@@ -3362,7 +3340,7 @@ ok
   @needs_dlfcn
   def test_dlfcn_longjmp(self):
     self.prep_dlfcn_lib()
-    lib_src = r'''
+    create_test_file('liblib.c', r'''
       #include <setjmp.h>
       #include <stdio.h>
 
@@ -3372,11 +3350,9 @@ ok
         if (i == 10) longjmp(buf, i);
         printf("pre %d\n", i);
       }
-      '''
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_jumpy'])
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3429,7 +3405,7 @@ out!
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.prep_dlfcn_lib()
-    lib_src = r'''
+    create_test_file('liblib.cpp', r'''
       extern "C" {
       int ok() {
         return 65;
@@ -3438,11 +3414,9 @@ out!
         throw 123;
       }
       }
-      '''
+      ''')
     self.set_setting('EXPORTED_FUNCTIONS', ['_ok', '_fail'])
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3499,20 +3473,30 @@ ok
     def indir(name):
       return os.path.join(dirname, name)
 
-    libecho = r'''
+    create_test_file('a.cpp', r'''
       #include <stdio.h>
 
-      static struct %(libname)s {
-        %(libname)s() {
-          puts("%(libname)s: loaded");
+      static struct a {
+        a() {
+          puts("a: loaded");
         }
       } _;
-    '''
+    ''')
+
+    create_test_file('b.cpp', r'''
+      #include <stdio.h>
+
+      static struct b {
+        b() {
+          puts("b: loaded");
+        }
+      } _;
+    ''')
 
     self.prep_dlfcn_lib()
-    self.build_dlfcn_lib(libecho % {'libname': 'a'}, dirname, indir('a.cpp'))
+    self.build_dlfcn_lib('a.cpp')
     shutil.move(indir('liblib.so'), indir('liba.so'))
-    self.build_dlfcn_lib(libecho % {'libname': 'b'}, dirname, indir('b.cpp'))
+    self.build_dlfcn_lib('b.cpp')
     shutil.move(indir('liblib.so'), indir('libb.so'))
 
     self.set_setting('MAIN_MODULE')
@@ -3554,14 +3538,12 @@ ok
     self.emcc_args.append('-mnontrapping-fptoint')
 
     self.prep_dlfcn_lib()
-    lib_src = r'''
+    create_test_file('liblib.cpp', r'''
         extern "C" int magic(float x) {
           return __builtin_wasm_trunc_saturate_s_i32_f32(x);
         }
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+      ''')
+    self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3604,11 +3586,13 @@ ok
       try_delete(out_file)
       self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
-      base = 'liblib.cpp' if not force_c else 'liblib.c'
-      try_delete(base + '.o.' + side_suffix)
-      self.build(side, self.get_dir(), base, js_outfile=(side_suffix == 'js'))
+      filename = 'liblib.cpp' if not force_c else 'liblib.c'
+      try_delete(filename + '.o.' + side_suffix)
+      with open(filename, 'w') as f:
+        f.write(side)
+      self.build(filename, js_outfile=(side_suffix == 'js'))
       if force_c:
-        shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
+        shutil.move(filename + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
     shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
 
     # main settings
@@ -5724,8 +5708,7 @@ int main(void) {
 
   def test_fannkuch(self):
     results = [(1, 0), (2, 1), (3, 2), (4, 4), (5, 7), (6, 10), (7, 16), (8, 22)]
-    src = open(path_from_root('tests', 'fannkuch.cpp')).read()
-    self.build(src, self.get_dir(), 'fannkuch.cpp')
+    self.build(path_from_root('tests', 'fannkuch.cpp'))
     for i, j in results:
       print(i, j)
       self.do_run('fannkuch.cpp.o.js', 'Pfannkuchen(%d) = %d.' % (i, j), [str(i)], no_build=True)
@@ -5751,7 +5734,9 @@ int main(void) {
       for t in ['float', 'double']:
         print(t)
         src = orig_src.replace('double', t)
-        self.build(src, self.get_dir(), 'fasta.cpp')
+        with open('fasta.cpp', 'w') as f:
+          f.write(src)
+        self.build('fasta.cpp')
         for arg, output in results:
           self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
         shutil.copyfile('fasta.cpp.o.js', '%s.js' % t)
@@ -5906,8 +5891,7 @@ return malloc(size);
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(), 'Success!')
     self.emcc_args.append('-munimplemented-simd128')
-    self.build(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(),
-               self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
+    self.build(path_from_root('tests', 'test_wasm_builtin_simd.cpp'))
 
   @wasm_simd
   def test_wasm_intrinsics_simd(self):
@@ -5922,8 +5906,7 @@ return malloc(size);
     self.emcc_args.append('-funsigned-char')
     run()
     self.emcc_args.extend(['-munimplemented-simd128', '-xc', '-std=c99'])
-    self.build(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
-               self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
+    self.build(path_from_root('tests', 'test_wasm_intrinsics_simd.c'))
 
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
@@ -7956,9 +7939,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # verify that an exception thrown in postRun() will not trigger the
     # compilation failed handler, and will be printed to stderr.
     self.add_post_run('ThisFunctionDoesNotExist()')
-    src = open(path_from_root('tests', 'core', 'test_hello_world.c')).read()
-    self.build(src, self.get_dir(), 'src.c')
-    output = self.run_js('src.c.o.js', assert_returncode=NON_ZERO)
+    self.build(path_from_root('tests', 'core', 'test_hello_world.c'))
+    output = self.run_js('test_hello_world.c.o.js', assert_returncode=NON_ZERO)
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 

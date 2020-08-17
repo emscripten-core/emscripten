@@ -9085,7 +9085,8 @@ int main(void) {
     self.assertLess(abs(changed - 5795), 150)
 
   def test_llvm_includes(self):
-    self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
+    create_test_file('atomics.c', '#include <stdatomic.h>')
+    self.build('atomics.c')
 
   def test_mmap_and_munmap(self):
     emcc_args = []
@@ -9721,7 +9722,8 @@ int main() {
     self.set_setting('ASSERTIONS')
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
     self.add_pre_run('console.log("calling foo"); Module["_foo"]();')
-    self.build('#include <stdio.h>\nint foo() { puts("foo called"); return 3; }', self.get_dir(), 'foo.c')
+    create_test_file('foo.c', '#include <stdio.h>\nint foo() { puts("foo called"); return 3; }')
+    self.build('foo.c')
     err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
     self.assertContained('native function `foo` called before runtime initialization', err)
 
@@ -9729,7 +9731,8 @@ int main() {
     self.set_setting('ASSERTIONS')
     self.set_setting('EXIT_RUNTIME')
     self.add_on_exit('console.log("calling main again"); Module["_main"]();')
-    self.build('#include <stdio.h>\nint main() { puts("foo called"); return 0; }', self.get_dir(), 'foo.c')
+    create_test_file('foo.c', '#include <stdio.h>\nint main() { puts("foo called"); return 0; }')
+    self.build('foo.c')
     err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
     self.assertContained('native function `main` called after runtime exit', err)
 
