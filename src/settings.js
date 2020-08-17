@@ -269,10 +269,6 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 // [compile+link]
 var INLINING_LIMIT = 0;
 
-// Whether to simplify ifs in js-optimizer.js
-// [fastcomp-only]
-var SIMPLIFY_IFS = 1;
-
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
 // 0). See runtime_safe_heap.js for the actual checks performed.
@@ -1736,4 +1732,5 @@ var LEGACY_SETTINGS = [
   ['PRECISE_F32', [0, 1, 2], 'The wasm backend always implements floats normally'],
   ['ALIASING_FUNCTION_POINTERS', [0, 1], 'The wasm backend always uses a single index space for function pointers, in a single Table'],
   ['AGGRESSIVE_VARIABLE_ELIMINATION', [0, 1], 'Wasm ignores asm.js-specific optimization flags'],
+  ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
 ];
