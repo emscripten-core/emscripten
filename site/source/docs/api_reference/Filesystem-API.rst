@@ -490,8 +490,8 @@ File system API
   Note that in the current implementation the stored timestamp is a single value, the maximum of ``atime`` and ``mtime``.
 
   :param string path: The path of the file to update.
-  :param int atime: The file modify time (milliseconds).
-  :param int mtime: The file access time (milliseconds).
+  :param int atime: The file access time (milliseconds).
+  :param int mtime: The file modify time (milliseconds).
 
 
 

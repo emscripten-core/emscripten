@@ -268,11 +268,6 @@ var SAFE_HEAP = 0;
 // Log out all SAFE_HEAP operations
 var SAFE_HEAP_LOG = 0;
 
-// In asm.js mode, we cannot simply add function pointers to function tables, so
-// we reserve some slots for them.
-// [fastcomp-only]
-var RESERVED_FUNCTION_POINTERS = 0;
-
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
 // normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
@@ -1668,6 +1663,8 @@ var LEGACY_SETTINGS = [
   ['PGO', [0], 'pgo no longer supported'],
   ['QUANTUM_SIZE', [4], 'altering the QUANTUM_SIZE is not supported'],
   ['FUNCTION_POINTER_ALIGNMENT', [2], 'Starting from Emscripten 1.37.29, no longer available (https://github.com/emscripten-core/emscripten/pull/6091)'],
+  // Reserving function pointers is not needed - allowing table growth allows any number of new functions to be added.
+  ['RESERVED_FUNCTION_POINTERS', 'ALLOW_TABLE_GROWTH'],
   ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],
   ['SAFE_SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
   ['SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
