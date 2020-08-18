@@ -9,21 +9,23 @@
 #include <assert.h>
 #include <emscripten/fetch.h>
 
+void downloadSucceeded(emscripten_fetch_t *fetch)
+{
+  char *userData = (char*)fetch->userData;
+  printf("Fetch is successed!\n");
+  printf("Passed userData is \"%s\"\n", userData);
+  assert(strcmp(userData, "User Data") == 0);
+}
+
 int main()
 {
-  int number = 721;
-  int *userData = &number;
+  char *userData = (char*)"User Data";
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
-  attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
+  attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
   attr.userData = userData;
-  attr.onsuccess = [](emscripten_fetch_t *fetch) {
-    int *passedUserData = (int*)fetch->userData;
-    printf("Fetch is successed!\n");
-    printf("Passed userData is \"%d\"\n", *passedUserData);
-    assert(*passedUserData == 721);
-  };
+  attr.onsuccess = downloadSucceeded;
   printf("Fetch is started!\n");
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
   #ifdef REPORT_RESULT
