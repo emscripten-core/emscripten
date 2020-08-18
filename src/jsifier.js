@@ -370,16 +370,6 @@ function JSify(data, functionsOnly) {
 
     itemsDict.functionStub.push(item);
     var shortident = demangleCSymbolName(item.ident);
-    // If this is not linkable, anything not in the library is definitely missing
-    if (item.ident in DEAD_FUNCTIONS) {
-      if (LibraryManager.library[shortident + '__asm']) {
-        warn('cannot kill asm library function ' + item.ident);
-      } else {
-        LibraryManager.library[shortident] = new Function("err('dead function: " + shortident + "'); abort(-1);");
-        delete LibraryManager.library[shortident + '__inline'];
-        delete LibraryManager.library[shortident + '__deps'];
-      }
-    }
     item.JS = addFromLibrary(shortident, 'top-level compiled C/C++ code');
   }
 

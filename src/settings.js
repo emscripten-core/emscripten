@@ -1031,14 +1031,6 @@ var USE_ES6_IMPORT_META = 1;
 // anything at all whatsoever. This is useful for benchmarking.
 var BENCHMARK = 0;
 
-// JS library functions on this list are not converted to JS, and calls to them
-// are turned into abort()s. This is potentially useful for reducing code size.
-// If a dead function is actually called, you will get a runtime error.
-//
-// TODO: make this work on compiled methods as well, perhaps by adding a JS
-// optimizer pass?
-var DEAD_FUNCTIONS = [];
-
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
 var EXPORT_NAME = 'Module';
@@ -1698,7 +1690,8 @@ var LEGACY_SETTINGS = [
   ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
   ['ELIMINATE_DUPLICATE_FUNCTIONS', [0, 1], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
   ['ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS', [0], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
-  ['ELIMINATE_DUPLICATE_FUNCTIONS_PASSES', [5], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
+  ['ELIMINATE_DUPLICATE_FUNCTIONS_PASSES', [5], 'Duplicate function eliminati
+  on for wasm is handled automatically by binaryen'],
   // WASM_OBJECT_FILES is handled in emcc.py, supporting both 0 and 1 for now.
   ['WASM_OBJECT_FILES', [0, 1], 'For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow'],
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],

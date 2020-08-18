@@ -6127,7 +6127,6 @@ return malloc(size);
     if WINDOWS and not use_cmake:
       self.skipTest("Windows cannot run configure sh scripts")
 
-    self.set_setting('DEAD_FUNCTIONS', ['__ZSt9terminatev'])
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
     asserts = self.get_setting('ASSERTIONS')
 
@@ -6521,39 +6520,6 @@ return malloc(size);
     # see that when we export them, things work on the module
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_DYNAMIC'])
     test()
-
-  @no_wasm_backend('DEAD_FUNCTIONS elimination is done by the JSOptimizer')
-  def test_dead_functions(self):
-    src = r'''
-      #include <stdio.h>
-      extern "C" {
-      __attribute__((noinline)) int unused(int x) {
-        volatile int y = x;
-        return y;
-      }
-      }
-      int main(int argc, char **argv) {
-        printf("*%d*\n", argc > 1 ? unused(1) : 2);
-        return 0;
-      }
-    '''
-
-    # Sanity check that it works and the dead function is emitted
-    self.do_run(src, '*1*', args=['x'])
-    js = open('src.js').read()
-    if self.run_name in ['default', 'asm2g']:
-      assert 'function _unused($' in js
-    self.do_run(None, '*2*', no_build=True)
-
-    # Kill off the dead function, and check a code path using it aborts
-    self.set_setting('DEAD_FUNCTIONS', ['_unused'])
-    self.do_run(src, '*2*')
-    self.do_run(None, 'abort(', args=['x'], no_build=True, assert_returncode=NON_ZERO)
-
-    # Kill off a library function, check code aborts
-    self.set_setting('DEAD_FUNCTIONS', ['_printf'])
-    self.do_run(src, 'abort(', assert_returncode=NON_ZERO)
-    self.do_run(None, 'abort(', args=['x'], no_build=True, assert_returncode=NON_ZERO)
 
   def test_response_file(self):
     response_data = '-o %s/response_file.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
