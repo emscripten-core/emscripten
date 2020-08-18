@@ -206,9 +206,8 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
     # way that minifies well with Closure
     # e.g. var a,b,c,d,e,f;
     exports_that_are_not_initializers = [x for x in exports if x not in initializers]
-    if shared.Settings.WASM_BACKEND:
-      # In Wasm backend the exports are still unmangled at this point, so mangle the names here
-      exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
+    # In Wasm backend the exports are still unmangled at this point, so mangle the names here
+    exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
     post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(exports_that_are_not_initializers) + ';')
 
     # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
@@ -503,15 +502,14 @@ def update_settings_glue(metadata, DEBUG):
 
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
-  if shared.Settings.WASM_BACKEND:
-    shared.Settings.BINARYEN_FEATURES = metadata['features']
-    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
-    if shared.Settings.RELOCATABLE:
-      # When building relocatable output (e.g. MAIN_MODULE) the reported table
-      # size does not include the reserved slot at zero for the null pointer.
-      # Instead we use __table_base to offset the elements by 1.
-      shared.Settings.WASM_TABLE_SIZE += 1
-    shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
+  shared.Settings.BINARYEN_FEATURES = metadata['features']
+  shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
+  if shared.Settings.RELOCATABLE:
+    # When building relocatable output (e.g. MAIN_MODULE) the reported table
+    # size does not include the reserved slot at zero for the null pointer.
+    # Instead we use __table_base to offset the elements by 1.
+    shared.Settings.WASM_TABLE_SIZE += 1
+  shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
 
 
 # static code hooks
@@ -572,12 +570,8 @@ class Memory():
     #  * then the stack (up on fastcomp, down on upstream)
     self.stack_low = align_memory(self.global_base + self.static_bump)
     self.stack_high = align_memory(self.stack_low + shared.Settings.TOTAL_STACK)
-    if shared.Settings.WASM_BACKEND:
-      self.stack_base = self.stack_high
-      self.stack_max = self.stack_low
-    else:
-      self.stack_base = self.stack_low
-      self.stack_max = self.stack_high
+    self.stack_base = self.stack_high
+    self.stack_max = self.stack_low
     #  * then dynamic memory begins
     self.dynamic_base = align_memory(self.stack_high)
 
@@ -1587,7 +1581,7 @@ HEAP_TYPE_INFOS = [
 ]
 
 
-def emscript_wasm_backend(infile, outfile, memfile, temp_files, DEBUG):
+def emscript(infile, outfile, memfile, temp_files, DEBUG):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -1739,7 +1733,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       args.append('--global-base=0')
     else:
       args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
-  if shared.Settings.WASM_BACKEND and shared.Settings.STACK_OVERFLOW_CHECK >= 2:
+  if shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
@@ -1862,14 +1856,14 @@ def add_standard_wasm_imports(send_items_map):
 
     send_items_map['table'] = 'wasmTable'
 
-  # With the wasm backend __memory_base and __table_base and only needed for
+  # With the wasm backend __memory_base and __table_base are only needed for
   # relocatable output.
-  if shared.Settings.RELOCATABLE or not shared.Settings.WASM_BACKEND: # FIXME
+  if shared.Settings.RELOCATABLE:
     send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE) # tell the memory segments where to place themselves
     # the wasm backend reserves slot 0 for the NULL function pointer
-    table_base = '1' if shared.Settings.WASM_BACKEND else '0'
+    table_base = '1'
     send_items_map['__table_base'] = table_base
-  if shared.Settings.RELOCATABLE and shared.Settings.WASM_BACKEND: # FIXME
+  if shared.Settings.RELOCATABLE:
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
@@ -2017,10 +2011,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 def make_export_wrappers(exports, delay_assignment):
   wrappers = []
   for name in exports:
-    if shared.Settings.WASM_BACKEND:
-      mangled = asmjs_mangle(name)
-    else:
-      mangled = name
+    mangled = asmjs_mangle(name)
     if shared.Settings.ASSERTIONS:
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
@@ -2218,7 +2209,6 @@ def run(infile, outfile, memfile):
 
   outfile_obj = open(outfile, 'w')
 
-  emscripter = emscript_wasm_backend
-  return temp_files.run_and_clean(lambda: emscripter(
+  return temp_files.run_and_clean(lambda: emscript(
       infile, outfile_obj, memfile, temp_files, shared.DEBUG)
   )
