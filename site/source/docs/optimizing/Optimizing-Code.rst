@@ -27,8 +27,6 @@ The optimization level you should use depends mostly on the current stage of dev
 - Building with ``-O3`` or ``-Os`` can produce an ever better build than ``-O2``, and are worth considering for release builds. ``-O3`` builds are even more optimized than ``-O2``, but at the cost of significantly longer compilation time and potentially larger code size. ``-Os`` is similar in increasing compile times, but focuses on reducing code size while doing additional optimization. It's worth trying these different optimization options to see what works best for your application.
 - Other optimizations are discussed in the following sections.
 
-In addition to the ``-Ox`` options, there are separate compiler options that can be used to control the JavaScript optimizer (:ref:`js-opts <emcc-js-opts>`), LLVM optimizations (:ref:`llvm-opts <emcc-llvm-opts>`) and LLVM link-time optimizations (:ref:`lto <emcc-lto>`).
-
 .. note::
 
   -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing asm.js and WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
