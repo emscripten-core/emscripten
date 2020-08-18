@@ -14,3 +14,4 @@ exclude =
  ./tools/ffdb.py,
  ./system/lib/, # system libraries
  ./cache/, # download/built content
+ .git
