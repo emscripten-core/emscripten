@@ -113,6 +113,10 @@ void test() {
   err = access("dir/subdir3/subdir3_1/subdir1 renamed", F_OK);
   assert(!err);
 
+  err = rename("dir/hicsuntdracones/empty", "dir/hicsuntdracones/renamed");
+  assert(err == -1);
+  assert(errno == ENOENT);
+  
   puts("success");
 }
 
