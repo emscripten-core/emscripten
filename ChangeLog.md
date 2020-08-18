@@ -25,6 +25,11 @@ Current Trunk
   `-s RESERVED_FUNCTION_POINTERS=K` for any `K > 0` will simply turn on
   table growth. The only noticeable effect of this is that you will be able to
   add an unlimited amount of functions and not just `K`.
+- Naming of `.mem` and `.symbols` files is now the same as under
+  MINIMAL_RUNTIME.  The new convention is to that the `.wasm` extension is
+  replaced rather then appended to.  e.g.:
+     foo.wasm.mem -> foo.mem
+     foo.wasm.symbols -> foo.symbols
 
 2.0.0: 08/10/2020
 -----------------

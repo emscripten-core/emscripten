@@ -461,9 +461,9 @@ f.close()
       self.clear()
       self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-O' + str(opts)])
       if opts >= 2:
-        self.assertExists('a.out.js.mem')
+        self.assertExists('a.out.mem')
       else:
-        self.assertNotExists('a.out.js.mem')
+        self.assertNotExists('a.out.mem')
 
   def test_emcc_asm_v_wasm(self):
     for opts in ([], ['-O1'], ['-O2'], ['-O3']):
@@ -3630,7 +3630,7 @@ EM_ASM({ _middle() });
         cmd += ['-s', 'WASM=%d' % wasm]
         self.run_process(cmd)
         # check that the map is correct
-        with open('a.out.js.symbols') as f:
+        with open('a.out.symbols') as f:
           symbols = f.read()
         lines = [line.split(':') for line in symbols.strip().split('\n')]
         minified_middle = None
@@ -6464,7 +6464,7 @@ int main() {
           memsize = self.count_wasm_contents('a.out.wasm', 'memory-data')
         else:
           codesize = os.path.getsize('a.out.js')
-          memsize = os.path.getsize('a.out.js.mem')
+          memsize = os.path.getsize('a.out.mem')
         return (codesize, memsize)
 
       def check_size(left, right):
@@ -7527,7 +7527,7 @@ int main() {
         print(' '.join(cmd))
         self.run_process(cmd)
         print(os.listdir('.'))
-        assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
+        assert expect_meminit == os.path.exists('a.out.mem')
         assert expect_wasm == os.path.exists('a.out.wasm')
         assert not os.path.exists('a.out.wat')
         self.assertContained('hello, world!', self.run_js('a.out.js'))

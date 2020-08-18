@@ -4893,7 +4893,7 @@ Module = {
 
     src = open(path_from_root('tests', 'files.cpp')).read()
 
-    mem_file = 'src.js.mem'
+    mem_file = 'src.mem'
     try_delete(mem_file)
 
     def clean(out, err):
@@ -6718,7 +6718,7 @@ return malloc(size);
     # make sure the shortened name is the right one
     full_aborter = None
     short_aborter = None
-    for line in open('src.js.symbols').readlines():
+    for line in open('src.symbols').readlines():
       if ':' not in line:
         continue
       # split by the first ':' (wasm backend demangling may include more :'s later on)
@@ -6774,7 +6774,7 @@ return malloc(size);
         # Use number of functions as a for code size
         return self.count_wasm_contents('src.wasm', 'memory-data')
       if self.uses_memory_init_file():
-        return os.path.getsize('src.js.mem')
+        return os.path.getsize('src.mem')
 
       # otherwise we ignore memory size
       return 0
@@ -7731,11 +7731,11 @@ Module['onRuntimeInitialized'] = function() {
     # a mem init file is emitted just like with JS
     expect_memory_init_file = self.uses_memory_init_file()
     if expect_memory_init_file:
-      self.assertExists('test_hello_world.js.mem')
-      with open('test_hello_world.js.mem', 'rb') as f:
+      self.assertExists('test_hello_world.mem')
+      with open('test_hello_world.mem', 'rb') as f:
         self.assertTrue(f.read()[-1] != b'\0')
     else:
-      self.assertNotExists('test_hello_world.js.mem')
+      self.assertNotExists('test_hello_world.mem')
 
   @no_asan('no wasm2js support yet in asan')
   def test_maybe_wasm2js(self):
