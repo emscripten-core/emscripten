@@ -9545,7 +9545,7 @@ int main() {
   def test_argument_match(self):
     # Verify that emcc arguments match precisely.  We had a bug where only the prefix
     # was matched
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--minify', '10'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--minify', '1'])
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--minifyXX'])
     self.assertContained("error: unsupported option '--minifyXX'", err)
 
