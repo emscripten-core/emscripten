@@ -6027,31 +6027,31 @@ return malloc(size);
     shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'font.ttf')
 
     # Main
-    self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
-                open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
-                ['font.ttf', 'test!', '150', '120', '25'],
-                libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
+    self.do_run_from_file(path_from_root('tests', 'freetype', 'main.c'),
+                          path_from_root('tests', 'freetype', 'ref.txt'),
+                          args=['font.ttf', 'test!', '150', '120', '25'],
+                          libraries=self.get_freetype_library(),
+                          includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     # github issue 324
     print('[issue 324]')
-    self.do_run(open(path_from_root('tests', 'freetype', 'main_2.c')).read(),
-                open(path_from_root('tests', 'freetype', 'ref_2.txt')).read(),
-                ['font.ttf', 'w', '32', '32', '25'],
-                libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
+    self.do_run_from_file(path_from_root('tests', 'freetype', 'main_2.c'),
+                          path_from_root('tests', 'freetype', 'ref_2.txt'),
+                          args=['font.ttf', 'w', '32', '32', '25'],
+                          libraries=self.get_freetype_library(),
+                          includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     print('[issue 324 case 2]')
-    self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c')).read(),
-                open(path_from_root('tests', 'freetype', 'ref_3.txt')).read(),
-                ['font.ttf', 'W', '32', '32', '0'],
-                libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
+    self.do_run_from_file(path_from_root('tests', 'freetype', 'main_3.c'),
+                          path_from_root('tests', 'freetype', 'ref_3.txt'),
+                          args=['font.ttf', 'W', '32', '32', '0'],
+                          libraries=self.get_freetype_library(),
+                          includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
-    self.do_run(None,
+    self.do_run('main_3.js',
                 open(path_from_root('tests', 'freetype', 'ref_4.txt')).read(),
-                ['font.ttf', 'ea', '40', '32', '0'],
+                args=['font.ttf', 'ea', '40', '32', '0'],
                 no_build=True)
 
   @no_asan('local count too large for VMs')
@@ -6251,7 +6251,7 @@ return malloc(size);
     def do_test():
       self.do_run(open(path_from_root('tests', 'third_party', 'openjpeg', 'codec', 'j2k_to_image.c')).read(),
                   'Successfully generated', # The real test for valid output is in image_compare
-                  '-i image.j2k -o image.raw'.split(' '),
+                  args='-i image.j2k -o image.raw'.split(),
                   libraries=lib,
                   includes=[path_from_root('tests', 'third_party', 'openjpeg', 'libopenjpeg'),
                             path_from_root('tests', 'third_party', 'openjpeg', 'codec'),
