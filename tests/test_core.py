@@ -8149,7 +8149,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_no_error(self, name):
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
-                basename=name, expected_output=[''], assert_returncode=NON_ZERO)
+                force_c=name.endswith('.c'), expected_output=[''], assert_returncode=NON_ZERO)
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
   # clang optimizing things away. for example, a memset might be optimized into
@@ -8219,7 +8219,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if cflags:
       self.emcc_args += cflags
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
-                basename='src.c' if name.endswith('.c') else 'src.cpp',
+                force_c=name.endswith('.c'),
                 expected_output=expected_output, assert_all=True,
                 check_for_error=False, assert_returncode=NON_ZERO)
 
@@ -8227,7 +8227,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_js_stack_op(self):
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
-                basename='src.c', expected_output='Hello, World!')
+                force_c=True, expected_output='Hello, World!')
 
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_api(self):
