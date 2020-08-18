@@ -501,7 +501,6 @@ var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
 // also may give different results as JS math is specced somewhat differently than libc, and
 // can also vary between browsers.
-// [upstream-only]
 var JS_MATH = 0;
 
 // If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
@@ -1086,10 +1085,6 @@ var USE_GLFW = 2;
 
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
 // instead of wasm.
-//
-// Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
-// startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
-// still make sense there, see that option for more details.
 //
 // Specify -s WASM=2 to target both WebAssembly and JavaScript at the same time.
 // In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
