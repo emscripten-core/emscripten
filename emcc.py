@@ -1239,7 +1239,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
-    wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
+    wasm_source_map_target = wasm_binary_target + '.map'
 
     # Apply user -jsD settings
     for s in user_js_defines:
