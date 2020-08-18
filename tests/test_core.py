@@ -305,7 +305,7 @@ class TestCoreBase(RunnerCore):
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     # must not emit this unneeded internal thing
-    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', open('src.c.o.js').read())
+    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', open('src.js').read())
 
   @sync
   def test_wasm_synchronous_compilation(self):
@@ -443,7 +443,7 @@ class TestCoreBase(RunnerCore):
     self.emcc_args += ['-g1']
     self.do_run_in_out_file_test('tests', 'core', 'test_lower_intrinsics')
     # intrinsics should be lowered out
-    js = open('src.c.o.js').read()
+    js = open('src.js').read()
     assert ('llvm_' not in js) == is_optimizing(self.emcc_args) or not self.is_wasm(), 'intrinsics must be lowered when optimizing'
 
   @also_with_standalone_wasm()
@@ -474,7 +474,7 @@ class TestCoreBase(RunnerCore):
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
                          ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
                          ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-      self.do_run('src.cpp.o.js', 'hash value: ' + output, [text], no_build=True)
+      self.do_run('src.js', 'hash value: ' + output, [text], no_build=True)
 
   def test_unaligned(self):
     self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
@@ -822,7 +822,7 @@ base align: 0, 0, 0, 0'''])
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_restore')
 
-    generated = open('src.c.o.js').read()
+    generated = open('src.js').read()
 
     def ensure_stack_restore_count(function_name, expected_count):
       code = generated[generated.find(function_name):]
@@ -1279,26 +1279,26 @@ int main(int argc, char **argv)
     test_path = path_from_root('tests', 'core', 'test_exceptions_allowed')
     src, output = (test_path + s for s in ('.cpp', '.out'))
     self.do_run_from_file(src, output)
-    size = len(open('src.cpp.o.js').read())
-    shutil.copyfile('src.cpp.o.js', 'orig.js')
+    size = len(open('src.js').read())
+    shutil.copyfile('src.js', 'orig.js')
 
     # check that an empty whitelist works properly (as in, same as exceptions disabled)
     empty_output = path_from_root('tests', 'core', 'test_exceptions_allowed_empty.out')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    empty_size = len(open('src.cpp.o.js').read())
-    shutil.copyfile('src.cpp.o.js', 'empty.js')
+    empty_size = len(open('src.js').read())
+    shutil.copyfile('src.js', 'empty.js')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    fake_size = len(open('src.cpp.o.js').read())
-    shutil.copyfile('src.cpp.o.js', 'fake.js')
+    fake_size = len(open('src.js').read())
+    shutil.copyfile('src.js', 'fake.js')
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    disabled_size = len(open('src.cpp.o.js').read())
-    shutil.copyfile('src.cpp.o.js', 'disabled.js')
+    disabled_size = len(open('src.js').read())
+    shutil.copyfile('src.js', 'disabled.js')
 
     if not self.is_wasm():
       print(size, empty_size, fake_size, disabled_size)
@@ -1841,7 +1841,7 @@ int main() {
 
     if self.emcc_args == []:
       # opts will eliminate the comments
-      out = open('src.cpp.o.js').read()
+      out = open('src.js').read()
       for i in range(1, 5):
         assert ('comment%d' % i) in out
 
@@ -1983,12 +1983,12 @@ int main(int argc, char **argv) {
 
     # Fail without memory growth
     self.do_run(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('src.cpp.o.js').read()
+    fail = open('src.js').read()
 
     # Win with it
     self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('src.cpp.o.js').read()
+    win = open('src.js').read()
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
@@ -2019,12 +2019,12 @@ int main(int argc, char **argv) {
 
     # Fail without memory growth
     self.do_run(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('src.cpp.o.js').read()
+    fail = open('src.js').read()
 
     # Win with it
     self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('src.cpp.o.js').read()
+    win = open('src.js').read()
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
@@ -2597,10 +2597,10 @@ The current type of b is: 9
     if self.get_setting('WASM'):
       # emcc emits a wasm in this case
       self.build(filename, js_outfile=False)
-      shutil.move(filename + '.o.wasm', 'liblib.so')
+      shutil.move(shared.unsuffixed(filename) + '.wasm', 'liblib.so')
     else:
       self.build(filename)
-      shutil.move(filename + '.o.js', 'liblib.so')
+      shutil.move(shared.unsuffixed(filename) + '.js', 'liblib.so')
 
   @needs_dlfcn
   def test_dlfcn_missing(self):
@@ -3580,20 +3580,18 @@ ok
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
     side_suffix = 'wasm' if self.is_wasm() else 'js'
+    out_file = 'liblib.' + side_suffix
     if isinstance(side, list):
       # side is just a library
-      out_file = os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)
       try_delete(out_file)
       self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
       filename = 'liblib.cpp' if not force_c else 'liblib.c'
-      try_delete(filename + '.o.' + side_suffix)
+      try_delete(out_file)
       with open(filename, 'w') as f:
         f.write(side)
       self.build(filename, js_outfile=(side_suffix == 'js'))
-      if force_c:
-        shutil.move(filename + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
-    shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
+    shutil.move(out_file, 'liblib.so')
 
     # main settings
     self.set_setting('MAIN_MODULE')
@@ -3604,8 +3602,8 @@ ok
 
     if isinstance(main, list):
       # main is just a library
-      try_delete('src.cpp.o.js')
-      self.run_process([EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', 'src.cpp.o.js'])
+      try_delete('src.js')
+      self.run_process([EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', 'src.js'])
       self.do_run(None, expected, no_build=True, **kwargs)
     else:
       self.do_run(main, expected, force_c=force_c, **kwargs)
@@ -3920,7 +3918,7 @@ ok
       print('check warnings')
       self.set_setting('ASSERTIONS', 2)
       test()
-      full = self.run_js('src.cpp.o.js')
+      full = self.run_js('src.js')
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
   @needs_dlfcn
@@ -4490,7 +4488,7 @@ res64 - external 64\n''', header='''
 
     if not self.has_changed_setting('ASSERTIONS'):
       print('check warnings')
-      full = self.run_js('src.cpp.o.js')
+      full = self.run_js('src.js')
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dlfcn
@@ -4895,7 +4893,7 @@ Module = {
 
     src = open(path_from_root('tests', 'files.cpp')).read()
 
-    mem_file = 'src.cpp.o.js.mem'
+    mem_file = 'src.js.mem'
     try_delete(mem_file)
 
     def clean(out, err):
@@ -5093,7 +5091,7 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'stat', 'test_stat.c')).read()
     self.do_run(src, 'success', force_c=True)
 
-    self.verify_in_strict_mode('src.c.o.js')
+    self.verify_in_strict_mode('src.js')
 
   def test_stat_chmod(self):
     src = open(path_from_root('tests', 'stat', 'test_chmod.c')).read()
@@ -5517,7 +5515,7 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'env', 'src.c')).read()
     expected = open(path_from_root('tests', 'env', 'output.txt')).read()
     self.do_run(src, [
-      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.cpp.o.js')).replace('\\', '/'), # node, can find itself properly
+      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
@@ -5525,7 +5523,7 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'env', 'src-mini.c')).read()
     expected = open(path_from_root('tests', 'env', 'output-mini.txt')).read()
     self.do_run(src, [
-      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.cpp.o.js')).replace('\\', '/'), # node, can find itself properly
+      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
@@ -5602,14 +5600,14 @@ PORT: 3979
 
       # Verify that this build is identical to the previous one
       if os.path.exists('src.js.previous'):
-        self.assertBinaryEqual('src.cpp.o.js', 'src.js.previous')
-      shutil.copy2('src.cpp.o.js', 'src.js.previous')
+        self.assertBinaryEqual('src.js', 'src.js.previous')
+      shutil.copy2('src.js', 'src.js.previous')
 
       # Same but for the wasm file.
       if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
         if os.path.exists('src.wasm.previous'):
-          self.assertBinaryEqual('src.cpp.o.wasm', 'src.wasm.previous')
-        shutil.copy2('src.cpp.o.wasm', 'src.wasm.previous')
+          self.assertBinaryEqual('src.wasm', 'src.wasm.previous')
+        shutil.copy2('src.wasm', 'src.wasm.previous')
 
   def test_stdvec(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
@@ -5711,7 +5709,7 @@ int main(void) {
     self.build(path_from_root('tests', 'fannkuch.cpp'))
     for i, j in results:
       print(i, j)
-      self.do_run('fannkuch.cpp.o.js', 'Pfannkuchen(%d) = %d.' % (i, j), [str(i)], no_build=True)
+      self.do_run('fannkuch.js', 'Pfannkuchen(%d) = %d.' % (i, j), [str(i)], no_build=True)
 
   def test_raytrace(self):
     # TODO: Should we remove this test?
@@ -5738,8 +5736,8 @@ int main(void) {
           f.write(src)
         self.build('fasta.cpp')
         for arg, output in results:
-          self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
-        shutil.copyfile('fasta.cpp.o.js', '%s.js' % t)
+          self.do_run('fasta.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
+        shutil.copyfile('fasta.js', '%s.js' % t)
 
     test([])
 
@@ -5774,8 +5772,8 @@ int main(void) {
     if self.emcc_args == []:
       # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
-      try_delete('src.cpp.o.js')
-      self.run_process([EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'INITIAL_MEMORY=128MB', '-o', 'src.cpp.o.js'], stdout=PIPE, stderr=self.stderr_redirect)
+      try_delete('src.js')
+      self.run_process([EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'INITIAL_MEMORY=128MB', '-o', 'src.js'], stdout=PIPE, stderr=self.stderr_redirect)
 
       self.do_run(None, '*1,0*', ['200', '1'], no_build=True)
       self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
@@ -6542,7 +6540,7 @@ return malloc(size);
 
     # Sanity check that it works and the dead function is emitted
     self.do_run(src, '*1*', args=['x'])
-    js = open('src.cpp.o.js').read()
+    js = open('src.js').read()
     if self.run_name in ['default', 'asm2g']:
       assert 'function _unused($' in js
     self.do_run(None, '*2*', no_build=True)
@@ -6595,7 +6593,7 @@ return malloc(size);
 
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@exps']
     self.do_run(src, '''waka 5!''')
-    assert 'other_function' in open('src.cpp.o.js').read()
+    assert 'other_function' in open('src.js').read()
 
   def test_large_exported_response(self):
     src = r'''
@@ -6631,7 +6629,7 @@ return malloc(size);
 
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@' + exported_func_json_file]
     self.do_run(src, '''waka 4999!''')
-    assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
+    assert '_exported_func_from_response_file_1' in open('src.js').read()
 
   @sync
   def test_add_function(self):
@@ -6720,7 +6718,7 @@ return malloc(size);
     # make sure the shortened name is the right one
     full_aborter = None
     short_aborter = None
-    for line in open('src.cpp.o.js.symbols').readlines():
+    for line in open('src.js.symbols').readlines():
       if ':' not in line:
         continue
       # split by the first ':' (wasm backend demangling may include more :'s later on)
@@ -6732,7 +6730,7 @@ return malloc(size);
     self.assertIsNotNone(short_aborter)
     print('full:', full_aborter, 'short:', short_aborter)
     if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
-      output = self.run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
+      output = self.run_js('src.js', engine=SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
       # we may see the full one, if -g, or the short one if not
       if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
         # stack traces may also be ' name ' or 'name@' etc
@@ -6767,16 +6765,16 @@ return malloc(size);
     def get_code_size():
       if self.is_wasm():
         # Use number of functions as a for code size
-        return self.count_wasm_contents('src.cpp.o.wasm', 'funcs')
+        return self.count_wasm_contents('src.wasm', 'funcs')
       else:
-        return os.path.getsize('src.cpp.o.js')
+        return os.path.getsize('src.js')
 
     def get_mem_size():
       if self.is_wasm():
         # Use number of functions as a for code size
-        return self.count_wasm_contents('src.cpp.o.wasm', 'memory-data')
+        return self.count_wasm_contents('src.wasm', 'memory-data')
       if self.uses_memory_init_file():
-        return os.path.getsize('src.cpp.o.js.mem')
+        return os.path.getsize('src.js.mem')
 
       # otherwise we ignore memory size
       return 0
@@ -7650,8 +7648,8 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args += ['-DCONDITIONAL']
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code', args=['0'])
 
-    first_size = os.path.getsize('src.cpp.o.wasm')
-    second_size = os.path.getsize('src.cpp.o.wasm.lazy.wasm')
+    first_size = os.path.getsize('src.wasm')
+    second_size = os.path.getsize('src.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
     if not conditional and is_optimizing(self.emcc_args):
@@ -7659,8 +7657,8 @@ Module['onRuntimeInitialized'] = function() {
       # out more than half
       self.assertLess(first_size, 0.5 * second_size)
 
-    with open('src.cpp.o.wasm', 'rb') as f:
-      with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:
+    with open('src.wasm', 'rb') as f:
+      with open('src.wasm.lazy.wasm', 'rb') as g:
         self.assertNotEqual(f.read(), g.read())
 
     # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
@@ -7688,33 +7686,33 @@ Module['onRuntimeInitialized'] = function() {
       return True
 
     def verify_working(args=['0']):
-      self.assertContained('foo_end\n', self.run_js('src.cpp.o.js', args=args))
+      self.assertContained('foo_end\n', self.run_js('src.js', args=args))
 
     def verify_broken(args=['0']):
-      self.assertNotContained('foo_end\n', self.run_js('src.cpp.o.js', args=args, assert_returncode=NON_ZERO))
+      self.assertNotContained('foo_end\n', self.run_js('src.js', args=args, assert_returncode=NON_ZERO))
 
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
-    found_foo_end = break_wasm('src.cpp.o.wasm')
+    found_foo_end = break_wasm('src.wasm')
     if not conditional and is_optimizing(self.emcc_args):
       self.assertFalse(found_foo_end, 'should have optimizd out $foo_end')
     verify_working()
     # but breaking the second wasm actually breaks us
-    break_wasm('src.cpp.o.wasm.lazy.wasm')
+    break_wasm('src.wasm.lazy.wasm')
     verify_broken()
 
     # restore
-    shutil.copyfile('src.cpp.o.wasm.orig', 'src.cpp.o.wasm')
-    shutil.copyfile('src.cpp.o.wasm.lazy.wasm.orig', 'src.cpp.o.wasm.lazy.wasm')
+    shutil.copyfile('src.wasm.orig', 'src.wasm')
+    shutil.copyfile('src.wasm.lazy.wasm.orig', 'src.wasm.lazy.wasm')
     verify_working()
 
     if conditional:
       # if we do not call the lazy load function, then we do not need the lazy wasm,
       # and we do the second call in the first wasm
-      os.remove('src.cpp.o.wasm.lazy.wasm')
+      os.remove('src.wasm.lazy.wasm')
       verify_broken()
       verify_working(['42'])
-      break_wasm('src.cpp.o.wasm')
+      break_wasm('src.wasm')
       verify_broken()
 
   # Test basic wasm2js functionality in all core compilation modes.
@@ -7726,10 +7724,10 @@ Module['onRuntimeInitialized'] = function() {
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     # a mem init file is emitted just like with JS
     expect_memory_init_file = self.uses_memory_init_file()
-    see_memory_init_file = os.path.exists('src.c.o.js.mem')
+    see_memory_init_file = os.path.exists('src.js.mem')
     assert expect_memory_init_file == see_memory_init_file, 'memory init file expectation wrong: %s' % expect_memory_init_file
     if see_memory_init_file:
-      with open('src.c.o.js.mem', 'rb') as f:
+      with open('src.js.mem', 'rb') as f:
         self.assertTrue(f.read()[-1] != b'\0')
 
   @no_asan('no wasm2js support yet in asan')
@@ -7740,12 +7738,12 @@ Module['onRuntimeInitialized'] = function() {
     # see that running as wasm works
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     # run wasm2js, bundle the code, and use the wasm2js path
-    cmd = [PYTHON, path_from_root('tools', 'maybe_wasm2js.py'), 'src.c.o.js', 'src.c.o.wasm']
+    cmd = [PYTHON, path_from_root('tools', 'maybe_wasm2js.py'), 'src.js', 'src.wasm']
     if is_optimizing(self.emcc_args):
       cmd += ['-O2']
     self.run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
     # remove the wasm to make sure we never use it again
-    os.remove('src.c.o.wasm')
+    os.remove('src.wasm')
     # verify that it runs
     self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
 
@@ -7911,7 +7909,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     def test(assert_returncode=0):
       self.do_run_in_out_file_test('tests', 'core', 'test_hello_world', assert_returncode=assert_returncode)
-      js = open('src.c.o.js').read()
+      js = open('src.js').read()
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
     for engine in JS_ENGINES:
@@ -7947,7 +7945,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # compilation failed handler, and will be printed to stderr.
     self.add_post_run('ThisFunctionDoesNotExist()')
     self.build(path_from_root('tests', 'core', 'test_hello_world.c'))
-    output = self.run_js('test_hello_world.c.o.js', assert_returncode=NON_ZERO)
+    output = self.run_js('test_hello_world.js', assert_returncode=NON_ZERO)
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
@@ -7957,7 +7955,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
-    js = open('src.cpp.o.js').read()
+    js = open('src.js').read()
     occurances = js.count('cFunction')
     if is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
       # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist

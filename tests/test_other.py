@@ -9667,7 +9667,7 @@ int main() {
     src = path_from_root('tests', 'core', 'test_support_errno.c')
     output = path_from_root('tests', 'core', 'test_support_errno.out')
     self.do_run_from_file(src, output)
-    size_default = os.path.getsize('src.c.o.js')
+    size_default = os.path.getsize('src.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
@@ -9676,7 +9676,7 @@ int main() {
     self.do_run_from_file(src, output)
 
     # Verify the JS output was smaller
-    self.assertLess(os.path.getsize('src.c.o.js'), size_default)
+    self.assertLess(os.path.getsize('src.js'), size_default)
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
@@ -9724,7 +9724,7 @@ int main() {
     self.add_pre_run('console.log("calling foo"); Module["_foo"]();')
     create_test_file('foo.c', '#include <stdio.h>\nint foo() { puts("foo called"); return 3; }')
     self.build('foo.c')
-    err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
+    err = self.expect_fail(NODE_JS + ['foo.js'], stdout=PIPE)
     self.assertContained('native function `foo` called before runtime initialization', err)
 
   def test_native_call_after_exit(self):
@@ -9733,7 +9733,7 @@ int main() {
     self.add_on_exit('console.log("calling main again"); Module["_main"]();')
     create_test_file('foo.c', '#include <stdio.h>\nint main() { puts("foo called"); return 0; }')
     self.build('foo.c')
-    err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
+    err = self.expect_fail(NODE_JS + ['foo.js'], stdout=PIPE)
     self.assertContained('native function `main` called after runtime exit', err)
 
   def test_metadce_wasm2js_i64(self):

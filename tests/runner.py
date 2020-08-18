@@ -588,14 +588,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def build(self, filename,
             libraries=[], includes=[],
             post_build=None, js_outfile=True):
-    suffix = '.o.js' if js_outfile else '.o.wasm'
+    suffix = '.js' if js_outfile else '.wasm'
     if os.path.splitext(filename)[1] in ('.cc', '.cxx', '.cpp'):
       compiler = EMXX
     else:
       compiler = EMCC
 
     dirname, basename = os.path.split(filename)
-    output = basename + suffix
+    output = shared.unsuffixed(basename) + suffix
     cmd = [compiler, filename, '-o', output] + self.get_emcc_args(main_file=True) + \
         ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
         ['-I' + include for include in includes] + \
@@ -988,7 +988,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=[]):
-      cmdv = [EMCC, src, '-o', os.path.splitext(src)[0] + so] + self.get_emcc_args()
+      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so] + self.get_emcc_args()
       cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
       self.run_process(cmdv)
 
@@ -1092,14 +1092,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if src:
         js_file = src
       else:
-        js_file = basename + '.o.js'
+        js_file = shared.unsuffixed(basename) + '.js'
     else:
       dirname = self.get_dir()
       filename = os.path.join(dirname, basename)
       with open(filename, 'w') as f:
         f.write(src)
       self.build(filename, libraries=libraries, includes=includes, post_build=post_build)
-      js_file = filename + '.o.js'
+      js_file = shared.unsuffixed(filename) + '.js'
     self.assertExists(js_file)
 
     engines = self.filtered_js_engines(js_engines)
