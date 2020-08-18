@@ -60,11 +60,9 @@ def check_engine(engine):
     engine_path = engine
   global WORKING_ENGINES
   if engine_path not in WORKING_ENGINES:
+    logging.debug('Checking JS engine %s' % engine)
     try:
-      logging.debug('Checking JS engine %s' % engine)
-      output = run_js(shared.path_from_root('tests', 'hello_world.js'), engine,
-                      skip_check=True)
-      print(output)
+      output = run_js(shared.path_from_root('tests', 'hello_world.js'), engine, skip_check=True)
       if 'hello, world!' in output:
         WORKING_ENGINES[engine_path] = True
       else:

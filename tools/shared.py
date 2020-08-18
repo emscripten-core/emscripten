@@ -21,12 +21,8 @@ import time
 import sys
 import tempfile
 
-if sys.version_info < (2, 7, 0):
-  print('emscripten requires python 2.7.0 or above (python 2.7.12 or newer is recommended, older python versions are known to run into SSL related issues, https://github.com/emscripten-core/emscripten/issues/6275)', file=sys.stderr)
-  sys.exit(1)
-
-if sys.version_info[0] == 3 and sys.version_info < (3, 5):
-  print('emscripten requires at least python 3.5 (or python 2.7.12 or above)', file=sys.stderr)
+if sys.version_info < (3, 5):
+  print('error: emscripten requires python 3.5 or above', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
@@ -41,7 +37,8 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 94
+EXPECTED_BINARYEN_VERSION = 95
+EXPECTED_LLVM_VERSION = "12.0"
 SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 
 # can add  %(asctime)s  to see timestamps
@@ -337,8 +334,6 @@ def parse_config_file():
 
   Also also EM_<KEY> environment variables to override specific config keys.
   """
-  global JS_ENGINES, JAVA, CLOSURE_COMPILER
-
   config = {}
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   try:
@@ -358,6 +353,7 @@ def parse_config_file():
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
     'JAVA',
+    'JS_ENGINE',
     'JS_ENGINES',
     'WASMER',
     'WASMTIME',
@@ -386,17 +382,63 @@ def parse_config_file():
   if not NODE_JS:
     exit_with_error('NODE_JS is not defined in %s', config_file_location())
 
+
+def listify(x):
+  if type(x) is not list:
+    return [x]
+  return x
+
+
+def fix_js_engine(old, new):
+  global JS_ENGINES
+  if old is None:
+    return
+  JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
+  return new
+
+
+def normalize_config_settings():
+  global CACHE, PORTS, JAVA, CLOSURE_COMPILER
+  global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+
   # EM_CONFIG stuff
   if not JS_ENGINES:
     JS_ENGINES = [NODE_JS]
+  if not JS_ENGINE:
+    JS_ENGINE = JS_ENGINES[0]
+
+  # Engine tweaks
+  if SPIDERMONKEY_ENGINE:
+    new_spidermonkey = SPIDERMONKEY_ENGINE
+    if '-w' not in str(new_spidermonkey):
+      new_spidermonkey += ['-w']
+    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
+  NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
+  V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
+  JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
+  JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
+  WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+  if not CACHE:
+    if root_is_writable():
+      CACHE = path_from_root('cache')
+    else:
+      # Use the legacy method of putting the cache in the user's home directory
+      # if the emscripten root is not writable.
+      # This is useful mostly for read-only installation and perhaps could
+      # be removed in the future since such installations should probably be
+      # setting a specific cache location.
+      logger.debug('Using home-directory for emscripten cache due to read-only root')
+      CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+  if not PORTS:
+    PORTS = os.path.join(CACHE, 'ports')
 
   if CLOSURE_COMPILER is None:
     if WINDOWS:
       CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
     else:
       # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-      # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
-      CLOSURE_COMPILER = [NODE_JS, '--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
+     # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
+      CLOSURE_COMPILER = NODE_JS + ['--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
     logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
@@ -413,27 +455,6 @@ def config_file_location():
   return CONFIG_FILE
 
 
-def listify(x):
-  if type(x) is not list:
-    return [x]
-  return x
-
-
-def fix_js_engine(old, new):
-  if old is None:
-    return
-  global JS_ENGINES
-  JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
-  return new
-
-
-def expected_llvm_version():
-  if get_llvm_target() == WASM_TARGET:
-    return "12.0"
-  else:
-    return "6.0"
-
-
 def get_clang_version():
   if not hasattr(get_clang_version, 'found_version'):
     if not os.path.exists(CLANG_CC):
@@ -445,11 +466,10 @@ def get_clang_version():
 
 
 def check_llvm_version():
-  expected = expected_llvm_version()
   actual = get_clang_version()
-  if expected in actual:
+  if EXPECTED_LLVM_VERSION in actual:
     return True
-  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
+  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, EXPECTED_LLVM_VERSION)
   return False
 
 
@@ -466,30 +486,14 @@ def get_llc_targets():
   return targets
 
 
-def has_asm_js_target(targets):
-  return 'js' in targets and 'JavaScript (asm.js, emscripten) backend' in targets
-
-
-def has_wasm_target(targets):
-  return 'wasm32' in targets and 'WebAssembly 32-bit' in targets
-
-
 def check_llvm():
   targets = get_llc_targets()
-  if not Settings.WASM_BACKEND:
-    if not has_asm_js_target(targets):
-      logger.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
-      print('===========================================================================', file=sys.stderr)
-      print(targets, file=sys.stderr)
-      print('===========================================================================', file=sys.stderr)
-      return False
-  else:
-    if not has_wasm_target(targets):
-      logger.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
-      print('===========================================================================', file=sys.stderr)
-      print(targets, file=sys.stderr)
-      print('===========================================================================', file=sys.stderr)
-      return False
+  if 'wasm32' not in targets and 'WebAssembly 32-bit' not in targets:
+    logger.critical('LLVM has not been built with the WebAssembly backend, llc reports:')
+    print('===========================================================================', file=sys.stderr)
+    print(targets, file=sys.stderr)
+    print('===========================================================================', file=sys.stderr)
+    return False
 
   return True
 
@@ -717,64 +721,7 @@ def apply_configuration():
   TEMP_DIR = configuration.TEMP_DIR
 
 
-def check_vanilla():
-  global LLVM_TARGET
-  # if the env var tells us what to do, do that
-  if 'EMCC_WASM_BACKEND' in os.environ:
-    if os.environ['EMCC_WASM_BACKEND'] != '0':
-      logger.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
-      LLVM_TARGET = WASM_TARGET
-    else:
-      logger.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
-      LLVM_TARGET = ASM_JS_TARGET
-  else:
-    # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
-    # must use wasm (or at least try to). to know that, we have to run llc to
-    # see which backends it has. we cache this result.
-
-    def has_vanilla_targets():
-      logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
-      targets = get_llc_targets()
-      return has_wasm_target(targets) and not has_asm_js_target(targets)
-
-    def get_vanilla_file():
-      logger.debug('regenerating vanilla file: %s' % LLVM_ROOT)
-      saved_file = Cache.get_path('is_vanilla.txt', root=True)
-      if os.path.exists(saved_file):
-        logger.debug('old: %s\n' % open(saved_file).read())
-      open(saved_file, 'w').write(('1' if has_vanilla_targets() else '0') + ':' + LLVM_ROOT + '\n')
-      return saved_file
-
-    is_vanilla_file = Cache.get('is_vanilla.txt', get_vanilla_file, root=True)
-    if CONFIG_FILE and os.path.getmtime(CONFIG_FILE) > os.path.getmtime(is_vanilla_file):
-      logger.debug('config file changed since we checked vanilla; re-checking')
-      is_vanilla_file = Cache.get('is_vanilla.txt', get_vanilla_file, force=True, root=True)
-    try:
-      contents = open(is_vanilla_file).read().strip()
-      middle = contents.index(':')
-      is_vanilla = int(contents[:middle])
-      llvm_used = contents[middle + 1:]
-      if llvm_used != LLVM_ROOT:
-        logger.debug('regenerating vanilla check since other llvm (%s vs %s)`', llvm_used, LLVM_ROOT)
-        Cache.get('is_vanilla.txt', get_vanilla_file, force=True, root=True)
-        is_vanilla = has_vanilla_targets()
-    except Exception as e:
-      logger.debug('failed to use vanilla file, will re-check: ' + str(e))
-      is_vanilla = has_vanilla_targets()
-    if is_vanilla:
-      logger.debug('check tells us to use wasm backend')
-      LLVM_TARGET = WASM_TARGET
-    else:
-      logger.debug('check tells us to use asm.js backend')
-      LLVM_TARGET = ASM_JS_TARGET
-
-  if LLVM_TARGET == WASM_TARGET:
-    Settings.WASM_BACKEND = 1
-    reconfigure_cache()
-
-
 def get_llvm_target():
-  assert LLVM_TARGET is not None
   return LLVM_TARGET
 
 
@@ -878,11 +825,10 @@ def get_cflags(user_args, cxx):
             '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
             '-D_LIBCPP_ABI_VERSION=2']
 
-  if get_llvm_target() == WASM_TARGET:
-    # wasm target does not automatically define emscripten stuff, so do it here.
-    c_opts += ['-Dunix',
-               '-D__unix',
-               '-D__unix__']
+  # For compatability with the fastcomp compiler that defined these
+  c_opts += ['-Dunix',
+             '-D__unix',
+             '-D__unix__']
 
   # Changes to default clang behavior
 
@@ -972,9 +918,7 @@ class SettingsManager(object):
     @classmethod
     def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
       if opt_level >= 1:
-        cls.attrs['ASM_JS'] = 1
         cls.attrs['ASSERTIONS'] = 0
-        cls.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2:
         cls.attrs['EVAL_CTORS'] = 1
 
@@ -1053,9 +997,6 @@ class SettingsManager(object):
 
 
 def verify_settings():
-  if Settings.ASM_JS not in [1, 2]:
-    exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
-
   if Settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
@@ -1072,12 +1013,6 @@ def verify_settings():
     if Settings.WASM == 2:
       # Requesting both Wasm and Wasm2JS support
       Settings.WASM2JS = 1
-
-    if Settings.CYBERDWARF:
-      exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
-
-    if Settings.EMULATED_FUNCTION_POINTERS:
-      exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')
 
 
 def print_compiler_stage(cmd):
@@ -1202,7 +1137,7 @@ class JS(object):
     settings = settings or Settings
     if sig == 'i':
       return '0'
-    elif sig == 'f' and settings.get('PRECISE_F32'):
+    elif sig == 'f':
       return 'Math_fround(0)'
     elif sig == 'j':
       if settings:
@@ -1222,7 +1157,7 @@ class JS(object):
       return value + '|0'
     if sig in JS.FLOAT_SIGS and convert_from == 'i':
       value = '(' + value + '|0)'
-    if sig == 'f' and settings.get('PRECISE_F32'):
+    if sig == 'f':
       if ffi_arg:
         return '+Math_fround(' + value + ')'
       elif ffi_result:
@@ -1699,6 +1634,7 @@ CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
+JS_ENGINE = None
 JS_ENGINES = []
 WASMER = None
 WASMTIME = None
@@ -1722,29 +1658,7 @@ else:
     exit_with_error('emscripten config file not found: ' + CONFIG_FILE)
 
 parse_config_file()
-# Engine tweaks
-if SPIDERMONKEY_ENGINE:
-  new_spidermonkey = SPIDERMONKEY_ENGINE
-  if '-w' not in str(new_spidermonkey):
-    new_spidermonkey += ['-w']
-  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
-NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
-V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
-WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
-if not CACHE:
-  if root_is_writable():
-    CACHE = path_from_root('cache')
-  else:
-    # Use the legacy method of putting the cache in the user's home directory
-    # if the emscripten root is not writable.
-    # This is useful mostly for read-only installation and perhaps could
-    # be removed in the future since such installations should probably be
-    # setting a specific cache location.
-    logger.debug('Using home-directory for emscripten cache due to read-only root')
-    CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
-if not PORTS:
-  PORTS = os.path.join(CACHE, 'ports')
+normalize_config_settings()
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.
@@ -1817,13 +1731,11 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 apply_configuration()
 
 # Target choice.
-ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-emscripten'
+LLVM_TARGET = 'wasm32-unknown-emscripten'
 
 Settings = SettingsManager()
 verify_settings()
 Cache = cache.Cache(CACHE)
-check_vanilla()
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 

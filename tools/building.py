@@ -208,13 +208,6 @@ def get_multiprocessing_pool():
         # between of executing commands, or otherwise the pool children will
         # have trouble spawning subprocesses of their own.
         'EMCC_POOL_CWD=' + path_from_root(),
-        # Multiprocessing pool children need to avoid all calling
-        # check_vanilla() again and again, otherwise the compiler can deadlock
-        # when building system libs, because the multiprocess parent can have
-        # the Emscripten cache directory locked for write access, and the
-        # EMCC_WASM_BACKEND check also requires locked access to the cache,
-        # which the multiprocess children would not get.
-        'EMCC_WASM_BACKEND=%s' % Settings.WASM_BACKEND,
         # Multiprocessing pool children can't spawn their own linear number of
         # children, that could cause a quadratic amount of spawned processes.
         'EMCC_CORES=1'
@@ -870,13 +863,6 @@ def can_inline():
   return Settings.INLINING_LIMIT == 0
 
 
-def need_asm_js_file():
-  # Explicitly separate asm.js requires it
-  if Settings.SEPARATE_ASM:
-    return True
-  return False
-
-
 def is_wasm_only():
   # not even wasm, much less wasm-only
   if not Settings.WASM:
@@ -894,11 +880,6 @@ def is_wasm_only():
     return True
   if Settings.RUNNING_JS_OPTS:
     # if the JS optimizer runs, it must run on valid asm.js
-    return False
-  if Settings.RELOCATABLE and Settings.EMULATED_FUNCTION_POINTERS:
-    # FIXME(https://github.com/emscripten-core/emscripten/issues/5370)
-    # emulation function pointers work properly, but calling between
-    # modules as wasm-only needs more work
     return False
   return True
 
@@ -989,11 +970,6 @@ def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
     cmd += get_binaryen_feature_flags()
   print_compiler_stage(cmd)
   check_call(cmd)
-
-
-def eliminate_duplicate_funcs(filename):
-  from . import duplicate_function_eliminator
-  duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
 
 
 def calculate_reachable_functions(infile, initial_list, can_reach=True):

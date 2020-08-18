@@ -207,20 +207,10 @@ Options that are modified or new in *emcc* are listed below:
 
   You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
-.. _emcc-llvm-lto:
+.. _emcc-lto:
 
-``--llvm-lto <level>``
-  Enables LLVM link-time optimizations (LTO). Possible ``level`` values are:
-
-    - ``0``: No LLVM LTO (default).
-    - ``1``: LLVM LTO is performed.
-    - ``2``: Combine all the bitcode and run LLVM opt on it using the specified ``--llvm-opts``. This optimizes across modules, but is not the same as normal LTO.
-    - ``3``: Does level ``2`` and then level ``1``.
-
-  .. note::
-
-    - If LLVM optimizations are not run (see ``--llvm-opts``), this setting has no effect.
-    - LLVM LTO is not perfectly stable yet, and can cause code to behave incorrectly.
+``-flto``
+  Enables link-time optimizations (LTO).
 
 .. _emcc-closure:
 
@@ -508,7 +498,6 @@ Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscript
 
   - ASSERTIONS
   - SAFE_HEAP
-  - AGGRESSIVE_VARIABLE_ELIMINATION=1
   - -s DISABLE_EXCEPTION_CATCHING=0.
   - INLINING_LIMIT=
 

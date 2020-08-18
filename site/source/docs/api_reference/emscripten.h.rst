@@ -1031,9 +1031,9 @@ Functions
 
   Returns the value of a compiler setting.
 
-  For example, to return the integer representing the value of ``PRECISE_F32`` during compilation: ::
+  For example, to return the integer representing the value of ``INITIAL_MEMORY`` during compilation: ::
 
-    emscripten_get_compiler_setting("PRECISE_F32")
+    emscripten_get_compiler_setting("INITIAL_MEMORY")
 
   For values containing anything other than an integer, a string is returned (you will need to cast the ``int`` return value to a ``char*``).
 

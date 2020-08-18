@@ -3,7 +3,7 @@
 #include <math.h>
 #include <emscripten.h>
 
-typedef char i8x16 __attribute((vector_size(16)));
+typedef signed char i8x16 __attribute((vector_size(16)));
 typedef short i16x8 __attribute((vector_size(16)));
 typedef int i32x4 __attribute((vector_size(16)));
 typedef long long i64x2 __attribute((vector_size(16)));
@@ -39,26 +39,24 @@ i32x4 TESTFN v32x4_load_splat(int32_t *ptr) {
 i64x2 TESTFN v64x2_load_splat(int64_t *ptr) {
   return (i64x2){*ptr, *ptr};
 }
-// The tools and engine disagree on what the allowed alignments should be, so
-// skip these tests for now: https://github.com/WebAssembly/simd/issues/230
-// i16x8 TESTFN i16x8_load8x8_s(i8x8 *ptr) {
-//   return __builtin_convertvector(*ptr, i16x8);
-// }
-// i16x8 TESTFN i16x8_load8x8_u(i8x8 *ptr) {
-//   return (i16x8)__builtin_convertvector(*(u8x8*)ptr, u16x8);
-// }
-// i32x4 TESTFN i32x4_load16x4_s(i16x4 *ptr) {
-//   return __builtin_convertvector(*ptr, i32x4);
-// }
-// i32x4 TESTFN i32x4_load16x4_u(i16x4 *ptr) {
-//   return (i32x4)__builtin_convertvector(*(u16x4*)ptr, u32x4);
-// }
-// i64x2 TESTFN i64x2_load32x2_s(i32x2 *ptr) {
-//   return __builtin_convertvector(*ptr, i64x2);
-// }
-// i64x2 TESTFN i64x2_load32x2_u(i32x2 *ptr) {
-//   return (i64x2) __builtin_convertvector(*(u32x2*)ptr, u64x2);
-// }
+i16x8 TESTFN i16x8_load8x8_s(i8x8 *ptr) {
+  return __builtin_convertvector(*ptr, i16x8);
+}
+i16x8 TESTFN i16x8_load8x8_u(i8x8 *ptr) {
+  return (i16x8)__builtin_convertvector(*(u8x8*)ptr, u16x8);
+}
+i32x4 TESTFN i32x4_load16x4_s(i16x4 *ptr) {
+  return __builtin_convertvector(*ptr, i32x4);
+}
+i32x4 TESTFN i32x4_load16x4_u(i16x4 *ptr) {
+  return (i32x4)__builtin_convertvector(*(u16x4*)ptr, u32x4);
+}
+i64x2 TESTFN i64x2_load32x2_s(i32x2 *ptr) {
+  return __builtin_convertvector(*ptr, i64x2);
+}
+i64x2 TESTFN i64x2_load32x2_u(i32x2 *ptr) {
+  return (i64x2) __builtin_convertvector(*(u32x2*)ptr, u64x2);
+}
 void TESTFN i8x16_store(i8x16 *ptr, i8x16 vec) {
   *ptr = vec;
 }
@@ -83,10 +81,10 @@ int32_t TESTFN i8x16_extract_lane_s_first(i8x16 vec) {
 int32_t TESTFN i8x16_extract_lane_s_last(i8x16 vec) {
   return __builtin_wasm_extract_lane_s_i8x16(vec, 15);
 }
-uint32_t TESTFN i8x16_extract_lane_u_first(i8x16 vec) {
+uint32_t TESTFN i8x16_extract_lane_u_first(u8x16 vec) {
   return __builtin_wasm_extract_lane_u_i8x16(vec, 0);
 }
-uint32_t TESTFN i8x16_extract_lane_u_last(i8x16 vec) {
+uint32_t TESTFN i8x16_extract_lane_u_last(u8x16 vec) {
   return __builtin_wasm_extract_lane_u_i8x16(vec, 15);
 }
 i8x16 TESTFN i8x16_replace_lane_first(i8x16 vec, int32_t val) {
@@ -104,10 +102,10 @@ int32_t TESTFN i16x8_extract_lane_s_first(i16x8 vec) {
 int32_t TESTFN i16x8_extract_lane_s_last(i16x8 vec) {
   return __builtin_wasm_extract_lane_s_i16x8(vec, 7);
 }
-int32_t TESTFN i16x8_extract_lane_u_first(i16x8 vec) {
+int32_t TESTFN i16x8_extract_lane_u_first(u16x8 vec) {
   return __builtin_wasm_extract_lane_u_i16x8(vec, 0);
 }
-int32_t TESTFN i16x8_extract_lane_u_last(i16x8 vec) {
+int32_t TESTFN i16x8_extract_lane_u_last(u16x8 vec) {
   return __builtin_wasm_extract_lane_u_i16x8(vec, 7);
 }
 i16x8 TESTFN i16x8_replace_lane_first(i16x8 vec, int32_t val) {
@@ -177,34 +175,34 @@ f64x2 TESTFN f64x2_replace_lane_last(f64x2 vec, double val) {
   return __builtin_wasm_replace_lane_f64x2(vec, 1, val);
 }
 i8x16 TESTFN i8x16_eq(i8x16 x, i8x16 y) {
-  return x == y;
+  return (i8x16)(x == y);
 }
 i8x16 TESTFN i8x16_ne(i8x16 x, i8x16 y) {
-  return x != y;
+  return (i8x16)(x != y);
 }
 i8x16 TESTFN i8x16_lt_s(i8x16 x, i8x16 y) {
-  return x < y;
+  return (i8x16)(x < y);
 }
 i8x16 TESTFN i8x16_lt_u(i8x16 x, i8x16 y) {
-  return (u8x16)x < (u8x16)y;
+  return (i8x16)((u8x16)x < (u8x16)y);
 }
 i8x16 TESTFN i8x16_gt_s(i8x16 x, i8x16 y) {
-  return x > y;
+  return (i8x16)(x > y);
 }
 i8x16 TESTFN i8x16_gt_u(i8x16 x, i8x16 y) {
-  return (u8x16)x > (u8x16)y;
+  return (i8x16)((u8x16)x > (u8x16)y);
 }
 i8x16 TESTFN i8x16_le_s(i8x16 x, i8x16 y) {
-  return x <= y;
+  return (i8x16)(x <= y);
 }
 i8x16 TESTFN i8x16_le_u(i8x16 x, i8x16 y) {
-  return (u8x16)x <= (u8x16)y;
+  return (i8x16)((u8x16)x <= (u8x16)y);
 }
 i8x16 TESTFN i8x16_ge_s(i8x16 x, i8x16 y) {
-  return x >= y;
+  return (i8x16)(x >= y);
 }
 i8x16  TESTFN i8x16_ge_u(i8x16 x, i8x16 y) {
-  return (u8x16)x >= (u8x16)y;
+  return (i8x16)((u8x16)x >= (u8x16)y);
 }
 i16x8 TESTFN i16x8_eq(i16x8 x, i16x8 y) {
   return x == y;
@@ -347,7 +345,7 @@ i8x16 TESTFN i8x16_add(i8x16 x, i8x16 y) {
 i8x16 TESTFN i8x16_add_saturate_s(i8x16 x, i8x16 y) {
   return __builtin_wasm_add_saturate_s_i8x16(x, y);
 }
-i8x16 TESTFN i8x16_add_saturate_u(i8x16 x, i8x16 y) {
+u8x16 TESTFN i8x16_add_saturate_u(u8x16 x, u8x16 y) {
   return __builtin_wasm_add_saturate_u_i8x16(x, y);
 }
 i8x16 TESTFN i8x16_sub(i8x16 x, i8x16 y) {
@@ -356,11 +354,11 @@ i8x16 TESTFN i8x16_sub(i8x16 x, i8x16 y) {
 i8x16 TESTFN i8x16_sub_saturate_s(i8x16 x, i8x16 y) {
   return __builtin_wasm_sub_saturate_s_i8x16(x, y);
 }
-i8x16 TESTFN i8x16_sub_saturate_u(i8x16 x, i8x16 y) {
+u8x16 TESTFN i8x16_sub_saturate_u(u8x16 x, u8x16 y) {
   return __builtin_wasm_sub_saturate_u_i8x16(x, y);
 }
 // TODO: min_s / min_u / max_s / max_u
-i8x16 TESTFN i8x16_avgr_u(i8x16 x, i8x16 y) {
+u8x16 TESTFN i8x16_avgr_u(u8x16 x, u8x16 y) {
   return __builtin_wasm_avgr_u_i8x16(x, y);
 }
 i16x8 TESTFN i16x8_abs(i16x8 vec) {
@@ -390,7 +388,7 @@ i16x8 TESTFN i16x8_add(i16x8 x, i16x8 y) {
 i16x8 TESTFN i16x8_add_saturate_s(i16x8 x, i16x8 y) {
   return __builtin_wasm_add_saturate_s_i16x8(x, y);
 }
-i16x8 TESTFN i16x8_add_saturate_u(i16x8 x, i16x8 y) {
+u16x8 TESTFN i16x8_add_saturate_u(u16x8 x, u16x8 y) {
   return __builtin_wasm_add_saturate_u_i16x8(x, y);
 }
 i16x8 TESTFN i16x8_sub(i16x8 x, i16x8 y) {
@@ -399,14 +397,14 @@ i16x8 TESTFN i16x8_sub(i16x8 x, i16x8 y) {
 i16x8 TESTFN i16x8_sub_saturate_s(i16x8 x, i16x8 y) {
   return __builtin_wasm_sub_saturate_s_i16x8(x, y);
 }
-i16x8 TESTFN i16x8_sub_saturate_u(i16x8 x, i16x8 y) {
+u16x8 TESTFN i16x8_sub_saturate_u(u16x8 x, u16x8 y) {
   return __builtin_wasm_sub_saturate_u_i16x8(x, y);
 }
 i16x8 TESTFN i16x8_mul(i16x8 x, i16x8 y) {
   return x * y;
 }
 // TODO: min_s / min_u / max_s / max_u
-i16x8 TESTFN i16x8_avgr_u(i16x8 x, i16x8 y) {
+u16x8 TESTFN i16x8_avgr_u(u16x8 x, u16x8 y) {
   return __builtin_wasm_avgr_u_i16x8(x, y);
 }
 i32x4 TESTFN i32x4_abs(i32x4 vec) {
@@ -551,22 +549,23 @@ f32x4 TESTFN f32x4_convert_u_i32x4(i32x4 vec) {
 i8x16 TESTFN i8x16_narrow_i16x8_s(i16x8 a, i16x8 b) {
   return __builtin_wasm_narrow_s_i8x16_i16x8(a, b);
 }
-i8x16 TESTFN i8x16_narrow_i16x8_u(i16x8 a, i16x8 b) {
+u8x16 TESTFN i8x16_narrow_i16x8_u(u16x8 a, u16x8 b) {
   return __builtin_wasm_narrow_u_i8x16_i16x8(a, b);
 }
 i16x8 TESTFN i16x8_narrow_i32x4_s(i32x4 a, i32x4 b) {
   return __builtin_wasm_narrow_s_i16x8_i32x4(a, b);
 }
-i16x8 TESTFN i16x8_narrow_i32x4_u(i32x4 a, i32x4 b) {
+u16x8 TESTFN i16x8_narrow_i32x4_u(u32x4 a, u32x4 b) {
   return __builtin_wasm_narrow_u_i16x8_i32x4(a, b);
 }
 
 static int failures = 0;
 
 #define formatter(x) _Generic((x),                      \
-                              char: "%d",               \
+                              signed char: "%d",        \
                               unsigned char: "%d",      \
                               short: "%d",              \
+                              unsigned short: "%d",     \
                               int32_t: "%d",            \
                               uint32_t: "%d",           \
                               int64_t: "%ld",           \
@@ -607,6 +606,7 @@ static int failures = 0;
                               u8x16: 16,                        \
                               i8x16: 16,                        \
                               i16x8: 8,                         \
+                              u16x8: 8,                         \
                               i32x4: 4,                         \
                               i64x2: 2,                         \
                               f32x4: 4,                         \
@@ -706,8 +706,8 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   expect_vec(i8x16_splat(257), ((i8x16){1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}));
   expect_eq(i8x16_extract_lane_s_first((i8x16){-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), -1);
   expect_eq(i8x16_extract_lane_s_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1}), -1);
-  expect_eq(i8x16_extract_lane_u_first((i8x16){-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), 255);
-  expect_eq(i8x16_extract_lane_u_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1}), 255);
+  expect_eq(i8x16_extract_lane_u_first((u8x16){-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), 255);
+  expect_eq(i8x16_extract_lane_u_last((u8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1}), 255);
   expect_vec(
     i8x16_replace_lane_first((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 7),
     ((i8x16){7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
@@ -722,8 +722,8 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   expect_vec(i16x8_splat(65537), ((i16x8){1, 1, 1, 1, 1, 1, 1, 1}));
   expect_eq(i16x8_extract_lane_s_first((i16x8){-1, 0, 0, 0, 0, 0, 0, 0}), -1);
   expect_eq(i16x8_extract_lane_s_last((i16x8){0, 0, 0, 0, 0, 0, 0, -1}), -1);
-  expect_eq(i16x8_extract_lane_u_first((i16x8){-1, 0, 0, 0, 0, 0, 0, 0}), 65535);
-  expect_eq(i16x8_extract_lane_u_last((i16x8){0, 0, 0, 0, 0, 0, 0, -1}), 65535);
+  expect_eq(i16x8_extract_lane_u_first((u16x8){-1, 0, 0, 0, 0, 0, 0, 0}), 65535);
+  expect_eq(i16x8_extract_lane_u_last((u16x8){0, 0, 0, 0, 0, 0, 0, -1}), 65535);
   expect_vec(i16x8_replace_lane_first((i16x8){0, 0, 0, 0, 0, 0, 0, 0}, 7), ((i16x8){7, 0, 0, 0, 0, 0, 0, 0}));
   expect_vec(i16x8_replace_lane_last((i16x8){0, 0, 0, 0, 0, 0, 0, 0}, 7), ((i16x8){0, 0, 0, 0, 0, 0, 0, 7}));
 
@@ -1097,10 +1097,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
   expect_vec(
     i8x16_add_saturate_u(
-      (i8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
-      (i8x16){3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142}
+      (u8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
+      (u8x16){3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142}
     ),
-    ((i8x16){3, 255, 255, 255, 255, 135, 109, 46, 145, 225, 255, 184, 17, 255, 128, 215})
+    ((u8x16){3, 255, 255, 255, 255, 135, 109, 46, 145, 225, 255, 184, 17, 255, 128, 215})
   );
   expect_vec(
     i8x16_sub(
@@ -1118,17 +1118,17 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
   expect_vec(
     i8x16_sub_saturate_u(
-      (i8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
-      (i8x16){3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142}
+      (u8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
+      (u8x16){3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142}
     ),
-    ((i8x16){0, 0, 254, 0, 0, 123, 0, 12, 61, 167, 158, 100, 17, 0, 0, 0})
+    ((u8x16){0, 0, 254, 0, 0, 123, 0, 12, 61, 167, 158, 100, 17, 0, 0, 0})
   );
   expect_vec(
     i8x16_avgr_u(
-      (i8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
-      (i8x16){3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142}
+      (u8x16){0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73},
+      (u8x16){3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142}
     ),
-    ((i8x16){2, 137, 128, 128, 128, 68, 55, 23, 73, 113, 152, 92, 9, 253, 64, 108})
+    ((u8x16){2, 137, 128, 128, 128, 68, 55, 23, 73, 113, 152, 92, 9, 253, 64, 108})
   );
 
   // i16x8 arithmetic
@@ -1188,10 +1188,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
   expect_vec(
     i16x8_add_saturate_u(
-      (i16x8){0, -256, -32768, 32512, -32512, -6400, -1536, 32766},
-      (i16x8){768, 1, -32768, -32512, 1536, 18688, -256, 2}
+      (u16x8){0, -256, -32768, 32512, -32512, -6400, -1536, 32766},
+      (u16x8){768, 1, -32768, -32512, 1536, 18688, -256, 2}
     ),
-    ((i16x8){768, -255, -1, -1, -30976, -1, -1, -32768})
+    ((u16x8){768, -255, -1, -1, -30976, -1, -1, -32768})
   );
   expect_vec(
     i16x8_sub(
@@ -1209,10 +1209,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
   expect_vec(
     i16x8_sub_saturate_u(
-      (i16x8){0, -256, -32768, 32512, -32512, -6400, -1536, 32766},
-      (i16x8){768, 1, -32768, -32512, 1536, 18688, -256, 2}
+      (u16x8){0, -256, -32768, 32512, -32512, -6400, -1536, 32766},
+      (u16x8){768, 1, -32768, -32512, 1536, 18688, -256, 2}
     ),
-    ((i16x8){0, -257, 0, 0, 31488, -25088, 0, 32764})
+    ((u16x8){0, -257, 0, 0, 31488, -25088, 0, 32764})
   );
   expect_vec(
     i16x8_mul(
@@ -1223,10 +1223,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
   expect_vec(
     i16x8_avgr_u(
-      (i16x8){0, -256, -32768, 32512, -32512, -6400, -1536, 32766},
-      (i16x8){768, 1, -32768, -32512, 1536, 18688, -256, 2}
+      (u16x8){0, -256, -32768, 32512, -32512, -6400, -1536, 32766},
+      (u16x8){768, 1, -32768, -32512, 1536, 18688, -256, 2}
     ),
-    ((i16x8){384, 32641, -32768, -32768, 17280, -26624, -896, 16384})
+    ((u16x8){384, 32641, -32768, -32768, 17280, -26624, -896, 16384})
   );
 
   // i32x4 arithmetic
@@ -1318,10 +1318,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
   expect_vec(
     i8x16_narrow_i16x8_u(
-      (i16x8){129, 127, -32767, 32767, -32768, -1, 1, 0},
-      (i16x8){0, 1, -1, -32768, 32767, -32767, 127, 129}
+      (u16x8){129, 127, -32767, 32767, -32768, -1, 1, 0},
+      (u16x8){0, 1, -1, -32768, 32767, -32767, 127, 129}
     ),
-    ((i8x16){129, 127, 0, 255, 0, 0, 1, 0, 0, 1, 0, 0, 255, 0, 127, 129})
+    ((u8x16){129, 127, 0, 255, 0, 0, 1, 0, 0, 1, 0, 0, 255, 0, 127, 129})
   );
   expect_vec(
     i16x8_narrow_i32x4_s(
@@ -1332,10 +1332,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
   expect_vec(
     i16x8_narrow_i32x4_u(
-      (i32x4){32769, 32767, -2147483647, 2147483647},
-      (i32x4){0, 1, -1, -2147483647 - 1}
+      (u32x4){32769, 32767, -2147483647, 2147483647},
+      (u32x4){0, 1, -1, -2147483647 - 1}
     ),
-    ((i16x8){-32767, 32767, 0, -1, 0, 1, 0, 0})
+    ((u16x8){-32767, 32767, 0, -1, 0, 1, 0, 0})
   );
 
   if (failures == 0) {

@@ -36,37 +36,6 @@ function warnOnce(text) {
   }
 }
 
-#if !WASM_BACKEND
-var asm2wasmImports = { // special asm2wasm imports
-    "f64-rem": function(x, y) {
-        return x % y;
-    },
-    "debugger": function() {
-#if ASSERTIONS // Disable debugger; statement from being present in release builds to avoid Firefox deoptimizations, see https://bugzilla.mozilla.org/show_bug.cgi?id=1538375
-        debugger;
-#endif
-    }
-#if NEED_ALL_ASM2WASM_IMPORTS
-    ,
-    "f64-to-int": function(x) {
-        return x | 0;
-    },
-    "i32s-div": function(x, y) {
-        return ((x | 0) / (y | 0)) | 0;
-    },
-    "i32u-div": function(x, y) {
-        return ((x >>> 0) / (y >>> 0)) >>> 0;
-    },
-    "i32s-rem": function(x, y) {
-        return ((x | 0) % (y | 0)) | 0;
-    },
-    "i32u-rem": function(x, y) {
-        return ((x >>> 0) % (y >>> 0)) >>> 0;
-    }
-#endif // NEED_ALL_ASM2WASM_IMPORTS
-};
-#endif
-
 #if RELOCATABLE
 // dynamic linker/loader (a-la ld.so on ELF systems)
 var LDSO = {
@@ -104,12 +73,8 @@ function fetchBinary(url) {
 }
 
 function asmjsMangle(x) {
-#if WASM_BACKEND
   var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
   return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-#else
-  return x;
-#endif
 }
 
 // loadDynamicLibrary loads dynamic library @ lib URL / path and returns handle for loaded DSO.
@@ -260,18 +225,6 @@ function loadDynamicLibrary(lib, flags) {
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
 
       var module_sym = asmjsMangle(sym);
-#if !WASM_BACKEND
-      // Module of SIDE_MODULE has not only the symbols (which should be copied)
-      // but also others (print*, asmGlobal*, FUNCTION_TABLE_**, NAMED_GLOBALS, and so on).
-      //
-      // When the symbol (which should be copied) is method, Module.* 's type becomes function.
-      // When the symbol (which should be copied) is variable, Module.* 's type becomes number.
-      // Except for the symbol prefix (_), there is no difference in the symbols (which should be copied) and others.
-      // So this just copies over compiled symbols (which start with _).
-      if (!sym.startsWith('dynCall_') && sym[0] !== '_') {
-        continue;
-      }
-#endif
 
       if (!Module.hasOwnProperty(module_sym)) {
         Module[module_sym] = libModule[sym];
@@ -334,11 +287,7 @@ function relocateExports(exports, memoryBase, tableBase, moduleLocal) {
     }
     relocated[e] = value;
     if (moduleLocal) {
-#if WASM_BACKEND
       moduleLocal['_' + e] = value;
-#else
-      moduleLocal[e] = value;
-#endif
     }
   }
   return relocated;
@@ -549,9 +498,6 @@ function loadWebAssemblyModule(binary, flags) {
       'global.Math': Math,
       env: proxy,
       {{{ WASI_MODULE_NAME }}}: proxy,
-#if !WASM_BACKEND
-      'asm2wasm': asm2wasmImports
-#endif
     };
 #if ASSERTIONS
     var oldTable = [];
@@ -616,65 +562,6 @@ Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
 
 #endif // WASM
 #endif // RELOCATABLE
-
-#if EMULATED_FUNCTION_POINTERS
-#if WASM == 0
-/** @param {Object=} module */
-function getFunctionTables(module) {
-  if (!module) module = Module;
-  var tables = {};
-  for (var t in module) {
-    if (/^FUNCTION_TABLE_.*/.test(t)) {
-      var table = module[t];
-      if (typeof table === 'object') tables[t.substr('FUNCTION_TABLE_'.length)] = table;
-    }
-  }
-  return tables;
-}
-
-/** @param {Object=} module */
-function alignFunctionTables(module) {
-  var tables = getFunctionTables(module);
-  var maxx = 0;
-  for (var sig in tables) {
-    maxx = Math.max(maxx, tables[sig].length);
-  }
-  assert(maxx >= 0);
-  for (var sig in tables) {
-    var table = tables[sig];
-    while (table.length < maxx) table.push(0);
-  }
-  return maxx;
-}
-#endif // WASM == 0
-
-#if RELOCATABLE
-// register functions from a new module being loaded
-function registerFunctions(sigs, newModule) {
-  sigs.forEach(function(sig) {
-    if (!Module['FUNCTION_TABLE_' + sig]) {
-      Module['FUNCTION_TABLE_' + sig] = [];
-    }
-  });
-  var oldMaxx = alignFunctionTables(); // align the new tables we may have just added
-  var newMaxx = alignFunctionTables(newModule);
-  var maxx = oldMaxx + newMaxx;
-  sigs.forEach(function(sig) {
-    var newTable = newModule['FUNCTION_TABLE_' + sig];
-    var oldTable = Module['FUNCTION_TABLE_' + sig];
-    assert(newTable !== oldTable);
-    assert(oldTable.length === oldMaxx);
-    for (var i = 0; i < newTable.length; i++) {
-      oldTable.push(newTable[i]);
-    }
-    assert(oldTable.length === maxx);
-  });
-  assert(maxx === alignFunctionTables()); // align the ones we didn't touch
-}
-// export this so side modules can use it
-Module['registerFunctions'] = registerFunctions;
-#endif // RELOCATABLE
-#endif // EMULATED_FUNCTION_POINTERS
 
 #include "runtime_functions.js"
 
@@ -770,7 +657,7 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}};
 GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 #endif
 
-#if WASM_BACKEND && USE_PTHREADS
+#if USE_PTHREADS
 // JS library code refers to Atomics in the manner used from asm.js, provide
 // the same API here.
 var Atomics_load = Atomics.load;

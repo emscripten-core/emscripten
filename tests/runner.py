@@ -62,11 +62,11 @@ import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
-from tools.shared import LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR
-from tools.shared import WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
+from tools.shared import EMSCRIPTEN_TEMP_DIR
+from tools.shared import WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes, safe_copy, Settings
+from tools.shared import asbytes, Settings
 from tools import shared, line_endings, building
 
 
@@ -156,20 +156,12 @@ def is_slow_test(func):
   return decorated
 
 
+# Today we only support the wasm backend so any tests that is disabled under the llvm
+# backend is always disabled.
+# TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
 def no_wasm_backend(note=''):
   assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm_backend', note)
-  return decorated
-
-
-def no_fastcomp(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm_backend', note, negate=True)
-  return decorated
+  return unittest.skip(note)
 
 
 def no_windows(note=''):
@@ -293,25 +285,13 @@ core_test_modes = [
   'wasms',
   'wasmz',
   'strict'
+  'wasm2js0',
+  'wasm2js1',
+  'wasm2js2',
+  'wasm2js3',
+  'wasm2jss',
+  'wasm2jsz',
 ]
-
-if Settings.WASM_BACKEND:
-  core_test_modes += [
-    'wasm2js0',
-    'wasm2js1',
-    'wasm2js2',
-    'wasm2js3',
-    'wasm2jss',
-    'wasm2jsz',
-  ]
-else:
-  core_test_modes += [
-    'asm0',
-    'asm2',
-    'asm3',
-    'asm2g',
-    'asm2f',
-  ]
 
 # The default core test mode, used when none is specified
 default_core_test_mode = 'wasm0'
@@ -439,9 +419,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def is_wasm(self):
     return self.get_setting('WASM') != 0
-
-  def is_wasm_backend(self):
-    return self.get_setting('WASM_BACKEND')
 
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
@@ -593,61 +570,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     create_test_file('onexit.js', 'Module.onExit = function() { %s }' % code)
     self.emcc_args += ['--pre-js', 'onexit.js']
 
-  def prep_ll_file(self, output_file, input_file, force_recompile=False, build_ll_hook=None):
-    # force_recompile = force_recompile or os.path.getsize(filename + '.ll') > 50000
-    # If the file is big, recompile just to get ll_opts
-    # Recompiling just for dfe in ll_opts is too costly
-
-    def fix_target(ll_filename):
-      if LLVM_TARGET == ASM_JS_TARGET:
-         return
-      with open(ll_filename) as f:
-        contents = f.read()
-      if LLVM_TARGET in contents:
-        return
-      asmjs_layout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
-      wasm_layout = "e-m:e-p:32:32-i64:64-n32:64-S128"
-      assert(ASM_JS_TARGET in contents)
-      assert(asmjs_layout in contents)
-      contents = contents.replace(asmjs_layout, wasm_layout)
-      contents = contents.replace(ASM_JS_TARGET, WASM_TARGET)
-      with open(ll_filename, 'w') as f:
-        f.write(contents)
-
-    output_obj = output_file + '.o'
-    output_ll = output_file + '.ll'
-
-    if force_recompile or build_ll_hook:
-      if input_file.endswith(('.bc', '.o')):
-        if input_file != output_obj:
-          shutil.copy(input_file, output_obj)
-        building.llvm_dis(output_obj, output_ll)
-      else:
-        shutil.copy(input_file, output_ll)
-        fix_target(output_ll)
-
-      if build_ll_hook:
-        need_post = build_ll_hook(output_file)
-      building.llvm_as(output_ll, output_obj)
-      shutil.move(output_ll, output_ll + '.pre') # for comparisons later
-      building.llvm_dis(output_obj, output_ll)
-      if build_ll_hook and need_post:
-        build_ll_hook(output_file)
-        building.llvm_as(output_ll, output_obj)
-        shutil.move(output_ll, output_ll + '.post') # for comparisons later
-        building.llvm_dis(output_obj, output_ll)
-
-      building.llvm_as(output_ll, output_obj)
-    else:
-      if input_file.endswith('.ll'):
-        safe_copy(input_file, output_ll)
-        fix_target(output_ll)
-        building.llvm_as(output_ll, output_obj)
-      else:
-        safe_copy(input_file, output_obj)
-
-    return output_obj
-
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
   #                  (like --pre-js) do not need to be passed when building
@@ -663,99 +585,32 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return args
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, main_file=None,
-            additional_files=[], libraries=[], includes=[], build_ll_hook=None,
+  def build(self, filename,
+            libraries=[], includes=[],
             post_build=None, js_outfile=True):
-
-    # Copy over necessary files for compiling the source
-    if main_file is None:
-      with open(filename, 'w') as f:
-        f.write(src)
-      final_additional_files = []
-      for f in additional_files:
-        final_additional_files.append(os.path.join(dirname, os.path.basename(f)))
-        shutil.copyfile(f, final_additional_files[-1])
-      additional_files = final_additional_files
-    else:
-      # copy whole directory, and use a specific main .cpp file
-      # (rmtree() fails on Windows if the current working directory is inside the tree.)
-      if os.getcwd().startswith(os.path.abspath(dirname)):
-        os.chdir(os.path.join(dirname, '..'))
-      shutil.rmtree(dirname)
-      shutil.copytree(src, dirname)
-      shutil.move(os.path.join(dirname, main_file), filename)
-      # the additional files were copied; alter additional_files to point to their full paths now
-      additional_files = [os.path.join(dirname, f) for f in additional_files]
-      os.chdir(self.get_dir())
-
-    suffix = '.o.js' if js_outfile else '.o.wasm'
-    all_sources = [filename] + additional_files
-    if any(os.path.splitext(s)[1] in ('.cc', '.cxx', '.cpp') for s in all_sources):
+    suffix = '.js' if js_outfile else '.wasm'
+    if os.path.splitext(filename)[1] in ('.cc', '.cxx', '.cpp'):
       compiler = EMXX
     else:
       compiler = EMCC
 
-    if build_ll_hook:
-      # "slow", old path: build to bc, then build to JS
+    dirname, basename = os.path.split(filename)
+    output = shared.unsuffixed(basename) + suffix
+    cmd = [compiler, filename, '-o', output] + self.get_emcc_args(main_file=True) + \
+        ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
+        ['-I' + include for include in includes] + \
+        libraries
 
-      # C++ => LLVM binary
-
-      for f in all_sources:
-        try:
-          # Make sure we notice if compilation steps failed
-          os.remove(f + '.o')
-        except OSError:
-          pass
-        args = [compiler] + self.get_emcc_args(main_file=True) + \
-               ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
-               ['-I' + include for include in includes] + \
-               ['-c', f, '-o', f + '.o']
-        self.run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
-        self.assertExists(f + '.o')
-
-      # Link all files
-      object_file = filename + '.o'
-      if len(additional_files) + len(libraries):
-        shutil.move(object_file, object_file + '.alone')
-        inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
-        building.link_to_object(inputs, object_file)
-        if not os.path.exists(object_file):
-          print("Failed to link LLVM binaries:\n\n", object_file)
-          self.fail("Linkage error")
-
-      # Finalize
-      self.prep_ll_file(filename, object_file, build_ll_hook=build_ll_hook)
-
-      # BC => JS
-      building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
-    else:
-      # "fast", new path: just call emcc and go straight to JS
-      all_files = all_sources + libraries
-      args = [compiler] + self.get_emcc_args(main_file=True) + \
-          ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
-          ['-I' + include for include in includes] + \
-          all_files + ['-o', filename + suffix]
-
-      self.run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
-      self.assertExists(filename + suffix)
+    self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
+    self.assertExists(output)
 
     if post_build:
-      post_build(filename + suffix)
+      post_build(output)
 
     if js_outfile and self.uses_memory_init_file():
-      src = open(filename + suffix).read()
+      src = open(output).read()
       # side memory init file, or an empty one in the js
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
-
-  def validate_asmjs(self, err):
-    # check for asm.js validation
-    if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
-      print("[was asm.js'ified]", file=sys.stderr)
-    # check for an asm.js validation error, if we expect one
-    elif 'asm.js' in err and not self.is_wasm() and self.get_setting('ASM_JS') == 1:
-      self.fail("did NOT asm.js'ify: " + err)
-    err = '\n'.join([line for line in err.split('\n') if 'uccessfully compiled asm.js code' not in line])
-    return err
 
   def get_func(self, src, name):
     start = src.index('function ' + name + '(')
@@ -808,9 +663,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
-    # Make sure that we produced proper line endings to the .js file we are about to run.
-    if not filename.endswith('.wasm'):
-      self.assertEqual(line_endings.check_line_endings(filename), 0)
     error = None
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
@@ -822,10 +674,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     except subprocess.CalledProcessError as e:
       error = e
 
+    # Make sure that we produced proper line endings to the .js file we are about to run.
+    if not filename.endswith('.wasm'):
+      self.assertEqual(line_endings.check_line_endings(filename), 0)
+
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
-    if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
-      err = self.validate_asmjs(err)
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
@@ -1134,7 +988,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=[]):
-      cmdv = [EMCC, src, '-o', os.path.splitext(src)[0] + so] + self.get_emcc_args()
+      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so] + self.get_emcc_args()
       cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
       self.run_process(cmdv)
 
@@ -1226,36 +1080,31 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
-             no_build=False, main_file=None, additional_files=[],
+             no_build=False,
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
-             includes=[], force_c=False, build_ll_hook=None,
+             includes=[], force_c=False,
              assert_returncode=0, assert_identical=False, assert_all=False,
              check_for_error=True):
-    if force_c or (main_file is not None and main_file[-2:]) == '.c':
+    if force_c:
       basename = 'src.c'
 
     if no_build:
       if src:
         js_file = src
       else:
-        js_file = basename + '.o.js'
+        js_file = shared.unsuffixed(basename) + '.js'
     else:
       dirname = self.get_dir()
       filename = os.path.join(dirname, basename)
-      self.build(src, dirname, filename, main_file=main_file,
-                 additional_files=additional_files, libraries=libraries,
-                 includes=includes,
-                 build_ll_hook=build_ll_hook, post_build=post_build)
-      js_file = filename + '.o.js'
+      with open(filename, 'w') as f:
+        f.write(src)
+      self.build(filename, libraries=libraries, includes=includes, post_build=post_build)
+      js_file = shared.unsuffixed(filename) + '.js'
     self.assertExists(js_file)
 
     engines = self.filtered_js_engines(js_engines)
-    # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
     if len(engines) > 1 and not self.use_all_engines:
-      if SPIDERMONKEY_ENGINE in engines and not self.is_wasm_backend():
-        engines = [SPIDERMONKEY_ENGINE]
-      else:
-        engines = engines[:1]
+      engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines

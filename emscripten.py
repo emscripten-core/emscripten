@@ -53,70 +53,6 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript_fastcomp(infile, outfile, memfile, temp_files, DEBUG):
-  """Runs the emscripten LLVM-to-JS compiler.
-
-  Args:
-    infile: The path to the input LLVM assembly file.
-    outfile: An open file object where the output is written.
-  """
-
-  assert shared.Settings.ASM_JS, 'fastcomp is asm.js-only (mode 1 or 2)'
-
-  success = False
-
-  try:
-
-    # Overview:
-    #   * Run LLVM backend to emit JS. JS includes function bodies, memory initializer,
-    #     and various metadata
-    #   * Run compiler.js on the metadata to emit the shell js code, pre/post-ambles,
-    #     JS library dependencies, etc.
-
-    # metadata is modified by reference in some of the below
-    # these functions are split up to force variables to go out of scope and allow
-    # memory to be reclaimed
-
-    with ToolchainProfiler.profile_block('get_and_parse_backend'):
-      backend_output = compile_js(infile, temp_files, DEBUG)
-      funcs, metadata, mem_init = parse_fastcomp_output(backend_output, DEBUG)
-      fixup_metadata_tables(metadata)
-      funcs = fixup_functions(funcs, metadata)
-    with ToolchainProfiler.profile_block('compiler_glue'):
-      glue, forwarded_data = compiler_glue(metadata, temp_files, DEBUG)
-
-    with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      (post, function_table_data, bundled_args) = (
-          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG))
-    with ToolchainProfiler.profile_block('write_output_file'):
-      finalize_output(outfile, post, function_table_data, bundled_args, metadata, DEBUG)
-    success = True
-
-  finally:
-    outfile.close()
-    if not success:
-      shared.try_delete(outfile.name) # remove partial output
-
-
-def compile_js(infile, temp_files, DEBUG):
-  """Compile infile with asm.js backend, return the contents of the compiled js"""
-  with temp_files.get_file('.4.js') as temp_js:
-    backend_cmd = create_backend_cmd(infile, temp_js)
-
-    if DEBUG:
-      logger.debug('emscript: llvm backend: ' + ' '.join(backend_cmd))
-      t = time.time()
-    shared.print_compiler_stage(backend_cmd)
-    with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-      shared.check_call(backend_cmd)
-    if DEBUG:
-      logger.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
-
-    # Split up output
-    backend_output = open(temp_js).read()
-  return backend_output
-
-
 def parse_fastcomp_output(backend_output, DEBUG):
   start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
@@ -153,10 +89,6 @@ def parse_fastcomp_output(backend_output, DEBUG):
     metadata['externUses'] += ['Uint16Array']
   if 'Float64Array' in metadata['externUses']:
     metadata['externUses'] += ['Float32Array']
-
-  # If we are generating references to Math.fround() from here in emscripten.py, declare it used as well.
-  if provide_fround():
-    metadata['externUses'] += ['Math.fround']
 
   # functions marked llvm.used in the code are exports requested by the user
   building.user_requested_exports += metadata['exports']
@@ -418,14 +350,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   function_tables_impls = make_function_tables_impls(function_table_data)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
-  if shared.Settings.EMULATED_FUNCTION_POINTERS:
-    final_function_tables = (
-      final_function_tables
-      .replace("asm['", '')
-      .replace("']", '')
-      .replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_')
-      .replace('var dynCall_', '//')
-    )
 
   if DEBUG:
     logger.debug('asm text sizes' + str([
@@ -437,23 +361,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   bundled_args = (funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
                   asm_global_funcs, pre_tables, final_function_tables, exports)
   return (post, function_table_data, bundled_args)
-
-
-def finalize_output(outfile, post, function_table_data, bundled_args, metadata, DEBUG):
-  function_table_sigs = function_table_data.keys()
-  module = create_module_asmjs(function_table_sigs, metadata, *bundled_args)
-
-  if DEBUG:
-    logger.debug('emscript: python processing: finalize')
-    t = time.time()
-
-  write_output_file(outfile, post, module)
-  module = None
-
-  if DEBUG:
-    logger.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
-
-  write_cyberdwarf_data(outfile, metadata)
 
 
 # Given JS code that consists only exactly of a series of "var a = ...;\n var b = ...;" statements,
@@ -495,59 +402,6 @@ def create_global_initializer(initializers):
   return global_initializer
 
 
-def create_module_asmjs(function_table_sigs, metadata,
-                        funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                        asm_global_funcs, pre_tables, final_function_tables, exports):
-  receiving += create_named_globals(metadata)
-  runtime_funcs = create_runtime_funcs_asmjs(exports, metadata)
-
-  asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata)
-  memory_views = create_memory_views(metadata)
-  asm_temp_vars = create_asm_temp_vars(metadata)
-  asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
-
-  stack = ''
-  if not shared.Settings.RELOCATABLE and not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-    if 'STACKTOP' in shared.Settings.ASM_PRIMITIVE_VARS:
-      stack += apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n')
-    if 'STACK_MAX' in shared.Settings.ASM_PRIMITIVE_VARS:
-      stack += apply_memory('  var STACK_MAX = {{{ STACK_MAX }}};\n')
-
-  if 'tempFloat' in shared.Settings.ASM_PRIMITIVE_VARS:
-    temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
-  else:
-    temp_float = ''
-  f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround() else ''
-
-  replace_memory = create_replace_memory(metadata)
-
-  start_funcs_marker = '\n// EMSCRIPTEN_START_FUNCS\n'
-
-  asm_end = create_asm_end(exports)
-
-  asm_variables = collapse_redundant_vars(memory_views + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs + stack + temp_float + f0_fround)
-  asm_global_initializer = create_global_initializer(metadata['initializers'])
-
-  module = [
-    asm_start_pre,
-    asm_variables,
-    replace_memory,
-    start_funcs_marker,
-    asm_global_initializer
-  ] + runtime_funcs + funcs_js + [
-    '\n  ',
-    pre_tables, final_function_tables, asm_end,
-    '\n', receiving, ';\n'
-  ]
-
-  if shared.Settings.SIDE_MODULE:
-    module.append('''
-parentModule['registerFunctions'](%s, Module);
-''' % str([str(f) for f in function_table_sigs]))
-
-  return module
-
-
 def write_output_file(outfile, post, module):
   for i in range(len(module)): # do this loop carefully to save memory
     module[i] = normalize_line_endings(module[i])
@@ -555,65 +409,6 @@ def write_output_file(outfile, post, module):
 
   post = normalize_line_endings(post)
   outfile.write(post)
-
-
-def write_cyberdwarf_data(outfile, metadata):
-  if not shared.Settings.CYBERDWARF:
-    return
-
-  assert('cyberdwarf_data' in metadata)
-  cd_file_name = outfile.name + ".cd"
-  with open(cd_file_name, 'w') as f:
-    json.dump({'cyberdwarf': metadata['cyberdwarf_data']}, f)
-
-
-def create_backend_cmd(infile, temp_js):
-  """Create asm.js backend command from settings dict"""
-  args = [
-    shared.LLVM_COMPILER, infile, '-march=js', '-filetype=asm', '-o', temp_js,
-    '-emscripten-stack-size=%d' % shared.Settings.TOTAL_STACK,
-    '-O%s' % shared.Settings.OPT_LEVEL,
-  ]
-  if shared.Settings.PRECISE_F32:
-    args += ['-emscripten-precise-f32']
-  if shared.Settings.USE_PTHREADS:
-    args += ['-emscripten-enable-pthreads']
-  if shared.Settings.WARN_UNALIGNED:
-    args += ['-emscripten-warn-unaligned']
-  if shared.Settings.RESERVED_FUNCTION_POINTERS > 0:
-    args += ['-emscripten-reserved-function-pointers=%d' % shared.Settings.RESERVED_FUNCTION_POINTERS]
-  if shared.Settings.ASSERTIONS > 0:
-    args += ['-emscripten-assertions=%d' % shared.Settings.ASSERTIONS]
-  if shared.Settings.ALIASING_FUNCTION_POINTERS == 0:
-    args += ['-emscripten-no-aliasing-function-pointers']
-  if shared.Settings.EMULATED_FUNCTION_POINTERS:
-    args += ['-emscripten-emulated-function-pointers']
-  if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-    args += ['-emscripten-emulate-function-pointer-casts']
-  if shared.Settings.RELOCATABLE:
-    args += ['-emscripten-relocatable']
-    args += ['-emscripten-global-base=0']
-  elif shared.Settings.GLOBAL_BASE >= 0:
-    args += ['-emscripten-global-base=%d' % shared.Settings.GLOBAL_BASE]
-  if shared.Settings.SIDE_MODULE:
-    args += ['-emscripten-side-module']
-  if shared.Settings.LEGALIZE_JS_FFI != 1:
-    args += ['-emscripten-legalize-javascript-ffi=0']
-  if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
-    args += ['-enable-emscripten-cpp-exceptions']
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_ALLOWED or ['fake'])]
-  if not shared.Settings.EXIT_RUNTIME:
-    args += ['-emscripten-no-exit-runtime']
-  if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
-    args += ['-emscripten-asmjs-work-around-ios-9-right-shift-bug']
-  if shared.Settings.WASM:
-    args += ['-emscripten-wasm']
-    if building.is_wasm_only():
-      args += ['-emscripten-only-wasm']
-  if shared.Settings.CYBERDWARF:
-    args += ['-enable-cyberdwarf']
-  return args
 
 
 def optimize_syscalls(declares, DEBUG):
@@ -671,18 +466,10 @@ def align_static_bump(metadata):
 def update_settings_glue(metadata, DEBUG):
   optimize_syscalls(metadata['declares'], DEBUG)
 
-  if shared.Settings.CYBERDWARF:
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append("cyberdwarf_Debugger")
-    shared.Settings.EXPORTED_FUNCTIONS.append("cyberdwarf_Debugger")
-
   # Integrate info from backend
   if shared.Settings.SIDE_MODULE:
     # we don't need any JS library contents in side modules
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-  if metadata.get('cantValidate') and shared.Settings.ASM_JS != 2:
-    diagnostics.warning('almost-asm', 'disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
-    shared.Settings.ASM_JS = 2
 
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
   implemented_funcs = [x[1:] for x in metadata['implementedFunctions']]
@@ -891,9 +678,15 @@ def get_all_implemented(forwarded_json, metadata):
 
 
 def report_missing_symbols(all_implemented, pre):
+  required_symbols = set(shared.Settings.USER_EXPORTED_FUNCTIONS)
+  # In standalone mode a request for `_main` is interpreted as a request for `_start`
+  # so don't warn about mossing main.
+  if shared.Settings.STANDALONE_WASM and '_main' in required_symbols:
+    required_symbols.discard('_main')
+
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
+  missing = list(required_symbols - all_implemented)
 
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
@@ -1125,21 +918,6 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
     start = raw.index('[')
     end = raw.rindex(']')
     body = raw[start + 1:end].split(',')
-    if shared.Settings.EMULATED_FUNCTION_POINTERS:
-      def receive(item):
-        if item == '0':
-          return item
-        if item not in all_implemented:
-          # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
-          return item
-        in_table.add(item)
-        return "asm['" + item + "']"
-
-      body = [receive(b) for b in body]
-    for j in range(shared.Settings.RESERVED_FUNCTION_POINTERS):
-      curr = 'jsCall_%s_%s' % (sig, j)
-      body[1 + j] = curr
-      implemented_functions.add(curr)
     Counter.next_item = 0
 
     def fix_item(item):
@@ -1150,9 +928,6 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
         # emulate all non-null pointer calls, if asked to
         if j > 0 and shared.Settings.EMULATE_FUNCTION_POINTER_CASTS and not shared.Settings.WASM and j in function_pointer_targets:
           proper_sig, proper_target = function_pointer_targets[j]
-          if shared.Settings.EMULATED_FUNCTION_POINTERS:
-            if proper_target in all_implemented:
-              proper_target = "asm['" + proper_target + "']"
 
           def make_emulated_param(i):
             if i >= len(sig):
@@ -1188,7 +963,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       # when emulating function pointers, we don't need wrappers
       # but if relocating, then we also have the copies in-module, and do
       # in wasm we never need wrappers though
-      if clean_item not in implemented_functions and not (shared.Settings.EMULATED_FUNCTION_POINTERS and not shared.Settings.RELOCATABLE) and not shared.Settings.WASM:
+      if clean_item not in implemented_functions and shared.Settings.RELOCATABLE and not shared.Settings.WASM:
         # this is imported into asm, we must wrap it
         call_ident = clean_item
         if call_ident in metadata['redirects']:
@@ -1229,13 +1004,6 @@ def math_fix(g):
   return g if not g.startswith('Math_') else g.split('_')[1]
 
 
-# asm.js function tables have one table in each linked asm.js module, so we
-# can't just dynCall into them - ftCall exists for that purpose. In wasm,
-# even linked modules share the table, so it's all fine.
-def asm_js_emulated_function_pointers():
-  return shared.Settings.EMULATED_FUNCTION_POINTERS and not shared.Settings.WASM
-
-
 def make_function_tables_impls(function_table_data):
   function_tables_impls = []
   for sig, table in function_table_data.items():
@@ -1243,66 +1011,21 @@ def make_function_tables_impls(function_table_data):
     arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
     coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i]) for i in range(1, len(sig))])
     sig_mask = str(table.count(','))
-    if not (shared.Settings.WASM and shared.Settings.EMULATED_FUNCTION_POINTERS):
-      ret = 'FUNCTION_TABLE_%s[index&%s](%s)' % (sig, sig_mask, coerced_args)
-    else:
-      # for wasm with emulated function pointers, emit an mft_SIG(..) call, we avoid asm.js function tables there.
-      ret = 'mftCall_%s(index%s%s)' % (sig, ',' if len(sig) > 1 else '', coerced_args)
+    ret = 'FUNCTION_TABLE_%s[index&%s](%s)' % (sig, sig_mask, coerced_args)
     ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion(ret, sig[0])
-    if not asm_js_emulated_function_pointers():
-      function_tables_impls.append('''
+    function_tables_impls.append('''
 function dynCall_%s(index%s%s) {
   index = index|0;
   %s
   %s;
 }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
-    else:
-      function_tables_impls.append('''
-var dynCall_%s = ftCall_%s;
-''' % (sig, sig))
 
-    ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], ffi_arg=True) for i in range(1, len(sig))])
-    for i in range(shared.Settings.RESERVED_FUNCTION_POINTERS):
-      jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], ffi_result=True)
-      function_tables_impls.append('''
-function jsCall_%s_%s(%s) {
-  %s
-  %s;
-}
-
-''' % (sig, i, args, arg_coercions, jsret))
   return function_tables_impls
 
 
 def create_mftCall_funcs(function_table_data):
-  if not asm_js_emulated_function_pointers():
-    return []
-  if shared.Settings.WASM or not shared.Settings.RELOCATABLE:
-    return []
-
-  mftCall_funcs = []
-  # in wasm, emulated function pointers are just simple table calls
-  for sig, table in function_table_data.items():
-    return_type, sig_args = sig[0], sig[1:]
-    num_args = len(sig_args)
-    params = ','.join(['ptr'] + ['p%d' % i for i in range(num_args)])
-    coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i')] + [shared.JS.make_coercion('p%d' % i, unfloat(sig_args[i])) for i in range(num_args)])
-    coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (i, shared.JS.make_coercion('p%d' % i, unfloat(sig_args[i]))) for i in range(num_args)]) + ';'
-    mini_coerced_params = ','.join([shared.JS.make_coercion('p%d' % i, sig_args[i]) for i in range(num_args)])
-    maybe_return = '' if return_type == 'v' else 'return'
-    final_return = maybe_return + ' ' + shared.JS.make_coercion('ftCall_' + sig + '(' + coerced_params + ')', unfloat(return_type)) + ';'
-    if shared.Settings.EMULATED_FUNCTION_POINTERS == 1:
-      body = final_return
-    else:
-      sig_mask = str(table.count(','))
-      body = ('if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + ' + sig_mask + ' | 0))) { ' + maybe_return + ' ' +
-              shared.JS.make_coercion(
-                'FUNCTION_TABLE_' + sig + '[(ptr-fb)&' + sig_mask + '](' +
-                mini_coerced_params + ')', return_type, ffi_arg=True
-              ) + '; ' + ('return;' if return_type == 'v' else '') + ' }' + final_return)
-    mftCall_funcs.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
-  return mftCall_funcs
+  return []
 
 
 def get_function_pointer_error(sig, function_table_sigs):
@@ -1346,9 +1069,7 @@ def asm_backend_uses(metadata, symbol):
 
 
 def create_asm_global_funcs(bg_funcs, metadata):
-  maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
-  if provide_fround():
-    maths += ['Math.fround']
+  maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32', 'fround']]
 
   asm_global_funcs = ''
   for math in maths:
@@ -1373,10 +1094,6 @@ def create_asm_global_vars(bg_vars):
 def asm_safe_heap():
   """optimized safe heap in asm, when we can"""
   return shared.Settings.SAFE_HEAP and not shared.Settings.SAFE_HEAP_LOG and not shared.Settings.RELOCATABLE
-
-
-def provide_fround():
-  return shared.Settings.PRECISE_F32
 
 
 def create_asm_setup(debug_tables, function_table_data, invoke_function_names, metadata):
@@ -1426,38 +1143,7 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
     ''' % (fullname, key, check(barename), side, barename, barename, sig, key, key)
 
   asm_setup += create_invoke_wrappers(invoke_function_names)
-  asm_setup += setup_function_pointers(function_table_sigs)
 
-  if shared.Settings.EMULATED_FUNCTION_POINTERS:
-    function_tables_impls = make_function_tables_impls(function_table_data)
-    asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
-
-  return asm_setup
-
-
-def setup_function_pointers(function_table_sigs):
-  asm_setup = ''
-  for sig in function_table_sigs:
-    if shared.Settings.RESERVED_FUNCTION_POINTERS:
-      asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
-    # nothing special to do here for wasm, we just use dynCalls
-    if not shared.Settings.WASM:
-      if shared.Settings.EMULATED_FUNCTION_POINTERS:
-        args = ['a%d' % i for i in range(len(sig) - 1)]
-        full_args = ['x'] + args
-        table_access = 'FUNCTION_TABLE_' + sig
-        if shared.Settings.SIDE_MODULE:
-          table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
-        table_read = table_access + '[x]'
-        prelude = ''
-        if shared.Settings.ASSERTIONS:
-          prelude = '''
-    if (x < 0 || x >= %s.length) { err("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs))
-        asm_setup += '''
-  function ftCall_%s(%s) {%s
-    return %s(%s);
-  }
-  ''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
   return asm_setup
 
 
@@ -1480,11 +1166,6 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
 
   basic_funcs += invoke_function_names
 
-  for sig in function_table_sigs:
-    if shared.Settings.RESERVED_FUNCTION_POINTERS:
-      basic_funcs.append('jsCall_%s' % sig)
-    if asm_js_emulated_function_pointers():
-      basic_funcs.append('ftCall_%s' % sig)
   return basic_funcs
 
 
@@ -1505,12 +1186,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata):
   all_exported = exported_implemented_functions + function_tables(function_table_data)
-  # In asm.js + emulated function pointers, export all the table because we use
-  # JS to add the asm.js module's functions to the table (which is external
-  # in this mode). In wasm, we don't need that since wasm modules can
-  # directly add functions to the imported Table.
-  if not shared.Settings.WASM and shared.Settings.EMULATED_FUNCTION_POINTERS:
-    all_exported += in_table
   exports = []
   for export in sorted(set(all_exported)):
     exports.append(quote(export) + ": " + export)
@@ -1530,10 +1205,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
 
 
 def function_tables(function_table_data):
-  if not asm_js_emulated_function_pointers():
-    return ['dynCall_' + table for table in function_table_data]
-  else:
-    return []
+  return ['dynCall_' + table for table in function_table_data]
 
 
 def create_the_global(metadata):
@@ -1588,20 +1260,6 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       tableName = table.split()[1]
       table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
       receiving += table + '\n'
-
-  if shared.Settings.EMULATED_FUNCTION_POINTERS:
-    # in asm.js emulated function tables, emit the table on the outside, where
-    # JS can manage it (for wasm, a native wasm Table is used directly, and we
-    # don't need this)
-    if not shared.Settings.WASM:
-      receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '')
-    # wasm still needs definitions for dyncalls on the outside, for JS
-    receiving += '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
-    if not shared.Settings.WASM:
-      for sig in function_table_data.keys():
-        name = 'FUNCTION_TABLE_' + sig
-        fullname = name if not shared.Settings.SIDE_MODULE else ('SIDE_' + name)
-        receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
 
   return receiving
 
@@ -1783,33 +1441,6 @@ function SAFE_FT_MASK(value, mask) {
 ''' % {'brk_check': brk_check})
 
   return funcs
-
-
-def create_asm_start_pre(asm_setup, the_global, sending, metadata):
-  shared_array_buffer = ''
-  if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    shared_array_buffer = "asmGlobalArg['Atomics'] = Atomics;"
-
-  module_global = 'var asmGlobalArg = ' + the_global + ';'
-  module_library = 'var asmLibraryArg = ' + sending + ';'
-
-  asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
-                      'var asm = (/** @suppress {uselessCode} */ function(global, env, buffer) {')
-
-  use_asm = "'almost asm';"
-  if shared.Settings.ASM_JS == 1:
-    use_asm = "'use asm';"
-
-  lines = [
-    asm_setup,
-    module_global,
-    shared_array_buffer,
-    module_library,
-    asm_function_top,
-    use_asm,
-    create_first_in_asm(),
-  ]
-  return '\n'.join(lines)
 
 
 def create_asm_temp_vars(metadata):
@@ -2587,7 +2218,7 @@ def run(infile, outfile, memfile):
 
   outfile_obj = open(outfile, 'w')
 
-  emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
+  emscripter = emscript_wasm_backend
   return temp_files.run_and_clean(lambda: emscripter(
       infile, outfile_obj, memfile, temp_files, shared.DEBUG)
   )

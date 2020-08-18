@@ -610,6 +610,7 @@ $std::__2::iterator_traits<std::__2::basic_string<char\2c\20std::__2::char_trait
 $std::__2::iterator_traits<wchar_t*>::difference_type\20std::__2::distance<wchar_t*>\28wchar_t*\2c\20wchar_t*\29
 $std::__2::locale::__global\28\29
 $std::__2::locale::__imp::__imp\28unsigned\20long\29
+$std::__2::locale::__imp::has_facet\28long\29\20const
 $std::__2::locale::__imp::install\28std::__2::locale::facet*\2c\20long\29
 $std::__2::locale::__imp::make_classic\28\29
 $std::__2::locale::__imp::make_global\28\29

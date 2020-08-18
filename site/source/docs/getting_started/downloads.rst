@@ -115,7 +115,8 @@ Windows
 macOS
 +++++
 
-If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
+If you use the Emscripten SDK it includes a bundled version of Python 3.  Otherwise
+you will need to manually install and use Python 3.5 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
@@ -134,8 +135,6 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
   -  Download and install latest CMake from `Kitware CMake downloads <http://www.cmake.org/download/>`_.
 
-  .. _getting-started-on-macos-install-python2:
-
 Linux
 +++++
 
@@ -146,15 +145,13 @@ Linux
   ::
 
     # Install Python
-    sudo apt-get install python2.7
+    sudo apt-get install python3
 
     # Install CMake (optional, only needed for tests and building Binaryen)
     sudo apt-get install cmake
 
     # Install Java (optional, only needed for Closure Compiler minification)
     sudo apt-get install default-jre
-
-.. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
 .. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``.emscripten`` file to point to it.
 

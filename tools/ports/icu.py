@@ -25,7 +25,7 @@ def get(ports, settings, shared):
     logging.info('building port: icu')
 
     source_path = os.path.join(ports.get_dir(), 'icu', 'icu')
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'icu')
+    dest_path = os.path.join(ports.get_build_dir(), 'icu')
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)

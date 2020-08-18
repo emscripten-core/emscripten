@@ -47,9 +47,7 @@ var wasmMemory;
 // In fastcomp asm.js, we don't need a wasm Table at all.
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
-#if WASM_BACKEND || WASM
 #include "runtime_init_table.js"
-#endif // WASM_BACKEND || WASM
 
 #if USE_PTHREADS
 // For sending to workers.
@@ -137,7 +135,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
-#if ASYNCIFY && WASM_BACKEND
+#if ASYNCIFY
   var asyncMode = opts && opts.async;
   var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
   var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0;
@@ -163,7 +161,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if ASYNCIFY && WASM_BACKEND
+#if ASYNCIFY
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -784,21 +782,12 @@ Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
-#if CYBERDWARF
-var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
-#endif
-
 #include "URIUtils.js"
 
 #if ASSERTIONS
 function createExportWrapper(name, fixedasm) {
   return function() {
     var displayName = name;
-#if !WASM_BACKEND
-    if (name[0] == '_') {
-      displayName = name.substr(1);
-    }
-#endif
     var asm = fixedasm;
     if (!fixedasm) {
       asm = Module['asm'];
@@ -865,9 +854,7 @@ function getBinaryPromise() {
     });
   }
   // Otherwise, getBinary should be able to get it synchronously
-  return new Promise(function(resolve, reject) {
-    resolve(getBinary());
-  });
+  return Promise.resolve().then(getBinary);
 }
 
 #if LOAD_SOURCE_MAP
@@ -891,15 +878,6 @@ function createWasm() {
     'env': asmLibraryArg,
     '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if WASM_BACKEND == 0
-    ,
-    'global': {
-      'NaN': NaN,
-      'Infinity': Infinity
-    },
-    'global.Math': Math,
-    'asm2wasm': asm2wasmImports
-#endif
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
@@ -910,7 +888,7 @@ function createWasm() {
 #if RELOCATABLE
     exports = relocateExports(exports, GLOBAL_BASE, 0);
 #endif
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
@@ -1126,7 +1104,7 @@ function createWasm() {
   if (Module['instantiateWasm']) {
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
 #endif
       return exports;
@@ -1150,10 +1128,6 @@ function createWasm() {
   return Module['asm']; // exports were assigned here
 #endif
 }
-#endif
-
-#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like function
-Module['asm'] = createWasm;
 #endif
 
 // Globals used by JS i64 conversions
