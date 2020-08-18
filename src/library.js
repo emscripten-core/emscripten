@@ -2039,7 +2039,7 @@ LibraryManager.library = {
     // timezone is specified as seconds west of UTC ("The external variable
     // `timezone` shall be set to the difference, in seconds, between
     // Coordinated Universal Time (UTC) and local standard time."), the same
-    // as returned by getTimezoneOffset().
+    // as returned by stdTimezoneOffset().
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
     {{{ makeSetValue('__get_timezone()', '0', '(new Date().stdTimezoneOffset()) * 60', 'i32') }}};
 
