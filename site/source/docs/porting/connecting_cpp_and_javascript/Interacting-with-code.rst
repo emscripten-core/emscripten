@@ -616,12 +616,8 @@ be called.
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
-When using ``addFunction``, there is a backing array where these functions are
-stored. This array must be explicitly sized, which can be done via a
-compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For example, to reserve
-space for 20 functions to be added::
-
-    emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
+You should build with ``-s ALLOW_TABLE_GROWTH`` to allow new functions to be
+added to the table. Otherwise by default the table has a fixed size.
 
 .. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
    an additional second argument, a Wasm function signature string. Each
