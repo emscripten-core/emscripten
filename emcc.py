@@ -891,16 +891,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- Utilities ---------------
 
-  def suffix(name):
-    """Return the file extension"""
-    return os.path.splitext(name)[1]
-
   seen_names = {}
 
   def uniquename(name):
     if name not in seen_names:
       seen_names[name] = str(len(seen_names))
-    return unsuffixed(name) + '_' + seen_names[name] + suffix(name)
+    return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
 
   # ---------------- End configs -------------
 
@@ -2314,7 +2310,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
       perform_link = len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND
       if not perform_link:
-        is_dylib = suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
+        is_dylib = shared.suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
         is_ar = building.is_ar(temp_files[0][1])
         is_bc = not is_ar and not is_dylib
         perform_link = not (is_bc or is_dylib) and is_ar

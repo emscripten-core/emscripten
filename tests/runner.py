@@ -589,7 +589,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
             libraries=[], includes=[],
             post_build=None, js_outfile=True):
     suffix = '.js' if js_outfile else '.wasm'
-    if os.path.splitext(filename)[1] in ('.cc', '.cxx', '.cpp'):
+    if shared.suffix(filename) in ('.cc', '.cxx', '.cpp'):
       compiler = EMXX
     else:
       compiler = EMCC
