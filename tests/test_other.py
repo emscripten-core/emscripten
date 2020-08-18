@@ -7177,7 +7177,10 @@ int main() {
                   '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 408028), # noqa
   })
   def test_metadce_cxx(self, *args):
-    self.run_metadce_test('hello_libcxx.cpp', *args)
+    # do not check functions in this test as there are a lot of libc++ functions
+    # pulled in here, and small LLVM backend changes can affect their size and
+    # lead to different inlining decisions which add or remove a function
+    self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
 
   @parameterized({
     'normal': (['-O2'], ['abort'], ['waka'], 186423),
