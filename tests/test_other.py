@@ -9796,3 +9796,12 @@ int main () {
     # Test that output name is just `a.out` and that it is directly executable
     output = self.run_process([os.path.abspath('a.out')], stdout=PIPE).stdout
     self.assertContained('hello, world!', output)
+
+  def test_standalone_export_main(self):
+    # Tests that explictly exported `_main` does not fail.   Since we interpret an
+    # export of `_main` to be be an export of `__start` in standalone mode the
+    # actual main function is not exported, but we also don't want to report an
+    # error
+    self.set_setting('STANDALONE_WASM')
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
