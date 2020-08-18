@@ -9670,7 +9670,7 @@ int main() {
     src = path_from_root('tests', 'core', 'test_support_errno.c')
     output = path_from_root('tests', 'core', 'test_support_errno.out')
     self.do_run_from_file(src, output)
-    size_default = os.path.getsize('src.js')
+    size_default = os.path.getsize('test_support_errno.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
@@ -9679,7 +9679,7 @@ int main() {
     self.do_run_from_file(src, output)
 
     # Verify the JS output was smaller
-    self.assertLess(os.path.getsize('src.js'), size_default)
+    self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
