@@ -12,7 +12,6 @@ import base64
 import difflib
 import json
 import logging
-import math
 import os
 import re
 import shutil
