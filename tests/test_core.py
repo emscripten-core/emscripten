@@ -7108,9 +7108,15 @@ someweirdtext
   ### Tests for tools
 
   @no_wasm2js('TODO: source maps in wasm2js')
-  def test_source_map(self):
+  @parameterized({
+    '': ([],),
+    'minimal_runtime': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_source_map(self, args):
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
+
+    self.emcc_args += args
 
     src = '''
       #include <stdio.h>
@@ -7748,24 +7754,27 @@ Module['onRuntimeInitialized'] = function() {
     self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
 
   @no_asan('no wasm2js support yet in asan')
-  def test_wasm2js_fallback(self):
+  @parameterized({
+    '': ([],),
+    'minimal_runtime': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_wasm2js_fallback(self, args):
     if self.get_setting('WASM') == 0:
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
-    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
-      cmd = [EMCC, path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2'] + args
-      self.run_process(cmd)
+    cmd = [EMCC, path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2'] + args
+    self.run_process(cmd)
 
-      # First run with WebAssembly support enabled
-      # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
-      os.rename('a.out.wasm.js', 'a.out.wasm.js.unused')
-      self.assertContained('hello!', self.run_js('a.out.js'))
-      os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
+    # First run with WebAssembly support enabled
+    # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
+    os.rename('a.out.wasm.js', 'a.out.wasm.js.unused')
+    self.assertContained('hello!', self.run_js('a.out.js'))
+    os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
 
-      # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
-      open('b.out.js', 'w').write('WebAssembly = undefined;\n' + open('a.out.js', 'r').read())
-      os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
-      self.assertContained('hello!', self.run_js('b.out.js'))
+    # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
+    open('b.out.js', 'w').write('WebAssembly = undefined;\n' + open('a.out.js', 'r').read())
+    os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
+    self.assertContained('hello!', self.run_js('b.out.js'))
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
@@ -8149,7 +8158,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_no_error(self, name):
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
-                basename=name, expected_output=[''], assert_returncode=NON_ZERO)
+                force_c=name.endswith('.c'), expected_output=[''], assert_returncode=NON_ZERO)
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
   # clang optimizing things away. for example, a memset might be optimized into
@@ -8219,7 +8228,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if cflags:
       self.emcc_args += cflags
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
-                basename='src.c' if name.endswith('.c') else 'src.cpp',
+                force_c=name.endswith('.c'),
                 expected_output=expected_output, assert_all=True,
                 check_for_error=False, assert_returncode=NON_ZERO)
 
@@ -8227,7 +8236,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_js_stack_op(self):
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
-                basename='src.c', expected_output='Hello, World!')
+                force_c=True, expected_output='Hello, World!')
 
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_api(self):

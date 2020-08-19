@@ -589,7 +589,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
             libraries=[], includes=[],
             post_build=None, js_outfile=True):
     suffix = '.js' if js_outfile else '.wasm'
-    if os.path.splitext(filename)[1] in ('.cc', '.cxx', '.cpp'):
+    if shared.suffix(filename) in ('.cc', '.cxx', '.cpp'):
       compiler = EMXX
     else:
       compiler = EMCC
@@ -1081,12 +1081,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              no_build=False,
-             js_engines=None, post_build=None, basename='src.cpp', libraries=[],
+             js_engines=None, post_build=None, libraries=[],
              includes=[], force_c=False,
              assert_returncode=0, assert_identical=False, assert_all=False,
              check_for_error=True):
     if force_c:
       basename = 'src.c'
+    else:
+      basename = 'src.cpp'
 
     if no_build:
       if src:
