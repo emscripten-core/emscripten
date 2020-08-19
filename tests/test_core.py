@@ -1151,6 +1151,7 @@ int main() {
 
   def test_exceptions_minimal_runtime(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME', 1)
     for support_longjmp in [0, 1]:
