@@ -395,7 +395,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
   show('Compiling generated code...')
   # -Oz optimizes enough to avoid warnings on code size/num locals
   cmd = [shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
-                                    '-O0', '--js-opts', '0', '--memory-init-file', '0',
+                                    '-O0', '--memory-init-file', '0',
                                     '-Werror', '-Wno-format',
                                     '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                     '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',

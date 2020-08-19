@@ -41,14 +41,17 @@ WebAssembly = {
   // instance of this function).
   Table: /** @constructor */ function(opts) {
     var ret = new Array(opts['initial']);
+#if ALLOW_TABLE_GROWTH
     ret.grow = function(by) {
-#if !ALLOW_TABLE_GROWTH
-      if (ret.length >= {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}}) {
-        abort('Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.')
-      }
-#endif
       ret.push(null);
     };
+#else
+#if ASSERTIONS // without assertions we'll throw on calling the missing function
+    ret.grow = function(by) {
+      abort('Unable to grow wasm table. Build with ALLOW_TABLE_GROWTH.')
+    };
+#endif // ASSERTIONS
+#endif // ALLOW_TABLE_GROWTH
     ret.set = function(i, func) {
       ret[i] = func;
     };

@@ -166,7 +166,7 @@ var HEAPF32 = new Float32Array(buffer);
 var HEAPF64 = new Float64Array(buffer);
 #endif
 
-#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || (SINGLE_FILE && !WASM && !WASM_BACKEND) || USES_DYNAMIC_ALLOC)
+#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
@@ -179,16 +179,11 @@ HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
 
 #endif
 
-#if SINGLE_FILE && !WASM && !WASM_BACKEND
-#include "base64Decode.js"
-HEAPU8.set(base64Decode('{{{ getQuoted("BASE64_MEMORY_INITIALIZER") }}}'), GLOBAL_BASE);
-#endif
-
 #if USES_DYNAMIC_ALLOC
   HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
 #endif
 
-#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || (SINGLE_FILE && !WASM && !WASM_BACKEND) || USES_DYNAMIC_ALLOC)
+#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
 }
 #endif
 

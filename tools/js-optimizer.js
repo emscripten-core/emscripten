@@ -4837,178 +4837,6 @@ function measureCost(ast) {
   return size;
 }
 
-function aggressiveVariableEliminationInternal(func, asmData) {
-  // This removes as many variables as possible. This is often not the best thing because it increases
-  // code size, but it is far preferable to the risk of split functions needing to do more spilling, so
-  // we use it when outlining.
-  // Specifically, this finds 'trivial' variables: ones with 1 definition, and that definition is not sensitive to any changes: it
-  // only depends on constants and local variables that are themselves trivial. We can unquestionably eliminate
-  // such variables in a trivial manner.
-
-  var assignments = {};
-  var appearances = {};
-  var defs = {};
-  var considered = {};
-
-  traverse(func, function(node, type) {
-    if (type == 'assign' && node[2][0] == 'name') {
-      var name = node[2][1];
-      if (name in asmData.vars) {
-        assignments[name] = (assignments[name] || 0) + 1;
-        appearances[name] = (appearances[name] || 0) - 1; // this appearance is a definition, offset the counting later
-        defs[name] = node;
-      } else {
-        if (name in asmData.params) {
-          assignments[name] = (assignments[name] || 1) + 1; // init to 1 for initial parameter assignment
-          considered[name] = true; // this parameter is not ssa, it must be in a hand-optimized function, so it is not trivial
-        }
-      }
-    } else if (type == 'name') {
-      var name = node[1];
-      if (name in asmData.vars) {
-        appearances[name] = (appearances[name] || 0) + 1;
-      }
-    }
-  });
-
-  var allTrivials = {}; // key of a trivial var => size of its (expanded) value, at least 1
-
-  // three levels of variables:
-  // 1. trivial: 1 def (or less), uses nothing sensitive, can be eliminated
-  // 2. safe: 1 def (or less), can be used in a trivial, but cannot itself be eliminated
-  // 3. sensitive: uses a global or memory or something else that prevents trivial elimination.
-
-  function assessTriviality(name) {
-    // only care about vars with 0-1 assignments of (0 for parameters), and can ignore label (which is not explicitly initialized, but cannot be eliminated ever anyhow)
-    if (assignments[name] > 1 || (!(name in asmData.vars) && !(name in asmData.params)) || name == 'label') return false;
-    if (considered[name]) return allTrivials[name];
-    considered[name] = true;
-    var sensitive = false;
-    var size = 0, originalSize = 0;
-    var def = defs[name];
-    if (def) {
-      var value = def[3];
-      originalSize = measureSize(value);
-      if (value) {
-        traverse(value, function recurseValue(node, type) {
-          var one = node[1];
-          if (!(type in NODES_WITHOUT_ELIMINATION_SENSITIVITY)) { // || (type == 'binary' && !(one in FAST_ELIMINATION_BINARIES))) {
-            sensitive = true;
-            return true;
-          }
-          if (type == 'name' && !assessTriviality(one)) {
-            if (assignments[one] > 1 || (!(one in asmData.vars) && !(one in asmData.params))) {
-              sensitive = true; // directly using something sensitive
-              return true;
-            } // otherwise, not trivial, but at least safe.
-          }
-          // if this is a name, it must be a trivial variable (or a safe one) and we know its size
-          size += ((type == 'name') ? allTrivials[one] : 1) || 1;
-        });
-      }
-    }
-    if (!sensitive) {
-      size = size || 1;
-      originalSize = originalSize || 1;
-      var factor = ((appearances[name] - 1) || 0) * (size - originalSize); // If no size change or just one appearance, always ok to trivially eliminate. otherwise, tradeoff
-      if (factor <= 12) {
-        allTrivials[name] = size; // trivial!
-        return true;
-      }
-    }
-    return false;
-  }
-  for (var name in asmData.vars) {
-    assessTriviality(name);
-  }
-  var trivials = {};
-
-  for (var name in allTrivials) { // from now on, ignore parameters
-    if (name in asmData.vars) trivials[name] = true;
-  }
-
-  allTrivials = {};
-
-  var values = {}, recursives = {};
-
-  function evaluate(name) {
-    var node = values[name];
-    if (node) return node;
-    values[name] = null; // prevent infinite recursion
-    var def = defs[name];
-    if (def) {
-      node = def[3];
-      if (node[0] == 'name') {
-        var name2 = node[1];
-        assert(name2 !== name);
-        if (name2 in trivials) {
-          node = evaluate(name2);
-        }
-      } else {
-        traverse(node, function(node, type) {
-          if (type == 'name') {
-            var name2 = node[1];
-            if (name2 === name) {
-              recursives[name] = 1;
-              return false;
-            }
-            if (name2 in trivials) {
-              return evaluate(name2);
-            }
-          }
-        });
-      }
-      values[name] = node;
-    }
-    // 'def' is non-null only if the variable was explicitly re-assigned after its definition.
-    // If it wasn't, the initial value should be used, which is supposed to always be zero.
-    else if (name in asmData.vars) {
-      values[name] = makeAsmCoercedZero(asmData.vars[name])
-    }
-    return node;
-  }
-
-  for (var name in trivials) {
-    evaluate(name);
-  }
-  for (var name in recursives) {
-    delete trivials[name];
-  }
-
-  for (var name in trivials) {
-    var def = defs[name];
-    if (def) {
-      def.length = 0;
-      def[0] = 'toplevel';
-      def[1] = [];
-    }
-    delete asmData.vars[name];
-  }
-
-  // Perform replacements TODO: save list of uses objects before, replace directly, avoid extra traverse
-  traverse(func, function(node, type) {
-    if (type == 'name') {
-      var name = node[1];
-      if (name in trivials) {
-        var value = values[name];
-        if (value) return copy(value); // must copy, or else the same object can be used multiple times
-        else return emptyNode();
-      }
-    }
-  });
-
-  removeAllEmptySubNodes(func);
-}
-
-function aggressiveVariableElimination(ast) {
-  assert(asm, 'need ASM_JS for aggressive variable elimination');
-  traverseGeneratedFunctions(ast, function(func, type) {
-    var asmData = normalizeAsm(func);
-    aggressiveVariableEliminationInternal(func, asmData);
-    denormalizeAsm(func, asmData);
-  });
-}
-
 function fixPtr(ptr, heap) {
   switch (heap) {
     case 'HEAP8':   case 'HEAPU8': break;
@@ -5464,23 +5292,6 @@ function asmLastOpts(ast) {
   });
 }
 
-// Contrary to the name this does not eliminate actual dead functions, only
-// those marked as such with DEAD_FUNCTIONS
-function eliminateDeadFuncs(ast) {
-  assert(asm);
-  assert(extraInfo && extraInfo.dead_functions);
-  var deadFunctions = set(extraInfo.dead_functions);
-  traverseGeneratedFunctions(ast, function (fun, type) {
-    if (!(fun[1] in deadFunctions)) {
-      return;
-    }
-    var asmData = normalizeAsm(fun);
-    fun[3] = [['stat', ['call', ['name', 'abort'], [['num', -1]]]]];
-    asmData.vars = {};
-    denormalizeAsm(fun, asmData);
-  });
-}
-
 // Cleans up globals in an asm.js module that are not used. Assumes it
 // receives a full asm.js module, as from the side file in --separate-asm
 function eliminateDeadGlobals(ast) {
@@ -5629,11 +5440,9 @@ var passes = {
   loopOptimizer: loopOptimizer,
   registerize: registerize,
   registerizeHarder: registerizeHarder,
-  eliminateDeadFuncs: eliminateDeadFuncs,
   eliminateDeadGlobals: eliminateDeadGlobals,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
-  aggressiveVariableElimination: aggressiveVariableElimination,
   minifyGlobals: minifyGlobals,
   minifyLocals: minifyLocals,
   relocate: relocate,

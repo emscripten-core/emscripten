@@ -17,6 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove the `RESERVED_FUNCTION_POINTERS` setting, which is no longer needed as
+  we have `ALLOW_TABLE_GROWTH`. The old option allowed a fixed number of
+  functions to be added to the table, while the new one allows an unlimited
+  number. (We needed the old option for fastcomp, which could not support
+  growth.) The old setting is mapped to the new one, so that building with
+  `-s RESERVED_FUNCTION_POINTERS=K` for any `K > 0` will simply turn on
+  table growth. The only noticeable effect of this is that you will be able to
+  add an unlimited amount of functions and not just `K`.
 
 2.0.0: 08/10/2020
 -----------------

@@ -2,7 +2,7 @@
 var wasmTable = new WebAssembly.Table({
   'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #endif
   'element': 'anyfunc'
 });
