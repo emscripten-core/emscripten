@@ -2724,6 +2724,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
+
+  # TODO: do this with upstream
+  # if shared.Settings.SIDE_MODULE:
+  #   shared.WebAssembly.add_dylink_section(wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
+
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
     shared.WebAssembly.add_emscripten_metadata(final, wasm_binary_target)
 
