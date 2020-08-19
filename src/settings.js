@@ -47,12 +47,6 @@
 // libraries and other support code, so all flags are either link or
 // compile+link.
 //
-// The [fastcomp-only] annotation means that a flag only affects code generation
-// in fastcomp.
-//
-// The [upstream-only] annotation means that a flag only affects code generation
-// in upstream.
-//
 
 // Tuning
 
@@ -163,9 +157,6 @@ var INITIAL_MEMORY = 16777216;
 // INITIAL_MEMORY is the final size of memory anyhow.
 //
 // If this value is -1, it means there is no specified limit.
-//
-// This setting only matters for wasm and wasm2js, as in asm.js with fastcomp
-// there is no place to set a maximum.
 //
 // Note that the default value here is 2GB, which means that by default if you
 // enable memory growth then we can grow up to 2GB but no higher. 2GB is a
@@ -1152,14 +1143,6 @@ var BINARYEN_EXTRA_PASSES = "";
 // not block the main thread. This is currently required for all but the
 // smallest modules to run in chrome.
 //
-// Note that this flag is still useful even if WASM=0 when using the upstream
-// backend, as startup behaves the same there as WASM=1 (the implementation is
-// of a fake WebAssembly.* object, so the startup code doesn't know it's JS
-// and not wasm). That makes it easier to swap between JS and wasm builds,
-// however, this is a difference from fastcomp in which WASM=0 always meant
-// sync startup as asm.js (unless a mem init file was used or some other thing
-// that forced async).
-//
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 var WASM_ASYNC_COMPILATION = 1;
 
@@ -1423,13 +1406,6 @@ var FETCH_DEBUG = 0;
 
 // If nonzero, enables emscripten_fetch API.
 var FETCH = 0;
-
-// Whether to use an asm.js fetch worker when using FETCH. Note that this is
-// only relevant for fastcomp, where we support asm.js. As a result, some
-// synchronous fetch operations that depend on the fetch worker may not work
-// with the wasm backend, like waiting or IndexedDB.
-// Currently will always be set to 0 on WASM backend.
-var USE_FETCH_WORKER = 1;
 
 // If set to 1, uses the multithreaded filesystem that is implemented within the
 // asm.js module, using emscripten_fetch. Implies -s FETCH=1.

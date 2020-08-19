@@ -116,6 +116,11 @@ void test() {
   err = access("dir/subdir3/subdir3_1/subdir1 renamed", F_OK);
   assert(!err);
 
+  // test that non-existant parent during rename generates the correct error code
+  err = rename("dir/hicsuntdracones/empty", "dir/hicsuntdracones/renamed");
+  assert(err == -1);
+  assert(errno == ENOENT);
+  
   err = rename("dir/subdir4/", "dir/subdir5/");
   assert(!err);
 

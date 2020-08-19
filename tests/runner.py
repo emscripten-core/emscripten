@@ -284,7 +284,7 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
-  'strict'
+  'strict',
   'wasm2js0',
   'wasm2js1',
   'wasm2js2',
@@ -585,11 +585,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return args
 
   # Build JavaScript code from source code
-  def build(self, filename,
-            libraries=[], includes=[],
+  def build(self, filename, libraries=[], includes=[], force_c=False,
             post_build=None, js_outfile=True):
     suffix = '.js' if js_outfile else '.wasm'
-    if shared.suffix(filename) in ('.cc', '.cxx', '.cpp'):
+    if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
       compiler = EMXX
     else:
       compiler = EMCC
@@ -1052,11 +1051,21 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     banned = [b[0] for b in self.banned_js_engines if b]
     return [engine for engine in js_engines if engine and engine[0] not in banned]
 
-  def do_run_from_file(self, src, expected_output, *args, **kwargs):
-    if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
-      kwargs['force_c'] = True
-    logger.debug('do_run_from_file: %s' % src)
-    self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
+  def do_run(self, src, expected_output, force_c=False, **kwargs):
+    if 'no_build' in kwargs:
+      filename = src
+    else:
+      if force_c:
+        filename = 'src.c'
+      else:
+        filename = 'src.cpp'
+      with open(filename, 'w') as f:
+        f.write(src)
+    self._build_and_run(filename, expected_output, **kwargs)
+
+  ## Just like `do_run` but with filename of expected output
+  def do_run_from_file(self, filename, expected_output, **kwargs):
+    self._build_and_run(filename, open(expected_output).read(), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     test_path = path_from_root(*path)
@@ -1074,34 +1083,26 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                           .format(test_path, ext_list))
       return ret
 
-    src = find_files('.c', '.cpp')
-    output = find_files('.out', '.txt')
-    self.do_run_from_file(src, output, **kwargs)
+    srcfile = find_files('.c', '.cpp')
+    outfile = find_files('.out', '.txt')
+    expected = open(outfile).read()
+    self._build_and_run(srcfile, expected, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def do_run(self, src, expected_output, args=[], output_nicerizer=None,
-             no_build=False,
-             js_engines=None, post_build=None, libraries=[],
-             includes=[], force_c=False,
-             assert_returncode=0, assert_identical=False, assert_all=False,
-             check_for_error=True):
-    if force_c:
-      basename = 'src.c'
-    else:
-      basename = 'src.cpp'
+  def _build_and_run(self, filename, expected_output, args=[], output_nicerizer=None,
+                     no_build=False,
+                     js_engines=None, post_build=None, libraries=[],
+                     includes=[],
+                     assert_returncode=0, assert_identical=False, assert_all=False,
+                     check_for_error=True, force_c=False):
+    logger.debug('_build_and_run: %s' % filename)
 
     if no_build:
-      if src:
-        js_file = src
-      else:
-        js_file = shared.unsuffixed(basename) + '.js'
+      js_file = filename
     else:
-      dirname = self.get_dir()
-      filename = os.path.join(dirname, basename)
-      with open(filename, 'w') as f:
-        f.write(src)
-      self.build(filename, libraries=libraries, includes=includes, post_build=post_build)
-      js_file = shared.unsuffixed(filename) + '.js'
+      self.build(filename, libraries=libraries, includes=includes, post_build=post_build,
+                 force_c=force_c)
+      js_file = shared.unsuffixed(os.path.basename(filename)) + '.js'
     self.assertExists(js_file)
 
     engines = self.filtered_js_engines(js_engines)
