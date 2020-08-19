@@ -12,6 +12,7 @@ import base64
 import difflib
 import json
 import logging
+import math
 import os
 import re
 import shutil
@@ -1370,6 +1371,61 @@ class WebAssembly(object):
       f.write(name)
       f.write(contents)
       f.write(orig[8:])
+
+  @staticmethod
+  def add_dylink_section(wasm_file, needed_dynlibs):
+    # a wasm shared library has a special "dylink" section, see tools-conventions repo
+    assert not Settings.WASM_BACKEND
+    mem_align = Settings.MAX_GLOBAL_ALIGN
+    mem_size = Settings.STATIC_BUMP
+    table_size = Settings.WASM_TABLE_SIZE
+    mem_align = int(math.log(mem_align, 2))
+    logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
+
+    # Write new wasm binary with 'dylink' section
+    wasm = open(wasm_file, 'rb').read()
+    section_name = b"\06dylink" # section name, including prefixed size
+    contents = (WebAssembly.toLEB(mem_size) + WebAssembly.toLEB(mem_align) +
+                WebAssembly.toLEB(table_size) + WebAssembly.toLEB(0))
+
+    # we extend "dylink" section with information about which shared libraries
+    # our shared library needs. This is similar to DT_NEEDED entries in ELF.
+    #
+    # In theory we could avoid doing this, since every import in wasm has
+    # "module" and "name" attributes, but currently emscripten almost always
+    # uses just "env" for "module". This way we have to embed information about
+    # required libraries for the dynamic linker somewhere, and "dylink" section
+    # seems to be the most relevant place.
+    #
+    # Binary format of the extension:
+    #
+    #   needed_dynlibs_count        varuint32       ; number of needed shared libraries
+    #   needed_dynlibs_entries      dynlib_entry*   ; repeated dynamic library entries as described below
+    #
+    # dynlib_entry:
+    #
+    #   dynlib_name_len             varuint32       ; length of dynlib_name_str in bytes
+    #   dynlib_name_str             bytes           ; name of a needed dynamic library: valid UTF-8 byte sequence
+    #
+    # a proposal has been filed to include the extension into "dylink" specification:
+    # https://github.com/WebAssembly/tool-conventions/pull/77
+    contents += WebAssembly.toLEB(len(needed_dynlibs))
+    for dyn_needed in needed_dynlibs:
+      dyn_needed = bytes(asbytes(dyn_needed))
+      contents += WebAssembly.toLEB(len(dyn_needed))
+      contents += dyn_needed
+
+    section_size = len(section_name) + len(contents)
+    with open(wasm_file, 'wb') as f:
+      # copy magic number and version
+      f.write(wasm[0:8])
+      # write the special section
+      f.write(b'\0') # user section is code 0
+      f.write(WebAssembly.toLEB(section_size))
+      f.write(section_name)
+      f.write(contents)
+      # copy rest of binary
+      f.write(wasm[8:])
 
 
 # Python 2-3 compatibility helper function:
