@@ -2737,7 +2737,7 @@ Module["preRun"].push(function () {
       if wasm:
         shutil.move('page.wasm', os.path.join('sub', 'page.wasm'))
       else:
-        shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
+        shutil.move('page.mem', os.path.join('sub', 'page.mem'))
       shutil.move('test.data', os.path.join('sub', 'test.data'))
       self.run_browser('page.html', None, '/report_result?1')
 
@@ -2761,7 +2761,7 @@ Module["preRun"].push(function () {
         if wasm:
           shutil.move('page.wasm', os.path.join('sub', 'page.wasm'))
         else:
-          shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
+          shutil.move('page.mem', os.path.join('sub', 'page.mem'))
         self.run_browser('page.html', None, '/report_result?' + expected)
 
       in_html('1')
