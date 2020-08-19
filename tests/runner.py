@@ -1064,8 +1064,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self._build_and_run(filename, expected_output, **kwargs)
 
   ## Just like `do_run` but with filename of expected output
-  def do_run_from_file(self, filename, expected_output, **kwargs):
-    self._build_and_run(filename, open(expected_output).read(), **kwargs)
+  def do_run_from_file(self, filename, outfile, **kwargs):
+    if not self.get_setting('STANDALONE_WASM'):
+      self.set_setting('EXIT_RUNTIME')
+    logger.debug('do_run_from_file: %s' % filename)
+    self._build_and_run(filename, open(outfile).read(), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     test_path = path_from_root(*path)
@@ -1085,8 +1088,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     srcfile = find_files('.c', '.cpp')
     outfile = find_files('.out', '.txt')
-    expected = open(outfile).read()
-    self._build_and_run(srcfile, expected, **kwargs)
+    self.do_run_from_file(srcfile, outfile, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=[], output_nicerizer=None,

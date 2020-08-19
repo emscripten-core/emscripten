@@ -370,8 +370,6 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_zextneg')
 
   def test_i64_7z(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_7z',
                                  args=['hallo'])
 
@@ -418,8 +416,6 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_i32_mul_precise')
 
   def test_i16_emcc_intrinsic(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_i16_emcc_intrinsic')
 
   def test_double_i64_conversion(self):
@@ -698,8 +694,6 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_zerodiv')
 
   def test_zero_multiplication(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_zero_multiplication')
 
   def test_isnan(self):
@@ -727,8 +721,6 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
   def test_rounding(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
 
   def test_fcvt(self):
@@ -1395,10 +1387,8 @@ int main(int argc, char **argv)
 
   @with_both_exception_handling
   def test_exceptions_typed(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
-    self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
-
+    # Throwing null will cause an ignorable null pointer access.
+    self.emcc_args += ['-s', 'SAFE_HEAP=0']
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed')
 
   @with_both_exception_handling
@@ -1516,13 +1506,9 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_inherit')
 
   def test_isdigit_l(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_isdigit_l')
 
   def test_iswdigit(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_iswdigit')
 
   def test_polymorph(self):
@@ -1601,8 +1587,6 @@ int main() {
     self.do_run_in_out_file_test('tests', 'stdio', 'test_rename')
 
   def test_remove(self):
-   # needs to flush stdio streams
-   self.set_setting('EXIT_RUNTIME', 1)
    self.do_run_in_out_file_test('tests', 'cstdio', 'test_remove')
 
   def test_alloca_stack(self):
@@ -2321,8 +2305,6 @@ The current type of b is: 9
   def test_stdlibs(self):
     # safe heap prints a warning that messes up our output.
     self.set_setting('SAFE_HEAP', 0)
-    # needs atexit
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_stdlibs')
 
   def test_stdbool(self):
@@ -2426,8 +2408,6 @@ The current type of b is: 9
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_days')
 
   def test_strptime_reentrant(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
   def test_strftime(self):
@@ -4720,8 +4700,6 @@ Have even and odd!
 
   @no_wasm2js('very slow to compile')
   def test_printf(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'printf', 'test')
 
   def test_printf_2(self):
@@ -4822,15 +4800,11 @@ Pass: 0.000012 0.000012''')
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_n')
 
   def test_sscanf_whitespace(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_whitespace')
 
   def test_sscanf_other_whitespace(self):
     # use i16s in printf
     self.set_setting('SAFE_HEAP', 0)
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_other_whitespace')
 
   def test_sscanf_3(self):
@@ -5191,8 +5165,6 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'core', 'test_write_stdout_fileno', args=['-s', 'FILESYSTEM=0'])
 
   def test_direct_string_constant_usage(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_direct_string_constant_usage')
 
   def test_std_cout_new(self):
@@ -5202,10 +5174,7 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'core', 'test_std_function_incomplete_return')
 
   def test_istream(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
-
-    for linkable in [0]: # , 1]:
+    for linkable in [0, 1]:
       print(linkable)
       # regression check for issue #273
       self.set_setting('LINKABLE', linkable)
@@ -5831,8 +5800,6 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_typeid')
 
   def test_static_variable(self):
-    # needs atexit
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_static_variable')
 
   def test_fakestat(self):
@@ -5840,8 +5807,6 @@ return malloc(size);
 
   def test_mmap(self):
     self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_mmap')
 
   def test_mmap_file(self):
@@ -7662,7 +7627,7 @@ Module['onRuntimeInitialized'] = function() {
     if not conditional and is_optimizing(self.emcc_args):
       # If the call to lazy-load is unconditional, then the optimizer can dce
       # out more than half
-      self.assertLess(first_size, 0.5 * second_size)
+      self.assertLess(first_size, 0.6 * second_size)
 
     with open('emscripten_lazy_load_code.wasm', 'rb') as f:
       with open('emscripten_lazy_load_code.wasm.lazy.wasm', 'rb') as g:
