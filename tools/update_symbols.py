@@ -20,7 +20,6 @@ import filecmp
 root_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, root_dir)
 symbols_base_dir = os.path.join(root_dir, 'system', 'lib', 'symbols')
-asmjs_symbols_dir = os.path.join(symbols_base_dir, 'asmjs')
 wasm_symbols_dir = os.path.join(symbols_base_dir, 'wasm')
 
 from tools import shared, cache
@@ -31,25 +30,18 @@ target_libs = ['libal', 'libgl', 'libhtml5']
 
 
 def get_symbols_dir():
-  if shared.Settings.WASM_BACKEND:
-    return wasm_symbols_dir
-  else:
-    return asmjs_symbols_dir
+  return wasm_symbols_dir
 
 
 def is_symbol_file_supported(symbol_file):
-  if shared.Settings.WASM_BACKEND:
-    return os.path.abspath(symbol_file).startswith(wasm_symbols_dir)
-  else:
-    return os.path.abspath(symbol_file).startswith(asmjs_symbols_dir)
+  return os.path.abspath(symbol_file).startswith(wasm_symbols_dir)
 
 
 # Given a symbol file name, returns a matching library file name.
 def get_lib_file(symbol_file):
   basename = os.path.splitext(os.path.basename(symbol_file))[0]
   cache_dir = cache.Cache().dirname
-  lib_extension = 'a' if shared.Settings.WASM_BACKEND else 'bc'
-  return os.path.join(cache_dir, basename + '.' + lib_extension)
+  return os.path.join(cache_dir, basename + '.a')
 
 
 # Given a library file name, returns a matching symbols file name.

@@ -1003,16 +1003,15 @@ def verify_settings():
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
 
-  if Settings.WASM_BACKEND:
-    if not Settings.WASM:
-      # When the user requests non-wasm output, we enable wasm2js. that is,
-      # we still compile to wasm normally, but we compile the final output
-      # to js.
-      Settings.WASM = 1
-      Settings.WASM2JS = 1
-    if Settings.WASM == 2:
-      # Requesting both Wasm and Wasm2JS support
-      Settings.WASM2JS = 1
+  if not Settings.WASM:
+    # When the user requests non-wasm output, we enable wasm2js. that is,
+    # we still compile to wasm normally, but we compile the final output
+    # to js.
+    Settings.WASM = 1
+    Settings.WASM2JS = 1
+  if Settings.WASM == 2:
+    # Requesting both Wasm and Wasm2JS support
+    Settings.WASM2JS = 1
 
 
 def print_compiler_stage(cmd):
@@ -1324,11 +1323,6 @@ class WebAssembly(object):
     global_base = Settings.GLOBAL_BASE
 
     js = open(js_file).read()
-    if Settings.WASM_BACKEND:
-      tempdouble_ptr = 0
-    else:
-      m = re.search(r"(^|\s)tempDoublePtr\s+=\s+(\d+)", js)
-      tempdouble_ptr = int(m.group(2))
     m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
     dynamic_base = int(m.group(2))
     m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)
@@ -1347,13 +1341,18 @@ class WebAssembly(object):
       WebAssembly.toLEB(EMSCRIPTEN_ABI_MAJOR) +
       WebAssembly.toLEB(EMSCRIPTEN_ABI_MINOR) +
 
-      WebAssembly.toLEB(int(Settings.WASM_BACKEND)) +
+      # Wasm backend, always 1 now
+      WebAssembly.toLEB(1) +
+
       WebAssembly.toLEB(mem_size) +
       WebAssembly.toLEB(table_size) +
       WebAssembly.toLEB(global_base) +
       WebAssembly.toLEB(dynamic_base) +
       WebAssembly.toLEB(dynamictop_ptr) +
-      WebAssembly.toLEB(tempdouble_ptr) +
+
+      # tempDoublePtr, always 0 in wasm backend
+      WebAssembly.toLEB(0) +
+
       WebAssembly.toLEB(int(Settings.STANDALONE_WASM))
 
       # NB: more data can be appended here as long as you increase
