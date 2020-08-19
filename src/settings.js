@@ -1666,8 +1666,7 @@ var LEGACY_SETTINGS = [
   ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
   ['ELIMINATE_DUPLICATE_FUNCTIONS', [0, 1], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
   ['ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS', [0], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
-  ['ELIMINATE_DUPLICATE_FUNCTIONS_PASSES', [5], 'Duplicate function eliminati
-  on for wasm is handled automatically by binaryen'],
+  ['ELIMINATE_DUPLICATE_FUNCTIONS_PASSES', [5], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
   // WASM_OBJECT_FILES is handled in emcc.py, supporting both 0 and 1 for now.
   ['WASM_OBJECT_FILES', [0, 1], 'For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow'],
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
@@ -1688,4 +1687,5 @@ var LEGACY_SETTINGS = [
   ['ALIASING_FUNCTION_POINTERS', [0, 1], 'The wasm backend always uses a single index space for function pointers, in a single Table'],
   ['AGGRESSIVE_VARIABLE_ELIMINATION', [0, 1], 'Wasm ignores asm.js-specific optimization flags'],
   ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
+  ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
 ];
