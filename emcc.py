@@ -40,7 +40,7 @@ import base64
 from subprocess import PIPE
 
 import emscripten
-from tools import shared, system_libs, js_optimizer
+from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
@@ -223,8 +223,6 @@ class EmccOptions(object):
     self.profiling_funcs = False
     self.tracing = False
     self.emit_symbol_map = False
-    self.js_opts = None
-    self.force_js_opts = False
     self.llvm_opts = None
     self.use_closure_compiler = None
     self.closure_args = []
@@ -316,53 +314,6 @@ class JSOptimizer(object):
 
     self.js_transform_tempfiles = js_transform_tempfiles
     self.in_temp = in_temp
-
-  def flush(self, title='js_opts'):
-    assert not shared.Settings.WASM_BACKEND, 'JSOptimizer should not run with pure wasm output'
-
-    if self.extra_info is not None and len(self.extra_info) == 0:
-      self.extra_info = None
-
-    if len(self.queue):
-      passes = self.queue[:]
-
-      if DEBUG != 2 or len(passes) < 2:
-        # by assumption, our input is JS, and our output is JS. If a pass is going to run in the native optimizer in C++, then we
-        # must give it JSON and receive from it JSON
-        chunks = []
-        curr = []
-        for p in passes:
-          if len(curr) == 0:
-            curr.append(p)
-          else:
-            native = js_optimizer.use_native(p, source_map=use_source_map(self))
-            last_native = js_optimizer.use_native(curr[-1], source_map=use_source_map(self))
-            if native == last_native:
-              curr.append(p)
-            else:
-              curr.append('emitJSON')
-              chunks.append(curr)
-              curr = ['receiveJSON', p]
-        if len(curr):
-          chunks.append(curr)
-        if len(chunks) == 1:
-          self.run_passes(chunks[0], title, just_split=False, just_concat=False)
-        else:
-          for i, chunk in enumerate(chunks):
-            self.run_passes(chunk, 'js_opts_' + str(i),
-                            just_split='receiveJSON' in chunk,
-                            just_concat='emitJSON' in chunk)
-      else:
-        # DEBUG 2, run each pass separately
-        extra_info = self.extra_info
-        for p in passes:
-          self.queue = [p]
-          self.flush(p)
-          self.extra_info = extra_info # flush wipes it
-          log_time('part of js opts')
-      self.queue_history += self.queue
-      self.queue = []
-    self.extra_info = {}
 
   def run_passes(self, passes, title, just_split, just_concat):
     global final
@@ -891,16 +842,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- Utilities ---------------
 
-  def suffix(name):
-    """Return the file extension"""
-    return os.path.splitext(name)[1]
-
   seen_names = {}
 
   def uniquename(name):
     if name not in seen_names:
       seen_names[name] = str(len(seen_names))
-    return unsuffixed(name) + '_' + seen_names[name] + suffix(name)
+    return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
 
   # ---------------- End configs -------------
 
@@ -968,9 +915,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if options.thread_profiler:
       options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
-
-    if options.js_opts is None:
-      options.js_opts = shared.Settings.OPT_LEVEL >= 2
 
     if options.llvm_opts is None:
       options.llvm_opts = LLVM_OPT_LEVEL[shared.Settings.OPT_LEVEL]
@@ -1243,7 +1187,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
-    wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
+    wasm_source_map_target = wasm_binary_target + '.map'
 
     # Apply user -jsD settings
     for s in user_js_defines:
@@ -1544,12 +1488,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND and not shared.Settings.EXCEPTION_HANDLING:
       cflags.append('-fignore-exceptions')
 
-    if shared.Settings.DEAD_FUNCTIONS:
-      if not options.js_opts:
-        logger.debug('enabling js opts for DEAD_FUNCTIONS')
-        options.js_opts = True
-      options.force_js_opts = True
-
     if options.proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
 
@@ -1815,9 +1753,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
         shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
         shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
-      if options.js_opts and not options.force_js_opts:
-        options.js_opts = None
-        logger.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
       if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
         exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
       if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
@@ -1909,17 +1844,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
 
-      if shared.Settings.WASM_BACKEND:
-        options.js_opts = None
-        options.binaryen_passes += backend_binaryen_passes()
-      else:
-        # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
-        # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
-        if shared.Settings.SAFE_HEAP and building.is_wasm_only():
-          options.binaryen_passes += ['--safe-heap']
-        if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-          # emulated function pointer casts is emulated in fastcomp wasm using a binaryen pass
-          options.binaryen_passes += ['--fpcast-emu']
+      options.binaryen_passes += backend_binaryen_passes()
 
     if shared.Settings.WASM2JS:
       if not shared.Settings.WASM_BACKEND:
@@ -1943,16 +1868,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
       if shared.Settings.SINGLE_FILE:
         exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
-
-    # safe heap in asm.js uses the js optimizer (in wasm-only mode we can use binaryen)
-    if shared.Settings.SAFE_HEAP and not building.is_wasm_only():
-      if not options.js_opts:
-        logger.debug('enabling js opts for SAFE_HEAP')
-        options.js_opts = True
-      options.force_js_opts = True
-
-    if options.js_opts:
-      shared.Settings.RUNNING_JS_OPTS = 1
 
     if options.tracing:
       cflags.append('-D__EMSCRIPTEN_TRACING__=1')
@@ -2302,7 +2217,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
       perform_link = len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND
       if not perform_link:
-        is_dylib = suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
+        is_dylib = shared.suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
         is_ar = building.is_ar(temp_files[0][1])
         is_bc = not is_ar and not is_dylib
         perform_link = not (is_bc or is_dylib) and is_ar
@@ -2511,64 +2426,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       js_transform_tempfiles=js_transform_tempfiles,
       in_temp=in_temp,
     )
-    with ToolchainProfiler.profile_block('js opts'):
-      # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
-      if shared.Settings.DEAD_FUNCTIONS:
-        optimizer.queue += ['eliminateDeadFuncs']
-        optimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
-
-      if shared.Settings.OPT_LEVEL >= 1 and options.js_opts:
-        logger.debug('running js post-opts')
-
-        if DEBUG == 2:
-          # Clean up the syntax a bit
-          optimizer.queue += ['noop']
-
-        def get_eliminate():
-          if shared.Settings.ALLOW_MEMORY_GROWTH:
-            return 'eliminateMemSafe'
-          else:
-            return 'eliminate'
-
-        if shared.Settings.OPT_LEVEL >= 2:
-          optimizer.queue += [get_eliminate()]
-
-          optimizer.queue += ['simplifyExpressions']
-
-      if options.js_opts:
-        if shared.Settings.SAFE_HEAP and not building.is_wasm_only():
-          optimizer.queue += ['safeHeap']
-
-        if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL < 3:
-          if shared.Settings.OPT_LEVEL >= 3 or shared.Settings.SHRINK_LEVEL > 0:
-            optimizer.queue += ['registerizeHarder']
-          else:
-            optimizer.queue += ['registerize']
-
-      if shared.Settings.EVAL_CTORS and options.memory_init_file and not use_source_map(options) and not shared.Settings.WASM:
-        optimizer.flush()
-        building.eval_ctors(final, memfile)
-        save_intermediate('eval-ctors')
-
-      if options.js_opts:
-        # some compilation modes require us to minify later or not at all
-        if not shared.Settings.WASM:
-          optimizer.do_minify()
-
-        if shared.Settings.OPT_LEVEL >= 2:
-          optimizer.queue += ['asmLastOpts']
-
-        optimizer.flush()
-
-      if options.use_closure_compiler == 2 and not shared.Settings.WASM_BACKEND:
-        optimizer.flush()
-
-        logger.debug('running closure')
-        # no need to add this to js_transform_tempfiles, because closure and
-        # debug_level > 0 are never simultaneously true
-        final = building.closure_compiler(final, pretty=shared.Settings.DEBUG_LEVEL >= 1,
-                                          extra_closure_args=options.closure_args)
-        save_intermediate('closure')
 
     log_time('js opts')
 
@@ -2706,9 +2563,8 @@ def parse_args(newargs):
         settings_changes.append('INLINING_LIMIT=25')
       shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif check_arg('--js-opts'):
-      options.js_opts = int(consume_arg())
-      if options.js_opts:
-        options.force_js_opts = True
+      logger.warning('--js-opts ignored when using llvm backend')
+      consume_arg()
     elif check_arg('--llvm-opts'):
       options.llvm_opts = parse_value(consume_arg())
     elif newargs[i].startswith('-flto'):

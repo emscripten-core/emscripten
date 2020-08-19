@@ -119,11 +119,6 @@ while 1:
     if TEST_BINARYEN:
       if random.random() < 0.5:
         js_args += ['-g']
-      if random.random() < 0.1:
-        if random.random() < 0.5:
-          js_args += ['--js-opts', '0']
-        else:
-          js_args += ['--js-opts', '1']
       if random.random() < 0.5:
         # pick random passes
         BINARYEN_EXTRA_PASSES = [
