@@ -32,14 +32,11 @@ class Cache(object):
 
     # if relevant, use a subdir of the cache
     if use_subdir:
-      if shared.Settings.WASM_BACKEND:
-        subdir = 'wasm'
-        if shared.Settings.LTO:
-          subdir += '-lto'
-        if shared.Settings.RELOCATABLE:
-          subdir += '-pic'
-      else:
-        subdir = 'asmjs'
+      subdir = 'wasm'
+      if shared.Settings.LTO:
+        subdir += '-lto'
+      if shared.Settings.RELOCATABLE:
+        subdir += '-pic'
       dirname = os.path.join(dirname, subdir)
 
     self.dirname = dirname
