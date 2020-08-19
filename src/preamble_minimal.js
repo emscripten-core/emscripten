@@ -202,6 +202,8 @@ var wasmOffsetConverter;
 
 #if EXIT_RUNTIME
 
+/**@suppress {duplicate, undefinedVars}*/var dynCall_v;
+/**@suppress {duplicate, undefinedVars}*/var dynCall_vi;
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
     var callback = callbacks.shift();
