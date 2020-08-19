@@ -497,7 +497,7 @@ def is_ar_file_with_missing_index(archive_file):
 
 def ensure_archive_index(archive_file):
   # Fastcomp linking works without archive indexes.
-  if not shared.Settings.WASM_BACKEND or not shared.Settings.AUTO_ARCHIVE_INDEXES:
+  if not shared.Settings.AUTO_ARCHIVE_INDEXES:
     return
   if is_ar_file_with_missing_index(archive_file):
     diagnostics.warning('emcc', '%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
@@ -1107,9 +1107,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
-    if not shared.Settings.WASM_BACKEND:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['memset', 'memcpy', 'emscripten_get_heap_size']
-
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
@@ -1195,19 +1192,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.verify_settings()
 
-    if final_suffix in WASM_ENDINGS and shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
+    if final_suffix in WASM_ENDINGS and not shared.Settings.SIDE_MODULE:
       # if the output is just a wasm file, it will normally be a standalone one,
       # as there is no JS. an exception are side modules, as we can't tell at
       # compile time whether JS will be involved or not - the main module may
       # have JS, and the side module is expected to link against that.
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
-
-    # We allow this error to be supressed by the environment so that we can run the test
-    # suite against fastcomp for the time being.
-    # See: https://github.com/emscripten-core/emscripten/issues/11319
-    if not shared.Settings.WASM_BACKEND and 'EMCC_ALLOW_FASTCOMP' not in os.environ:
-      exit_with_error('the fastcomp compiler is no longer available in emscripten.  Please use the upstream llvm backend or use an older (< 2.0.0) version of emscripten.')
 
     if options.no_entry or ('_main' not in shared.Settings.EXPORTED_FUNCTIONS and
                             '__start' not in shared.Settings.EXPORTED_FUNCTIONS):
@@ -1278,9 +1269,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.WASM == 2 and shared.Settings.SINGLE_FILE:
       exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time (pick either JS to target with -s WASM=0 or Wasm to target with -s WASM=1)')
-
-    if shared.Settings.WASM == 2 and not shared.Settings.WASM_BACKEND:
-      exit_with_error('WASM=2 is a Wasm backend specific feature!')
 
     if shared.Settings.SEPARATE_DWARF and shared.Settings.WASM2JS:
       exit_with_error('cannot have both SEPARATE_DWARF and WASM2JS at the same time (as there is no wasm file)')
@@ -1457,14 +1445,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # JS runtime at all).
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
-    if shared.Settings.WASM_BACKEND:
-      shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
-      # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
-      # the STATIC_BUMP value.
-      shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
-      if not shared.Settings.STANDALONE_WASM:
-        # in standalone mode, crt1 will call the constructors from inside the wasm
-        shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
+    shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
+    # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
+    # the STATIC_BUMP value.
+    shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
+    if not shared.Settings.STANDALONE_WASM:
+      # in standalone mode, crt1 will call the constructors from inside the wasm
+      shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
       exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
@@ -1476,16 +1463,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
       shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
 
-    if shared.Settings.ASYNCIFY:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('ASYNCIFY has been removed from fastcomp. There is a new implementation which can be used in the upstream wasm backend.')
-
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
     # if exception catching is disabled, we can prevent that code from being
     # generated in the frontend
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND and not shared.Settings.EXCEPTION_HANDLING:
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
       cflags.append('-fignore-exceptions')
 
     if options.proxy_to_worker:
@@ -1552,15 +1535,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
       cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
-      if shared.Settings.WASM_BACKEND:
-        newargs += ['-pthread']
-        # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
-        # manually export them
+      newargs += ['-pthread']
+      # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
+      # manually export them
 
-        shared.Settings.EXPORTED_FUNCTIONS += [
-          '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
-          'registerPthreadPtr', '_pthread_self',
-          '___emscripten_pthread_data_constructor', '_emscripten_futex_wake']
+      shared.Settings.EXPORTED_FUNCTIONS += [
+        '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
+        'registerPthreadPtr', '_pthread_self',
+        '___emscripten_pthread_data_constructor', '_emscripten_futex_wake']
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1700,10 +1682,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
             shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
       shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
-      # in fastcomp it's inconvenient to minify module names as there is the
-      # asm2wasm module etc.
-      if shared.Settings.WASM_BACKEND:
-        shared.Settings.MINIFY_WASM_IMPORTED_MODULES = 1
+      shared.Settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
     if shared.Settings.MINIMAL_RUNTIME:
       # Minimal runtime uses a different default shell file
@@ -1720,17 +1699,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Require explicit -lfoo.js flags to link with JS libraries.
       shared.Settings.AUTO_JS_LIBRARIES = 0
 
-      # In asm.js always use memory init file to get the best code size, other modes are not currently supported.
-      if not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
-        options.memory_init_file = True
-
     if shared.Settings.MODULARIZE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
     if shared.Settings.STANDALONE_WASM:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
       if shared.Settings.USE_PTHREADS:
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
       if shared.Settings.MINIMAL_RUNTIME:
@@ -1771,7 +1744,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # wasm includes the mem init in the wasm binary. The exception is
         # wasm2js, which behaves more like js.
         options.memory_init_file = True
-        shared.Settings.MEM_INIT_IN_WASM = True if shared.Settings.WASM_BACKEND else not shared.Settings.USE_PTHREADS
+        shared.Settings.MEM_INIT_IN_WASM = True
 
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
@@ -1796,9 +1769,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             '___heap_base',
             '___global_base'
         ]
-
-        if not shared.Settings.WASM_BACKEND:
-          exit_with_error('Sanitizers are not compatible with the fastcomp backend. Please upgrade to the upstream wasm backend by following these instructions: https://v8.dev/blog/emscripten-llvm-wasm#testing')
 
       if sanitize & UBSAN_SANITIZERS:
         if '-fsanitize-minimal-runtime' in newargs:
@@ -1846,11 +1816,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       options.binaryen_passes += backend_binaryen_passes()
 
-    if shared.Settings.WASM2JS:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('wasm2js is only available in the upstream wasm backend path')
-      if use_source_map(options):
-        exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
+    if shared.Settings.WASM2JS and use_source_map(options):
+      exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
 
     if shared.Settings.EVAL_CTORS and not shared.Settings.WASM:
       # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
@@ -1874,27 +1841,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
 
-    if shared.Settings.WASM_BACKEND:
-      if shared.Settings.USE_PTHREADS:
-        newargs.append('-pthread')
-    else:
-      # We leave the -O option in place so that the clang front-end runs in that
-      # optimization mode, but we disable the actual optimization passes, as we'll
-      # run them separately.
-      if shared.Settings.OPT_LEVEL > 0:
-        newargs.append('-mllvm')
-        newargs.append('-disable-llvm-optzns')
+    if shared.Settings.USE_PTHREADS:
+      newargs.append('-pthread')
 
     if not shared.Settings.LEGALIZE_JS_FFI:
       assert building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS.'
 
     # check if we can address the 2GB mark and higher: either if we start at
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
-    if shared.Settings.WASM_BACKEND and \
-       (shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
-        (shared.Settings.ALLOW_MEMORY_GROWTH and
-         (shared.Settings.MAXIMUM_MEMORY < 0 or
-          shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
+    if shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
+       (shared.Settings.ALLOW_MEMORY_GROWTH and
+        (shared.Settings.MAXIMUM_MEMORY < 0 or
+         shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
       shared.Settings.CAN_ADDRESS_2GB = 1
       if shared.Settings.MALLOC == 'emmalloc':
         if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
@@ -1934,19 +1892,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
 
-      # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
-      if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
-        cflags.append('-fno-discard-value-names')
-
       if not building.can_inline():
         cflags.append('-fno-inline-functions')
-
-      # For fastcomp backend, no LLVM IR functions should ever be annotated
-      # 'optnone', because that would skip running the SimplifyCFG pass on
-      # them, which is required to always run to clean up LandingPadInst
-      # instructions that are not needed.
-      if not shared.Settings.WASM_BACKEND:
-        cflags += ['-Xclang', '-disable-O0-optnone']
 
       def use_cxx(src):
         if 'c++' in language_mode or run_via_emxx:
@@ -2033,19 +1980,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           cmd = get_clang_command(input_file)
         cmd += ['-c', '-o', output_file]
-        if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
+        if shared.Settings.RELOCATABLE:
           cmd.append('-fPIC')
           cmd.append('-fvisibility=default')
-        if shared.Settings.WASM_BACKEND:
-          if shared.Settings.LTO:
-            cmd.append('-flto=' + shared.Settings.LTO)
-          else:
-            # With fastcomp (or with LTO mode) these args get passed instead
-            # at link time when the backend runs.
-            for a in building.llvm_backend_args():
-              cmd += ['-mllvm', a]
+        if shared.Settings.LTO:
+          cmd.append('-flto=' + shared.Settings.LTO)
         else:
-          cmd.append('-emit-llvm')
+          # With LTO mode these args get passed instead
+          # at link time when the backend runs.
+          for a in building.llvm_backend_args():
+            cmd += ['-mllvm', a]
         shared.print_compiler_stage(cmd)
         shared.check_call(cmd)
         if output_file not in ('-', os.devnull):
@@ -2070,16 +2014,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             building.llvm_as(input_file, temp_file)
             temp_files.append((i, temp_file))
           else:
-            if not shared.Settings.WASM_BACKEND:
-              exit_with_error('assembly files not supported by fastcomp')
             compile_source_file(i, input_file)
         elif language_mode:
           compile_source_file(i, input_file)
         elif input_file == '-':
           exit_with_error('-E or -x required when input is from standard input')
         else:
-          if not shared.Settings.WASM_BACKEND and building.is_wasm(input_file):
-            exit_with_error('fastcomp is not compatible with wasm object files:' + input_file)
           # Default to assuming the inputs are object files and pass them to the linker
           logger.debug('using object file: ' + input_file)
           temp_files.append((i, input_file))
@@ -2088,24 +2028,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('compile inputs')
 
     with ToolchainProfiler.profile_block('process inputs'):
-      if not shared.Settings.WASM_BACKEND:
-        assert len(temp_files) == len(input_files)
-
-        # Optimize source files
-        if optimizing(options.llvm_opts):
-          for pos, (_, input_file) in enumerate(input_files):
-            file_suffix = get_file_suffix(input_file)
-            if file_suffix in SOURCE_ENDINGS:
-              temp_file = temp_files[pos][1]
-              logger.debug('optimizing %s', input_file)
-              new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
-              # after optimizing, lower intrinsics to libc calls so that our linking code
-              # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
-              # we end up calling out to JS for Math.cos).
-              opts = options.llvm_opts + ['-lower-non-em-intrinsics']
-              building.llvm_opt(temp_file, opts, new_temp_file)
-              temp_files[pos] = (temp_files[pos][0], new_temp_file)
-
       # If we were just compiling stop here
       if compile_only:
         if not specified_target:
@@ -2145,7 +2067,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if specified_target and specified_target.startswith('-'):
       exit_with_error('invalid output filename: `%s`' % specified_target)
 
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
+    using_lld = not (link_to_object and shared.Settings.LTO)
     link_flags = filter_link_flags(link_flags, using_lld)
 
     # Decide what we will link
@@ -2203,10 +2125,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('link'):
       # final will be an array if linking is deferred, otherwise a normal string.
-      if shared.Settings.WASM_BACKEND:
-        DEFAULT_FINAL = in_temp(target_basename + '.wasm')
-      else:
-        DEFAULT_FINAL = in_temp(target_basename + '.bc')
+      DEFAULT_FINAL = in_temp(target_basename + '.wasm')
 
       def get_final():
         global final
@@ -2214,44 +2133,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           final = DEFAULT_FINAL
         return final
 
-      # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
-      perform_link = len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND
-      if not perform_link:
-        is_dylib = shared.suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
-        is_ar = building.is_ar(temp_files[0][1])
-        is_bc = not is_ar and not is_dylib
-        perform_link = not (is_bc or is_dylib) and is_ar
-      if perform_link:
-        logger.debug('linking: ' + str(linker_inputs))
-        # force archive contents to all be included, if just archives, or if linking shared modules
-        force_archive_contents = all(t.endswith(STATICLIB_ENDINGS) for _, t in temp_files) or shared.Settings.LINKABLE
+      logger.debug('linking: ' + str(linker_inputs))
+      # force archive contents to all be included, if just archives, or if linking shared modules
+      force_archive_contents = all(t.endswith(STATICLIB_ENDINGS) for _, t in temp_files) or shared.Settings.LINKABLE
 
-        # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
-        # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
-        # fastcomp deferred linking opts.
-        # TODO: we could check if this is a fastcomp build, and still speed things up here
-        just_calculate = DEBUG != 2 and not shared.Settings.WASM_BACKEND
-        if shared.Settings.WASM_BACKEND:
-          js_funcs = None
-          if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
-            js_funcs = get_all_js_syms(misc_temp_files)
-            log_time('JS symbol generation')
-          final = building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=js_funcs)
-          # Special handling for when the user passed '-Wl,--version'.  In this case the linker
-          # does not create the output file, but just prints its version and exits with 0.
-          if '--version' in linker_inputs:
-            return 0
-        else:
-          final = building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
-      else:
-        logger.debug('skipping linking: ' + str(linker_inputs))
-        temp_file = temp_files[0][1]
-        input_file = input_files[0][1]
-        final = in_temp(target_basename + '.bc')
-        if temp_file != input_file:
-          shutil.move(temp_file, final)
-        else:
-          shutil.copyfile(temp_file, final)
+      # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
+      # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
+      # fastcomp deferred linking opts.
+      # TODO: we could check if this is a fastcomp build, and still speed things up here
+      js_funcs = None
+      if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
+        js_funcs = get_all_js_syms(misc_temp_files)
+        log_time('JS symbol generation')
+      final = building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=js_funcs)
+      # Special handling for when the user passed '-Wl,--version'.  In this case the linker
+      # does not create the output file, but just prints its version and exits with 0.
+      if '--version' in linker_inputs:
+        return 0
 
     # exit block 'link'
     log_time('link')
@@ -2275,13 +2173,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       final = do_emscripten(final, shared.replace_or_append_suffix(target, '.mem'))
       save_intermediate('original')
 
-      if shared.Settings.WASM_BACKEND:
-        # we also received wat and wasm at this stage
-        temp_basename = unsuffixed(final)
-        wasm_temp = temp_basename + '.wasm'
-        shutil.move(wasm_temp, wasm_binary_target)
-        if use_source_map(options):
-          shutil.move(wasm_temp + '.map', wasm_source_map_target)
+      # we also received the wasm at this stage
+      temp_basename = unsuffixed(final)
+      wasm_temp = temp_basename + '.wasm'
+      shutil.move(wasm_temp, wasm_binary_target)
+      if use_source_map(options):
+        shutil.move(wasm_temp + '.map', wasm_source_map_target)
 
     # exit block 'emscript'
     log_time('emscript (llvm => executable code)')
@@ -2347,64 +2244,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
-         (shared.Settings.WASM_BACKEND and not shared.Settings.MEM_INIT_IN_WASM):
+      if not shared.Settings.MEM_INIT_IN_WASM:
          memfile = shared.replace_or_append_suffix(target, '.mem')
 
       if memfile:
-        if shared.Settings.WASM_BACKEND:
-          # For the wasm backend, we don't have any memory info in JS. All we need to do
-          # is set the memory initializer url.
-          src = open(final).read()
-          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
-          open(final + '.mem.js', 'w').write(src)
-          final += '.mem.js'
-        else:
-          # Non-wasm backend path: Strip the memory initializer out of the asmjs file
-          shared.try_delete(memfile)
-
-          def parse_mem_bytes(s):
-            membytes = [int(x or '0') for x in s.split(',')]
-            while membytes and membytes[-1] == 0:
-              membytes.pop()
-            return membytes
-
-          def repl(m):
-            # handle chunking of the memory initializer
-            s = m.group(1)
-            if len(s) == 0:
-              return '' # don't emit 0-size ones
-            membytes = parse_mem_bytes(s)
-            if not membytes:
-              return ''
-            if shared.Settings.MEM_INIT_METHOD == 2:
-              # memory initializer in a string literal
-              return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
-            open(memfile, 'wb').write(bytearray(membytes))
-            if DEBUG:
-              # Copy into temp dir as well, so can be run there too
-              shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-            if not shared.Settings.WASM or not shared.Settings.MEM_INIT_IN_WASM:
-              return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
-            else:
-              return ''
-
-          if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.MEM_INIT_METHOD == 0 or (shared.Settings.SINGLE_FILE and not shared.Settings.WASM)):
-            # In MINIMAL_RUNTIME emit the base64 memory initializer directly into a HEAPU8.set() statement.
-            mem_init_data = re.search(shared.JS.memory_initializer_pattern, open(final).read())
-            src = open(final).read().replace('{{{ BASE64_MEMORY_INITIALIZER }}}', base64_encode(bytearray(parse_mem_bytes(mem_init_data.group(1)))))
-            src = re.sub(shared.JS.memory_initializer_pattern, '', src)
-          else:
-            src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
-          open(final + '.mem.js', 'w').write(src)
-          final += '.mem.js'
-          src = None
-          js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
-          if os.path.exists(memfile):
-            save_intermediate('meminit')
-            logger.debug('wrote memory initialization to %s', memfile)
-          else:
-            logger.debug('did not see memory initialization')
+        # For the wasm backend, we don't have any memory info in JS. All we need to do
+        # is set the memory initializer url.
+        src = open(final).read()
+        src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
+        open(final + '.mem.js', 'w').write(src)
+        final += '.mem.js'
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
@@ -2841,7 +2690,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   if options.binaryen_passes:
     if '--post-emscripten' in options.binaryen_passes and not shared.Settings.SIDE_MODULE:
-      if shared.Settings.WASM_BACKEND and not shared.Settings.RELOCATABLE:
+      if not shared.Settings.RELOCATABLE:
         # With the wasm backend stack point value is baked in at link time.  However, emscripten's
         # JS compiler can allocate more static data which then shifts the stack pointer.
         # See `makeStaticAlloc` in the JS compiler.
@@ -2875,12 +2724,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.EVAL_CTORS:
     building.save_intermediate(wasm_binary_target, 'pre-ctors.wasm')
     building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
-
-  # after generating the wasm, do some final operations
-  if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
-    shared.WebAssembly.add_dylink_section(wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
-    if not DEBUG:
-      os.unlink(asm_target) # we don't need the asm.js, it can just confuse
 
   # after generating the wasm, do some final operations
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
@@ -3312,8 +3155,6 @@ def process_libraries(libs, lib_dirs, temp_files):
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
     suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
-    if not shared.Settings.WASM_BACKEND:
-      suffixes.append('.bc')
 
     found = False
     for prefix in LIB_PREFIXES:
