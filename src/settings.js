@@ -1022,14 +1022,6 @@ var USE_ES6_IMPORT_META = 1;
 // anything at all whatsoever. This is useful for benchmarking.
 var BENCHMARK = 0;
 
-// JS library functions on this list are not converted to JS, and calls to them
-// are turned into abort()s. This is potentially useful for reducing code size.
-// If a dead function is actually called, you will get a runtime error.
-//
-// TODO: make this work on compiled methods as well, perhaps by adding a JS
-// optimizer pass?
-var DEAD_FUNCTIONS = [];
-
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
 var EXPORT_NAME = 'Module';
@@ -1695,4 +1687,5 @@ var LEGACY_SETTINGS = [
   ['ALIASING_FUNCTION_POINTERS', [0, 1], 'The wasm backend always uses a single index space for function pointers, in a single Table'],
   ['AGGRESSIVE_VARIABLE_ELIMINATION', [0, 1], 'Wasm ignores asm.js-specific optimization flags'],
   ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
+  ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
 ];
