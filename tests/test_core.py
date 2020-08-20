@@ -6996,9 +6996,15 @@ someweirdtext
 
   def test_embind_polymorphic_class_no_rtti(self):
     src = r'''
+      #include <emscripten.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
       #include <stdio.h>
+
+      EM_JS(void, calltest, (), {
+        var foo = new Module.Foo();
+        console.log("foo.test() returned: " + foo.test());
+      });
 
       class Foo {
        public:
@@ -7013,6 +7019,7 @@ someweirdtext
 
       int main(int argc, char** argv){
         printf("Hello, world.\n");
+        calltest();
         return 0;
       }
 
@@ -7020,7 +7027,7 @@ someweirdtext
         return std::make_shared<Bar>();
       }
 
-      EMSCRIPTEN_BINDINGS(interface_tests) {
+      EMSCRIPTEN_BINDINGS(my_module) {
         emscripten::class_<Foo>("Foo")
           .smart_ptr_constructor("Foo", &MakeFoo)
           .function("test", &Foo::test)
