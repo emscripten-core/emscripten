@@ -7027,7 +7027,7 @@ someweirdtext
           ;
       };
     '''
-    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0', '--pre-js', 'pre.js']
+    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_run(src, 'Hello, world.\nfoo.test() returned: 42\n')
 
   def test_embind_no_rtti_followed_by_rtti(self):
