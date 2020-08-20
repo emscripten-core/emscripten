@@ -4974,9 +4974,7 @@ main(const int argc, const char * const * const argv)
     test(['-O3', '--closure', '1'], 17000)
     # js too
     test(['-O3', '--closure', '1', '-s', 'WASM=0'], 36000)
-    # FIXME(https://github.com/emscripten-core/emscripten/issues/11912):
-    # --closure 2 + WASM=0 leaks js files in /tmp
-    # test(['-O3', '--closure', '2', '-s', 'WASM=0'], 33000) # might change now and then
+    test(['-O3', '--closure', '2', '-s', 'WASM=0'], 33000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
