@@ -141,7 +141,6 @@ class sanity(RunnerCore):
     print()
 
     assert 'EMCC_DEBUG' not in os.environ, 'do not run sanity checks in debug mode!'
-    assert 'EMCC_WASM_BACKEND' not in os.environ, 'do not force wasm backend either way in sanity checks!'
 
   @classmethod
   def tearDownClass(cls):
@@ -702,8 +701,6 @@ fi
     self.assertContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc', '--force']))
 
   def test_embuilder_wasm_backend(self):
-    if not Settings.WASM_BACKEND:
-      self.skipTest('wasm backend only')
     restore_and_set_up()
     # the --lto flag makes us build wasm-bc
     self.do([EMCC, '--clear-cache'])
