@@ -4007,6 +4007,9 @@ LibraryManager.library = {
       // of using __proxy. (And dor simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
+      // -1 - code is the encoding of a proxied EM_ASM, as a negative number
+      // (positive numbers are non-EM_ASM calls). The next argument (1 here) is
+      // whether this is synchronous or not.
       return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, 1].concat(args));
     }
 #endif
