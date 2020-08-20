@@ -423,6 +423,33 @@ You may need to quote things like this:
 
 The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
 
+
+How do I specify ``-s`` options in a CMake project?
+===================================================
+
+Simple things like this should just work in a ``CMakeLists.txt`` file:
+
+::
+
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
+
+However, some ``-s`` options may require quoting, or the space between ``-s``
+and the next argument may confuse CMake, when using things like
+``target_link_options``. To avoid those problems, you can use ``-sX=Y``
+notation, that is, without a space:
+
+::
+
+  # same as before but no space after -s
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
+  # example of target_link_options with a list of names
+  target_link_options(example PRIVATE "-sEXPORTED_FUNCTIONS=[_main]")
+
+Note also that ``_main`` does not need to be quoted, even though it's a string
+name (``emcc`` knows that the argument to ``EXPORTED_FUNCTIONS`` is a list of
+strings, so it accepts ``[a]`` or ``[a,b]`` etc.).
+
+
 Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
 =============================================================================
 
@@ -473,16 +500,6 @@ Why does building from source fail during linking (at 100%)?
 Building :ref:`Fastcomp from source <building-fastcomp-from-source>` (and hence the SDK) can fail at 100% progress. This is due to out of memory in the linking stage, and is reported as an error: ``collect2: error: ld terminated with signal 9 [Killed]``.
 
 The solution is to ensure the system has sufficient memory. On Ubuntu 14.04.1 LTS 64bit, you should use at least 6Gb.
-
-
-Why do I get odd rounding errors when using float variables?
-============================================================
-
-In asm.js, by default Emscripten uses doubles for all floating-point variables, that is, 64-bit floats even when C/C++ code contains 32-bit floats. This is simplest and most efficient to implement in JS as doubles are the only native numeric type. As a result, you may see rounding errors compared to native code using 32-bit floats, just because of the difference in precision between 32-bit and 64-bit floating-point values.
-
-To check if this is the issue you are seeing, build with ``-s PRECISE_F32=1``. This uses proper 32-bit floating-point values, at the cost of some extra code size overhead. This may be faster in some browsers, if they optimize ``Math.fround``, but can be slower in others. See ``src/settings.js`` for more details on this option.
-
-(This is not an issue for wasm, which has native float types.)
 
 
 How do I pass int64_t and uint64_t values from js into wasm functions?

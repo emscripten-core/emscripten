@@ -208,13 +208,6 @@ def get_multiprocessing_pool():
         # between of executing commands, or otherwise the pool children will
         # have trouble spawning subprocesses of their own.
         'EMCC_POOL_CWD=' + path_from_root(),
-        # Multiprocessing pool children need to avoid all calling
-        # check_vanilla() again and again, otherwise the compiler can deadlock
-        # when building system libs, because the multiprocess parent can have
-        # the Emscripten cache directory locked for write access, and the
-        # EMCC_WASM_BACKEND check also requires locked access to the cache,
-        # which the multiprocess children would not get.
-        'EMCC_WASM_BACKEND=%s' % Settings.WASM_BACKEND,
         # Multiprocessing pool children can't spawn their own linear number of
         # children, that could cause a quadratic amount of spawned processes.
         'EMCC_CORES=1'
@@ -459,7 +452,7 @@ def link_to_object(linker_inputs, target):
   # other otherwise for linking of bitcode we must use our python
   # code (necessary for asm.js, for wasm bitcode see
   # https://bugs.llvm.org/show_bug.cgi?id=40654)
-  if Settings.WASM_BACKEND and not Settings.LTO:
+  if not Settings.LTO:
     link_lld(linker_inputs + ['--relocatable'], target)
   else:
     link(linker_inputs, target)
@@ -750,13 +743,6 @@ def llvm_opt(filename, opts, out=None):
     assert out, 'must provide out if llvm_opt on a list of inputs'
   assert len(opts), 'should not call opt with nothing to do'
   opts = opts[:]
-  # TODO: disable inlining when needed
-  # if not can_inline():
-  #   opts.append('-disable-inlining')
-  # opts += ['-debug-pass=Arguments']
-  # TODO: move vectorization logic to clang/LLVM?
-  if not Settings.WASM_BACKEND:
-    opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
 
   target = out or (filename + '.opt.bc')
   cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
@@ -870,36 +856,11 @@ def can_inline():
   return Settings.INLINING_LIMIT == 0
 
 
-def need_asm_js_file():
-  # Explicitly separate asm.js requires it
-  if Settings.SEPARATE_ASM:
-    return True
-  return False
-
-
 def is_wasm_only():
   # not even wasm, much less wasm-only
   if not Settings.WASM:
     return False
   # llvm backend can only ever produce wasm
-  if Settings.WASM_BACKEND:
-    return True
-  # fastcomp can emit wasm-only code.
-  # also disable this mode if it depends on special optimizations that are not yet
-  # compatible with it.
-  if not Settings.LEGALIZE_JS_FFI:
-    # the user has requested no legalization for JS, and so we are not
-    # emitting code compatible with JS, and there is no reason not to
-    # be wasm-only, regardless of everything else
-    return True
-  if Settings.RUNNING_JS_OPTS:
-    # if the JS optimizer runs, it must run on valid asm.js
-    return False
-  if Settings.RELOCATABLE and Settings.EMULATED_FUNCTION_POINTERS:
-    # FIXME(https://github.com/emscripten-core/emscripten/issues/5370)
-    # emulation function pointers work properly, but calling between
-    # modules as wasm-only needs more work
-    return False
   return True
 
 
@@ -981,19 +942,14 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
-  if Settings.WASM_BACKEND:
-    logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
-    return
-  cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.INITIAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
-  if binaryen_bin:
-    cmd += get_binaryen_feature_flags()
-  print_compiler_stage(cmd)
-  check_call(cmd)
-
-
-def eliminate_duplicate_funcs(filename):
-  from . import duplicate_function_eliminator
-  duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
+  logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
+  return
+  # TODO re-enable
+  # cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.INITIAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
+  # if binaryen_bin:
+  #   cmd += get_binaryen_feature_flags()
+  # print_compiler_stage(cmd)
+  # check_call(cmd)
 
 
 def calculate_reachable_functions(infile, initial_list, can_reach=True):
@@ -1259,8 +1215,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     if 'export' in item:
       export = item['export']
       # wasm backend's exports are prefixed differently inside the wasm
-      if Settings.WASM_BACKEND:
-        export = asmjs_mangle(export)
+      export = asmjs_mangle(export)
       if export in user_requested_exports or Settings.EXPORT_ALL:
         item['root'] = True
   # in standalone wasm, always export the memory
@@ -1290,12 +1245,11 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   for item in graph:
     if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
       item['import'][0] = Settings.WASI_MODULE_NAME
-  if Settings.WASM_BACKEND:
-    # wasm backend's imports are prefixed differently inside the wasm
-    for item in graph:
-      if 'import' in item:
-        if item['import'][1][0] == '_':
-          item['import'][1] = item['import'][1][1:]
+  # fixup wasm backend prefixing
+  for item in graph:
+    if 'import' in item:
+      if item['import'][1][0] == '_':
+        item['import'][1] = item['import'][1][1:]
   # map import names from wasm to JS, using the actual name the wasm uses for the import
   import_name_map = {}
   for item in graph:
@@ -1603,9 +1557,6 @@ def path_to_system_js_libraries(library_name):
 
   elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
     library_files += ['library_' + library_name]
-  elif not Settings.WASM_BACKEND:
-    # The wasm backend will report these when wasm-ld runs
-    exit_with_error('emcc: cannot find library "%s"', library_name)
 
   return library_files
 

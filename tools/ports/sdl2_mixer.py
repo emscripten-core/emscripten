@@ -32,14 +32,15 @@ def get(ports, settings, shared):
     logging.info('building port: sdl2_mixer')
 
     source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL2_mixer-' + TAG)
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2_mixer')
+    dest_path = os.path.join(ports.get_build_dir(), 'sdl2_mixer')
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
     flags = [
       '-s', 'USE_SDL=2',
-      '-O2'
+      '-O2',
+      '-DMUSIC_WAV',
     ]
 
     if "ogg" in settings.SDL2_MIXER_FORMATS:
@@ -84,7 +85,7 @@ def clear(ports, settings, shared):
 
 def process_dependencies(settings):
   global deps
-  deps = ['vorbis', 'mpg123', 'sdl2']
+  deps = ['sdl2']
   settings.USE_SDL = 2
   if "ogg" in settings.SDL2_MIXER_FORMATS:
     deps.append('vorbis')

@@ -23,7 +23,7 @@ def get(ports, settings, shared):
     logging.info('building port: bullet')
 
     source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'bullet')
+    dest_path = os.path.join(ports.get_build_dir(), 'bullet')
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
@@ -33,7 +33,7 @@ def get(ports, settings, shared):
     dest_include_path = os.path.join(ports.get_include_dir(), 'bullet')
     for base, dirs, files in os.walk(src_path):
       for f in files:
-        if os.path.splitext(f)[1] != '.h':
+        if shared.suffix(f) != '.h':
           continue
         fullpath = os.path.join(base, f)
         relpath = os.path.relpath(fullpath, src_path)

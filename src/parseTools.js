@@ -757,7 +757,7 @@ function ensureDot(value) {
 
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!isNumber(value)) return value;
-  if (PRECISE_F32 && type === 'float') {
+  if (type === 'float') {
     // normally ok to just emit Math_fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
     if (value == 0) return 'Math_fround(0)';
     value = ensureDot(value);
@@ -772,7 +772,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 
 function asmInitializer(type) {
   if (type in Compiletime.FLOAT_TYPES) {
-    if (PRECISE_F32 && type === 'float') return 'Math_fround(0)';
+    if (type === 'float') return 'Math_fround(0)';
     return RUNNING_JS_OPTS ? '+0' : '.0';
   } else {
     return '0';
@@ -793,7 +793,7 @@ function asmCoercion(value, type, signedness) {
           value = '(' + value + ')|0';
         }
       }
-      if (PRECISE_F32 && type === 'float') {
+      if (type === 'float') {
         return 'Math_fround(' + value + ')';
       } else {
         return '(+(' + value + '))';
@@ -844,8 +844,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return '{ ' + ret.join(', ') + ' }';
   }
 
-  // In double mode 1, in asmjs-unknown-emscripten we need this code path if we are not fully aligned.
-  if (DOUBLE_MODE == 1 && type == 'double' && (align < 8)) {
+  if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
                  makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
             makeGetTempDouble(0, 'double') + ')';
@@ -854,7 +853,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   if (align) {
     // Alignment is important here. May need to split this up
     var bytes = Runtime.getNativeTypeSize(type);
-    if (DOUBLE_MODE == 0 && type == 'double') bytes = 4; // we will really only read 4 bytes here
     if (bytes > align) {
       var ret = '(';
       if (isIntImplemented(type)) {
@@ -928,7 +926,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return ret.join('; ');
   }
 
-  if (DOUBLE_MODE == 1 && type == 'double' && (align < 8)) {
+  if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
@@ -943,7 +941,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   if (align || needSplitting) {
     // Alignment is important here, or we need to split this up for other reasons.
     var bytes = Runtime.getNativeTypeSize(type);
-    if (DOUBLE_MODE == 0 && type == 'double') bytes = 4; // we will really only read 4 bytes here
     if (bytes > align || needSplitting) {
       var ret = '';
       if (isIntImplemented(type)) {
@@ -1142,7 +1139,7 @@ function getFastValue(a, op, b, type) {
       // if guaranteed small enough to not overflow into a double, do a normal multiply
       var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
       // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
-      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
+      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY)) {
         return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
       }
       return '(Math_imul(' + a + ',' + b + ')|0)';
@@ -1461,19 +1458,12 @@ function ensureValidFFIType(type) {
 // FFI return values must arrive as doubles, and we can force them to floats afterwards
 function asmFFICoercion(value, type) {
   value = asmCoercion(value, ensureValidFFIType(type));
-  if (PRECISE_F32 && type === 'float') value = asmCoercion(value, 'float');
+  if (type === 'float') value = asmCoercion(value, 'float');
   return value;
 }
 
 function makeDynCall(sig) {
-  // asm.js function tables have one table in each linked asm.js module, so we
-  // can't just dynCall into them - ftCall exists for that purpose. In wasm,
-  // even linked modules share the table, so it's all fine.
-  if (EMULATED_FUNCTION_POINTERS && !WASM) {
-    return 'ftCall_' + sig;
-  } else {
-    return 'dynCall_' + sig;
-  }
+  return 'dynCall_' + sig;
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr

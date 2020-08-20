@@ -149,7 +149,6 @@ var LibraryExceptions = {
     this.get_exception_ptr = function() {
       // Work around a fastcomp bug, this code is still included for some reason in a build without
       // exceptions support.
-#if WASM_BACKEND || DISABLE_EXCEPTION_CATCHING != 1
       var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(
         this.get_exception_info().get_type());
       if (isPointer) {
@@ -158,9 +157,6 @@ var LibraryExceptions = {
       var adjusted = this.get_adjusted_ptr();
       if (adjusted !== 0) return adjusted;
       return this.get_base_ptr();
-#else
-      abort('No exceptions support');
-#endif
     };
 
     this.get_exception_info = function() {
@@ -197,12 +193,8 @@ var LibraryExceptions = {
     if (info.release_ref() && !info.get_rethrown()) {
       var destructor = info.get_destructor();
       if (destructor) {
-#if WASM_BACKEND == 0
-        Module['dynCall_vi'](destructor, info.excPtr);
-#else
         // In Wasm, destructors return 'this' as in ARM
         Module['dynCall_ii'](destructor, info.excPtr);
-#endif
       }
       ___cxa_free_exception(info.excPtr);
 #if EXCEPTION_DEBUG
@@ -330,11 +322,7 @@ var LibraryExceptions = {
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
   __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '$exception_decRef',
-                          '$CatchInfo'
-#if WASM_BACKEND == 0
-  , 'setThrew'
-#endif
-  ],
+                          '$CatchInfo'],
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0);

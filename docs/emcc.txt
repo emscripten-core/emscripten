@@ -113,10 +113,10 @@ Options that are modified or new in *emcc* are listed below:
 
    You can also specify that the value of an option will be read from
    a specified JSON-formatted file. For example, the following option
-   sets the "DEAD_FUNCTIONS" option with the contents of the file at
-   **path/to/file**.
+   sets the "EXPORTED_FUNCTIONS" option with the contents of the file
+   at **path/to/file**.
 
-      -s DEAD_FUNCTIONS=@/path/to/file
+      -s EXPORTED_FUNCTIONS=@/path/to/file
 
    Note:
 
@@ -202,23 +202,6 @@ Options that are modified or new in *emcc* are listed below:
      happens in "-O2" and above, and when no "-g" option was specified
      to prevent minification.
 
-"--js-opts <level>"
-   Enables JavaScript optimizations, relevant when we generate
-   JavaScript. Possible "level" values are:
-
-      * "0": Prevent JavaScript optimizer from running.
-
-      * "1": Use JavaScript optimizer (default).
-
-   You normally don't need to specify this option, as "-O" with an
-   optimization level will set a good value.
-
-   Note:
-
-     Some options might override this flag (e.g. "DEAD_FUNCTIONS",
-     "SAFE_HEAP" and "SPLIT_MEMORY" override the value with "js-
-     opts=1"), because they depend on the js-optimizer.
-
 "--llvm-opts <level>"
    Enables LLVM optimizations, relevant when we call the LLVM
    optimizer (which is done when building source files to object files
@@ -239,27 +222,8 @@ Options that are modified or new in *emcc* are listed below:
    You normally don't need to specify this option, as "-O" with an
    optimization level will set a good value.
 
-"--llvm-lto <level>"
-   Enables LLVM link-time optimizations (LTO). Possible "level" values
-   are:
-
-      * "0": No LLVM LTO (default).
-
-      * "1": LLVM LTO is performed.
-
-      * "2": Combine all the bitcode and run LLVM opt on it using the
-        specified "--llvm-opts". This optimizes across modules, but is
-        not the same as normal LTO.
-
-      * "3": Does level "2" and then level "1".
-
-   Note:
-
-     * If LLVM optimizations are not run (see "--llvm-opts"), this
-       setting has no effect.
-
-     * LLVM LTO is not perfectly stable yet, and can cause code to
-       behave incorrectly.
+"-flto"
+   Enables link-time optimizations (LTO).
 
 "--closure <on>"
    Runs the *Closure Compiler*. Possible "on" values are:
@@ -294,7 +258,7 @@ Options that are modified or new in *emcc* are listed below:
        4GB).
 
      * Closure is only run if JavaScript opts are being done ("-O2" or
-       above, or "--js-opts 1").
+       above).
 
 "--pre-js <file>"
    Specify a file whose contents are added before the emitted code and

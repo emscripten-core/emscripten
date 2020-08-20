@@ -118,7 +118,7 @@ This way the page will be future compatible once support for the particular feat
 
     2. Exceptions caused by Emscripten runtime calling the ``abort()`` function. These correspond to a fatal error that execution of the compiled code cannot recover from. For example, this can occur when calling an invalid function pointer.
 
-    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type. See the linker flag ``-s BINARYEN_TRAP_MODE`` for more details.
+    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type.
 
 - Implement a final "catch all" error handler on the page by implementing a ``window.onerror`` script. This will be called as a last resort if no other source handled an exception that was raised on the page. See `window.onerror <https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror#window.onerror>`_ documentaton on MDN.
 
