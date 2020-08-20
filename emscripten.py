@@ -11,11 +11,9 @@ headers, for the libc implementation in JS).
 
 from __future__ import print_function
 
-import difflib
 import os
 import json
 import subprocess
-import re
 import time
 import logging
 import pprint
@@ -28,7 +26,6 @@ from tools import gen_struct_info
 from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
 logger = logging.getLogger('emscripten')
 
