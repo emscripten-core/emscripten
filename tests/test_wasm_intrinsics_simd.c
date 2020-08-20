@@ -10,8 +10,6 @@ v128_t TESTFN i8x16_load(void *ptr) {
   return wasm_v128_load(ptr);
 }
 
-#ifdef __wasm_unimplemented_simd128__
-
 v128_t TESTFN v8x16_load_splat(void *ptr) {
   return wasm_v8x16_load_splat(ptr);
 }
@@ -42,8 +40,6 @@ v128_t TESTFN i64x2_load32x2_s(void *ptr) {
 v128_t TESTFN i64x2_load32x2_u(void *ptr) {
   return wasm_u64x2_load_32x2(ptr);
 }
-
-#endif // __wasm_unimplemented_simd128__
 
 void TESTFN i8x16_store(void *ptr, v128_t vec) {
   wasm_v128_store(ptr, vec);
@@ -106,13 +102,9 @@ v128_t TESTFN i64x2_shuffle_reverse(v128_t vec) {
   return wasm_v64x2_shuffle(vec, vec, 1, 0);
 }
 
-#ifdef __wasm_unimplemented_simd128__
-
 v128_t TESTFN v8x16_swizzle(v128_t x, v128_t y) {
   return wasm_v8x16_swizzle(x, y);
 }
-
-#endif // __wasm_unimplemented_simd128__
 
 v128_t TESTFN i8x16_splat(int32_t x) {
   return wasm_i8x16_splat(x);
@@ -363,13 +355,9 @@ v128_t TESTFN v128_xor(v128_t x, v128_t y) {
   return wasm_v128_xor(x, y);
 }
 
-#ifdef __wasm_unimplemented_simd128__
-
 v128_t TESTFN v128_andnot(v128_t x, v128_t y) {
   return wasm_v128_andnot(x, y);
 }
-
-#endif // __wasm_unimplemented_simd128__
 
 v128_t TESTFN v128_bitselect(v128_t x, v128_t y, v128_t cond) {
   return wasm_v128_bitselect(x, y, cond);
@@ -412,9 +400,6 @@ v128_t TESTFN i8x16_sub_saturate_s(v128_t x, v128_t y) {
 }
 v128_t TESTFN i8x16_sub_saturate_u(v128_t x, v128_t y) {
   return wasm_u8x16_sub_saturate(x, y);
-}
-v128_t TESTFN i8x16_mul(v128_t x, v128_t y) {
-  return wasm_i8x16_mul(x, y);
 }
 v128_t TESTFN i8x16_min_s(v128_t x, v128_t y) {
   return wasm_i8x16_min(x, y);
@@ -645,34 +630,12 @@ v128_t TESTFN i32x4_trunc_u_f32x4_sat(v128_t vec) {
   return wasm_u32x4_trunc_saturate_f32x4(vec);
 }
 
-#ifdef __wasm_unimplemented_simd128__
-
-v128_t TESTFN i64x2_trunc_s_f64x2_sat(v128_t vec) {
-  return wasm_i64x2_trunc_saturate_f64x2(vec);
-}
-v128_t TESTFN i64x2_trunc_u_f64x2_sat(v128_t vec) {
-  return wasm_u64x2_trunc_saturate_f64x2(vec);
-}
-
-#endif // __wasm_unimplemented_simd128__
-
 v128_t TESTFN f32x4_convert_s_i32x4(v128_t vec) {
   return wasm_f32x4_convert_i32x4(vec);
 }
 v128_t TESTFN f32x4_convert_u_i32x4(v128_t vec) {
   return wasm_f32x4_convert_u32x4(vec);
 }
-
-#ifdef __wasm_unimplemented_simd128__
-
-v128_t TESTFN f64x2_convert_s_i64x2(v128_t vec) {
-  return wasm_f64x2_convert_i64x2(vec);
-}
-v128_t TESTFN f64x2_convert_u_i64x2(v128_t vec) {
-  return wasm_f64x2_convert_u64x2(vec);
-}
-
-#endif // __wasm_unimplemented_simd128__
 
 v128_t TESTFN i8x16_narrow_i16x8_s(v128_t a, v128_t b) {
   return wasm_i8x16_narrow_i16x8(a, b);
@@ -826,8 +789,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
                i8x16(7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7));
   }
 
-#ifdef __wasm_unimplemented_simd128__
-
   {
     char vec[8] = {0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0};
     void *ptr = &vec;
@@ -868,8 +829,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     );
   }
 
-#endif // __wasm_unimplemented_simd128__
-
   expect_vec(i8x16_const(), u8x16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16));
   expect_vec(i16x8_const(), u16x8(1, 2, 3, 4, 5, 6, 7, 8));
   expect_vec(i32x4_const(), u32x4(1, 2, 3, 4));
@@ -898,8 +857,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   expect_vec(i32x4_shuffle_reverse((v128_t)i32x4(1, 2, 3, 4)), i32x4(4, 3, 2, 1));
   expect_vec(i64x2_shuffle_reverse((v128_t)i64x2(1, 2)), i64x2(2, 1));
 
-#ifdef  __wasm_unimplemented_simd128__
-
   expect_vec(
     v8x16_swizzle(
       (v128_t)i8x16(0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
@@ -909,8 +866,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     i8x16(0xf0, 0xf4, 0xf8, 0xfc, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0xff, 0xfd, 0xfc, 0xf8, 0xf4, 0xf0)
   );
-
-#endif // __wasm_unimplemented_simd128__
 
   // i8x16 lane accesses
   expect_vec(i8x16_splat(5), i8x16(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5));
@@ -1291,16 +1246,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     v128_xor((v128_t)i32x4(0, 0, -1, -1), (v128_t)i32x4(0, -1, 0, -1)),
     i32x4(0, -1, -1, 0)
   );
-
-#ifdef __wasm_unimplemented_simd128__
-
   expect_vec(
     v128_andnot((v128_t)i32x4(0, 0, -1, -1), (v128_t)i32x4(0, -1, 0, -1)),
-    i32x4(0, -1, -1, 0)
+    i32x4(0, 0, -1, 0)
   );
-
-#endif // __wasm_unimplemented_simd128__
-
   expect_vec(
     v128_bitselect(
       (v128_t)i32x4(0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA),
@@ -1392,13 +1341,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
       (v128_t)u8x16(3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142)
     ),
     u8x16(0, 0, 254, 0, 0, 123, 0, 12, 61, 167, 158, 100, 17, 0, 0, 0)
-  );
-  expect_vec(
-    i8x16_mul(
-      (v128_t)i8x16(0, 42, 255, 128, 127, 129, 6, 29, 103, 196, 231, 142, 17, 250, 1, 73),
-      (v128_t)i8x16(3, 231, 1, 128, 129, 6, 103, 17, 42, 29, 73, 42, 0, 255, 127, 142)
-    ),
-    i8x16(0, 230, 255, 0, 255, 6, 106, 237, 230, 52, 223, 76, 0, 6, 127, 126)
   );
   expect_vec(
     i8x16_min_s(
@@ -1741,22 +1683,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     i32x4_trunc_u_f32x4_sat((v128_t)f32x4(42, NAN, INFINITY, -INFINITY)),
     u32x4(42, 0, 4294967295ull, 0)
   );
-
-#ifdef __wasm_unimplemented_simd128__
-
-  expect_vec(i64x2_trunc_s_f64x2_sat((v128_t)f64x2(42, NAN)), i64x2(42, 0));
-  expect_vec(
-    i64x2_trunc_s_f64x2_sat((v128_t)f64x2(INFINITY, -INFINITY)),
-    i64x2(9223372036854775807ll, -9223372036854775807ll - 1)
-  );
-  expect_vec(i64x2_trunc_u_f64x2_sat((v128_t)f64x2(42, NAN)), u64x2(42, 0));
-  expect_vec(
-    i64x2_trunc_u_f64x2_sat((v128_t)f64x2(INFINITY, -INFINITY)),
-    u64x2(18446744073709551615ull, 0)
-  );
-
-#endif // __wasm_unimplemented_simd128__
-
   expect_vec(
     f32x4_convert_s_i32x4((v128_t)i32x4(0, -1, 2147483647, -2147483647 - 1)),
     f32x4(0, -1, 2147483648., -2147483648.)
@@ -1765,25 +1691,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     f32x4_convert_u_i32x4((v128_t)u32x4(0, -1, 2147483647, -2147483647 - 1)),
     f32x4(0, 4294967296., 2147483648., 2147483648.)
   );
-
-#ifdef __wasm_unimplemented_simd128__
-
-  expect_vec(f64x2_convert_s_i64x2((v128_t)i64x2(0, -1)), f64x2(0, -1));
-  expect_vec(
-    f64x2_convert_s_i64x2((v128_t)i64x2(9223372036854775807, -9223372036854775807 - 1)),
-    f64x2(9223372036854775807., -9223372036854775808.)
-  );
-  expect_vec(
-    f64x2_convert_u_i64x2((v128_t)u64x2(0, -1)),
-    f64x2(0, 18446744073709551616.)
-  );
-  expect_vec(
-    f64x2_convert_u_i64x2((v128_t)i64x2(9223372036854775807 , -9223372036854775808.)),
-    f64x2(9223372036854775807., 9223372036854775808.)
-  );
-
-#endif // __wasm_unimplemented_simd128__
-
   expect_vec(
     i8x16_narrow_i16x8_s(
       (v128_t)i16x8(129, 127, -32767, 32767, -32768, -1, 1, 0),

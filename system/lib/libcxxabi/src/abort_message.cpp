@@ -35,11 +35,20 @@ void abort_message(const char* format, ...)
 #ifdef __APPLE__
     fprintf(stderr, "libc++abi.dylib: ");
 #endif
+#if defined(__EMSCRIPTEN__) && defined(NDEBUG)
+    // Just trap in a non-debug build. These internal libcxxabi assertions are
+    // very rare, and it's not worth linking in vfprintf stdio support or
+    // even minimal logging for them, as we'll have a proper call stack, which
+    // will show a call into "abort_message", and can help debugging. (In a
+    // debug build that won't be inlined.)
+    __builtin_trap();
+#else
     va_list list;
     va_start(list, format);
     vfprintf(stderr, format, list);
     va_end(list);
     fprintf(stderr, "\n");
+#endif // EMSCRIPTEN
 #endif
 
 #if defined(__APPLE__) && defined(HAVE_CRASHREPORTERCLIENT_H)

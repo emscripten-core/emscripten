@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
@@ -386,40 +386,41 @@ def inspect_code(headers, cpp_opts, structs, defines):
   os.close(js_file[0])
 
   # Remove dangerous env modifications
-  safe_env = os.environ.copy()
-  for opt in ['EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS']:
-    if opt in safe_env:
-      del safe_env[opt]
-
-  # Use binaryen, if necessary
-  binaryen = os.environ.get('EMCC_WASM_BACKEND_BINARYEN')
-  if binaryen:
-    cpp_opts += ['-s', 'BINARYEN=1']
+  env = os.environ.copy()
+  env['EMCC_FORCE_STDLIBS'] = 'libcompiler_rt'
+  env['EMCC_ONLY_FORCED_STDLIBS'] = '1'
 
   info = []
   # Compile the program.
   show('Compiling generated code...')
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-Wno-format']
-  if not shared.Settings.WASM_BACKEND:
-    cmd += ['-s', 'WASM=0']
+  cmd = [shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
+                                    '-O0', '--memory-init-file', '0',
+                                    '-Werror', '-Wno-format',
+                                    '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                    '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
+                                    '-s', 'STRICT=1',
+                                    '-s', 'SINGLE_FILE=1']
+  # Default behavior for emcc is to warn for binaryen version check mismatches
+  # so we should try to match that behavior.
+  cmd += ['-Wno-error=version-check']
+
+  # TODO(sbc): Remove this one we remove the test_em_config_env_var test
+  cmd += ['-Wno-deprecated']
+
   if shared.Settings.LTO:
     cmd += ['-flto=' + shared.Settings.LTO]
 
   show(cmd)
   try:
-    subprocess.check_call(cmd, env=safe_env)
-  except subprocess.CalledProcessError:
-    sys.stderr.write('FAIL: Compilation failed!\n')
+    subprocess.check_call(cmd, env=env)
+  except subprocess.CalledProcessError as e:
+    sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
 
   # Run the compiled program.
   show('Calling generated program... ' + js_file[1])
-  try:
-    info = shared.run_js(js_file[1]).splitlines()
-  except subprocess.CalledProcessError:
-    sys.stderr.write('FAIL: Running the generated program failed!\n')
-    sys.exit(1)
+  info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
 
   # Remove all temporary files.
   os.unlink(src_file[1])

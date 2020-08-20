@@ -15,7 +15,23 @@ int bar() {
   return 2;
 }
 
+EMSCRIPTEN_KEEPALIVE
+extern "C" int baz() {
+  return 3;
+}
+
 int main(int argc, char **argv) {
+#if defined(__wasm__) && defined(GROWTH)
+  EM_ASM({
+    // Get an export that isn't in the table (we never took its address in C).
+    var baz = asm["baz"];
+    var tableSizeBefore = wasmTable.length;
+    var bazIndex = addFunction(baz);
+    assert(bazIndex >= tableSizeBefore, "we actually added it");
+    assert(addFunction(baz) === bazIndex, "we never add it again");
+  });
+#endif
+
   int fp = atoi(argv[1]);
   printf("fp: %d\n", fp);
   void (*f)(int) = reinterpret_cast<void (*)(int)>(fp);

@@ -53,6 +53,9 @@ var LibraryGLEmulation = {
     fogMode: 0x800, // GL_EXP
     fogEnabled: false,
 
+    // GL_POINTS support.
+    pointSize: 1.0,
+
     // VAO support
     vaos: [],
     currentVao: null,
@@ -1492,6 +1495,10 @@ var LibraryGLEmulation = {
           return s_requiredTexUnitsForPass;
         },
 
+        getActiveTexture: function () {
+          return s_activeTexture;
+        },
+
         traverseState: function(keyView) {
           for (var i = 0; i < s_texUnits.length; i++) {
             s_texUnits[i].traverseState(keyView);
@@ -1509,6 +1516,11 @@ var LibraryGLEmulation = {
         // Hooks:
         hook_activeTexture: function(texture) {
           s_activeTexture = texture - GL_TEXTURE0;
+          // Check if the current matrix mode is GL_TEXTURE.
+          if (GLImmediate.currentMatrix >= 2) {
+            // Switch to the corresponding texture matrix stack.
+            GLImmediate.currentMatrix = 2 + s_activeTexture;
+          }
         },
 
         hook_enable: function(cap) {
@@ -1976,7 +1988,12 @@ var LibraryGLEmulation = {
             break;
         }
       }
-      keyView.next((enabledAttributesKey << 2) | fogParam);
+      enabledAttributesKey = (enabledAttributesKey << 2) | fogParam;
+
+      // By drawing mode:
+      enabledAttributesKey = (enabledAttributesKey << 1) | (GLImmediate.mode == GLctx.POINTS ? 1 : 0);
+
+      keyView.next(enabledAttributesKey);
 
 #if !GL_FFP_ONLY
       // By cur program:
@@ -2088,6 +2105,13 @@ var LibraryGLEmulation = {
               vsFogVaryingInit = '  v_fogFragCoord = abs(ecPosition.z);\n';
             }
 
+            var vsPointSizeDefs = null;
+            var vsPointSizeInit = null;
+            if (GLImmediate.mode == GLctx.POINTS) {
+              vsPointSizeDefs = 'uniform float u_pointSize;\n';
+              vsPointSizeInit = '  gl_PointSize = u_pointSize;\n';
+            }
+
             var vsSource = [
               'attribute vec4 a_position;',
               'attribute vec4 a_color;',
@@ -2097,6 +2121,7 @@ var LibraryGLEmulation = {
               (GLEmulation.fogEnabled ? 'varying float v_fogFragCoord;' : null),
               'uniform mat4 u_modelView;',
               'uniform mat4 u_projection;',
+              vsPointSizeDefs,
               'void main()',
               '{',
               '  vec4 ecPosition = u_modelView * a_position;', // eye-coordinate position
@@ -2104,6 +2129,7 @@ var LibraryGLEmulation = {
               '  v_color = a_color;',
               vsTexCoordInits,
               vsFogVaryingInit,
+              vsPointSizeInit,
               '}',
               ''
             ].join('\n').replace(/\n\n+/g, '\n');
@@ -2233,12 +2259,14 @@ var LibraryGLEmulation = {
           this.fogDensityLocation = GLctx.getUniformLocation(this.program, 'u_fogDensity');
           this.hasFog = !!(this.fogColorLocation || this.fogEndLocation ||
                            this.fogScaleLocation || this.fogDensityLocation);
+
+          this.pointSizeLocation = GLctx.getUniformLocation(this.program, 'u_pointSize');
         },
 
         prepare: function prepare() {
           // Calculate the array buffer
           var arrayBuffer;
-          if (!GL.currArrayBuffer) {
+          if (!GLctx.currentArrayBufferBinding) {
             var start = GLImmediate.firstVertex*GLImmediate.stride;
             var end = GLImmediate.lastVertex*GLImmediate.stride;
 #if ASSERTIONS
@@ -2247,7 +2275,7 @@ var LibraryGLEmulation = {
             arrayBuffer = GL.getTempVertexBuffer(end);
             // TODO: consider using the last buffer we bound, if it was larger. downside is larger buffer, but we might avoid rebinding and preparing
           } else {
-            arrayBuffer = GL.currArrayBuffer;
+            arrayBuffer = GLctx.currentArrayBufferBinding;
           }
 
 #if GL_UNSAFE_OPTS
@@ -2262,7 +2290,7 @@ var LibraryGLEmulation = {
                         !GLImmediate.matricesModified;
           if (!canSkip && lastRenderer) lastRenderer.cleanup();
 #endif
-          if (!GL.currArrayBuffer) {
+          if (!GLctx.currentArrayBufferBinding) {
             // Bind the array buffer and upload data after cleaning up the previous renderer
 
             if (arrayBuffer != GLImmediate.lastArrayBuffer) {
@@ -2304,7 +2332,7 @@ var LibraryGLEmulation = {
 #endif
 
 #if GL_FFP_ONLY
-          if (!GL.currArrayBuffer) {
+          if (!GLctx.currentArrayBufferBinding) {
             GLctx.vertexAttribPointer(GLImmediate.VERTEX, posAttr.size, posAttr.type, false, GLImmediate.stride, posAttr.offset);
             if (this.hasNormal) {
               var normalAttr = clientAttributes[GLImmediate.NORMAL];
@@ -2326,7 +2354,7 @@ var LibraryGLEmulation = {
           if (this.hasTextures) {
             for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
 #if GL_FFP_ONLY
-              if (!GL.currArrayBuffer) {
+              if (!GLctx.currentArrayBufferBinding) {
                 var attribLoc = GLImmediate.TEXTURE0+i;
                 var texAttr = clientAttributes[attribLoc];
                 if (texAttr.size) {
@@ -2366,7 +2394,7 @@ var LibraryGLEmulation = {
             GL.validateVertexAttribPointer(colorAttr.size, colorAttr.type, GLImmediate.stride, colorAttr.offset);
 #endif
 #if GL_FFP_ONLY
-            if (!GL.currArrayBuffer) {
+            if (!GLctx.currentArrayBufferBinding) {
               GLctx.vertexAttribPointer(GLImmediate.COLOR, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
             }
 #else
@@ -2385,6 +2413,12 @@ var LibraryGLEmulation = {
             if (this.fogEndLocation) GLctx.uniform1f(this.fogEndLocation, GLEmulation.fogEnd);
             if (this.fogScaleLocation) GLctx.uniform1f(this.fogScaleLocation, 1/(GLEmulation.fogEnd - GLEmulation.fogStart));
             if (this.fogDensityLocation) GLctx.uniform1f(this.fogDensityLocation, GLEmulation.fogDensity);
+          }
+
+          if (GLImmediate.mode == GLctx.POINTS) {
+            if (this.pointSizeLocation) {
+              GLctx.uniform1f(this.pointSizeLocation, GLEmulation.pointSize);
+            }
           }
         },
 
@@ -2408,7 +2442,7 @@ var LibraryGLEmulation = {
             GLctx.useProgram(null);
             GLImmediate.fixedFunctionProgram = 0;
           }
-          if (!GL.currArrayBuffer) {
+          if (!GLctx.currentArrayBufferBinding) {
             GLctx.bindBuffer(GLctx.ARRAY_BUFFER, null);
             GLImmediate.lastArrayBuffer = null;
           }
@@ -2661,7 +2695,7 @@ var LibraryGLEmulation = {
         GLImmediate.vertexPointer = start;
       } else {
         // case (2): fast path, all data is interleaved to a single vertex array so we can get away with a single VBO upload.
-        if (GL.currArrayBuffer) {
+        if (GLctx.currentArrayBufferBinding) {
           GLImmediate.vertexPointer = 0;
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
@@ -2701,13 +2735,14 @@ var LibraryGLEmulation = {
       var numIndexes = 0;
       if (numProvidedIndexes) {
         numIndexes = numProvidedIndexes;
-        if (!GL.currArrayBuffer && GLImmediate.firstVertex > GLImmediate.lastVertex) {
+        if (!GLctx.currentArrayBufferBinding && GLImmediate.firstVertex > GLImmediate.lastVertex) {
           // Figure out the first and last vertex from the index data
 #if ASSERTIONS
-          assert(!GL.currElementArrayBuffer); // If we are going to upload array buffer data, we need to find which range to
-                                              // upload based on the indices. If they are in a buffer on the GPU, that is very
-                                              // inconvenient! So if you do not have an array buffer, you should also not have
-                                              // an element array buffer. But best is to use both buffers!
+          // If we are going to upload array buffer data, we need to find which range to
+          // upload based on the indices. If they are in a buffer on the GPU, that is very
+          // inconvenient! So if you do not have an array buffer, you should also not have
+          // an element array buffer. But best is to use both buffers!
+          assert(!GLctx.currentElementArrayBufferBinding);
 #endif
           for (var i = 0; i < numProvidedIndexes; i++) {
             var currIndex = {{{ makeGetValue('ptr', 'i*2', 'i16', null, 1) }}};
@@ -2715,7 +2750,7 @@ var LibraryGLEmulation = {
             GLImmediate.lastVertex = Math.max(GLImmediate.lastVertex, currIndex+1);
           }
         }
-        if (!GL.currElementArrayBuffer) {
+        if (!GLctx.currentElementArrayBufferBinding) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
 #if ASSERTIONS
           assert(numProvidedIndexes << 1 <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
@@ -2742,18 +2777,19 @@ var LibraryGLEmulation = {
 #endif
         GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.currentContext.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
+        GLImmediate.mode = GLctx.TRIANGLES;
       }
 
       renderer.prepare();
 
       if (numIndexes) {
-        GLctx.drawElements(GLctx.TRIANGLES, numIndexes, GLctx.UNSIGNED_SHORT, ptr);
+        GLctx.drawElements(GLImmediate.mode, numIndexes, GLctx.UNSIGNED_SHORT, ptr);
       } else {
         GLctx.drawArrays(GLImmediate.mode, startIndex, numVertexes);
       }
 
       if (emulatedElementArrayBuffer) {
-        GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
+        GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GLctx.currentElementArrayBufferBinding] || null);
       }
 
 #if !GL_UNSAFE_OPTS
@@ -3030,6 +3066,10 @@ var LibraryGLEmulation = {
   glFogx: 'glFogi',
   glFogxv: 'glFogiv',
 
+  glPointSize: function(size) {
+    GLEmulation.pointSize = size;
+  },
+
   glPolygonMode: function(){}, // TODO
 
   glAlphaFunc: function(){}, // TODO
@@ -3091,7 +3131,7 @@ var LibraryGLEmulation = {
   glVertexPointer: function(size, type, stride, pointer) {
     GLImmediate.setClientAttribute(GLImmediate.VERTEX, size, type, stride, pointer);
 #if GL_FFP_ONLY
-    if (GL.currArrayBuffer) {
+    if (GLctx.currentArrayBufferBinding) {
       GLctx.vertexAttribPointer(GLImmediate.VERTEX, size, type, false, stride, pointer);
     }
 #endif
@@ -3099,7 +3139,7 @@ var LibraryGLEmulation = {
   glTexCoordPointer: function(size, type, stride, pointer) {
     GLImmediate.setClientAttribute(GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture, size, type, stride, pointer);
 #if GL_FFP_ONLY
-    if (GL.currArrayBuffer) {
+    if (GLctx.currentArrayBufferBinding) {
       var loc = GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture;
       GLctx.vertexAttribPointer(loc, size, type, false, stride, pointer);
     }
@@ -3108,7 +3148,7 @@ var LibraryGLEmulation = {
   glNormalPointer: function(type, stride, pointer) {
     GLImmediate.setClientAttribute(GLImmediate.NORMAL, 3, type, stride, pointer);
 #if GL_FFP_ONLY
-    if (GL.currArrayBuffer) {
+    if (GLctx.currentArrayBufferBinding) {
       GLctx.vertexAttribPointer(GLImmediate.NORMAL, 3, type, true, stride, pointer);
     }
 #endif
@@ -3116,7 +3156,7 @@ var LibraryGLEmulation = {
   glColorPointer: function(size, type, stride, pointer) {
     GLImmediate.setClientAttribute(GLImmediate.COLOR, size, type, stride, pointer);
 #if GL_FFP_ONLY
-    if (GL.currArrayBuffer) {
+    if (GLctx.currentArrayBufferBinding) {
       GLctx.vertexAttribPointer(GLImmediate.COLOR, size, type, true, stride, pointer);
     }
 #endif
@@ -3137,7 +3177,7 @@ var LibraryGLEmulation = {
     }
     GLImmediate.prepareClientAttributes(count, false);
     GLImmediate.mode = mode;
-    if (!GL.currArrayBuffer) {
+    if (!GLctx.currentArrayBufferBinding) {
       GLImmediate.vertexData = {{{ makeHEAPView('F32', 'GLImmediate.vertexPointer', 'GLImmediate.vertexPointer + (first+count)*GLImmediate.stride') }}}; // XXX assuming float
       GLImmediate.firstVertex = first;
       GLImmediate.lastVertex = first + count;
@@ -3147,19 +3187,19 @@ var LibraryGLEmulation = {
   },
 
   glDrawElements: function(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
-    if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
+    if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GLctx.currentElementArrayBufferBinding) {
       GLctx.drawElements(mode, count, type, indices);
       return;
     }
 #if ASSERTIONS
-    if (!GL.currElementArrayBuffer) {
+    if (!GLctx.currentElementArrayBufferBinding) {
       assert(type == GLctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
     }
     console.log("DrawElements doesn't actually prepareClientAttributes properly.");
 #endif
     GLImmediate.prepareClientAttributes(count, false);
     GLImmediate.mode = mode;
-    if (!GL.currArrayBuffer) {
+    if (!GLctx.currentArrayBufferBinding) {
       GLImmediate.firstVertex = end ? start : HEAP8.length; // if we don't know the start, set an invalid value and we will calculate it later from the indices
       GLImmediate.lastVertex = end ? end+1 : 0;
       GLImmediate.vertexData = HEAPF32.subarray(GLImmediate.vertexPointer >> 2, end ? (GLImmediate.vertexPointer + (end+1)*GLImmediate.stride) >> 2 : undefined); // XXX assuming float
@@ -3242,7 +3282,7 @@ var LibraryGLEmulation = {
       GLImmediate.currentMatrix = 1/*p*/;
     } else if (mode == 0x1702) { // GL_TEXTURE
       GLImmediate.useTextureMatrix = true;
-      GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.clientActiveTexture;
+      GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.TexEnvJIT.getActiveTexture();
     } else {
       throw "Wrong mode " + mode + " passed to glMatrixMode";
     }

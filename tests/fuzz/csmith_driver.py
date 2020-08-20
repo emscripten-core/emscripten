@@ -93,13 +93,13 @@ while 1:
   shared.run_process([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
   print('3) Run natively')
   try:
-    correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
+    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct1 or len(correct1) < 10:
       raise Exception('segfault')
-    correct2 = shared.jsrun.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
+    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct2 or len(correct2) < 10:
       raise Exception('segfault')
-    correct3 = shared.jsrun.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
+    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct3 or len(correct3) < 10:
       raise Exception('segfault')
     if correct1 != correct3:
@@ -115,19 +115,13 @@ while 1:
 
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
-    js_args = [shared.PYTHON, shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
+    js_args = [shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
     if TEST_BINARYEN:
-      js_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_TRAP_MODE="js"']
       if random.random() < 0.5:
         js_args += ['-g']
-      if random.random() < 0.1:
-        if random.random() < 0.5:
-          js_args += ['--js-opts', '0']
-        else:
-          js_args += ['--js-opts', '1']
       if random.random() < 0.5:
         # pick random passes
-        BINARYEN_PASSES = [
+        BINARYEN_EXTRA_PASSES = [
           "code-pushing",
           "duplicate-function-elimination",
           "dce",
@@ -148,31 +142,22 @@ while 1:
         ]
         passes = []
         while 1:
-          passes.append(random.choice(BINARYEN_PASSES))
+          passes.append(random.choice(BINARYEN_EXTRA_PASSES))
           if random.random() < 0.1:
             break
-        js_args += ['-s', 'BINARYEN_PASSES="' + ','.join(passes) + '"']
+        js_args += ['-s', 'BINARYEN_EXTRA_PASSES="' + ','.join(passes) + '"']
     if random.random() < 0.5:
       js_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
     if random.random() < 0.5 and 'ALLOW_MEMORY_GROWTH=1' not in js_args and 'BINARYEN=1' not in js_args:
       js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
-    if random.random() < 0.01:
-      js_args += ['-s', 'EMTERPRETIFY=1']
-      if random.random() < 0.5:
-        if random.random() < 0.5:
-          js_args += ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]'] # blacklist main and all inlined into it, but interpret the rest, tests mixing
-        else:
-          js_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_main"]'] # the opposite direction
-      if random.random() < 0.5:
-        js_args += ['-s', 'EMTERPRETIFY_ASYNC=1']
     if random.random() < 0.5:
       js_args += ["--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2"]
     if random.random() < 0.5:
       js_args += ['-s', 'ASSERTIONS=1']
     print('(compile)', ' '.join(js_args))
-    short_args = [shared.PYTHON, shared.EMCC, fail_output_name] + js_args[5:]
+    short_args = [shared.EMCC, fail_output_name] + js_args[5:]
     escaped_short_args = map(lambda x: ("'" + x + "'") if '"' in x else x, short_args)
     open(fullname, 'a').write('\n// ' + ' '.join(escaped_short_args) + '\n\n')
     try:
@@ -185,8 +170,8 @@ while 1:
   def execute_js(engine):
     print('(run in %s)' % engine)
     try:
-      js = shared.jsrun.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
-    except CalledProcessError:
+      js = shared.timeout_run(Popen(shared.NODE_JS + [filename + '.js'], stdout=PIPE, stderr=PIPE), 15 * 60)
+    except Exception:
       print('failed to run in primary')
       return False
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)

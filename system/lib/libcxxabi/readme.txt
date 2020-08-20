@@ -1,7 +1,7 @@
-These files are from libcxxabi, release 8.0.0.
+These files are from libc++, release branch 10.x.
 
-tag: llvmorg-9.0.0
-git: d2298e74235598f15594fe2c99bbac870a507c59
+tag: llvmorg-10.0.0
+git: d32170dbd5b0d54436537b6b75beaf44324e0c28
 
 Update Instructions
 -------------------

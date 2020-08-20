@@ -1,9 +1,8 @@
 //===-- asan_flags.inc ------------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -140,10 +139,10 @@ ASAN_FLAG(
     "If >= 2, detect operations like <, <=, >, >= and - on invalid pointer "
     "pairs (e.g. when pointers belong to different objects); "
     "If == 1, detect invalid operations only when both pointers are non-null.")
-ASAN_FLAG(
-    bool, detect_container_overflow, true,
-    "If true, honor the container overflow annotations. See "
-    "https://github.com/google/sanitizers/wiki/AddressSanitizerContainerOverflow")
+ASAN_FLAG(bool, detect_container_overflow, true,
+          "If true, honor the container overflow annotations. See "
+          "https://github.com/google/sanitizers/wiki/"
+          "AddressSanitizerContainerOverflow")
 ASAN_FLAG(int, detect_odr_violation, 2,
           "If >=2, detect violation of One-Definition-Rule (ODR); "
           "If ==1, detect ODR-violation only if the two variables "
@@ -159,3 +158,6 @@ ASAN_FLAG(bool, allocator_frees_and_returns_null_on_realloc_zero, true,
 ASAN_FLAG(bool, verify_asan_link_order, true,
           "Check position of ASan runtime in library list (needs to be disabled"
           " when other library has to be preloaded system-wide)")
+ASAN_FLAG(
+    bool, windows_hook_rtl_allocators, false,
+    "(Windows only) enable hooking of Rtl(Allocate|Free|Size|ReAllocate)Heap.")

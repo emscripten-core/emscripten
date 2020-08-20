@@ -100,6 +100,19 @@ if ("${CMAKE_RANLIB}" STREQUAL "")
   set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
 endif()
 
+if ("${CMAKE_C_COMPILER_AR}" STREQUAL "")
+  set(CMAKE_C_COMPILER_AR "${CMAKE_AR}" CACHE FILEPATH "Emscripten ar")
+endif()
+if ("${CMAKE_CXX_COMPILER_AR}" STREQUAL "")
+  set(CMAKE_CXX_COMPILER_AR "${CMAKE_AR}" CACHE FILEPATH "Emscripten ar")
+endif()
+if ("${CMAKE_C_COMPILER_RANLIB}" STREQUAL "")
+  set(CMAKE_C_COMPILER_RANLIB "${CMAKE_RANLIB}" CACHE FILEPATH "Emscripten ranlib")
+endif()
+if ("${CMAKE_CXX_COMPILER_RANLIB}" STREQUAL "")
+  set(CMAKE_CXX_COMPILER_RANLIB "${CMAKE_RANLIB}" CACHE FILEPATH "Emscripten ranlib")
+endif()
+
 # Don't allow CMake to autodetect the compiler, since it does not understand
 # Emscripten.
 # Pass -DEMSCRIPTEN_FORCE_COMPILERS=OFF to disable (sensible mostly only for
@@ -197,37 +210,34 @@ endif()
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 
 # Since Emscripten is a cross-compiler, we should never look at the
-# system-provided directories like /usr/include and so on.  Therefore only
+# system-provided directories like /usr/include and so on. Therefore only
 # CMAKE_FIND_ROOT_PATH should be used as a find directory. See
 # http://www.cmake.org/cmake/help/v3.0/variable/CMAKE_FIND_ROOT_PATH_MODE_INCLUDE.html
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+if (NOT CMAKE_FIND_ROOT_PATH_MODE_LIBRARY)
+  set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+endif()
+if (NOT CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
+  set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+endif()
+if (NOT CMAKE_FIND_ROOT_PATH_MODE_PACKAGE)
+  set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+endif()
 
 set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 
-# We would prefer to specify a standard set of Clang+Emscripten-friendly common
-# convention for suffix files, especially for CMake executable files, but if
-# these are adjusted, ${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake will fail,
-# since it depends on being able to compile output files with predefined names.
-#set(CMAKE_LINK_LIBRARY_SUFFIX "")
-#set(CMAKE_STATIC_LIBRARY_PREFIX "")
-#set(CMAKE_SHARED_LIBRARY_PREFIX "")
-#set(CMAKE_FIND_LIBRARY_PREFIXES "")
-#set(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
-#set(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
-
 option(EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES "If set, static library targets generate LLVM bitcode files (.bc). If disabled (default), UNIX ar archives (.a) are generated." OFF)
 if (EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES)
-  set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
+  if (${CMAKE_C_COMPILER_VERSION} VERSION_LESS 7.0.0)
+    set(EMSCRIPTEN_FASTCOMP TRUE)
+  endif()
+  if (NOT EMSCRIPTEN_FASTCOMP)
+    message(FATAL_ERROR "EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the llvm backend")
+  endif()
 
+  set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
+  # Use the compiler to create a bitcode object rather than the default of using the AR tool
   set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_C_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
   set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_CXX_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
-else()
-  # Specify the program to use when building static libraries. Force
-  # Emscripten-related command line options to clang.
-  set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
-  set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
 endif()
 
 set(CMAKE_EXECUTABLE_SUFFIX ".js")
@@ -286,7 +296,7 @@ set(CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL "-Os" CACHE STRING "Emscripten-overridd
 set(CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO "-O2 -g" CACHE STRING "Emscripten-overridden CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO")
 
 function(em_validate_asmjs_after_build target)
-  add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E echo Validating build output for asm.js... COMMAND "python" ARGS "${EMSCRIPTEN_ROOT_PATH}/tools/validate_asmjs.py" "$<TARGET_FILE:${target}>")
+  message(WARNING "em_validate_asmjs_after_build no longer exists")
 endfunction()
 
 # A global counter to guarantee unique names for js library files.

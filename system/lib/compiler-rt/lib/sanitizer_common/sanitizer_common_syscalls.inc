@@ -1,9 +1,8 @@
 //===-- sanitizer_common_syscalls.inc ---------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -2872,6 +2871,18 @@ POST_SYSCALL(rt_sigaction)(long res, long signum,
   if (res >= 0 && oldact) {
     SIZE_T oldact_sz = ((char *)&oldact->sa_mask) - ((char *)oldact) + sz;
     POST_WRITE(oldact, oldact_sz);
+  }
+}
+
+PRE_SYSCALL(getrandom)(void *buf, uptr count, long flags) {
+  if (buf) {
+    PRE_WRITE(buf, count);
+  }
+}
+
+POST_SYSCALL(getrandom)(long res, void *buf, uptr count, long flags) {
+  if (res > 0 && buf) {
+    POST_WRITE(buf, res);
   }
 }
 }  // extern "C"

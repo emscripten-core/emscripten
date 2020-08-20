@@ -15,6 +15,18 @@ var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
 #endif // SIDE_MODULE
 
+#if MODULARIZE && EXPORT_READY_PROMISE
+// Set up the promise that indicates the Module is initialized
+var readyPromiseResolve, readyPromiseReject;
+Module['ready'] = new Promise(function(resolve, reject) {
+  readyPromiseResolve = resolve;
+  readyPromiseReject = reject;
+});
+#if ASSERTIONS
+{{{ addReadyPromiseAssertions("Module['ready']") }}}
+#endif
+#endif
+
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = typeof process === 'object';
 #endif
@@ -42,8 +54,9 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 #endif
 
 #if !SINGLE_FILE
-// Wasm or Wasm2JS loading:
 #if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
+// Wasm or Wasm2JS loading:
+
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
@@ -56,9 +69,6 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 #endif
 #else
-#if SEPARATE_ASM
-  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
-#endif
 #endif
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
@@ -86,32 +96,6 @@ if (ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-// asm.js loading in fastcomp backend:
-#if !WASM && !WASM_BACKEND
-
-#if ENVIRONMENT_MAY_BE_NODE
-if (ENVIRONMENT_IS_NODE) {
-  var fs = require('fs');
-#if SEPARATE_ASM
-  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
-#endif
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
-  Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
-#endif
-}
-#endif
-
-#if ENVIRONMENT_MAY_BE_SHELL
-if (ENVIRONMENT_IS_SHELL) {
-  eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
-  Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
-#endif
-}
-#endif
-
-#endif
-
 #endif // !SINGLE_FILE
 
 // Redefine these in a --pre-js to override behavior. If you would like to
@@ -131,6 +115,9 @@ function err(text) {
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
+#if MODULARIZE && EXPORT_READY_PROMISE
+  readyPromiseResolve(Module);
+#endif // MODULARIZE
 #if INVOKE_RUN && hasExportedFunction('_main')
 #if USE_PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD) {
@@ -153,7 +140,7 @@ function ready() {
 
 #if USE_PTHREADS
 
-#if !MODULARIZE || MODULARIZE_INSTANCE
+#if !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
 var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;

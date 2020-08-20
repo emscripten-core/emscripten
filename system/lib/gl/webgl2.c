@@ -3,8 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "webgl1.h"
-#include "webgl2.h"
+#include <webgl/webgl1.h>
+#include <webgl/webgl2.h>
 
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 

@@ -113,28 +113,23 @@ Modular output
 
 When using the WebIDL binder, often what you are doing is creating a library. In that
 case, the `MODULARIZE` option makes sense to use. It wraps the entire JavaScript output
-in a function, which you call to create instances,
+in a function, and returns a Promise which resolves to the initialized Module instance.
 
 .. code-block:: javascript
 
-  var instance = Module();
-
-(You can use the `EXPORT_NAME` option to change `Module` to something else.) This is
-good practice for libraries, as then they don't include unnecessary things in the
-global scope (and in some cases you want to create more than one).
-
-Modularize also provides a promise-like API, which is the recommended way to use it,
-
-.. code-block:: javascript
-
-  var instance = Module().then(function(instance) {
-    // code that uses the instance here
+  var instance;
+  Module().then(module => {
+    instance = module;
   });
 
-The callback is called when it is safe to run compiled code, similar
-to the `onRuntimeInitialized` callback (i.e., it waits for all
-necessary async events). It receives the instance as a parameter,
-for convenience.
+The promise is resolved when it is safe to run compiled code, i.e. after it
+has been has been downloaded and instantiated. The promise is resolved at the
+same time the `onRuntimeInitialized` callback is invoked, so there's no need to
+use `onRuntimeInitialized` when using `MODULARIZE`.
+
+You can use the `EXPORT_NAME` option to change `Module` to something else. This is
+good practice for libraries, as then they don't include unnecessary things in the
+global scope, and in some cases you want to create more than one.
 
 
 Using C++ classes in JavaScript
@@ -275,7 +270,7 @@ Attributes that correspond to const data members must be specified with the ``re
 
 This will generate a ``get_numericalConstant()`` method in the bindings, but not a corresponding setter. The attribute will also be defined as read-only in JavaScript, meaning that trying to set it will have no effect on the value, and will throw an error in strict mode.
 
-.. tip:: It is possible for a return type to have multiple specifiers. For example, an method that returns a contant reference would be marked up in the IDL using ``[Ref, Const]``.
+.. tip:: It is possible for a return type to have multiple specifiers. For example, a method that returns a constant reference would be marked up in the IDL using ``[Ref, Const]``.
 
 
 Un-deletable classes (NoDelete)

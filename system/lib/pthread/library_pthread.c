@@ -449,7 +449,7 @@ pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(
+int EMSCRIPTEN_KEEPALIVE do_emscripten_dispatch_to_thread(
   pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
@@ -469,7 +469,7 @@ static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(
   if (target_thread == EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD ||
       target_thread == pthread_self()) {
     _do_call(call);
-    return;
+    return 1;
   }
 
   // Add the operation to the call queue of the main runtime thread.
@@ -501,7 +501,7 @@ static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(
       //message to thread. ' + new Error().stack));
       // #endif
       em_queued_call_free(call);
-      return;
+      return 0;
     }
   }
 
@@ -516,17 +516,19 @@ static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(
     if (!success) {
       em_queued_call_free(call);
       pthread_mutex_unlock(&call_queue_lock);
-      return;
+      return 0;
     }
   }
 
   emscripten_atomic_store_u32((void*)&q->call_queue_tail, new_tail);
 
   pthread_mutex_unlock(&call_queue_lock);
+
+  return 0;
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_async_run_in_main_thread(em_queued_call* call) {
-  emscripten_async_queue_call_on_thread(emscripten_main_browser_thread_id(), call);
+  do_emscripten_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call* call) {
@@ -846,13 +848,19 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_on_thread_(
+int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
+  int forceAsync,
   pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
+  // TODO: handle errors in a better way, this pattern appears in several places
+  //       in this file. The current behavior makes the calling thread hang as
+  //       it waits (for synchronous calls).
+  // If we failed to allocate, return 0 which means we did not execute anything
+  // (we also never will in that case).
   if (!q)
-    return;
+    return 0;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
   q->satelliteData = satellite;
@@ -882,8 +890,21 @@ void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_on_thread_(
   // 'async' runs are fire and forget, where the caller detaches itself from the call object after
   // returning here, and it is the callee's responsibility to free up the memory after the call has
   // been performed.
+  // Note that the call here might not be async if on the same thread, but for
+  // consistency use the same convention of calleeDelete.
   q->calleeDelete = 1;
-  emscripten_async_queue_call_on_thread(targetThread, q);
+  // The called function will not be async if we are on the same thread; force
+  // async if the user asked for that.
+  if (forceAsync) {
+    EM_ASM({
+      setTimeout(function() {
+        _do_emscripten_dispatch_to_thread($0, $1);
+      }, 0);
+    }, targetThread, q);
+    return 0;
+  } else {
+    return do_emscripten_dispatch_to_thread(targetThread, q);
+  }
 }
 
 void llvm_memory_barrier() { emscripten_atomic_fence(); }
@@ -913,12 +934,9 @@ int proxy_main(int argc, char** argv) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-    // TODO: Read this from -s TOTAL_STACK parameter, and make actual main browser thread stack
-    // something tiny, or create a -s PROXY_THREAD_STACK_SIZE parameter.
-#define EMSCRIPTEN_PTHREAD_STACK_SIZE (128 * 1024)
-
-    pthread_attr_setstacksize(&attr, (EMSCRIPTEN_PTHREAD_STACK_SIZE));
+    // Use TOTAL_STACK for the stack size, which is the normal size of the stack
+    // that main() would have without PROXY_TO_PTHREAD.
+    pthread_attr_setstacksize(&attr, EM_ASM_INT({ return TOTAL_STACK }));
     // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
     // should instead take a list of canvases that are specified from the command line with
     // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.

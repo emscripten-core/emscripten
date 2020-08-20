@@ -455,7 +455,6 @@ Functions
 
   :param int num: The number of blockers that are about to be pushed.
 
-
 .. c:function:: void emscripten_async_call(em_arg_callback_func func, void *arg, int millis)
 
   Call a C function asynchronously, that is, after returning control to the JavaScript event loop.
@@ -492,6 +491,20 @@ Functions
 
   :rtype: double
   :return: The pixel ratio or 1.0 if not supported.
+
+.. c:function:: char *emscripten_get_window_title()
+
+  Returns the window title.
+
+  The returned string will be valid until the next call of the function
+
+.. c:function:: void emscripten_set_window_title(char *title)
+
+  Sets the window title.
+
+.. c:function:: void emscripten_get_screen_size(int *width, int *height)
+
+  Returns the width and height of the screen.
 
 .. c:function:: void emscripten_hide_mouse(void)
 
@@ -1018,9 +1031,9 @@ Functions
 
   Returns the value of a compiler setting.
 
-  For example, to return the integer representing the value of ``PRECISE_F32`` during compilation: ::
+  For example, to return the integer representing the value of ``INITIAL_MEMORY`` during compilation: ::
 
-    emscripten_get_compiler_setting("PRECISE_F32")
+    emscripten_get_compiler_setting("INITIAL_MEMORY")
 
   For values containing anything other than an integer, a string is returned (you will need to cast the ``int`` return value to a ``char*``).
 
@@ -1040,7 +1053,7 @@ Functions
   Returns whether pseudo-synchronous functions can be used.
 
   :rtype: int
-  :returns: 1 if program was compiled with ASYNCIFY=1 or EMTERPRETER_ASYNC=1, 0 otherwise.
+  :returns: 1 if program was compiled with ASYNCIFY=1, 0 otherwise.
 
 
 .. c:function:: void emscripten_debugger()
@@ -1253,7 +1266,7 @@ Typedefs
 Pseudo-synchronous functions
 ============================
 
-These functions require Asyncify (``-s ASYNCIFY=1``) with the wasm backend, or Emterpreter-async with fastcomp (``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ and `Emterpreter <https://emscripten.org/docs/porting/emterpreter.html>`_ for more details.
+These functions require Asyncify (``-s ASYNCIFY=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
 
 Sleeping
 --------
@@ -1398,6 +1411,12 @@ Functions
     that means data stored in locals, including locals in functions higher up
     the stack - the wasm VM has spilled them, but none of that is observable to
     user code).
+
+    Note that this function scans wasm locals. Depending on the LLVM
+    optimization level, this may not scan the original locals in your source
+    code. For example in ``-O0`` locals may be stored on the stack. To make
+    sure you scan everything necessary, you can also do
+    ``emscripten_scan_stack``.
 
     This function requires Asyncify - it relies on that option to spill the
     local state all the way up the stack. As a result, it will add overhead

@@ -15,13 +15,6 @@ var parentThreadId = 0; // The ID of the parent pthread that launched this threa
 
 var Module = {};
 
-// If we use a custom export name, refer to Module from it as well, so that
-// we connect properly to the modularized instance which is the only thing
-// in the global scope.
-#if MODULARIZE_INSTANCE && EXPORT_NAME != 'Module'
-var {{{ EXPORT_NAME }}} = Module;
-#endif
-
 #if ASSERTIONS
 function assert(condition, text) {
   if (!condition) abort('Assertion failed: ' + text);
@@ -76,18 +69,7 @@ this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if MINIMAL_RUNTIME
-#if MODULARIZE_INSTANCE
-      var imports = Module;
-#else
       var imports = {};
-#endif
-#endif
-
-#if !WASM_BACKEND
-      // Initialize the thread-local field(s):
-#if MINIMAL_RUNTIME
-      var imports = {};
-#endif
 #endif
 
       // Initialize the global "process"-wide fields:
@@ -109,7 +91,7 @@ this.onmessage = function(e) {
 #endif
 #else
       Module['wasmModule'] = e.data.wasmModule;
-#endif
+#endif // MINIMAL_RUNTIME
 
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
@@ -124,19 +106,7 @@ this.onmessage = function(e) {
 #else // asm.js:
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = e.data.buffer;
 
-#if SEPARATE_ASM
-      // load the separated-out asm.js
-      e.data.asmJsUrlOrBlob = e.data.asmJsUrlOrBlob || '{{{ SEPARATE_ASM }}}';
-      if (typeof e.data.asmJsUrlOrBlob === 'string') {
-        importScripts(e.data.asmJsUrlOrBlob);
-      } else {
-        var objectUrl = URL.createObjectURL(e.data.asmJsUrlOrBlob);
-        importScripts(objectUrl);
-        URL.revokeObjectURL(objectUrl);
-      }
-#endif
-
-#endif
+#endif // WASM
 
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
@@ -144,7 +114,9 @@ this.onmessage = function(e) {
 
 #if MODULARIZE && EXPORT_ES6
       import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
-        Module = {{{ EXPORT_NAME }}}.default(Module);
+        return {{{ EXPORT_NAME }}}.default(Module);
+      }).then(function(instance) {
+        Module = instance;
         postMessage({ 'cmd': 'loaded' });
       });
 #else
@@ -155,15 +127,21 @@ this.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
-#if MODULARIZE && !MODULARIZE_INSTANCE
+#if MODULARIZE
 #if MINIMAL_RUNTIME
-      Module = {{{ EXPORT_NAME }}}(imports);
+      {{{ EXPORT_NAME }}}(imports).then(function (instance) {
+        Module = instance;
+        postMessage({ 'cmd': 'loaded' });
+      });
 #else
-      Module = {{{ EXPORT_NAME }}}(Module);
+      {{{ EXPORT_NAME }}}(Module).then(function (instance) {
+        Module = instance;
+        postMessage({ 'cmd': 'loaded' });
+      });
 #endif
 #endif
 
-#if !MINIMAL_RUNTIME || !WASM
+#if !MODULARIZE && (!MINIMAL_RUNTIME || !WASM)
       // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
       // regular runtime and asm.js are loaded synchronously, so in those cases
       // we are now loaded, and can post back to main thread.
@@ -188,36 +166,25 @@ this.onmessage = function(e) {
       threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['__register_pthread_ptr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['registerPthreadPtr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
-#if WASM_BACKEND
       // The stack grows downwards
       var max = e.data.stackBase;
       var top = e.data.stackBase + e.data.stackSize;
-#else
-      var max = e.data.stackBase + e.data.stackSize;
-      var top = e.data.stackBase;
-#endif
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
       assert(parentThreadId);
       assert(top != 0);
       assert(max != 0);
-#if WASM_BACKEND
       assert(top > max);
-#else
-      assert(max > top);
-#endif
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace'](top, max);
-#if WASM_BACKEND
       Module['_emscripten_tls_init']();
-#endif
 #if STACK_OVERFLOW_CHECK
       Module['writeStackCookie']();
 #endif
@@ -310,7 +277,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
 
   var nodeWorkerThreads = require('worker_threads');
 
-  Worker = nodeWorkerThreads.Worker;
+  global.Worker = nodeWorkerThreads.Worker;
 
   var parentPort = nodeWorkerThreads.parentPort;
 

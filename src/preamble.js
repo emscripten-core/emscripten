@@ -34,11 +34,7 @@ if (Module['doWasm2JS']) {
 
 #if WASM == 1
 if (typeof WebAssembly !== 'object') {
-#if ASSERTIONS
-  abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-#else
-  err('no native wasm support detected');
-#endif
+  abort('no native wasm support detected');
 }
 #endif
 
@@ -51,19 +47,7 @@ var wasmMemory;
 // In fastcomp asm.js, we don't need a wasm Table at all.
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
-#if WASM_BACKEND || WASM
-var wasmTable = new WebAssembly.Table({
-  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#if !ALLOW_TABLE_GROWTH
-#if WASM_BACKEND
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
-#else
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#endif
-#endif // WASM_BACKEND
-  'element': 'anyfunc'
-});
-#endif // WASM_BACKEND || WASM
+#include "runtime_init_table.js"
 
 #if USE_PTHREADS
 // For sending to workers.
@@ -151,22 +135,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
-#if EMTERPRETIFY_ASYNC
-  if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state) {
-#if ASSERTIONS
-    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
-    assert(!EmterpreterAsync.restartFunc, 'Cannot have multiple async ccalls in flight at once');
-#endif
-    return new Promise(function(resolve) {
-      EmterpreterAsync.restartFunc = func;
-      EmterpreterAsync.asyncFinalizers.push(function(ret) {
-        if (stack !== 0) stackRestore(stack);
-        resolve(convertReturnValue(ret));
-      });
-    });
-  }
-#endif
-#if ASYNCIFY && WASM_BACKEND
+#if ASYNCIFY
   var asyncMode = opts && opts.async;
   var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
   var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0;
@@ -192,7 +161,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
+#if ASYNCIFY
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -395,12 +364,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 
-#if EMTERPRETIFY
-function abortStackOverflowEmterpreter() {
-  abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
-}
-#endif
-
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
@@ -443,9 +406,9 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 
 #include "runtime_sab_polyfill.js"
 
-// In standalone mode, the wasm creates the memory, and the user can't provide it.
 #if STANDALONE_WASM
 #if ASSERTIONS
+// In standalone mode, the wasm creates the memory, and the user can't provide it.
 assert(!Module['wasmMemory']);
 #endif // ASSERTIONS
 #else // !STANDALONE_WASM
@@ -539,6 +502,9 @@ function exitRuntime() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   {{{ getQuoted('ATEXITS') }}}
+#if USE_PTHREADS
+  PThread.runExitHandlers();
+#endif
 #endif
   runtimeExited = true;
 }
@@ -699,10 +665,6 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
-#if EMTERPRETIFY_ASYNC && ASSERTIONS
-var abortDecorators = [];
-#endif
-
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -715,7 +677,6 @@ function abort(what) {
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif
   what += '';
-  out(what);
   err(what);
 
   ABORT = true;
@@ -725,22 +686,25 @@ function abort(what) {
   what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
   var output = 'abort(' + what + ') at ' + stackTrace();
-#if EMTERPRETIFY_ASYNC
-  abortDecorators.forEach(function(decorator) {
-    output = decorator(output, what);
-  });
-#endif
   what = output;
 #endif // ASSERTIONS
 
-  // Throw a wasm runtime error, because a JS error might be seen as a foreign
+#if WASM
+  // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
-#if WASM
-  throw new WebAssembly.RuntimeError(what);
+  var e = new WebAssembly.RuntimeError(what);
 #else
-  throw what;
+  var e = what;
 #endif
+
+#if MODULARIZE
+  readyPromiseReject(e);
+#endif
+  // Throw the error whether or not MODULARIZE is set because abort is used
+  // in code paths apart from instantiation where an exception is expected
+  // to be thrown when abort is called.
+  throw e;
 }
 
 #if RELOCATABLE
@@ -818,11 +782,25 @@ Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
-#if CYBERDWARF
-var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
-#endif
-
 #include "URIUtils.js"
+
+#if ASSERTIONS
+function createExportWrapper(name, fixedasm) {
+  return function() {
+    var displayName = name;
+    var asm = fixedasm;
+    if (!fixedasm) {
+      asm = Module['asm'];
+    }
+    assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
+    assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    if (!asm[name]) {
+      assert(asm[name], 'exported native function `' + displayName + '` not found');
+    }
+    return asm[name].apply(null, arguments);
+  };
+}
+#endif
 
 #if WASM
 var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
@@ -858,9 +836,14 @@ function getBinary() {
 }
 
 function getBinaryPromise() {
-  // if we don't have the binary yet, and have the Fetch api, use that
+  // If we don't have the binary yet, and have the Fetch api, use that;
   // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function'
+#if ENVIRONMENT_MAY_BE_WEBVIEW
+      // Let's not use fetch to get objects over file:// as it's most likely Cordova which doesn't support fetch for file://
+      && !isFileURI(wasmBinaryFile)
+#endif
+      ) {
     return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
       if (!response['ok']) {
         throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
@@ -871,9 +854,7 @@ function getBinaryPromise() {
     });
   }
   // Otherwise, getBinary should be able to get it synchronously
-  return new Promise(function(resolve, reject) {
-    resolve(getBinary());
-  });
+  return Promise.resolve().then(getBinary);
 }
 
 #if LOAD_SOURCE_MAP
@@ -897,15 +878,6 @@ function createWasm() {
     'env': asmLibraryArg,
     '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if WASM_BACKEND == 0
-    ,
-    'global': {
-      'NaN': NaN,
-      'Infinity': Infinity
-    },
-    'global.Math': Math,
-    'asm2wasm': asm2wasmImports
-#endif
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
@@ -916,7 +888,7 @@ function createWasm() {
 #if RELOCATABLE
     exports = relocateExports(exports, GLOBAL_BASE, 0);
 #endif
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
@@ -960,7 +932,7 @@ function createWasm() {
     removeRunDependency('wasm-instantiate');
 #endif
   }
-   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+  // we can't run yet (except in a pthread, where we have a custom sync instantiator)
   {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
 
 #if LOAD_SOURCE_MAP
@@ -988,8 +960,8 @@ function createWasm() {
 #if USE_PTHREADS
     receiveInstance(output['instance'], output['module']);
 #else
-      // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
-      // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
+    // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
+    // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
     receiveInstance(output['instance']);
 #endif
   }
@@ -1012,6 +984,21 @@ function createWasm() {
 #endif // USE_OFFSET_CONVERTER
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
+
+#if WASM == 2
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+      if (typeof location !== 'undefined') {
+#endif
+        // WebAssembly compilation failed, try running the JS fallback instead.
+        var search = location.search;
+        if (search.indexOf('_rwasm=0') < 0) {
+          location.href += (search ? search + '&' : '?') + '_rwasm=0';
+        }
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+      }
+#endif
+#endif // WASM == 2
+
       abort(reason);
     });
   }
@@ -1022,6 +1009,10 @@ function createWasm() {
     if (!wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
         !isDataURI(wasmBinaryFile) &&
+#if ENVIRONMENT_MAY_BE_WEBVIEW
+        // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
+        !isFileURI(wasmBinaryFile) &&
+#endif
         typeof fetch === 'function') {
       fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
         var result = WebAssembly.instantiateStreaming(response, info);
@@ -1038,7 +1029,7 @@ function createWasm() {
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
             err('falling back to ArrayBuffer instantiation');
-            instantiateArrayBuffer(receiveInstantiatedSource);
+            return instantiateArrayBuffer(receiveInstantiatedSource);
           });
       });
     } else {
@@ -1060,6 +1051,7 @@ function createWasm() {
         // to load ok, but we do actually recompile the binary every time).
         var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
         cachedCodeFile = locateFile(cachedCodeFile);
+        if (!nodeFS) nodeFS = require('fs');
         var hasCached = nodeFS.existsSync(cachedCodeFile);
         if (hasCached) {
 #if RUNTIME_LOGGING
@@ -1068,7 +1060,7 @@ function createWasm() {
           try {
             module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
           } catch (e) {
-            err('NODE_CODE_CACHING: failed to deserialize, bad cache file?');
+            err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
             // Save the new compiled code when we have it.
             hasCached = false;
           }
@@ -1112,7 +1104,7 @@ function createWasm() {
   if (Module['instantiateWasm']) {
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
 #endif
       return exports;
@@ -1136,10 +1128,6 @@ function createWasm() {
   return Module['asm']; // exports were assigned here
 #endif
 }
-#endif
-
-#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like funciton
-Module['asm'] = createWasm;
 #endif
 
 // Globals used by JS i64 conversions

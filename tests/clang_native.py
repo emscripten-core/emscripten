@@ -5,25 +5,22 @@
 
 import logging
 import os
-from tools.shared import MACOS, WINDOWS, path_from_root, PIPE, run_process
+from tools.shared import MACOS, WINDOWS, path_from_root, PIPE, run_process, CLANG_CC, CLANG_CXX
+from tools import building
 
 logger = logging.getLogger('clang_native')
 
+
 # These extra args need to be passed to Clang when targeting a native host system executable
-CACHED_CLANG_NATIVE_ARGS = None
-
-
 def get_clang_native_args():
-  global CACHED_CLANG_NATIVE_ARGS
-  if CACHED_CLANG_NATIVE_ARGS is not None:
-    return CACHED_CLANG_NATIVE_ARGS
-  CACHED_CLANG_NATIVE_ARGS = []
   if MACOS:
-    CACHED_CLANG_NATIVE_ARGS = ['-isystem', path_from_root('system', 'include', 'libcxx')]
+    return ['-isystem', path_from_root('system', 'include', 'libcxx')]
   elif os.name == 'nt':
-    CACHED_CLANG_NATIVE_ARGS = ['-DWIN32']
-    # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
-  return CACHED_CLANG_NATIVE_ARGS
+    # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program
+    # Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
+    return ['-DWIN32']
+  else:
+    return []
 
 
 # This environment needs to be present when targeting a native host system executable
@@ -35,6 +32,17 @@ def get_clang_native_env():
   if CACHED_CLANG_NATIVE_ENV is not None:
     return CACHED_CLANG_NATIVE_ENV
   env = os.environ.copy()
+
+  env['CC'] = CLANG_CC
+  env['CXX'] = CLANG_CXX
+  env['LD'] = CLANG_CXX
+  # get a non-native one, and see if we have some of its effects - remove them if so
+  non_native = building.get_building_env()
+  # the ones that a non-native would modify
+  EMSCRIPTEN_MODIFIES = ['LDSHARED', 'AR', 'CROSS_COMPILE', 'NM', 'RANLIB']
+  for dangerous in EMSCRIPTEN_MODIFIES:
+    if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
+      del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
 
   if MACOS:
     path = run_process(['xcrun', '--show-sdk-path'], stdout=PIPE).stdout.strip()
@@ -76,7 +84,7 @@ def get_clang_native_env():
     # Guess where Windows 8.1 SDK is located
     if 'WindowsSdkDir' in env:
       windows8_sdk_dir = env['WindowsSdkDir']
-    elif os.path.isdir(os.path.join(prog_files_x86, 'Windows Kits', '8.1')):
+    else:
       windows8_sdk_dir = os.path.join(prog_files_x86, 'Windows Kits', '8.1')
     if not os.path.isdir(windows8_sdk_dir):
       raise Exception('Windows 8.1 SDK was not found in "' + windows8_sdk_dir + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set WindowsSdkDir env var).')

@@ -1,7 +1,6 @@
 # Config file
 .emscripten
-.emscripten_sanity
-.emscripten_sanity_wasm
+.emscripten_backup
 
 # vim/emacs temporary/backup files
 *~
@@ -9,6 +8,9 @@
 
 # Compiled python files
 *.pyc
+
+# Default emscripten cache
+/cache
 
 # Ignore only the root node_modules, but not any further down the path
 /node_modules/

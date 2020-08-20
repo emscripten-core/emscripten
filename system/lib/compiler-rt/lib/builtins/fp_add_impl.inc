@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "fp_lib.h"
+#include "fp_mode.h"
 
 static __inline fp_t __addXf3__(fp_t a, fp_t b) {
   rep_t aRep = toRep(a);
@@ -93,7 +94,7 @@ static __inline fp_t __addXf3__(fp_t a, fp_t b) {
   const unsigned int align = aExponent - bExponent;
   if (align) {
     if (align < typeWidth) {
-      const bool sticky = bSignificand << (typeWidth - align);
+      const bool sticky = (bSignificand << (typeWidth - align)) != 0;
       bSignificand = bSignificand >> align | sticky;
     } else {
       bSignificand = 1; // Set the sticky bit.  b is known to be non-zero.
@@ -132,7 +133,7 @@ static __inline fp_t __addXf3__(fp_t a, fp_t b) {
     // The result is denormal before rounding.  The exponent is zero and we
     // need to shift the significand.
     const int shift = 1 - aExponent;
-    const bool sticky = aSignificand << (typeWidth - shift);
+    const bool sticky = (aSignificand << (typeWidth - shift)) != 0;
     aSignificand = aSignificand >> shift | sticky;
     aExponent = 0;
   }
@@ -149,9 +150,23 @@ static __inline fp_t __addXf3__(fp_t a, fp_t b) {
 
   // Perform the final rounding.  The result may overflow to infinity, but
   // that is the correct result in that case.
-  if (roundGuardSticky > 0x4)
-    result++;
-  if (roundGuardSticky == 0x4)
-    result += result & 1;
+  switch (__fe_getround()) {
+  case FE_TONEAREST:
+    if (roundGuardSticky > 0x4)
+      result++;
+    if (roundGuardSticky == 0x4)
+      result += result & 1;
+    break;
+  case FE_DOWNWARD:
+    if (resultSign && roundGuardSticky) result++;
+    break;
+  case FE_UPWARD:
+    if (!resultSign && roundGuardSticky) result++;
+    break;
+  case FE_TOWARDZERO:
+    break;
+  }
+  if (roundGuardSticky)
+    __fe_raise_inexact();
   return fromRep(result);
 }

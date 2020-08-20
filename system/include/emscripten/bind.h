@@ -21,6 +21,10 @@
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
 
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
+#include <sanitizer/lsan_interface.h>
+#endif
+
 namespace emscripten {
     enum class sharing_policy {
         NONE = 0,
@@ -262,7 +266,7 @@ namespace emscripten {
     };
     */
 
-    // whitelist all raw pointers
+    // allow all raw pointers
     struct allow_raw_pointers {
         template<typename InputType, int Index>
         struct Transform {
@@ -587,7 +591,11 @@ namespace emscripten {
         template<typename T>
         inline T* getContext(const T& t) {
             // not a leak because this is called once per binding
-            return new T(t);
+            auto* ret = new T(t);
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
+            __lsan_ignore_object(ret);
+#endif
+            return ret;
         }
 
         template<typename Accessor, typename ValueType>

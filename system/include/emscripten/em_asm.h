@@ -214,7 +214,7 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 // multiple MAIN_THREAD_EM_ASM() code blocks to call in succession, it will likely be much faster to
 // coalesce all the calls to a single MAIN_THREAD_EM_ASM() block. If you do not need synchronization nor
 // a return value back, consider using the function MAIN_THREAD_ASYNC_EM_ASM() instead, which will not block.
-// In single-threaded builds (including Emterpreter builds and proxy-to-worker), MAIN_THREAD_EM_ASM*()
+// In single-threaded builds (including proxy-to-worker), MAIN_THREAD_EM_ASM*()
 // functions are direct aliases to the corresponding EM_ASM*() family of functions.
 #define MAIN_THREAD_EM_ASM(code, ...) ((void)emscripten_asm_const_int_sync_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__)))
 

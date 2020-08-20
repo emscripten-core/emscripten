@@ -26,7 +26,7 @@ except Exception:
 import clang_native
 from runner import BrowserCore, no_windows, chdir
 from tools import shared
-from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, run_js, JS_ENGINES, CLANG_CC
+from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, JS_ENGINES, CLANG_CC
 
 npm_checked = False
 
@@ -118,7 +118,7 @@ class CompiledServerHarness(object):
       npm_checked = True
 
     # compile the server
-    proc = run_process([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
+    proc = run_process([EMCC, '-Werror', path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
     process = Popen(NODE_JS + ['server.js'])
@@ -170,7 +170,7 @@ class sockets(BrowserCore):
     print('Setting NODE_PATH=' + path_from_root('node_modules'))
     os.environ['NODE_PATH'] = path_from_root('node_modules')
 
-  def test_sockets_echo(self):
+  def test_sockets_echo(self, extra_args=[]):
     sockets_include = '-I' + path_from_root('tests', 'sockets')
 
     # Note: in the WebsockifyServerHarness and CompiledServerHarness tests below, explicitly use consecutive server listen ports,
@@ -193,6 +193,9 @@ class sockets(BrowserCore):
     for harness, datagram in harnesses:
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
+
+  def test_sockets_echo_pthreads(self, extra_args=[]):
+    self.test_sockets_echo(['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   def test_sdl2_sockets_echo(self):
     harness = CompiledServerHarness('sdl2_net_server.c', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'], 49164)
@@ -282,11 +285,11 @@ class sockets(BrowserCore):
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
     shared.try_delete('enet')
-    shutil.copytree(path_from_root('tests', 'enet'), 'enet')
+    shutil.copytree(path_from_root('tests', 'third_party', 'enet'), 'enet')
     with chdir('enet'):
-      run_process([PYTHON, path_from_root('emconfigure.py'), './configure'])
-      run_process([PYTHON, path_from_root('emmake.py'), 'make'])
-      enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
+      self.run_process([path_from_root('emconfigure'), './configure'])
+      self.run_process([path_from_root('emmake'), 'make'])
+      enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
     for harness in [
       CompiledServerHarness(os.path.join('sockets', 'test_enet_server.c'), enet, 49210)
@@ -303,14 +306,14 @@ class sockets(BrowserCore):
   #   shutil.copytree(path_from_root('tests', 'enet'), 'enet')
   #   pwd = os.getcwd()
   #   os.chdir('enet')
-  #   run_process([PYTHON, path_from_root('emconfigure'), './configure'])
-  #   run_process([PYTHON, path_from_root('emmake'), 'make'])
+  #   self.run_process([path_from_root('emconfigure'), './configure'])
+  #   self.run_process([path_from_root('emmake'), 'make'])
   #   enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
   #   os.chdir(pwd)
-  #   run_process([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_enet_server.c'), '-o', 'server.html', '-DSOCKK=2235'] + enet)
+  #   self.run_process([EMCC, path_from_root('tests', 'sockets', 'test_enet_server.c'), '-o', 'server.html', '-DSOCKK=2235'] + enet)
   #   def make_relay_server(port1, port2):
   #     print('creating relay server on ports %d,%d' % (port1, port2), file=sys.stderr)
-  #     proc = run_process([PYTHON, path_from_root('tests', 'sockets', 'socket_relay.py'), str(port1), str(port2)])
+  #     proc = self.run_process([PYTHON, path_from_root('tests', 'sockets', 'socket_relay.py'), str(port1), str(port2)])
   #     return proc
   #   with WebsockifyServerHarness('', [], 2235, 2234):
   #     with WebsockifyServerHarness('', [], 2237, 2236):
@@ -395,11 +398,11 @@ class sockets(BrowserCore):
       };
     ''')
 
-    run_process([PYTHON, EMCC, temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
-    run_process([PYTHON, EMCC, temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
+    self.run_process([EMCC, '-Werror', temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
+    self.run_process([EMCC, '-Werror', temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
 
     # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
-    run_process([NPM, 'install', path_from_root('tests', 'sockets', 'p2p')])
+    self.run_process([NPM, 'install', path_from_root('tests', 'sockets', 'p2p')])
     broker = Popen(NODE_JS + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')])
 
     expected = '1'
@@ -426,9 +429,9 @@ class sockets(BrowserCore):
     # Basic test of node client against both a Websockified and compiled echo server.
     for harness, datagram in harnesses:
       with harness:
-        run_process([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], stdout=PIPE, stderr=PIPE)
+        self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], stdout=PIPE, stderr=PIPE)
 
-        out = run_js('client.js', engine=NODE_JS, full_output=True)
+        out = self.run_js('client.js')
         self.assertContained('do_msg_read: read 14 bytes', out)
 
     if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
@@ -440,9 +443,9 @@ class sockets(BrowserCore):
         WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
       ]:
         with harness:
-          run_process([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
+          self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
 
-          out = run_js('client.js', engine=NODE_JS, full_output=True)
+          out = self.run_js('client.js')
           self.assertContained('do_msg_read: read 14 bytes', out)
           self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
 
@@ -463,9 +466,9 @@ class sockets(BrowserCore):
           };
           ''')
 
-          run_process([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
+          self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
 
-          out = run_js('client.js', engine=NODE_JS, full_output=True)
+          out = self.run_js('client.js')
           self.assertContained('do_msg_read: read 14 bytes', out)
           self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
 
@@ -478,8 +481,8 @@ class sockets(BrowserCore):
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets -> POSIX sockets bridge server
   def test_posix_proxy_sockets(self):
     # Build the websocket bridge server
-    run_process(['cmake', path_from_root('tools', 'websocket_to_posix_proxy')])
-    run_process(['cmake', '--build', '.'])
+    self.run_process(['cmake', path_from_root('tools', 'websocket_to_posix_proxy')])
+    self.run_process(['cmake', '--build', '.'])
     if os.name == 'nt': # This is not quite exact, instead of "isWindows()" this should be "If CMake defaults to building with Visual Studio", but there is no good check for that, so assume Windows==VS.
       proxy_server = os.path.join(self.get_dir(), 'Debug', 'websocket_to_posix_proxy.exe')
     else:

@@ -38,6 +38,25 @@ var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : 
 #endif // USE_CLOSURE_COMPILER
 #endif // SIDE_MODULE
 
+#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 29 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000) // https://caniuse.com/#feat=promises
+// Include a Promise polyfill for legacy browsers. This is needed either for
+// wasm2js, where we polyfill the wasm API which needs Promises, or when using
+// modularize which creates a Promise for when the module is ready.
+#include "promise_polyfill.js"
+#endif
+
+#if MODULARIZE
+// Set up the promise that indicates the Module is initialized
+var readyPromiseResolve, readyPromiseReject;
+Module['ready'] = new Promise(function(resolve, reject) {
+  readyPromiseResolve = resolve;
+  readyPromiseReject = reject;
+});
+#if ASSERTIONS
+{{{ addReadyPromiseAssertions("Module['ready']") }}}
+#endif
+#endif
+
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 // {{PRE_JSES}}
@@ -92,7 +111,7 @@ if (Module['ENVIRONMENT']) {
 #include "shell_pthreads.js"
 #endif
 
-#if USE_PTHREADS && (!MODULARIZE || MODULARIZE_INSTANCE)
+#if USE_PTHREADS && !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
 #if EXPORT_ES6
@@ -187,7 +206,7 @@ if (ENVIRONMENT_IS_NODE) {
     console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
     throw e;
   }
-  Worker = nodeWorkerThreads.Worker;
+  global.Worker = nodeWorkerThreads.Worker;
 #endif
 
 #if WASM == 2
@@ -276,8 +295,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   } else if (document.currentScript) { // web
     scriptDirectory = document.currentScript.src;
   }
-#if MODULARIZE && MODULARIZE_INSTANCE == 0
-  // When MODULARIZE (and not _INSTANCE), this JS may be executed later, after document.currentScript
+#if MODULARIZE
+  // When MODULARIZE, this JS may be executed later, after document.currentScript
   // is gone, so we saved it, and we use it here instead of any other info.
   if (_scriptDir) {
     scriptDirectory = _scriptDir;
@@ -328,7 +347,7 @@ if (ENVIRONMENT_IS_NODE) {
   // Polyfill the performance object, which emscripten pthreads support
   // depends on for good timing.
   if (typeof performance === 'undefined') {
-    performance = require('perf_hooks').performance;
+    global.performance = require('perf_hooks').performance;
   }
 }
 #endif
@@ -371,7 +390,7 @@ assert(typeof Module['TOTAL_MEMORY'] === 'undefined', 'Module.TOTAL_MEMORY has b
 {{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
-// TODO: add when SDL2 is fixed {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
+{{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
@@ -381,11 +400,6 @@ assert(typeof Module['TOTAL_MEMORY'] === 'undefined', 'Module.TOTAL_MEMORY has b
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
 #endif // ASSERTIONS
-
-// TODO remove when SDL2 is fixed (also see above)
-#if USE_SDL == 2
-Module['setWindowTitle'] = setWindowTitle;
-#endif
 
 {{BODY}}
 

@@ -19,6 +19,8 @@ var funs = {
     }
     return 0;
   },
+  bsd_signal__sig: 'iii',
+  bsd_signal: 'signal',
   sigemptyset: function(set) {
     {{{ makeSetValue('set', '0', '0', 'i32') }}};
     return 0;
@@ -161,7 +163,6 @@ var funs = {
   //sigsetmask
   //siggetmask
   //sigsuspend
-  //bsd_signal
   //siginterrupt
   //sigqueue
   //sysv_signal

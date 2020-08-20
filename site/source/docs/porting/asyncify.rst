@@ -28,6 +28,8 @@ expands on the Emscripten examples from that post.
           so if you are using fastcomp, these docs may not be accurate - you
           should upgrade to the wasm backend and new Asyncify!
 
+.. _yielding_to_main_loop:
+
 Sleeping / yielding to the event loop
 #####################################
 
@@ -112,7 +114,30 @@ function; another is to use ``EM_JS``, which we'll use in this next example:
     #include <stdio.h>
 
     EM_JS(void, do_fetch, (), {
-      Asyncify.handleSleep(function(wakeUp) {
+      Asyncify.handleAsync(async () => {
+        out("waiting for a fetch");
+        const response = await fetch("a.html");
+        out("got the fetch response");
+        // (normally you would do something with the fetch here)
+      });
+    });
+
+    int main() {
+      puts("before");
+      do_fetch();
+      puts("after");
+    }
+
+If you can't use the modern ``async``-``await`` syntax, there is a variant with an explicit ``wakeUp`` callback too:
+
+.. code-block:: cpp
+
+    // example.c
+    #include <emscripten.h>
+    #include <stdio.h>
+
+    EM_JS(void, do_fetch, (), {
+      Asyncify.handleSleep(wakeUp => {
         out("waiting for a fetch");
         fetch("a.html").then(response => {
           out("got the fetch response");
@@ -128,11 +153,11 @@ function; another is to use ``EM_JS``, which we'll use in this next example:
       puts("after");
     }
 
-
 The async operation happens in the ``EM_JS`` function ``do_fetch()``, which
-calls ``Asyncify.handleSleep``. It gives that function the code to be run, and
-gets a ``wakeUp`` function that it calls in the asynchronous future at the right
-time. After we call ``wakeUp()`` the compiled C code resumes normally.
+calls ``Asyncify.handleAsync`` or ``Asyncify.handleSleep``. It gives that
+function the code to be run, and gets a ``wakeUp`` function that it calls in the
+asynchronous future at the right time. After we call ``wakeUp()`` the compiled C
+code resumes normally.
 
 In this example the async operation is a ``fetch``, which means we need to wait
 for a Promise. While that is async, note how the C code in ``main()`` is
@@ -148,9 +173,9 @@ Note that you must tell the compiler that ``do_fetch()`` can do an
 asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
 instrument the code to allow pausing and resuming; see more details later down.
 
-To run this, you must run a webserver (like say ``python -m SimpleHTTPServer``)
-and then browse to ``http://localhost:8000/a.html`` (the URL may depend on the
-port number in the server). You will see something like this:
+To run this, you must run a :ref:`local webserver <faq-local-webserver>`
+and then browse to ``http://localhost:8000/a.html``.
+You will see something like this:
 
 ::
 
@@ -185,18 +210,16 @@ You can also return values from async JS functions. Here is an example:
     #include <stdio.h>
 
     EM_JS(int, get_digest_size, (const char* str), {
-      // Note how we return the output of handleSleep() here.
-      return Asyncify.handleSleep(function(wakeUp) {
+      // Note how we return the output of handleAsync() here.
+      return Asyncify.handleAsync(async () => {
         const text = UTF8ToString(str);
         const encoder = new TextEncoder();
         const data = encoder.encode(text);
         out("ask for digest for " + text);
-        window.crypto.subtle.digest("SHA-256", data).then(digestValue => {
-          out("got digest of length " + digestValue.byteLength);
-          // Return the value by sending it to wakeUp(). It will then be returned
-          // from handleSleep() on the outside.
-          wakeUp(digestValue.byteLength);
-        });
+        const digestValue = await window.crypto.subtle.digest("SHA-256", data);
+        out("got digest of length " + digestValue.byteLength);
+        // Return the value as you normally would.
+        return digestValue.byteLength;
       });
     });
 
@@ -215,9 +238,45 @@ You can build this with
 This example calls the Promise-returning ``window.crypto.subtle()`` API (the
 example is based off of
 `this MDN example <https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#Basic_example>`_
-). Note how we pass the value to be returned into ``wakeUp()``. We must also
-return the value returned from ``handleSleep()``. The calling C code then
+).
+
+Note that we must propagate the value returned from ``handleSleep()``. The calling C code then
 gets it normally, after the Promise completes.
+
+If you're using the ``handleSleep`` API, the value needs to be also passed to the ``wakeUp`` callback, instead of being returned from our handler:
+
+.. code-block:: cpp
+
+    // ...
+    return Asyncify.handleSleep(wakeUp => {
+      const text = UTF8ToString(str);
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      out("ask for digest for " + text);
+      window.crypto.subtle.digest("SHA-256", data).then(digestValue => {
+        out("got digest of length " + digestValue.byteLength);
+        // Return the value by sending it to wakeUp(). It will then be returned
+        // from handleSleep() on the outside.
+        wakeUp(digestValue.byteLength);
+      });
+    });
+    // ...
+
+Usage with Embind
+#################
+
+If you're using :ref:`Embind<embind-val-guide>` for interaction with JavaScript
+and want to ``await`` a dynamically retrieved ``Promise``, you can call an
+``await()`` method directly on the ``val`` instance:
+
+.. code-block:: cpp
+
+    val my_object = /* ... */;
+    val result = my_object.call("someAsyncMethod").await();
+
+In this case you don't need to worry about ``ASYNCIFY_IMPORTS``, since it's an
+internal implementation detail of ``val::await`` and Emscripten takes care of it
+automatically.
 
 Optimizing
 ##########
@@ -241,11 +300,15 @@ you can tell Asyncify to ignore indirect calls using
 If you know that some indirect calls matter and others do not, then you
 can provide a manual list of functions to Asyncify:
 
-* ``ASYNCIFY_BLACKLIST`` is a list of functions that do not unwind the stack.
-  Asyncify will do it's normal whole-program analysis under the assumption
-  that those do not unwind.
-* ``ASYNCIFY_WHITELIST`` is a list of the **only** functions that can unwind
-  the stack. Asyncify will instrument those and no others.
+* ``ASYNCIFY_REMOVE_LIST`` is a list of functions that do not unwind the stack.
+  Asyncify will do its normal whole-program analysis, then remove these
+  functions from the list of instrumented functions.
+* ``ASYNCIFY_ADD_LIST`` is a list of functions that do unwind the stack, and
+  are added after doing the normal whole-program analysis. This is mostly useful
+  if you use ``ASYNCIFY_IGNORE_INDIRECT`` but want to also mark some additional
+  functions that need to unwind.
+* ``ASYNCIFY_ONLY_LIST`` is a list of the **only** functions that can unwind
+  the stack. Asyncify will instrument exactly those and no others.
 
 For more details see ``settings.js``. Note that the manual settings
 mentioned here are error-prone - if you don't get things exactly right,
@@ -301,11 +364,15 @@ later callback, when nothing else is on the stack.
 Migrating from older APIs
 #########################
 
-If you have code using the Emterpreter-Async API, or the old Asyncify, then the
-new API is somewhat different, and you may need some minor changes:
+If you have code uses the old Emterpreter-Async API, or the old Asyncify, then
+almost everything should just work when you replace ``-s EMTERPRETIFY`` usage
+with ``-s ASYNCIFY``. In particular all the things like ``emscripten_wget``
+should just work as they did before.
 
- * The Emterpreter has "yielding" as a concept, but it isn't needed in Asyncify.
+Some minor differences include:
+
+ * The Emterpreter had "yielding" as a concept, but it isn't needed in Asyncify.
    You can replace ``emscripten_sleep_with_yield()`` calls with ``emscripten_sleep()``.
- * The JS API is different. See notes above on ``Asyncify.handleSleep()``, and
-   see ``src/library_async.js`` for more examples.
-
+ * The internal JS API is different. See notes above on
+   ``Asyncify.handleSleep()``, and see ``src/library_async.js`` for more
+   examples.

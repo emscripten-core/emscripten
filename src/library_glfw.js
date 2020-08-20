@@ -916,8 +916,13 @@ var LibraryGLFW = {
         wy = win.y;
       }
 
-      setValue(x, wx, 'i32');
-      setValue(y, wy, 'i32');
+      if (x) {
+        setValue(x, wx, 'i32');
+      }
+      
+      if (y) {
+        setValue(y, wy, 'i32');
+      }
     },
 
     setWindowPos: function(winid, x, y) {
@@ -937,8 +942,13 @@ var LibraryGLFW = {
         wh = win.height;
       }
 
-      setValue(width, ww, 'i32');
-      setValue(height, wh, 'i32');
+      if (width) {
+        setValue(width, ww, 'i32');
+      }
+      
+      if (height) {
+        setValue(height, wh, 'i32');
+      }
     },
 
     setWindowSize: function(winid, width, height) {
@@ -1331,9 +1341,14 @@ var LibraryGLFW = {
       ww = win.width;
       wh = win.height;
     }
-
-    setValue(width, ww, 'i32');
-    setValue(height, wh, 'i32');
+    
+    if (width) {
+      setValue(width, ww, 'i32');
+    }
+    
+    if (height) {
+      setValue(height, wh, 'i32');
+    }
   },
 
   glfwIconifyWindow: function(winid) {

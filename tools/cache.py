@@ -25,37 +25,28 @@ class Cache(object):
   # acquired.
   EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS', '0'))
 
-  def __init__(self, use_subdir=True):
+  def __init__(self, dirname, use_subdir=True):
     # figure out the root directory for all caching
-    dirname = os.environ.get('EM_CACHE')
-    if dirname:
-      dirname = os.path.normpath(dirname)
-    if not dirname:
-      dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+    dirname = os.path.normpath(dirname)
     self.root_dirname = dirname
-
-    def try_remove_ending(thestring, ending):
-      if thestring.endswith(ending):
-        return thestring[:-len(ending)]
-      return thestring
-
-    self.filelock_name = try_remove_ending(try_remove_ending(dirname, '/'), '\\') + '.lock'
-    self.filelock = filelock.FileLock(self.filelock_name)
 
     # if relevant, use a subdir of the cache
     if use_subdir:
-      if shared.Settings.WASM_BACKEND:
-        subdir = 'wasm'
-        if shared.Settings.LTO:
-          subdir += '-lto'
-        if shared.Settings.RELOCATABLE:
-          subdir += '-pic'
-      else:
-        subdir = 'asmjs'
+      subdir = 'wasm'
+      if shared.Settings.LTO:
+        subdir += '-lto'
+      if shared.Settings.RELOCATABLE:
+        subdir += '-pic'
       dirname = os.path.join(dirname, subdir)
 
     self.dirname = dirname
     self.acquired_count = 0
+
+    # since the lock itself lives inside the cache directory we need to ensure it
+    # exists.
+    self.ensure()
+    self.filelock_name = os.path.join(dirname, 'cache.lock')
+    self.filelock = filelock.FileLock(self.filelock_name)
 
   def acquire_cache_lock(self):
     if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
@@ -85,19 +76,20 @@ class Cache(object):
       logger.debug('PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
 
   def ensure(self):
+    shared.safe_ensure_dirs(self.dirname)
+
+  def erase(self):
     self.acquire_cache_lock()
     try:
-      shared.safe_ensure_dirs(self.dirname)
+      if os.path.exists(self.root_dirname):
+        for f in os.listdir(self.root_dirname):
+          tempfiles.try_delete(os.path.join(self.root_dirname, f))
     finally:
       self.release_cache_lock()
 
-  def erase(self):
-    tempfiles.try_delete(self.root_dirname)
-    self.filelock = None
-    tempfiles.try_delete(self.filelock_name)
-    self.filelock = filelock.FileLock(self.filelock_name)
-
-  def get_path(self, shortname):
+  def get_path(self, shortname, root=False):
+    if root:
+      return os.path.join(self.root_dirname, shortname)
     return os.path.join(self.dirname, shortname)
 
   def erase_file(self, shortname):
@@ -108,8 +100,12 @@ class Cache(object):
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, what=None, force=False):
-    cachename = os.path.abspath(os.path.join(self.dirname, shortname))
+  def get(self, shortname, creator, what=None, force=False, root=False):
+    if root:
+      cachename = os.path.join(self.root_dirname, shortname)
+    else:
+      cachename = os.path.join(self.dirname, shortname)
+    cachename = os.path.abspath(cachename)
 
     self.acquire_cache_lock()
     try:

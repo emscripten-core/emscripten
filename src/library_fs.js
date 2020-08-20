@@ -720,14 +720,13 @@ FS.staticInit();` +
       var new_name = PATH.basename(new_path);
       // parents must exist
       var lookup, old_dir, new_dir;
-      try {
-        lookup = FS.lookupPath(old_path, { parent: true });
-        old_dir = lookup.node;
-        lookup = FS.lookupPath(new_path, { parent: true });
-        new_dir = lookup.node;
-      } catch (e) {
-        throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
-      }
+
+      // let the errors from non existant directories percolate up
+      lookup = FS.lookupPath(old_path, { parent: true });
+      old_dir = lookup.node;
+      lookup = FS.lookupPath(new_path, { parent: true });
+      new_dir = lookup.node;
+
       if (!old_dir || !new_dir) throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       // need to be part of the same mount
       if (old_dir.mount !== new_dir.mount) {
@@ -1225,9 +1224,9 @@ FS.staticInit();` +
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
-    mmap: function(stream, buffer, offset, length, position, prot, flags) {
+    mmap: function(stream, address, length, position, prot, flags) {
 #if CAN_ADDRESS_2GB
-      offset >>>= 0;
+      address >>>= 0;
 #endif
       // User requests writing to file (prot & PROT_WRITE != 0).
       // Checking if we have permissions to write to the file unless
@@ -1246,7 +1245,7 @@ FS.staticInit();` +
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
       }
-      return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
+      return stream.stream_ops.mmap(stream, address, length, position, prot, flags);
     },
     msync: function(stream, buffer, offset, length, mmapFlags) {
 #if CAN_ADDRESS_2GB
@@ -2021,6 +2020,15 @@ FS.staticInit();` +
         transaction.onerror = onerror;
       };
       openRequest.onerror = onerror;
+    },
+
+    // Allocate memory for an mmap operation. This allocates space of the right
+    // page-aligned size, and clears the padding.
+    mmapAlloc: function(size) {
+      var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
+      var ptr = _malloc(alignedSize);
+      while (size < alignedSize) HEAP8[ptr + size++] = 0;
+      return ptr;
     }
   }
 });

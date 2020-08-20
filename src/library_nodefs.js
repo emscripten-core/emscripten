@@ -294,15 +294,17 @@ mergeInto(LibraryManager.library, {
 
         return position;
       },
-      mmap: function(stream, buffer, offset, length, position, prot, flags) {
+      mmap: function(stream, address, length, position, prot, flags) {
+        // We don't currently support location hints for the address of the mapping
+        assert(address === 0);
+
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
-        var ptr = _malloc(length);
 
-        assert(offset === 0);
-        NODEFS.stream_ops.read(stream, buffer, ptr + offset, length, position);
-        
+        var ptr = FS.mmapAlloc(length);
+
+        NODEFS.stream_ops.read(stream, HEAP8, ptr, length, position);
         return { ptr: ptr, allocated: true };
       },
       msync: function(stream, buffer, offset, length, mmapFlags) {

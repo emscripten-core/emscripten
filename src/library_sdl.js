@@ -1730,7 +1730,7 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if EMTERPRETIFY_ASYNC == 0 && !(WASM_BACKEND && ASYNCIFY)
+#if !ASYNCIFY
   SDL_Delay: function(delay) {
     if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
     // horrible busy-wait, but in a worker it at least does not block rendering
@@ -2410,9 +2410,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-#if EMTERPRETIFY_ASYNC
-  SDL_OpenAudio__deps: ['$EmterpreterAsync'],
-#endif
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__sig: 'iii',
   SDL_OpenAudio: function(desired, obtained) {
@@ -2506,25 +2504,16 @@ var LibrarySDL = {
         }
       }
 
-#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
+#if ASYNCIFY
       var sleepCallback = function() {
         if (SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
       };
-#if EMTERPRETIFY_ASYNC
-      EmterpreterAsync.yieldCallbacks.push(sleepCallback);
-      SDL.audio.callbackRemover = function() {
-        EmterpreterAsync.yieldCallbacks = EmterpreterAsync.yieldCallbacks.filter(function(callback) {
-          return callback !== sleepCallback;
-        });
-      }
-#else
       Asyncify.sleepCallbacks.push(sleepCallback);
       SDL.audio.callbackRemover = function() {
         Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter(function(callback) {
           return callback !== sleepCallback;
         });
       }
-#endif
 #endif
 
       // Create a callback function that will be routinely called to ask more audio data from the user application.
@@ -2559,6 +2548,7 @@ var LibrarySDL = {
       // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
       SDL.openAudioContext();
       if (!SDL.audioContext) throw 'Web Audio API is not available!';
+      autoResumeAudioContext(SDL.audioContext);
       SDL.audio.nextPlayTime = 0; // Time in seconds when the next audio block is due to start.
 
       // The pushAudio function with a new audio buffer whenever there is new audio data to schedule to be played back on the device.
@@ -2713,10 +2703,12 @@ var LibrarySDL = {
   },
   Mix_Quit: function(){},
 
+  Mix_OpenAudio__deps: ['$autoResumeAudioContext'],
   Mix_OpenAudio__proxy: 'sync',
   Mix_OpenAudio__sig: 'iiiii',
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     SDL.openAudioContext();
+    autoResumeAudioContext(SDL.audioContext);
     SDL.allocateChannels(32);
     // Just record the values for a later call to Mix_QuickLoad_RAW
     SDL.mixerFrequency = frequency;

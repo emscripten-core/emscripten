@@ -70,9 +70,12 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
 
-``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the compiled code (everything else might be removed if it is not used), and ``EXTRA_EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime functions ``ccall`` and ``cwrap`` (otherwise, it will remove them if it does not see they are used).
+``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
+compiled code (everything else might be removed if it is not used), and
+``EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime
+functions ``ccall`` and ``cwrap`` (otherwise, it will not include them).
 
 .. note::
 
@@ -155,8 +158,8 @@ parameters to pass to the function:
      didn't see, like another script tag on the HTML or in the JS console like
      we did in this tutorial, then because of optimizations
      and minification you should export ccall from the runtime, using
-     ``EXTRA_EXPORTED_RUNTIME_METHODS``, for example using
-     ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     ``EXPORTED_RUNTIME_METHODS``, for example using
+     ``-s 'EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
      and call it on ``Module`` (which contains
      everything exported, in a safe way that is not influenced by minification
      or optimizations).
@@ -187,18 +190,28 @@ Compile the library with emcc:
 
 .. code:: bash
 
-    emcc api_example.c -o api_example.js
+    emcc api_example.c -o api_example.js -s MODULARIZE -s EXPORTED_RUNTIME_METHODS=['ccall']
 
 Require the library and call its procedures from node:
 
 .. code:: javascript
 
-    var em_module = require('./api_example.js');
+    var factory = require('./a.out.js');
 
-    em_module._sayHi(); // direct calling works
-    em_module.ccall("sayHi"); // using ccall etc. also work
-    console.log(em_module._daysInWeek()); // values can be returned, etc.
+    factory().then((instance) => {
+      instance._sayHi(); // direct calling works
+      instance.ccall("sayHi"); // using ccall etc. also work
+      console.log(instance._daysInWeek()); // values can be returned, etc.
+    });
 
+The ``MODULARIZE`` option makes ``emcc`` emit code in a modular format that is
+easy to import and use with ``require()``: ``require()`` of the module returns
+a factory function that can instantiate the compiled code, returning a
+``Promise`` to tell us when it is ready, and giving us the instance of the
+module as a parameter.
+
+(Note that we use ``ccall`` here, so we need to add it to the exported runtime
+methods, as before.)
 
 .. _interacting-with-code-direct-function-calls:
 
@@ -603,12 +616,8 @@ be called.
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
-When using ``addFunction``, there is a backing array where these functions are
-stored. This array must be explicitly sized, which can be done via a
-compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For example, to reserve
-space for 20 functions to be added::
-
-    emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
+You should build with ``-s ALLOW_TABLE_GROWTH`` to allow new functions to be
+added to the table. Otherwise by default the table has a fixed size.
 
 .. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
    an additional second argument, a Wasm function signature string. Each

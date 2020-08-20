@@ -17,9 +17,10 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py benchmark')
 
 import clang_native
+import jsrun
 import runner
-from tools.shared import run_process, path_from_root, CLANG, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, CLANG_CC, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
-from tools import shared, jsrun
+from tools.shared import run_process, path_from_root, SPIDERMONKEY_ENGINE, LLVM_ROOT, V8_ENGINE, PIPE, try_delete, EMCC
+from tools import shared, building
 
 # standard arguments for timing:
 # 0: no runtime, just startup
@@ -134,7 +135,7 @@ class NativeBenchmarker(Benchmarker):
     if lib_builder:
       env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
       env.update(clang_native.get_clang_native_env())
-      native_args += lib_builder(self.name, native=True, env_init=env)
+      native_args = native_args + lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -168,7 +169,7 @@ class NativeBenchmarker(Benchmarker):
 
 def run_binaryen_opts(filename, opts):
   run_process([
-    os.path.join(Building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
+    os.path.join(building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
     filename,
     '-o', filename
   ] + opts)
@@ -200,7 +201,7 @@ class EmscriptenBenchmarker(Benchmarker):
     final = final.replace('.cpp', '')
     try_delete(final)
     cmd = [
-      PYTHON, EMCC, filename,
+      EMCC, filename,
       OPTIMIZATIONS,
       '-s', 'INITIAL_MEMORY=256MB',
       '-s', 'FILESYSTEM=0',
@@ -220,7 +221,7 @@ class EmscriptenBenchmarker(Benchmarker):
     self.filename = final
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
 
   def get_output_files(self):
     ret = [self.filename]
@@ -236,7 +237,49 @@ class EmscriptenBenchmarker(Benchmarker):
 
   def cleanup(self):
     os.environ = self.old_env
-    Building.clear()
+    building.clear()
+
+
+class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
+  def __init__(self, name):
+    super(EmscriptenWasm2CBenchmarker, self).__init__(name, 'no engine needed')
+
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+    # wasm2c doesn't want minimal runtime which the normal emscripten
+    # benchmarker defaults to, as we don't have any JS anyhow
+    emcc_args = emcc_args + [
+      '-s', 'STANDALONE_WASM',
+      '-s', 'MINIMAL_RUNTIME=0',
+      '-s', 'WASM2C'
+    ]
+
+    global LLVM_FEATURE_FLAGS
+    old_flags = LLVM_FEATURE_FLAGS
+    try:
+      # wasm2c does not support anything beyond MVP
+      LLVM_FEATURE_FLAGS = []
+      super(EmscriptenWasm2CBenchmarker, self).build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
+    finally:
+      LLVM_FEATURE_FLAGS = old_flags
+
+    # move the JS away so there is no chance we run it by mistake
+    shutil.move(self.filename, self.filename + '.old.js')
+
+    base = self.filename[:-3]
+    c = base + '.wasm.c'
+    native = base + '.exe'
+
+    run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',
+                 '-DWASM_RT_MAX_CALL_STACK_DEPTH=8000'])  # for havlak
+
+    self.filename = native
+
+  def run(self, args):
+    return run_process([self.filename] + args, stdout=PIPE, stderr=PIPE, check=False).stdout
+
+  def get_output_files(self):
+    # return the native code. c size may also be interesting.
+    return [self.filename]
 
 
 CHEERP_BIN = '/opt/cheerp/bin/'
@@ -298,7 +341,7 @@ class CheerpBenchmarker(Benchmarker):
         try_delete(dir_)
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
 
   def get_output_files(self):
     return [self.filename, self.filename.replace('.js', '.wasm')]
@@ -309,13 +352,10 @@ class CheerpBenchmarker(Benchmarker):
 
 # Benchmarkers
 
-benchmarkers = []
-
-if CLANG_CC and CLANG:
-  benchmarkers += [
-    # NativeBenchmarker('clang', CLANG_CC, CLANG),
-    # NativeBenchmarker('gcc',   'gcc',    'g++')
-  ]
+benchmarkers = [
+  # NativeBenchmarker('clang', shared.CLANG_CC, shared.CLANG_CXX),
+  # NativeBenchmarker('gcc',   'gcc',    'g++')
+]
 
 if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   # avoid the baseline compiler running, because it adds a lot of noise
@@ -326,6 +366,7 @@ if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   benchmarkers += [
     EmscriptenBenchmarker(default_v8_name, aot_v8),
     EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+    # EmscriptenWasm2CBenchmarker('wasm2c')
   ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
@@ -370,8 +411,6 @@ class benchmark(runner.RunnerCore):
       pass
     fingerprint.append('llvm: ' + LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))
-
-    Building.COMPILER = CLANG
 
   # avoid depending on argument reception from the commandline
   def hardcode_arguments(self, code):
@@ -790,10 +829,6 @@ class benchmark(runner.RunnerCore):
   def test_fasta_double(self):
     self.fasta('fasta_double', 'double')
 
-  @non_core
-  def test_fasta_double_full(self):
-    self.fasta('fasta_double_full', 'double', emcc_args=['-s', 'DOUBLE_MODE=1'])
-
   def test_skinning(self):
     src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
     self.do_benchmark('skinning', src, 'blah=0.000000')
@@ -811,11 +846,11 @@ class benchmark(runner.RunnerCore):
     src = open(path_from_root('tests', 'life.c'), 'r').read()
     self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
-  def test_linpack(self):
+  def test_zzz_linpack(self):
     def output_parser(output):
       mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
       return 10000.0 / float(mflops)
-    self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
+    self.do_benchmark('linpack_double', open(path_from_root('tests', 'benchmark', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
   # Benchmarks the synthetic performance of calling native functions.
   @non_core
@@ -908,14 +943,14 @@ class benchmark(runner.RunnerCore):
     args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
            ['-I' + path_from_root('tests', 'nbody-java')]
     self.do_benchmark('nbody_java', '', '''Time(s)''',
-                      force_c=True, emcc_args=args + ['--llvm-lto', '2'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
+                      force_c=True, emcc_args=args + ['-flto'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     self.emcc_args.remove('-Werror')
     shutil.copyfile(path_from_root('tests', 'third_party', 'lua', benchmark + '.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
-      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
       if native:
         return ret
       shutil.copyfile(ret[0], ret[0] + '.bc')
@@ -925,7 +960,7 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
                       emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM=1', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
-                      lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
+                      lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
   def test_zzz_lua_scimark(self):
@@ -948,7 +983,7 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('zlib', src, 'ok.',
                       force_c=True, shared_args=['-I' + path_from_root('tests', 'third_party', 'zlib')], lib_builder=lib_builder)
 
-  def test_zzz_coremark(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  def test_zzz_coremark(self):
     src = open(path_from_root('tests', 'third_party', 'coremark', 'core_main.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
@@ -960,7 +995,7 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
 
-  def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  def test_zzz_box2d(self):
     src = open(path_from_root('tests', 'benchmark', 'test_box2d_benchmark.cpp')).read()
 
     def lib_builder(name, native, env_init):
@@ -968,7 +1003,6 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'third_party', 'box2d')], lib_builder=lib_builder)
 
-  # Called thus so it runs late in the alphabetical cycle... it is long
   def test_zzz_bullet(self):
     self.emcc_args.remove('-Werror')
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']

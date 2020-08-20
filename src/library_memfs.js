@@ -326,8 +326,10 @@ mergeInto(LibraryManager.library, {
 
         // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
         MEMFS.expandFileStorage(node, position+length);
-        if (node.contents.subarray && buffer.subarray) node.contents.set(buffer.subarray(offset, offset + length), position); // Use typed array write if available.
-        else {
+        if (node.contents.subarray && buffer.subarray) {
+          // Use typed array write which is available.
+          node.contents.set(buffer.subarray(offset, offset + length), position);
+        } else {
           for (var i = 0; i < length; i++) {
            node.contents[position + i] = buffer[offset + i]; // Or fall back to manual write if not.
           }
@@ -354,11 +356,10 @@ mergeInto(LibraryManager.library, {
         MEMFS.expandFileStorage(stream.node, offset + length);
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
-      mmap: function(stream, buffer, offset, length, position, prot, flags) {
-#if ASSERTIONS
-        // The data buffer should be a typed array view
-        assert(!(buffer instanceof ArrayBuffer));
-#endif
+      mmap: function(stream, address, length, position, prot, flags) {
+        // We don't currently support location hints for the address of the mapping
+        assert(address === 0);
+
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
@@ -366,8 +367,7 @@ mergeInto(LibraryManager.library, {
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if ( !(flags & {{{ cDefine('MAP_PRIVATE') }}}) &&
-              contents.buffer === buffer.buffer ) {
+        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}}) && contents.buffer === buffer) {
           // We can't emulate MAP_SHARED when the file is not backed by the buffer
           // we're mapping to (e.g. the HEAP buffer).
           allocated = false;
@@ -382,17 +382,14 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
-          // malloc() can lead to growing the heap. If targeting the heap, we need to
-          // re-acquire the heap buffer object in case growth had occurred.
-          var fromHeap = (buffer.buffer == HEAP8.buffer);
-          ptr = _malloc(length);
+          ptr = FS.mmapAlloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }
 #if CAN_ADDRESS_2GB
           ptr >>>= 0;
 #endif
-          (fromHeap ? HEAP8 : buffer).set(contents, ptr);
+          HEAP8.set(contents, ptr);
         }
         return { ptr: ptr, allocated: allocated };
       },

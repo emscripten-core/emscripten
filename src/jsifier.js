@@ -41,11 +41,6 @@ var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*
 // map: pair(sig, syncOrAsync) -> function body
 var proxiedFunctionInvokers = {};
 
-// We include asm2wasm imports if the trap mode is 'js' (to call out to JS to do some math stuff).
-// However, we always need some of them (like the frem import because % is in asm.js but not in wasm).
-// But we can avoid emitting all the others in many cases.
-var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
-
 // Used internally. set when there is a main() function.
 // Also set when in a linkable module, as the main() function might
 // arrive from a dynamically-linked library, and not necessarily
@@ -62,11 +57,6 @@ function mangleCSymbolName(f) {
 // Reverses C/JS name mangling: _foo -> foo, and foo -> $foo.
 function demangleCSymbolName(f) {
   return f[0] == '_' ? f.substr(1) : '$' + f;
-}
-
-function isJsLibraryConfigIdentifier(ident) {
-  return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
-   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
 }
 
 // JSifier
@@ -141,7 +131,7 @@ function JSify(data, functionsOnly) {
       // what we just added to the library.
     }
 
-    function addFromLibrary(ident) {
+    function addFromLibrary(ident, dependent) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
 
@@ -174,15 +164,19 @@ function JSify(data, functionsOnly) {
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
+          if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
-            if (WASM_BACKEND && !LLD_REPORT_UNDEFINED) {
+            if (!LLD_REPORT_UNDEFINED) {
               warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
             }
             warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
             warnOnce(finalName + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library')
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
+          }
+          if (ident === 'main' && STANDALONE_WASM) {
+            warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
           }
         }
         if (!RELOCATABLE) {
@@ -229,6 +223,10 @@ function JSify(data, functionsOnly) {
       var snippet = original;
       var redirectedIdent = null;
       var deps = LibraryManager.library[ident + '__deps'] || [];
+      if (!Array.isArray(deps)) {
+        error('JS library directive ' + ident + '__deps=' + deps.toString() + ' is of type ' + typeof deps + ', but it should be an array!');
+        return;
+      }
       deps.forEach(function(dep) {
         if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #ifdefs in src/library*.js)');
       });
@@ -299,7 +297,11 @@ function JSify(data, functionsOnly) {
         });
       });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
-      var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
+      var identDependents = ident + "__deps: ['" + deps.join("','")+"']";
+      function addDependency(dep) {
+        return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
+      }
+      var depsText = (deps ? '\n' + deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -368,17 +370,7 @@ function JSify(data, functionsOnly) {
 
     itemsDict.functionStub.push(item);
     var shortident = demangleCSymbolName(item.ident);
-    // If this is not linkable, anything not in the library is definitely missing
-    if (item.ident in DEAD_FUNCTIONS) {
-      if (LibraryManager.library[shortident + '__asm']) {
-        warn('cannot kill asm library function ' + item.ident);
-      } else {
-        LibraryManager.library[shortident] = new Function("err('dead function: " + shortident + "'); abort(-1);");
-        delete LibraryManager.library[shortident + '__inline'];
-        delete LibraryManager.library[shortident + '__deps'];
-      }
-    }
-    item.JS = addFromLibrary(shortident);
+    item.JS = addFromLibrary(shortident, 'top-level compiled C/C++ code');
   }
 
   // Final combiner
@@ -458,33 +450,6 @@ function JSify(data, functionsOnly) {
         print('/* no memory initializer */'); // test purposes
       }
 
-      if (!SIDE_MODULE && !WASM_BACKEND) {
-        if (USE_PTHREADS) {
-          print('// Pthreads fill their tempDoublePtr memory area into the pthread stack when the thread is run.')
-          // Main thread still statically allocate tempDoublePtr - although it could theorerically also use its stack
-          // (that might allow removing the whole tempDoublePtr variable altogether from the codebase? but would need
-          // more refactoring)
-          print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : ' + makeStaticAlloc(8) + ';');
-        } else {
-          print('var tempDoublePtr = ' + makeStaticAlloc(8) + ';');
-        }
-        print('\nfunction copyTempFloat(ptr) { // functions, because inlining this code increases code size too much');
-        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
-        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
-        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];');
-        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];');
-        print('}\n');
-        print('function copyTempDouble(ptr) {');
-        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
-        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
-        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];');
-        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];');
-        print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];');
-        print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];');
-        print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];');
-        print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];');
-        print('}\n');
-      }
       print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
 
       return;

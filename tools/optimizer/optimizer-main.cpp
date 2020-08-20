@@ -87,7 +87,6 @@ int main(int argc, char **argv) {
     if (str == "asm") { worked = false; } // the default for us
     else if (str == "asmPreciseF32") { worked = false; }
     else if (str == "receiveJSON" || str == "emitJSON") { worked = false; }
-    else if (str == "eliminateDeadFuncs") eliminateDeadFuncs(doc);
     else if (str == "eliminate") eliminate(doc);
     else if (str == "eliminateMemSafe") eliminateMemSafe(doc);
     else if (str == "simplifyExpressions") simplifyExpressions(doc);

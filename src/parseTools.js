@@ -13,7 +13,12 @@
 function processMacros(text) {
   return text.replace(/{{{([^}]|}(?!}))+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
-    var ret = eval(str);
+    try {
+      var ret = eval(str);
+    } catch (ex) {
+      ex.stack = 'In the following macro:\n\n' + str + '\n\n' + ex.stack;
+      throw ex;
+    }
     return ret !== null ? ret.toString() : '';
   });
 }
@@ -752,7 +757,7 @@ function ensureDot(value) {
 
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!isNumber(value)) return value;
-  if (PRECISE_F32 && type === 'float') {
+  if (type === 'float') {
     // normally ok to just emit Math_fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
     if (value == 0) return 'Math_fround(0)';
     value = ensureDot(value);
@@ -767,7 +772,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 
 function asmInitializer(type) {
   if (type in Compiletime.FLOAT_TYPES) {
-    if (PRECISE_F32 && type === 'float') return 'Math_fround(0)';
+    if (type === 'float') return 'Math_fround(0)';
     return RUNNING_JS_OPTS ? '+0' : '.0';
   } else {
     return '0';
@@ -788,13 +793,16 @@ function asmCoercion(value, type, signedness) {
           value = '(' + value + ')|0';
         }
       }
-      if (PRECISE_F32 && type === 'float') {
+      if (type === 'float') {
         return 'Math_fround(' + value + ')';
       } else {
         return '(+(' + value + '))';
       }
     }
   } else {
+    if (signedness == 'u') {
+      return '((' + value + ')>>>0)';
+    }
     return '((' + value + ')|0)';
   }
 }
@@ -836,8 +844,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return '{ ' + ret.join(', ') + ' }';
   }
 
-  // In double mode 1, in asmjs-unknown-emscripten we need this code path if we are not fully aligned.
-  if (DOUBLE_MODE == 1 && type == 'double' && (align < 8)) {
+  if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
                  makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
             makeGetTempDouble(0, 'double') + ')';
@@ -846,7 +853,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   if (align) {
     // Alignment is important here. May need to split this up
     var bytes = Runtime.getNativeTypeSize(type);
-    if (DOUBLE_MODE == 0 && type == 'double') bytes = 4; // we will really only read 4 bytes here
     if (bytes > align) {
       var ret = '(';
       if (isIntImplemented(type)) {
@@ -880,7 +886,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type);
+      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
   var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
@@ -920,7 +926,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return ret.join('; ');
   }
 
-  if (DOUBLE_MODE == 1 && type == 'double' && (align < 8)) {
+  if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
@@ -935,7 +941,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   if (align || needSplitting) {
     // Alignment is important here, or we need to split this up for other reasons.
     var bytes = Runtime.getNativeTypeSize(type);
-    if (DOUBLE_MODE == 0 && type == 'double') bytes = 4; // we will really only read 4 bytes here
     if (bytes > align || needSplitting) {
       var ret = '';
       if (isIntImplemented(type)) {
@@ -1134,7 +1139,7 @@ function getFastValue(a, op, b, type) {
       // if guaranteed small enough to not overflow into a double, do a normal multiply
       var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
       // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
-      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
+      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY)) {
         return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
       }
       return '(Math_imul(' + a + ',' + b + ')|0)';
@@ -1453,19 +1458,12 @@ function ensureValidFFIType(type) {
 // FFI return values must arrive as doubles, and we can force them to floats afterwards
 function asmFFICoercion(value, type) {
   value = asmCoercion(value, ensureValidFFIType(type));
-  if (PRECISE_F32 && type === 'float') value = asmCoercion(value, 'float');
+  if (type === 'float') value = asmCoercion(value, 'float');
   return value;
 }
 
 function makeDynCall(sig) {
-  // asm.js function tables have one table in each linked asm.js module, so we
-  // can't just dynCall into them - ftCall exists for that purpose. In wasm,
-  // even linked modules share the table, so it's all fine.
-  if (EMULATED_FUNCTION_POINTERS && !WASM) {
-    return 'ftCall_' + sig;
-  } else {
-    return 'dynCall_' + sig;
-  }
+  return 'dynCall_' + sig;
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
@@ -1528,18 +1526,18 @@ function getQuoted(str) {
 }
 
 function makeRetainedCompilerSettings() {
-  var blacklist = set('STRUCT_INFO');
+  var ignore = set('STRUCT_INFO');
   if (STRICT) {
     for (var i in LEGACY_SETTINGS) {
       var name = LEGACY_SETTINGS[i][0];
-      blacklist[name] = 0;
+      ignore[name] = 0;
     }
   }
 
   var ret = {};
   for (var x in this) {
     try {
-      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
+      if (x[0] !== '_' && !(x in ignore) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
     } catch(e){}
   }
   return ret;
@@ -1603,7 +1601,7 @@ function expectToReceiveOnModule(name) {
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + " (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)') } });";
 }
 
 // Make code to receive a value on the incoming Module object.
@@ -1707,4 +1705,27 @@ function sendI64Argument(low, high) {
   } else {
     return low + ', ' + high;
   }
+}
+
+// Add assertions to catch common errors when using the Promise object we
+// create on Module.ready() and return from MODULARIZE Module() invocations.
+function addReadyPromiseAssertions(promise) {
+  // Warn on someone doing
+  //
+  //  var instance = Module();
+  //  ...
+  //  instance._main();
+  var properties = keys(EXPORTED_FUNCTIONS);
+  // Also warn on onRuntimeInitialized which might be a common pattern with
+  // older MODULARIZE-using codebases.
+  properties.push('onRuntimeInitialized');
+  return properties.map(function(property) {
+    const warningEnding = `${property} on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js`;
+    return `
+      if (!Object.getOwnPropertyDescriptor(${promise}, '${property}')) {
+        Object.defineProperty(${promise}, '${property}', { configurable: true, get: function() { abort('You are getting ${warningEnding}') } });
+        Object.defineProperty(${promise}, '${property}', { configurable: true, set: function() { abort('You are setting ${warningEnding}') } });
+      }
+    `;
+  }).join('\n');
 }

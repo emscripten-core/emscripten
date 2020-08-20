@@ -50,10 +50,7 @@ function base64Decode(b64) {
 #if ASSERTIONS
   assert(b64.length % 4 == 0);
 #endif
-  var output, b1, b2, i = 0, j = 0, bLength = b64.length, length = bLength*3>>2;
-  if (b64[bLength-2] == '=') --length;
-  if (b64[bLength-1] == '=') --length;
-  output = new Uint8Array(length);
+  var b1, b2, i = 0, j = 0, bLength = b64.length, output = new Uint8Array((bLength*3>>2) - (b64[bLength-2] == '=') - (b64[bLength-1] == '='));
   for (; i < bLength; i += 4, j += 3) {
     b1 = base64ReverseLookup[b64.charCodeAt(i+1)];
     b2 = base64ReverseLookup[b64.charCodeAt(i+2)];
