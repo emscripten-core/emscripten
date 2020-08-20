@@ -6995,47 +6995,8 @@ someweirdtext
     self.do_run(src, '418\ndotest returned: 42\n')
 
   def test_embind_polymorphic_class_no_rtti(self):
-    src = r'''
-      #include <emscripten.h>
-      #include <emscripten/bind.h>
-      #include <emscripten/val.h>
-      #include <stdio.h>
-
-      EM_JS(void, calltest, (), {
-        var foo = new Module.Foo();
-        console.log("foo.test() returned: " + foo.test());
-      });
-
-      class Foo {
-       public:
-        virtual ~Foo() = default;
-        virtual int test() = 0;
-      };
-
-      class Bar : public Foo {
-       public:
-        int test() override { return 42; }
-      };
-
-      int main(int argc, char** argv){
-        printf("Hello, world.\n");
-        calltest();
-        return 0;
-      }
-
-      std::shared_ptr<Foo> MakeFoo() {
-        return std::make_shared<Bar>();
-      }
-
-      EMSCRIPTEN_BINDINGS(my_module) {
-        emscripten::class_<Foo>("Foo")
-          .smart_ptr_constructor("Foo", &MakeFoo)
-          .function("test", &Foo::test)
-          ;
-      };
-    '''
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
-    self.do_run(src, 'Hello, world.\nfoo.test() returned: 42\n')
+    self.do_run_in_out_file_test('tests', 'core', 'test_embind_polymorphic_class_no_rtti')
 
   def test_embind_no_rtti_followed_by_rtti(self):
     src = r'''
