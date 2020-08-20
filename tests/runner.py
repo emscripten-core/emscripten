@@ -304,14 +304,10 @@ non_core_test_modes = [
   'sockets',
   'interactive',
   'benchmark',
+  'asan',
+  'lsan',
+  'wasm2ss',
 ]
-
-if Settings.WASM_BACKEND:
-  non_core_test_modes += [
-    'asan',
-    'lsan',
-    'wasm2ss',
-  ]
 
 
 def parameterized(parameters):
@@ -423,7 +419,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dlfcn with memory growth (without wasm)')
-    if self.get_setting('WASM_BACKEND') and not self.get_setting('WASM'):
+    if not self.get_setting('WASM'):
       self.skipTest('no dynamic library support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
@@ -457,9 +453,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.emcc_args = ['-Werror']
     self.env = {}
     self.temp_files_before_run = []
-
-    if not Settings.WASM_BACKEND:
-      os.environ['EMCC_ALLOW_FASTCOMP'] = '1'
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):

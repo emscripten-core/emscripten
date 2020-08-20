@@ -963,8 +963,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for s in settings_changes:
       key, value = s.split('=', 1)
       settings_key_changes.add(key)
-      if key == 'WASM_BACKEND':
-        exit_with_error('do not set -s WASM_BACKEND, this is detected based on the llvm version in use')
 
     # Find input files
 

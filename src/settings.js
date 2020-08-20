@@ -1115,10 +1115,6 @@ var WASM = 1;
 // or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
 var STANDALONE_WASM = 0;
 
-// Soon to be legacy setting for controlling whether to use WebAssembly backend.
-// There is no need to set this manually.
-var WASM_BACKEND = 1;
-
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
@@ -1688,4 +1684,5 @@ var LEGACY_SETTINGS = [
   ['AGGRESSIVE_VARIABLE_ELIMINATION', [0, 1], 'Wasm ignores asm.js-specific optimization flags'],
   ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
   ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
+  ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
 ];

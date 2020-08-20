@@ -7140,12 +7140,6 @@ someweirdtext
       else:
         return data
 
-    def source_map_file_loc(name):
-      if shared.Settings.WASM_BACKEND:
-        return name
-      # in fastcomp, we have the absolute path, which is not good
-      return os.path.abspath(name)
-
     data = json.load(open(map_filename))
     if str is bytes:
       # Python 2 compatibility
@@ -7155,7 +7149,7 @@ someweirdtext
       # the output file.
       self.assertPathsIdentical(map_referent, data['file'])
     assert len(data['sources']) == 1, data['sources']
-    self.assertPathsIdentical(source_map_file_loc('src.cpp'), data['sources'][0])
+    self.assertPathsIdentical('src.cpp', data['sources'][0])
     if hasattr(data, 'sourcesContent'):
       # the sourcesContent attribute is optional, but if it is present it
       # needs to containt valid source text.
@@ -7168,7 +7162,7 @@ someweirdtext
       mappings = encode_utf8(mappings)
     seen_lines = set()
     for m in mappings:
-      self.assertPathsIdentical(source_map_file_loc('src.cpp'), m['source'])
+      self.assertPathsIdentical('src.cpp', m['source'])
       seen_lines.add(m['originalLine'])
     # ensure that all the 'meaningful' lines in the original code get mapped
     # when optimizing, the binaryen optimizer may remove some of them (by inlining, etc.)
@@ -8422,13 +8416,12 @@ wasmlto3 = make_run('wasmlto3', emcc_args=['-flto', '-O3'])
 wasmltos = make_run('wasmltos', emcc_args=['-flto', '-Os'])
 wasmltoz = make_run('wasmltoz', emcc_args=['-flto', '-Oz'])
 
-if shared.Settings.WASM_BACKEND:
-  wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
-  wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
-  wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
-  wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
-  wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
-  wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
+wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
+wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
+wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
+wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
+wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
+wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
 
@@ -8446,14 +8439,13 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
-if shared.Settings.WASM_BACKEND:
-  lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
-  asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
-  asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                   settings={'ALLOW_MEMORY_GROWTH': 1})
+lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
+asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
+asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+                 settings={'ALLOW_MEMORY_GROWTH': 1})
 
-  # Experimental modes (not tested by CI)
-  lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
+# Experimental modes (not tested by CI)
+lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
