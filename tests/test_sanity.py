@@ -19,7 +19,7 @@ from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import try_delete
-from tools.shared import EXPECTED_LLVM_VERSION, Cache, Settings
+from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt', root=True)
