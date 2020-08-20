@@ -16,7 +16,6 @@ running multiple build commands in parallel, confusion can occur).
 from __future__ import print_function
 import argparse
 import logging
-import os
 import sys
 
 from tools import shared
