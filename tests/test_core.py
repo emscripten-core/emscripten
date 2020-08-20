@@ -894,7 +894,7 @@ base align: 0, 0, 0, 0'''])
     self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
                 open(path_from_root('system', 'lib', 'sbrk.c')).read() +
                 open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
-                open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
+                open(path_from_root('tests', 'core', 'test_emmalloc.out')).read())
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -2386,9 +2386,7 @@ The current type of b is: 9
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
-    src = open(path_from_root('tests', 'pthread', 'specific.c')).read()
-    expected = open(path_from_root('tests', 'pthread', 'specific.c.txt')).read()
-    self.do_run(src, expected, force_c=True)
+    self.do_run_in_out_file_test('tests', 'pthread', 'specific')
 
   def test_pthread_equal(self):
     self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_equal')
@@ -6453,9 +6451,9 @@ return malloc(size);
     def test(output_prefix='', args=[], assert_returncode=0):
       old = self.emcc_args[:]
       self.emcc_args += args
-      src = open(path_from_root('tests', 'core', 'getValue_setValue.cpp')).read()
-      expected = open(path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.txt')).read(),
-      self.do_run(src, expected, assert_returncode=assert_returncode)
+      src = path_from_root('tests', 'core', 'getValue_setValue.cpp')
+      expected = path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.out')
+      self.do_run_from_file(src, expected, assert_returncode=assert_returncode)
       self.emcc_args = old
 
     # see that direct usage (not on module) works. we don't export, but the use
@@ -6482,8 +6480,8 @@ return malloc(size);
         old = self.emcc_args[:]
         self.emcc_args += args
         self.do_run(open(path_from_root('tests', 'core', 'FS_exports.cpp')).read(),
-                    (open(path_from_root('tests', 'core', 'FS_exports' + output_prefix + '.txt')).read(),
-                     open(path_from_root('tests', 'core', 'FS_exports' + output_prefix + '_2.txt')).read()),
+                    (open(path_from_root('tests', 'core', 'FS_exports' + output_prefix + '.out')).read(),
+                     open(path_from_root('tests', 'core', 'FS_exports' + output_prefix + '_2.out')).read()),
                     assert_returncode=assert_returncode)
         self.emcc_args = old
 
@@ -6504,9 +6502,9 @@ return malloc(size);
     def test(output_prefix='', args=[], assert_returncode=0):
       old = self.emcc_args[:]
       self.emcc_args += args
-      src = open(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers.cpp')).read()
-      expected = open(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers' + output_prefix + '.txt')).read()
-      self.do_run(src, expected, assert_returncode=assert_returncode)
+      src = path_from_root('tests', 'core', 'legacy_exported_runtime_numbers.cpp')
+      expected = path_from_root('tests', 'core', 'legacy_exported_runtime_numbers%s.out' % output_prefix)
+      self.do_run_from_file(src, expected, assert_returncode=assert_returncode)
       self.emcc_args = old
 
     # see that direct usage (not on module) works. we don't export, but the use
