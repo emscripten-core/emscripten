@@ -3990,8 +3990,7 @@ LibraryManager.library = {
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
-  emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
-  emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
+  $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
 #endif
@@ -4008,25 +4007,21 @@ LibraryManager.library = {
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
       // -1 - code is the encoding of a proxied EM_ASM, as a negative number
-      // (positive numbers are non-EM_ASM calls). The next argument (1 here) is
-      // whether this is synchronous or not.
-      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, 1].concat(args));
+      // (positive numbers are non-EM_ASM calls).
+      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
     }
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
+  emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
+  emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
+    return mainThreadEM_ASM(code, sigPtr, argbuf, 1);
+  },
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
+  emscripten_asm_const_async_on_main_thread__deps: ['$mainThreadEM_ASM'],
   emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
-    var args = readAsmConstArgs(sigPtr, argbuf);
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
-      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, 0].concat(args));
-    }
-#endif
-    return ASM_CONSTS[code].apply(null, args);
+    return mainThreadEM_ASM(code, sigPtr, argbuf, 0);
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS
