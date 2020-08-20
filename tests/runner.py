@@ -1068,23 +1068,17 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self._build_and_run(filename, open(expected_output).read(), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
-    test_path = path_from_root(*path)
+    srcfile = path_from_root(*path)
 
-    def find_files(*ext_list):
-      ret = None
-      count = 0
-      for ext in ext_list:
-        if os.path.isfile(test_path + ext):
-          ret = test_path + ext
-          count += 1
-      assert count > 0, ("No file found at {} with extension {}"
-                         .format(test_path, ext_list))
-      assert count <= 1, ("Test file {} found with multiple valid extensions {}"
-                          .format(test_path, ext_list))
-      return ret
+    # TODO(sbc): Have tests explciictly pass filename
+    suffix = shared.suffix(srcfile)
+    if not suffix:
+      if os.path.exists(srcfile + '.c'):
+        srcfile = srcfile + '.c'
+      else:
+        srcfile = srcfile + '.cpp'
 
-    srcfile = find_files('.c', '.cpp')
-    outfile = find_files('.out', '.txt')
+    outfile = shared.unsuffixed(srcfile) + '.out'
     expected = open(outfile).read()
     self._build_and_run(srcfile, expected, **kwargs)
 
