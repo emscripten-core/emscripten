@@ -57,37 +57,20 @@ NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimize
 def split_funcs(js, just_split=False):
   if just_split:
     return [('(json)', line) for line in js.splitlines()]
-  if shared.Settings.WASM_BACKEND:
-    # for the wasm backend, split properly even if there are no newlines,
-    # which is important for deterministic builds (as which functions
-    # are in each chunk may differ, so we need to split them up and combine
-    # them all together later and sort them deterministically)
-    parts = ['function ' + part for part in js.split('function ')[1:]]
-    funcs = []
-    for func in parts:
-      m = func_sig.search(func)
-      if not m:
-        continue
-      ident = m.group(1)
-      assert ident
-      funcs.append((ident, func))
-    return funcs
-  else:
-    # for fastcomp split using the legacy method, which looks for newlines.
-    # it does *not* work without newlines, but the sourcemapping support
-    # depends on not splitting without newlines
-    parts = [part for part in js.split('\n}\n')]
-    funcs = []
-    for i, func in enumerate(parts):
-      if i < len(parts) - 1:
-        func += '\n}\n' # last part needs no }
-      m = func_sig.search(func)
-      if not m:
-        continue
-      ident = m.group(1)
-      assert ident
-      funcs.append((ident, func))
-    return funcs
+  # split properly even if there are no newlines,
+  # which is important for deterministic builds (as which functions
+  # are in each chunk may differ, so we need to split them up and combine
+  # them all together later and sort them deterministically)
+  parts = ['function ' + part for part in js.split('function ')[1:]]
+  funcs = []
+  for func in parts:
+    m = func_sig.search(func)
+    if not m:
+      continue
+    ident = m.group(1)
+    assert ident
+    funcs.append((ident, func))
+  return funcs
 
 
 def get_native_optimizer():
@@ -399,10 +382,6 @@ EMSCRIPTEN_FUNCS();
 
       passes = list(filter(check_symbol_mapping, passes))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();')
-      if not shared.Settings.WASM_BACKEND:
-        # Restore a comment for Closure Compiler
-        asm_open_bracket = asm_shell_pre.find('(')
-        asm_shell_pre = asm_shell_pre[:asm_open_bracket + 1] + '/** @suppress {uselessCode} */' + asm_shell_pre[asm_open_bracket + 1:]
       asm_shell_post = asm_shell_post.replace('});', '})')
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
