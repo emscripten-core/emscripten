@@ -7570,7 +7570,7 @@ Module['onRuntimeInitialized'] = function() {
   @parameterized({
     'normal': ([], True),
     'ignoreindirect': (['-s', 'ASYNCIFY_IGNORE_INDIRECT'], False),
-    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD=["main","virt()"]'], True),
+    'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD=["__original_main","main","virt()"]'], True),
   })
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   def test_asyncify_indirect_lists(self, args, should_pass):
