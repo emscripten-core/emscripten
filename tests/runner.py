@@ -1062,15 +1062,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = path_from_root(*path)
-
-    # TODO(sbc): Have tests explciictly pass filename
-    suffix = shared.suffix(srcfile)
-    if not suffix:
-      if os.path.exists(srcfile + '.c'):
-        srcfile = srcfile + '.c'
-      else:
-        srcfile = srcfile + '.cpp'
-
     outfile = shared.unsuffixed(srcfile) + '.out'
     expected = open(outfile).read()
     self._build_and_run(srcfile, expected, **kwargs)

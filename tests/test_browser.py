@@ -4894,7 +4894,7 @@ window.close = function() {
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB.cpp', js_engines=[V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_2GB_fail(self):
@@ -4907,7 +4907,7 @@ window.close = function() {
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=2GB']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail.cpp', js_engines=[V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_4GB_fail(self):
@@ -4920,4 +4920,4 @@ window.close = function() {
     # test that we properly report an allocation error that would overflow over
     # 4GB.
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[V8_ENGINE])

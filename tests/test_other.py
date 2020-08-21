@@ -9644,4 +9644,4 @@ int main () {
     # error
     self.set_setting('STANDALONE_WASM')
     self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
