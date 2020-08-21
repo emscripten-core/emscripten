@@ -605,10 +605,11 @@ def backend_binaryen_passes():
     passes += ['--remove-unused-module-elements']
   if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
     passes += ['--low-memory-unused']
-  if shared.Settings.DEBUG_LEVEL < 3:
-    passes += ['--strip-debug']
-  if not shared.Settings.EMIT_PRODUCERS_SECTION:
-    passes += ['--strip-producers']
+  if shared.Settings.OPT_LEVEL > 0:
+    if shared.Settings.DEBUG_LEVEL < 3:
+      passes += ['--strip-debug']
+    if not shared.Settings.EMIT_PRODUCERS_SECTION:
+      passes += ['--strip-producers']
   if shared.Settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']
