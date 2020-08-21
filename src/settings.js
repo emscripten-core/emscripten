@@ -1617,8 +1617,9 @@ var SEPARATE_DWARF_URL = '';
 // code with a potentially corrupted program state.
 // This adds ~250 bytes to the code size in optimized builds and a slight overhead
 // for the extra instrumented function indirection.
-// Disable this if you want to handle the exceptions yourself or save some bytes.
-var ABORT_ON_WASM_EXCEPTIONS = 1;
+// Enable this if you want Emscripten to handle nuhandled exceptions nicely at the
+// cost of a few bytes extra.
+var ABORT_ON_WASM_EXCEPTIONS = 0;
 
 //===========================================
 // Internal, used for testing only, from here

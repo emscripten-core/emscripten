@@ -8355,7 +8355,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free')
 
+  # Tests Settings.ABORT_ON_WASM_EXCEPTIONS
   def test_abort_on_exception(self):
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception')
 
 # Generate tests for everything

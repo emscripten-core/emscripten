@@ -807,7 +807,7 @@ function createExportWrapper(name, fixedasm) {
 // - abort if an unhandled exception occurs
 // - throw an exception if someone tries to call them after the program has aborted
 // Set settings.ABORT_ON_WASM_EXCEPTIONS for more info.
-__ATINIT__.unshift(function () { 
+addOnInit(function () { 
 #if DISABLE_EXCEPTION_CATCHING != 1
   // With exception catching enabled we only handle exceptions at the top level
   // so that the exception mechanics can work uninterrupted at the inner level.
@@ -840,7 +840,7 @@ __ATINIT__.unshift(function () {
           }
           catch (e) {
             if(
-              original == mainFunc // rethrow any exceptions from main as they are handled in callMain
+              original == mainFunc // rethrow any exceptions from main as they are handled in callMain and include special cases
               || ABORT === 1 // rethrow exception if abort() was called in the original function call above
 #if DISABLE_EXCEPTION_CATCHING != 1            
               || wrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled
