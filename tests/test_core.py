@@ -8360,6 +8360,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception')
 
+
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
   if env is None:

@@ -10,9 +10,13 @@
 
 volatile int* addr = (int*)0xfffffff;
 
+EM_JS(void, throwException, (void), {
+	throw "crash";
+});
+
 EMSCRIPTEN_KEEPALIVE void crash() {
   printf("crashing\n");
-  *addr = 1337;
+  throwException();
 }
 
 EM_JS(void, unhandled_exception_wrapper, (void), {
