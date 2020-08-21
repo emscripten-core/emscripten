@@ -90,7 +90,17 @@ Some important settings are:
   -
     .. _debugging-STACK_OVERFLOW_CHECK:
 
-    Passing the ``STACK_OVERFLOW_CHECK=1`` linker flag adds a runtime magic token value at the end of the stack, which is checked in certain locations to verify that the user code does not accidentally write past the end of the stack. While overrunning the Emscripten stack is not a security issue (JavaScript is sandboxed already), writing past the stack causes memory corruption in global data and dynamically allocated memory sections in the Emscripten HEAP, which makes the application fail in unexpected ways. The value ``STACK_OVERFLOW_CHECK=2`` enables slightly more detailed stack guard checks, which can give a more precise callstack at the expense of some performance. Default value is 2 if ``ASSERTIONS=1`` is set, and disabled otherwise.
+    Passing the ``STACK_OVERFLOW_CHECK=1`` linker flag adds a runtime magic
+    token value at the end of the stack, which is checked in certain locations
+    to verify that the user code does not accidentally write past the end of the
+    stack. While overrunning the Emscripten stack is not a security issue for
+    JavaScript (which is unaffected), writing past the stack causes memory
+    corruption in global data and dynamically allocated memory sections in the
+    Emscripten HEAP, which makes the application fail in unexpected ways. The
+    value ``STACK_OVERFLOW_CHECK=2`` enables slightly more detailed stack guard
+    checks, which can give a more precise callstack at the expense of some
+    performance. Default value is 1 if ``ASSERTIONS=1`` is set, and disabled
+    otherwise.
 
   -
     .. _debugging-DEMANGLE_SUPPORT:
