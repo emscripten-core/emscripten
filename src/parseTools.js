@@ -1063,10 +1063,6 @@ function exportedAsmFunc(func) {
   }
 }
 
-function makeDynCall(sig) {
-  return exportedAsmFunc('dynCall_' + sig);
-}
-
 var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
