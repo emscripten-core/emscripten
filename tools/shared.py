@@ -918,7 +918,6 @@ class SettingsManager(object):
     @classmethod
     def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
       if opt_level >= 1:
-        cls.attrs['ASM_JS'] = 1
         cls.attrs['ASSERTIONS'] = 0
       if shrink_level >= 2:
         cls.attrs['EVAL_CTORS'] = 1
@@ -998,25 +997,21 @@ class SettingsManager(object):
 
 
 def verify_settings():
-  if Settings.ASM_JS not in [1, 2]:
-    exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
-
   if Settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
 
-  if Settings.WASM_BACKEND:
-    if not Settings.WASM:
-      # When the user requests non-wasm output, we enable wasm2js. that is,
-      # we still compile to wasm normally, but we compile the final output
-      # to js.
-      Settings.WASM = 1
-      Settings.WASM2JS = 1
-    if Settings.WASM == 2:
-      # Requesting both Wasm and Wasm2JS support
-      Settings.WASM2JS = 1
+  if not Settings.WASM:
+    # When the user requests non-wasm output, we enable wasm2js. that is,
+    # we still compile to wasm normally, but we compile the final output
+    # to js.
+    Settings.WASM = 1
+    Settings.WASM2JS = 1
+  if Settings.WASM == 2:
+    # Requesting both Wasm and Wasm2JS support
+    Settings.WASM2JS = 1
 
 
 def print_compiler_stage(cmd):
@@ -1328,11 +1323,6 @@ class WebAssembly(object):
     global_base = Settings.GLOBAL_BASE
 
     js = open(js_file).read()
-    if Settings.WASM_BACKEND:
-      tempdouble_ptr = 0
-    else:
-      m = re.search(r"(^|\s)tempDoublePtr\s+=\s+(\d+)", js)
-      tempdouble_ptr = int(m.group(2))
     m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
     dynamic_base = int(m.group(2))
     m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)
@@ -1351,13 +1341,18 @@ class WebAssembly(object):
       WebAssembly.toLEB(EMSCRIPTEN_ABI_MAJOR) +
       WebAssembly.toLEB(EMSCRIPTEN_ABI_MINOR) +
 
-      WebAssembly.toLEB(int(Settings.WASM_BACKEND)) +
+      # Wasm backend, always 1 now
+      WebAssembly.toLEB(1) +
+
       WebAssembly.toLEB(mem_size) +
       WebAssembly.toLEB(table_size) +
       WebAssembly.toLEB(global_base) +
       WebAssembly.toLEB(dynamic_base) +
       WebAssembly.toLEB(dynamictop_ptr) +
-      WebAssembly.toLEB(tempdouble_ptr) +
+
+      # tempDoublePtr, always 0 in wasm backend
+      WebAssembly.toLEB(0) +
+
       WebAssembly.toLEB(int(Settings.STANDALONE_WASM))
 
       # NB: more data can be appended here as long as you increase
@@ -1379,7 +1374,8 @@ class WebAssembly(object):
   @staticmethod
   def add_dylink_section(wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
-    assert not Settings.WASM_BACKEND
+    # TODO: use this in the wasm backend
+    assert False
     mem_align = Settings.MAX_GLOBAL_ALIGN
     mem_size = Settings.STATIC_BUMP
     table_size = Settings.WASM_TABLE_SIZE
@@ -1450,6 +1446,11 @@ def asbytes(s):
   return s.encode('utf-8')
 
 
+def suffix(name):
+  """Return the file extension"""
+  return os.path.splitext(name)[1]
+
+
 def unsuffixed(name):
   """Return the filename without the extention.
 
@@ -1513,39 +1514,6 @@ def read_and_preprocess(filename, expand_macros=False):
   out = open(stdout, 'r').read()
 
   return out
-
-
-# Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
-# and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web
-# worker in -s ASMFS=1 mode.
-def make_fetch_worker(source_file, output_file):
-  src = open(source_file, 'r').read()
-  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_browser_thread', '_emscripten_futex_wait', '_emscripten_get_sbrk_ptr']
-  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock', '_pthread_mutexattr_init', '_pthread_mutex_init']
-  function_prologue = '''this.onerror = function(e) {
-  console.error(e);
-}
-
-'''
-  asm_start = src.find('// EMSCRIPTEN_START_ASM')
-  for func in funcs_to_import + asm_funcs_to_import:
-    loc = src.find('function ' + func + '(', asm_start if func in asm_funcs_to_import else 0)
-    if loc == -1:
-      exit_with_error('failed to find function %s!', func)
-    end_loc = src.find('{', loc) + 1
-    nesting_level = 1
-    while nesting_level > 0:
-      if src[end_loc] == '{':
-        nesting_level += 1
-      if src[end_loc] == '}':
-        nesting_level -= 1
-      end_loc += 1
-
-    func_code = src[loc:end_loc]
-    function_prologue = function_prologue + '\n' + func_code
-
-  fetch_worker_src = function_prologue + '\n' + read_and_preprocess(path_from_root('src', 'fetch-worker.js'), expand_macros=True)
-  open(output_file, 'w').write(fetch_worker_src)
 
 
 # ============================================================================

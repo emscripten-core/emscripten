@@ -43,20 +43,8 @@ var Fetch = {
   },
 #endif
 
-#if USE_FETCH_WORKER
-  initFetchWorker: function() {
-    var stackSize = 128*1024;
-    var stack = allocate(stackSize>>2, "i32*", ALLOC_DYNAMIC);
-    Fetch.worker.postMessage({cmd: 'init', DYNAMICTOP_PTR: DYNAMICTOP_PTR, STACKTOP: stack, STACK_MAX: stack + stackSize, queuePtr: _fetch_work_queue, buffer: HEAPU8.buffer});
-  },
-#endif
-
   staticInit: function() {
-#if USE_FETCH_WORKER
-    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
-#else
     var isMainThread = true;
-#endif
 
 #if FETCH_SUPPORT_INDEXEDDB
     var onsuccess = function(db) {
@@ -66,9 +54,6 @@ var Fetch = {
       Fetch.dbInstance = db;
 
       if (isMainThread) {
-#if USE_FETCH_WORKER
-        Fetch.initFetchWorker();
-#endif
         removeRunDependency('library_fetch_init');
       }
     };
@@ -79,37 +64,14 @@ var Fetch = {
       Fetch.dbInstance = false;
 
       if (isMainThread) {
-#if USE_FETCH_WORKER
-        Fetch.initFetchWorker();
-#endif
         removeRunDependency('library_fetch_init');
       }
     };
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 
-#if USE_FETCH_WORKER
-    if (isMainThread) {
-#if FETCH_SUPPORT_INDEXEDDB
-      addRunDependency('library_fetch_init');
-#endif
-
-      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
-      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
-      // to the main html file is loaded.
-      var fetchJs = locateFile('{{{ FETCH_WORKER_FILE }}}');
-      Fetch.worker = new Worker(fetchJs);
-      Fetch.worker.onmessage = function(e) {
-        out('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
-      };
-      Fetch.worker.onerror = function(e) {
-        err('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
-      };
-    }
-#else
 #if FETCH_SUPPORT_INDEXEDDB
     if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
-#endif
 #endif
   }
 }

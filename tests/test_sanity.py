@@ -19,7 +19,7 @@ from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import try_delete
-from tools.shared import EXPECTED_LLVM_VERSION, Cache, Settings
+from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt', root=True)
@@ -141,7 +141,6 @@ class sanity(RunnerCore):
     print()
 
     assert 'EMCC_DEBUG' not in os.environ, 'do not run sanity checks in debug mode!'
-    assert 'EMCC_WASM_BACKEND' not in os.environ, 'do not force wasm backend either way in sanity checks!'
 
   @classmethod
   def tearDownClass(cls):
@@ -432,7 +431,7 @@ fi
     for i in range(3):
       print(i)
       self.clear()
-      output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+      output = self.do([EMCC, '-O' + str(i), path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
       print('\n\n\n', output)
       self.assertContainedIf(BUILDING_MESSAGE.replace('X', libname), output, i == 0)
       self.assertContained('hello, world!', self.run_js('a.out.js'))
@@ -702,8 +701,6 @@ fi
     self.assertContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc', '--force']))
 
   def test_embuilder_wasm_backend(self):
-    if not Settings.WASM_BACKEND:
-      self.skipTest('wasm backend only')
     restore_and_set_up()
     # the --lto flag makes us build wasm-bc
     self.do([EMCC, '--clear-cache'])

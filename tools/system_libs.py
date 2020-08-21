@@ -98,7 +98,7 @@ def run_build_commands(commands):
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
-  suffix = os.path.splitext(libname)[1]
+  suffix = shared.suffix(libname)
   if suffix in ('.bc', '.o'):
     if len(inputs) == 1:
       if inputs[0] != libname:
@@ -365,7 +365,7 @@ class Library(object):
     cflags = self.get_cflags()
     for src in self.get_files():
       o = self.in_temp(shared.unsuffixed_basename(src) + '.o')
-      ext = os.path.splitext(src)[1]
+      ext = shared.suffix(src)
       if ext in ('.s', '.c'):
         cmd = [shared.EMCC]
       else:
@@ -1641,7 +1641,7 @@ class Ports(object):
       if any((excluded in root) for excluded in exclude_dirs):
         continue
       for f in files:
-        ext = os.path.splitext(f)[1]
+        ext = shared.suffix(f)
         if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
           srcs.append(os.path.join(root, f))
     include_commands = ['-I' + src_path]

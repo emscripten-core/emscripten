@@ -5292,23 +5292,6 @@ function asmLastOpts(ast) {
   });
 }
 
-// Contrary to the name this does not eliminate actual dead functions, only
-// those marked as such with DEAD_FUNCTIONS
-function eliminateDeadFuncs(ast) {
-  assert(asm);
-  assert(extraInfo && extraInfo.dead_functions);
-  var deadFunctions = set(extraInfo.dead_functions);
-  traverseGeneratedFunctions(ast, function (fun, type) {
-    if (!(fun[1] in deadFunctions)) {
-      return;
-    }
-    var asmData = normalizeAsm(fun);
-    fun[3] = [['stat', ['call', ['name', 'abort'], [['num', -1]]]]];
-    asmData.vars = {};
-    denormalizeAsm(fun, asmData);
-  });
-}
-
 // Cleans up globals in an asm.js module that are not used. Assumes it
 // receives a full asm.js module, as from the side file in --separate-asm
 function eliminateDeadGlobals(ast) {
@@ -5457,7 +5440,6 @@ var passes = {
   loopOptimizer: loopOptimizer,
   registerize: registerize,
   registerizeHarder: registerizeHarder,
-  eliminateDeadFuncs: eliminateDeadFuncs,
   eliminateDeadGlobals: eliminateDeadGlobals,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,

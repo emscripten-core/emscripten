@@ -1139,7 +1139,7 @@ function getFastValue(a, op, b, type) {
       // if guaranteed small enough to not overflow into a double, do a normal multiply
       var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
       // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
-      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
+      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY)) {
         return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
       }
       return '(Math_imul(' + a + ',' + b + ')|0)';

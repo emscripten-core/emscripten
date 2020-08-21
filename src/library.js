@@ -3981,6 +3981,49 @@ LibraryManager.library = {
     return readAsmConstArgsArray;
   },
 
+  emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
+    var args = readAsmConstArgs(sigPtr, argbuf);
+    return ASM_CONSTS[code].apply(null, args);
+  },
+  emscripten_asm_const_double: 'emscripten_asm_const_int',
+  $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
+    var args = readAsmConstArgs(sigPtr, argbuf);
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      // EM_ASM functions are variadic, receiving the actual arguments as a buffer
+      // in memory. the last parameter (argBuf) points to that data. We need to
+      // always un-variadify that, *before proxying*, as in the async case this
+      // is a stack allocation that LLVM made, which may go away before the main
+      // thread gets the message. For that reason we handle proxying *after* the
+      // call to readAsmConstArgs, and therefore we do that manually here instead
+      // of using __proxy. (And dor simplicity, do the same in the sync
+      // case as well, even though it's not strictly necessary, to keep the two
+      // code paths as similar as possible on both sides.)
+      // -1 - code is the encoding of a proxied EM_ASM, as a negative number
+      // (positive numbers are non-EM_ASM calls).
+      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
+    }
+#endif
+    return ASM_CONSTS[code].apply(null, args);
+  },
+  emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
+  emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
+    return mainThreadEM_ASM(code, sigPtr, argbuf, 1);
+  },
+  emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
+  emscripten_asm_const_async_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
+    return mainThreadEM_ASM(code, sigPtr, argbuf, 0);
+  },
+
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
@@ -4186,12 +4229,6 @@ LibraryManager.library = {
   llvm_dbg_value: function() {},
   llvm_debugtrap: function() {},
   llvm_ctlz_i32: function() {},
-  emscripten_asm_const: function() {},
-  emscripten_asm_const_int: function() {},
-  emscripten_asm_const_double: function() {},
-  emscripten_asm_const_int_sync_on_main_thread: function() {},
-  emscripten_asm_const_double_sync_on_main_thread: function() {},
-  emscripten_asm_const_async_on_main_thread: function() {},
 
   __handle_stack_overflow: function() {
     abort('stack overflow')

@@ -391,45 +391,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif opt_level >= 2:
             assert looks_minified
 
-  @no_wasm_backend('tests for asmjs optimzer')
-  @parameterized({
-    'c': [EMCC],
-    'cxx': [EMXX]})
-  def test_emcc_5(self, compiler):
-    # asm.js optimization levels
-    for params, test, text in [
-      (['-O2'], lambda generated: 'function addRunDependency' in generated, 'shell has unminified utilities'),
-      (['-O2', '--closure', '1'], lambda generated: 'function addRunDependency' not in generated and ';function' in generated, 'closure minifies the shell, removes whitespace'),
-      (['-O2', '--closure', '1', '-g1'], lambda generated: 'function addRunDependency' not in generated and ';function' not in generated, 'closure minifies the shell, -g1 makes it keep whitespace'),
-      (['-O2'], lambda generated: 'var b=0' in generated and 'function _main' not in generated, 'registerize/minify is run by default in -O2'),
-      (['-O2', '--minify', '0'], lambda generated: 'var b = 0' in generated and 'function _main' not in generated, 'minify is cancelled, but not registerize'),
-      (['-O2', '--js-opts', '0'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'js opts are cancelled'),
-      (['-O2', '-g'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'registerize/minify is cancelled by -g'),
-      (['-O2', '-g0'], lambda generated: 'var b=0' in generated and 'function _main' not in generated, 'registerize/minify is run by default in -O2 -g0'),
-      (['-O2', '-g1'], lambda generated: 'var b = 0' in generated and 'function _main' not in generated, 'compress is cancelled by -g1'),
-      (['-O2', '-g2'], lambda generated: ('var b = 0' in generated or 'var i1 = 0' in generated) and 'function _main' in generated, 'minify is cancelled by -g2'),
-      (['-O2', '-g3'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'registerize is cancelled by -g3'),
-      (['-O2', '--profiling'], lambda generated: ('var b = 0' in generated or 'var i1 = 0' in generated) and 'function _main' in generated, 'similar to -g2'),
-      (['-O2', '-profiling'], lambda generated: ('var b = 0' in generated or 'var i1 = 0' in generated) and 'function _main' in generated, 'similar to -g2'),
-      (['-O2', '--profiling-funcs'], lambda generated: 'var b=0' in generated and '"use asm";var a=' in generated and 'function _main' in generated, 'very minified, but retain function names'),
-      (['-O2', '-profiling-funcs'], lambda generated: 'var b=0' in generated and '"use asm";var a=' in generated and 'function _main' in generated, 'very minified, but retain function names'),
-      (['-O2'], lambda generated: 'var b=0' in generated and '"use asm";var a=' in generated and 'function _main' not in generated, 'very minified, no function names'),
-      # (['-O2', '-g4'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'same as -g3 for now'),
-      (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
-      ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
-      (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"] =' in generated, 'dump is now exported'),
-      (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
-      ([], lambda generated: '// Sometimes an existing Module' in generated, 'without opts, comments in shell code'),
-      (['-O2'], lambda generated: '// Sometimes an existing Module' not in generated, 'with opts, no comments in shell code'),
-      (['-O2', '-g2'], lambda generated: '// Sometimes an existing Module' not in generated, 'with -g2, no comments in shell code'),
-      (['-O2', '-g3'], lambda generated: '// Sometimes an existing Module' in generated, 'with -g3, yes comments in shell code'),
-    ]:
-      print(params, text)
-      self.clear()
-      self.run_process([compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js', '-s', 'WASM=0'] + params)
-      self.assertContained('hello, world!', self.run_js('a.out.js'))
-      assert test(open('a.out.js').read()), text
-
   def test_multiple_sources(self):
     # Compiling two sources at a time should work.
     cmd = [EMCC, '-c', path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.c')]
@@ -717,33 +678,6 @@ f.close()
       self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-shared', '-o', 'binary.' + suffix])
       self.run_process([EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', self.run_js('a.out.js'))
-
-  @no_wasm_backend('asm.js minification')
-  def test_asm_minify(self):
-    def test(args):
-      self.run_process([EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp'), '-s', 'WASM=0'] + args)
-      self.assertContained('hello, world!', self.run_js('a.out.js'))
-      return open('a.out.js').read()
-
-    src = test([])
-    assert 'function _malloc' in src
-
-    src = test(['-O2', '-s', 'ASM_JS=1'])
-    normal_size = len(src)
-    print('normal', normal_size)
-    assert 'function _malloc' not in src
-
-    src = test(['-O2', '-s', 'ASM_JS=1', '--minify', '0'])
-    unminified_size = len(src)
-    print('unminified', unminified_size)
-    assert unminified_size > normal_size
-    assert 'function _malloc' not in src
-
-    src = test(['-O2', '-s', 'ASM_JS=1', '-g'])
-    debug_size = len(src)
-    print('debug', debug_size)
-    self.assertGreater(debug_size, unminified_size)
-    self.assertContained('function _malloc', src)
 
   def test_wl_linkflags(self):
     # Test path -L and -l via -Wl, arguments and -Wl, response files
@@ -3254,7 +3188,7 @@ int main(int argc, char **argv) {
 
     for wasm in [0, 1]:
       for no_exit in [1, 0]:
-        for opts in [[], ['-O1'], ['-O2', '-g2'], ['-O2', '-g2', '--llvm-lto', '1']]:
+        for opts in [[], ['-O1'], ['-O2', '-g2'], ['-O2', '-g2', '-flto']]:
           print(wasm, no_exit, opts)
           cmd = [EMCC] + opts + ['code.cpp', '-s', 'EXIT_RUNTIME=' + str(1 - no_exit), '-s', 'WASM=' + str(wasm)]
           if wasm:
@@ -3411,8 +3345,8 @@ Waste<3> *getMore() {
       (['-O2', '-g'], False),
       (['-Os', '-g', '-s', 'EXIT_RUNTIME=1'], True),
       (['-Os', '-g'], False),
-      (['-O2', '-g', '--llvm-lto', '1', '-s', 'EXIT_RUNTIME=1'], True),
-      (['-O2', '-g', '--llvm-lto', '1'], False),
+      (['-O2', '-g', '-flto', '-s', 'EXIT_RUNTIME=1'], True),
+      (['-O2', '-g', '-flto'], False),
     ]:
       print(opts, has_global)
       self.run_process([EMCC, 'main.cpp', '-c'] + opts)
@@ -3667,9 +3601,6 @@ int main()
 
     for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1, 2]:
-        # -s WASM=2 is a WASM_BACKEND-only feature:
-        if wasm == 2 and not shared.Settings.WASM_BACKEND:
-          continue
         print(opts, wasm)
         self.clear()
         create_test_file('src.c', r'''
@@ -5040,9 +4971,7 @@ main(const int argc, const char * const * const argv)
     test(['-O3', '--closure', '1'], 17000)
     # js too
     test(['-O3', '--closure', '1', '-s', 'WASM=0'], 36000)
-    # FIXME(https://github.com/emscripten-core/emscripten/issues/11912):
-    # --closure 2 + WASM=0 leaks js files in /tmp
-    # test(['-O3', '--closure', '2', '-s', 'WASM=0'], 33000) # might change now and then
+    test(['-O3', '--closure', '2', '-s', 'WASM=0'], 33000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
@@ -6826,51 +6755,6 @@ int main() {
           for f in files:
             try_delete(f)
 
-  @no_wasm_backend('asm2wasm specific')
-  @uses_canonical_tmp
-  def test_binaryen_opts(self):
-    with env_modify({'EMCC_DEBUG': '1'}):
-      for args, expect_js_opts, expect_wasm_opts, expect_only_wasm in [
-          ([], False, False, True),
-          (['-O0'], False, False, True),
-          (['-O1'], False, True, True),
-          (['-O2'], False, True, True),
-          (['-O2', '--js-opts', '1'], True, True, False), # user asked
-          (['-O2', '-s', 'EVAL_CTORS=1'], False, True, True), # ctor evaller turned off since only-wasm
-          (['-O3'], False, True, True),
-          (['-Os'], False, True, True),
-          (['-Oz'], False, True, True), # ctor evaller turned off since only-wasm
-        ]:
-        try_delete('a.out.js')
-        try_delete('a.out.wasm')
-        try_delete('a.out.wat')
-        cmd = [EMCC, path_from_root('tests', 'core', 'test_i64.c')] + args
-        print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
-        err = self.run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-        assert expect_js_opts == ('applying js optimization passes:' in err), err
-        wat = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-        # i64s
-        i64s = wat.count('(i64.')
-        print('    seen i64s:', i64s)
-        assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
-        selects = wat.count('(select')
-        print('    seen selects:', selects)
-        if expect_wasm_opts:
-          # when optimizing we should create selects
-          self.assertGreater(selects, 15)
-        else:
-          # when not optimizing for size we should not
-          self.assertEqual(selects, 0)
-        # asm2wasm opt line
-        asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
-        asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
-        if '-O0' in args or '-O' not in str(args):
-          assert '-O' not in asm2wasm_line, 'no opts should be passed to asm2wasm: ' + asm2wasm_line
-        else:
-          opts_str = args[0]
-          assert opts_str.startswith('-O')
-          assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
-
   def test_binaryen_names(self):
     sizes = {}
     for args, expect_names in [
@@ -7022,7 +6906,6 @@ int main() {
         (['-O2', '-g'],  True,  True,  False, True, False),
         (['-O2', '--closure', '1'],         False, False, True, False, True),
         (['-O2', '--closure', '1', '-g1'],  False, False, True, True,  True),
-        (['-O2', '--js-opts', '1'], False, False, True,  False, False),
       ]:
       print(args, expect_dash_g, expect_emit_text)
       try_delete('a.out.wat')
@@ -7204,7 +7087,10 @@ int main() {
                   '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 408028), # noqa
   })
   def test_metadce_cxx(self, *args):
-    self.run_metadce_test('hello_libcxx.cpp', *args)
+    # do not check functions in this test as there are a lot of libc++ functions
+    # pulled in here, and small LLVM backend changes can affect their size and
+    # lead to different inlining decisions which add or remove a function
+    self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
 
   @parameterized({
     'normal': (['-O2'], ['abort'], ['waka'], 186423),
@@ -9112,7 +8998,8 @@ int main(void) {
     self.assertLess(abs(changed - 5795), 150)
 
   def test_llvm_includes(self):
-    self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
+    create_test_file('atomics.c', '#include <stdatomic.h>')
+    self.build('atomics.c')
 
   def test_mmap_and_munmap(self):
     emcc_args = []
@@ -9653,13 +9540,13 @@ int main() {
   def test_argument_match(self):
     # Verify that emcc arguments match precisely.  We had a bug where only the prefix
     # was matched
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts', '10'])
-    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--js-optsXX'])
-    self.assertContained("error: unsupported option '--js-optsXX'", err)
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--minify', '0'])
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--minifyXX'])
+    self.assertContained("error: unsupported option '--minifyXX'", err)
 
   def test_missing_argument(self):
-    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts'])
-    self.assertContained("error: option '--js-opts' requires an argument", err)
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--minify'])
+    self.assertContained("error: option '--minify' requires an argument", err)
 
   def test_default_to_cxx(self):
     create_test_file('foo.h', '#include <string.h>')
@@ -9693,7 +9580,7 @@ int main() {
     src = path_from_root('tests', 'core', 'test_support_errno.c')
     output = path_from_root('tests', 'core', 'test_support_errno.out')
     self.do_run_from_file(src, output)
-    size_default = os.path.getsize('src.c.o.js')
+    size_default = os.path.getsize('test_support_errno.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
@@ -9702,7 +9589,7 @@ int main() {
     self.do_run_from_file(src, output)
 
     # Verify the JS output was smaller
-    self.assertLess(os.path.getsize('src.c.o.js'), size_default)
+    self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
@@ -9748,16 +9635,18 @@ int main() {
     self.set_setting('ASSERTIONS')
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
     self.add_pre_run('console.log("calling foo"); Module["_foo"]();')
-    self.build('#include <stdio.h>\nint foo() { puts("foo called"); return 3; }', self.get_dir(), 'foo.c')
-    err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
+    create_test_file('foo.c', '#include <stdio.h>\nint foo() { puts("foo called"); return 3; }')
+    self.build('foo.c')
+    err = self.expect_fail(NODE_JS + ['foo.js'], stdout=PIPE)
     self.assertContained('native function `foo` called before runtime initialization', err)
 
   def test_native_call_after_exit(self):
     self.set_setting('ASSERTIONS')
     self.set_setting('EXIT_RUNTIME')
     self.add_on_exit('console.log("calling main again"); Module["_main"]();')
-    self.build('#include <stdio.h>\nint main() { puts("foo called"); return 0; }', self.get_dir(), 'foo.c')
-    err = self.expect_fail(NODE_JS + ['foo.c.o.js'], stdout=PIPE)
+    create_test_file('foo.c', '#include <stdio.h>\nint main() { puts("foo called"); return 0; }')
+    self.build('foo.c')
+    err = self.expect_fail(NODE_JS + ['foo.js'], stdout=PIPE)
     self.assertContained('native function `main` called after runtime exit', err)
 
   def test_metadce_wasm2js_i64(self):
@@ -9820,3 +9709,12 @@ int main () {
     # Test that output name is just `a.out` and that it is directly executable
     output = self.run_process([os.path.abspath('a.out')], stdout=PIPE).stdout
     self.assertContained('hello, world!', output)
+
+  def test_standalone_export_main(self):
+    # Tests that explictly exported `_main` does not fail.   Since we interpret an
+    # export of `_main` to be be an export of `__start` in standalone mode the
+    # actual main function is not exported, but we also don't want to report an
+    # error
+    self.set_setting('STANDALONE_WASM')
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')

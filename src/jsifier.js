@@ -49,8 +49,6 @@ var proxiedFunctionInvokers = {};
 // static ctors, even if there is no user main.
 var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE || STANDALONE_WASM;
 
-WEAK_DECLARES = set(WEAK_DECLARES);
-
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
   return f[0] == '$' ? f.substr(1) : '_' + f;
@@ -164,7 +162,7 @@ function JSify(data, functionsOnly) {
         usedExternPrimitives[ident] = 1;
         return;
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !(finalName in WEAK_DECLARES) && !LINKABLE) {
+        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
@@ -372,16 +370,6 @@ function JSify(data, functionsOnly) {
 
     itemsDict.functionStub.push(item);
     var shortident = demangleCSymbolName(item.ident);
-    // If this is not linkable, anything not in the library is definitely missing
-    if (item.ident in DEAD_FUNCTIONS) {
-      if (LibraryManager.library[shortident + '__asm']) {
-        warn('cannot kill asm library function ' + item.ident);
-      } else {
-        LibraryManager.library[shortident] = new Function("err('dead function: " + shortident + "'); abort(-1);");
-        delete LibraryManager.library[shortident + '__inline'];
-        delete LibraryManager.library[shortident + '__deps'];
-      }
-    }
     item.JS = addFromLibrary(shortident, 'top-level compiled C/C++ code');
   }
 
