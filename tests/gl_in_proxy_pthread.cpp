@@ -10,6 +10,8 @@
 #include <bits/errno.h>
 #include <stdlib.h>
 
+#include <GLFW/glfw3.h>
+
 int main()
 {
   if (!emscripten_supports_offscreencanvas())
@@ -20,6 +22,9 @@ int main()
 #endif
     return 0;
   }
+
+  assert(glfwInit() == GL_TRUE);
+  
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
