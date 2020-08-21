@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.1: 08/21/2020
+-----------------
 - Change the default value of `STACK_OVERFLOW_CHECK` in builds with `ASSERTIONS`
   from 2 to 1. This means that plain debug builds (`-O0`, which enables
   `ASSERTIONS`) do not have the most expensive stack checks on by default. You
