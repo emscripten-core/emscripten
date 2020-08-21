@@ -68,9 +68,9 @@ var RUNTIME_LOGGING = 0;
 // 0: Stack overflows are not checked.
 // 1: Adds a security cookie at the top of the stack, which is checked at end of
 //    each tick and at exit (practically zero performance overhead)
+//    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=1.
 // 2: Same as above, but also adds an explicit check for allocate() calls which
 //    call ALLOC_STACK. Has a small performance cost.
-//    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=2.
 var STACK_OVERFLOW_CHECK = 0;
 
 // When set to 1, will generate more verbose output during compilation.
