@@ -17,7 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Do not remove `__original_main` using `--no-inline-main`. We used to do this
+- Do not remove `__original_main` using `--inline-main`. We used to do this
   so that it didn't show up in stack traces (which could be confusing because
   it is added by the linker - it's not in the source code). But this has had
   several downsides, so we are stopping that now. This does not affect program
