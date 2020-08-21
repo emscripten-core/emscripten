@@ -7010,7 +7010,7 @@ someweirdtext
 
   def test_embind_val(self):
     self.emcc_args += ['--bind']
-    self.set_setting('ABORT_ON_WASM_EXCEPTIONS', 0); # The test handles exceptions itself
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS', 0) # The test handles exceptions itself
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_val.cpp'), path_from_root('tests', 'embind', 'test_val.out'))
 
   def test_embind_no_rtti(self):
