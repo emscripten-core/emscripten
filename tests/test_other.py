@@ -99,23 +99,6 @@ def encode_leb(number):
   return struct.pack('<i', number)[:1]
 
 
-def get_fastcomp_src_dir():
-  """Locate fastcomp source tree by searching realtive to LLVM_ROOT."""
-  d = LLVM_ROOT
-  key_file = 'readme-emscripten-fastcomp.txt'
-  while d != os.path.dirname(d):
-    d = os.path.abspath(d)
-    # when the build directory lives below the source directory
-    if os.path.exists(os.path.join(d, key_file)):
-      return d
-    # when the build directory lives alongside the source directory
-    elif os.path.exists(os.path.join(d, 'src', key_file)):
-      return os.path.join(d, 'src')
-    else:
-      d = os.path.dirname(d)
-  return None
-
-
 def parse_wasm(filename):
   wat = shared.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), filename], stdout=PIPE).stdout
   imports = []
@@ -3428,23 +3411,6 @@ int main()
           stderr = self.run_process(cmd, stdout=PIPE, stderr=PIPE, check=False).stderr
           assert ('unexpected' in stderr) == asserts, stderr
           assert ("to 'doit'" in stderr) == asserts, stderr
-
-  @no_wasm_backend('fastcomp specific')
-  def test_llvm_lit(self):
-    grep_path = shared.which('grep')
-    if not grep_path:
-      self.skipTest('This test needs the "grep" tool in PATH. If you are using emsdk on Windows, you can obtain it via installing and activating the gnu package.')
-    llvm_src = get_fastcomp_src_dir()
-    if not llvm_src:
-      self.skipTest('llvm source tree not found')
-    LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit.py')
-    if not os.path.exists(LLVM_LIT):
-      LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit')
-      if not os.path.exists(LLVM_LIT):
-        self.skipTest('llvm-lit not found; fastcomp directory is most likely prebuilt')
-    cmd = [PYTHON, LLVM_LIT, '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
-    print(cmd)
-    self.run_process(cmd)
 
   @requires_native_clang
   def test_bad_triple(self):
@@ -7066,19 +7032,6 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      ['abort'], ['waka'], 22712), # noqa
-    'O1': (['-O1'], ['abort'], ['waka'], 10450), # noqa
-    'O2': (['-O2'], ['abort'], ['waka'], 10440), # noqa
-    # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'], [],        [],          55), # noqa
-    'Os': (['-Os'], [],        [],          55), # noqa
-    'Oz': (['-Oz'], [],        [],          55), # noqa
-  })
-  @no_wasm_backend()
-  def test_metadce_minimal_fastcomp(self, *args):
-    self.run_metadce_test('minimal.c', *args)
-
-  @parameterized({
     'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
     # exceptions increases code size significantly
     'except':   (['-O2', '-fexceptions'],    [], ['waka'], 279827), # noqa
@@ -7091,14 +7044,6 @@ int main() {
     # pulled in here, and small LLVM backend changes can affect their size and
     # lead to different inlining decisions which add or remove a function
     self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
-
-  @parameterized({
-    'normal': (['-O2'], ['abort'], ['waka'], 186423),
-  })
-  @no_wasm_backend()
-  def test_metadce_cxx_fastcomp(self, *args):
-    # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
     'O0': ([],      [], ['waka'], 22849), # noqa
@@ -7117,24 +7062,6 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10652, True, True, True, False), # noqa
   })
   def test_metadce_hello(self, *args):
-    self.run_metadce_test('hello_world.cpp', *args)
-
-  @parameterized({
-    'O0': ([],      ['abort'], ['waka'], 42701), # noqa
-    'O1': (['-O1'], ['abort'], ['waka'], 13199), # noqa
-    'O2': (['-O2'], ['abort'], ['waka'], 12425), # noqa
-    'O3': (['-O3'], [],        [],        2045), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'], [],        [],        2064), # noqa
-    'Oz': (['-Oz'], [],        [],        2045), # noqa
-    # finally, check what happens when we export nothing. wasm should be almost empty
-    'export_nothing':
-           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],   [], [],     8), # noqa; totally empty!
-    # we don't metadce with linkable code! other modules may want stuff
-    # don't compare the # of functions in a main module, which changes a lot
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [], 10017), # noqa
-  })
-  @no_wasm_backend()
-  def test_metadce_hello_fastcomp(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
