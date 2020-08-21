@@ -17,7 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Allow polymorphic types to be used without RTTI when using embind.
+- Allow polymorphic types to be used without RTTI when using embind. (#10914)
+
+2.0.1: 08/21/2020
+-----------------
+- Change the default value of `STACK_OVERFLOW_CHECK` in builds with `ASSERTIONS`
+  from 2 to 1. This means that plain debug builds (`-O0`, which enables
+  `ASSERTIONS`) do not have the most expensive stack checks on by default. You
+  can still add them with `-s STACK_OVERFLOW_CHECK=2`.
 - Remove the `RESERVED_FUNCTION_POINTERS` setting, which is no longer needed as
   we have `ALLOW_TABLE_GROWTH`. The old option allowed a fixed number of
   functions to be added to the table, while the new one allows an unlimited

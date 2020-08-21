@@ -963,8 +963,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for s in settings_changes:
       key, value = s.split('=', 1)
       settings_key_changes.add(key)
-      if key == 'WASM_BACKEND':
-        exit_with_error('do not set -s WASM_BACKEND, this is detected based on the llvm version in use')
 
     # Find input files
 
@@ -1236,10 +1234,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Note the exports the user requested
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
-    # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
-    # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
+    # -s ASSERTIONS=1 implies basic stack overflow checks.
     if shared.Settings.ASSERTIONS:
-      shared.Settings.STACK_OVERFLOW_CHECK = 2
+      shared.Settings.STACK_OVERFLOW_CHECK = max(1, shared.Settings.STACK_OVERFLOW_CHECK)
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
       # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function

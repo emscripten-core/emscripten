@@ -1374,7 +1374,8 @@ class WebAssembly(object):
   @staticmethod
   def add_dylink_section(wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
-    assert not Settings.WASM_BACKEND
+    # TODO: use this in the wasm backend
+    assert False
     mem_align = Settings.MAX_GLOBAL_ALIGN
     mem_size = Settings.STATIC_BUMP
     table_size = Settings.WASM_TABLE_SIZE
