@@ -7880,7 +7880,6 @@ int main() {
     with open('a.out.wasm', 'rb') as f:
       self.assertIn(b'somewhere.com/hosted.wasm', f.read())
 
-
   @parameterized({
     'O0': (True, ['-O0']), # unoptimized builds try not to modify the LLVM wasm.
     'O1': (False, ['-O1']), # optimized builds strip the producer's section
