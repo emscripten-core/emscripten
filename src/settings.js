@@ -1145,7 +1145,7 @@ var WASM_ASYNC_COMPILATION = 1;
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need
 // to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
 // an i64 is used.
-var WASM_BIGINT = 0;
+var WASM_BIGINT = 1;
 
 // WebAssembly defines a "producers section" which compilers and tools can
 // annotate themselves in. Emscripten does not emit this by default, as it
