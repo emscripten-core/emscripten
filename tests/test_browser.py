@@ -4,7 +4,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import argparse
 import json
 import multiprocessing
@@ -14,11 +13,12 @@ import re
 import shlex
 import shutil
 import subprocess
-import sys
 import time
 import unittest
 import webbrowser
 import zlib
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.request import urlopen
 
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
@@ -26,17 +26,6 @@ from tools import building
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
 from tools.shared import try_delete
-
-try:
-  from http.server import BaseHTTPRequestHandler, HTTPServer
-except ImportError:
-  # Python 2 compatibility
-  from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-
-if sys.version_info.major == 2:
-  from urllib import urlopen
-else:
-  from urllib.request import urlopen
 
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):

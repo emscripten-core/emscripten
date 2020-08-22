@@ -7,7 +7,6 @@
 """Usage: creduce ./creduce_tester.py newfail1.c
 """
 
-from __future__ import print_function
 import os
 import sys
 from subprocess import Popen, PIPE
