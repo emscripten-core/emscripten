@@ -595,7 +595,7 @@ def backend_binaryen_passes():
   #       fully handled in DWARF updating yet
   if shared.Settings.DEBUG_LEVEL < 3:
     passes += ['--inline-main']
-  if not shared.Settings.EXIT_RUNTIME:
+  if shared.Settings.OPT_LEVEL > 0 and not shared.Settings.EXIT_RUNTIME:
     passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
     passes += [building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
