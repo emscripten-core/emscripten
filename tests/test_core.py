@@ -1856,8 +1856,8 @@ int main() {
       self.skipTest('wasm requires a proper asm module')
 
     self.emcc_args.append('-Wno-almost-asm')
-    test_path = path_from_root('tests', 'core', 'test_inlinejs3.c')
-    src, output = (test_path + s for s in ('.c', '.out'))
+    src = path_from_root('tests', 'core', 'test_inlinejs3.c')
+    output = shared.unsuffixed(src) + '.out'
 
     self.do_run_in_out_file_test('tests', 'core', 'test_inlinejs3.c')
 
