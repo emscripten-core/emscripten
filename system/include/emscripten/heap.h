@@ -9,7 +9,8 @@
 
 #include <emscripten/emscripten.h>
 
-#define EMSCRIPTEN_PAGE_SIZE 65536
+#define WASM_PAGE_SIZE 65536
+#define EMSCRIPTEN_PAGE_SIZE WASM_PAGE_SIZE
 
 #ifdef __cplusplus
 extern "C" {
