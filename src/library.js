@@ -538,8 +538,6 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ getMemoryPageSize() }}};
-
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
     // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
@@ -547,7 +545,7 @@ LibraryManager.library = {
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
     // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
-    // 4. Max size for the heap is capped at 2048MB-PAGE_MULTIPLE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+    // 4. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
     // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
     //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
@@ -556,7 +554,7 @@ LibraryManager.library = {
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #else
-    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - PAGE_MULTIPLE;
+    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - {{{ WASM_PAGE_SIZE }}};
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
@@ -600,7 +598,7 @@ LibraryManager.library = {
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
 
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
