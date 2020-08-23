@@ -2015,10 +2015,27 @@ int f() {
     self.assertLess(line_size, full_size)
 
     def compile_to_release_executable(compile_args):
-      return compile_to_executable(compile_args, [])
+      return compile_to_executable(compile_args, ['-O1'])
 
     no_size, line_size, full_size = test(compile_to_release_executable)
     self.assertEqual(no_size, line_size)
+    self.assertEqual(line_size, full_size)
+
+    # "-O0 executable" means compiling without optimizations but *also* without
+    # -g (so, not a true debug build). the results here may change over time,
+    # since we are telling emcc both to try to do as little as possible during
+    # link (-O0), but also that debug info is not needed (no -g). if we end up
+    # doing post-link changes then we will strip the debug info, but if not then
+    # we don't.
+    def compile_to_O0_executable(compile_args):
+      return compile_to_executable(compile_args, [])
+
+    no_size, line_size, full_size = test(compile_to_O0_executable)
+    # the difference between these two is due to the producer's section which
+    # LLVM emits, and which we do not strip as this is not a release build.
+    # the specific difference is that LLVM emits language info (C_plus_plus_14)
+    # when emitting debug info, but not otherwise.
+    self.assertLess(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   def test_dwarf(self):
@@ -7862,13 +7879,23 @@ int main() {
     with open('a.out.wasm', 'rb') as f:
       self.assertIn(b'somewhere.com/hosted.wasm', f.read())
 
-  def test_wasm_producers_section(self):
-    # no producers section by default
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
+  @parameterized({
+    'O0': (True, ['-O0']), # unoptimized builds try not to modify the LLVM wasm.
+    'O1': (False, ['-O1']), # optimized builds strip the producer's section
+    'O2': (False, ['-O2']), # by default.
+  })
+  def test_wasm_producers_section(self, expect_producers_by_default, args):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.wasm', 'rb') as f:
-      self.assertNotIn('clang', str(f.read()))
+      data = f.read()
+    if expect_producers_by_default:
+      self.assertIn('clang', str(data))
+      return
+    # if there is no producers section expected by default, verify that, and
+    # see that the flag works to add it.
+    self.assertNotIn('clang', str(data))
     size = os.path.getsize('a.out.wasm')
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'] + args)
     with open('a.out.wasm', 'rb') as f:
       self.assertIn('clang', str(f.read()))
     size_with_section = os.path.getsize('a.out.wasm')
