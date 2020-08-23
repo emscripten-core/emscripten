@@ -1304,7 +1304,7 @@ var LibraryBrowser = {
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
   emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
     var browserIterationFunc = function() { {{{ makeDynCall('vi') }}}(func, arg); };
-    setMainLoop(func, fps, simulateInfiniteLoop, arg);
+    setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
   },
 
   // Runs natively in pthread, no __proxy needed.
