@@ -5104,6 +5104,7 @@ main( int argv, char ** argc ) {
   def test_fcntl_open(self):
     self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl_open.c')
 
+  @also_with_wasm_bigint
   def test_fcntl_misc(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl_misc.c')
