@@ -296,7 +296,6 @@ function getMemory(size) {
 
 var PAGE_SIZE = {{{ POSIX_PAGE_SIZE }}};
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
-var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
 
 function alignUp(x, multiple) {
   if (x % multiple > 0) {

@@ -3,22 +3,15 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import multiprocessing
 import os
-import subprocess
 import sys
 import unittest
 import tempfile
 import time
+import queue
 
 from tools.tempfiles import try_delete
-
-try:
-  import queue
-except ImportError:
-  # Python 2 compatibility
-  import Queue as queue
 
 
 def g_testing_thread(work_queue, result_queue, temp_dir):
@@ -166,11 +159,6 @@ class BufferedTestBase(object):
     self.test = test
     if err:
       exctype, value, tb = err
-      if exctype == subprocess.CalledProcessError:
-        # multiprocess.Queue can't serialize a subprocess.CalledProcessError.
-        # This is a bug in python 2.7 (https://bugs.python.org/issue9400)
-        exctype = Exception
-        value = Exception(str(value))
       self.error = exctype, value, FakeTraceback(tb)
 
   def updateResult(self, result):

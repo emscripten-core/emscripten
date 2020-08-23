@@ -1063,10 +1063,6 @@ function exportedAsmFunc(func) {
   }
 }
 
-function makeDynCall(sig) {
-  return exportedAsmFunc('dynCall_' + sig);
-}
-
 var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
@@ -1463,6 +1459,8 @@ function asmFFICoercion(value, type) {
 }
 
 function makeDynCall(sig) {
+  // TODO(sbc): Should this be: exportedAsmFunc('dynCall_' + sig);
+  // See https://github.com/emscripten-core/emscripten/pull/11991;
   return 'dynCall_' + sig;
 }
 
@@ -1546,11 +1544,6 @@ function makeRetainedCompilerSettings() {
 // In wasm, the heap size must be a multiple of 64KB.
 // In asm.js, it must be a multiple of 16MB.
 var WASM_PAGE_SIZE = 65536;
-var ASMJS_PAGE_SIZE = 16777216;
-
-function getMemoryPageSize() {
-  return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
-}
 
 // Page size reported by some POSIX calls, mostly filesystem. This does not
 // depend on the memory page size which differs between wasm and asm.js, and

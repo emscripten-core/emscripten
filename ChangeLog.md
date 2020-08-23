@@ -28,6 +28,16 @@ Current Trunk
   even in an `-O0` build without `-g` we would strip it. This was not documented
   behavior, and has no effect on program behavior, but may be noticeable
   if you inspect a build output with `-O0`.
+- Do not remove `__original_main` using `--inline-main`. We used to do this
+  so that it didn't show up in stack traces (which could be confusing because
+  it is added by the linker - it's not in the source code). But this has had
+  several downsides, so we are stopping that now. This does not affect program
+  behavior, unless you look at the wasm internals. However, one noticeable
+  effect is that if you use `ASYNCIFY_ADD` or `ASYNCIFY_ONLY` then you may need
+  to add `__original_main` to there (since you are doing manual fine-tuning of
+  the list of functions, which depends on the wasm's internals). Note that this
+  should not matter in `-O2+` anyhow as normal inlining generally removes
+  `__original_main`.
 
 2.0.1: 08/21/2020
 -----------------
