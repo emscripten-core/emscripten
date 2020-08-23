@@ -51,7 +51,7 @@ emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 
 
-class temp_directory(object):
+class temp_directory():
   def __init__(self, dirname):
     self.dir = dirname
 

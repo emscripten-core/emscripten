@@ -49,7 +49,7 @@ PROFILING = 0
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
 
-class Benchmarker(object):
+class Benchmarker():
   # called when we init the object, which is during startup, even if we are
   # not running benchmarks
   def __init__(self, name):
