@@ -17,7 +17,13 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
 
-from __future__ import print_function
+import sys
+
+# The emscripten test suite explcitly requires python3.6 or above.
+if sys.version_info < (3, 6):
+  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
+  sys.exit(1)
+
 from subprocess import PIPE, STDOUT
 from functools import wraps
 import argparse
@@ -81,7 +87,7 @@ def delete_contents(pathname):
 
 sys.path.append(path_from_root('third_party/websockify'))
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger("runner")
 
 # User can specify an environment variable EMTEST_BROWSER to force the browser
 # test suite to run using another browser command line than the default system
@@ -357,14 +363,14 @@ class RunnerMeta(type):
 
     # Add suffix to the function name so that it displays correctly.
     if suffix:
-      resulting_test.__name__ = '%s_%s' % (name, suffix)
+      resulting_test.__name__ = f'{name}_{suffix}'
     else:
       resulting_test.__name__ = name
 
     # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
     # We add the suffix to it as well.
     if hasattr(func, '__qualname__'):
-      resulting_test.__qualname__ = '%s_%s' % (func.__qualname__, suffix)
+      resulting_test.__qualname__ = f'{func.__qualname__}_{suffix}'
 
     return resulting_test.__name__, resulting_test
 
@@ -657,7 +663,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     stderr = self.in_dir('stderr')
     error = None
     if EMTEST_VERBOSE:
-      print("Running '%s' under '%s'" % (filename, engine))
+      print(f"Running '{filename}' under '{engine}'")
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=open(stdout, 'w'),
@@ -814,7 +820,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         generated_libs.append(bc_file)
       return generated_libs
 
-    print('<building and saving %s into cache> ' % cache_name, file=sys.stderr)
+    print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
@@ -1062,15 +1068,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = path_from_root(*path)
-
-    # TODO(sbc): Have tests explciictly pass filename
-    suffix = shared.suffix(srcfile)
-    if not suffix:
-      if os.path.exists(srcfile + '.c'):
-        srcfile = srcfile + '.c'
-      else:
-        srcfile = srcfile + '.cpp'
-
     outfile = shared.unsuffixed(srcfile) + '.out'
     expected = open(outfile).read()
     self._build_and_run(srcfile, expected, **kwargs)
@@ -1082,7 +1079,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False):
-    logger.debug('_build_and_run: %s' % filename)
+    logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename

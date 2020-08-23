@@ -6,7 +6,6 @@
 
 # noqa: E241
 
-from __future__ import print_function
 from functools import wraps
 import glob
 import gzip
@@ -9644,4 +9643,4 @@ int main () {
     # error
     self.set_setting('STANDALONE_WASM')
     self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')

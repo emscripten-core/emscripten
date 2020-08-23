@@ -119,7 +119,7 @@ var buffer = new ArrayBuffer({{{ INITIAL_MEMORY }}});
 #endif
 
 #if ASSERTIONS
-var WASM_PAGE_SIZE = 65536;
+var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
