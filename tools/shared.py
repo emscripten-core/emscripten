@@ -233,6 +233,7 @@ def run_js_tool(filename, jsargs=[], *args, **kw):
   implemented in javascript.
   """
   command = NODE_JS + [filename] + jsargs
+  print_compiler_stage(command)
   return check_call(command, *args, **kw).stdout
 
 
