@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import glob
 import hashlib
 import json
@@ -16,7 +15,6 @@ import time
 import unittest
 from functools import wraps
 from textwrap import dedent
-
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
