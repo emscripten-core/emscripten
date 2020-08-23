@@ -20,10 +20,10 @@ Current Trunk
 - Only strip the LLVM producer's section in release builds. In `-O0` builds, we
   try to leave the wasm from LLVM unmodified as much as possible, so if it
   emitted the producers section, it will be there. Normally that only matters
-  in release builds, which is not changing here; if you want to not have a
-  producer's section in debug builds, you can either tell LLVM to not emit it in
-  the first place, or you can run `wasm-opt --strip-producers` (which is what
-  Emscripten does in release builds).
+  in release builds, which is not changing here. If you want to not have a
+  producer's section in debug builds, you can remove it a tool like
+  `wasm-opt --strip-producers` (which is what Emscripten still does in release
+  builds, as always) or use `llvm-objcopy`.
 - Do not remove `__original_main` using `--inline-main`. We used to do this
   so that it didn't show up in stack traces (which could be confusing because
   it is added by the linker - it's not in the source code). But this has had
