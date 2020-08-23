@@ -589,12 +589,6 @@ def backend_binaryen_passes():
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
   passes += ['--post-emscripten']
-  # always inline __original_main into main, as otherwise it makes debugging confusing,
-  # and doing so is never bad for code size
-  # FIXME however, don't do it with DWARF for now, as inlining is not
-  #       fully handled in DWARF updating yet
-  if shared.Settings.DEBUG_LEVEL < 3:
-    passes += ['--inline-main']
   if not shared.Settings.EXIT_RUNTIME:
     passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
@@ -603,7 +597,9 @@ def backend_binaryen_passes():
     # even if not optimizing, make an effort to remove all unused imports and
     # exports, to make the wasm as standalone as possible
     passes += ['--remove-unused-module-elements']
-  if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
+  # when optimizing, use the fact that low memory is never used (1024 is a
+  # hardcoded value in the binaryen pass)
+  if shared.Settings.OPT_LEVEL > 0 and shared.Settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
   if shared.Settings.DEBUG_LEVEL < 3:
     passes += ['--strip-debug']
