@@ -550,11 +550,6 @@ function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
 
-/** @param {number|boolean=} ignore */
-{{{ unSign }}}
-/** @param {number|boolean=} ignore */
-{{{ reSign }}}
-
 #include "runtime_math.js"
 
 // A counter of dependencies for calling run(). If we need to

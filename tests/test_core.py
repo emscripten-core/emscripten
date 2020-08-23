@@ -6142,27 +6142,24 @@ return malloc(size);
   @needs_make('depends on freetype')
   @is_slow_test
   def test_poppler(self):
-    def test():
-      pdf_data = open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()
-      create_test_file('paper.pdf.js', str(list(bytearray(pdf_data))))
+    pdf_data = open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()
+    create_test_file('paper.pdf.js', str(list(bytearray(pdf_data))))
 
-      create_test_file('pre.js', '''
-      Module.preRun = function() {
-        FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
-      };
-      Module.postRun = function() {
-        var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
-        out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
-      };
-      ''')
-      self.emcc_args += ['--pre-js', 'pre.js']
+    create_test_file('pre.js', '''
+    Module.preRun = function() {
+      FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
+    };
+    Module.postRun = function() {
+      var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
+      out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
+    };
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$unSign]']
 
-      ppm_data = str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read())))
-      self.do_run('', ppm_data.replace(' ', ''),
-                  libraries=self.get_poppler_library(),
-                  args=['-scale-to', '512', 'paper.pdf', 'filename'])
-
-    test()
+    ppm_data = str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read())))
+    self.do_run('', ppm_data.replace(' ', ''),
+                libraries=self.get_poppler_library(),
+                args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
   @needs_make('make')
   @is_slow_test

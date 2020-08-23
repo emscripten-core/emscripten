@@ -232,11 +232,6 @@ var runtimeInitialized = false;
 var runtimeExited = false;
 #endif
 
-/** @param {number|boolean=} ignore */
-{{{ unSign }}}
-/** @param {number|boolean=} ignore */
-{{{ reSign }}}
-
 #include "runtime_math.js"
 
 var memoryInitializer = null;
