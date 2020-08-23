@@ -7879,13 +7879,23 @@ int main() {
     with open('a.out.wasm', 'rb') as f:
       self.assertIn(b'somewhere.com/hosted.wasm', f.read())
 
-  def test_wasm_producers_section(self):
-    # no producers section by default
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
+  @parameterized({
+    'O0': (True, ['-O0']), # unoptimized builds try not to modify the LLVM wasm.
+    'O1': (False, ['-O1']), # optimized builds strip the producer's section
+    'O2': (False, ['-O2']), # by default.
+  })
+  def test_wasm_producers_section(self, expect_producers_by_default, args):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.wasm', 'rb') as f:
-      self.assertNotIn('clang', str(f.read()))
+      data = f.read()
+    if expect_producers_by_default:
+      self.assertIn('clang', str(data))
+      return
+    # if there is no producers section expected by default, verify that, and
+    # see that the flag works to add it.
+    self.assertNotIn('clang', str(data))
     size = os.path.getsize('a.out.wasm')
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'] + args)
     with open('a.out.wasm', 'rb') as f:
       self.assertIn('clang', str(f.read()))
     size_with_section = os.path.getsize('a.out.wasm')

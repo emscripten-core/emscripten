@@ -589,7 +589,7 @@ def backend_binaryen_passes():
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
   passes += ['--post-emscripten']
-  if not shared.Settings.EXIT_RUNTIME:
+  if shared.Settings.OPT_LEVEL > 0 and not shared.Settings.EXIT_RUNTIME:
     passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
     passes += [building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]

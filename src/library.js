@@ -709,12 +709,6 @@ LibraryManager.library = {
   atexit__proxy: 'sync',
   atexit__sig: 'iii',
   atexit: function(func, arg) {
-#if ASSERTIONS
-#if EXIT_RUNTIME == 0
-    warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
-#endif
-#endif
-
 #if EXIT_RUNTIME
     __ATEXIT__.unshift({ func: func, arg: arg });
 #endif
