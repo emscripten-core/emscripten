@@ -589,12 +589,6 @@ def backend_binaryen_passes():
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
   passes += ['--post-emscripten']
-  # always inline __original_main into main, as otherwise it makes debugging confusing,
-  # and doing so is never bad for code size
-  # FIXME however, don't do it with DWARF for now, as inlining is not
-  #       fully handled in DWARF updating yet
-  if shared.Settings.DEBUG_LEVEL < 3:
-    passes += ['--inline-main']
   if not shared.Settings.EXIT_RUNTIME:
     passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
