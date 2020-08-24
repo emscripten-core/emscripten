@@ -106,7 +106,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return result
 
 
-class BufferedParallelTestResult(object):
+class BufferedParallelTestResult():
   """A picklable struct used to communicate test results across processes
 
   Fulfills the interface for unittest.TestResult
@@ -153,7 +153,7 @@ class BufferedParallelTestResult(object):
     self.buffered_result = BufferedTestError(test, err)
 
 
-class BufferedTestBase(object):
+class BufferedTestBase():
   """Abstract class that holds test result data, split by type of result."""
   def __init__(self, test, err=None):
     self.test = test
@@ -189,7 +189,7 @@ class BufferedTestError(BufferedTestBase):
     result.addError(self.test, self.error)
 
 
-class FakeTraceback(object):
+class FakeTraceback():
   """A fake version of a traceback object that is picklable across processes.
 
   Python's traceback objects contain hidden stack information that isn't able
@@ -207,14 +207,14 @@ class FakeTraceback(object):
     self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
 
 
-class FakeFrame(object):
+class FakeFrame():
   def __init__(self, f):
     self.f_code = FakeCode(f.f_code)
     # f.f_globals is not picklable, not used in stack traces, and needs to be iterable
     self.f_globals = []
 
 
-class FakeCode(object):
+class FakeCode():
   def __init__(self, co):
     self.co_filename = co.co_filename
     self.co_name = co.co_name
