@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- `--no-entry` is now required in `STANDALONE_WASM` mode when building a reactor
+  (application without a main function).  Previouly exporting a list of
+  functions that didn't include `_main` would imply this.  Now the list of
+  `EXPORTED_FUNCTIONS` is not relevant in the command/reactor selection.
 - Allow polymorphic types to be used without RTTI when using embind. (#10914)
 - Only strip the LLVM producer's section in release builds. In `-O0` builds, we
   try to leave the wasm from LLVM unmodified as much as possible, so if it

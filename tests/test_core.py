@@ -8292,12 +8292,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
       err = self.expect_fail([EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
       self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
 
+      # In non-standalone mode exporting an empty list of functions signal that we don't
+      # have a main and so should not generate an error.
+      self.set_setting('EXPORTED_FUNCTIONS', [])
+      self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
+      self.clear_setting('EXPORTED_FUNCTIONS')
+
     # If we pass --no-entry or set EXPORTED_FUNCTIONS to empty should never see any errors
     self.emcc_args.append('--no-entry')
-    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
-
-    self.emcc_args.remove('--no-entry')
-    self.set_setting('EXPORTED_FUNCTIONS', [])
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
 
   def test_export_start(self):
