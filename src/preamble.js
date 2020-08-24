@@ -373,7 +373,7 @@ function dynamicAlloc(size) {
   return ret;
 }
 
-#if '_sbrk' in IMPLEMENTED_FUNCTIONS
+#if '_sbrk' in IMPLEMENTED_FUNCTIONS // no, needs to be EXPORTED..?
 {{{
 addAtInit(`
   if (DYNAMICTOP != DYNAMIC_BASE) {
