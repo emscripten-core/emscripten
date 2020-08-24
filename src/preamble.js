@@ -189,8 +189,7 @@ function cwrap(ident, returnType, argTypes, opts) {
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
-var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
-var ALLOC_NONE = 3; // Do not allocate
+var ALLOC_NONE = 2; // Do not allocate
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -228,7 +227,7 @@ function allocate(slab, types, allocator, ptr) {
 #else
     typeof stackAlloc !== 'undefined' ? stackAlloc : null,
 #endif
-    dynamicAlloc][allocator](Math.max(size, singleType ? 1 : types.length));
+    ][allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -284,6 +283,7 @@ function allocate(slab, types, allocator, ptr) {
 }
 
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
+// TODO: remove this
 function getMemory(size) {
   if (!runtimeInitialized) return dynamicAlloc(size);
   return _malloc(size);
@@ -347,6 +347,42 @@ var STATIC_BASE = {{{ GLOBAL_BASE }}},
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
+
+#if FILESYSTEM || RELOCATABLE
+// We support some amount of allocation during startup, in only two cases:
+// dynamic linking, which needs to allocate memory for the dynamic library
+// during startup (before the main program initialized), and when using the
+// filesystem, which may run file packager code to preload files during
+// startup. TODO: remove even those
+
+// To support such allocations during startup, track them on DYNAMICTOP and then
+// apply them to sbrk() as the program initializes itself and compiled code
+// is ready to run.
+var DYNAMICTOP = DYNAMIC_BASE;
+
+function dynamicAlloc(size) {
+#if USE_PTHREADS
+  assert(!ENVIRONMENT_IS_PTHREAD); // this function is not thread-safe
+#endif
+  var ret = DYNAMICTOP;
+  var end = (ret + size + 15) & -16;
+#if ASSERTIONS
+  assert(end <= HEAP8.length, 'failure to dynamicAlloc - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
+#endif
+  DYNAMICTOP = end;
+  return ret;
+}
+
+#if '_sbrk' in IMPLEMENTED_FUNCTIONS
+{{{
+addAtInit(`
+  if (DYNAMICTOP != DYNAMIC_BASE) {
+    _sbrk(DYNAMICTOP - _sbrk(0));
+  }
+`), ''
+}}}
+#endif // sbrk
+#endif // FILESYSTEM || RELOCATABLE
 
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {

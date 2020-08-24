@@ -523,7 +523,6 @@ function exportRuntime() {
   var runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
-    'ALLOC_DYNAMIC',
     'ALLOC_NONE',
   ];
   if (ASSERTIONS) {

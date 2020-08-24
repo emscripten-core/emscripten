@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`.
 - Allow polymorphic types to be used without RTTI when using embind. (#10914)
 - Only strip the LLVM producer's section in release builds. In `-O0` builds, we
   try to leave the wasm from LLVM unmodified as much as possible, so if it
