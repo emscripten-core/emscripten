@@ -194,6 +194,21 @@ var wakaUnknownBefore;
  */
 var MozBlobBuilder;
 
+/**
+ * Some JS libraries make conditional calls to dynCall_xxx function when
+ * callbacks are registered.  For example the exit runtime handler makes
+ * conditional calles to dynCall_v and dynCall_vi, but not all wasm binaryies
+ * will contain these.
+ */
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var dynCall_v;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var dynCall_vi;
+
 // Module loaders externs, for AMD etc.
 
 /**
