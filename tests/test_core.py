@@ -6988,6 +6988,10 @@ someweirdtext
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_run(src, '418\ndotest returned: 42\n')
 
+  def test_embind_polymorphic_class_no_rtti(self):
+    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    self.do_run_in_out_file_test('tests', 'core', 'test_embind_polymorphic_class_no_rtti.cpp')
+
   def test_embind_no_rtti_followed_by_rtti(self):
     src = r'''
       #include <emscripten.h>
