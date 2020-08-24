@@ -7060,7 +7060,7 @@ someweirdtext
         f.write('\n\n')
 
     output = path_from_root('tests', 'webidl', "output_%s.txt" % mode)
-    self.do_run_from_file(path_from_root('tests', 'webidl', 'test.cpp') , output, post_build=post)
+    self.do_run_from_file(path_from_root('tests', 'webidl', 'test.cpp'), output, post_build=post)
 
   ### Tests for tools
 
