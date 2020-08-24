@@ -1560,7 +1560,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         ]
 
       shared.Settings.EXPORTED_RUNTIME_METHODS += [
-        'getMemory',
         'addRunDependency',
         'removeRunDependency',
       ]

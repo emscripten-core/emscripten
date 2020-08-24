@@ -282,13 +282,6 @@ function allocate(slab, types, allocator, ptr) {
   return ret;
 }
 
-// Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
-// TODO: remove this
-function getMemory(size) {
-  if (!runtimeInitialized) return dynamicAlloc(size);
-  return _malloc(size);
-}
-
 #include "runtime_strings.js"
 #include "runtime_strings_extra.js"
 
@@ -348,12 +341,16 @@ assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
-#if FILESYSTEM || RELOCATABLE
-// We support some amount of allocation during startup, in only two cases:
+#if RELOCATABLE
+// We support some amount of allocation during startup in the case of
 // dynamic linking, which needs to allocate memory for the dynamic library
-// during startup (before the main program initialized), and when using the
-// filesystem, which may run file packager code to preload files during
-// startup. TODO: remove even those
+// during startup (before the main program initialized). TODO: remove
+
+// Allocate memory no even if malloc isn't ready yet.
+function getMemory(size) {
+  if (!runtimeInitialized) return dynamicAlloc(size);
+  return _malloc(size);
+}
 
 // To support such allocations during startup, track them on DYNAMICTOP and then
 // apply them to sbrk() as the program initializes itself and compiled code
@@ -382,7 +379,7 @@ addAtInit(`
 `), ''
 }}}
 #endif // sbrk
-#endif // FILESYSTEM || RELOCATABLE
+#endif // RELOCATABLE
 
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
