@@ -7043,9 +7043,6 @@ someweirdtext
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js']
     if allow_memory_growth:
       self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-Wno-almost-asm']
-    shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), 'test.h')
-    shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), 'test.cpp')
-    src = open('test.cpp').read()
 
     def post(filename):
       with open(filename, 'a') as f:
@@ -7062,8 +7059,8 @@ someweirdtext
         f.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
         f.write('\n\n')
 
-    output = open(path_from_root('tests', 'webidl', "output_%s.txt" % mode)).read()
-    self.do_run(src, output, post_build=post)
+    output = path_from_root('tests', 'webidl', "output_%s.txt" % mode)
+    self.do_run_from_file(path_from_root('tests', 'webidl', 'test.cpp') , output, post_build=post)
 
   ### Tests for tools
 
@@ -7336,26 +7333,7 @@ someweirdtext
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
     self.emcc_args += ['-DRUN_FROM_JS_SHELL']
-    self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), '''test print 123
-
-12.345679 9.123457 1.353180
-
-12345678 9123456 1353179
-
-12.345679 9123456 1353179
-
-12345678 9.123457 1353179
-
-12345678 9123456 1.353180
-
-12345678 9.123457 1.353180
-
-12.345679 9123456 1.353180
-
-12.345679 9.123457 1353179
-
-Success!
-''')
+    self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log.cpp')
     # test closure compiler as well
     if self.run_name == 'asm2':
       print('closure')
