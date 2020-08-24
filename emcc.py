@@ -1282,6 +1282,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
+      # allocating space for dynamic libraries requires sbrk to be called from
+      # JS during startup, see allocDynamic.
+      shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
       if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
     elif shared.Settings.SIDE_MODULE:
