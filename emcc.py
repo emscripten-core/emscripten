@@ -243,7 +243,6 @@ class EmccOptions(object):
     self.memory_profiler = False
     self.memory_init_file = None
     self.use_preload_cache = False
-    self.no_heap_copy = False
     self.use_preload_plugins = False
     self.proxy_to_worker = False
     self.default_object_extension = '.o'
@@ -2178,13 +2177,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
       if len(options.preload_files) or len(options.embed_files):
-
-        # Also, MEMFS is not aware of heap resizing feature in wasm, so if MEMFS and memory growth are used together, force
-        # no_heap_copy to be enabled.
-        if shared.Settings.ALLOW_MEMORY_GROWTH and not options.no_heap_copy:
-          logger.info('Enabling --no-heap-copy because -s ALLOW_MEMORY_GROWTH=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
-          options.no_heap_copy = True
-
         logger.debug('setting up files')
         file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
         if len(options.preload_files):
@@ -2198,8 +2190,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args += options.exclude_files
         if options.use_preload_cache:
           file_args.append('--use-preload-cache')
-        if options.no_heap_copy:
-          file_args.append('--no-heap-copy')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
         if options.use_preload_plugins:
@@ -2503,7 +2493,7 @@ def parse_args(newargs):
       options.use_preload_cache = True
       newargs[i] = ''
     elif newargs[i].startswith('--no-heap-copy'):
-      options.no_heap_copy = True
+      diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       newargs[i] = ''
     elif newargs[i].startswith('--use-preload-plugins'):
       options.use_preload_plugins = True

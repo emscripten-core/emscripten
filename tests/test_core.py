@@ -5841,7 +5841,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_mmap.c')
 
   def test_mmap_file(self):
-    for extra_args in [[], ['--no-heap-copy']]:
+    for extra_args in [[]]:
       self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
       x = 'data from the file........'
       s = ''
