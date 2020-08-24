@@ -24,6 +24,10 @@ Current Trunk
   producer's section in debug builds, you can remove it a tool like
   `wasm-opt --strip-producers` (which is what Emscripten still does in release
   builds, as always) or use `llvm-objcopy`.
+- Only strip debug info in release builds + when `-g` is not present. Previously
+  even in an `-O0` build without `-g` we would strip it. This was not documented
+  behavior, and has no effect on program behavior, but may be noticeable
+  if you inspect a build output with `-O0`.
 - Do not remove `__original_main` using `--inline-main`. We used to do this
   so that it didn't show up in stack traces (which could be confusing because
   it is added by the linker - it's not in the source code). But this has had

@@ -601,9 +601,9 @@ def backend_binaryen_passes():
   # hardcoded value in the binaryen pass)
   if shared.Settings.OPT_LEVEL > 0 and shared.Settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
-  if shared.Settings.DEBUG_LEVEL < 3:
-    passes += ['--strip-debug']
   if shared.Settings.OPT_LEVEL > 0:
+    if shared.Settings.DEBUG_LEVEL < 3:
+      passes += ['--strip-debug']
     if not shared.Settings.EMIT_PRODUCERS_SECTION:
       passes += ['--strip-producers']
   if shared.Settings.AUTODEBUG:
