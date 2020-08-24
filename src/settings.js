@@ -1148,13 +1148,16 @@ var WASM_ASYNC_COMPILATION = 1;
 var WASM_BIGINT = 0;
 
 // WebAssembly defines a "producers section" which compilers and tools can
-// annotate themselves in. Emscripten does not emit this by default, as it
-// increases code size, and some users may not want information about their tools
-// to be included in their builds for privacy or security reasons, see
+// annotate themselves in, and LLVM emits this by default. In release builds,
+// Emscripten will strip that out so that it is *not* emitted because it
+// increases code size, and also some users may not want information
+// about their tools to be included in their builds for privacy or security
+// reasons, see
 // https://github.com/WebAssembly/tool-conventions/issues/93.
-// TODO: currently this flag just controls whether we run the binaryen pass
-//       to strip it out from the wasm (where the LLVM wasm backend may have
-//       created it)
+// (In debug builds (-O0) we leave the wasm file as it is from LLVM, in which
+// case it may contain this section, if you didn't tell LLVM to not emit it. You
+// can also run wasm-opt --strip-producers manually, which is what Emscripten
+// does in release builds for you automatically.)
 var EMIT_PRODUCERS_SECTION = 0;
 
 // If set then generated WASM files will contain a custom

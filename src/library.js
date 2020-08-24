@@ -538,8 +538,6 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ getMemoryPageSize() }}};
-
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
     // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
@@ -547,7 +545,7 @@ LibraryManager.library = {
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
     // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
-    // 4. Max size for the heap is capped at 2048MB-PAGE_MULTIPLE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+    // 4. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
     // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
     //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
@@ -556,7 +554,7 @@ LibraryManager.library = {
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #else
-    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - PAGE_MULTIPLE;
+    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - {{{ WASM_PAGE_SIZE }}};
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
@@ -600,7 +598,7 @@ LibraryManager.library = {
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
 
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
@@ -711,12 +709,6 @@ LibraryManager.library = {
   atexit__proxy: 'sync',
   atexit__sig: 'iii',
   atexit: function(func, arg) {
-#if ASSERTIONS
-#if EXIT_RUNTIME == 0
-    warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
-#endif
-#endif
-
 #if EXIT_RUNTIME
     __ATEXIT__.unshift({ func: func, arg: arg });
 #endif
@@ -794,180 +786,10 @@ LibraryManager.library = {
   },
 #endif
 
-  memcpy__sig: 'iiii',
-  memmove__sig: 'iiii',
-  memset__sig: 'iiii',
-
-#if DECLARE_ASM_MODULE_EXPORTS
-  llvm_memcpy_i32: 'memcpy',
-  llvm_memcpy_i64: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
-
-  llvm_memmove_i32: 'memmove',
-  llvm_memmove_i64: 'memmove',
-  llvm_memmove_p0i8_p0i8_i32: 'memmove',
-  llvm_memmove_p0i8_p0i8_i64: 'memmove',
-
-  llvm_memset_i32: 'memset',
-  llvm_memset_p0i8_i32: 'memset',
-  llvm_memset_p0i8_i64: 'memset',
-#else
-  // When DECLARE_ASM_MODULE_EXPORTS==0, cannot alias asm.js functions from non-asm.js
-  // functions, so use an intermediate function as a pass-through.
-  _memcpy_js__deps: ['memcpy'],
-  _memcpy_js__sig: 'iiii',
-  _memcpy_js: function(dst, src, num) {
-    return _memcpy(dst, src, num);
-  },
-
-  _memmove_js__deps: ['memmove'],
-  _memmove_js__sig: 'iiii',
-  _memmove_js: function(dst, src, num) {
-    return _memmove(dst, src, num);
-  },
-
-  _memset_js__deps: ['memset'],
-  _memset_js__sig: 'iiii',
-  _memset_js: function(ptr, value, num) {
-    return _memset(ptr, value, num);
-  },
-
-  llvm_memcpy_i32: '_memcpy_js',
-  llvm_memcpy_i64: '_memcpy_js',
-  llvm_memcpy_p0i8_p0i8_i32: '_memcpy_js',
-  llvm_memcpy_p0i8_p0i8_i64: '_memcpy_js',
-
-  llvm_memmove_i32: '_memmove_js',
-  llvm_memmove_i64: '_memmove_js',
-  llvm_memmove_p0i8_p0i8_i32: '_memmove_js',
-  llvm_memmove_p0i8_p0i8_i64: '_memmove_js',
-
-  llvm_memset_i32: '_memset_js',
-  llvm_memset_p0i8_i32: '_memset_js',
-  llvm_memset_p0i8_i64: '_memset_js',
-#endif // ~DECLARE_ASM_MODULE_EXPORTS
   // ==========================================================================
   // GCC/LLVM specifics
   // ==========================================================================
   __builtin_prefetch: function(){},
-
-  // ==========================================================================
-  // LLVM specifics
-  // ==========================================================================
-
-  llvm_va_start__inline: function(ptr) {
-    // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
-    // 2-word structure: struct { void* start; void* currentOffset; }
-    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
-  },
-
-  llvm_va_end: function() {},
-
-  llvm_va_copy: function(ppdest, ppsrc) {
-    // copy the list start
-    {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-
-    // copy the list's current offset (will be advanced with each call to va_arg)
-    {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-  },
-
-  llvm_bswap_i16__asm: true,
-  llvm_bswap_i16__sig: 'ii',
-  llvm_bswap_i16: function(x) {
-    x = x|0;
-    return (((x&0xff)<<8) | ((x>>8)&0xff))|0;
-  },
-
-  llvm_bswap_i32__asm: true,
-  llvm_bswap_i32__sig: 'ii',
-  llvm_bswap_i32: function(x) {
-    x = x|0;
-    return (((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24))|0;
-  },
-
-  llvm_bswap_i64__deps: ['llvm_bswap_i32'],
-  llvm_bswap_i64: function(l, h) {
-    var retl = _llvm_bswap_i32(h)>>>0;
-    var reth = _llvm_bswap_i32(l)>>>0;
-    {{{ makeStructuralReturn(['retl', 'reth']) }}};
-  },
-
-  llvm_ctlz_i8__asm: true,
-  llvm_ctlz_i8__sig: 'ii',
-  llvm_ctlz_i8__deps: ['Math_clz32'],
-  llvm_ctlz_i8: function(x, isZeroUndef) {
-    x = x | 0;
-    isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x & 0xff) | 0) - 24 | 0;
-  },
-
-  llvm_ctlz_i16__asm: true,
-  llvm_ctlz_i16__sig: 'ii',
-  llvm_ctlz_i16__deps: ['Math_clz32'],
-  llvm_ctlz_i16: function(x, isZeroUndef) {
-    x = x | 0;
-    isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x & 0xffff) | 0) - 16 | 0
-  },
-
-  llvm_ctlz_i64__asm: true,
-  llvm_ctlz_i64__sig: 'iii',
-  llvm_ctlz_i64__deps: ['Math_clz32'],
-  llvm_ctlz_i64: function(l, h, isZeroUndef) {
-    l = l | 0;
-    h = h | 0;
-    isZeroUndef = isZeroUndef | 0;
-    var ret = 0;
-    ret = Math_clz32(h) | 0;
-    if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
-    {{{ makeSetTempRet0('0') }}};
-    return ret | 0;
-  },
-
-#if WASM == 0 // binaryen will convert these calls to wasm anyhow
-  llvm_cttz_i32__asm: true,
-#endif
-  llvm_cttz_i32__sig: 'ii',
-  llvm_cttz_i32__deps: ['Math_clz32'],
-  llvm_cttz_i32: function(x) { // Note: Currently doesn't take isZeroUndef()
-    x = x | 0;
-    return (x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32) | 0;
-  },
-
-  llvm_cttz_i64__deps: ['llvm_cttz_i32'],
-  llvm_cttz_i64: function(l, h) {
-    var ret = _llvm_cttz_i32(l);
-    if (ret == 32) ret += _llvm_cttz_i32(h);
-    {{{ makeStructuralReturn(['ret', '0']) }}};
-  },
-
-  llvm_ctpop_i32__asm: true,
-  llvm_ctpop_i32__sig: 'ii',
-  llvm_ctpop_i32__deps: ['Math_imul'],
-  llvm_ctpop_i32: function(x) {
-    // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-    // http://bits.stephan-brumme.com/countBits.html
-    x = x | 0;
-    x = x - ((x >>> 1) & 0x55555555) | 0;
-    x = (x & 0x33333333) + ((x >>> 2) & 0x33333333) | 0;
-    return (Math_imul((x + (x >>> 4) & 252645135 /* 0xF0F0F0F, but hits uglify parse bug? */), 0x1010101) >>> 24) | 0;
-  },
-
-  llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],
-  llvm_ctpop_i64__asm: true,
-  llvm_ctpop_i64__sig: 'iii',
-  llvm_ctpop_i64: function(l, h) {
-    l = l | 0;
-    h = h | 0;
-    return (_llvm_ctpop_i32(l) | 0) + (_llvm_ctpop_i32(h) | 0) | 0;
-  },
-
-  llvm_trap: function() {
-    abort('trap!');
-  },
-
-  llvm_prefetch: function(){},
 
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
@@ -984,81 +806,6 @@ LibraryManager.library = {
   },
 
   __gcc_personality_v0: function() {
-  },
-
-  llvm_stacksave: function() {
-    var self = _llvm_stacksave;
-    if (!self.LLVM_SAVEDSTACKS) {
-      self.LLVM_SAVEDSTACKS = [];
-    }
-    self.LLVM_SAVEDSTACKS.push(stackSave());
-    return self.LLVM_SAVEDSTACKS.length-1;
-  },
-
-  llvm_stackrestore: function(p) {
-    var self = _llvm_stacksave;
-    var ret = self.LLVM_SAVEDSTACKS[p];
-    self.LLVM_SAVEDSTACKS.splice(p, 1);
-    stackRestore(ret);
-  },
-
-  llvm_flt_rounds: function() {
-    return -1; // 'indeterminable' for FLT_ROUNDS
-  },
-
-  llvm_expect_i32__inline: function(val, expected) {
-    return '(' + val + ')';
-  },
-
-  llvm_objectsize_i32: function() { return -1 }, // TODO: support this
-
-  llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
-
-  llvm_bitreverse_i32__asm: true,
-  llvm_bitreverse_i32__sig: 'ii',
-  llvm_bitreverse_i32: function(x) {
-    x = x|0;
-    x = ((x & 0xaaaaaaaa) >>> 1) | ((x & 0x55555555) << 1);
-    x = ((x & 0xcccccccc) >>> 2) | ((x & 0x33333333) << 2);
-    x = ((x & 0xf0f0f0f0) >>> 4) | ((x & 0x0f0f0f0f) << 4);
-    x = ((x & 0xff00ff00) >>> 8) | ((x & 0x00ff00ff) << 8);
-    return (x >>> 16) | (x << 16);
-  },
-
-  // llvm-nacl
-
-  llvm_nacl_atomic_store_i32__inline: true,
-
-  llvm_nacl_atomic_cmpxchg_i8__inline: true,
-  llvm_nacl_atomic_cmpxchg_i16__inline: true,
-  llvm_nacl_atomic_cmpxchg_i32__inline: true,
-
-  // ==========================================================================
-  // llvm-mono integration
-  // ==========================================================================
-
-  llvm_mono_load_i8_p0i8: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i8') }}};
-  },
-
-  llvm_mono_store_i8_p0i8: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i8') }}};
-  },
-
-  llvm_mono_load_i16_p0i16: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i16') }}};
-  },
-
-  llvm_mono_store_i16_p0i16: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i16') }}};
-  },
-
-  llvm_mono_load_i32_p0i32: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i32') }}};
-  },
-
-  llvm_mono_store_i32_p0i32: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i32') }}};
   },
 
   // ==========================================================================

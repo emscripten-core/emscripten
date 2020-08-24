@@ -119,7 +119,7 @@ var buffer = new ArrayBuffer({{{ INITIAL_MEMORY }}});
 #endif
 
 #if ASSERTIONS
-var WASM_PAGE_SIZE = 65536;
+var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
@@ -231,11 +231,6 @@ var runtimeInitialized = false;
 // This is always false in minimal_runtime - the runtime does not have a concept of exiting (keeping this variable here for now since it is referenced from generated code)
 var runtimeExited = false;
 #endif
-
-/** @param {number|boolean=} ignore */
-{{{ unSign }}}
-/** @param {number|boolean=} ignore */
-{{{ reSign }}}
 
 #include "runtime_math.js"
 

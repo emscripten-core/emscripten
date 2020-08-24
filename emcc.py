@@ -589,13 +589,7 @@ def backend_binaryen_passes():
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
   passes += ['--post-emscripten']
-  # always inline __original_main into main, as otherwise it makes debugging confusing,
-  # and doing so is never bad for code size
-  # FIXME however, don't do it with DWARF for now, as inlining is not
-  #       fully handled in DWARF updating yet
-  if shared.Settings.DEBUG_LEVEL < 3:
-    passes += ['--inline-main']
-  if not shared.Settings.EXIT_RUNTIME:
+  if shared.Settings.OPT_LEVEL > 0 and not shared.Settings.EXIT_RUNTIME:
     passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
     passes += [building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
@@ -603,12 +597,15 @@ def backend_binaryen_passes():
     # even if not optimizing, make an effort to remove all unused imports and
     # exports, to make the wasm as standalone as possible
     passes += ['--remove-unused-module-elements']
-  if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
+  # when optimizing, use the fact that low memory is never used (1024 is a
+  # hardcoded value in the binaryen pass)
+  if shared.Settings.OPT_LEVEL > 0 and shared.Settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
   if shared.Settings.DEBUG_LEVEL < 3:
     passes += ['--strip-debug']
-  if not shared.Settings.EMIT_PRODUCERS_SECTION:
-    passes += ['--strip-producers']
+  if shared.Settings.OPT_LEVEL > 0:
+    if not shared.Settings.EMIT_PRODUCERS_SECTION:
+      passes += ['--strip-producers']
   if shared.Settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']
@@ -1508,7 +1505,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.SAFE_HEAP:
       # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr().
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_get_sbrk_ptr']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_get_sbrk_ptr', '$unSign']
 
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']

@@ -4,7 +4,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import argparse
 import json
 import multiprocessing
@@ -14,11 +13,12 @@ import re
 import shlex
 import shutil
 import subprocess
-import sys
 import time
 import unittest
 import webbrowser
 import zlib
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.request import urlopen
 
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
@@ -26,17 +26,6 @@ from tools import building
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
 from tools.shared import try_delete
-
-try:
-  from http.server import BaseHTTPRequestHandler, HTTPServer
-except ImportError:
-  # Python 2 compatibility
-  from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-
-if sys.version_info.major == 2:
-  from urllib import urlopen
-else:
-  from urllib.request import urlopen
 
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
@@ -4894,7 +4883,7 @@ window.close = function() {
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB.cpp', js_engines=[V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_2GB_fail(self):
@@ -4907,7 +4896,7 @@ window.close = function() {
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=2GB']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail.cpp', js_engines=[V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_4GB_fail(self):
@@ -4920,4 +4909,4 @@ window.close = function() {
     # test that we properly report an allocation error that would overflow over
     # 4GB.
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[V8_ENGINE])

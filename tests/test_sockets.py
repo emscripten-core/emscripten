@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import multiprocessing
 import os
 import socket
@@ -49,7 +48,7 @@ def clean_processes(processes):
         pass
 
 
-class WebsockifyServerHarness(object):
+class WebsockifyServerHarness():
   def __init__(self, filename, args, listen_port, do_server_check=True):
     self.processes = []
     self.filename = filename
@@ -101,7 +100,7 @@ class WebsockifyServerHarness(object):
     clean_processes(self.processes)
 
 
-class CompiledServerHarness(object):
+class CompiledServerHarness():
   def __init__(self, filename, args, listen_port):
     self.processes = []
     self.filename = filename
@@ -133,7 +132,7 @@ class CompiledServerHarness(object):
 
 
 # Executes a native executable server process
-class BackgroundServerProcess(object):
+class BackgroundServerProcess():
   def __init__(self, args):
     self.processes = []
     self.args = args
