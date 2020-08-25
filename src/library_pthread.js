@@ -368,7 +368,8 @@ var LibraryPThread = {
           worker.onerror(data);
         });
         worker.on('exit', function(data) {
-          console.log('worker exited - TODO: update the worker queue?');
+          // TODO: update the worker queue?
+          // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
       }
 #endif
