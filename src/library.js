@@ -1108,11 +1108,9 @@ LibraryManager.library = {
     return _gmtime_r(time, ___tm_current);
   },
 
-  gmtime_r__deps: ['__tm_timezone'
 #if MINIMAL_RUNTIME
-    , 'allocateUTF8'
+  gmtime_r__deps: ['allocateUTF8'],
 #endif
-  ],
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -1130,7 +1128,6 @@ LibraryManager.library = {
     // Allocate a string "GMT" for us to point to.
     if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
-
     return tmPtr;
   },
   timegm__deps: ['tzset'],
