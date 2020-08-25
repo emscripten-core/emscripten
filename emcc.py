@@ -1284,7 +1284,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert not shared.Settings.SIDE_MODULE
       # allocating space for dynamic libraries requires sbrk to be called from
       # JS during startup, see allocDynamic.
-      shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
       if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
     elif shared.Settings.SIDE_MODULE:
@@ -1306,6 +1305,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.RELOCATABLE:
       shared.Settings.ALLOW_TABLE_GROWTH = 1
+
+    # various settings require sbrk() access
+    if shared.Settings.MAIN_MODULE or \
+       shared.Settings.DETERMINISTIC or \
+       shared.Settings.EMSCRIPTEN_TRACING or \
+       shared.Settings.MEMORYPROFILER:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
 
     # Reconfigure the cache now that settings have been applied. Some settings
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
@@ -2679,12 +2685,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         # JS compiler can allocate more static data which then shifts the stack pointer.
         # See `makeStaticAlloc` in the JS compiler.
         options.binaryen_passes += ['--pass-arg=stack-pointer@%d' % shared.Settings.STACK_BASE]
-      # the value of the sbrk pointer has been computed by the JS compiler, and we can apply it in the wasm
-      # (we can't add this value when we placed post-emscripten in the proper position in the list of
-      # passes because that was before the value was computed)
-      # note that we don't pass this for a side module, as the value can't be applied - it must be
-      # imported
-      options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
     building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')

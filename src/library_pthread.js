@@ -408,9 +408,8 @@ var LibraryPThread = {
         'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
 #endif
 #if !MINIMAL_RUNTIME
-        'DYNAMIC_BASE': DYNAMIC_BASE,
+        'DYNAMIC_BASE': DYNAMIC_BASE
 #endif
-        'DYNAMICTOP_PTR': DYNAMICTOP_PTR
       });
     },
 

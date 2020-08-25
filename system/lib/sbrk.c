@@ -29,6 +29,20 @@
 #define SET_ERRNO()
 #endif
 
+intptr_t sbrk_val = 0; // TODO: get the position from wasm-ld, right after stack (DYNAMIC_BASE in JS)
+intptr_t* sbrk_ptr = &sbrk_val;
+
+intptr_t* emscripten_get_sbrk_ptr() {
+  if (sbrk_val == 0) {
+    // FIXME this is awful: we know we are right after the stack, which goes
+    // down, so just go a little up...
+    int stacked;
+    intptr_t stack_ptr = (intptr_t)&stacked;
+    sbrk_val = (stack_ptr + sizeof(int) + 1 + 15) & -16;
+  }
+  return &sbrk_val;
+}
+
 void *sbrk(intptr_t increment) {
   uintptr_t old_size;
   // Enforce preserving a minimal 4-byte alignment for sbrk.
@@ -41,8 +55,7 @@ void *sbrk(intptr_t increment) {
   intptr_t expected;
   while (1) {
 #endif // __EMSCRIPTEN_PTHREADS__
-
-    intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
+    intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr(); // TODO remove with above hack
 #if __EMSCRIPTEN_PTHREADS__
     intptr_t old_brk = __c11_atomic_load((_Atomic(intptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else

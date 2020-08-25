@@ -333,8 +333,7 @@ var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
-    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}},
-    DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
+    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
 
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
@@ -392,7 +391,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
-  // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
 }
 #endif
 
