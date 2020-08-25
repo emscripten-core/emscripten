@@ -1062,8 +1062,6 @@ LibraryManager.library = {
 
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: '{{{ makeStaticString("GMT") }}}',
-  // Statically allocated time strings.
-  __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   mktime__deps: ['tzset'],
   mktime__sig: 'ii',
   mktime: function(tmPtr) {
@@ -1176,12 +1174,8 @@ LibraryManager.library = {
   },
   __localtime_r: 'localtime_r',
 
-  asctime__deps: ['__tm_formatted', 'asctime_r'],
-  asctime: function(tmPtr) {
-    return _asctime_r(tmPtr, ___tm_formatted);
-  },
-
-  asctime_r__deps: ['__tm_formatted', 'mktime'],
+  asctime_r__deps: ['mktime'],
+  asctime_r__sig: 'iii',
   asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -1209,6 +1203,7 @@ LibraryManager.library = {
     stringToUTF8(s, buf, 26);
     return buf;
   },
+  __asctime_r: 'asctime_r',
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],
   ctime_r__sig: 'iii',
