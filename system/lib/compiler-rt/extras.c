@@ -11,8 +11,8 @@
 
 /* References to these globals are generated in the llvm backend so they
  * cannot be static */
-int __THREW__ = 0;
-int __threwValue = 0;
+int _Thread_local __THREW__ = 0;
+int _Thread_local __threwValue = 0;
 
 void setThrew(int threw, int value) {
   if (__THREW__ == 0) {
