@@ -896,6 +896,7 @@ function createWasm() {
     // then exported.
     // TODO: do not create a Memory earlier in JS
     wasmMemory = exports['memory'];
+    wasmTable = exports['__indirect_function_table'];
     updateGlobalBufferAndViews(wasmMemory.buffer);
 #if ASSERTIONS
     writeStackCookie();
