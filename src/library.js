@@ -1104,6 +1104,7 @@ LibraryManager.library = {
   timelocal: 'mktime',
 
   gmtime_r__deps: ['__tm_timezone'],
+  gmtime_r__sig: 'iii',
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -1122,6 +1123,8 @@ LibraryManager.library = {
 
     return tmPtr;
   },
+  __gmtime_r: 'gmtime_r',
+
   timegm__deps: ['tzset'],
   timegm: function(tmPtr) {
     _tzset();
@@ -1143,6 +1146,7 @@ LibraryManager.library = {
   },
 
   localtime_r__deps: ['__tm_timezone', 'tzset'],
+  localtime_r__sig: 'iii',
   localtime_r: function(time, tmPtr) {
     _tzset();
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
@@ -1170,6 +1174,7 @@ LibraryManager.library = {
 
     return tmPtr;
   },
+  __localtime_r: 'localtime_r',
 
   asctime__deps: ['__tm_formatted', 'asctime_r'],
   asctime: function(tmPtr) {
@@ -1206,12 +1211,14 @@ LibraryManager.library = {
   },
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
     var stack = stackSave();
     var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
     stackRestore(stack);
     return rv;
   },
+  __ctime_r: 'ctime_r',
 
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
