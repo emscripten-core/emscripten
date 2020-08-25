@@ -1062,8 +1062,6 @@ LibraryManager.library = {
 
   // Statically allocated time struct.
   __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-  // Statically allocated copy of the string "GMT" for gmtime() to point to
-  __tm_timezone: '{{{ makeStaticString("GMT") }}}',
   // Statically allocated time strings.
   __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   mktime__deps: ['tzset'],
@@ -1110,7 +1108,11 @@ LibraryManager.library = {
     return _gmtime_r(time, ___tm_current);
   },
 
-  gmtime_r__deps: ['__tm_timezone'],
+  gmtime_r__deps: ['__tm_timezone'
+#if MINIMAL_RUNTIME
+    , 'allocateUTF8'
+#endif
+  ],
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -1125,7 +1127,9 @@ LibraryManager.library = {
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
+    // Allocate a string "GMT" for us to point to.
+    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
 
     return tmPtr;
   },
@@ -1154,7 +1158,7 @@ LibraryManager.library = {
     return _localtime_r(time, ___tm_current);
   },
 
-  localtime_r__deps: ['__tm_timezone', 'tzset'],
+  localtime_r__deps: ['tzset'],
   localtime_r: function(time, tmPtr) {
     _tzset();
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
