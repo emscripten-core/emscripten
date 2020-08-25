@@ -8215,6 +8215,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
     self.dylink_test(r'''
       #include <stdio.h>
       extern void sidey();
