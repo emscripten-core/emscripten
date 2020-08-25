@@ -36,9 +36,7 @@ intptr_t* emscripten_get_sbrk_ptr() {
   if (sbrk_val == 0) {
     // FIXME this is awful: we know we are right after the stack, which goes
     // down, so just go a little up...
-    int stacked;
-    intptr_t stack_ptr = (intptr_t)&stacked;
-    sbrk_val = (stack_ptr + sizeof(int) + 1 + 15) & -16;
+    sbrk_val = (EM_ASM_INT({ return STACK_BASE }) + 1) & ~3;
   }
   return &sbrk_val;
 }
