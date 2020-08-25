@@ -7750,8 +7750,7 @@ Module['onRuntimeInitialized'] = function() {
               typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
-              typeof DYNAMIC_BASE === 'number' &&
-              typeof DYNAMICTOP_PTR === 'number') {
+              typeof DYNAMIC_BASE === 'number') {
              out('able to run memprof');
            } else {
              out('missing the required variables to run memprof');

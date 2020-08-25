@@ -5334,10 +5334,10 @@ int main() {
   def test_failing_alloc(self):
     for pre_fail, post_fail, opts in [
       ('', '', []),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', []),
+      ('EM_ASM( Module.temp = _sbrk() );', 'EM_ASM( assert(Module.temp === _sbrk(), "must not adjust brk when an alloc fails!") );', []),
       # also test non-wasm in normal mode
       ('', '', ['-s', 'WASM=0']),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0']),
+      ('EM_ASM( Module.temp = _sbrk() );', 'EM_ASM( assert(Module.temp === _sbrk(), "must not adjust brk when an alloc fails!") );', ['-s', 'WASM=0']),
     ]:
       for growth in [0, 1]:
         for aborting_args in [[], ['-s', 'ABORTING_MALLOC=0'], ['-s', 'ABORTING_MALLOC=1']]:
@@ -5381,7 +5381,7 @@ int main() {
   printf("managed another malloc!\n");
 }
 ''' % (pre_fail, post_fail))
-          args = [EMCC, 'main.cpp'] + opts + aborting_args
+          args = [EMCC, 'main.cpp', '-s', 'EXPORTED_FUNCTIONS=[_main,_sbrk]'] + opts + aborting_args
           args += ['-s', 'TEST_MEMORY_GROWTH_FAILS=1'] # In this test, force memory growing to fail
           if growth:
             args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
