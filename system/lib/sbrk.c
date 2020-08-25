@@ -1,3 +1,4 @@
+#include <stdio.h>
 /*
  * Copyright 2019 The Emscripten Authors.  All rights reserved.
  * Emscripten is available under two separate licenses, the MIT license and the
@@ -32,11 +33,14 @@
 static intptr_t sbrk_val = 0; // TODO: get the position from wasm-ld, right after stack (DYNAMIC_BASE in JS)
 static intptr_t* sbrk_ptr = &sbrk_val;
 
+extern size_t __heap_base;
+
 intptr_t* emscripten_get_sbrk_ptr() {
   if (sbrk_val == 0) {
-    // FIXME this is awful: we know we are right after the stack, which goes
-    // down, so just go a little up...
-    sbrk_val = (EM_ASM_INT({ return STACK_BASE }) + 1) & ~3;
+    sbrk_val = (intptr_t)&__heap_base;
+    sbrk_val = (sbrk_val + 2) & ~3;
+    EM_ASM({ console.log(STACK_BASE) });
+    printf("%p %p %p\n", __heap_base, &__heap_base, sbrk_val);
   }
   return &sbrk_val;
 }
