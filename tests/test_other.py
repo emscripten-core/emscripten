@@ -8081,7 +8081,7 @@ test_module().then((test_module_instance) => {
   # Sockets and networking
 
   def test_inet(self):
-    self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf(path_from_root('tests', 'sha1.c'), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
     src = r'''
       #include <stdio.h>
       #include <arpa/inet.h>
@@ -8274,16 +8274,16 @@ ok.
     ''', 'getpeername error: Socket not connected', assert_returncode=NON_ZERO)
 
   def test_getaddrinfo(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
+    self.do_runf(path_from_root('tests', 'sockets', 'test_getaddrinfo.c'), 'success')
 
   def test_getnameinfo(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getnameinfo.c')).read(), 'success')
+    self.do_runf(path_from_root('tests', 'sockets', 'test_getnameinfo.c'), 'success')
 
   def test_gethostbyname(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_gethostbyname.c')).read(), 'success')
+    self.do_runf(path_from_root('tests', 'sockets', 'test_gethostbyname.c'), 'success')
 
   def test_getprotobyname(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
+    self.do_runf(path_from_root('tests', 'sockets', 'test_getprotobyname.c'), 'success')
 
   def test_socketpair(self):
     self.do_run(r'''
@@ -8637,7 +8637,7 @@ int main () {
     cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'STRICT=1']
     self.run_process(cmd)
     with env_modify({'EMCC_STRICT': '1'}):
-      self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
+      self.do_runf(path_from_root('tests', 'hello_world.c'), 'hello, world!')
 
   def test_legacy_settings(self):
     cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
