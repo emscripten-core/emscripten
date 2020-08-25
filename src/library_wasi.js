@@ -118,7 +118,7 @@ var WasiLibrary = {
   // this is needed. To get this code to be usable as a JS shim we need to
   // either wait for BigInt support or to legalize on the client.
   clock_time_get__sig: 'iiiii',
-  clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo', '$checkWasiClock'],
+  clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$checkWasiClock'],
   clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
     {{{ receiveI64ParamAsI32s('precision') }}}
     if (!checkWasiClock(clk_id)) {
@@ -141,7 +141,7 @@ var WasiLibrary = {
   },
 
   clock_res_get__sig: 'iii',
-  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$setErrNo', '$checkWasiClock'],
+  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$checkWasiClock'],
   clock_res_get: function(clk_id, pres) {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefine('EINVAL') }}};
