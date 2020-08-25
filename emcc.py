@@ -1423,6 +1423,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MALLOC == 'emmalloc':
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_emmalloc.js')))
+      # used from emmalloc_unclaimed_heap_memory from JS. should just add an
+      # export, as sbrk is used in malloc anyhow.
+      shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
 
     if shared.Settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libfetch')
