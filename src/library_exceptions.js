@@ -416,11 +416,9 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-#if DISABLE_EXCEPTION_CATCHING == 1
-    var thrownBuf = 0;
-#else
-    var thrownBuf = {{{ makeStaticAlloc(4) }}};
-#endif
+    if (!__cxa_find_matching_catch.thrownBuf) {
+      __cxa_find_matching_catch.thrownBuf = _malloc(4);
+    }
     {{{ makeSetValue('thrownBuf', '0', 'thrown', '*') }}};
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
