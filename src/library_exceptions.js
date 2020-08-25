@@ -417,11 +417,10 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-    if (!exceptionThrowBuf.thrownBuf) {
-      exceptionThrowBuf.thrownBuf = _malloc(4);
+    if (!exceptionThrowBuf) {
+      exceptionThrowBuf = _malloc(4);
     }
-    var thrownBuf = exceptionThrowBuf.thrownBuf;
-    {{{ makeSetValue('thrownBuf', '0', 'thrown', '*') }}};
+    {{{ makeSetValue('exceptionThrowBuf', '0', 'thrown', '*') }}};
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
@@ -432,8 +431,8 @@ var LibraryExceptions = {
         // Catch all clause matched or exactly the same type is caught
         break;
       }
-      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, thrownBuf)) {
-        var adjusted = {{{ makeGetValue('thrownBuf', '0', '*') }}};
+      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, exceptionThrowBuf)) {
+        var adjusted = {{{ makeGetValue('exceptionThrowBuf', '0', '*') }}};
         if (thrown !== adjusted) {
           catchInfo.set_adjusted_ptr(adjusted);
         }
