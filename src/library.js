@@ -1060,8 +1060,6 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  // Statically allocated time struct.
-  __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: '{{{ makeStaticString("GMT") }}}',
   // Statically allocated time strings.
@@ -1105,11 +1103,6 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['__tm_current', 'gmtime_r'],
-  gmtime: function(time) {
-    return _gmtime_r(time, ___tm_current);
-  },
-
   gmtime_r__deps: ['__tm_timezone'],
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
@@ -1147,11 +1140,6 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
 
     return (date.getTime() / 1000)|0;
-  },
-
-  localtime__deps: ['__tm_current', 'localtime_r'],
-  localtime: function(time) {
-    return _localtime_r(time, ___tm_current);
   },
 
   localtime_r__deps: ['__tm_timezone', 'tzset'],
@@ -1215,11 +1203,6 @@ LibraryManager.library = {
     // Our undefined behavior is to truncate the write to at most 26 bytes, including null terminator.
     stringToUTF8(s, buf, 26);
     return buf;
-  },
-
-  ctime__deps: ['__tm_current', 'ctime_r'],
-  ctime: function(timer) {
-    return _ctime_r(timer, ___tm_current);
   },
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],

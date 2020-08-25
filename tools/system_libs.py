@@ -727,7 +727,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # Allowed files from ignored modules
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
-        filenames=['clock_settime.c'])
+        filenames=['clock_settime.c', 'ctime.c', 'gmtime.c', 'localtime.c'])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
         filenames=['getpagesize.c', 'err.c'])
@@ -1332,12 +1332,11 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__year_to_secs.c',
                    'clock.c',
                    'clock_gettime.c',
+                   'ctime_r.c',
                    'difftime.c',
                    'gettimeofday.c',
-                   'localtime.c',
-                   'localtime_r.c',
-                   'gmtime.c',
                    'gmtime_r.c',
+                   'localtime_r.c',
                    'nanosleep.c',
                    'mktime.c',
                    'time.c'])
