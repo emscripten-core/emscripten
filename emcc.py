@@ -1512,8 +1512,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.GLOBAL_BASE = 8
 
     if shared.Settings.SAFE_HEAP:
-      # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr().
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_get_sbrk_ptr', '$unSign']
+      # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr', '_sbrk']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
