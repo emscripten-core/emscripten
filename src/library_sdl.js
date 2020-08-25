@@ -873,7 +873,7 @@ var LibrarySDL = {
       if (!SDL.eventHandler) return;
 
       while (SDL.pollEvent(SDL.eventHandlerTemp)) {
-        Module['dynCall_iii'](SDL.eventHandler, SDL.eventHandlerContext, SDL.eventHandlerTemp);
+        {{{ makeDynCall('iii') }}}(SDL.eventHandler, SDL.eventHandlerContext, SDL.eventHandlerTemp);
       }
     },
 

@@ -208,6 +208,14 @@ var dynCall_v;
  * @suppress {duplicate, undefinedVars}
  */
 var dynCall_vi;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var dynCall_vii;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var dynCall_iii;
 
 // Module loaders externs, for AMD etc.
 
@@ -332,7 +340,7 @@ function AudioWorkletProcessor() {}
 /** @type {!MessagePort} */
 AudioWorkletProcessor.prototype.port;
 
-// AudioWorkletNodeOptions 
+// AudioWorkletNodeOptions
 /**
  * @constructor
  */
