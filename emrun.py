@@ -49,8 +49,8 @@ emrun_options = None
 # page.
 browser_process = None
 
-previous_browser_process_pids = None
-current_browser_process_pids = None
+previous_browser_processes = None
+current_browser_processes = None
 
 navigation_has_occurred = False
 
@@ -72,7 +72,7 @@ have_received_messages = False
 emrun_not_enabled_nag_printed = False
 
 # Stores the exit() code of the html page when/if it quits.
-page_exit_code = 0
+page_exit_code = None
 
 # If this is set to a non-empty string, all processes by this name will be
 # killed at exit.  This is used to clean up after browsers that spawn
@@ -344,15 +344,20 @@ def is_browser_process_alive():
   if browser_process and browser_process.poll() is None:
     return True
 
-  if current_browser_process_pids:
+  if current_browser_processes:
     try:
       import psutil
-      for p in current_browser_process_pids:
+      for p in current_browser_processes:
         if psutil.pid_exists(p['pid']):
           return True
     except Exception:
       # Fail gracefully if psutil not available
       return True
+  else:
+    # We do not have a track of the browser process ID that we spawned.
+    # Make an assumption that the browser process is open as long until
+    # the C program calls exit().
+    return page_exit_code is None
 
   return False
 
@@ -361,17 +366,32 @@ def kill_browser_process():
   """Kills browser_process and processname_killed_atexit. Also removes the
   temporary Firefox profile that was created, if one exists.
   """
-  global browser_process, processname_killed_atexit
-  if browser_process:
-    logv('Terminating browser process..')
+  global browser_process, processname_killed_atexit, current_browser_processes
+  if browser_process and browser_process.poll() is None:
     try:
+      logv('Terminating browser process pid=' + str(browser_process.pid) + '..')
       browser_process.kill()
-      delete_emrun_safe_firefox_profile()
     except Exception as e:
       logv('Failed with error ' + str(e) + '!')
+
     browser_process = None
+    # We have a hold of the target browser process explicitly, no need to resort to killall,
+    # so clear that record out.
     processname_killed_atexit = ''
-    return
+
+  if current_browser_processes:
+    for pid in current_browser_processes:
+      try:
+        logv('Terminating browser process pid=' + str(pid['pid']) + '..')
+        os.kill(pid['pid'], 9)
+      except Exception as e:
+        logv('Failed with error ' + str(e) + '!')
+
+    current_browser_processes = None
+    # We have a hold of the target browser process explicitly, no need to resort to killall,
+    # so clear that record out.
+    processname_killed_atexit = ''
+
   if len(processname_killed_atexit):
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
@@ -393,6 +413,35 @@ def kill_browser_process():
       delete_emrun_safe_firefox_profile()
     # Clear the process name to represent that the browser is now dead.
     processname_killed_atexit = ''
+
+  delete_emrun_safe_firefox_profile()
+
+
+# Heuristic that attempts to search for the browser process IDs that emrun spawned.
+# This depends on the assumption that no other browser process IDs have been spawned
+# during the short time perioed between the time that emrun started, and the browser
+# process navigated to the page.
+# This heuristic is needed because all modern browsers are multiprocess systems -
+# starting a browser process from command line generally launches just a "stub" spawner
+# process that immediately exits.
+def detect_browser_processes():
+  global previous_browser_processes, current_browser_processes, navigation_has_occurred
+  logv('First navigation occurred. Identifying currently running browser processes')
+  running_browser_processes = list_processes_by_name(browser_exe)
+
+  def pid_existed(pid):
+    for proc in previous_browser_processes:
+      if proc['pid'] == pid:
+        return True
+    return False
+
+  for p in running_browser_processes:
+    logv('Detected running browser process id: ' + str(p['pid']) + ', existed already at emrun startup? ' + str(pid_existed(p['pid'])))
+
+  current_browser_processes = list(filter(lambda x: not pid_existed(x['pid']), running_browser_processes))
+
+  if len(current_browser_processes) == 0:
+    logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
 
 # Our custom HTTP web server that will server the target page to run via .html.
@@ -471,6 +520,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     global last_message_time, page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
+    logv("Entering web server loop.")
     while self.is_running:
       now = tick()
       # Did user close browser?
@@ -478,6 +528,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
         logv("Shutting down because browser is no longer alive")
         delete_emrun_safe_firefox_profile()
         if not emrun_options.serve_after_close:
+          logv("Browser process has shut down, quitting web server.")
           self.is_running = False
 
       # Serve HTTP
@@ -510,6 +561,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 
     # Clean up at quit, print any leftover messages in queue.
     self.print_all_messages()
+    logv("Web server loop done.")
 
   def handle_error(self, request, client_address):
     err = sys.exc_info()[1].args[0]
@@ -535,16 +587,10 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
     # A browser has navigated to this page - check which PID got spawned for
     # the browser
-    global previous_browser_process_pids, current_browser_process_pids, navigation_has_occurred
-    if not navigation_has_occurred and current_browser_process_pids is None:
-      running_browser_process_pids = list_processes_by_name(browser_exe)
-      for p in running_browser_process_pids:
-        def pid_existed(pid):
-          for proc in previous_browser_process_pids:
-            if proc['pid'] == pid:
-              return True
-          return False
-        current_browser_process_pids = list(filter(lambda x: not pid_existed(x['pid']), running_browser_process_pids))
+    global navigation_has_occurred, current_browser_processes
+    if not navigation_has_occurred and current_browser_processes is None:
+      detect_browser_processes()
+
     navigation_has_occurred = True
 
     if os.path.isdir(path):
@@ -1369,7 +1415,10 @@ def list_processes_by_name(exe_full_path):
         pass
   except Exception:
     # Fail gracefully if psutil not available
+    logv('import psutil failed, unable to detect browser processes')
     pass
+
+  logv('Searching for processes by full path name "' + exe_full_path + '".. found ' + str(len(pids)) + ' entries')
 
   return pids
 
@@ -1621,15 +1670,14 @@ to emrun itself and arguments to your page.
       browser_exe = browser[0]
       browser_args = shlex.split(unwrap(options.browser_args))
 
-      if 'safari' in browser_exe.lower():
+      if MACOS and ('safari' in browser_exe.lower() or browser_exe == 'open'):
         # Safari has a bug that a command line 'Safari http://page.com' does
         # not launch that page, but instead launches 'file:///http://page.com'.
         # To remedy this, must use the open -a command to run Safari, but
         # unfortunately this will end up spawning Safari process detached from
         # emrun.
-        if MACOS:
-          browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
-
+        browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
+        browser_exe = '/Applications/Safari.app/Contents/MacOS/Safari'
         processname_killed_atexit = 'Safari'
       elif 'chrome' in browser_exe.lower():
         processname_killed_atexit = 'chrome'
@@ -1712,14 +1760,24 @@ to emrun itself and arguments to your page.
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
 
   if not options.no_browser:
-    logi("Starting browser: %s" % ' '.join(browser))
+    logv("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect
     #   when the user closes the page.
     #   serve_forever = True
-    global previous_browser_process_pids
-    previous_browser_process_pids = list_processes_by_name(browser[0])
+    global previous_browser_processes
+    logv(browser_exe)
+#    browser_path_name = browser[0]
+    # Workaround hack to Safari workaround bug from above: we need to launch
+    # Safari via "open -a Safari", so transform that string to hardcoded path location
+    # on the system.
+#    if MACOS and browser[0] == 'open' and browser[1] == '-a' and browser[2] == 'Safari':
+#      browser_path_name = '/Applications/Safari.app/Contents/MacOS/Safari'
+    previous_browser_processes = list_processes_by_name(browser_exe)
+    for p in previous_browser_processes:
+      logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
     browser_process = subprocess.Popen(browser, env=subprocess_env())
+    logv('Launched browser process with pid=' + str(browser_process.pid))
     if options.kill_exit:
       atexit.register(kill_browser_process)
     # For Android automation, we execute adb, so this process does not
