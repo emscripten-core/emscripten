@@ -29,8 +29,8 @@
 #define SET_ERRNO()
 #endif
 
-intptr_t sbrk_val = 0; // TODO: get the position from wasm-ld, right after stack (DYNAMIC_BASE in JS)
-intptr_t* sbrk_ptr = &sbrk_val;
+static intptr_t sbrk_val = 0; // TODO: get the position from wasm-ld, right after stack (DYNAMIC_BASE in JS)
+static intptr_t* sbrk_ptr = &sbrk_val;
 
 intptr_t* emscripten_get_sbrk_ptr() {
   if (sbrk_val == 0) {
