@@ -136,6 +136,7 @@ def also_with_noderawfs(func):
 def can_do_standalone(self):
   return self.get_setting('WASM') and \
       not self.get_setting('SAFE_STACK') and \
+      not self.get_setting('MINIMAL_RUNTIME') and \
       '-fsanitize=address' not in self.emcc_args
 
 
@@ -175,6 +176,8 @@ def node_pthreads(f):
     self.set_setting('USE_PTHREADS', 1)
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('asan ends up using atomics that are not yet supported in node 12')
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
       f(self)
   return decorated
@@ -8231,11 +8234,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
 
   @node_pthreads
-  def test_pthreads_create(self):
+  def test_pthread_create(self):
+    self.set_setting('-lbrowser.js')
+
     def test():
       self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
     test()
 
+    print('with pool')
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.emcc_args += ['-DPOOL']
@@ -8413,6 +8419,7 @@ asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.j
 
 # Experimental modes (not tested by CI)
 lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
+minimal0 = make_run('minimal', emcc_args=['-g'], settings={'MINIMAL_RUNTIME': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

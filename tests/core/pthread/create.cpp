@@ -48,9 +48,9 @@ void mainn() {
   if (worker_adds == NUM_THREADS * TOTAL) {
     printf("done!\n");
 #ifndef POOL
-    emscripten_cancel_main_loop();
+  emscripten_cancel_main_loop();
 #else
-    exit(0);
+  exit(0);
 #endif
   }
 }
