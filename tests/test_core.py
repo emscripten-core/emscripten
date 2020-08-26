@@ -6614,6 +6614,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'interop', 'test_add_function.cpp')
 
   def test_getFuncWrapper_sig_alias(self):
+    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$getFuncWrapper]']
     src = r'''
     #include <stdio.h>
     #include <emscripten.h>
