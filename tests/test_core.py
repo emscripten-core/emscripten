@@ -8342,9 +8342,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
           // Catch the abort
           out(true);
         }
-        
+
         out("again");
-        
+
         try {
           // Try executing some function again
           _crash();
