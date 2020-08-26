@@ -1141,7 +1141,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     elif shared.Settings.STANDALONE_WASM:
       if '_main' in shared.Settings.EXPORTED_FUNCTIONS:
         # TODO(sbc): Make this into a warning?
-        loffer.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
+        logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
     else:
       # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
       # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
