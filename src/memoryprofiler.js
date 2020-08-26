@@ -488,8 +488,9 @@ var emscriptenMemoryProfiler = {
     var DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
     // During startup sbrk may not be defined yet. Ideally we should probably
     // refactor memoryprofiler so that it only gets here after compiled code is
-    // ready to be called.
-    var DYNAMICTOP = typeof _sbrk === 'function' ? _sbrk() : 0;
+    // ready to be called. For now, if the runtime is not yet initialized,
+    // assume the brk is right after the stack.
+    var DYNAMICTOP = runtimeInitialized ? _sbrk() : STACK_BASE;
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(DYNAMICTOP - DYNAMIC_BASE);
     html += ". DYNAMIC_BASE: " + toHex(DYNAMIC_BASE, width);
     html += ". DYNAMICTOP: " + toHex(DYNAMICTOP, width) + ".";
