@@ -8247,6 +8247,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DPOOL']
     test()
 
+  @node_pthreads
+  def test_pthread_exceptions(self):
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.emcc_args += ['-fexceptions']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'exceptions.cpp')
+
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
