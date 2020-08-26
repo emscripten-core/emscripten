@@ -1750,11 +1750,7 @@ var LibraryGLFW = {
   },
 
   glfwCreateThread: function(fun, arg) {
-    var str = 'v';
-    for (var i in arg) {
-      str += 'i';
-    }
-    dynCall(str, fun, arg);
+    {{{ makeDynCall('vi') }}}(str, fun, arg);
     // One single thread
     return 0;
   },

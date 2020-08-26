@@ -17,7 +17,13 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
 
-from __future__ import print_function
+import sys
+
+# The emscripten test suite explcitly requires python3.6 or above.
+if sys.version_info < (3, 6):
+  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
+  sys.exit(1)
+
 from subprocess import PIPE, STDOUT
 from functools import wraps
 import argparse
@@ -43,14 +49,8 @@ import tempfile
 import time
 import unittest
 import webbrowser
-
-if sys.version_info.major == 2:
-  from BaseHTTPServer import HTTPServer
-  from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote, unquote_plus
-else:
-  from http.server import HTTPServer, SimpleHTTPRequestHandler
-  from urllib.parse import unquote, unquote_plus
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+from urllib.parse import unquote, unquote_plus
 
 # Setup
 
@@ -81,7 +81,7 @@ def delete_contents(pathname):
 
 sys.path.append(path_from_root('third_party/websockify'))
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger("runner")
 
 # User can specify an environment variable EMTEST_BROWSER to force the browser
 # test suite to run using another browser command line than the default system
@@ -104,7 +104,7 @@ EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
 
 EMTEST_LACKS_NATIVE_CLANG = os.getenv('EMTEST_LACKS_NATIVE_CLANG')
 
-EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0'))
+EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
 
 if EMTEST_VERBOSE:
   logging.root.setLevel(logging.DEBUG)
@@ -357,14 +357,13 @@ class RunnerMeta(type):
 
     # Add suffix to the function name so that it displays correctly.
     if suffix:
-      resulting_test.__name__ = '%s_%s' % (name, suffix)
+      resulting_test.__name__ = f'{name}_{suffix}'
     else:
       resulting_test.__name__ = name
 
-    # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
-    # We add the suffix to it as well.
-    if hasattr(func, '__qualname__'):
-      resulting_test.__qualname__ = '%s_%s' % (func.__qualname__, suffix)
+    # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the
+    # function.  We add the suffix to it as well.
+    resulting_test.__qualname__ = f'{func.__qualname__}_{suffix}'
 
     return resulting_test.__name__, resulting_test
 
@@ -389,21 +388,7 @@ class RunnerMeta(type):
     return type.__new__(mcs, name, bases, new_attrs)
 
 
-# This is a hack to make the metaclass work on both python 2 and python 3.
-#
-# On python 3, the code should be:
-#   class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
-#     ...
-#
-# On python 2, the code should be:
-#   class RunnerCore(unittest.TestCase):
-#     __metaclass__ = RunnerMeta
-#     ...
-#
-# To be compatible with both python 2 and python 3, we create a class by directly invoking the
-# metaclass, which is done in the same way on both python 2 and 3, and inherit from it,
-# since a class inherits the metaclass by default.
-class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
+class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
   temp_dir = TEMP_DIR
@@ -589,7 +574,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
     cmd = [compiler, filename, '-o', output] + self.get_emcc_args(main_file=True) + \
-        ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
+        ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
         ['-I' + include for include in includes] + \
         libraries
 
@@ -657,7 +642,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     stderr = self.in_dir('stderr')
     error = None
     if EMTEST_VERBOSE:
-      print("Running '%s' under '%s'" % (filename, engine))
+      print(f"Running '{filename}' under '{engine}'")
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=open(stdout, 'w'),
@@ -814,7 +799,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         generated_libs.append(bc_file)
       return generated_libs
 
-    print('<building and saving %s into cache> ' % cache_name, file=sys.stderr)
+    print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
@@ -1056,21 +1041,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         f.write(src)
     self._build_and_run(filename, expected_output, **kwargs)
 
+  def do_runf(self, filename, expected_output, **kwargs):
+    self._build_and_run(filename, expected_output, **kwargs)
+
   ## Just like `do_run` but with filename of expected output
-  def do_run_from_file(self, filename, expected_output, **kwargs):
-    self._build_and_run(filename, open(expected_output).read(), **kwargs)
+  def do_run_from_file(self, filename, expected_output_filename, **kwargs):
+    self._build_and_run(filename, open(expected_output_filename).read(), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = path_from_root(*path)
-
-    # TODO(sbc): Have tests explciictly pass filename
-    suffix = shared.suffix(srcfile)
-    if not suffix:
-      if os.path.exists(srcfile + '.c'):
-        srcfile = srcfile + '.c'
-      else:
-        srcfile = srcfile + '.cpp'
-
     outfile = shared.unsuffixed(srcfile) + '.out'
     expected = open(outfile).read()
     self._build_and_run(srcfile, expected, **kwargs)
@@ -1082,7 +1061,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False):
-    logger.debug('_build_and_run: %s' % filename)
+    logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename
@@ -1434,17 +1413,14 @@ class BrowserCore(RunnerCore):
       print('(moving on..)')
 
   def with_report_result(self, user_code):
-    return '''
-#define EMTEST_PORT_NUMBER %(port)d
-#include "%(report_header)s"
-%(report_main)s
-%(user_code)s
-''' % {
-      'port': self.port,
-      'report_header': path_from_root('tests', 'report_result.h'),
-      'report_main': open(path_from_root('tests', 'report_result.cpp')).read(),
-      'user_code': user_code
-    }
+    report_header = path_from_root('tests', 'report_result.h')
+    report_main = open(path_from_root('tests', 'report_result.cpp')).read()
+    return f'''
+#define EMTEST_PORT_NUMBER {self.port}
+#include "{report_header}"
+{report_main}
+{user_code}
+'''
 
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.

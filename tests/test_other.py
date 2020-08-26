@@ -6,7 +6,6 @@
 
 # noqa: E241
 
-from __future__ import print_function
 from functools import wraps
 import glob
 import gzip
@@ -52,7 +51,7 @@ emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 
 
-class temp_directory(object):
+class temp_directory():
   def __init__(self, dirname):
     self.dir = dirname
 
@@ -97,23 +96,6 @@ def encode_leb(number):
   assert(number < 255)
   # pack the integer then take only the first (little end) byte
   return struct.pack('<i', number)[:1]
-
-
-def get_fastcomp_src_dir():
-  """Locate fastcomp source tree by searching realtive to LLVM_ROOT."""
-  d = LLVM_ROOT
-  key_file = 'readme-emscripten-fastcomp.txt'
-  while d != os.path.dirname(d):
-    d = os.path.abspath(d)
-    # when the build directory lives below the source directory
-    if os.path.exists(os.path.join(d, key_file)):
-      return d
-    # when the build directory lives alongside the source directory
-    elif os.path.exists(os.path.join(d, 'src', key_file)):
-      return os.path.join(d, 'src')
-    else:
-      d = os.path.dirname(d)
-  return None
 
 
 def parse_wasm(filename):
@@ -2033,10 +2015,27 @@ int f() {
     self.assertLess(line_size, full_size)
 
     def compile_to_release_executable(compile_args):
-      return compile_to_executable(compile_args, [])
+      return compile_to_executable(compile_args, ['-O1'])
 
     no_size, line_size, full_size = test(compile_to_release_executable)
     self.assertEqual(no_size, line_size)
+    self.assertEqual(line_size, full_size)
+
+    # "-O0 executable" means compiling without optimizations but *also* without
+    # -g (so, not a true debug build). the results here may change over time,
+    # since we are telling emcc both to try to do as little as possible during
+    # link (-O0), but also that debug info is not needed (no -g). if we end up
+    # doing post-link changes then we will strip the debug info, but if not then
+    # we don't.
+    def compile_to_O0_executable(compile_args):
+      return compile_to_executable(compile_args, [])
+
+    no_size, line_size, full_size = test(compile_to_O0_executable)
+    # the difference between these two is due to the producer's section which
+    # LLVM emits, and which we do not strip as this is not a release build.
+    # the specific difference is that LLVM emits language info (C_plus_plus_14)
+    # when emitting debug info, but not otherwise.
+    self.assertLess(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   def test_dwarf(self):
@@ -3428,23 +3427,6 @@ int main()
           stderr = self.run_process(cmd, stdout=PIPE, stderr=PIPE, check=False).stderr
           assert ('unexpected' in stderr) == asserts, stderr
           assert ("to 'doit'" in stderr) == asserts, stderr
-
-  @no_wasm_backend('fastcomp specific')
-  def test_llvm_lit(self):
-    grep_path = shared.which('grep')
-    if not grep_path:
-      self.skipTest('This test needs the "grep" tool in PATH. If you are using emsdk on Windows, you can obtain it via installing and activating the gnu package.')
-    llvm_src = get_fastcomp_src_dir()
-    if not llvm_src:
-      self.skipTest('llvm source tree not found')
-    LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit.py')
-    if not os.path.exists(LLVM_LIT):
-      LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit')
-      if not os.path.exists(LLVM_LIT):
-        self.skipTest('llvm-lit not found; fastcomp directory is most likely prebuilt')
-    cmd = [PYTHON, LLVM_LIT, '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
-    print(cmd)
-    self.run_process(cmd)
 
   @requires_native_clang
   def test_bad_triple(self):
@@ -7066,19 +7048,6 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      ['abort'], ['waka'], 22712), # noqa
-    'O1': (['-O1'], ['abort'], ['waka'], 10450), # noqa
-    'O2': (['-O2'], ['abort'], ['waka'], 10440), # noqa
-    # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'], [],        [],          55), # noqa
-    'Os': (['-Os'], [],        [],          55), # noqa
-    'Oz': (['-Oz'], [],        [],          55), # noqa
-  })
-  @no_wasm_backend()
-  def test_metadce_minimal_fastcomp(self, *args):
-    self.run_metadce_test('minimal.c', *args)
-
-  @parameterized({
     'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
     # exceptions increases code size significantly
     'except':   (['-O2', '-fexceptions'],    [], ['waka'], 279827), # noqa
@@ -7091,14 +7060,6 @@ int main() {
     # pulled in here, and small LLVM backend changes can affect their size and
     # lead to different inlining decisions which add or remove a function
     self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
-
-  @parameterized({
-    'normal': (['-O2'], ['abort'], ['waka'], 186423),
-  })
-  @no_wasm_backend()
-  def test_metadce_cxx_fastcomp(self, *args):
-    # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
     'O0': ([],      [], ['waka'], 22849), # noqa
@@ -7117,24 +7078,6 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10652, True, True, True, False), # noqa
   })
   def test_metadce_hello(self, *args):
-    self.run_metadce_test('hello_world.cpp', *args)
-
-  @parameterized({
-    'O0': ([],      ['abort'], ['waka'], 42701), # noqa
-    'O1': (['-O1'], ['abort'], ['waka'], 13199), # noqa
-    'O2': (['-O2'], ['abort'], ['waka'], 12425), # noqa
-    'O3': (['-O3'], [],        [],        2045), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'], [],        [],        2064), # noqa
-    'Oz': (['-Oz'], [],        [],        2045), # noqa
-    # finally, check what happens when we export nothing. wasm should be almost empty
-    'export_nothing':
-           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],   [], [],     8), # noqa; totally empty!
-    # we don't metadce with linkable code! other modules may want stuff
-    # don't compare the # of functions in a main module, which changes a lot
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [], 10017), # noqa
-  })
-  @no_wasm_backend()
-  def test_metadce_hello_fastcomp(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
@@ -7168,7 +7111,7 @@ int main() {
                            [], [], 128), # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 198), # noqa
+                           [], [], 242), # noqa
   })
   def test_metadce_libcxxabi_message(self, filename, *args):
     self.run_metadce_test(filename, *args)
@@ -7936,13 +7879,23 @@ int main() {
     with open('a.out.wasm', 'rb') as f:
       self.assertIn(b'somewhere.com/hosted.wasm', f.read())
 
-  def test_wasm_producers_section(self):
-    # no producers section by default
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
+  @parameterized({
+    'O0': (True, ['-O0']), # unoptimized builds try not to modify the LLVM wasm.
+    'O1': (False, ['-O1']), # optimized builds strip the producer's section
+    'O2': (False, ['-O2']), # by default.
+  })
+  def test_wasm_producers_section(self, expect_producers_by_default, args):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.wasm', 'rb') as f:
-      self.assertNotIn('clang', str(f.read()))
+      data = f.read()
+    if expect_producers_by_default:
+      self.assertIn('clang', str(data))
+      return
+    # if there is no producers section expected by default, verify that, and
+    # see that the flag works to add it.
+    self.assertNotIn('clang', str(data))
     size = os.path.getsize('a.out.wasm')
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'] + args)
     with open('a.out.wasm', 'rb') as f:
       self.assertIn('clang', str(f.read()))
     size_with_section = os.path.getsize('a.out.wasm')
@@ -8128,7 +8081,7 @@ test_module().then((test_module_instance) => {
   # Sockets and networking
 
   def test_inet(self):
-    self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf(path_from_root('tests', 'sha1.c'), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
     src = r'''
       #include <stdio.h>
       #include <arpa/inet.h>
@@ -8321,16 +8274,16 @@ ok.
     ''', 'getpeername error: Socket not connected', assert_returncode=NON_ZERO)
 
   def test_getaddrinfo(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
+    self.do_runf(path_from_root('tests', 'sockets', 'test_getaddrinfo.c'), 'success')
 
   def test_getnameinfo(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getnameinfo.c')).read(), 'success')
+    self.do_runf(path_from_root('tests', 'sockets', 'test_getnameinfo.c'), 'success')
 
   def test_gethostbyname(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_gethostbyname.c')).read(), 'success')
+    self.do_runf(path_from_root('tests', 'sockets', 'test_gethostbyname.c'), 'success')
 
   def test_getprotobyname(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
+    self.do_runf(path_from_root('tests', 'sockets', 'test_getprotobyname.c'), 'success')
 
   def test_socketpair(self):
     self.do_run(r'''
@@ -8684,7 +8637,7 @@ int main () {
     cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'STRICT=1']
     self.run_process(cmd)
     with env_modify({'EMCC_STRICT': '1'}):
-      self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
+      self.do_runf(path_from_root('tests', 'hello_world.c'), 'hello, world!')
 
   def test_legacy_settings(self):
     cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
@@ -9717,4 +9670,4 @@ int main () {
     # error
     self.set_setting('STANDALONE_WASM')
     self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * @license
  * Copyright 2010 The Emscripten Authors
@@ -9,10 +10,6 @@
 var nodeFS = require('fs');
 var nodePath = require('path');
 
-// *** Environment setup code ***
-
-// Expose functionality in the same simple way that the shells work
-// Note that we pollute the global namespace here, otherwise we break in node
 print = function(x) {
   process['stdout'].write(x + '\n');
 };
@@ -34,31 +31,25 @@ function find(filename) {
 
 read = function(filename) {
   var absolute = find(filename);
-  return nodeFS['readFileSync'](absolute).toString();
+  return nodeFS.readFileSync(absolute).toString();
 };
 
-load = function(f) {
-  globalEval(read(f));
+function load(f) {
+  eval.call(null, read(f));
 };
-
-function globalEval(x) {
-  eval.call(null, x);
-}
 
 // Basic utilities
-
 load('utility.js');
 
 // Load settings, can be overridden by commandline
-
-load('settings.js');
-load('settings_internal.js');
+load('./settings.js');
+load('./settings_internal.js');
 
 var arguments_ = process['argv'].slice(2);
-var settings_file = arguments_[0];
+var settingsFile = arguments_[0];
 
-if (settings_file) {
-  var settings = JSON.parse(read(settings_file));
+if (settingsFile) {
+  var settings = JSON.parse(read(settingsFile));
   for (var key in settings) {
     var value = settings[key];
     if (value[0] == '@') {
@@ -69,7 +60,7 @@ if (settings_file) {
         // continue normally; assume it is not a response file
       }
     }
-    eval(key + ' = ' + JSON.stringify(value));
+    global[key] = eval(JSON.stringify(value));
   }
 }
 
@@ -79,6 +70,9 @@ IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
 INCOMING_MODULE_JS_API = set(INCOMING_MODULE_JS_API);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
+
+// Side modules are pure wasm and have no JS
+assert(!SIDE_MODULE);
 
 // Output some info and warnings based on settings
 

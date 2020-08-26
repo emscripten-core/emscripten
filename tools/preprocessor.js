@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Copyright 2018 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -11,130 +12,45 @@
 //                   file with modified settings and supply the filename here.
 //    shell file     This is the file that will be processed by the preprocessor
 
-// *** Environment setup code ***
-var arguments_ = [];
+
+var fs = require('fs');
+var path = require('path');
+
+var arguments_ = process['argv'].slice(2);
 var debug = false;
 
-var ENVIRONMENT_IS_NODE = typeof process === 'object';
-var ENVIRONMENT_IS_WEB = typeof window === 'object';
-var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
-var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+print = function(x) {
+  process['stdout'].write(x + '\n');
+};
+printErr = function(x) {
+  process['stderr'].write(x + '\n');
+};
 
-if (ENVIRONMENT_IS_NODE) {
-  // Expose functionality in the same simple way that the shells work
-  // Note that we pollute the global namespace here, otherwise we break in node
-  print = function(x) {
-    process['stdout'].write(x + '\n');
-  };
-  printErr = function(x) {
-    process['stderr'].write(x + '\n');
-  };
-
-  var nodeFS = require('fs');
-  var nodePath = require('path');
-
-  if (!nodeFS.existsSync) {
-    nodeFS.existsSync = function(path) {
-      try {
-        return !!nodeFS.readFileSync(path);
-      } catch(e) {
-        return false;
-      }
+function find(filename) {
+  var prefixes = [process.cwd(), path.join(__dirname, '..', 'src')];
+  for (var i = 0; i < prefixes.length; ++i) {
+    var combined = path.join(prefixes[i], filename);
+    if (fs.existsSync(combined)) {
+      return combined;
     }
   }
-
-  function find(filename) {
-    var prefixes = [process.cwd(), nodePath.join(__dirname, '..', 'src')];
-    for (var i = 0; i < prefixes.length; ++i) {
-      var combined = nodePath.join(prefixes[i], filename);
-      if (nodeFS.existsSync(combined)) {
-        return combined;
-      }
-    }
-    return filename;
-  }
-
-  read = function(filename) {
-    var absolute = find(filename);
-    return nodeFS['readFileSync'](absolute).toString();
-  };
-
-  load = function(f) {
-    globalEval(read(f));
-  };
-
-  arguments_ = process['argv'].slice(2);
-
-} else if (ENVIRONMENT_IS_SHELL) {
-  // Polyfill over SpiderMonkey/V8 differences
-  if (!this['read']) {
-    this['read'] = function(f) { snarf(f) };
-  }
-
-  if (typeof scriptArgs != 'undefined') {
-    arguments_ = scriptArgs;
-  } else if (typeof arguments != 'undefined') {
-    arguments_ = arguments;
-  }
-
-} else if (ENVIRONMENT_IS_WEB) {
-  this['print'] = printErr = function(x) {
-    console.log(x);
-  };
-
-  this['read'] = function(url) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, false);
-    xhr.send(null);
-    return xhr.responseText;
-  };
-
-  if (this['arguments']) {
-    arguments_ = arguments;
-  }
-} else if (ENVIRONMENT_IS_WORKER) {
-  // We can do very little here...
-
-  this['load'] = importScripts;
-
-} else {
-  throw 'Unknown runtime environment. Where are we?';
+  return filename;
 }
 
-function globalEval(x) {
-  eval.call(null, x);
-}
+read = function(filename) {
+  var absolute = find(filename);
+  return fs.readFileSync(absolute).toString();
+};
 
-if (typeof load === 'undefined' && typeof read != 'undefined') {
-  this['load'] = function(f) {
-    globalEval(read(f));
-  };
-}
-
-if (typeof printErr === 'undefined') {
-  this['printErr'] = function(){};
-}
-
-if (typeof print === 'undefined') {
-  this['print'] = printErr;
-}
-
-// *** Environment setup code ***
-
-// These global functions are referenced by parseTools, although only 'assert'
-// is used by the preprocess function, so 'set' can be just a stub.
-assert = function(condition, text) {
-  if (!condition) {
-    abort('Assertion failed: ' + text);
-  }
-}
-set = function() {}
+load = function(f) {
+  eval.call(null, read(f));
+};
 
 var settings_file = arguments_[0];
 var shell_file = arguments_[1];
 var process_macros = arguments_.indexOf('--expandMacros') >= 0;
 
-load(settings_file);
+load(settings_file)
 load('utility.js');
 load('modules.js');
 load('parseTools.js');

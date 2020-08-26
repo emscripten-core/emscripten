@@ -68,9 +68,9 @@ var RUNTIME_LOGGING = 0;
 // 0: Stack overflows are not checked.
 // 1: Adds a security cookie at the top of the stack, which is checked at end of
 //    each tick and at exit (practically zero performance overhead)
+//    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=1.
 // 2: Same as above, but also adds an explicit check for allocate() calls which
 //    call ALLOC_STACK. Has a small performance cost.
-//    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=2.
 var STACK_OVERFLOW_CHECK = 0;
 
 // When set to 1, will generate more verbose output during compilation.
@@ -702,13 +702,13 @@ var INCOMING_MODULE_JS_API = [
   'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
-  'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
+  'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
-  'preinitializedWebGLContextmemoryInitializerRequest', 'preloadPlugins',
+  'preinitializedWebGLContext', 'memoryInitializerRequest', 'preloadPlugins',
   'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
@@ -1148,13 +1148,16 @@ var WASM_ASYNC_COMPILATION = 1;
 var WASM_BIGINT = 0;
 
 // WebAssembly defines a "producers section" which compilers and tools can
-// annotate themselves in. Emscripten does not emit this by default, as it
-// increases code size, and some users may not want information about their tools
-// to be included in their builds for privacy or security reasons, see
+// annotate themselves in, and LLVM emits this by default. In release builds,
+// Emscripten will strip that out so that it is *not* emitted because it
+// increases code size, and also some users may not want information
+// about their tools to be included in their builds for privacy or security
+// reasons, see
 // https://github.com/WebAssembly/tool-conventions/issues/93.
-// TODO: currently this flag just controls whether we run the binaryen pass
-//       to strip it out from the wasm (where the LLVM wasm backend may have
-//       created it)
+// (In debug builds (-O0) we leave the wasm file as it is from LLVM, in which
+// case it may contain this section, if you didn't tell LLVM to not emit it. You
+// can also run wasm-opt --strip-producers manually, which is what Emscripten
+// does in release builds for you automatically.)
 var EMIT_PRODUCERS_SECTION = 0;
 
 // If set then generated WASM files will contain a custom

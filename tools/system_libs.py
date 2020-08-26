@@ -28,7 +28,8 @@ logger = logging.getLogger('system_libs')
 LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
-                'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c']
+                'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c',
+                'in6addr_any.c', 'in6addr_loopback.c']
 
 
 def files_in_path(path_components, filenames):
@@ -74,9 +75,6 @@ def run_one_command(cmd):
   for opt in ['EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
-  # Disable certain warnings when we build ports/system libraries we don't want to
-  # show them a million times.
-  cmd.append('-Wno-fastcomp')
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
   shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)

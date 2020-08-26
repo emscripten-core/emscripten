@@ -129,7 +129,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   assert(HEAP32[DYNAMICTOP_PTR>>2] <= HEAP8.length);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
-  if (unsigned) ret = unSign(ret, parseInt(type.substr(1), 10), 1);
+  if (unsigned) ret = unSign(ret, parseInt(type.substr(1), 10));
 #if SAFE_HEAP_LOG
   out('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
 #endif

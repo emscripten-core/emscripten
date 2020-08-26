@@ -296,7 +296,6 @@ function getMemory(size) {
 
 var PAGE_SIZE = {{{ POSIX_PAGE_SIZE }}};
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
-var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
 
 function alignUp(x, multiple) {
   if (x % multiple > 0) {
@@ -550,11 +549,6 @@ function addOnExit(cb) {
 function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
-
-/** @param {number|boolean=} ignore */
-{{{ unSign }}}
-/** @param {number|boolean=} ignore */
-{{{ reSign }}}
 
 #include "runtime_math.js"
 
@@ -974,6 +968,7 @@ function createWasm() {
     // then exported.
     // TODO: do not create a Memory earlier in JS
     wasmMemory = exports['memory'];
+    wasmTable = exports['__indirect_function_table'];
     updateGlobalBufferAndViews(wasmMemory.buffer);
 #if ASSERTIONS
     writeStackCookie();

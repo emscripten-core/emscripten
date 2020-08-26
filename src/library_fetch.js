@@ -12,11 +12,12 @@ var LibraryFetch = {
 #else
   $Fetch__postset: 'Fetch.staticInit();',
 #endif
-  fetch_work_queue: '{{{ makeStaticAlloc(12) }}}',
+  $fetchWorkQueue: '0',
   $Fetch: Fetch,
-  _emscripten_get_fetch_work_queue__deps: ['fetch_work_queue'],
+  _emscripten_get_fetch_work_queue__deps: ['$fetchWorkQueue'],
   _emscripten_get_fetch_work_queue: function() {
-    return _fetch_work_queue;
+    if (!fetchWorkQueue) fetchWorkQueue = _malloc(12);
+    return fetchWorkQueue;
   },
   _emscripten_fetch_get_response_headers_length: _fetch_get_response_headers_length,
   _emscripten_fetch_get_response_headers: _fetch_get_response_headers,

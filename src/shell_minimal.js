@@ -5,7 +5,6 @@ d
  * SPDX-License-Identifier: MIT
  */
 
-#if SIDE_MODULE == 0
 #if USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
@@ -13,7 +12,6 @@ if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_E
 #else
 var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
-#endif // SIDE_MODULE
 
 #if MODULARIZE && EXPORT_READY_PROMISE
 // Set up the promise that indicates the Module is initialized
