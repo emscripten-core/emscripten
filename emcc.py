@@ -297,58 +297,8 @@ def setup_environment_settings():
     exit_with_error('When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
 
-class JSOptimizer(object):
-  def __init__(self, target, options, js_transform_tempfiles, in_temp):
-    self.queue = []
-    self.extra_info = {}
-    self.queue_history = []
-    self.minify_whitespace = False
-    self.cleanup_shell = False
-
-    self.target = target
-    self.emit_symbol_map = options.emit_symbol_map
-    self.profiling_funcs = options.profiling_funcs
-    self.use_closure_compiler = options.use_closure_compiler
-    self.closure_args = options.closure_args
-
-    self.js_transform_tempfiles = js_transform_tempfiles
-    self.in_temp = in_temp
-
-  def run_passes(self, passes, title, just_split, just_concat):
-    global final
-    passes = ['asm'] + passes
-    if self.emit_symbol_map and 'minifyNames' in passes:
-      passes += ['symbolMap=' + shared.replace_or_append_suffix(self.target, '.symbols')]
-    if self.profiling_funcs and 'minifyNames' in passes:
-      passes += ['profilingFuncs']
-    if self.minify_whitespace and 'last' in passes:
-      passes += ['minifyWhitespace']
-    if self.cleanup_shell and 'last' in passes:
-      passes += ['cleanup']
-    logger.debug('applying js optimization passes: %s', ' '.join(passes))
-    final = building.js_optimizer(final, passes, use_source_map(self),
-                                  self.extra_info, just_split=just_split,
-                                  just_concat=just_concat,
-                                  output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'),
-                                  extra_closure_args=self.closure_args)
-    self.js_transform_tempfiles.append(final)
-    save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
-
-  def do_minify(self):
-    """minifies the code.
-
-    this is also when we do certain optimizations that must be done right before or after minification
-    """
-    if shared.Settings.OPT_LEVEL >= 2:
-      if shared.Settings.DEBUG_LEVEL < 2 and not self.use_closure_compiler == 2:
-        self.queue += ['minifyNames']
-      if shared.Settings.DEBUG_LEVEL == 0:
-        self.minify_whitespace = True
-
-    if self.use_closure_compiler == 1:
-      self.queue += ['closure']
-    elif shared.Settings.DEBUG_LEVEL <= 2 and not self.use_closure_compiler:
-      self.cleanup_shell = True
+def minify_whitespace():
+  return shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL == 0
 
 
 def embed_memfile(options):
@@ -955,10 +905,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [arg for arg in newargs if arg]
 
-    settings_key_changes = set()
+    settings_key_changes = {}
     for s in settings_changes:
       key, value = s.split('=', 1)
-      settings_key_changes.add(key)
+      settings_key_changes[key] = value
 
     # Find input files
 
@@ -1086,12 +1036,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Libraries are searched before settings_changes are applied, so apply the
     # value for STRICT from command line already now.
 
-    def get_last_setting_change(setting):
-      return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
-
-    strict_cmdline = get_last_setting_change('STRICT')
+    strict_cmdline = settings_key_changes.get('STRICT')
     if strict_cmdline:
-      shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
+      shared.Settings.STRICT = int(strict_cmdline)
 
     # Apply optimization level settings
     shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
@@ -1104,12 +1051,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-    # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
-    # We do this before the user settings are applied so it affects the default value only and a
-    # user could use `--no-entry` and still export main too.
-    if options.no_entry:
-      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
@@ -1128,7 +1069,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       make_output_executable = True
       # Autoconf expects the executable output file to be called `a.out`
       default_target_name = 'a.out'
-    elif shared.Settings.SIDE_MODULE and shared.Settings.WASM:
+    elif shared.Settings.SIDE_MODULE:
       default_target_name = 'a.out.wasm'
     else:
       default_target_name = 'a.out.js'
@@ -1194,9 +1135,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
-    if options.no_entry or ('_main' not in shared.Settings.EXPORTED_FUNCTIONS and
-                            '__start' not in shared.Settings.EXPORTED_FUNCTIONS):
+    if options.no_entry:
       shared.Settings.EXPECT_MAIN = 0
+    elif shared.Settings.STANDALONE_WASM:
+      if '_main' in shared.Settings.EXPORTED_FUNCTIONS:
+        # TODO(sbc): Make this into a warning?
+        logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
+    else:
+      # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
+      # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
+      #    reactor.
+      # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
+      #    is specified (see above).
+      if 'EXPORTED_FUNCTIONS' in settings_key_changes:
+        if '_main' not in shared.Settings.USER_EXPORTED_FUNCTIONS:
+          shared.Settings.EXPECT_MAIN = 0
+      else:
+        assert(not shared.Settings.EXPORTED_FUNCTIONS)
+        shared.Settings.EXPORTED_FUNCTIONS = ['_main']
 
     if shared.Settings.STANDALONE_WASM:
       # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -1360,7 +1316,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORT_READY_PROMISE = 0
 
     if shared.Settings.LEGACY_VM_SUPPORT:
-      if not shared.Settings.WASM or shared.Settings.WASM2JS:
+      if shared.Settings.WASM2JS:
         shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
 
       # Support all old browser versions
@@ -1370,7 +1326,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MIN_EDGE_VERSION = 0
       shared.Settings.MIN_CHROME_VERSION = 0
 
-    if shared.Settings.MIN_SAFARI_VERSION <= 9 and (not shared.Settings.WASM or shared.Settings.WASM2JS):
+    if shared.Settings.MIN_SAFARI_VERSION <= 9 and shared.Settings.WASM2JS:
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
 
     if shared.Settings.MIN_CHROME_VERSION <= 37:
@@ -1379,7 +1335,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     setup_environment_settings()
 
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
-    if shared.Settings.WASM and not shared.Settings.WASM2JS:
+    if not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
@@ -1495,12 +1451,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.GLOBAL_BASE < 0:
       # default if nothing else sets it
-      if shared.Settings.WASM:
-        # a higher global base is useful for optimizing load/store offsets, as it
-        # enables the --post-emscripten pass
-        shared.Settings.GLOBAL_BASE = 1024
-      else:
-        shared.Settings.GLOBAL_BASE = 8
+      # a higher global base is useful for optimizing load/store offsets, as it
+      # enables the --post-emscripten pass
+      shared.Settings.GLOBAL_BASE = 1024
 
     if shared.Settings.SAFE_HEAP:
       # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr().
@@ -1520,10 +1473,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS == 2:
         exit_with_error('USE_PTHREADS=2 is not longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
-        if not shared.Settings.WASM:
-          exit_with_error('Memory growth is not supported with pthreads without wasm')
-        else:
-          logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
+        logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
@@ -1564,6 +1514,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         'addRunDependency',
         'removeRunDependency',
       ]
+
+    if not shared.Settings.MINIMAL_RUNTIME or (shared.Settings.USE_PTHREADS or shared.Settings.EXIT_RUNTIME):
+      # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
+      # always does.
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
 
     if shared.Settings.USE_PTHREADS:
       # memalign is used to ensure allocated thread stacks are aligned.
@@ -1618,31 +1573,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.PROXY_TO_PTHREAD:
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
-    # Enable minification of asm.js imports on -O1 and higher if -g1 or lower is used.
-    if shared.Settings.OPT_LEVEL >= 1 and shared.Settings.DEBUG_LEVEL < 2 and not shared.Settings.WASM:
-      shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
+    asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
+    misc_temp_files.note(asm_target)
 
-    if shared.Settings.WASM:
-      asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-      misc_temp_files.note(asm_target)
-
-    if shared.Settings.WASM:
-      if shared.Settings.INITIAL_MEMORY % 65536 != 0:
-        exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
-      if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
-        exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
-    else:
-      if shared.Settings.INITIAL_MEMORY < 16 * 1024 * 1024:
-        exit_with_error('INITIAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.INITIAL_MEMORY))
-      if shared.Settings.INITIAL_MEMORY % (16 * 1024 * 1024) != 0:
-        exit_with_error('For asm.js, INITIAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.INITIAL_MEMORY))
+    if shared.Settings.INITIAL_MEMORY % 65536 != 0:
+      exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
+    if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
+      exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
     if shared.Settings.INITIAL_MEMORY < shared.Settings.TOTAL_STACK:
       exit_with_error('INITIAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.INITIAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
     if shared.Settings.MAXIMUM_MEMORY != -1 and shared.Settings.MAXIMUM_MEMORY % 65536 != 0:
       exit_with_error('MAXIMUM_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.MAXIMUM_MEMORY))
     if shared.Settings.MEMORY_GROWTH_LINEAR_STEP != -1 and shared.Settings.MEMORY_GROWTH_LINEAR_STEP % 65536 != 0:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_LINEAR_STEP))
-    if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.MAXIMUM_MEMORY == -1:
+    if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.MAXIMUM_MEMORY == -1:
       exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
@@ -1708,118 +1652,108 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM_BIGINT:
       shared.Settings.LEGALIZE_JS_FFI = 0
 
-    if shared.Settings.WASM:
-      if shared.Settings.SINGLE_FILE:
-        # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-        shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
-        shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
-        shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
+    if shared.Settings.SINGLE_FILE:
+      # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
+      shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
+      shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
+      shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
+    else:
+      # set file locations, so that JS glue can find what it needs
+      shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
+      shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
+      shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
+    if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
+      exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
+    if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
+      exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
+    if shared.Settings.WASM2JS:
+      shared.Settings.MAYBE_WASM2JS = 1
+      # when using wasm2js, if the memory segments are in the wasm then they
+      # end up converted by wasm2js into base64 encoded JS. alternatively, we
+      # can use a .mem file like asm.js used to.
+      # generally we follow what the options tell us to do (which is to use
+      # a .mem file in most cases, since it is binary & compact). however, for
+      # pthreads we must keep the memory segments in the wasm as they will be
+      # passive segments which the .mem format cannot handle.
+      shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE or shared.Settings.USE_PTHREADS
+    else:
+      # wasm includes the mem init in the wasm binary. The exception is
+      # wasm2js, which behaves more like js.
+      options.memory_init_file = True
+      shared.Settings.MEM_INIT_IN_WASM = True
+
+    # wasm side modules have suffix .wasm
+    if shared.Settings.SIDE_MODULE and target.endswith('.js'):
+      diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
+
+    sanitize = set()
+
+    for arg in newargs:
+      if arg.startswith('-fsanitize='):
+        sanitize.update(arg.split('=', 1)[1].split(','))
+      elif arg.startswith('-fno-sanitize='):
+        sanitize.difference_update(arg.split('=', 1)[1].split(','))
+
+    if sanitize:
+      shared.Settings.USE_OFFSET_CONVERTER = 1
+      shared.Settings.EXPORTED_FUNCTIONS += [
+          '_memalign',
+          '_emscripten_builtin_memalign',
+          '_emscripten_builtin_malloc',
+          '_emscripten_builtin_free',
+          '___data_end',
+          '___heap_base',
+          '___global_base'
+      ]
+
+    if sanitize & UBSAN_SANITIZERS:
+      if '-fsanitize-minimal-runtime' in newargs:
+        shared.Settings.UBSAN_RUNTIME = 1
       else:
-        # set file locations, so that JS glue can find what it needs
-        shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
-        shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
-        shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
-      if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
-        exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
-      if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
-        exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
-      if shared.Settings.WASM2JS:
-        shared.Settings.MAYBE_WASM2JS = 1
-        # when using wasm2js, if the memory segments are in the wasm then they
-        # end up converted by wasm2js into base64 encoded JS. alternatively, we
-        # can use a .mem file like asm.js used to.
-        # generally we follow what the options tell us to do (which is to use
-        # a .mem file in most cases, since it is binary & compact). however, for
-        # pthreads we must keep the memory segments in the wasm as they will be
-        # passive segments which the .mem format cannot handle.
-        shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE or shared.Settings.USE_PTHREADS
-      else:
-        # wasm includes the mem init in the wasm binary. The exception is
-        # wasm2js, which behaves more like js.
-        options.memory_init_file = True
-        shared.Settings.MEM_INIT_IN_WASM = True
+        shared.Settings.UBSAN_RUNTIME = 2
 
-      # wasm side modules have suffix .wasm
-      if shared.Settings.SIDE_MODULE and target.endswith('.js'):
-        diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
+    if 'leak' in sanitize:
+      shared.Settings.USE_LSAN = 1
+      shared.Settings.EXIT_RUNTIME = 1
 
-      sanitize = set()
+      if shared.Settings.LINKABLE:
+        exit_with_error('LSan does not support dynamic linking')
 
-      for arg in newargs:
-        if arg.startswith('-fsanitize='):
-          sanitize.update(arg.split('=', 1)[1].split(','))
-        elif arg.startswith('-fno-sanitize='):
-          sanitize.difference_update(arg.split('=', 1)[1].split(','))
+    if 'address' in sanitize:
+      shared.Settings.USE_ASAN = 1
 
-      if sanitize:
-        shared.Settings.USE_OFFSET_CONVERTER = 1
-        shared.Settings.EXPORTED_FUNCTIONS += [
-            '_memalign',
-            '_emscripten_builtin_memalign',
-            '_emscripten_builtin_malloc',
-            '_emscripten_builtin_free',
-            '___data_end',
-            '___heap_base',
-            '___global_base'
-        ]
+      shared.Settings.EXPORTED_FUNCTIONS += [
+        '_emscripten_builtin_memset',
+        '_asan_c_load_1', '_asan_c_load_1u',
+        '_asan_c_load_2', '_asan_c_load_2u',
+        '_asan_c_load_4', '_asan_c_load_4u',
+        '_asan_c_load_f', '_asan_c_load_d',
+        '_asan_c_store_1', '_asan_c_store_1u',
+        '_asan_c_store_2', '_asan_c_store_2u',
+        '_asan_c_store_4', '_asan_c_store_4u',
+        '_asan_c_store_f', '_asan_c_store_d',
+      ]
 
-      if sanitize & UBSAN_SANITIZERS:
-        if '-fsanitize-minimal-runtime' in newargs:
-          shared.Settings.UBSAN_RUNTIME = 1
-        else:
-          shared.Settings.UBSAN_RUNTIME = 2
+      shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
+      shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+      assert shared.Settings.INITIAL_MEMORY < 2**32
 
-      if 'leak' in sanitize:
-        shared.Settings.USE_LSAN = 1
-        shared.Settings.EXIT_RUNTIME = 1
+      if shared.Settings.SAFE_HEAP:
+        # SAFE_HEAP instruments ASan's shadow memory accesses.
+        # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
+        # by SAFE_HEAP as a null pointer dereference.
+        exit_with_error('ASan does not work with SAFE_HEAP')
 
-        if shared.Settings.LINKABLE:
-          exit_with_error('LSan does not support dynamic linking')
+      if shared.Settings.LINKABLE:
+        exit_with_error('ASan does not support dynamic linking')
 
-      if 'address' in sanitize:
-        shared.Settings.USE_ASAN = 1
+    if sanitize and '-g4' in args:
+      shared.Settings.LOAD_SOURCE_MAP = 1
 
-        shared.Settings.EXPORTED_FUNCTIONS += [
-          '_emscripten_builtin_memset',
-          '_asan_c_load_1', '_asan_c_load_1u',
-          '_asan_c_load_2', '_asan_c_load_2u',
-          '_asan_c_load_4', '_asan_c_load_4u',
-          '_asan_c_load_f', '_asan_c_load_d',
-          '_asan_c_store_1', '_asan_c_store_1u',
-          '_asan_c_store_2', '_asan_c_store_2u',
-          '_asan_c_store_4', '_asan_c_store_4u',
-          '_asan_c_store_f', '_asan_c_store_d',
-        ]
-
-        shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
-        shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
-        assert shared.Settings.INITIAL_MEMORY < 2**32
-
-        if shared.Settings.SAFE_HEAP:
-          # SAFE_HEAP instruments ASan's shadow memory accesses.
-          # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
-          # by SAFE_HEAP as a null pointer dereference.
-          exit_with_error('ASan does not work with SAFE_HEAP')
-
-        if shared.Settings.LINKABLE:
-          exit_with_error('ASan does not support dynamic linking')
-
-      if sanitize and '-g4' in args:
-        shared.Settings.LOAD_SOURCE_MAP = 1
-
-      options.binaryen_passes += backend_binaryen_passes()
+    options.binaryen_passes += backend_binaryen_passes()
 
     if shared.Settings.WASM2JS and use_source_map(options):
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-
-    if shared.Settings.EVAL_CTORS and not shared.Settings.WASM:
-      # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
-      # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
-      shared.Settings.RUNNING_JS_OPTS = 1
-
-    # memory growth does not work in dynamic linking, except for wasm
-    if (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE) and shared.Settings.ALLOW_MEMORY_GROWTH and not shared.Settings.WASM:
-      exit_with_error('memory growth is not supported with shared asm.js modules')
 
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:
@@ -2219,8 +2153,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.check_call(building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
         save_intermediate('transformed')
 
-      js_transform_tempfiles = [final]
-
     # exit block 'source transforms'
     log_time('source transforms')
 
@@ -2248,16 +2180,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
           open(worker_output, 'w').write(minified_worker)
 
-    # exit block 'memory initializer'
-    log_time('memory initializer')
-
-    optimizer = JSOptimizer(
-      target=target,
-      options=options,
-      js_transform_tempfiles=js_transform_tempfiles,
-      in_temp=in_temp,
-    )
-
     log_time('js opts')
 
     with ToolchainProfiler.profile_block('final emitting'):
@@ -2267,19 +2189,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
       # open(final, 'w').write(src)
 
-      if use_source_map(options) and not shared.Settings.WASM:
-        emit_js_source_maps(target, optimizer.js_transform_tempfiles)
-
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      if shared.Settings.WASM:
-        do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                    wasm_text_target, wasm_source_map_target, misc_temp_files,
-                    optimizer)
-        # If we are building a wasm side module then we are all done now
-        if shared.Settings.SIDE_MODULE:
-          return
+      do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
+                  wasm_text_target, wasm_source_map_target, misc_temp_files)
+      # If we are building a wasm side module then we are all done now
+      if shared.Settings.SIDE_MODULE:
+        return
 
       if shared.Settings.MODULARIZE:
         modularize()
@@ -2324,7 +2241,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if final_suffix == '.html':
         generate_html(target, options, js_target, target_basename,
                       asm_target, wasm_binary_target,
-                      memfile, optimizer)
+                      memfile)
       else:
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
@@ -2657,8 +2574,7 @@ def emit_js_source_maps(target, js_transform_tempfiles):
 
 
 def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                wasm_text_target, wasm_source_map_target, misc_temp_files,
-                optimizer):
+                wasm_text_target, wasm_source_map_target, misc_temp_files):
   global final
   logger.debug('using binaryen')
   if use_source_map(options) and not shared.Settings.SOURCE_MAP_BASE:
@@ -2734,12 +2650,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
     # minify the JS
-    optimizer.do_minify() # calculate how to minify
     save_intermediate_with_wasm('preclean', wasm_binary_target)
     final = building.minify_wasm_js(js_file=final,
                                     wasm_file=wasm_binary_target,
                                     expensive_optimizations=will_metadce(options),
-                                    minify_whitespace=optimizer.minify_whitespace,
+                                    minify_whitespace=minify_whitespace(),
                                     debug_info=intermediate_debug_info)
     save_intermediate_with_wasm('postclean', wasm_binary_target)
 
@@ -2758,7 +2673,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     return wasm2js
 
   def run_closure_compiler(final):
-    final = building.closure_compiler(final, pretty=not optimizer.minify_whitespace,
+    final = building.closure_compiler(final, pretty=not minify_whitespace(),
                                       extra_closure_args=options.closure_args)
     save_intermediate_with_wasm('closure', wasm_binary_target)
     return final
@@ -2778,7 +2693,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     wasm2js = building.wasm2js(wasm2js_template,
                                wasm_binary_target,
                                opt_level=shared.Settings.OPT_LEVEL,
-                               minify_whitespace=optimizer.minify_whitespace,
+                               minify_whitespace=minify_whitespace(),
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_info,
                                symbols_file=symbols_file)
@@ -2927,7 +2842,7 @@ def module_export_name_substitution():
 
 def generate_traditional_runtime_html(target, options, js_target, target_basename,
                                       asm_target, wasm_binary_target,
-                                      memfile, optimizer):
+                                      memfile):
   script = ScriptSource()
 
   shell = read_and_preprocess(options.shell_path)
@@ -2972,7 +2887,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
           meminitXHR.send(null);
 ''' % shared.JS.get_subresource_location(memfile)) + script.inline
 
-    if shared.Settings.WASM and not shared.Settings.WASM_ASYNC_COMPILATION:
+    if not shared.Settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
       script.un_src()
       script.inline = '''
@@ -3086,7 +3001,7 @@ def minify_html(filename, options):
 
 def generate_html(target, options, js_target, target_basename,
                   asm_target, wasm_binary_target,
-                  memfile, optimizer):
+                  memfile):
   logger.debug('generating HTML')
 
   if shared.Settings.EXPORT_NAME != 'Module' and \
@@ -3098,10 +3013,10 @@ def generate_html(target, options, js_target, target_basename,
 
   if shared.Settings.MINIMAL_RUNTIME:
     generate_minimal_runtime_html(target, options, js_target, target_basename, asm_target,
-                                  wasm_binary_target, memfile, optimizer)
+                                  wasm_binary_target, memfile)
   else:
     generate_traditional_runtime_html(target, options, js_target, target_basename, asm_target,
-                                      wasm_binary_target, memfile, optimizer)
+                                      wasm_binary_target, memfile)
 
   if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1):
     minify_html(target, options)

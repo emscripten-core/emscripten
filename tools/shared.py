@@ -63,6 +63,7 @@ diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined', error=True)
 diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
@@ -1091,7 +1092,7 @@ class JS(object):
   #   Copyright 2017 The Emscripten Authors
   #   SPDX-License-Identifier: MIT
   #  */
-  emscripten_license_regex = '''\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/''' # noqa
+  emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/'
 
   @staticmethod
   def handle_license(js_target):
@@ -1209,28 +1210,34 @@ function jsCall_%s(index%s) {
     return ret
 
   @staticmethod
-  def make_dynCall(sig):
-    # Optimize dynCall accesses in the case when not building with dynamic
-    # linking enabled.
-    if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
-      return 'dynCall_' + sig
+  def make_dynCall(sig, args):
+    # wasm2c and asyncify are not yet compatible with direct wasm table calls
+    if Settings.ASYNCIFY or Settings.WASM2C or not JS.is_legal_sig(sig):
+      args = ','.join(args)
+      if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
+        # Optimize dynCall accesses in the case when not building with dynamic
+        # linking enabled.
+        return 'dynCall_%s(%s)' % (sig, args)
+      else:
+        return 'Module["dynCall_%s"](%s)' % (sig, args)
     else:
-      return 'Module["dynCall_' + sig + '"]'
+      return 'wasmTable.get(%s)(%s)' % (args[0], ','.join(args[1:]))
 
   @staticmethod
   def make_invoke(sig, named=True):
     legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
-    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
-    args = 'index' + (',' if args else '') + args
+    args = ['index'] + ['a' + str(i) for i in range(1, len(legal_sig))]
     ret = 'return ' if sig[0] != 'v' else ''
-    body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
+    body = '%s%s;' % (ret, JS.make_dynCall(sig, args))
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     if Settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
     else:
       rethrow = "if (e !== e+0) throw e;"
 
-    ret = '''function%s(%s) {
+    name = (' invoke_' + sig) if named else ''
+    ret = '''\
+function%s(%s) {
   var sp = stackSave();
   try {
     %s
@@ -1239,7 +1246,8 @@ function jsCall_%s(index%s) {
     %s
     _setThrew(1, 0);
   }
-}''' % ((' invoke_' + sig) if named else '', args, body, rethrow)
+}''' % (name, ','.join(args), body, rethrow)
+
     return ret
 
   @staticmethod

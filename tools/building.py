@@ -484,6 +484,8 @@ def lld_flags_for_executable(external_symbol_list):
   if not Settings.STANDALONE_WASM:
     cmd.append('--import-memory')
     cmd.append('--import-table')
+  else:
+    cmd.append('--export-table')
 
   if Settings.USE_PTHREADS:
     cmd.append('--shared-memory')
@@ -509,8 +511,6 @@ def lld_flags_for_executable(external_symbol_list):
     if external_symbol_list:
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbol_list]
-    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN and 'main' in c_exports:
-      c_exports.remove('main')
     for export in c_exports:
       cmd += ['--export', export]
 
@@ -1136,7 +1136,10 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
       logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
 
       # Exit and print final hint to get clearer output
-      exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set')
+      msg = 'closure compiler failed (rc: %d): %s' % (proc.returncode, shared.shlex_join(cmd))
+      if not pretty:
+        msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
+      exit_with_error(msg)
 
     if len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet':
       # print list of warnings (possibly long wall of text if input was minified)
@@ -1224,6 +1227,12 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     graph.append({
       'export': 'memory',
       'name': 'emcc$export$memory',
+      'reaches': [],
+      'root': True
+    })
+    graph.append({
+      'export': '__indirect_function_table',
+      'name': 'emcc$export$__indirect_function_table',
       'reaches': [],
       'root': True
     })
