@@ -9664,10 +9664,7 @@ int main () {
     self.assertContained('hello, world!', output)
 
   def test_standalone_export_main(self):
-    # Tests that explictly exported `_main` does not fail.   Since we interpret an
-    # export of `_main` to be be an export of `__start` in standalone mode the
-    # actual main function is not exported, but we also don't want to report an
-    # error
-    self.set_setting('STANDALONE_WASM')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
+    # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
+    # point.
+    # We should consider making this a warning since the `_main` export is redundant.
+    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=[_main]', '-sSTANDALONE_WASM', '-c', path_from_root('tests', 'core', 'test_hello_world.c')])

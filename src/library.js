@@ -3996,6 +3996,26 @@ LibraryManager.library = {
       });
     });
   },
+
+  $callRuntimeCallbacks: function(callbacks) {
+    while(callbacks.length > 0) {
+      var callback = callbacks.shift();
+      if (typeof callback == 'function') {
+        callback(Module); // Pass the module as the first argument.
+        continue;
+      }
+      var func = callback.func;
+      if (typeof func === 'number') {
+        if (callback.arg === undefined) {
+          dynCall_v(func);
+        } else {
+          dynCall_vi(func, callback.arg);
+        }
+      } else {
+        func(callback.arg === undefined ? null : callback.arg);
+      }
+    }
+  },
 };
 
 function autoAddDeps(object, name) {
