@@ -19,13 +19,13 @@ Current Trunk
 -------------
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`.
 - Enable `--no-heap-copy` file packager option by default, and remove the old
-  defualt behavior entirely. That is the behavior we should have had from the
-  beginning as it is more memory-efficient.
+  default behavior entirely. That is the behavior we should have had from the
+  beginning as it is more memory-efficient. (#12027)
 - `--no-entry` is now required in `STANDALONE_WASM` mode when building a reactor
   (application without a main function).  Previously exporting a list of
   functions that didn't include `_main` would imply this.  Now the list of
   `EXPORTED_FUNCTIONS` is not relevant in the deciding the type of application
-  to build.
+  to build. (#12020)
 - Allow polymorphic types to be used without RTTI when using embind. (#10914)
 - Only strip the LLVM producer's section in release builds. In `-O0` builds, we
   try to leave the wasm from LLVM unmodified as much as possible, so if it
@@ -33,11 +33,11 @@ Current Trunk
   in release builds, which is not changing here. If you want to not have a
   producer's section in debug builds, you can remove it a tool like
   `wasm-opt --strip-producers` (which is what Emscripten still does in release
-  builds, as always) or use `llvm-objcopy`.
+  builds, as always) or use `llvm-objcopy`. (#11996)
 - Only strip debug info in release builds + when `-g` is not present. Previously
   even in an `-O0` build without `-g` we would strip it. This was not documented
   behavior, and has no effect on program behavior, but may be noticeable
-  if you inspect a build output with `-O0`.
+  if you inspect a build output with `-O0`. (#12016)
 - Do not remove `__original_main` using `--inline-main`. We used to do this
   so that it didn't show up in stack traces (which could be confusing because
   it is added by the linker - it's not in the source code). But this has had
@@ -47,7 +47,7 @@ Current Trunk
   to add `__original_main` to there (since you are doing manual fine-tuning of
   the list of functions, which depends on the wasm's internals). Note that this
   should not matter in `-O2+` anyhow as normal inlining generally removes
-  `__original_main`.
+  `__original_main`. (#11995)
 
 2.0.1: 08/21/2020
 -----------------
