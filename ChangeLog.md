@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Enable `--no-heap-copy` file packager option by default, and remove the old
+  defualt behavior entirely. That is the behavior we should have had from the
+  beginning as it is more memory-efficient.
 - `--no-entry` is now required in `STANDALONE_WASM` mode when building a reactor
   (application without a main function).  Previously exporting a list of
   functions that didn't include `_main` would imply this.  Now the list of
