@@ -120,6 +120,7 @@ def align_memory(addr):
 
 
 def align_static_bump(metadata):
+  # TODO: remove static bump entirely
   metadata['staticBump'] = align_memory(metadata['staticBump'])
   return metadata['staticBump']
 
