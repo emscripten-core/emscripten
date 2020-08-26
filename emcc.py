@@ -2584,14 +2584,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD)
 
   if options.binaryen_passes:
-    if '--post-emscripten' in options.binaryen_passes and not shared.Settings.SIDE_MODULE:
-      if not shared.Settings.RELOCATABLE:
-        # With the wasm backend stack point value is baked in at link time.  However, emscripten's
-        # JS compiler can allocate more static data which then shifts the stack pointer.
-        # See `makeStaticAlloc` in the JS compiler.
-        options.binaryen_passes += ['--pass-arg=stack-pointer@%d' % shared.Settings.STACK_BASE]
-      if shared.Settings.STANDALONE_WASM:
-        options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
     building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
     args = options.binaryen_passes
     building.run_wasm_opt(wasm_binary_target,
