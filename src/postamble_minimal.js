@@ -24,6 +24,9 @@ function run() {
 #if EXIT_RUNTIME
     callRuntimeCallbacks(__ATEXIT__);
     {{{ getQuoted('ATEXITS') }}}
+#if USE_PTHREADS
+    PThread.runExitHandlers();
+#endif
 #endif
 
 #if IN_TEST_HARNESS
@@ -51,9 +54,7 @@ function initRuntime(asm) {
 
 #if USE_PTHREADS
   // Export needed variables that worker.js needs to Module.
-#if WASM_BACKEND
   Module['_emscripten_tls_init'] = _emscripten_tls_init;
-#endif
   Module['HEAPU32'] = HEAPU32;
   Module['dynCall_ii'] = dynCall_ii;
   Module['registerPthreadPtr'] = registerPthreadPtr;
@@ -85,26 +86,11 @@ var imports = {
   'env': asmLibraryArg
   , '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if WASM_BACKEND == 0
-  , 'global': {
-    'NaN': NaN,
-    'Infinity': Infinity
-  },
-  'global.Math': Math,
-  'asm2wasm': {
-    'f64-rem': function(x, y) { return x % y; },
-    'debugger': function() {
-#if ASSERTIONS // Disable debugger; statement from being present in release builds to avoid Firefox deoptimizations, see https://bugzilla.mozilla.org/show_bug.cgi?id=1538375
-      debugger;
-#endif
-    }
-  }
-#endif
 };
 
 // In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
 // for emscripten_get_exported_function() to be able to access them.
-#if (LibraryManager.has('library_exports.js')) && (WASM || WASM_BACKEND)
+#if LibraryManager.has('library_exports.js') && WASM
 var asm;
 #endif
 
@@ -161,7 +147,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   wasmModule = output.module || Module['wasm'];
 #endif
 
-#if !(LibraryManager.has('library_exports.js') && (WASM || WASM_BACKEND)) && !EMBIND
+#if !(LibraryManager.has('library_exports.js') && WASM) && !EMBIND
   // If not using the emscripten_get_exported_function() API or embind, keep the 'asm'
   // exports variable in local scope to this instantiate function to save code size.
   // (otherwise access it without to export it to outer scope)
@@ -221,11 +207,27 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 })
-#if ASSERTIONS
+#if ASSERTIONS || WASM == 2
 .catch(function(error) {
+#if ASSERTIONS
   console.error(error);
-})
 #endif
+
+#if WASM == 2
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+  if (typeof location !== 'undefined') {
+#endif
+    // WebAssembly compilation failed, try running the JS fallback instead.
+    var search = location.search;
+    if (search.indexOf('_rwasm=0') < 0) {
+      location.href += (search ? search + '&' : '?') + '_rwasm=0';
+    }
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+  }
+#endif
+#endif // WASM == 2
+})
+#endif // ASSERTIONS || WASM == 2
 ;
 
 #else

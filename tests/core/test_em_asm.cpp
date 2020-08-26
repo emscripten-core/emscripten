@@ -48,6 +48,43 @@ int main() {
   TEST()
 #undef FUNC
 
+  // Test mixing ints and doubles
+  EM_ASM({
+    console.log("idii");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 1, 3.14159, 3, 4);
+  EM_ASM({
+    console.log("diii");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 3.14159, 2, 3, 4);
+  EM_ASM({
+    console.log("iidi");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 1, 2, 3.14159, 4);
+  EM_ASM({
+    console.log("ddii");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 3.14159, 2.1828, 3, 4);
+  EM_ASM({
+    console.log("iddi");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 1, 3.14159, 2.1828, 4);
+
   printf("END\n");
   return 0;
 }

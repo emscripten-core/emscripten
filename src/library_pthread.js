@@ -92,7 +92,7 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    exitHandlers: null, // An array of C functions to run when this thread exits.
+    threadExitHandlers: [], // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
@@ -163,11 +163,8 @@ var LibraryPThread = {
 #endif
 
     runExitHandlers: function() {
-      if (PThread.exitHandlers !== null) {
-        while (PThread.exitHandlers.length > 0) {
-          PThread.exitHandlers.pop()();
-        }
-        PThread.exitHandlers = null;
+      while (PThread.threadExitHandlers.length > 0) {
+        PThread.threadExitHandlers.pop()();
       }
 
       // Call into the musl function that runs destructors of all thread-specific data.
@@ -371,7 +368,8 @@ var LibraryPThread = {
           worker.onerror(data);
         });
         worker.on('exit', function(data) {
-          console.log('worker exited - TODO: update the worker queue?');
+          // TODO: update the worker queue?
+          // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
       }
 #endif
@@ -391,7 +389,14 @@ var LibraryPThread = {
         // independently load up the same main application file.
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
 #if WASM
+#if WASM2JS
+        // the polyfill WebAssembly.Memory instance has function properties,
+        // which will fail in postMessage, so just send a custom object with the
+        // property we need, the buffer
+        'wasmMemory': { 'buffer': wasmMemory.buffer },
+#else // WASM2JS
         'wasmMemory': wasmMemory,
+#endif // WASM2JS
         'wasmModule': wasmModule,
 #if LOAD_SOURCE_MAP
         'wasmSourceMap': wasmSourceMap,
@@ -534,12 +539,13 @@ var LibraryPThread = {
         'selfThreadId': threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
         'parentThreadId': threadParams.parent_pthread_ptr,
         'stackBase': threadParams.stackBase,
-        'stackSize': threadParams.stackSize,
+        'stackSize': threadParams.stackSize
+    };
 #if OFFSCREENCANVAS_SUPPORT
-        'moduleCanvasId': threadParams.moduleCanvasId,
-        'offscreenCanvases': threadParams.offscreenCanvases,
+    // Note that we do not need to quote these names because they are only used in this file, and not from the external worker.js.
+    msg.moduleCanvasId = threadParams.moduleCanvasId;
+    msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-      };
     worker.runPthread = function() {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();
@@ -787,7 +793,7 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_NODE) return;
 #endif
 
-    if (ENVIRONMENT_IS_PTHREAD) return; // Blocking in a pthread is fine.
+    if (ENVIRONMENT_IS_WORKER) return; // Blocking in a worker/pthread is fine.
 
     warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #if !ALLOW_BLOCKING_ON_MAIN_THREAD
@@ -933,7 +939,6 @@ var LibraryPThread = {
   pthread_exit: function(status) {
     if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
     else PThread.threadExit(status);
-#if WASM_BACKEND
     // pthread_exit is marked noReturn, so we must not return from it.
     if (ENVIRONMENT_IS_NODE) {
       // exit the pthread properly on node, as a normal JS exception will halt
@@ -941,7 +946,6 @@ var LibraryPThread = {
       process.exit(status);
     }
     throw 'unwind';
-#endif
   },
 
   _pthread_ptr: 0,
@@ -1078,20 +1082,13 @@ var LibraryPThread = {
     return 0;
   },
 
+  pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
-    if (PThread.exitHandlers === null) {
-      PThread.exitHandlers = [];
-#if EXIT_RUNTIME
-      if (!ENVIRONMENT_IS_PTHREAD) {
-        __ATEXIT__.push(function() { PThread.runExitHandlers(); });
-      }
-#endif
-    }
-    PThread.exitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
+    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
   },
 
   pthread_cleanup_pop: function(execute) {
-    var routine = PThread.exitHandlers.pop();
+    var routine = PThread.threadExitHandlers.pop();
     if (execute) routine();
   },
 
@@ -1113,7 +1110,7 @@ var LibraryPThread = {
   emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
-    if (ENVIRONMENT_IS_WORKER) {
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_WORKER) {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
@@ -1264,9 +1261,6 @@ var LibraryPThread = {
 #endif
   },
 
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  emscripten_proxy_to_main_thread_js__deps: ['$stackSave', '$stackAlloc', '$stackRestore'],
-#endif
   emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -1307,17 +1301,6 @@ var LibraryPThread = {
     // EM_ASMs as negative values (see include_asm_consts)
     var isEmAsmConst = index < 0;
     var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
-#if WASM_BACKEND
-    if (isEmAsmConst) {
-      // EM_ASM arguments are stored in their own buffer in memory, that we need
-      // to unpack in order to call. The proxied arguments are the code index,
-      // signature pointer, and vararg buffer pointer, in that order.
-      var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
-      var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
-      var constArgs = readAsmConstArgs(sigPtr, varargPtr);
-      return func.apply(null, constArgs);
-    }
-#endif
 #if ASSERTIONS
     assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif
@@ -1328,30 +1311,17 @@ var LibraryPThread = {
     STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
 
-#if !WASM_BACKEND
-    // In fastcomp backend, locate tempDoublePtr memory area at the bottom of the stack, and bump up
-    // the stack by the bytes used.
-    tempDoublePtr = STACK_BASE;
-#if ASSERTIONS
-    assert(tempDoublePtr % 16 == 0);
-#endif
-    STACK_BASE += 16;
-    STACKTOP += 16;
-#endif
-
-#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+#if STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limit(STACK_MAX);
 #endif
-#if STACK_OVERFLOW_CHECK
-    writeStackCookie();
-#endif
 
-#if WASM_BACKEND
     // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
     stackRestore(stackTop);
-#else
-    // In old asm.js backend, use a dedicated function to establish the stack frame.
-    asmJsEstablishStackFrame(stackTop, stackMax);
+
+#if STACK_OVERFLOW_CHECK
+    // Write the stack cookie last, after we have set up the proper bounds and
+    // current position of the stack.
+    writeStackCookie();
 #endif
   },
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright 2012 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -16,6 +17,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(1, __rootpath__)
 
 from tools.toolchain_profiler import ToolchainProfiler
+from tools import building
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
@@ -34,7 +36,7 @@ def path_from_root(*pathelems):
 
 
 # Passes supported by the native optimizer
-NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminateDeadFuncs', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'registerizeHarder', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'cleanup', 'asmLastOpts', 'last', 'noop', 'closure'])
+NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'registerizeHarder', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'cleanup', 'asmLastOpts', 'last', 'noop', 'closure'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
@@ -56,37 +58,20 @@ NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimize
 def split_funcs(js, just_split=False):
   if just_split:
     return [('(json)', line) for line in js.splitlines()]
-  if shared.Settings.WASM_BACKEND:
-    # for the wasm backend, split properly even if there are no newlines,
-    # which is important for deterministic builds (as which functions
-    # are in each chunk may differ, so we need to split them up and combine
-    # them all together later and sort them deterministically)
-    parts = ['function ' + part for part in js.split('function ')[1:]]
-    funcs = []
-    for func in parts:
-      m = func_sig.search(func)
-      if not m:
-        continue
-      ident = m.group(1)
-      assert ident
-      funcs.append((ident, func))
-    return funcs
-  else:
-    # for fastcomp split using the legacy method, which looks for newlines.
-    # it does *not* work without newlines, but the sourcemapping support
-    # depends on not splitting without newlines
-    parts = [part for part in js.split('\n}\n')]
-    funcs = []
-    for i, func in enumerate(parts):
-      if i < len(parts) - 1:
-        func += '\n}\n' # last part needs no }
-      m = func_sig.search(func)
-      if not m:
-        continue
-      ident = m.group(1)
-      assert ident
-      funcs.append((ident, func))
-    return funcs
+  # split properly even if there are no newlines,
+  # which is important for deterministic builds (as which functions
+  # are in each chunk may differ, so we need to split them up and combine
+  # them all together later and sort them deterministically)
+  parts = ['function ' + part for part in js.split('function ')[1:]]
+  funcs = []
+  for func in parts:
+    m = func_sig.search(func)
+    if not m:
+      continue
+    ident = m.group(1)
+    assert ident
+    funcs.append((ident, func))
+  return funcs
 
 
 def get_native_optimizer():
@@ -226,9 +211,8 @@ class Minifier(object):
   perform minification of locals.
   """
 
-  def __init__(self, js, js_engine):
+  def __init__(self, js):
     self.js = js
-    self.js_engine = js_engine
     self.symbols_file = None
     self.profiling_funcs = False
 
@@ -255,7 +239,7 @@ class Minifier(object):
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = self.js_engine + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
+      cmd = shared.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
       if source_map:
@@ -316,7 +300,7 @@ def run_on_chunk(command):
     raise Exception()
 
 
-def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
+def run_on_js(filename, passes, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -386,7 +370,7 @@ EMSCRIPTEN_FUNCS();
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
       # we assume there is a maximum of one new name per line
-      minifier = Minifier(js, js_engine)
+      minifier = Minifier(js)
 
       def check_symbol_mapping(p):
         if p.startswith('symbolMap='):
@@ -399,10 +383,6 @@ EMSCRIPTEN_FUNCS();
 
       passes = list(filter(check_symbol_mapping, passes))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();')
-      if not shared.Settings.WASM_BACKEND:
-        # Restore a comment for Closure Compiler
-        asm_open_bracket = asm_shell_pre.find('(')
-        asm_shell_pre = asm_shell_pre[:asm_open_bracket + 1] + '/** @suppress {uselessCode} */' + asm_shell_pre[asm_open_bracket + 1:]
       asm_shell_post = asm_shell_post.replace('});', '})')
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -431,7 +411,7 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
-    cores = 1 if source_map else shared.Building.get_num_cores()
+    cores = 1 if source_map else building.get_num_cores()
 
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
@@ -466,7 +446,7 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
       if not use_native(passes, source_map):
-        commands = [js_engine + [JS_OPTIMIZER, f, 'noPrintMetadata'] +
+        commands = [shared.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] +
                     (['--debug'] if source_map else []) + passes for f in filenames]
       else:
         # use the native optimizer
@@ -481,7 +461,7 @@ EMSCRIPTEN_FUNCS();
         if DEBUG:
           print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size / (1024 * 1024.)), file=sys.stderr)
         with ToolchainProfiler.profile_block('optimizer_pool'):
-          pool = shared.Building.get_multiprocessing_pool()
+          pool = building.get_multiprocessing_pool()
           filenames = pool.map(run_on_chunk, commands, chunksize=1)
       else:
         # We can't parallize, but still break into chunks to avoid uglify/node memory issues
@@ -512,8 +492,8 @@ EMSCRIPTEN_FUNCS();
         if closure:
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)
-          cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes,
-                                                 extra_closure_args=extra_closure_args)
+          cld = building.closure_compiler(cld, pretty='minifyWhitespace' not in passes,
+                                          extra_closure_args=extra_closure_args)
           temp_files.note(cld)
         elif cleanup:
           if DEBUG:
@@ -521,7 +501,7 @@ EMSCRIPTEN_FUNCS();
           acorn_passes = ['JSDCE']
           if 'minifyWhitespace' in passes:
             acorn_passes.append('minifyWhitespace')
-          cld = shared.Building.acorn_optimizer(cld, acorn_passes)
+          cld = building.acorn_optimizer(cld, acorn_passes)
           temp_files.note(cld)
         coutput = open(cld).read()
 
@@ -583,14 +563,13 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 
-def run(filename, passes, js_engine=shared.NODE_JS, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
+def run(filename, passes, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
   if 'receiveJSON' in passes:
     just_split = True
   if 'emitJSON' in passes:
     just_concat = True
-  js_engine = shared.listify(js_engine)
   with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
-    return run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat, extra_closure_args)
+    return run_on_js(filename, passes, source_map, extra_info, just_split, just_concat, extra_closure_args)
 
 
 def main():

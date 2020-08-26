@@ -24,10 +24,6 @@
 // (using makeStaticAlloc)
 
 LibraryManager.library = {
-#if !WASM_BACKEND
-  __dso_handle: '{{{ makeStaticAlloc(1) }}}',
-#endif
-
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
   // ==========================================================================
@@ -225,22 +221,16 @@ LibraryManager.library = {
     }
   },
 
-  execl__deps: ['$setErrNo'],
-  execl__sig: 'iiii',
-  execl: function(path, arg0, varArgs) {
-    // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
+  execve__deps: ['$setErrNo'],
+  execve__sig: 'iiii',
+  execve: function(path, argv, envp) {
+    // int execve(const char *pathname, char *const argv[],
+    //            char *const envp[]);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
     // We don't support executing external code.
     setErrNo({{{ cDefine('ENOEXEC') }}});
     return -1;
   },
-  execle: 'execl',
-  execlp: 'execl',
-  execv: 'execl',
-  execve: 'execl',
-  execvp: 'execl',
-  __execvpe: 'execl',
-  fexecve: 'execl',
 
   exit__sig: 'vi',
   exit: function(status) {
@@ -265,6 +255,8 @@ LibraryManager.library = {
   },
 #endif
 
+  // fork, spawn, etc. all return an error as we don't support multiple
+  // processes.
   fork__deps: ['$setErrNo'],
   fork__sig: 'i',
   fork: function() {
@@ -276,7 +268,6 @@ LibraryManager.library = {
   },
   vfork: 'fork',
   posix_spawn: 'fork',
-  posix_spawnp: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
@@ -547,8 +538,6 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ getMemoryPageSize() }}};
-
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
     // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
@@ -556,7 +545,7 @@ LibraryManager.library = {
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
     // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
-    // 4. Max size for the heap is capped at 2048MB-PAGE_MULTIPLE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+    // 4. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
     // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
     //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
@@ -565,7 +554,7 @@ LibraryManager.library = {
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #else
-    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - PAGE_MULTIPLE;
+    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - {{{ WASM_PAGE_SIZE }}};
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
@@ -609,7 +598,7 @@ LibraryManager.library = {
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
 
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
@@ -713,24 +702,26 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME && !EXIT_RUNTIME
+  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
   atexit: function(){},
   __cxa_atexit: function(){},
-  __cxa_thread_atexit: function(){},
-  __cxa_thread_atexit_impl: function(){},
 #else
   atexit__proxy: 'sync',
   atexit__sig: 'iii',
   atexit: function(func, arg) {
-#if ASSERTIONS
-#if EXIT_RUNTIME == 0
-    warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
-#endif
-#endif
+#if EXIT_RUNTIME
     __ATEXIT__.unshift({ func: func, arg: arg });
+#endif
   },
   __cxa_atexit: 'atexit',
 
+#endif
+
   // used in rust, clang when doing thread_local statics
+#if USE_PTHREADS
+  __cxa_thread_atexit: 'pthread_cleanup_push',
+  __cxa_thread_atexit_impl: 'pthread_cleanup_push',
+#else
   __cxa_thread_atexit: 'atexit',
   __cxa_thread_atexit_impl: 'atexit',
 #endif
@@ -748,172 +739,8 @@ LibraryManager.library = {
 
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv. (This works
-  // in both fastcomp and upstream.
+  // in both fastcomp and upstream).
   $ENV: {},
-
-#if !WASM_BACKEND
-  // This implementation of environ/getenv/etc. is used for fastcomp, due
-  // to limitations in the system libraries (we can't easily add a global
-  // ctor to create the environment without it always being linked in with
-  // libc).
-  __buildEnvironment__deps: ['$ENV', '_getExecutableName'
-#if MINIMAL_RUNTIME
-    , '$writeAsciiToMemory'
-#endif
-  ],
-  __buildEnvironment: function(environ) {
-    // WARNING: Arbitrary limit!
-    var MAX_ENV_VALUES = 64;
-    var TOTAL_ENV_SIZE = 1024;
-
-    // Statically allocate memory for the environment.
-    var poolPtr;
-    var envPtr;
-    if (!___buildEnvironment.called) {
-      ___buildEnvironment.called = true;
-      // Set default values. Use string keys for Closure Compiler compatibility.
-      ENV['USER'] = 'web_user';
-      ENV['LOGNAME'] = 'web_user';
-      ENV['PATH'] = '/';
-      ENV['PWD'] = '/';
-      ENV['HOME'] = '/home/web_user';
-      // Browser language detection #8751
-      ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = __getExecutableName();
-      // Allocate memory.
-#if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
-      poolPtr = getMemory(TOTAL_ENV_SIZE);
-      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
-      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
-#endif
-    } else {
-      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
-      poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
-    }
-
-    // Collect key=value lines.
-    var strings = [];
-    var totalSize = 0;
-    for (var key in ENV) {
-      if (typeof ENV[key] === 'string') {
-        var line = key + '=' + ENV[key];
-        strings.push(line);
-        totalSize += line.length;
-      }
-    }
-    if (totalSize > TOTAL_ENV_SIZE) {
-      throw new Error('Environment size exceeded TOTAL_ENV_SIZE!');
-    }
-
-    // Make new.
-    var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
-    for (var i = 0; i < strings.length; i++) {
-      var line = strings[i];
-      writeAsciiToMemory(line, poolPtr);
-      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
-      poolPtr += line.length + 1;
-    }
-    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
-  },
-  getenv__deps: ['$ENV',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
-  getenv__proxy: 'sync',
-  getenv__sig: 'ii',
-  getenv: function(name) {
-    // char *getenv(const char *name);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
-    if (name === 0) return 0;
-    name = UTF8ToString(name);
-    if (!ENV.hasOwnProperty(name)) return 0;
-
-    if (_getenv.ret) _free(_getenv.ret);
-    _getenv.ret = allocateUTF8(ENV[name]);
-    return _getenv.ret;
-  },
-  clearenv__deps: ['$ENV', '__buildEnvironment'],
-  clearenv__proxy: 'sync',
-  clearenv__sig: 'i',
-  clearenv: function() {
-    // int clearenv (void);
-    // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
-    ENV = {};
-    ___buildEnvironment(__get_environ());
-    return 0;
-  },
-  setenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
-  setenv__proxy: 'sync',
-  setenv__sig: 'iiii',
-  setenv: function(envname, envval, overwrite) {
-    // int setenv(const char *envname, const char *envval, int overwrite);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
-    if (envname === 0) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    var name = UTF8ToString(envname);
-    var val = UTF8ToString(envval);
-    if (name === '' || name.indexOf('=') !== -1) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    if (ENV.hasOwnProperty(name) && !overwrite) return 0;
-    ENV[name] = val;
-    ___buildEnvironment(__get_environ());
-    return 0;
-  },
-  unsetenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
-  unsetenv__proxy: 'sync',
-  unsetenv__sig: 'ii',
-  unsetenv: function(name) {
-    // int unsetenv(const char *name);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
-    if (name === 0) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    name = UTF8ToString(name);
-    if (name === '' || name.indexOf('=') !== -1) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    if (ENV.hasOwnProperty(name)) {
-      delete ENV[name];
-      ___buildEnvironment(__get_environ());
-    }
-    return 0;
-  },
-  putenv__deps: ['$ENV', '__buildEnvironment', '$setErrNo'],
-  putenv__proxy: 'sync',
-  putenv__sig: 'ii',
-  putenv: function(string) {
-    // int putenv(char *string);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/putenv.html
-    // WARNING: According to the standard (and the glibc implementation), the
-    //          string is taken by reference so future changes are reflected.
-    //          We copy it instead, possibly breaking some uses.
-    if (string === 0) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    string = UTF8ToString(string);
-    var splitPoint = string.indexOf('=')
-    if (string === '' || string.indexOf('=') === -1) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    var name = string.slice(0, splitPoint);
-    var value = string.slice(splitPoint + 1);
-    if (!(name in ENV) || ENV[name] !== value) {
-      ENV[name] = value;
-      ___buildEnvironment(__get_environ());
-    }
-    return 0;
-  },
-#endif
 
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);
@@ -959,340 +786,10 @@ LibraryManager.library = {
   },
 #endif
 
-#if !WASM_BACKEND
-  memcpy__asm: true,
-  memcpy__sig: 'iiii',
-  memcpy__deps: ['emscripten_memcpy_big', 'Int8Array', 'Int32Array'],
-  memcpy: function(dest, src, num) {
-    dest = dest|0; src = src|0; num = num|0;
-    var ret = 0;
-    var aligned_dest_end = 0;
-    var block_aligned_dest_end = 0;
-    var dest_end = 0;
-    // Test against a benchmarked cutoff limit for when HEAPU8.copyWithin() becomes faster to use.
-    if ((num|0) >= 512) {
-      _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
-      return dest|0;
-    }
-
-    ret = dest|0;
-    dest_end = (dest + num)|0;
-    if ((dest&3) == (src&3)) {
-      // The initial unaligned < 4-byte front.
-      while (dest & 3) {
-        if ((num|0) == 0) return ret|0;
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
-        dest = (dest+1)|0;
-        src = (src+1)|0;
-        num = (num-1)|0;
-      }
-      aligned_dest_end = (dest_end & -4)|0;
-#if FAST_UNROLLED_MEMCPY_AND_MEMSET
-      block_aligned_dest_end = (aligned_dest_end - 64)|0;
-      while ((dest|0) <= (block_aligned_dest_end|0) ) {
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 4, makeGetValueAsm('src', 4, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 8, makeGetValueAsm('src', 8, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 12, makeGetValueAsm('src', 12, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 16, makeGetValueAsm('src', 16, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 20, makeGetValueAsm('src', 20, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 24, makeGetValueAsm('src', 24, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 28, makeGetValueAsm('src', 28, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 32, makeGetValueAsm('src', 32, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 36, makeGetValueAsm('src', 36, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 40, makeGetValueAsm('src', 40, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 44, makeGetValueAsm('src', 44, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 48, makeGetValueAsm('src', 48, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 52, makeGetValueAsm('src', 52, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 56, makeGetValueAsm('src', 56, 'i32'), 'i32') }}};
-        {{{ makeSetValueAsm('dest', 60, makeGetValueAsm('src', 60, 'i32'), 'i32') }}};
-        dest = (dest+64)|0;
-        src = (src+64)|0;
-      }
-#endif
-      while ((dest|0) < (aligned_dest_end|0) ) {
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
-        dest = (dest+4)|0;
-        src = (src+4)|0;
-      }
-    } else {
-      // In the unaligned copy case, unroll a bit as well.
-      aligned_dest_end = (dest_end - 4)|0;
-      while ((dest|0) < (aligned_dest_end|0) ) {
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
-        {{{ makeSetValueAsm('dest', 1, makeGetValueAsm('src', 1, 'i8'), 'i8') }}};
-        {{{ makeSetValueAsm('dest', 2, makeGetValueAsm('src', 2, 'i8'), 'i8') }}};
-        {{{ makeSetValueAsm('dest', 3, makeGetValueAsm('src', 3, 'i8'), 'i8') }}};
-        dest = (dest+4)|0;
-        src = (src+4)|0;
-      }
-    }
-    // The remaining unaligned < 4 byte tail.
-    while ((dest|0) < (dest_end|0)) {
-      {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
-      dest = (dest+1)|0;
-      src = (src+1)|0;
-    }
-    return ret|0;
-  },
-
-  memmove__sig: 'iiii',
-  memmove__asm: true,
-  memmove__deps: ['memcpy'],
-  memmove: function(dest, src, num) {
-    dest = dest|0; src = src|0; num = num|0;
-    var ret = 0;
-    if (((src|0) < (dest|0)) & ((dest|0) < ((src + num)|0))) {
-      // Unlikely case: Copy backwards in a safe manner
-      ret = dest;
-      src = (src + num)|0;
-      dest = (dest + num)|0;
-      while ((num|0) > 0) {
-        dest = (dest - 1)|0;
-        src = (src - 1)|0;
-        num = (num - 1)|0;
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
-      }
-      dest = ret;
-    } else {
-      _memcpy(dest, src, num) | 0;
-    }
-    return dest | 0;
-  },
-
-  memset__inline: function(ptr, value, num, align) {
-    return makeSetValues(ptr, 0, value, 'null', num, align);
-  },
-  memset__sig: 'iiii',
-  memset__asm: true,
-  memset__deps: ['Int8Array', 'Int32Array'],
-  memset: function(ptr, value, num) {
-    ptr = ptr|0; value = value|0; num = num|0;
-    var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
-    end = (ptr + num)|0;
-
-    value = value & 0xff;
-    if ((num|0) >= 67 /* 64 bytes for an unrolled loop + 3 bytes for unaligned head*/) {
-      while ((ptr&3) != 0) {
-        {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
-        ptr = (ptr+1)|0;
-      }
-
-      aligned_end = (end & -4)|0;
-      value4 = value | (value << 8) | (value << 16) | (value << 24);
-
-#if FAST_UNROLLED_MEMCPY_AND_MEMSET
-      block_aligned_end = (aligned_end - 64)|0;
-
-      while((ptr|0) <= (block_aligned_end|0)) {
-        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 8, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 12, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 16, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 20, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 24, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 28, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 32, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 36, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 40, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 44, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 48, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 52, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 56, 'value4', 'i32') }}};
-        {{{ makeSetValueAsm('ptr', 60, 'value4', 'i32') }}};
-        ptr = (ptr + 64)|0;
-      }
-#endif
-
-      while ((ptr|0) < (aligned_end|0) ) {
-        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
-        ptr = (ptr+4)|0;
-      }
-    }
-    // The remaining bytes.
-    while ((ptr|0) < (end|0)) {
-      {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
-      ptr = (ptr+1)|0;
-    }
-    return (end-num)|0;
-  },
-#endif // !WASM_BACKEND
-
-  memcpy__sig: 'iiii',
-  memmove__sig: 'iiii',
-  memset__sig: 'iiii',
-
-#if DECLARE_ASM_MODULE_EXPORTS
-  llvm_memcpy_i32: 'memcpy',
-  llvm_memcpy_i64: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
-
-  llvm_memmove_i32: 'memmove',
-  llvm_memmove_i64: 'memmove',
-  llvm_memmove_p0i8_p0i8_i32: 'memmove',
-  llvm_memmove_p0i8_p0i8_i64: 'memmove',
-
-  llvm_memset_i32: 'memset',
-  llvm_memset_p0i8_i32: 'memset',
-  llvm_memset_p0i8_i64: 'memset',
-#else
-  // When DECLARE_ASM_MODULE_EXPORTS==0, cannot alias asm.js functions from non-asm.js
-  // functions, so use an intermediate function as a pass-through.
-  _memcpy_js__deps: ['memcpy'],
-  _memcpy_js__sig: 'iiii',
-  _memcpy_js: function(dst, src, num) {
-    return _memcpy(dst, src, num);
-  },
-
-  _memmove_js__deps: ['memmove'],
-  _memmove_js__sig: 'iiii',
-  _memmove_js: function(dst, src, num) {
-    return _memmove(dst, src, num);
-  },
-
-  _memset_js__deps: ['memset'],
-  _memset_js__sig: 'iiii',
-  _memset_js: function(ptr, value, num) {
-    return _memset(ptr, value, num);
-  },
-
-  llvm_memcpy_i32: '_memcpy_js',
-  llvm_memcpy_i64: '_memcpy_js',
-  llvm_memcpy_p0i8_p0i8_i32: '_memcpy_js',
-  llvm_memcpy_p0i8_p0i8_i64: '_memcpy_js',
-
-  llvm_memmove_i32: '_memmove_js',
-  llvm_memmove_i64: '_memmove_js',
-  llvm_memmove_p0i8_p0i8_i32: '_memmove_js',
-  llvm_memmove_p0i8_p0i8_i64: '_memmove_js',
-
-  llvm_memset_i32: '_memset_js',
-  llvm_memset_p0i8_i32: '_memset_js',
-  llvm_memset_p0i8_i64: '_memset_js',
-#endif // ~DECLARE_ASM_MODULE_EXPORTS
   // ==========================================================================
   // GCC/LLVM specifics
   // ==========================================================================
   __builtin_prefetch: function(){},
-
-  // ==========================================================================
-  // LLVM specifics
-  // ==========================================================================
-
-  llvm_va_start__inline: function(ptr) {
-    // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
-    // 2-word structure: struct { void* start; void* currentOffset; }
-    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
-  },
-
-  llvm_va_end: function() {},
-
-  llvm_va_copy: function(ppdest, ppsrc) {
-    // copy the list start
-    {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-
-    // copy the list's current offset (will be advanced with each call to va_arg)
-    {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-  },
-
-  llvm_bswap_i16__asm: true,
-  llvm_bswap_i16__sig: 'ii',
-  llvm_bswap_i16: function(x) {
-    x = x|0;
-    return (((x&0xff)<<8) | ((x>>8)&0xff))|0;
-  },
-
-  llvm_bswap_i32__asm: true,
-  llvm_bswap_i32__sig: 'ii',
-  llvm_bswap_i32: function(x) {
-    x = x|0;
-    return (((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24))|0;
-  },
-
-  llvm_bswap_i64__deps: ['llvm_bswap_i32'],
-  llvm_bswap_i64: function(l, h) {
-    var retl = _llvm_bswap_i32(h)>>>0;
-    var reth = _llvm_bswap_i32(l)>>>0;
-    {{{ makeStructuralReturn(['retl', 'reth']) }}};
-  },
-
-  llvm_ctlz_i8__asm: true,
-  llvm_ctlz_i8__sig: 'ii',
-  llvm_ctlz_i8__deps: ['Math_clz32'],
-  llvm_ctlz_i8: function(x, isZeroUndef) {
-    x = x | 0;
-    isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x & 0xff) | 0) - 24 | 0;
-  },
-
-  llvm_ctlz_i16__asm: true,
-  llvm_ctlz_i16__sig: 'ii',
-  llvm_ctlz_i16__deps: ['Math_clz32'],
-  llvm_ctlz_i16: function(x, isZeroUndef) {
-    x = x | 0;
-    isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x & 0xffff) | 0) - 16 | 0
-  },
-
-  llvm_ctlz_i64__asm: true,
-  llvm_ctlz_i64__sig: 'iii',
-  llvm_ctlz_i64__deps: ['Math_clz32'],
-  llvm_ctlz_i64: function(l, h, isZeroUndef) {
-    l = l | 0;
-    h = h | 0;
-    isZeroUndef = isZeroUndef | 0;
-    var ret = 0;
-    ret = Math_clz32(h) | 0;
-    if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
-    {{{ makeSetTempRet0('0') }}};
-    return ret | 0;
-  },
-
-#if WASM == 0 // binaryen will convert these calls to wasm anyhow
-  llvm_cttz_i32__asm: true,
-#endif
-  llvm_cttz_i32__sig: 'ii',
-  llvm_cttz_i32__deps: ['Math_clz32'],
-  llvm_cttz_i32: function(x) { // Note: Currently doesn't take isZeroUndef()
-    x = x | 0;
-    return (x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32) | 0;
-  },
-
-  llvm_cttz_i64__deps: ['llvm_cttz_i32'],
-  llvm_cttz_i64: function(l, h) {
-    var ret = _llvm_cttz_i32(l);
-    if (ret == 32) ret += _llvm_cttz_i32(h);
-    {{{ makeStructuralReturn(['ret', '0']) }}};
-  },
-
-  llvm_ctpop_i32__asm: true,
-  llvm_ctpop_i32__sig: 'ii',
-  llvm_ctpop_i32__deps: ['Math_imul'],
-  llvm_ctpop_i32: function(x) {
-    // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-    // http://bits.stephan-brumme.com/countBits.html
-    x = x | 0;
-    x = x - ((x >>> 1) & 0x55555555) | 0;
-    x = (x & 0x33333333) + ((x >>> 2) & 0x33333333) | 0;
-    return (Math_imul((x + (x >>> 4) & 252645135 /* 0xF0F0F0F, but hits uglify parse bug? */), 0x1010101) >>> 24) | 0;
-  },
-
-  llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],
-  llvm_ctpop_i64__asm: true,
-  llvm_ctpop_i64__sig: 'iii',
-  llvm_ctpop_i64: function(l, h) {
-    l = l | 0;
-    h = h | 0;
-    return (_llvm_ctpop_i32(l) | 0) + (_llvm_ctpop_i32(h) | 0) | 0;
-  },
-
-  llvm_trap: function() {
-    abort('trap!');
-  },
-
-  llvm_prefetch: function(){},
 
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
@@ -1302,19 +799,6 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
-#if WASM_BACKEND == 0
-  setThrew__asm: true,
-  setThrew__sig: 'vii',
-  setThrew: function(threw, value) {
-    threw = threw|0;
-    value = value|0;
-    if ((__THREW__|0) == 0) {
-      __THREW__ = threw;
-      threwValue = value;
-    }
-  },
-#endif
-
   terminate__sig: 'vi',
   terminate: '__cxa_call_unexpected',
 
@@ -1322,344 +806,6 @@ LibraryManager.library = {
   },
 
   __gcc_personality_v0: function() {
-  },
-
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  llvm_stacksave__deps: ['$stackSave'],
-#endif
-  llvm_stacksave: function() {
-    var self = _llvm_stacksave;
-    if (!self.LLVM_SAVEDSTACKS) {
-      self.LLVM_SAVEDSTACKS = [];
-    }
-    self.LLVM_SAVEDSTACKS.push(stackSave());
-    return self.LLVM_SAVEDSTACKS.length-1;
-  },
-
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  llvm_stackrestore__deps: ['$stackRestore'],
-#endif
-  llvm_stackrestore: function(p) {
-    var self = _llvm_stacksave;
-    var ret = self.LLVM_SAVEDSTACKS[p];
-    self.LLVM_SAVEDSTACKS.splice(p, 1);
-    stackRestore(ret);
-  },
-
-#if MINIMAL_RUNTIME
-#if WASM_BACKEND == 0
-  $abortStackOverflow__deps: ['$stackSave'],
-#endif
-  $abortStackOverflow__import: true,
-  $abortStackOverflow: function(allocSize) {
-    abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
-  },
-
-#if WASM_BACKEND == 0
-  $stackAlloc__asm: true,
-  $stackAlloc__sig: 'ii',
-  $stackAlloc__deps: ['$abortStackOverflow'],
-  $stackAlloc: function(size) {
-    size = size|0;
-    var ret = 0;
-    ret = STACKTOP;
-    STACKTOP = (STACKTOP + size)|0;
-    STACKTOP = (STACKTOP + 15)&-16;
-#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
-    if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);
-#endif
-    return ret|0;
-  },
-
-  $stackSave__asm: true,
-  $stackSave__sig: 'i',
-  $stackSave: function() {
-    return STACKTOP|0;
-  },
-
-  $stackRestore__asm: true,
-  $stackRestore__sig: 'vi',
-  $stackRestore: function(top) {
-    top = top|0;
-    STACKTOP = top;
-  },
-#endif
-#endif
-
-  llvm_flt_rounds: function() {
-    return -1; // 'indeterminable' for FLT_ROUNDS
-  },
-
-  llvm_expect_i32__inline: function(val, expected) {
-    return '(' + val + ')';
-  },
-
-  llvm_objectsize_i32: function() { return -1 }, // TODO: support this
-
-  llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
-
-  llvm_bitreverse_i32__asm: true,
-  llvm_bitreverse_i32__sig: 'ii',
-  llvm_bitreverse_i32: function(x) {
-    x = x|0;
-    x = ((x & 0xaaaaaaaa) >>> 1) | ((x & 0x55555555) << 1);
-    x = ((x & 0xcccccccc) >>> 2) | ((x & 0x33333333) << 2);
-    x = ((x & 0xf0f0f0f0) >>> 4) | ((x & 0x0f0f0f0f) << 4);
-    x = ((x & 0xff00ff00) >>> 8) | ((x & 0x00ff00ff) << 8);
-    return (x >>> 16) | (x << 16);
-  },
-
-  // llvm-nacl
-
-  llvm_nacl_atomic_store_i32__inline: true,
-
-  llvm_nacl_atomic_cmpxchg_i8__inline: true,
-  llvm_nacl_atomic_cmpxchg_i16__inline: true,
-  llvm_nacl_atomic_cmpxchg_i32__inline: true,
-
-  // ==========================================================================
-  // llvm-mono integration
-  // ==========================================================================
-
-  llvm_mono_load_i8_p0i8: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i8') }}};
-  },
-
-  llvm_mono_store_i8_p0i8: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i8') }}};
-  },
-
-  llvm_mono_load_i16_p0i16: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i16') }}};
-  },
-
-  llvm_mono_store_i16_p0i16: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i16') }}};
-  },
-
-  llvm_mono_load_i32_p0i32: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i32') }}};
-  },
-
-  llvm_mono_store_i32_p0i32: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i32') }}};
-  },
-
-  // ==========================================================================
-  // math.h
-  // ==========================================================================
-
-  cos: 'Math_cos',
-  cosf: 'Math_cos',
-  cosl: 'Math_cos',
-  sin: 'Math_sin',
-  sinf: 'Math_sin',
-  sinl: 'Math_sin',
-  tan: 'Math_tan',
-  tanf: 'Math_tan',
-  tanl: 'Math_tan',
-  acos: 'Math_acos',
-  acosf: 'Math_acos',
-  acosl: 'Math_acos',
-  asin: 'Math_asin',
-  asinf: 'Math_asin',
-  asinl: 'Math_asin',
-  atan: 'Math_atan',
-  atanf: 'Math_atan',
-  atanl: 'Math_atan',
-  atan2: 'Math_atan2',
-  atan2f: 'Math_atan2',
-  atan2l: 'Math_atan2',
-  exp: 'Math_exp',
-  expf: 'Math_exp',
-  expl: 'Math_exp',
-  log: 'Math_log',
-  logf: 'Math_log',
-  logl: 'Math_log',
-  sqrt: 'Math_sqrt',
-  sqrtf: 'Math_sqrt',
-  sqrtl: 'Math_sqrt',
-  fabs: 'Math_abs',
-  fabsf: 'Math_abs',
-  fabsl: 'Math_abs',
-  llvm_fabs_f32: 'Math_abs',
-  llvm_fabs_f64: 'Math_abs',
-  ceil: 'Math_ceil',
-  ceilf: 'Math_ceil',
-  ceill: 'Math_ceil',
-  floor: 'Math_floor',
-  floorf: 'Math_floor',
-  floorl: 'Math_floor',
-  pow: 'Math_pow',
-  powf: 'Math_pow',
-  powl: 'Math_pow',
-  llvm_sqrt_f32: 'Math_sqrt',
-  llvm_sqrt_f64: 'Math_sqrt',
-  llvm_pow_f32: 'Math_pow',
-  llvm_pow_f64: 'Math_pow',
-  llvm_powi_f32: 'Math_pow',
-  llvm_powi_f64: 'Math_pow',
-  llvm_log_f32: 'Math_log',
-  llvm_log_f64: 'Math_log',
-  llvm_exp_f32: 'Math_exp',
-  llvm_exp_f64: 'Math_exp',
-  llvm_cos_f32: 'Math_cos',
-  llvm_cos_f64: 'Math_cos',
-  llvm_sin_f32: 'Math_sin',
-  llvm_sin_f64: 'Math_sin',
-  llvm_trunc_f32: 'Math_trunc',
-  llvm_trunc_f64: 'Math_trunc',
-  llvm_ceil_f32: 'Math_ceil',
-  llvm_ceil_f64: 'Math_ceil',
-  llvm_floor_f32: 'Math_floor',
-  llvm_floor_f64: 'Math_floor',
-
-  llvm_exp2_f32: function(x) {
-    return Math.pow(2, x);
-  },
-  llvm_exp2_f64__sig: 'dd',
-  llvm_exp2_f64: 'llvm_exp2_f32',
-
-  llvm_log2_f32: function(x) {
-    return Math.log(x) / Math.LN2; // TODO: Math.log2, when browser support is there
-  },
-  llvm_log2_f64__sig: 'dd',
-  llvm_log2_f64: 'llvm_log2_f32',
-
-  llvm_log10_f32: function(x) {
-    return Math.log(x) / Math.LN10; // TODO: Math.log10, when browser support is there
-  },
-  llvm_log10_f64__sig: 'dd',
-  llvm_log10_f64: 'llvm_log10_f32',
-
-  llvm_copysign_f32: function(x, y) {
-    return y < 0 || (y === 0 && 1/y < 0) ? -Math_abs(x) : Math_abs(x);
-  },
-
-  llvm_copysign_f64: function(x, y) {
-    return y < 0 || (y === 0 && 1/y < 0) ? -Math_abs(x) : Math_abs(x);
-  },
-
-  round__asm: true,
-  round__sig: 'dd',
-  round__deps: ['Math_floor', 'Math_ceil'],
-  round: function(d) {
-    d = +d;
-    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
-  },
-
-  roundf__asm: true,
-  roundf__sig: 'ff',
-  roundf__deps: ['Math_floor', 'Math_ceil'],
-  roundf: function(d) {
-    d = +d;
-    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
-  },
-
-  llvm_round_f64__asm: true,
-  llvm_round_f64__sig: 'dd',
-  llvm_round_f64__deps: ['Math_floor', 'Math_ceil'],
-  llvm_round_f64: function(d) {
-    d = +d;
-    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
-  },
-
-  llvm_round_f32__asm: true,
-  llvm_round_f32__sig: 'ff',
-  llvm_round_f32__deps: ['Math_floor', 'Math_ceil'],
-  llvm_round_f32: function(f) {
-    f = +f;
-    return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
-  },
-
-  rintf__asm: true,
-  rintf__sig: 'ff',
-  rintf__deps: ['round', 'Math_floor'],
-  rintf: function(f) {
-    f = +f;
-    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
-  },
-
-  // TODO: fround?
-  llvm_rint_f32__asm: true,
-  llvm_rint_f32__sig: 'ff',
-  llvm_rint_f32__deps: ['roundf', 'Math_floor'],
-  llvm_rint_f32: function(f) {
-    f = +f;
-    return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
-  },
-
-  llvm_rint_f64__asm: true,
-  llvm_rint_f64__sig: 'dd',
-  llvm_rint_f64__deps: ['round', 'Math_floor'],
-  llvm_rint_f64: function(f) {
-    f = +f;
-    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
-  },
-
-  // TODO: fround?
-  llvm_nearbyint_f32__asm: true,
-  llvm_nearbyint_f32__sig: 'ff',
-  llvm_nearbyint_f32__deps: ['roundf', 'Math_floor'],
-  llvm_nearbyint_f32: function(f) {
-    f = +f;
-    return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
-  },
-
-  llvm_nearbyint_f64__asm: true,
-  llvm_nearbyint_f64__sig: 'dd',
-  llvm_nearbyint_f64__deps: ['round', 'Math_floor'],
-  llvm_nearbyint_f64: function(f) {
-    f = +f;
-    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
-  },
-
-  // min/max num do not quite match the behavior of JS and wasm min/max:
-  // llvm and libc return the non-NaN if one is NaN, while JS and wasm
-  // return the NaN :(
-  // see also https://github.com/WebAssembly/design/issues/214
-  llvm_minnum_f32__asm: true,
-  llvm_minnum_f32__sig: 'ff',
-  llvm_minnum_f32__deps: ['Math_min'],
-  llvm_minnum_f32: function(x, y) {
-    x = +x;
-    y = +y;
-    if (x != x) return +y;
-    if (y != y) return +x;
-    return +Math_min(+x, +y);
-  },
-
-  llvm_minnum_f64__asm: true,
-  llvm_minnum_f64__sig: 'dd',
-  llvm_minnum_f64__deps: ['Math_min'],
-  llvm_minnum_f64: function(x, y) {
-    x = +x;
-    y = +y;
-    if (x != x) return +y;
-    if (y != y) return +x;
-    return +Math_min(+x, +y);
-  },
-
-  llvm_maxnum_f32__asm: true,
-  llvm_maxnum_f32__sig: 'ff',
-  llvm_maxnum_f32__deps: ['Math_max'],
-  llvm_maxnum_f32: function(x, y) {
-    x = +x;
-    y = +y;
-    if (x != x) return +y;
-    if (y != y) return +x;
-    return +Math_max(+x, +y);
-  },
-
-  llvm_maxnum_f64__asm: true,
-  llvm_maxnum_f64__sig: 'dd',
-  llvm_maxnum_f64__deps: ['Math_max'],
-  llvm_maxnum_f64: function(x, y) {
-    x = +x;
-    y = +y;
-    if (x != x) return +y;
-    if (y != y) return +x;
-    return +Math_max(+x, +y);
   },
 
   // ==========================================================================
@@ -1796,11 +942,9 @@ LibraryManager.library = {
 
     var mangled = '_' + symbol;
     var modSymbol = mangled;
-#if WASM_BACKEND
     if (!isMainModule) {
       modSymbol = symbol;
     }
-#endif
 
     if (!lib.module.hasOwnProperty(modSymbol)) {
       DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + modSymbol +
@@ -1813,11 +957,7 @@ LibraryManager.library = {
     // Attempt to get the real "unwrapped" symbol so we have more chance of
     // getting wasm function which can be added to a table.
     if (isMainModule) {
-#if WASM_BACKEND
       var asmSymbol = symbol;
-#else
-      var asmSymbol = mangled;
-#endif
       if (lib.module["asm"][asmSymbol]) {
         result = lib.module["asm"][asmSymbol];
       }
@@ -1874,12 +1014,12 @@ LibraryManager.library = {
     }
   },
 
-  dladdr__deps: ['$stringToNewUTF8', '_getExecutableName'],
+  dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],
   dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(__getExecutableName()); // XXX leak
+    var fname = stringToNewUTF8(getExecutableName()); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -1920,12 +1060,8 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  // Statically allocated time struct.
-  __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: '{{{ makeStaticString("GMT") }}}',
-  // Statically allocated time strings.
-  __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   mktime__deps: ['tzset'],
   mktime__sig: 'ii',
   mktime: function(tmPtr) {
@@ -1965,12 +1101,8 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['__tm_current', 'gmtime_r'],
-  gmtime: function(time) {
-    return _gmtime_r(time, ___tm_current);
-  },
-
   gmtime_r__deps: ['__tm_timezone'],
+  gmtime_r__sig: 'iii',
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -1989,6 +1121,8 @@ LibraryManager.library = {
 
     return tmPtr;
   },
+  __gmtime_r: 'gmtime_r',
+
   timegm__deps: ['tzset'],
   timegm: function(tmPtr) {
     _tzset();
@@ -2009,12 +1143,8 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  localtime__deps: ['__tm_current', 'localtime_r'],
-  localtime: function(time) {
-    return _localtime_r(time, ___tm_current);
-  },
-
   localtime_r__deps: ['__tm_timezone', 'tzset'],
+  localtime_r__sig: 'iii',
   localtime_r: function(time, tmPtr) {
     _tzset();
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
@@ -2042,13 +1172,10 @@ LibraryManager.library = {
 
     return tmPtr;
   },
+  __localtime_r: 'localtime_r',
 
-  asctime__deps: ['__tm_formatted', 'asctime_r'],
-  asctime: function(tmPtr) {
-    return _asctime_r(tmPtr, ___tm_formatted);
-  },
-
-  asctime_r__deps: ['__tm_formatted', 'mktime'],
+  asctime_r__deps: ['mktime'],
+  asctime_r__sig: 'iii',
   asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -2076,23 +1203,17 @@ LibraryManager.library = {
     stringToUTF8(s, buf, 26);
     return buf;
   },
+  __asctime_r: 'asctime_r',
 
-  ctime__deps: ['__tm_current', 'ctime_r'],
-  ctime: function(timer) {
-    return _ctime_r(timer, ___tm_current);
-  },
-
-  ctime_r__deps: ['localtime_r', 'asctime_r'
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-    , '$stackSave', '$stackAlloc', '$stackRestore'
-#endif
-  ],
+  ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
     var stack = stackSave();
     var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
     stackRestore(stack);
     return rv;
   },
+  __ctime_r: 'ctime_r',
 
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
@@ -2863,9 +1984,6 @@ LibraryManager.library = {
   // sys/times.h
   // ==========================================================================
 
-#if !WASM_BACKEND
-  times__deps: ['memset'],
-#endif
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
@@ -2901,82 +2019,6 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if SUPPORT_LONGJMP
-  // asm.js-style setjmp/longjmp support for wasm binaryen backend.
-  // In asm.js compilation, various variables including setjmpId will be
-  // generated within 'var asm' in emscripten.py, while in wasm compilation,
-  // wasm side is considered as 'asm' so they are not generated. But
-  // saveSetjmp() needs setjmpId and no other functions in wasm side needs it.
-  // So we declare it here if WASM_BACKEND=1.
-#if WASM_BACKEND == 1
-  $setjmpId: 0,
-#endif
-
-  saveSetjmp__asm: true,
-  saveSetjmp__sig: 'iii',
-#if WASM_BACKEND == 1
-  saveSetjmp__deps: ['realloc', '$setjmpId'],
-#else
-  saveSetjmp__deps: ['realloc'],
-#endif
-  saveSetjmp: function(env, label, table, size) {
-    // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
-    // prevents relooping anyhow, so slowness is to be expected. And typical case
-    // is 1 setjmp per invocation, or less.
-    env = env|0;
-    label = label|0;
-    table = table|0;
-    size = size|0;
-    var i = 0;
-    setjmpId = (setjmpId+1)|0;
-    {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
-    while ((i|0) < (size|0)) {
-      if ({{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}} == 0) {
-        {{{ makeSetValueAsm('table', '(i<<3)', 'setjmpId', 'i32') }}};
-        {{{ makeSetValueAsm('table', '(i<<3)+4', 'label', 'i32') }}};
-        // prepare next slot
-        {{{ makeSetValueAsm('table', '(i<<3)+8', '0', 'i32') }}};
-        {{{ makeSetTempRet0('size') }}};
-        return table | 0;
-      }
-      i = i+1|0;
-    }
-    // grow the table
-    size = (size*2)|0;
-    table = _realloc(table|0, 8*(size+1|0)|0) | 0;
-    table = _saveSetjmp(env|0, label|0, table|0, size|0) | 0;
-    {{{ makeSetTempRet0('size') }}};
-    return table | 0;
-  },
-
-  testSetjmp__asm: true,
-  testSetjmp__sig: 'iii',
-  testSetjmp: function(id, table, size) {
-    id = id|0;
-    table = table|0;
-    size = size|0;
-    var i = 0, curr = 0;
-    while ((i|0) < (size|0)) {
-      curr = {{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}};
-      if ((curr|0) == 0) break;
-      if ((curr|0) == (id|0)) {
-        return {{{ makeGetValueAsm('table', '(i<<3)+4', 'i32') }}};
-      }
-      i = i+1|0;
-    }
-    return 0;
-  },
-
-  setjmp__deps: ['saveSetjmp', 'testSetjmp'],
-  setjmp__inline: function(env) {
-    // Save the label
-    return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
-  },
-
-  longjmp__deps: ['saveSetjmp', 'testSetjmp'
-#if WASM_BACKEND == 0
-  , 'setThrew'
-#endif
-  ],
   longjmp: function(env, value) {
     _setThrew(env, value || 1);
     throw 'longjmp';
@@ -3271,15 +2313,6 @@ LibraryManager.library = {
   },
 #endif
 
-#if !WASM_BACKEND
-  // ==========================================================================
-  // sched.h (stubs only - no thread support yet!)
-  // ==========================================================================
-  sched_yield: function() {
-    return 0;
-  },
-#endif
-
   // ==========================================================================
   // arpa/inet.h
   // ==========================================================================
@@ -3294,15 +2327,6 @@ LibraryManager.library = {
     }
     return addr;
   },
-
-  // ==========================================================================
-  // netinet/in.h
-  // ==========================================================================
-
-  in6addr_any:
-    '{{{ makeStaticAlloc(16) }}}',
-  in6addr_loopback:
-    '{{{ makeStaticAlloc(16) }}}',
 
   // ==========================================================================
   // netdb.h
@@ -4170,7 +3194,7 @@ LibraryManager.library = {
 #endif
 
   // Returns [parentFuncArguments, functionName, paramListName]
-  _emscripten_traverse_stack: function(args) {
+  $traverseStack: function(args) {
     if (!args || !args.callee || !args.callee.name) {
       return [null, '', ''];
     }
@@ -4199,7 +3223,7 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack', '$jsStackTrace', '$demangle'
+  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$demangle'
 #if MINIMAL_RUNTIME
     , '$warnOnce'
 #endif
@@ -4224,9 +3248,9 @@ LibraryManager.library = {
     var stack_args = null;
     if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
       // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
-      stack_args = __emscripten_traverse_stack(arguments);
+      stack_args = traverseStack(arguments);
       while (stack_args[1].indexOf('_emscripten_') >= 0)
-        stack_args = __emscripten_traverse_stack(stack_args[0]);
+        stack_args = traverseStack(stack_args[0]);
     }
 
     // Process all lines:
@@ -4296,7 +3320,7 @@ LibraryManager.library = {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
         }
-        stack_args = __emscripten_traverse_stack(stack_args[0]);
+        stack_args = traverseStack(stack_args[0]);
       }
     }
     // Trim extra whitespace at the end of the output.
@@ -4346,11 +3370,8 @@ LibraryManager.library = {
 
   emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
   emscripten_log: function(flags, format, varargs) {
-    var str = '';
     var result = formatString(format, varargs);
-    for (var i = 0 ; i < result.length; ++i) {
-      str += String.fromCharCode(result[i]);
-    }
+    var str = UTF8ArrayToString(result, 0);
     _emscripten_log_js(flags, str);
   },
 
@@ -4369,7 +3390,7 @@ LibraryManager.library = {
   },
 
   emscripten_has_asyncify: function() {
-    return {{{ ASYNCIFY || EMTERPRETIFY_ASYNC }}};
+    return {{{ ASYNCIFY }}};
   },
 
   emscripten_debugger: function() {
@@ -4509,7 +3530,7 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', '$withBuiltinMalloc'
 #if MINIMAL_RUNTIME
     , '$allocateUTF8'
 #endif
@@ -4535,7 +3556,7 @@ LibraryManager.library = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    _emscripten_with_builtin_malloc(function () {
+    withBuiltinMalloc(function () {
       if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
       _emscripten_pc_get_function.ret = allocateUTF8(name);
     });
@@ -4574,7 +3595,7 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc',
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', '$withBuiltinMalloc',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
@@ -4583,7 +3604,7 @@ LibraryManager.library = {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    _emscripten_with_builtin_malloc(function () {
+    withBuiltinMalloc(function () {
       if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
       _emscripten_pc_get_file.ret = allocateUTF8(result.file);
     });
@@ -4612,84 +3633,128 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
-  emscripten_with_builtin_malloc__docs: '/** @suppress{checkTypes} */',
-  emscripten_with_builtin_malloc: function (func) {
+  $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
+#if USE_ASAN
+                             , 'emscripten_builtin_memset'
+#endif
+                            ],
+  $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
+  $withBuiltinMalloc: function (func) {
     var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
     var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free !== 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
+#if USE_ASAN
+    var prev_memset = typeof _memset !== 'undefined' ? _memset : undefined
+    _memset = _emscripten_builtin_memset;
+#endif
     try {
       return func();
     } finally {
       _malloc = prev_malloc;
       _memalign = prev_memalign;
       _free = prev_free;
+#if USE_ASAN
+      _memset = prev_memset;
+#endif
     }
   },
 
-  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '$syscallMmap2'],
+  emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return _emscripten_with_builtin_malloc(function () {
+    return withBuiltinMalloc(function () {
       return syscallMmap2(addr, len, prot, flags, fd, off);
     });
   },
 
-  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '$syscallMunmap'],
+  emscripten_builtin_munmap__deps: ['$withBuiltinMalloc', '$syscallMunmap'],
   emscripten_builtin_munmap: function (addr, len) {
-    return _emscripten_with_builtin_malloc(function () {
+    return withBuiltinMalloc(function () {
       return syscallMunmap(addr, len);
     });
   },
 
-  emscripten_get_stack_top: function() {
-    return STACKTOP;
-  },
-
-  emscripten_get_stack_base: function() {
-    return STACK_BASE;
-  },
-
+  $readAsmConstArgsArray: '=[]',
+  $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
-    if (!readAsmConstArgs.array) {
-      readAsmConstArgs.array = [];
-    }
-    var args = readAsmConstArgs.array;
-    args.length = 0;
+#if ASSERTIONS
+    // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
+    assert(Array.isArray(readAsmConstArgsArray));
+    // The input buffer is allocated on the stack, so it must be stack-aligned.
+    assert(buf % {{{ STACK_ALIGN }}} == 0);
+#endif
+    readAsmConstArgsArray.length = 0;
     var ch;
+    // Most arguments are i32s, so shift the buffer pointer so it is a plain
+    // index into HEAP32.
+    buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
-      if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
-        buf = (buf + 7) & ~7;
-        args.push(HEAPF64[(buf >> 3)]);
-        buf += 8;
-      } else
 #if ASSERTIONS
-      if (ch === 105 /*'i'*/)
+      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
-      {
-        buf = (buf + 3) & ~3;
-        args.push(HEAP32[(buf >> 2)]);
-        buf += 4;
-      }
-#if ASSERTIONS
-      else abort("unexpected char in asm const signature " + ch);
-#endif
+      // A double takes two 32-bit slots, and must also be aligned - the backend
+      // will emit padding to avoid that.
+      var double = ch < 105;
+      if (double && (buf & 1)) buf++;
+      readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
+      ++buf;
     }
-    return args;
+    return readAsmConstArgsArray;
+  },
+
+  emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
+    var args = readAsmConstArgs(sigPtr, argbuf);
+    return ASM_CONSTS[code].apply(null, args);
+  },
+  emscripten_asm_const_double: 'emscripten_asm_const_int',
+  $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
+    var args = readAsmConstArgs(sigPtr, argbuf);
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      // EM_ASM functions are variadic, receiving the actual arguments as a buffer
+      // in memory. the last parameter (argBuf) points to that data. We need to
+      // always un-variadify that, *before proxying*, as in the async case this
+      // is a stack allocation that LLVM made, which may go away before the main
+      // thread gets the message. For that reason we handle proxying *after* the
+      // call to readAsmConstArgs, and therefore we do that manually here instead
+      // of using __proxy. (And dor simplicity, do the same in the sync
+      // case as well, even though it's not strictly necessary, to keep the two
+      // code paths as similar as possible on both sides.)
+      // -1 - code is the encoding of a proxied EM_ASM, as a negative number
+      // (positive numbers are non-EM_ASM calls).
+      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
+    }
+#endif
+    return ASM_CONSTS[code].apply(null, args);
+  },
+  emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
+  emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
+    return mainThreadEM_ASM(code, sigPtr, argbuf, 1);
+  },
+  emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
+  emscripten_asm_const_async_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
+    return mainThreadEM_ASM(code, sigPtr, argbuf, 0);
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
   $exportAsmFunctions: function(asm) {
-#if WASM_BACKEND
     var asmjsMangle = function(x) {
       var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
       return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
     };
-#endif
 
 #if ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_WEB
@@ -4702,11 +3767,7 @@ LibraryManager.library = {
 #endif
 
     for (var __exportedFunc in asm) {
-#if WASM_BACKEND
       var jsname = asmjsMangle(__exportedFunc);
-#else
-      var jsname = __exportedFunc;
-#endif
 #if MINIMAL_RUNTIME
       global_object[jsname] = asm[__exportedFunc];
 #else
@@ -4856,9 +3917,6 @@ LibraryManager.library = {
 
   // special runtime support
 
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  emscripten_scan_stack__deps: ['$stackSave'],
-#endif
   emscripten_scan_stack: function(func) {
     var base = STACK_BASE; // TODO verify this is right on pthreads
     var end = stackSave();
@@ -4894,340 +3952,12 @@ LibraryManager.library = {
   llvm_dbg_value: function() {},
   llvm_debugtrap: function() {},
   llvm_ctlz_i32: function() {},
-  emscripten_asm_const: function() {},
-  emscripten_asm_const_int: function() {},
-  emscripten_asm_const_double: function() {},
-  emscripten_asm_const_int_sync_on_main_thread: function() {},
-  emscripten_asm_const_double_sync_on_main_thread: function() {},
-  emscripten_asm_const_async_on_main_thread: function() {},
-
-#if !WASM_BACKEND
-  // ======== compiled code from system/lib/compiler-rt , see readme therein
-  __muldsi3__asm: true,
-  __muldsi3__sig: 'iii',
-  __muldsi3__deps: ['Math_imul'],
-  __muldsi3: function($a, $b) {
-    $a = $a | 0;
-    $b = $b | 0;
-    var $1 = 0, $2 = 0, $3 = 0, $6 = 0, $8 = 0, $11 = 0, $12 = 0;
-    $1 = $a & 65535;
-    $2 = $b & 65535;
-    $3 = Math_imul($2, $1) | 0;
-    $6 = $a >>> 16;
-    $8 = ($3 >>> 16) + (Math_imul($2, $6) | 0) | 0;
-    $11 = $b >>> 16;
-    $12 = Math_imul($11, $1) | 0;
-    return ({{{ makeSetTempRet0('(($8 >>> 16) + (Math_imul($11, $6) | 0) | 0) + ((($8 & 65535) + $12 | 0) >>> 16) | 0') }}}, 0 | ($8 + $12 << 16 | $3 & 65535)) | 0;
-  },
-  __divdi3__sig: 'iiiii',
-  __divdi3__asm: true,
-  __divdi3__deps: ['__udivmoddi4', 'i64Subtract'],
-  __divdi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $1$0 = 0, $1$1 = 0, $2$0 = 0, $2$1 = 0, $4$0 = 0, $4$1 = 0, $6$0 = 0, $7$0 = 0, $7$1 = 0, $8$0 = 0, $10$0 = 0;
-    $1$0 = $a$1 >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
-    $1$1 = (($a$1 | 0) < 0 ? -1 : 0) >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
-    $2$0 = $b$1 >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
-    $2$1 = (($b$1 | 0) < 0 ? -1 : 0) >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
-    $4$0 = _i64Subtract($1$0 ^ $a$0 | 0, $1$1 ^ $a$1 | 0, $1$0 | 0, $1$1 | 0) | 0;
-    $4$1 = {{{ makeGetTempRet0() }}};
-    $6$0 = _i64Subtract($2$0 ^ $b$0 | 0, $2$1 ^ $b$1 | 0, $2$0 | 0, $2$1 | 0) | 0;
-    $7$0 = $2$0 ^ $1$0;
-    $7$1 = $2$1 ^ $1$1;
-    $8$0 = ___udivmoddi4($4$0, $4$1, $6$0, {{{ makeGetTempRet0() }}}, 0) | 0;
-    $10$0 = _i64Subtract($8$0 ^ $7$0 | 0, {{{ makeGetTempRet0() }}} ^ $7$1 | 0, $7$0 | 0, $7$1 | 0) | 0;
-    return $10$0 | 0;
-  },
-  __remdi3__sig: 'iiiii',
-  __remdi3__asm: true,
-  __remdi3__deps: ['__udivmoddi4', 'i64Subtract'],
-  __remdi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $rem = 0, $1$0 = 0, $1$1 = 0, $2$0 = 0, $2$1 = 0, $4$0 = 0, $4$1 = 0, $6$0 = 0, $10$0 = 0, $10$1 = 0, __stackBase__ = 0;
-    __stackBase__ = STACKTOP;
-    STACKTOP = STACKTOP + 16 | 0;
-    $rem = __stackBase__ | 0;
-    $1$0 = $a$1 >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
-    $1$1 = (($a$1 | 0) < 0 ? -1 : 0) >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
-    $2$0 = $b$1 >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
-    $2$1 = (($b$1 | 0) < 0 ? -1 : 0) >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
-    $4$0 = _i64Subtract($1$0 ^ $a$0 | 0, $1$1 ^ $a$1 | 0, $1$0 | 0, $1$1 | 0) | 0;
-    $4$1 = {{{ makeGetTempRet0() }}};
-    $6$0 = _i64Subtract($2$0 ^ $b$0 | 0, $2$1 ^ $b$1 | 0, $2$0 | 0, $2$1 | 0) | 0;
-    ___udivmoddi4($4$0, $4$1, $6$0, {{{ makeGetTempRet0() }}}, $rem) | 0;
-    $10$0 = _i64Subtract(HEAP32[$rem >> 2] ^ $1$0 | 0, HEAP32[$rem + 4 >> 2] ^ $1$1 | 0, $1$0 | 0, $1$1 | 0) | 0;
-    $10$1 = {{{ makeGetTempRet0() }}};
-    STACKTOP = __stackBase__;
-    return ({{{ makeSetTempRet0('$10$1') }}}, $10$0) | 0;
-  },
-  __muldi3__sig: 'iiiii',
-  __muldi3__asm: true,
-  __muldi3__deps: ['__muldsi3', 'Math_imul'],
-  __muldi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $x_sroa_0_0_extract_trunc = 0, $y_sroa_0_0_extract_trunc = 0, $1$0 = 0, $1$1 = 0, $2 = 0;
-    $x_sroa_0_0_extract_trunc = $a$0;
-    $y_sroa_0_0_extract_trunc = $b$0;
-    $1$0 = ___muldsi3($x_sroa_0_0_extract_trunc, $y_sroa_0_0_extract_trunc) | 0;
-    $1$1 = {{{ makeGetTempRet0() }}};
-    $2 = Math_imul($a$1, $y_sroa_0_0_extract_trunc) | 0;
-    return ({{{ makeSetTempRet0('((Math_imul($b$1, $x_sroa_0_0_extract_trunc) | 0) + $2 | 0) + $1$1 | $1$1 & 0') }}}, 0 | $1$0 & -1) | 0;
-  },
-  __udivdi3__sig: 'iiiii',
-  __udivdi3__asm: true,
-  __udivdi3__deps: ['__udivmoddi4'],
-  __udivdi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $1$0 = 0;
-    $1$0 = ___udivmoddi4($a$0, $a$1, $b$0, $b$1, 0) | 0;
-    return $1$0 | 0;
-  },
-  __uremdi3__sig: 'iiiii',
-  __uremdi3__asm: true,
-  __uremdi3__deps: ['__udivmoddi4'],
-  __uremdi3: function($a$0, $a$1, $b$0, $b$1) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    var $rem = 0, __stackBase__ = 0;
-    __stackBase__ = STACKTOP;
-    STACKTOP = STACKTOP + 16 | 0;
-    $rem = __stackBase__ | 0;
-    ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) | 0;
-    STACKTOP = __stackBase__;
-    return ({{{ makeSetTempRet0('HEAP32[$rem + 4 >> 2] | 0') }}}, HEAP32[$rem >> 2] | 0) | 0;
-  },
-  __udivmoddi4__sig: 'iiiiii',
-  __udivmoddi4__asm: true,
-  __udivmoddi4__deps: ['i64Add', 'i64Subtract', 'llvm_cttz_i32', 'Math_clz32'],
-  __udivmoddi4: function($a$0, $a$1, $b$0, $b$1, $rem) {
-    $a$0 = $a$0 | 0;
-    $a$1 = $a$1 | 0;
-    $b$0 = $b$0 | 0;
-    $b$1 = $b$1 | 0;
-    $rem = $rem | 0;
-    var $n_sroa_0_0_extract_trunc = 0, $n_sroa_1_4_extract_shift$0 = 0, $n_sroa_1_4_extract_trunc = 0, $d_sroa_0_0_extract_trunc = 0, $d_sroa_1_4_extract_shift$0 = 0, $d_sroa_1_4_extract_trunc = 0, $4 = 0, $17 = 0, $37 = 0, $49 = 0, $51 = 0, $57 = 0, $58 = 0, $66 = 0, $78 = 0, $86 = 0, $88 = 0, $89 = 0, $91 = 0, $92 = 0, $95 = 0, $105 = 0, $117 = 0, $119 = 0, $125 = 0, $126 = 0, $130 = 0, $q_sroa_1_1_ph = 0, $q_sroa_0_1_ph = 0, $r_sroa_1_1_ph = 0, $r_sroa_0_1_ph = 0, $sr_1_ph = 0, $d_sroa_0_0_insert_insert99$0 = 0, $d_sroa_0_0_insert_insert99$1 = 0, $137$0 = 0, $137$1 = 0, $carry_0203 = 0, $sr_1202 = 0, $r_sroa_0_1201 = 0, $r_sroa_1_1200 = 0, $q_sroa_0_1199 = 0, $q_sroa_1_1198 = 0, $147 = 0, $149 = 0, $r_sroa_0_0_insert_insert42$0 = 0, $r_sroa_0_0_insert_insert42$1 = 0, $150$1 = 0, $151$0 = 0, $152 = 0, $154$0 = 0, $r_sroa_0_0_extract_trunc = 0, $r_sroa_1_4_extract_trunc = 0, $155 = 0, $carry_0_lcssa$0 = 0, $carry_0_lcssa$1 = 0, $r_sroa_0_1_lcssa = 0, $r_sroa_1_1_lcssa = 0, $q_sroa_0_1_lcssa = 0, $q_sroa_1_1_lcssa = 0, $q_sroa_0_0_insert_ext75$0 = 0, $q_sroa_0_0_insert_ext75$1 = 0, $q_sroa_0_0_insert_insert77$1 = 0, $_0$0 = 0, $_0$1 = 0;
-    $n_sroa_0_0_extract_trunc = $a$0;
-    $n_sroa_1_4_extract_shift$0 = $a$1;
-    $n_sroa_1_4_extract_trunc = $n_sroa_1_4_extract_shift$0;
-    $d_sroa_0_0_extract_trunc = $b$0;
-    $d_sroa_1_4_extract_shift$0 = $b$1;
-    $d_sroa_1_4_extract_trunc = $d_sroa_1_4_extract_shift$0;
-    if (($n_sroa_1_4_extract_trunc | 0) == 0) {
-      $4 = ($rem | 0) != 0;
-      if (($d_sroa_1_4_extract_trunc | 0) == 0) {
-        if ($4) {
-          HEAP32[$rem >> 2] = ($n_sroa_0_0_extract_trunc >>> 0) % ($d_sroa_0_0_extract_trunc >>> 0);
-          HEAP32[$rem + 4 >> 2] = 0;
-        }
-        $_0$1 = 0;
-        $_0$0 = ($n_sroa_0_0_extract_trunc >>> 0) / ($d_sroa_0_0_extract_trunc >>> 0) >>> 0;
-        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-      } else {
-        if (!$4) {
-          $_0$1 = 0;
-          $_0$0 = 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        HEAP32[$rem >> 2] = $a$0 & -1;
-        HEAP32[$rem + 4 >> 2] = $a$1 & 0;
-        $_0$1 = 0;
-        $_0$0 = 0;
-        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-      }
-    }
-    $17 = ($d_sroa_1_4_extract_trunc | 0) == 0;
-    do {
-      if (($d_sroa_0_0_extract_trunc | 0) == 0) {
-        if ($17) {
-          if (($rem | 0) != 0) {
-            HEAP32[$rem >> 2] = ($n_sroa_1_4_extract_trunc >>> 0) % ($d_sroa_0_0_extract_trunc >>> 0);
-            HEAP32[$rem + 4 >> 2] = 0;
-          }
-          $_0$1 = 0;
-          $_0$0 = ($n_sroa_1_4_extract_trunc >>> 0) / ($d_sroa_0_0_extract_trunc >>> 0) >>> 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        if (($n_sroa_0_0_extract_trunc | 0) == 0) {
-          if (($rem | 0) != 0) {
-            HEAP32[$rem >> 2] = 0;
-            HEAP32[$rem + 4 >> 2] = ($n_sroa_1_4_extract_trunc >>> 0) % ($d_sroa_1_4_extract_trunc >>> 0);
-          }
-          $_0$1 = 0;
-          $_0$0 = ($n_sroa_1_4_extract_trunc >>> 0) / ($d_sroa_1_4_extract_trunc >>> 0) >>> 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        $37 = $d_sroa_1_4_extract_trunc - 1 | 0;
-        if (($37 & $d_sroa_1_4_extract_trunc | 0) == 0) {
-          if (($rem | 0) != 0) {
-            HEAP32[$rem >> 2] = 0 | $a$0 & -1;
-            HEAP32[$rem + 4 >> 2] = $37 & $n_sroa_1_4_extract_trunc | $a$1 & 0;
-          }
-          $_0$1 = 0;
-          $_0$0 = $n_sroa_1_4_extract_trunc >>> ((_llvm_cttz_i32($d_sroa_1_4_extract_trunc | 0) | 0) >>> 0);
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        $49 = Math_clz32($d_sroa_1_4_extract_trunc | 0) | 0;
-        $51 = $49 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
-        if ($51 >>> 0 <= 30) {
-          $57 = $51 + 1 | 0;
-          $58 = 31 - $51 | 0;
-          $sr_1_ph = $57;
-          $r_sroa_0_1_ph = $n_sroa_1_4_extract_trunc << $58 | $n_sroa_0_0_extract_trunc >>> ($57 >>> 0);
-          $r_sroa_1_1_ph = $n_sroa_1_4_extract_trunc >>> ($57 >>> 0);
-          $q_sroa_0_1_ph = 0;
-          $q_sroa_1_1_ph = $n_sroa_0_0_extract_trunc << $58;
-          break;
-        }
-        if (($rem | 0) == 0) {
-          $_0$1 = 0;
-          $_0$0 = 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        HEAP32[$rem >> 2] = 0 | $a$0 & -1;
-        HEAP32[$rem + 4 >> 2] = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
-        $_0$1 = 0;
-        $_0$0 = 0;
-        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-      } else {
-        if (!$17) {
-          $117 = Math_clz32($d_sroa_1_4_extract_trunc | 0) | 0;
-          $119 = $117 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
-          if ($119 >>> 0 <= 31) {
-            $125 = $119 + 1 | 0;
-            $126 = 31 - $119 | 0;
-            $130 = $119 - 31 >> 31;
-            $sr_1_ph = $125;
-            $r_sroa_0_1_ph = $n_sroa_0_0_extract_trunc >>> ($125 >>> 0) & $130 | $n_sroa_1_4_extract_trunc << $126;
-            $r_sroa_1_1_ph = $n_sroa_1_4_extract_trunc >>> ($125 >>> 0) & $130;
-            $q_sroa_0_1_ph = 0;
-            $q_sroa_1_1_ph = $n_sroa_0_0_extract_trunc << $126;
-            break;
-          }
-          if (($rem | 0) == 0) {
-            $_0$1 = 0;
-            $_0$0 = 0;
-            return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-          }
-          HEAP32[$rem >> 2] = 0 | $a$0 & -1;
-          HEAP32[$rem + 4 >> 2] = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
-          $_0$1 = 0;
-          $_0$0 = 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-        $66 = $d_sroa_0_0_extract_trunc - 1 | 0;
-        if (($66 & $d_sroa_0_0_extract_trunc | 0) != 0) {
-          $86 = (Math_clz32($d_sroa_0_0_extract_trunc | 0) | 0) + 33 | 0;
-          $88 = $86 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
-          $89 = 64 - $88 | 0;
-          $91 = 32 - $88 | 0;
-          $92 = $91 >> 31;
-          $95 = $88 - 32 | 0;
-          $105 = $95 >> 31;
-          $sr_1_ph = $88;
-          $r_sroa_0_1_ph = $91 - 1 >> 31 & $n_sroa_1_4_extract_trunc >>> ($95 >>> 0) | ($n_sroa_1_4_extract_trunc << $91 | $n_sroa_0_0_extract_trunc >>> ($88 >>> 0)) & $105;
-          $r_sroa_1_1_ph = $105 & $n_sroa_1_4_extract_trunc >>> ($88 >>> 0);
-          $q_sroa_0_1_ph = $n_sroa_0_0_extract_trunc << $89 & $92;
-          $q_sroa_1_1_ph = ($n_sroa_1_4_extract_trunc << $89 | $n_sroa_0_0_extract_trunc >>> ($95 >>> 0)) & $92 | $n_sroa_0_0_extract_trunc << $91 & $88 - 33 >> 31;
-          break;
-        }
-        if (($rem | 0) != 0) {
-          HEAP32[$rem >> 2] = $66 & $n_sroa_0_0_extract_trunc;
-          HEAP32[$rem + 4 >> 2] = 0;
-        }
-        if (($d_sroa_0_0_extract_trunc | 0) == 1) {
-          $_0$1 = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
-          $_0$0 = 0 | $a$0 & -1;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        } else {
-          $78 = _llvm_cttz_i32($d_sroa_0_0_extract_trunc | 0) | 0;
-          $_0$1 = 0 | $n_sroa_1_4_extract_trunc >>> ($78 >>> 0);
-          $_0$0 = $n_sroa_1_4_extract_trunc << 32 - $78 | $n_sroa_0_0_extract_trunc >>> ($78 >>> 0) | 0;
-          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-        }
-      }
-    } while (0);
-    if (($sr_1_ph | 0) == 0) {
-      $q_sroa_1_1_lcssa = $q_sroa_1_1_ph;
-      $q_sroa_0_1_lcssa = $q_sroa_0_1_ph;
-      $r_sroa_1_1_lcssa = $r_sroa_1_1_ph;
-      $r_sroa_0_1_lcssa = $r_sroa_0_1_ph;
-      $carry_0_lcssa$1 = 0;
-      $carry_0_lcssa$0 = 0;
-    } else {
-      $d_sroa_0_0_insert_insert99$0 = 0 | $b$0 & -1;
-      $d_sroa_0_0_insert_insert99$1 = $d_sroa_1_4_extract_shift$0 | $b$1 & 0;
-      $137$0 = _i64Add($d_sroa_0_0_insert_insert99$0 | 0, $d_sroa_0_0_insert_insert99$1 | 0, -1, -1) | 0;
-      $137$1 = {{{ makeGetTempRet0() }}};
-      $q_sroa_1_1198 = $q_sroa_1_1_ph;
-      $q_sroa_0_1199 = $q_sroa_0_1_ph;
-      $r_sroa_1_1200 = $r_sroa_1_1_ph;
-      $r_sroa_0_1201 = $r_sroa_0_1_ph;
-      $sr_1202 = $sr_1_ph;
-      $carry_0203 = 0;
-      while (1) {
-        $147 = $q_sroa_0_1199 >>> 31 | $q_sroa_1_1198 << 1;
-        $149 = $carry_0203 | $q_sroa_0_1199 << 1;
-        $r_sroa_0_0_insert_insert42$0 = 0 | ($r_sroa_0_1201 << 1 | $q_sroa_1_1198 >>> 31);
-        $r_sroa_0_0_insert_insert42$1 = $r_sroa_0_1201 >>> 31 | $r_sroa_1_1200 << 1 | 0;
-        _i64Subtract($137$0 | 0, $137$1 | 0, $r_sroa_0_0_insert_insert42$0 | 0, $r_sroa_0_0_insert_insert42$1 | 0) | 0;
-        $150$1 = {{{ makeGetTempRet0() }}};
-        $151$0 = $150$1 >> 31 | (($150$1 | 0) < 0 ? -1 : 0) << 1;
-        $152 = $151$0 & 1;
-        $154$0 = _i64Subtract($r_sroa_0_0_insert_insert42$0 | 0, $r_sroa_0_0_insert_insert42$1 | 0, $151$0 & $d_sroa_0_0_insert_insert99$0 | 0, ((($150$1 | 0) < 0 ? -1 : 0) >> 31 | (($150$1 | 0) < 0 ? -1 : 0) << 1) & $d_sroa_0_0_insert_insert99$1 | 0) | 0;
-        $r_sroa_0_0_extract_trunc = $154$0;
-        $r_sroa_1_4_extract_trunc = {{{ makeGetTempRet0() }}};
-        $155 = $sr_1202 - 1 | 0;
-        if (($155 | 0) == 0) {
-          break;
-        } else {
-          $q_sroa_1_1198 = $147;
-          $q_sroa_0_1199 = $149;
-          $r_sroa_1_1200 = $r_sroa_1_4_extract_trunc;
-          $r_sroa_0_1201 = $r_sroa_0_0_extract_trunc;
-          $sr_1202 = $155;
-          $carry_0203 = $152;
-        }
-      }
-      $q_sroa_1_1_lcssa = $147;
-      $q_sroa_0_1_lcssa = $149;
-      $r_sroa_1_1_lcssa = $r_sroa_1_4_extract_trunc;
-      $r_sroa_0_1_lcssa = $r_sroa_0_0_extract_trunc;
-      $carry_0_lcssa$1 = 0;
-      $carry_0_lcssa$0 = $152;
-    }
-    $q_sroa_0_0_insert_ext75$0 = $q_sroa_0_1_lcssa;
-    $q_sroa_0_0_insert_ext75$1 = 0;
-    $q_sroa_0_0_insert_insert77$1 = $q_sroa_1_1_lcssa | $q_sroa_0_0_insert_ext75$1;
-    if (($rem | 0) != 0) {
-      HEAP32[$rem >> 2] = 0 | $r_sroa_0_1_lcssa;
-      HEAP32[$rem + 4 >> 2] = $r_sroa_1_1_lcssa | 0;
-    }
-    $_0$1 = (0 | $q_sroa_0_0_insert_ext75$0) >>> 31 | $q_sroa_0_0_insert_insert77$1 << 1 | ($q_sroa_0_0_insert_ext75$1 << 1 | $q_sroa_0_0_insert_ext75$0 >>> 31) & 0 | $carry_0_lcssa$1;
-    $_0$0 = ($q_sroa_0_0_insert_ext75$0 << 1 | 0 >>> 31) & -2 | $carry_0_lcssa$0;
-    return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
-  },
-  // =======================================================================
-#endif
 
   __handle_stack_overflow: function() {
     abort('stack overflow')
   },
 
-  _getExecutableName: function() {
+  $getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {
@@ -5238,6 +3968,59 @@ LibraryManager.library = {
 #else
     return thisProgram || './this.program';
 #endif
+  },
+
+  $listenOnce: function(object, event, func) {
+#if MIN_CHROME_VERSION < 55 || MIN_EDGE_VERSION < 18 || MIN_FIREFOX_VERSION < 50 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+    object.addEventListener(event, function handler() {
+      func();
+      object.removeEventListener(event, handler);
+    });
+#else
+    object.addEventListener(event, func, { 'once': true });
+#endif
+  },
+
+  // Receives a Web Audio context plus a set of elements to listen for user
+  // input events on, and registers a context resume() for them. This lets
+  // audio work properly in an automatic way, as browsers won't let audio run
+  // without user interaction.
+  // If @elements is not provided, we default to the document and canvas
+  // elements, which handle common use cases.
+  $autoResumeAudioContext__deps: ['$listenOnce'],
+  $autoResumeAudioContext: function(ctx, elements) {
+    if (!elements) {
+      elements = [document, document.getElementById('canvas')];
+    }
+    ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
+      elements.forEach(function(element) {
+        if (element) {
+          listenOnce(element, event, function() {
+            if (ctx.state === 'suspended') ctx.resume();
+          });
+        }
+      });
+    });
+  },
+
+  $callRuntimeCallbacks: function(callbacks) {
+    while(callbacks.length > 0) {
+      var callback = callbacks.shift();
+      if (typeof callback == 'function') {
+        callback(Module); // Pass the module as the first argument.
+        continue;
+      }
+      var func = callback.func;
+      if (typeof func === 'number') {
+        if (callback.arg === undefined) {
+          dynCall_v(func);
+        } else {
+          dynCall_vi(func, callback.arg);
+        }
+      } else {
+        func(callback.arg === undefined ? null : callback.arg);
+      }
+    }
   },
 };
 

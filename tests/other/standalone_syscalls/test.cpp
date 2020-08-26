@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <emscripten.h>
+#include <emscripten/html5.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -21,4 +23,12 @@ int main() {
   // write to standard streams works.
   write(1, "hello, world!", 5);
   write(1, "\n", 1);
+  // emscripten_log API works
+  emscripten_console_log("log");
+  // warnings/errors go to stderr, and are not noticed in this test
+  emscripten_console_warn("warn");
+  emscripten_console_error("error");
+  emscripten_console_log("log2");
+  // check we can call this, but the test doesn't check the output
+  emscripten_get_now();
 }

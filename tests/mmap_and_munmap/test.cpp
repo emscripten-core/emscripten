@@ -74,18 +74,28 @@ int test_mmap_write() {
 
     char *m = (char *)mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(f_rw), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
+    // Reverse the data in the mapped file in memory, which should be written
+    // out.
     for (size_t i = 0; i < file_len(); ++i) {
-        size_t k = file_len() - i;
+        size_t k = file_len() - i - 1;
         m[k] = file_data[i];
     }
+    // Write to a byte past the end of the file. mmap will allocate a multiple
+    // of the page size, which is bigger than our small file, and it will zero
+    // that out. So it is ok for us to write there, but those changes should
+    // not be saved anywhere.
+    ASSERT(m[file_len()] == 0, "No zero past file contents");
+    m[file_len()] = 42;
     ASSERT(munmap(m, file_len()) == 0, "Failed to unmap allocated pages");
 
+    // mmap it again, where we should see the reversed data that was written.
     m = (char *)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_rw), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
     for (size_t i = 0; i < file_len(); ++i) {
-        size_t k = file_len() - i;
+        size_t k = file_len() - i - 1;
         ASSERT(m[k] == file_data[i], "Wrong file data written or mapped");
     }
+    ASSERT(m[file_len()] == 0, "No zero past file contents");
     ASSERT(munmap(m, file_len()) == 0, "Failed to unmap allocated pages");
 
     TEST_PASS();

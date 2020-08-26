@@ -43,20 +43,8 @@ var Fetch = {
   },
 #endif
 
-#if USE_FETCH_WORKER
-  initFetchWorker: function() {
-    var stackSize = 128*1024;
-    var stack = allocate(stackSize>>2, "i32*", ALLOC_DYNAMIC);
-    Fetch.worker.postMessage({cmd: 'init', DYNAMICTOP_PTR: DYNAMICTOP_PTR, STACKTOP: stack, STACK_MAX: stack + stackSize, queuePtr: _fetch_work_queue, buffer: HEAPU8.buffer});
-  },
-#endif
-
   staticInit: function() {
-#if USE_FETCH_WORKER
-    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
-#else
     var isMainThread = true;
-#endif
 
 #if FETCH_SUPPORT_INDEXEDDB
     var onsuccess = function(db) {
@@ -66,9 +54,6 @@ var Fetch = {
       Fetch.dbInstance = db;
 
       if (isMainThread) {
-#if USE_FETCH_WORKER
-        Fetch.initFetchWorker();
-#endif
         removeRunDependency('library_fetch_init');
       }
     };
@@ -79,37 +64,14 @@ var Fetch = {
       Fetch.dbInstance = false;
 
       if (isMainThread) {
-#if USE_FETCH_WORKER
-        Fetch.initFetchWorker();
-#endif
         removeRunDependency('library_fetch_init');
       }
     };
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 
-#if USE_FETCH_WORKER
-    if (isMainThread) {
-#if FETCH_SUPPORT_INDEXEDDB
-      addRunDependency('library_fetch_init');
-#endif
-
-      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
-      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
-      // to the main html file is loaded.
-      var fetchJs = locateFile('{{{ FETCH_WORKER_FILE }}}');
-      Fetch.worker = new Worker(fetchJs);
-      Fetch.worker.onmessage = function(e) {
-        out('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
-      };
-      Fetch.worker.onerror = function(e) {
-        err('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
-      };
-    }
-#else
 #if FETCH_SUPPORT_INDEXEDDB
     if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
-#endif
 #endif
   }
 }
@@ -291,7 +253,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var requestMethod = UTF8ToString(fetch_attr);
   if (!requestMethod) requestMethod = 'GET';
-  var userData = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.userData }}} >> 2];
+  var userData = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.userData }}} >> 2];
   var fetchAttributes = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.attributes }}} >> 2];
   var timeoutMsecs = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.timeoutMSecs }}} >> 2];
   var withCredentials = !!HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.withCredentials }}} >> 2];
@@ -358,12 +320,15 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
   var data = (dataPtr && dataLength) ? HEAPU8.slice(dataPtr, dataPtr + dataLength) : null;
   // TODO: Support specifying custom headers to the request.
 
-  xhr.onload = function(e) {
-    var len = xhr.response ? xhr.response.byteLength : 0;
+  // Share the code to save the response, as we need to do so both on success
+  // and on error (despite an error, there may be a response, like a 404 page).
+  // This receives a condition, which determines whether to save the xhr's
+  // response, or just 0.
+  function saveResponse(condition) {
     var ptr = 0;
     var ptrLen = 0;
-    if (fetchAttrLoadToMemory && !fetchAttrStreamData) {
-      ptrLen = len;
+    if (condition) {
+      ptrLen = xhr.response ? xhr.response.byteLength : 0;
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
@@ -374,6 +339,11 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     }
     HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
+  }
+
+  xhr.onload = function(e) {
+    saveResponse(fetchAttrLoadToMemory && !fetchAttrStreamData);
+    var len = xhr.response ? xhr.response.byteLength : 0;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
     if (len) {
       // If the final XHR.onload handler receives the bytedata to compute total length, report that,
@@ -397,14 +367,13 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     }
   };
   xhr.onerror = function(e) {
+    saveResponse(fetchAttrLoadToMemory);
     var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
 #endif
-    HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = 0;
-    Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, 0);
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
-    Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, 0);
+    Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, xhr.response ? xhr.response.byteLength : 0);
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = status;
     if (onerror) onerror(fetch, xhr, e);
@@ -422,8 +391,10 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
-      // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
-      // freed when emscripten_fetch_close() is called.
+#if ASSERTIONS
+      assert(onprogress, 'When doing a streaming fetch, you should have an onprogress handler registered to receive the chunks!');
+#endif
+      // Allocate byte data in Emscripten heap for the streamed memory block (freed immediately after onprogress call)
       ptr = _malloc(ptrLen);
       HEAPU8.set(new Uint8Array(xhr.response), ptr);
     }
@@ -436,6 +407,9 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     if (onprogress) onprogress(fetch, xhr, e);
+    if (ptr) {
+      _free(ptr);
+    }
   };
   xhr.onreadystatechange = function(e) {
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;

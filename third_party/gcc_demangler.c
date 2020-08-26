@@ -4221,6 +4221,6 @@ int main(int argc, char **argv)
 {
   int status;
   printf("*%s*\n", __cxa_demangle(argv[1], 0, 0, &status));
-  return 1;
+  return 0;
 }
 

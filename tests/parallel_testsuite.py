@@ -3,22 +3,15 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import multiprocessing
 import os
-import subprocess
 import sys
 import unittest
 import tempfile
 import time
+import queue
 
 from tools.tempfiles import try_delete
-
-try:
-  import queue
-except ImportError:
-  # Python 2 compatibility
-  import Queue as queue
 
 
 def g_testing_thread(work_queue, result_queue, temp_dir):
@@ -113,7 +106,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return result
 
 
-class BufferedParallelTestResult(object):
+class BufferedParallelTestResult():
   """A picklable struct used to communicate test results across processes
 
   Fulfills the interface for unittest.TestResult
@@ -131,15 +124,20 @@ class BufferedParallelTestResult(object):
     result.stopTest(self.test)
 
   def startTest(self, test):
-    self.start_time = time.perf_counter()
+    # Python 2 does not have perf_counter()
+    # TODO: remove when we remove Python 2 support
+    if hasattr(time, 'perf_counter'):
+      self.start_time = time.perf_counter()
 
   def stopTest(self, test):
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
-    self.buffered_result.duration = time.perf_counter() - self.start_time
+    if hasattr(time, 'perf_counter'):
+      self.buffered_result.duration = time.perf_counter() - self.start_time
 
   def addSuccess(self, test):
-    print(test, '... ok (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+    if hasattr(time, 'perf_counter'):
+      print(test, '... ok (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
   def addSkip(self, test, reason):
@@ -155,17 +153,12 @@ class BufferedParallelTestResult(object):
     self.buffered_result = BufferedTestError(test, err)
 
 
-class BufferedTestBase(object):
+class BufferedTestBase():
   """Abstract class that holds test result data, split by type of result."""
   def __init__(self, test, err=None):
     self.test = test
     if err:
       exctype, value, tb = err
-      if exctype == subprocess.CalledProcessError:
-        # multiprocess.Queue can't serialize a subprocess.CalledProcessError.
-        # This is a bug in python 2.7 (https://bugs.python.org/issue9400)
-        exctype = Exception
-        value = Exception(str(value))
       self.error = exctype, value, FakeTraceback(tb)
 
   def updateResult(self, result):
@@ -196,7 +189,7 @@ class BufferedTestError(BufferedTestBase):
     result.addError(self.test, self.error)
 
 
-class FakeTraceback(object):
+class FakeTraceback():
   """A fake version of a traceback object that is picklable across processes.
 
   Python's traceback objects contain hidden stack information that isn't able
@@ -214,14 +207,14 @@ class FakeTraceback(object):
     self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
 
 
-class FakeFrame(object):
+class FakeFrame():
   def __init__(self, f):
     self.f_code = FakeCode(f.f_code)
     # f.f_globals is not picklable, not used in stack traces, and needs to be iterable
     self.f_globals = []
 
 
-class FakeCode(object):
+class FakeCode():
   def __init__(self, co):
     self.co_filename = co.co_filename
     self.co_name = co.co_name

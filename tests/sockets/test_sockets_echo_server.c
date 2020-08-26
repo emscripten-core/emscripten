@@ -163,7 +163,7 @@ void main_loop() {
 // In this test application we want to try and keep as much in common as the timed loop
 // version but in a real application the fd can be used instead of needing to select().
 void async_main_loop(int fd, void* userData) {
-  printf("%s callback\n", userData);
+  printf("%s callback\n", (char*)userData);
   main_loop();
 }
 

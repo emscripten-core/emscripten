@@ -5,7 +5,6 @@ d
  * SPDX-License-Identifier: MIT
  */
 
-#if SIDE_MODULE == 0
 #if USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
@@ -13,7 +12,6 @@ if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_E
 #else
 var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
-#endif // SIDE_MODULE
 
 #if MODULARIZE && EXPORT_READY_PROMISE
 // Set up the promise that indicates the Module is initialized
@@ -22,6 +20,9 @@ Module['ready'] = new Promise(function(resolve, reject) {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
+#if ASSERTIONS
+{{{ addReadyPromiseAssertions("Module['ready']") }}}
+#endif
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -51,8 +52,9 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 #endif
 
 #if !SINGLE_FILE
-// Wasm or Wasm2JS loading:
 #if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
+// Wasm or Wasm2JS loading:
+
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
@@ -65,9 +67,6 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 #endif
 #else
-#if SEPARATE_ASM
-  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
-#endif
 #endif
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
@@ -93,32 +92,6 @@ if (ENVIRONMENT_IS_SHELL) {
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }
-#endif
-
-// asm.js loading in fastcomp backend:
-#if !WASM && !WASM_BACKEND
-
-#if ENVIRONMENT_MAY_BE_NODE
-if (ENVIRONMENT_IS_NODE) {
-  var fs = require('fs');
-#if SEPARATE_ASM
-  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
-#endif
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
-  Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
-#endif
-}
-#endif
-
-#if ENVIRONMENT_MAY_BE_SHELL
-if (ENVIRONMENT_IS_SHELL) {
-  eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
-  Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
-#endif
-}
-#endif
-
 #endif
 
 #endif // !SINGLE_FILE

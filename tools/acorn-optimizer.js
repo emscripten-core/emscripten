@@ -1,7 +1,6 @@
-var acorn = require('../third_party/acorn');
+var acorn = require('acorn');
 var terser = require('../third_party/terser');
 var fs = require('fs');
-var path = require('path');
 
 // Setup
 
@@ -1109,6 +1108,118 @@ function unsignPointers(ast) {
   });
 }
 
+// Replace direct HEAP* loads/stores with calls into C, in which ASan checks
+// are applied. That lets ASan cover JS too.
+function asanify(ast) {
+  function isHEAPAccess(node) {
+    return node.type === 'MemberExpression' &&
+           node.object.type === 'Identifier' &&
+           node.computed && // notice a[X] but not a.X
+           isEmscriptenHEAP(node.object.name);
+  }
+
+  recursiveWalk(ast, {
+    FunctionDeclaration(node, c) {
+      if (node.id.type === 'Identifier' && node.id.name.startsWith('_asan_js_')) {
+        // do not recurse into this js impl function, which we use during
+        // startup before the wasm is ready
+      } else {
+        c(node.body);
+      }
+    },
+    AssignmentExpression(node, c) {
+      var target = node.left;
+      var value = node.right;
+      c(value);
+      if (isHEAPAccess(target)) {
+        // Instrument a store.
+        var ptr = target.property;
+        switch (target.object.name) {
+          case 'HEAP8': {
+            makeCallExpression(node, '_asan_js_store_1', [ptr, value]);
+            break;
+          }
+          case 'HEAPU8': {
+            makeCallExpression(node, '_asan_js_store_1u', [ptr, value]);
+            break;
+          }
+          case 'HEAP16': {
+            makeCallExpression(node, '_asan_js_store_2', [ptr, value]);
+            break;
+          }
+          case 'HEAPU16': {
+            makeCallExpression(node, '_asan_js_store_2u', [ptr, value]);
+            break;
+          }
+          case 'HEAP32': {
+            makeCallExpression(node, '_asan_js_store_4', [ptr, value]);
+            break;
+          }
+          case 'HEAPU32': {
+            makeCallExpression(node, '_asan_js_store_4u', [ptr, value]);
+            break;
+          }
+          case 'HEAPF32': {
+            makeCallExpression(node, '_asan_js_store_f', [ptr, value]);
+            break;
+          }
+          case 'HEAPF64': {
+            makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
+            break;
+          }
+          default: {}
+        }
+      } else {
+        c(target);
+      }
+    },
+    MemberExpression(node, c) {
+      c(node.property);
+      if (!isHEAPAccess(node)) {
+        c(node.object);
+      } else {
+        // Instrument a load.
+        var ptr = node.property;
+        switch (node.object.name) {
+          case 'HEAP8': {
+            makeCallExpression(node, '_asan_js_load_1', [ptr]);
+            break;
+          }
+          case 'HEAPU8': {
+            makeCallExpression(node, '_asan_js_load_1u', [ptr]);
+            break;
+          }
+          case 'HEAP16': {
+            makeCallExpression(node, '_asan_js_load_2', [ptr]);
+            break;
+          }
+          case 'HEAPU16': {
+            makeCallExpression(node, '_asan_js_load_2u', [ptr]);
+            break;
+          }
+          case 'HEAP32': {
+            makeCallExpression(node, '_asan_js_load_4', [ptr]);
+            break;
+          }
+          case 'HEAPU32': {
+            makeCallExpression(node, '_asan_js_load_4u', [ptr]);
+            break;
+          }
+          case 'HEAPF32': {
+            makeCallExpression(node, '_asan_js_load_f', [ptr]);
+            break;
+          }
+          case 'HEAPF64': {
+            makeCallExpression(node, '_asan_js_load_d', [ptr]);
+            break;
+          }
+          default: {}
+        }
+      }
+    }
+  });
+}
+
 function reattachComments(ast, comments) {
   var symbols = [];
 
@@ -1187,7 +1298,25 @@ if (extraInfoStart > 0) {
 // Collect all JS code comments to this array so that we can retain them in the outputted code
 // if --closureFriendly was requested.
 var sourceComments = [];
-var ast = acorn.parse(input, { ecmaVersion: 6, preserveParens: closureFriendly, onComment: closureFriendly ? sourceComments : undefined });
+var ast;
+try {
+  ast = acorn.parse(input, {
+    ecmaVersion: 2018,
+    preserveParens: closureFriendly,
+    onComment: closureFriendly ? sourceComments : undefined
+  });
+} catch (err) {
+  err.message += (function() {
+    var errorMessage = '\n' + input.split(acorn.lineBreak)[err.loc.line - 1] + '\n';
+    var column = err.loc.column;
+    while (column--) {
+      errorMessage += ' ';
+    }
+    errorMessage += '^\n';
+    return errorMessage;
+  })();
+  throw err;
+}
 
 var minifyWhitespace = false;
 var noPrint = false;
@@ -1203,6 +1332,7 @@ var registry = {
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
+  asanify: asanify
 };
 
 passes.forEach(function(pass) {
@@ -1224,4 +1354,3 @@ if (!noPrint) {
   });
   print(output);
 }
-

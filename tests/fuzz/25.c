@@ -1785,8 +1785,3 @@ breakdown:
 XXX percentage a fresh-made variable is used: 17.8
 XXX percentage an existing variable is used: 82.2
 ********************* end of statistics **********************/
-
-
-// /usr/bin/python /Users/achoudhury/Code/emscripten/emscripten/emcc -Oz --llvm-opts 1 /Users/achoudhury/Code/emscripten/emscripten/tests/fuzz/temp_fuzzcode28225_.cpp -o /Users/achoudhury/Code/emscripten/emscripten/tests/fuzz/fuzz.cpp -I /usr/local/Cellar/csmith/2.2.0/include/csmith-2.2.0/runtime -s ELIMINATE_DUPLICATE_FUNCTIONS=1 --emit-symbol-map -w -s MAIN_MODULE=1 -s EMTERPRETIFY=1 -s EMTERPRETIFY_WHITELIST=["_main"]
-
-

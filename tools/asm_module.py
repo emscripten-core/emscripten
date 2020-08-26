@@ -6,7 +6,7 @@
 from __future__ import print_function
 import sys, re, itertools
 
-from . import shared, js_optimizer
+from . import shared, js_optimizer, building
 
 
 class AsmModule():
@@ -162,7 +162,7 @@ class AsmModule():
     #print >> sys.stderr, 'f bases', f_bases
 
     # relocate
-    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate', 'last'], extra_info={
+    temp = building.js_optimizer(self.filename, ['asm', 'relocate', 'last'], extra_info={
       'replacements': replacements,
       'fBases': f_bases,
       'hBase': main.staticbump
@@ -305,20 +305,6 @@ class AsmModule():
 
   def get_table_funcs(self):
     return set(itertools.chain.from_iterable([[y.strip() for y in x[1:-1].split(',')] for x in self.tables.values()]))
-
-  def get_funcs_map(self):
-    funcs = js_optimizer.split_funcs(self.funcs_js)
-    ret = {}
-    for name, content in funcs:
-      ret[name] = content
-    return ret
-
-  def apply_funcs_map(self, funcs_map): # assumes self.funcs is the set of funcs, in the right order
-    jses = []
-    for f in self.funcs:
-      if f in funcs_map: # TODO: fix
-        jses.append(funcs_map[f])
-    self.funcs_js = '\n'.join(jses)
 
   def get_import_type(self, imp):
     def is_int(x):

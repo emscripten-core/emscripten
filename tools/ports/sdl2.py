@@ -5,15 +5,16 @@
 
 import os
 
-TAG = 'version_21'
-HASH = '0ea4ab13b8715b9f8b41096f47dc03cad17f35e19c945156b2bb0f3c16b261a4b0c6d576008f1c458377a9f70f1c055a5900a47b8342b2858dc88a55919e63df'
+TAG = 'version_22'
+HASH = 'c95b65f21a54835b5623236b15bbe54176682c97752d23905662ce7622eabdcc48c1bac71028147b5e4cc1e960df97fd5be9b5bbee540b57bd2644f0ca7e6023'
 SUBDIR = 'SDL2-' + TAG
 
 
-def get(ports, settings, shared):
-  if settings.USE_SDL != 2:
-    return []
+def needed(settings):
+  return settings.USE_SDL == 2
 
+
+def get(ports, settings, shared):
   # get the port
   ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
   libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
@@ -68,7 +69,7 @@ def get(ports, settings, shared):
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      command = [shared.PYTHON, shared.EMCC,
+      command = [shared.EMCC,
                  '-c', os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src),
                  '-o', o, '-I' + dest_include_path,
                  '-O2', '-DUSING_GENERATED_CONFIG_H', '-w']
@@ -84,19 +85,17 @@ def get(ports, settings, shared):
   return [shared.Cache.get(libname, create, what='port')]
 
 
-def clear(ports, shared):
+def clear(ports, settings, shared):
   shared.Cache.erase_file(ports.get_lib_name('libSDL2'))
 
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_SDL == 1:
-    # TODO(sbc): remove this
-    args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
-  elif settings.USE_SDL == 2:
-    # TODO(sbc): remove this
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_include_dir(), 'SDL2')]
-    get(ports, settings, shared)
-  return args
+def process_dependencies(settings):
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext']
+
+
+def process_args(ports):
+  # TODO(sbc): remove this
+  return ['-Xclang', '-isystem' + os.path.join(ports.get_include_dir(), 'SDL2')]
 
 
 def show():

@@ -158,13 +158,13 @@ def warn(msg, *args):
 class WarningManager(object):
   warnings = {}
 
-  def add_warning(self, name, enabled=True, part_of_all=True, shared=False):
+  def add_warning(self, name, enabled=True, part_of_all=True, shared=False, error=False):
     self.warnings[name] = {
       'enabled': enabled,
       'part_of_all': part_of_all,
       # True for flags that are shared with the underlying clang driver
       'shared': shared,
-      'error': False,
+      'error': error,
     }
 
   def capture_warnings(self, cmd_args):
@@ -227,8 +227,8 @@ class WarningManager(object):
       logger.debug('disabled warning: ' + msg)
 
 
-def add_warning(name, enabled=True, part_of_all=True, shared=False):
-  manager.add_warning(name, enabled, part_of_all, shared)
+def add_warning(name, enabled=True, part_of_all=True, shared=False, error=False):
+  manager.add_warning(name, enabled, part_of_all, shared, error)
 
 
 def enable_warning(name, as_error=False):

@@ -213,7 +213,8 @@ function isJsOnlyIdentifier(ident) {
 
 function isJsLibraryConfigIdentifier(ident) {
   return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
-   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
+   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import')
+   || ident.endsWith('__nothrow');
 }
 
 // Flattens something like [5, 6, 'hi', [1, 'bye'], 44] into

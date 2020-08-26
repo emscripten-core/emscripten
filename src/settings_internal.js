@@ -75,10 +75,6 @@ var MAX_GLOBAL_ALIGN = -1;
 // List of functions implemented in compiled code; received from the backend.
 var IMPLEMENTED_FUNCTIONS = [];
 
-// List of weakly undefined externals; received from the backend
-// fastcomp-only
-var WEAK_DECLARES = [];
-
 // Name of the file containing the Fetch *.fetch.js, if relevant
 var FETCH_WORKER_FILE = '';
 
@@ -160,11 +156,6 @@ var MINIFY_WASM_IMPORTS_AND_EXPORTS = 0;
 // Whether to minify imported module names.
 var MINIFY_WASM_IMPORTED_MODULES = 0;
 
-// passes information to emscripten.py about whether to minify
-// JS -> asm.js import names. Controlled by optimization level, enabled
-// at -O1 and higher, but disabled at -g2 and higher.
-var MINIFY_ASMJS_IMPORT_NAMES = 0;
-
 // Whether to minify functions exported from Asm.js/Wasm module.
 var MINIFY_ASMJS_EXPORT_NAMES = 1;
 
@@ -194,9 +185,6 @@ var SEPARATE_DWARF = 0;
 // New WebAssembly exception handling (experimental)
 var EXCEPTION_HANDLING = 0;
 
-// Enabled when building C++ code (for example via em++ or via -c c++)
-var USE_CXX = 0;
-
 // Used internally when running the JS compiler simply to generate list of all
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
 // JS library symbols.
@@ -206,7 +194,7 @@ var ONLY_CALC_JS_SYMBOLS = 0;
 var STACK_BASE = 0;
 
 // Set to true if the program has a main function.  By default this is
-// enabled, but if `--no-entry` is passed, or if `_main` is not part of 
+// enabled, but if `--no-entry` is passed, or if `_main` is not part of
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = 1;
 

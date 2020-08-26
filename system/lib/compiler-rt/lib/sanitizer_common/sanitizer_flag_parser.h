@@ -1,9 +1,8 @@
 //===-- sanitizer_flag_parser.h ---------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -23,6 +22,23 @@ namespace __sanitizer {
 class FlagHandlerBase {
  public:
   virtual bool Parse(const char *value) { return false; }
+  // Write the C string representation of the current value (truncated to fit)
+  // into the buffer of size `size`. Returns false if truncation occurred and
+  // returns true otherwise.
+  virtual bool Format(char *buffer, uptr size) {
+    if (size > 0)
+      buffer[0] = '\0';
+    return false;
+  }
+
+ protected:
+  ~FlagHandlerBase() {}
+
+  inline bool FormatString(char *buffer, uptr size, const char *str_to_use) {
+    uptr num_symbols_should_write =
+        internal_snprintf(buffer, size, "%s", str_to_use);
+    return num_symbols_should_write < size;
+  }
 };
 
 template <typename T>
@@ -32,6 +48,7 @@ class FlagHandler : public FlagHandlerBase {
  public:
   explicit FlagHandler(T *t) : t_(t) {}
   bool Parse(const char *value) final;
+  bool Format(char *buffer, uptr size) final;
 };
 
 inline bool ParseBool(const char *value, bool *b) {
@@ -58,6 +75,11 @@ inline bool FlagHandler<bool>::Parse(const char *value) {
 }
 
 template <>
+inline bool FlagHandler<bool>::Format(char *buffer, uptr size) {
+  return FormatString(buffer, size, *t_ ? "true" : "false");
+}
+
+template <>
 inline bool FlagHandler<HandleSignalMode>::Parse(const char *value) {
   bool b;
   if (ParseBool(value, &b)) {
@@ -74,9 +96,20 @@ inline bool FlagHandler<HandleSignalMode>::Parse(const char *value) {
 }
 
 template <>
+inline bool FlagHandler<HandleSignalMode>::Format(char *buffer, uptr size) {
+  uptr num_symbols_should_write = internal_snprintf(buffer, size, "%d", *t_);
+  return num_symbols_should_write < size;
+}
+
+template <>
 inline bool FlagHandler<const char *>::Parse(const char *value) {
   *t_ = value;
   return true;
+}
+
+template <>
+inline bool FlagHandler<const char *>::Format(char *buffer, uptr size) {
+  return FormatString(buffer, size, *t_);
 }
 
 template <>
@@ -89,12 +122,39 @@ inline bool FlagHandler<int>::Parse(const char *value) {
 }
 
 template <>
+inline bool FlagHandler<int>::Format(char *buffer, uptr size) {
+  uptr num_symbols_should_write = internal_snprintf(buffer, size, "%d", *t_);
+  return num_symbols_should_write < size;
+}
+
+template <>
 inline bool FlagHandler<uptr>::Parse(const char *value) {
   const char *value_end;
   *t_ = internal_simple_strtoll(value, &value_end, 10);
   bool ok = *value_end == 0;
   if (!ok) Printf("ERROR: Invalid value for uptr option: '%s'\n", value);
   return ok;
+}
+
+template <>
+inline bool FlagHandler<uptr>::Format(char *buffer, uptr size) {
+  uptr num_symbols_should_write = internal_snprintf(buffer, size, "%p", *t_);
+  return num_symbols_should_write < size;
+}
+
+template <>
+inline bool FlagHandler<s64>::Parse(const char *value) {
+  const char *value_end;
+  *t_ = internal_simple_strtoll(value, &value_end, 10);
+  bool ok = *value_end == 0;
+  if (!ok) Printf("ERROR: Invalid value for s64 option: '%s'\n", value);
+  return ok;
+}
+
+template <>
+inline bool FlagHandler<s64>::Format(char *buffer, uptr size) {
+  uptr num_symbols_should_write = internal_snprintf(buffer, size, "%lld", *t_);
+  return num_symbols_should_write < size;
 }
 
 class FlagParser {
@@ -113,7 +173,8 @@ class FlagParser {
   FlagParser();
   void RegisterHandler(const char *name, FlagHandlerBase *handler,
                        const char *desc);
-  void ParseString(const char *s);
+  void ParseString(const char *s, const char *env_name = 0);
+  void ParseStringFromEnv(const char *env_name);
   bool ParseFile(const char *path, bool ignore_missing);
   void PrintFlagDescriptions();
 
@@ -123,8 +184,8 @@ class FlagParser {
   void fatal_error(const char *err);
   bool is_space(char c);
   void skip_whitespace();
-  void parse_flags();
-  void parse_flag();
+  void parse_flags(const char *env_option_name);
+  void parse_flag(const char *env_option_name);
   bool run_handler(const char *name, const char *value);
   char *ll_strndup(const char *s, uptr n);
 };
@@ -132,7 +193,7 @@ class FlagParser {
 template <typename T>
 static void RegisterFlag(FlagParser *parser, const char *name, const char *desc,
                          T *var) {
-  FlagHandler<T> *fh = new (FlagParser::Alloc) FlagHandler<T>(var);  // NOLINT
+  FlagHandler<T> *fh = new (FlagParser::Alloc) FlagHandler<T>(var);
   parser->RegisterHandler(name, fh, desc);
 }
 

@@ -65,7 +65,7 @@ var emscriptenMemoryProfiler = {
   totalTimesFreeCalled: 0,
 
   // Tracks the highest seen location of the STACKTOP variable.
-  stackTopWatermark: 0,
+  stackTopWatermark: Infinity,
 
   // The canvas DOM element to which to draw the allocation map.
   canvas: null,
@@ -154,6 +154,11 @@ var emscriptenMemoryProfiler = {
     console.log('memory resize: ' + oldSize + ' ' + newSize);
   },
 
+  recordStackWatermark: function() {
+    var self = emscriptenMemoryProfiler;
+    self.stackTopWatermark = Math.min(self.stackTopWatermark, STACKTOP);
+  },
+
   onMalloc: function onMalloc(ptr, size) {
     if (!ptr) return;
     if (emscriptenMemoryProfiler.sizeOfAllocatedPtr[ptr])
@@ -169,7 +174,8 @@ var emscriptenMemoryProfiler = {
     // Gather global stats.
     self.totalMemoryAllocated += size;
     ++self.totalTimesMallocCalled;
-    self.stackTopWatermark = Math.max(self.stackTopWatermark, STACKTOP);
+
+    self.recordStackWatermark();
     
     // Remember the size of the allocated block to know how much will be _free()d later.
     self.sizeOfAllocatedPtr[ptr] = size;
@@ -199,7 +205,7 @@ var emscriptenMemoryProfiler = {
       return;
     }
 
-    self.stackTopWatermark = Math.max(self.stackTopWatermark, STACKTOP);
+    self.recordStackWatermark();
 
     var loc = self.allocationSitePtrs[ptr];
     if (loc) {
@@ -231,6 +237,7 @@ var emscriptenMemoryProfiler = {
     Module['onMalloc'] = function onMalloc(ptr, size) { emscriptenMemoryProfiler.onMalloc(ptr, size); };
     Module['onRealloc'] = function onRealloc(oldAddress, newAddress, size) { emscriptenMemoryProfiler.onRealloc(oldAddress, newAddress, size); };
     Module['onFree'] = function onFree(ptr) { emscriptenMemoryProfiler.onFree(ptr); };
+    emscriptenMemoryProfiler.recordStackWatermark();
 
     // Add a tracking mechanism to detect when VFS loading is complete.
     if (!Module['preRun']) Module['preRun'] = [];
@@ -240,8 +247,9 @@ var emscriptenMemoryProfiler = {
       // Inject stack allocator.
       var prevStackAlloc = stackAlloc;
       var hookedStackAlloc = function(size) {
-        emscriptenMemoryProfiler.stackTopWatermark = Math.max(emscriptenMemoryProfiler.stackTopWatermark, STACKTOP + size);
-        return prevStackAlloc(size);
+        var ptr = prevStackAlloc(size);
+        emscriptenMemoryProfiler.recordStackWatermark();
+        return ptr;
       }
       stackAlloc = hookedStackAlloc;
     }
@@ -468,14 +476,14 @@ var emscriptenMemoryProfiler = {
 
     var width = (nBits(HEAP8.length) + 3) / 4; // Pointer 'word width'
     var html = 'Total HEAP size: ' + self.formatBytes(HEAP8.length) + '.';
-    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(STACK_BASE - STATIC_BASE);
+    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(Math.min(STACK_BASE, STACK_MAX) - STATIC_BASE);
     html += '. STATIC_BASE: ' + toHex(STATIC_BASE, width);
 
-    html += '<br />' + colorBar('#FF8080') + 'STACK memory area size: ' + self.formatBytes(STACK_MAX - STACK_BASE);
+    html += '<br />' + colorBar('#FF8080') + 'STACK memory area size: ' + self.formatBytes(Math.abs(STACK_MAX - STACK_BASE));
     html += '. STACK_BASE: ' + toHex(STACK_BASE, width);
     html += '. STACKTOP: ' + toHex(STACKTOP, width);
     html += '. STACK_MAX: ' + toHex(STACK_MAX, width) + '.';
-    html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(self.stackTopWatermark - STACK_BASE);
+    html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(Math.abs(self.stackTopWatermark - STACK_BASE));
 
     var DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
     var DYNAMICTOP = HEAP32[DYNAMICTOP_PTR>>2];
@@ -500,10 +508,10 @@ var emscriptenMemoryProfiler = {
     self.fillLine(STACK_BASE, STACK_MAX);
 
     self.drawContext.fillStyle = "#FFFF00";
-    self.fillLine(STACK_BASE, self.stackTopWatermark);
+    self.fillLine(Math.min(STACK_BASE, self.stackTopWatermark), Math.max(STACK_BASE, self.stackTopWatermark));
 
     self.drawContext.fillStyle = "#FF0000";
-    self.fillLine(STACK_BASE, STACKTOP);
+    self.fillLine(Math.min(STACK_BASE, STACKTOP), Math.max(STACK_BASE, STACKTOP));
 
     self.drawContext.fillStyle = "#70FF70";
     self.fillLine(DYNAMIC_BASE, DYNAMICTOP);

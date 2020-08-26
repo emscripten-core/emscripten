@@ -6,8 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-Module['asm'] = asm;
-
 {{{ exportRuntime() }}}
 
 #if MEM_INIT_IN_WASM == 0
@@ -120,10 +118,6 @@ if (memoryInitializer) {
 #endif
 #endif // MEM_INIT_IN_WASM == 0
 
-#if CYBERDWARF
-  Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
-#endif
-
 var calledRun;
 
 /**
@@ -156,7 +150,11 @@ function callMain(args) {
 #endif
 
 #if STANDALONE_WASM
+#if EXPECT_MAIN
   var entryFunction = Module['__start'];
+#else
+  var entryFunction = Module['__initialize'];
+#endif
 #else
   var entryFunction = Module['_main'];
 #endif
@@ -186,16 +184,12 @@ function callMain(args) {
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
-#if EMTERPRETIFY_ASYNC
-  var initialEmtStackTop = Module['emtStackSave']();
-#endif
-
   try {
 #if BENCHMARK
     var start = Date.now();
 #endif
 
-#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+#if STACK_OVERFLOW_CHECK >= 2
     Module['___set_stack_limit'](STACK_MAX);
 #endif
 
@@ -221,16 +215,16 @@ function callMain(args) {
     // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
     // off to a pthread.
 #if !PROXY_TO_PTHREAD
-#if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#if ASYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
     if (!noExitRuntime) {
-#endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#endif // ASYNCIFY
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
-#if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#if ASYNCIFY
     }
-#endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
+#endif // ASYNCIFY
   }
   catch(e) {
     if (e instanceof ExitStatus) {
@@ -240,10 +234,6 @@ function callMain(args) {
     } else if (e == 'unwind') {
       // running an evented main loop, don't immediately exit
       noExitRuntime = true;
-#if EMTERPRETIFY_ASYNC
-      // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
-      Module['emtStackRestore'](initialEmtStackTop);
-#endif
       return;
     } else {
       var toLog = e;
@@ -410,16 +400,14 @@ function exit(status, implicit) {
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
 #if MODULARIZE
       readyPromiseReject(msg);
-#else
-      err(msg);
 #endif // MODULARIZE
+      err(msg);
 #else
       var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
 #if MODULARIZE
       readyPromiseReject(msg);
-#else
-      err(msg);
 #endif // MODULARIZE
+      err(msg);
 #endif // EXIT_RUNTIME
     }
 #endif // ASSERTIONS
@@ -551,4 +539,8 @@ var workerResponded = false, workerCallbackId = -1;
   }
 })();
 
+#endif
+
+#if STANDALONE_WASM && ASSERTIONS && !WASM_BIGINT
+err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
 #endif

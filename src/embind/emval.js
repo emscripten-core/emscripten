@@ -454,7 +454,7 @@ var LibraryEmVal = {
     constructor = requireHandle(constructor);
     return object instanceof constructor;
   },
-  
+
   _emval_is_number__deps: ['$requireHandle'],
   _emval_is_number: function(handle) {
     handle = requireHandle(handle);
@@ -487,6 +487,15 @@ var LibraryEmVal = {
     throw object;
   },
 
+#if ASYNCIFY
+  _emval_await__deps: ['$requireHandle', '_emval_register', '$Asyncify'],
+  _emval_await: function(promise) {
+    return Asyncify.handleAsync(function () {
+      promise = requireHandle(promise);
+      return promise.then(__emval_register);
+    });
+  },
+#endif
 };
 
 mergeInto(LibraryManager.library, LibraryEmVal);

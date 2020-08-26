@@ -490,8 +490,8 @@ File system API
   Note that in the current implementation the stored timestamp is a single value, the maximum of ``atime`` and ``mtime``.
 
   :param string path: The path of the file to update.
-  :param int atime: The file modify time (milliseconds).
-  :param int mtime: The file access time (milliseconds).
+  :param int atime: The file access time (milliseconds).
+  :param int mtime: The file modify time (milliseconds).
 
 
 
@@ -760,6 +760,34 @@ Paths
       {
         path: resolved_path,
         node: resolved_node
+      }
+
+
+.. js:function:: FS.analyzePath(path, dontResolveLastLink)
+
+  Looks up the incoming path and returns an object containing information about
+  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more 
+  information about given path and its parent. If any error occurs it won't 
+  throw but returns an ``error`` property.
+
+  :param string path: The incoming path.
+  :param boolean dontResolveLastLink: If true, don't follow the last component 
+    if it is a symlink.
+
+  :returns: an object with the format:
+
+    .. code-block:: javascript
+
+      {
+        isRoot: boolean,
+        exists: boolean, 
+        error: Error, 
+        name: string, 
+        path: resolved_path, 
+        object: resolved_node,
+        parentExists: boolean, 
+        parentPath: resolved_parent_path, 
+        parentObject: resolved_parent_node
       }
 
 

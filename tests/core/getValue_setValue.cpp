@@ -6,16 +6,17 @@
 #include<emscripten.h>
 
 int main() {
+  char buffer[8];
 #ifdef DIRECT
   EM_ASM({
-    setValue(8, 1234, 'i32');
-    out('|' + getValue(8, 'i32') + '|');
-  });
+    setValue($0, 1234, 'i32');
+    out('|' + getValue($0, 'i32') + '|');
+  }, buffer);
 #else
   EM_ASM({
-    Module['setValue'](8, 1234, 'i32');
-    out('|' + Module['getValue'](8, 'i32') + '|');
-  });
+    Module['setValue']($0, 1234, 'i32');
+    out('|' + Module['getValue']($0, 'i32') + '|');
+  }, buffer);
 #endif
 }
 

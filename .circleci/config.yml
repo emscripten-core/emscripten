@@ -21,24 +21,26 @@ executors:
       xcode: "9.0"
 
 commands:
+  emsdk-env:
+    description: "emsdk_env.sh"
+    steps:
+      - run:
+          name: emsdk_env.sh
+          command: echo "source ~/emsdk/emsdk_env.sh 2> /dev/null" >> $BASH_ENV
   npm-install:
     description: "npm ci"
     steps:
-      - run:
-          name: npm ci
-          command: |
-            # Will add emsdk version of node to PATH
-            source ~/emsdk-master/emsdk_env.sh
-            npm ci
-  build-upstream:
-    description: "Install emsdk build all libraries using embuilder"
+      - run: npm ci
+  build:
+    description: "Install emsdk"
     steps:
       - run:
           name: install emsdk
           command: |
             curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
             tar -C ~ -xf ~/emsdk-master.tar.gz
-            cd ~/emsdk-master
+            mv ~/emsdk-master ~/emsdk
+            cd ~/emsdk
             ./emsdk update-tags
             ./emsdk install tot-upstream
             ./emsdk activate tot-upstream
@@ -46,22 +48,38 @@ commands:
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf emscripten
-            echo "import os" >> ~/.emscripten
+            echo "import os" >> .emscripten
             # We use an out-of-tree cache directory so it can be part of the
             # persisted workspace (see below).
-            echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
+            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
             # test v8 with --wasm-staging which enables new features. we use v8
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> ~/.emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
-            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
-            echo "WASM_ENGINES = []" >> ~/.emscripten
-            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
-            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
+            echo "JS_ENGINES = [NODE_JS]" >> .emscripten
+            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
+            echo "WASM_ENGINES = []" >> .emscripten
+            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
+            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
             cd -
             echo "final .emscripten:"
-            cat ~/.emscripten
+            cat ~/emsdk/.emscripten
+      - emsdk-env
+      - npm-install
+      - run:
+          name: gen_struct_info
+          command: |
+            # We've had issues in the past with building struct info when the
+            # cache is completely empty.  So specific test creating struct
+            # info first.
+            # For some reason this seems to deadlock while accessing the
+            # cache direcotry on windows.  Adding EMCC_DEBUG makes it work so
+            # debugging the issue is tricky.
+            [ "$CIRCLE_JOB" != "build-windows" ] && $PYTHON_BIN ./tools/gen_struct_info.py > out.json
+            $PYTHON_BIN ./emcc.py --clear-cache
+  build-libs-and-freeze:
+    description: "Build all libraries, and freeze the cache"
+    steps:
       - run:
           name: embuilder build ALL
           command: |
@@ -85,17 +103,17 @@ commands:
       - run:
           name: freeze cache
           command: |
-            echo "FROZEN_CACHE=True" >> ~/.emscripten
-      - npm-install
+            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
+  persist:
+    description: "Persist the emsdk, libraries, and engines"
+    steps:
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
           # Must be relative path from root
           paths:
-            - emsdk-master/
+            - emsdk/
             - cache/
-            - .emscripten_ports/
-            - .emscripten
             - vms
             - .jsvu
   run-tests:
@@ -109,6 +127,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: run tests
@@ -126,6 +145,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: Install brew package dependencies
@@ -144,6 +164,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: download firefox
@@ -243,6 +264,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: download chrome
@@ -264,7 +286,7 @@ commands:
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             # skip test_zzz_zzz_4GB_fail as it OOMs on the current bot
             python3 tests/runner.py browser skip:browser.test_zzz_zzz_4GB_fail
-  test-upstream-sockets-chrome:
+  test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
       - attach_workspace:
@@ -276,6 +298,7 @@ commands:
             wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             dpkg -i ~/chrome.deb
       - checkout
+      - emsdk-env
       - npm-install
       - run:
           name: run sockets tests
@@ -293,56 +316,13 @@ commands:
             python3 tests/runner.py sockets
 
 jobs:
-  build-fastcomp:
-    executor: bionic
-    steps:
-      - checkout
-      - run:
-          name: install emsdk
-          command: |
-            curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
-            tar -C ~ -xf ~/emsdk-master.tar.gz
-            cd ~/emsdk-master
-            ./emsdk update-tags
-            ./emsdk install tot-fastcomp
-            ./emsdk activate tot-fastcomp
-            # Remove the emsdk version of emscripten to save space in the
-            # persistent workspace and to avoid any confusion with the version
-            # we are trying to test.
-            rm -Rf emscripten
-            cd -
-            # We use an out-of-tree cache directory so it can be part of the
-            # persisted workspace (see below).
-            echo "import os" >> ~/.emscripten
-            echo "CACHE = os.path.expanduser('~/cache')" >> ~/.emscripten
-            echo "final .emscripten:"
-            cat ~/.emscripten
-      - run:
-          name: embuilder build ALL
-          command: |
-            python3 ./embuilder.py build ALL
-            python3 tests/runner.py test_hello_world
-      - run:
-          name: freeze cache
-          command: |
-            echo "FROZEN_CACHE=True" >> ~/.emscripten
-      - npm-install
-      - persist_to_workspace:
-          # Must be an absolute path, or relative path from working_directory
-          root: ~/
-          # Must be relative path from root
-          paths:
-            - emsdk-master/
-            - cache/
-            - .emscripten_ports/
-            - .emscripten
   build-docs:
     executor: bionic
     steps:
       - checkout
       # This version is mentioned in `site/source/docs/site/about.rst`.
       # Please keep them in sync.
-      - run: pip3 install sphinx==1.7.9
+      - run: pip3 install sphinx==2.4.4
       - run: make -C site text
       - run: tests/check_emcc_help_text.py
       - run: make -C site html
@@ -350,96 +330,14 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: python2 -m flake8 --show-source --statistics
+      - run: pip3 install flake8==3.7.8
       - run: python3 -m flake8 --show-source --statistics
-  test-other:
-    executor: bionic
-    steps:
-      - run-tests:
-          # some native-dependent tests fail because of the lack of native
-          # headers on emsdk-bundled clang>
-          # CircleCI actively kills memory-over-consuming process skip llvm-lit
-          # tests which need lit, and pip to get lit, but pip has broken on CI
-          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
-  test-browser-firefox:
-    executor: bionic
-    steps:
-      - test-firefox
-  test-browser-chrome:
-    executor: bionic
-    steps:
-      - test-chrome
-  test-ab:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_a* asm*.test_b*"
-  test-c:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_c*"
-  test-d:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*"
-  test-e:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_e*"
-  test-f:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_f*"
-  test-ghi:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_g* asm*.test_h* asm*.test_i*"
-  test-jklmno:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
-  test-p:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
-  test-qrst:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*"
-  test-uvwxyz:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*"
-  test-wasm0:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm0"
-  test-wasm2:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm2"
-  test-wasm3:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm3"
   test-sanity:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "sanity"
-  build-upstream-linux:
+  build-linux:
     executor: bionic
     steps:
       - checkout
@@ -467,76 +365,94 @@ jobs:
             npm install jsvu -g
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8
-      - build-upstream
-  test-upstream-wasm0:
+      - build
+      - build-libs-and-freeze
+      - persist
+  test-wasm0:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "wasm0"
-  test-upstream-wasm2:
+  test-wasm2:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm2"
-  test-upstream-wasm3:
+          test_targets: "wasm2 asan.test_embind*"
+  test-wasm3:
     executor: bionic
     steps:
       - run-tests:
           # TODO: test wasms
           test_targets: "wasm3"
-  test-upstream-wasm2js1:
+  test-wasm2js1:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "wasm2js1"
-  test-upstream-other:
+  test-other:
     executor: bionic
     steps:
       - run-tests:
-          # see explanations in the fastcomp skips for these, earlier
-          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
-  test-upstream-browser-chrome:
+          # some native-dependent tests fail because of the lack of native
+          # headers on emsdk-bundled clang
+          test_targets: "other skip:other.test_native_link_error_message"
+  test-browser-chrome:
     executor: bionic
     steps:
       - test-chrome
-  test-upstream-browser-firefox:
+  test-browser-firefox:
     executor: bionic
     steps:
       - test-firefox
-  test-upstream-sockets-chrome:
+  test-sockets-chrome:
     executor: bionic
     steps:
-      - test-upstream-sockets-chrome
-  build-upstream-windows:
+      - test-sockets-chrome
+  build-windows:
     executor:
       name: win/vs2019
-      shell: bash.exe
+      shell: bash.exe -eo pipefail
     environment:
-      # We need python installed before we can test anytyhing.
-      # There seems to be undocument copy of python installed here. Hopefully
-      # if this disappears there will be another way of getting a re-installed
-      # version.
-      PYTHON_BIN: "/c/python27amd64/python.exe"
+      # on windows the python binary is always called python.exe and never
+      # python3.exe
+      PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
     steps:
       - checkout
       - run:
+          name: Install packages
+          command: choco install make cmake.portable python3
+      - run:
           name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/python27amd64/\"" >> $BASH_ENV
-      - build-upstream
-  test-upstream-minimal-windows:
+          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
+      - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - persist
+  test-minimal-windows:
     environment:
-      PYTHON_BIN: "/c/python27amd64/python.exe"
+      # on windows the python binary is always called python.exe and never
+      # python3.exe
+      PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
+      # clang can compile but not link in the current setup, see
+      # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
+      EMTEST_LACKS_NATIVE_CLANG: "1"
     executor:
       name: win/vs2019
-      shell: bash.exe
+      shell: bash.exe -eo pipefail
     steps:
+      - run:
+          name: Install packages
+          command: choco install make cmake.portable python3
+      - run:
+          name: Add python to bash path
+          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - run-tests:
-          test_targets: "wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug"
-  build-upstream-mac:
+          test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null"
+  build-mac:
     executor: mac
     steps:
       - run:
@@ -545,100 +461,54 @@ jobs:
             HOMEBREW_NO_AUTO_UPDATE: "1"
           command: brew install python3 cmake
       - checkout
-      - build-upstream
-  test-upstream-other-mac:
+      - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - persist
+  test-other-mac:
     executor: mac
     steps:
       - run-tests-mac:
-          test_targets: "other wasm0.test_lua skip:other.test_native_link_error_message skip:other.test_emcc_v"
+          test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message"
 
 workflows:
   build-test:
     jobs:
       - flake8
       - build-docs
-      - build-fastcomp
-      - test-other:
-          requires:
-            - build-fastcomp
-      - test-browser-firefox:
-          requires:
-            - build-fastcomp
-      - test-browser-chrome:
-          requires:
-            - build-fastcomp
-      - test-ab:
-          requires:
-            - build-fastcomp
-      - test-c:
-          requires:
-            - build-fastcomp
-      - test-d:
-          requires:
-            - build-fastcomp
-      - test-e:
-          requires:
-            - build-fastcomp
-      - test-f:
-          requires:
-            - build-fastcomp
-      - test-ghi:
-          requires:
-            - build-fastcomp
-      - test-jklmno:
-          requires:
-            - build-fastcomp
-      - test-p:
-          requires:
-            - build-fastcomp
-      - test-qrst:
-          requires:
-            - build-fastcomp
-      - test-uvwxyz:
-          requires:
-            - build-fastcomp
-      - test-wasm0:
-          requires:
-            - build-fastcomp
-      - test-wasm2:
-          requires:
-            - build-fastcomp
-      - test-wasm3:
-          requires:
-            - build-fastcomp
+      - build-linux
       - test-sanity:
           requires:
-            - build-fastcomp
-      - build-upstream-linux
-      - test-upstream-wasm0:
+            - build-linux
+      - test-wasm0:
           requires:
-            - build-upstream-linux
-      - test-upstream-wasm2:
+            - build-linux
+      - test-wasm2:
           requires:
-            - build-upstream-linux
-      - test-upstream-wasm3:
+            - build-linux
+      - test-wasm3:
           requires:
-            - build-upstream-linux
-      - test-upstream-wasm2js1:
+            - build-linux
+      - test-wasm2js1:
           requires:
-            - build-upstream-linux
-      - test-upstream-other:
+            - build-linux
+      - test-other:
           requires:
-            - build-upstream-linux
-      - test-upstream-browser-chrome:
+            - build-linux
+      - test-browser-chrome:
           requires:
-            - build-upstream-linux
-      - test-upstream-browser-firefox:
+            - build-linux
+      - test-browser-firefox:
           requires:
-            - build-upstream-linux
-      - test-upstream-sockets-chrome:
+            - build-linux
+      - test-sockets-chrome:
           requires:
-            - build-upstream-linux
-      - build-upstream-windows
-      - test-upstream-minimal-windows:
+            - build-linux
+      - build-windows
+      - test-minimal-windows:
           requires:
-            - build-upstream-windows
-      - build-upstream-mac
-      - test-upstream-other-mac:
+            - build-windows
+      - build-mac
+      - test-other-mac:
           requires:
-            - build-upstream-mac
+            - build-mac

@@ -82,7 +82,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-s-option-value:
 
 ``-s OPTION[=VALUE]``
-  JavaScript code generation option passed into the Emscripten compiler. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
+  Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
 
   .. note:: You can prefix boolean options with ``NO_`` to reverse them. For example, ``-s EXIT_RUNTIME=1`` is the same as ``-s NO_EXIT_RUNTIME=0``.
 
@@ -95,16 +95,19 @@ Options that are modified or new in *emcc* are listed below:
       -s RUNTIME_LINKED_LIBS="['liblib.so']"
       -s "RUNTIME_LINKED_LIBS=['liblib.so']"
 
-  You can also specify that the value of an option will be read from a specified JSON-formatted file. For example, the following option sets the ``DEAD_FUNCTIONS`` option with the contents of the file at **path/to/file**.
+  You can also specify that the value of an option will be read from a specified JSON-formatted file. For example, the following option sets the ``EXPORTED_FUNCTIONS`` option with the contents of the file at **path/to/file**.
 
   ::
 
-    -s DEAD_FUNCTIONS=@/path/to/file
+    -s EXPORTED_FUNCTIONS=@/path/to/file
 
   .. note::
 
     - In this case the file might contain a JSON-formatted list of functions: ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
+
+  .. note:: Options can be specified as a single argument without a space
+            between the ``-s`` and option name.  e.g. ``-sFOO=1``.
 
 .. _emcc-g:
 
@@ -116,9 +119,13 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-gseparate-dwarf[=FILENAME]``
   Preserve debug information, but in a separate file on the side. This is the
-  same as ``-g``, but the main file will contain no debug info, while debug
-  info will be present in a file on the side (``FILENAME`` if provided,
-  otherwise the same as the wasm file but with suffix ``.debug.wasm``).
+  same as ``-g``, but the main file will contain no debug info. Instead, debug
+  info will be present in a file on the side, in ``FILENAME`` if provided,
+  otherwise the same as the wasm file but with suffix ``.debug.wasm``. While
+  the main file contains no debug info, it does contain a URL to where the
+  debug file is, so that devtools can find it. You can use
+  ``-s SEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
+  you want to host it on a different server, for example).
 
 .. _emcc-gN:
 
@@ -172,18 +179,6 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
 
-.. _emcc-js-opts:
-
-``--js-opts <level>``
-  Enables JavaScript optimizations, relevant when we generate JavaScript. Possible ``level`` values are:
-
-    - ``0``: Prevent JavaScript optimizer from running.
-    - ``1``: Use JavaScript optimizer (default).
-
-  You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
-
-  .. note:: Some options might override this flag (e.g. ``EMTERPRETIFY``, ``DEAD_FUNCTIONS``, ``SAFE_HEAP`` and ``SPLIT_MEMORY`` override the value with ``js-opts=1``), because they depend on the js-optimizer.
-
 .. _emcc-llvm-opts:
 
 ``--llvm-opts <level>``
@@ -200,20 +195,10 @@ Options that are modified or new in *emcc* are listed below:
 
   You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
-.. _emcc-llvm-lto:
+.. _emcc-lto:
 
-``--llvm-lto <level>``
-  Enables LLVM link-time optimizations (LTO). Possible ``level`` values are:
-
-    - ``0``: No LLVM LTO (default).
-    - ``1``: LLVM LTO is performed.
-    - ``2``: Combine all the bitcode and run LLVM opt on it using the specified ``--llvm-opts``. This optimizes across modules, but is not the same as normal LTO.
-    - ``3``: Does level ``2`` and then level ``1``.
-
-  .. note::
-
-    - If LLVM optimizations are not run (see ``--llvm-opts``), this setting has no effect.
-    - LLVM LTO is not perfectly stable yet, and can cause code to behave incorrectly.
+``-flto``
+  Enables link-time optimizations (LTO).
 
 .. _emcc-closure:
 
@@ -229,7 +214,7 @@ Options that are modified or new in *emcc* are listed below:
     - Consider using ``-s MODULARIZE=1`` when using closure, as it minifies globals to names that might conflict with others in the global scope. ``MODULARIZE`` puts all the output into a function (see ``src/settings.js``).
     - Closure will minify the name of `Module` itself, by default! Using ``MODULARIZE`` will solve that as well. Another solution is to make sure a global variable called `Module` already exists before the closure-compiled code runs, because then it will reuse that variable.
     - If closure compiler hits an out-of-memory, try adjusting ``JAVA_HEAP_SIZE`` in the environment (for example, to 4096m for 4GB).
-    - Closure is only run if JavaScript opts are being done (``-O2`` or above, or ``--js-opts 1``).
+    - Closure is only run if JavaScript opts are being done (``-O2`` or above).
 
 
 .. _emcc-pre-js:
@@ -351,32 +336,39 @@ Options that are modified or new in *emcc* are listed below:
   If using this in combination with ``--clear-cache``, be sure to specify
   this argument first.
 
-  The Emscripten cache defaults to being located in the path name stored
-  in the ``EM_CACHE`` environment variable or ``~/.emscripten_cache``.
+  The Emscripten cache defaults to ``emscripten/cache`` but can be overridden
+  using the ``EM_CACHE`` environment variable or ``CACHE`` config setting.
 
 .. _emcc-clear-cache:
 
 ``--clear-cache``
-  Manually clears the cache of compiled Emscripten system libraries (libc++, libc++abi, libc).
+  Manually clears the cache of compiled Emscripten system libraries (libc++,
+  libc++abi, libc).
 
-  This is normally handled automatically, but if you update LLVM in-place (instead of having a different directory for a new version), the caching mechanism can get confused. Clearing the cache can fix weird problems related to cache incompatibilities, like *Clang* failing to link with library files. This also clears other cached data. After the cache is cleared, this process will exit.
+  This is normally handled automatically, but if you update LLVM in-place
+  (instead of having a different directory for a new version), the caching
+  mechanism can get confused. Clearing the cache can fix weird problems related
+  to cache incompatibilities, like *Clang* failing to link with library files.
+  This also clears other cached data. After the cache is cleared, this process
+  will exit.
+
+  By default this will also clear any download ports since the ports directory
+  is usually within the cache directory.
 
 .. _emcc-clear-ports:
 
 ``--clear-ports``
-  Manually clears the local copies of ports from the Emscripten Ports repos (sdl2, etc.). This also clears the cache, to remove their builds.
+  Manually clears the local copies of ports from the Emscripten Ports repos
+  (sdl2, etc.). This also clears the cache, to remove their builds.
 
-  You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
+  You should only need to do this if a problem happens and you want all ports
+  that you use to be downloaded and built from scratch. After this operation is
+  complete, this process will exit.
 
 .. _emcc-show-ports:
 
 ``--show-ports``
   Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
-
-.. _emcc-save-bc:
-
-``--save-bc PATH``
-  When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.
 
 .. _emcc-memory-init-file:
 
@@ -420,7 +412,10 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-config:
 
 ``--em-config``
-  Specifies the location of the **.emscripten** configuration file for the current compiler run. If not specified, the environment variable ``EM_CONFIG`` is first read for this location. If neither are specified, the default location **~/.emscripten** is used.
+  Specifies the location of the **.emscripten** configuration file.  If not
+  specified emscripten will search for ``.emscripten`` first in the emscripten
+  directory itself, and then in the user's home directory (``~/.emscripten``).
+  This can be overridden using the ``EM_CONFIG`` environment variable.
 
 ``--default-obj-ext .ext``
   Specifies the file suffix to generate if the location of a directory name is passed to the ``-o`` directive.
@@ -433,7 +428,9 @@ Options that are modified or new in *emcc* are listed below:
 
 
 ``--valid-abspath path``
-  Whitelist an absolute path to prevent warnings about absolute include paths.
+  Note an allowed absolute path, which we should not warn about (absolute
+  include paths normally are warned about, since they may refer to the
+  local system headers etc. which we need to avoid when cross-compiling).
 
 .. _emcc-o-target:
 
@@ -489,7 +486,6 @@ Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscript
 
   - ASSERTIONS
   - SAFE_HEAP
-  - AGGRESSIVE_VARIABLE_ELIMINATION=1
   - -s DISABLE_EXCEPTION_CATCHING=0.
   - INLINING_LIMIT=
 
