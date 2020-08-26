@@ -859,6 +859,36 @@ var LibraryBrowser = {
     );
   },
 
+  $funcWrappers: {},
+
+  $getFuncWrapper__deps: ['$funcWrappers'],
+  $getFuncWrapper: function(func, sig) {
+    if (!func) return; // on null pointer, return undefined
+    assert(sig);
+    if (!funcWrappers[sig]) {
+      funcWrappers[sig] = {};
+    }
+    var sigCache = funcWrappers[sig];
+    if (!sigCache[func]) {
+      // optimize away arguments usage in common cases
+      if (sig.length === 1) {
+        sigCache[func] = function dynCall_wrapper() {
+          return dynCall(sig, func);
+        };
+      } else if (sig.length === 2) {
+        sigCache[func] = function dynCall_wrapper(arg) {
+          return dynCall(sig, func, [arg]);
+        };
+      } else {
+        // general case
+        sigCache[func] = function dynCall_wrapper() {
+          return dynCall(sig, func, Array.prototype.slice.call(arguments));
+        };
+      }
+    }
+    return sigCache[func];
+  },
+
   emscripten_async_wget_data__proxy: 'sync',
   emscripten_async_wget_data__sig: 'viiii',
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
@@ -1077,6 +1107,7 @@ var LibraryBrowser = {
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
+  emscripten_async_load_script__deps: ['$getFuncWrapper'],
   emscripten_async_load_script: function(url, onload, onerror) {
     onload = getFuncWrapper(onload, 'v');
     onerror = getFuncWrapper(onerror, 'v');
@@ -1351,7 +1382,7 @@ var LibraryBrowser = {
     noExitRuntime = true;
 
     function wrapper() {
-      getFuncWrapper(func, 'vi')(arg);
+      {{{ makeDynCall('vi') }}}(func, arg);
     }
 
     if (millis >= 0) {
@@ -1490,6 +1521,7 @@ var LibraryBrowser = {
     Browser.workers[id] = null;
   },
 
+  emscripten_call_worker__deps: ['$getFuncWrapper'],
   emscripten_call_worker__proxy: 'sync',
   emscripten_call_worker__sig: 'viiiiii',
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {

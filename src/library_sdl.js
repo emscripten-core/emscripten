@@ -2966,7 +2966,7 @@ var LibrarySDL = {
     }
     audio['onended'] = function SDL_audio_onended() { // TODO: cache these
       if (channelInfo.audio == this) { channelInfo.audio.paused = true; channelInfo.audio = null; }
-      if (SDL.channelFinished) getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+      if (SDL.channelFinished)  {{{ makeDynCall('vi') }}}(SDL.channelFinished, channel);
     }
     channelInfo.audio = audio;
     // TODO: handle N loops. Behavior matches Mix_PlayMusic
@@ -2991,7 +2991,7 @@ var LibrarySDL = {
         info.audio = null;
       }
       if (SDL.channelFinished) {
-        getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+        {{{ makeDynCall('vi') }}}(SDL.channelFinished, channel);
       }
     }
     if (channel != -1) {
