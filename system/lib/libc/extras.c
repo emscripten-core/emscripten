@@ -31,3 +31,15 @@ long* _get_timezone() {
 void __lock(void* ptr) {}
 void __unlock(void* ptr) {}
 
+/* References to these longjmp- and exceptions-supporting things are generated
+  in the llvm backend so they cannot be static */
+
+int _Thread_local __THREW__ = 0;
+int _Thread_local __threwValue = 0;
+
+void setThrew(int threw, int value) {
+  if (__THREW__ == 0) {
+    __THREW__ = threw;
+    __threwValue = value;
+  }
+}
