@@ -342,8 +342,10 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 
 #if RELOCATABLE
 // We support some amount of allocation during startup in the case of
-// dynamic linking, which needs to allocate memory for the dynamic library
-// during startup (before the main program initialized).
+// dynamic linking, which needs to allocate memory for dynamic libraries that
+// are loaded. That has to happen before the main program can start to run,
+// because the main program needs those linked in before it runs (so we can't
+// use normally malloc from the main program to do these allocations).
 
 // Allocate memory no even if malloc isn't ready yet.
 function getMemory(size) {
@@ -353,7 +355,9 @@ function getMemory(size) {
 
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
-// initialize sbrk.
+// initialize sbrk (the main module is relocatable itself, and so it does not
+// have __heap_base hardcoded into it - it receives it from JS as an extern
+// global, basically).
 Module['___heap_base'] = DYNAMIC_BASE;
 
 function dynamicAlloc(size) {
@@ -374,7 +378,6 @@ function dynamicAlloc(size) {
 
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
-
   // At the 'load' stage of Worker startup, we are just loading this script
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
