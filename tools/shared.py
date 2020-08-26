@@ -1091,7 +1091,7 @@ class JS(object):
   #   Copyright 2017 The Emscripten Authors
   #   SPDX-License-Identifier: MIT
   #  */
-  emscripten_license_regex = '''\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/''' # noqa
+  emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/'
 
   @staticmethod
   def handle_license(js_target):
