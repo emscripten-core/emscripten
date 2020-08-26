@@ -29,18 +29,13 @@
 #define SET_ERRNO()
 #endif
 
-static intptr_t sbrk_val = 0;
-static intptr_t* sbrk_ptr = &sbrk_val;
-
 extern size_t __heap_base;
 
+static intptr_t sbrk_val = (intptr_t)&__heap_base;
+static intptr_t* sbrk_ptr = &sbrk_val;
+
 intptr_t* emscripten_get_sbrk_ptr() {
-  if (sbrk_val == 0) {
-    sbrk_val = (intptr_t)&__heap_base;
-    sbrk_val += 1024; // FIXME FIXME remove this once no JS static allocs
-    sbrk_val = (sbrk_val + 3) & ~3;
-  }
-  return &sbrk_val;
+  return sbrk_ptr;
 }
 
 void *sbrk(intptr_t increment) {
@@ -55,7 +50,6 @@ void *sbrk(intptr_t increment) {
   intptr_t expected;
   while (1) {
 #endif // __EMSCRIPTEN_PTHREADS__
-    intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr(); // TODO remove with above hack
 #if __EMSCRIPTEN_PTHREADS__
     intptr_t old_brk = __c11_atomic_load((_Atomic(intptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else
