@@ -38,6 +38,7 @@ extern size_t __heap_base;
 intptr_t* emscripten_get_sbrk_ptr() {
   if (sbrk_val == 0) {
     sbrk_val = (intptr_t)&__heap_base;
+    sbrk_val += 1024; // FIXME FIXME remove this once no JS static allocs
     sbrk_val = (sbrk_val + 3) & ~3;
   }
   return &sbrk_val;
