@@ -702,13 +702,13 @@ var INCOMING_MODULE_JS_API = [
   'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
-  'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
+  'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
-  'preinitializedWebGLContextmemoryInitializerRequest', 'preloadPlugins',
+  'preinitializedWebGLContext', 'memoryInitializerRequest', 'preloadPlugins',
   'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
