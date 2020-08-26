@@ -1060,8 +1060,6 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  // Statically allocated copy of the string "GMT" for gmtime() to point to
-  __tm_timezone: '{{{ makeStaticString("GMT") }}}',
   mktime__deps: ['tzset'],
   mktime__sig: 'ii',
   mktime: function(tmPtr) {
@@ -1101,7 +1099,9 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime_r__deps: ['__tm_timezone'],
+#if MINIMAL_RUNTIME
+  gmtime_r__deps: ['allocateUTF8'],
+#endif
   gmtime_r__sig: 'iii',
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
@@ -1117,8 +1117,9 @@ LibraryManager.library = {
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
-
+    // Allocate a string "GMT" for us to point to.
+    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
     return tmPtr;
   },
   __gmtime_r: 'gmtime_r',
@@ -1143,7 +1144,7 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  localtime_r__deps: ['__tm_timezone', 'tzset'],
+  localtime_r__deps: ['tzset'],
   localtime_r__sig: 'iii',
   localtime_r: function(time, tmPtr) {
     _tzset();
@@ -4001,6 +4002,26 @@ LibraryManager.library = {
         }
       });
     });
+  },
+
+  $callRuntimeCallbacks: function(callbacks) {
+    while(callbacks.length > 0) {
+      var callback = callbacks.shift();
+      if (typeof callback == 'function') {
+        callback(Module); // Pass the module as the first argument.
+        continue;
+      }
+      var func = callback.func;
+      if (typeof func === 'number') {
+        if (callback.arg === undefined) {
+          dynCall_v(func);
+        } else {
+          dynCall_vi(func, callback.arg);
+        }
+      } else {
+        func(callback.arg === undefined ? null : callback.arg);
+      }
+    }
   },
 };
 

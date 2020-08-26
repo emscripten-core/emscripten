@@ -257,7 +257,6 @@ If manually bisecting:
       make_main(dstpath)
       self.compile_btest(['main.cpp', '--preload-file', srcpath, '-o', 'page.html'])
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-    # Test that '--no-heap-copy' works.
     if WINDOWS:
       # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
       # The characters <, >, ", |, ?, * are not allowed, because the Windows filesystem doesn't support those.
@@ -268,7 +267,7 @@ If manually bisecting:
     open(os.path.join(self.get_dir(), tricky_filename), 'w').write('''load me right before running the code please''')
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
-    self.compile_btest(['main.cpp', '--preload-file', tricky_filename.replace('@', '@@'), '--no-heap-copy', '-o', 'page.html'])
+    self.compile_btest(['main.cpp', '--preload-file', tricky_filename.replace('@', '@@'), '-o', 'page.html'])
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     # By absolute path
@@ -2435,8 +2434,7 @@ void *getBindBuffer() {
 
   def test_mmap_file(self):
     create_test_file('data.dat', 'data from the file ' + ('.' * 9000))
-    for extra_args in [[], ['--no-heap-copy']]:
-      self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'] + extra_args)
+    self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'])
 
   def test_emrun_info(self):
     if not has_browser():
@@ -2819,36 +2817,35 @@ Module["preRun"].push(function () {
                                                      '-DBITSPERPIXEL=24', '-DNO_PRELOADED', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["jpg"]'])
 
   def test_sdl2_key(self):
-    for defines in [[]]:
-      create_test_file('pre.js', '''
-        Module.postRun = function() {
-          function doOne() {
-            Module._one();
-            setTimeout(doOne, 1000/60);
-          }
+    create_test_file('pre.js', '''
+      Module.postRun = function() {
+        function doOne() {
+          Module._one();
           setTimeout(doOne, 1000/60);
         }
+        setTimeout(doOne, 1000/60);
+      }
 
-        function keydown(c) {
-          var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
-          var prevented = !document.dispatchEvent(event);
+      function keydown(c) {
+        var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        var prevented = !document.dispatchEvent(event);
 
-          //send keypress if not prevented
-          if (!prevented) {
-            var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
-            document.dispatchEvent(event);
-          }
-        }
-
-        function keyup(c) {
-          var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        //send keypress if not prevented
+        if (!prevented) {
+          var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
           document.dispatchEvent(event);
         }
-      ''')
-      create_test_file('sdl2_key.c', self.with_report_result(open(path_from_root('tests', 'sdl2_key.c')).read()))
+      }
 
-      self.compile_btest(['sdl2_key.c', '-o', 'page.html'] + defines + ['-s', 'USE_SDL=2', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']'''])
-      self.run_browser('page.html', '', '/report_result?37182145')
+      function keyup(c) {
+        var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        document.dispatchEvent(event);
+      }
+    ''')
+    create_test_file('sdl2_key.c', self.with_report_result(open(path_from_root('tests', 'sdl2_key.c')).read()))
+
+    self.compile_btest(['sdl2_key.c', '-o', 'page.html', '-s', 'USE_SDL=2', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']'''])
+    self.run_browser('page.html', '', '/report_result?37182145')
 
   def test_sdl2_text(self):
     create_test_file('pre.js', '''
@@ -4629,13 +4626,10 @@ window.close = function() {
     self.compile_btest(['page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
-    # with separate file packager invocation, letting us affect heap copying
-    # or lack thereof
-    for file_packager_args in [[], ['--no-heap-copy']]:
-      print(file_packager_args)
-      self.run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'] + file_packager_args)
-      self.compile_btest(['page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
-      self.run_browser('page.html', 'hello from file', '/report_result?15')
+    # with separate file packager invocation
+    self.run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'])
+    self.compile_btest(['page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
+    self.run_browser('page.html', 'hello from file', '/report_result?15')
 
   def test_unicode_html_shell(self):
     create_test_file('main.cpp', self.with_report_result(r'''

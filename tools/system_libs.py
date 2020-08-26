@@ -1364,6 +1364,9 @@ class libjsmath(Library):
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
+  # In STANDALONE_WASM we don't expect main to be explictly exported
+  if shared.Settings.STANDALONE_WASM:
+    return
   if '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
     for symbols in symbolses:
       if 'main' in symbols.defs:
