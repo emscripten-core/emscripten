@@ -11,7 +11,7 @@
 volatile int* addr = (int*)0xfffffff;
 
 EM_JS(void, throwException, (void), {
-	throw "crash";
+	throw new Error("crash");
 });
 
 EMSCRIPTEN_KEEPALIVE void crash() {
@@ -19,30 +19,7 @@ EMSCRIPTEN_KEEPALIVE void crash() {
   throwException();
 }
 
-EM_JS(void, unhandled_exception_wrapper, (void), {
-  try {
-	// Crash the program
-	_crash();
-  }
-  catch(e) {
-	// Catch the abort
-	out(true);
-  }
-  
-  out("again");
-  
-  try {
-    // Try executing some function again
-	_crash();
-  }
-  catch(e) {
-	// Make sure it failed with the expected exception
-	out(e === "program has already aborted!" || e === "DEAD");
-  }
-});
-
 int main() {
-  unhandled_exception_wrapper();
   return 0;
 } 
 

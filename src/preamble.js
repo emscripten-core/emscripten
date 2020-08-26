@@ -797,26 +797,26 @@ function createExportWrapper(name, fixedasm) {
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
+// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion 
+// level of the wrapper function so that we only handle exceptions at the top level
+// letting the exception mechanics work uninterrupted at the inner level.
+// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that 
+// we know to ignore exceptions from there since they're handled by callMain directly.
+var abortWrapperDepth = 0;
+
 // Instrument all the exported functions to:
 // - abort if an unhandled exception occurs
 // - throw an exception if someone tries to call them after the program has aborted
-// Set settings.ABORT_ON_WASM_EXCEPTIONS for more info.
-addOnInit(function () { 
-#if DISABLE_EXCEPTION_CATCHING != 1
-  // With exception catching enabled we only handle exceptions at the top level
-  // so that the exception mechanics can work uninterrupted at the inner level.
-  // Don't do this with exception catching disabled to save some code size.
-  var wrapperDepth = 0;
-#endif
-  var mainFunc = Module["asm"]["main"];
-  var instAsm = {};
-  for (var name in Module['asm']) {
+// See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
+function instrumentWasmExportsWithAbort(exports) {
+  var instExports = {};
+  for (var name in exports) {
     (function(name) {
-      var original = Module['asm'][name];
+      var original = exports[name];
       
       // Wrap all functions, copy the other symbols.
       if (typeof original === 'function') {
-        instAsm[name] = function() {
+        instExports[name] = function() {
           // Don't allow this function to be called if we're aborted!
           if (ABORT == 1) { 
 #if ASSERTIONS
@@ -827,18 +827,15 @@ addOnInit(function () {
           }
           
 #if DISABLE_EXCEPTION_CATCHING != 1
-          wrapperDepth += 1;
+          abortWrapperDepth += 1;
 #endif
           try {
             return original.apply(null, arguments);
           }
           catch (e) {
             if(
-              original == mainFunc // rethrow any exceptions from main as they are handled in callMain and include special cases
-              || ABORT === 1 // rethrow exception if abort() was called in the original function call above
-#if DISABLE_EXCEPTION_CATCHING != 1            
-              || wrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled
-#endif
+              ABORT === 1 // rethrow exception if abort() was called in the original function call above
+              || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
 #if SUPPORT_LONGJMP
               || e === 'longjmp' // rethrow longjmp if enabled
 #endif
@@ -846,10 +843,10 @@ addOnInit(function () {
               throw e;
             }
             
-#if ASSERTIONS
-            abort("unhandled exception: " + (typeof e === 'object' && e.stack) ? e + ", " + e.stack : e);
+#if ASSERTIONS    
+            abort("unhandled exception: " + [e, e.stack]);
 #else
-            abort("UNH: " + e + ", " + e.stack);
+            abort("UHE:" + [e, e.stack]);
 #endif
           }
 #if DISABLE_EXCEPTION_CATCHING != 1
@@ -860,12 +857,12 @@ addOnInit(function () {
         };
       }
       else {
-        instAsm[name] = original;
+        instExports[name] = original;
       }
     })(name);
   }
-  Module['asm'] = instAsm; 
-});
+  return instExports;
+}
 #endif
 
 #if WASM
@@ -956,6 +953,9 @@ function createWasm() {
 #endif
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
+#endif
+#if ABORT_ON_WASM_EXCEPTIONS
+    exports = instrumentWasmExportsWithAbort(exports);
 #endif
     Module['asm'] = exports;
 #if !DECLARE_ASM_MODULE_EXPORTS

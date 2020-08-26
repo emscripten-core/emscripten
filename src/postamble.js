@@ -189,6 +189,11 @@ function callMain(args) {
     var start = Date.now();
 #endif
 
+#if ABORT_ON_WASM_EXCEPTIONS
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth += 2; 
+#endif
+
 #if STACK_OVERFLOW_CHECK >= 2
     Module['___set_stack_limit'](STACK_MAX);
 #endif
@@ -246,6 +251,11 @@ function callMain(args) {
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
+
+#if ABORT_ON_WASM_EXCEPTIONS
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth -= 2; 
+#endif
   }
 }
 #endif // HAS_MAIN
