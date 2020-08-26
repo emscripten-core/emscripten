@@ -1232,8 +1232,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
-      # allocating space for dynamic libraries requires sbrk to be called from
-      # JS during startup, see allocDynamic.
       if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
     elif shared.Settings.SIDE_MODULE:
@@ -1257,9 +1255,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ALLOW_TABLE_GROWTH = 1
 
     # various settings require sbrk() access
-    if shared.Settings.MAIN_MODULE or \
-       shared.Settings.DETERMINISTIC or \
+    if shared.Settings.DETERMINISTIC or \
        shared.Settings.EMSCRIPTEN_TRACING or \
+       shared.Settings.MALLOC == 'emmalloc' or \
+       shared.Settings.SAFE_HEAP or \
        shared.Settings.MEMORYPROFILER:
       shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
 
@@ -1373,9 +1372,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MALLOC == 'emmalloc':
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_emmalloc.js')))
-      # used from emmalloc_unclaimed_heap_memory from JS. should just add an
-      # export, as sbrk is used in malloc anyhow.
-      shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
 
     if shared.Settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libfetch')
@@ -1463,7 +1459,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.SAFE_HEAP:
       # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
-      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr', '_sbrk']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr']
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
