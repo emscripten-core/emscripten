@@ -689,7 +689,7 @@ If manually bisecting:
   def test_sdl_image_must_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpg')
-    self.btest('sdl_image_must_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.jpg', '-lSDL', '-lGL'])
+    self.btest('sdl_image_must_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.jpg', '-lSDL', '-lGL'], manually_trigger_reftest=True)
 
   def test_sdl_stb_image(self):
     # load an image file, get pixel data.
