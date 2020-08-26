@@ -243,7 +243,6 @@ class EmccOptions(object):
     self.memory_profiler = False
     self.memory_init_file = None
     self.use_preload_cache = False
-    self.no_heap_copy = False
     self.use_preload_plugins = False
     self.proxy_to_worker = False
     self.default_object_extension = '.o'
@@ -906,10 +905,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [arg for arg in newargs if arg]
 
-    settings_key_changes = set()
+    settings_key_changes = {}
     for s in settings_changes:
       key, value = s.split('=', 1)
-      settings_key_changes.add(key)
+      settings_key_changes[key] = value
 
     # Find input files
 
@@ -1037,12 +1036,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Libraries are searched before settings_changes are applied, so apply the
     # value for STRICT from command line already now.
 
-    def get_last_setting_change(setting):
-      return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
-
-    strict_cmdline = get_last_setting_change('STRICT')
+    strict_cmdline = settings_key_changes.get('STRICT')
     if strict_cmdline:
-      shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
+      shared.Settings.STRICT = int(strict_cmdline)
 
     # Apply optimization level settings
     shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
@@ -1055,12 +1051,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-    # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
-    # We do this before the user settings are applied so it affects the default value only and a
-    # user could use `--no-entry` and still export main too.
-    if options.no_entry:
-      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
@@ -1145,9 +1135,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
-    if options.no_entry or ('_main' not in shared.Settings.EXPORTED_FUNCTIONS and
-                            '__start' not in shared.Settings.EXPORTED_FUNCTIONS):
+    if options.no_entry:
       shared.Settings.EXPECT_MAIN = 0
+    elif shared.Settings.STANDALONE_WASM:
+      if '_main' in shared.Settings.EXPORTED_FUNCTIONS:
+        # TODO(sbc): Make this into a warning?
+        logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
+    else:
+      # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
+      # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
+      #    reactor.
+      # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
+      #    is specified (see above).
+      if 'EXPORTED_FUNCTIONS' in settings_key_changes:
+        if '_main' not in shared.Settings.USER_EXPORTED_FUNCTIONS:
+          shared.Settings.EXPECT_MAIN = 0
+      else:
+        assert(not shared.Settings.EXPORTED_FUNCTIONS)
+        shared.Settings.EXPORTED_FUNCTIONS = ['_main']
 
     if shared.Settings.STANDALONE_WASM:
       # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -1509,6 +1514,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         'addRunDependency',
         'removeRunDependency',
       ]
+
+    if not shared.Settings.MINIMAL_RUNTIME or (shared.Settings.USE_PTHREADS or shared.Settings.EXIT_RUNTIME):
+      # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
+      # always does.
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
 
     if shared.Settings.USE_PTHREADS:
       # memalign is used to ensure allocated thread stacks are aligned.
@@ -2101,13 +2111,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
       if len(options.preload_files) or len(options.embed_files):
-
-        # Also, MEMFS is not aware of heap resizing feature in wasm, so if MEMFS and memory growth are used together, force
-        # no_heap_copy to be enabled.
-        if shared.Settings.ALLOW_MEMORY_GROWTH and not options.no_heap_copy:
-          logger.info('Enabling --no-heap-copy because -s ALLOW_MEMORY_GROWTH=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
-          options.no_heap_copy = True
-
         logger.debug('setting up files')
         file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
         if len(options.preload_files):
@@ -2121,8 +2124,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args += options.exclude_files
         if options.use_preload_cache:
           file_args.append('--use-preload-cache')
-        if options.no_heap_copy:
-          file_args.append('--no-heap-copy')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
         if options.use_preload_plugins:
@@ -2409,7 +2410,7 @@ def parse_args(newargs):
       options.use_preload_cache = True
       newargs[i] = ''
     elif newargs[i].startswith('--no-heap-copy'):
-      options.no_heap_copy = True
+      diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       newargs[i] = ''
     elif newargs[i].startswith('--use-preload-plugins'):
       options.use_preload_plugins = True
