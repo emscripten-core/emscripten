@@ -38,9 +38,7 @@ extern size_t __heap_base;
 intptr_t* emscripten_get_sbrk_ptr() {
   if (sbrk_val == 0) {
     sbrk_val = (intptr_t)&__heap_base;
-    sbrk_val = (sbrk_val + 2) & ~3;
-    EM_ASM({ console.log(STACK_BASE) });
-    printf("%p %p %p\n", __heap_base, &__heap_base, sbrk_val);
+    sbrk_val = (sbrk_val + 3) & ~3;
   }
   return &sbrk_val;
 }
