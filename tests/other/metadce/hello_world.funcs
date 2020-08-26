@@ -28,7 +28,6 @@ $dynCall_iidiiii
 $dynCall_iiii
 $dynCall_jiji
 $dynCall_vii
-$emscripten_get_sbrk_ptr
 $fflush
 $fmt_fp
 $fmt_o
