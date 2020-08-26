@@ -343,7 +343,7 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #if RELOCATABLE
 // We support some amount of allocation during startup in the case of
 // dynamic linking, which needs to allocate memory for the dynamic library
-// during startup (before the main program initialized). TODO: remove
+// during startup (before the main program initialized).
 
 // Allocate memory no even if malloc isn't ready yet.
 function getMemory(size) {
@@ -351,33 +351,25 @@ function getMemory(size) {
   return _malloc(size);
 }
 
-// To support such allocations during startup, track them on DYNAMICTOP and then
-// apply them to sbrk() as the program initializes itself and compiled code
-// is ready to run.
-var DYNAMICTOP = DYNAMIC_BASE;
+// To support such allocations during startup, track them on __heap_base and
+// then when the main module is loaded it reads that value and uses it to
+// initialize sbrk.
+Module['___heap_base'] = DYNAMIC_BASE;
 
 function dynamicAlloc(size) {
+  // After the runtime is initialized, we must only use sbrk() normally.
+  assert(!runtimeInitialized);
 #if USE_PTHREADS
   assert(!ENVIRONMENT_IS_PTHREAD); // this function is not thread-safe
 #endif
-  var ret = DYNAMICTOP;
+  var ret = Module['___heap_base'];
   var end = (ret + size + 15) & -16;
 #if ASSERTIONS
   assert(end <= HEAP8.length, 'failure to dynamicAlloc - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
-  DYNAMICTOP = end;
+  Module['___heap_base'] = end;
   return ret;
 }
-
-#if '_sbrk' in IMPLEMENTED_FUNCTIONS // no, needs to be EXPORTED..?
-{{{
-addAtInit(`
-  if (DYNAMICTOP != DYNAMIC_BASE) {
-    _sbrk(DYNAMICTOP - _sbrk(0));
-  }
-`), ''
-}}}
-#endif // sbrk
 #endif // RELOCATABLE
 
 #if USE_PTHREADS
