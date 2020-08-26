@@ -1,4 +1,3 @@
-#include <stdio.h>
 /*
  * Copyright 2019 The Emscripten Authors.  All rights reserved.
  * Emscripten is available under two separate licenses, the MIT license and the
@@ -30,7 +29,7 @@
 #define SET_ERRNO()
 #endif
 
-static intptr_t sbrk_val = 0; // TODO: get the position from wasm-ld, right after stack (DYNAMIC_BASE in JS)
+static intptr_t sbrk_val = 0;
 static intptr_t* sbrk_ptr = &sbrk_val;
 
 extern size_t __heap_base;
