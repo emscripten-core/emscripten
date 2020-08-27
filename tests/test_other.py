@@ -2547,9 +2547,6 @@ int main()
 
   def test_node_emscripten_num_logical_cores(self):
     # Test with node.js that the emscripten_num_logical_cores method is working
-    if NODE_JS not in JS_ENGINES:
-      self.skipTest("node engine required for this test")
-
     create_test_file('src.cpp', r'''
 #include <emscripten/threading.h>
 #include <stdio.h>
