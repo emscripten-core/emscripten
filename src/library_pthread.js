@@ -562,6 +562,9 @@ var LibraryPThread = {
   },
 
   emscripten_num_logical_cores: function() {
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
+#endif
     return navigator['hardwareConcurrency'];
   },
 
