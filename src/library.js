@@ -609,6 +609,10 @@ LibraryManager.library = {
       console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
       if (replacement) {
+#if ASSERTIONS && WASM2JS
+        err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
+#endif
+
 #if EMSCRIPTEN_TRACING
         _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
         // And now report the new layout
