@@ -81,11 +81,6 @@ DEFINE_STORE(wasm_i64_store8, u8, u64);
 DEFINE_STORE(wasm_i64_store16, u16, u64);
 DEFINE_STORE(wasm_i64_store32, u32, u64);
 
-#define CALL_INDIRECT_NOTYPE(table, type, fptr, ...)    \
-  (LIKELY((fptr) < table.size && table.data[fptr].func) \
-        ? ((type)table.data[fptr].func)(__VA_ARGS__)    \
-        : TRAP(CALL_INDIRECT))
-
 // Imports
 
 #ifdef VERBOSE_LOGGING

@@ -9,6 +9,70 @@ import re
 from tools.shared import Settings, path_from_root, unsuffixed, NODE_JS, check_call, exit_with_error
 
 
+# map an emscripten-style signature letter to a wasm2c C type
+def s_to_c(s):
+  if s == 'v':
+    return 'void'
+  elif s == 'i':
+    return 'u32'
+  elif s == 'j':
+    return 'u64'
+  elif s == 'f':
+    return 'f32'
+  elif s == 'd':
+    return 'f64'
+  else:
+    exit_with_error('invalid sig element:' + str(s))
+
+
+# map a wasm2c C type to an emscripten-style signature letter
+def c_to_s(c):
+  if c == 'WASM_RT_I32':
+    return 'i'
+  elif c == 'WASM_RT_I64':
+    return 'j'
+  elif c == 'WASM_RT_F32':
+    return 'f'
+  elif c == 'WASM_RT_F64':
+    return 'd'
+  else:
+    exit_with_error('invalid wasm2c type element:' + str(c))
+
+
+def get_func_types(code):
+  '''
+    We look for this pattern:
+
+    static void init_func_types(void) {
+      func_types[0] = wasm_rt_register_func_type(3, 1, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32);
+      func_types[1] = wasm_rt_register_func_type(1, 1, WASM_RT_I32, WASM_RT_I32);
+      func_types[2] = wasm_rt_register_func_type(0, 0);
+    }
+
+    We return a map of signatures names to their index.
+  '''
+  init_func_types = re.search(r'static void init_func_types\(void\) {([^}]*)}', code)
+  if not init_func_types:
+    return {}
+  ret = {}
+  for entry in re.findall(r'func_types\[(\d+)\] = wasm_rt_register_func_type\((\d+), (\d+),? ?([^)]+)?\);', init_func_types[0]):
+    index, params, results, types = entry
+    index = int(index)
+    params = int(params)
+    results = int(results)
+    types = types.split(', ')
+    sig = ''
+    for i in range(params):
+      sig += c_to_s(types[i])
+    if results == 0:
+      sig = 'v' + sig
+    else:
+      assert results == 1, 'no multivalue support'
+      sig = c_to_s(types[-1]) + sig
+    ret[sig] = index
+  return ret
+
+
 def do_wasm2c(infile):
   assert Settings.STANDALONE_WASM
   WASM2C = NODE_JS + [path_from_root('node_modules', 'wasm2c', 'wasm2c.js')]
@@ -72,19 +136,7 @@ extern void wasmbox_init(void);
   # generate the necessary invokes
   invokes = []
   for sig in re.findall(r"\/\* import\: 'env' 'invoke_(\w+)' \*\/", total):
-    def s_to_c(s):
-      if s == 'v':
-        return 'void'
-      elif s == 'i':
-        return 'u32'
-      elif s == 'j':
-        return 'u64'
-      elif s == 'f':
-        return 'f32'
-      elif s == 'd':
-        return 'f64'
-      else:
-        exit_with_error('invalid sig element:' + str(s))
+    all_func_types = get_func_types(total)
 
     def name(i):
       return 'a' + str(i)
@@ -94,7 +146,10 @@ extern void wasmbox_init(void);
     full_typed_args = ['u32 fptr'] + typed_args
     types = [s_to_c(sig[i]) for i in range(1, len(sig))]
     args = [name(i) for i in range(1, len(sig))]
-    func_type = s_to_c(sig[0]) + ' (*)(' + (', '.join(types) if types else 'void') + ')'
+    c_func_type = s_to_c(sig[0]) + ' (*)(' + (', '.join(types) if types else 'void') + ')'
+    if sig not in all_func_types:
+      exit_with_error('could not find signature ' + sig + ' in function types ' + str(all_func_types))
+    type_index = all_func_types[sig]
 
     invokes.append(r'''
 IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_args)s), {
@@ -107,7 +162,7 @@ IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_
   int result = setjmp(setjmp_stack[id]);
   %(declare_return)s
   if (result == 0) {
-    %(receive)sCALL_INDIRECT_NOTYPE(w2c___indirect_function_table, %(func_type)s, fptr %(args)s);
+    %(receive)sCALL_INDIRECT(w2c___indirect_function_table, %(c_func_type)s, %(type_index)s, fptr %(args)s);
     /* if we got here, no longjmp or exception happened, we returned normally */
   } else {
     /* A longjmp or an exception took us here. */
@@ -122,7 +177,8 @@ IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_
       'sig': sig,
       'wabt_sig': wabt_sig,
       'full_typed_args': ', '.join(full_typed_args),
-      'func_type': func_type,
+      'type_index': type_index,
+      'c_func_type': c_func_type,
       'args': (', ' + ', '.join(args)) if args else '',
       'declare_return': (s_to_c(sig[0]) + ' returned_value = 0;') if sig[0] != 'v' else '',
       'receive': 'returned_value = ' if sig[0] != 'v' else '',
