@@ -609,7 +609,7 @@ LibraryManager.library = {
       console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
       if (replacement) {
-#if ASSERTIONS && (!WASM || WASM2JS)
+#if ASSERTIONS && WASM2JS
         err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
