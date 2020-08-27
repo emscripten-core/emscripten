@@ -90,21 +90,45 @@ extern void wasmbox_init(void);
       return 'a' + str(i)
 
     wabt_sig = sig[0] + 'i' + sig[1:]
-    typed_args = ['u32 fptr'] + [s_to_c(sig[i]) + ' ' + name(i) for i in range(1, len(sig))]
-    types = ['u32'] + [s_to_c(sig[i]) for i in range(1, len(sig))]
-    args = ['fptr'] + [name(i) for i in range(1, len(sig))]
-    invokes.append(
-      '%s_INVOKE_IMPL(%sZ_envZ_invoke_%sZ_%s, (%s), (%s), (%s), Z_dynCall_%sZ_%s);' % (
-        'VOID' if sig[0] == 'v' else 'RETURNING',
-        (s_to_c(sig[0]) + ', ') if sig[0] != 'v' else '',
-        sig,
-        wabt_sig,
-        ', '.join(typed_args),
-        ', '.join(types),
-        ', '.join(args),
-        sig,
-        wabt_sig
-      ))
+    typed_args = [s_to_c(sig[i]) + ' ' + name(i) for i in range(1, len(sig))]
+    full_typed_args = ['u32 fptr'] + typed_args
+    types = [s_to_c(sig[i]) for i in range(1, len(sig))]
+    args = [name(i) for i in range(1, len(sig))]
+    func_type = s_to_c(sig[0]) + ' (*)(' + (', '.join(types) if types else 'void') + ')'
+
+    invokes.append(r'''
+IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_args)s), {
+  VERBOSE_LOG("invoke\n"); // waka
+  u32 sp = Z_stackSaveZ_iv();
+  if (next_setjmp >= MAX_SETJMP_STACK) {
+    abort_with_message("too many nested setjmps");
+  }
+  u32 id = next_setjmp++;
+  int result = setjmp(setjmp_stack[id]);
+  %(declare_return)s
+  if (result == 0) {
+    %(receive)sCALL_INDIRECT_NOTYPE(w2c___indirect_function_table, %(func_type)s, fptr %(args)s);
+    /* if we got here, no longjmp or exception happened, we returned normally */
+  } else {
+    /* A longjmp or an exception took us here. */
+    Z_stackRestoreZ_vi(sp);
+    Z_setThrewZ_vii(1, 0);
+  }
+  next_setjmp--;
+  %(return)s
+});
+''' % {
+      'return_type': s_to_c(sig[0]) if sig[0] != 'v' else 'void',
+      'sig': sig,
+      'wabt_sig': wabt_sig,
+      'full_typed_args': ', '.join(full_typed_args),
+      'func_type': func_type,
+      'args': (', ' + ', '.join(args)) if args else '',
+      'declare_return': (s_to_c(sig[0]) + ' returned_value = 0;') if sig[0] != 'v' else '',
+      'receive': 'returned_value = ' if sig[0] != 'v' else '',
+      'return': 'return returned_value;' if sig[0] != 'v' else ''
+    })
+
   total += '\n'.join(invokes)
   # write out the final file
   with open(c_file, 'w') as out:
