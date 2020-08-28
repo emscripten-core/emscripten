@@ -46,7 +46,7 @@ def get(ports, settings, shared):
 
     extra_cxx_flags = []
 
-    if TAG.find('pic')>=0:
+    if settings.RELOCATABLE:
       extra_cxx_flags.append('-fPIC')
 
     if settings.USE_PTHREADS:
