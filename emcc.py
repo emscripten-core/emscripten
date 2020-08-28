@@ -2602,13 +2602,15 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
+    strip_debug = shared.Settings.DEBUG_LEVEL < 3
+    strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
     # run wasm-opt if we have work for it
     if options.binaryen_passes:
-      # if we need to strip the certain sections, and we have wasm-opt passes
+      # if we need to strip certain sections, and we have wasm-opt passes
       # to run anyhow, do it with them.
-      if shared.Settings.DEBUG_LEVEL < 3:
+      if strip_debug:
         options.binaryen_passes += ['--strip-debug']
-      if not shared.Settings.EMIT_PRODUCERS_SECTION:
+      if strip_producers:
         options.binaryen_passes += ['--strip-producers']
       building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
       building.run_wasm_opt(wasm_binary_target,
@@ -2616,11 +2618,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                             args=options.binaryen_passes,
                             debug=intermediate_debug_info)
     else:
-      # we are not running wasm-opt. if we need to strip the certain sections
-      # then do so using llvm-objcpy which is fast and does not rewrite the
+      # we are not running wasm-opt. if we need to strip certain sections
+      # then do so using llvm-objcopy which is fast and does not rewrite the
       # code (which is better for debug info)
-      strip_debug = shared.Settings.DEBUG_LEVEL < 3
-      strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
       if strip_debug or strip_producers:
         building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
         building.strip(wasm_binary_target, wasm_binary_target,
