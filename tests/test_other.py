@@ -9686,3 +9686,21 @@ int main () {
     # point.
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=[_main]', '-sSTANDALONE_WASM', '-c', path_from_root('tests', 'core', 'test_hello_world.c')])
+
+  def test_unincluded_malloc(self):
+    # we used to include malloc by default. show a clear error in builds with
+    # ASSERTIONS to help with any confusion
+    create_test_file('unincluded_malloc.c', r'''
+      #include <emscripten.h>
+      int main() {
+        EM_ASM({
+          try {
+            _malloc(10)
+          } catch(e) {
+            console.log('exception:', e);
+          }
+        });
+      }
+    ''')
+    self.run_process([EMCC, 'unincluded_malloc.c'])
+    self.assertContained("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS", self.run_js('a.out.js'))
