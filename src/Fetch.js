@@ -352,10 +352,6 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
       Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, len);
     }
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
-    if (xhr.readyState === 4 && xhr.status === 0) {
-      if (len > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we got data bytes.
-      else xhr.status = 404; // Conversely, no data bytes is 404.
-    }
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     if (xhr.status >= 200 && xhr.status < 300) {
@@ -373,7 +369,6 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
   xhr.onerror = function(e) {
     saveResponse(fetchAttrLoadToMemory);
     var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
-    if (xhr.readyState === 4 && status === 0) status = 404; // If no error recorded, pretend it was 404 Not Found.
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
 #endif
