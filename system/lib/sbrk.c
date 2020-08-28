@@ -29,6 +29,15 @@
 #define SET_ERRNO()
 #endif
 
+// FIXME just use  = &sbrk_val  here. That is simpler, but currently it has a
+// code size cost for tiny programs that don't use malloc. We link in malloc by
+// default, and depend on metadce to remove it when not used, which we can do,
+// but a static assignment here would mean a nonzero value in a memory segment,
+// which metadce cannot remove (it can remove code, but not data in segments).
+// The current code allows tiny programs without malloc to have no data segments
+// at all, while programs that use malloc may suffer a few more bytes of code
+// size, but that's negligible compared to malloc itself.
+// TODO: when we stop including malloc by default we can use the simpler way.
 static intptr_t sbrk_val = 0;
 
 intptr_t* emscripten_get_sbrk_ptr() {
