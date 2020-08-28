@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Stop including `malloc` and `free` by default. If you need access to them, you
+  must export them manually using `-s EXPORTED_FUNCTIONS=['_malloc', ..]` etc.
 - Enable `--no-heap-copy` file packager option by default, and remove the old
   defualt behavior entirely. That is the behavior we should have had from the
   beginning as it is more memory-efficient.
