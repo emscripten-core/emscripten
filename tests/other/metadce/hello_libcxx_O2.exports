@@ -23,9 +23,7 @@ dynCall_viiii
 dynCall_viiiii
 dynCall_viiiiii
 dynCall_viijii
-free
 main
-malloc
 stackAlloc
 stackRestore
 stackSave
