@@ -1780,9 +1780,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.USE_PTHREADS:
       newargs.append('-pthread')
 
-    if not shared.Settings.LEGALIZE_JS_FFI:
-      assert building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS.'
-
     # check if we can address the 2GB mark and higher: either if we start at
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
     if shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \

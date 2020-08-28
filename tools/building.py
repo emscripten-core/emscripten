@@ -856,14 +856,6 @@ def can_inline():
   return Settings.INLINING_LIMIT == 0
 
 
-def is_wasm_only():
-  # not even wasm, much less wasm-only
-  if not Settings.WASM:
-    return False
-  # llvm backend can only ever produce wasm
-  return True
-
-
 def get_safe_internalize():
   if Settings.LINKABLE:
     return [] # do not internalize anything
