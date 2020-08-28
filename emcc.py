@@ -2605,6 +2605,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
+    # run wasm-opt if we have work for it
     if options.binaryen_passes:
       # if we need to strip the producers section, and we have wasm-opt passes
       # to run, do it with them.
