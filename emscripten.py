@@ -272,10 +272,6 @@ def report_missing_symbols(all_implemented, pre):
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
       continue
-    # special-case malloc, EXPORTED by default for internal use, but we bake in a
-    # trivial allocator and warn at runtime if used in ASSERTIONS
-    if missing == '_malloc':
-      continue
     diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
 
   # Special hanlding for the `_main` symbol

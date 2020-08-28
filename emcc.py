@@ -1397,11 +1397,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EMBIND:
       forced_stdlibs.append('libembind')
 
-    if not shared.Settings.MINIMAL_RUNTIME and not shared.Settings.STANDALONE_WASM:
-      # The normal JS runtime depends on malloc and free so always keep them alive.
-      # MINIMAL_RUNTIME avoids this dependency as does STANDALONE_WASM mode (since it has no
-      # JS runtime at all).
+    # various settings require malloc/free support from JS
+    if shared.Settings.RELOCATABLE:
+    BUILD_AS_WORKER
+USE_WEBGPU
+PTHREADS (already below?)
+OFFSCREENCANVAS_SUPPORT
+GL_EMULATION
+..EXCEPTIONS..
+ASYNCIFY
+ASMFS
+FETCH
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
+      # TODO in JS: allocateUTF8(), ALLOC_NORMAL, stringToNewUTF8, mmapAlloc
 
     shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
     # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
