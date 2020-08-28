@@ -2031,11 +2031,7 @@ int f() {
       return compile_to_executable(compile_args, [])
 
     no_size, line_size, full_size = test(compile_to_O0_executable)
-    # the difference between these two is due to the producer's section which
-    # LLVM emits, and which we do not strip as this is not a release build.
-    # the specific difference is that LLVM emits language info (C_plus_plus_14)
-    # when emitting debug info, but not otherwise.
-    self.assertLess(no_size, line_size)
+    self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   def test_dwarf(self):
