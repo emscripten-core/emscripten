@@ -470,8 +470,8 @@ LibraryManager.library = {
   },
 #else
 
-  // Grows the asm.js/wasm heap to the given byte size, and updates both JS and
-  // asm.js/wasm side views to the buffer. Returns 1 on success, 0 on error.
+  // Grows the wasm memory to the given byte size, and updates the JS views to
+  // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
 #if MEMORYPROFILER
     var oldHeapSize = buffer.byteLength;
