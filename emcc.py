@@ -1399,15 +1399,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # various settings require malloc/free support from JS
     if shared.Settings.RELOCATABLE:
-    BUILD_AS_WORKER
-USE_WEBGPU
-PTHREADS (already below?)
-OFFSCREENCANVAS_SUPPORT
-GL_EMULATION
-..EXCEPTIONS..
-ASYNCIFY
-ASMFS
-FETCH
+       shared.Settings.BUILD_AS_WORKER or \
+       shared.Settings.USE_WEBGPU or \
+       shared.Settings.USE_PTHREADS or \
+       shared.Settings.OFFSCREENCANVAS_SUPPORT or \
+       shared.Settings.LEGACY_GL_EMULATION or \
+       shared.Settings.DISABLE_EXCEPTION_CATCHING != 1 or \
+       shared.Settings.ASYNCIFY or \
+       shared.Settings.ASMFS or \
+       shared.Settings.FETCH:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
       # TODO in JS: allocateUTF8(), ALLOC_NORMAL, stringToNewUTF8, mmapAlloc
 
@@ -1539,7 +1539,7 @@ FETCH
 
     if shared.Settings.USE_PTHREADS:
       # memalign is used to ensure allocated thread stacks are aligned.
-      shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_malloc']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_memalign']
 
       # dynCall_ii is used to call pthread entry points in worker.js (as
       # metadce does not consider worker.js, which is external, we must
