@@ -4789,24 +4789,6 @@ main(const int argc, const char * const * const argv)
     self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
                          self.run_js('a.out.js', assert_returncode=NON_ZERO))
 
-  def test_js_malloc(self):
-    create_test_file('src.cpp', r'''
-#include <stdio.h>
-#include <emscripten.h>
-
-int main() {
-  EM_ASM({
-    for (var i = 0; i < 1000; i++) {
-      var ptr = Module._malloc(1024 * 1024); // only done in JS, but still must not leak
-      Module._free(ptr);
-    }
-  });
-  printf("ok.\n");
-}
-    ''')
-    self.run_process([EMCC, 'src.cpp'])
-    self.assertContained('ok.', self.run_js('a.out.js', args=['C']))
-
   def test_locale_wrong(self):
     create_test_file('src.cpp', r'''
 #include <locale>
@@ -6771,7 +6753,7 @@ int main() {
       print(args, expect_names)
       try_delete('a.out.js')
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"'])
+      self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"', '-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]'])
       code = open('a.out.wasm', 'rb').read()
       if expect_names:
         # name section adds the name of malloc (there is also another one for the export)
