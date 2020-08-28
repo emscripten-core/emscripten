@@ -187,6 +187,19 @@ function cwrap(ident, returnType, argTypes, opts) {
   }
 }
 
+#if ASSERTIONS && !('_malloc' in IMPLEMENTED_FUNCTIONS)
+function _malloc() {
+  // Show a helpful error since we used to include malloc by default in the past.
+  abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
+}
+#endif
+#if ASSERTIONS && !('_free' in IMPLEMENTED_FUNCTIONS)
+function _free() {
+  // Show a helpful error since we used to include free by default in the past.
+  abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
+}
+#endif
+
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
@@ -286,13 +299,7 @@ function allocate(slab, types, allocator, ptr) {
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
   if (!runtimeInitialized) return dynamicAlloc(size);
-#if '_malloc' in IMPLEMENTED_FUNCTIONS
   return _malloc(size);
-#else
-  abort("getMemory - no malloc");
-  // TODO: perhaps instead of this, if !malloc implemented, define a malloc that
-  // throws a clear error especially in assertions builds?
-#endif
 }
 
 #include "runtime_strings.js"
