@@ -1408,6 +1408,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        shared.Settings.ASYNCIFY or \
        shared.Settings.ASMFS or \
        shared.Settings.DEMANGLE_SUPPORT or \
+       shared.Settings.STB_IMAGE or \
        shared.Settings.FETCH:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
