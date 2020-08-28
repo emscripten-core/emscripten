@@ -553,8 +553,6 @@ def backend_binaryen_passes():
   if shared.Settings.OPT_LEVEL > 0:
     if shared.Settings.DEBUG_LEVEL < 3:
       passes += ['--strip-debug']
-    if not shared.Settings.EMIT_PRODUCERS_SECTION:
-      passes += ['--strip-producers']
   if shared.Settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']
@@ -2607,12 +2605,23 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
-    building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
-    args = options.binaryen_passes
-    building.run_wasm_opt(wasm_binary_target,
-                          wasm_binary_target,
-                          args=args,
-                          debug=intermediate_debug_info)
+    if options.binaryen_passes:
+      # if we need to strip the producers section, and we have wasm-opt passes
+      # to run, do it with them.
+      if not shared.Settings.EMIT_PRODUCERS_SECTION:
+        options.binaryen_passes += ['--strip-producers']
+      building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
+      building.run_wasm_opt(wasm_binary_target,
+                            wasm_binary_target,
+                            args=options.binaryen_passes,
+                            debug=intermediate_debug_info)
+    else:
+      # we are not running wasm-opt. if we need to strip the producers section
+      # then do so using llvm-objcpy which is faster and does not rewrite the
+      # code (which is better for debug info)
+      if not shared.Settings.EMIT_PRODUCERS_SECTION:
+        building.save_intermediate(wasm_binary_target, 'pre-noprosec.wasm')
+        building.strip_producers(wasm_binary_target, wasm_binary_target)
 
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
