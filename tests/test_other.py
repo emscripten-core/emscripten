@@ -7053,9 +7053,9 @@ int main() {
       self.assertFileContents(filename, data)
 
   @parameterized({
-    'O0': ([],      [], ['waka'],  9766), # noqa
-    'O1': (['-O1'], [], ['waka'],  7886), # noqa
-    'O2': (['-O2'], [], ['waka'],  7871), # noqa
+    'O0': ([],      [], ['waka'],  1098), # noqa
+    'O1': (['-O1'], [], ['waka'],   384), # noqa
+    'O2': (['-O2'], [], ['waka'],   384), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'], [], [],          85), # noqa
     'Os': (['-Os'], [], [],          85), # noqa
@@ -7080,9 +7080,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
 
   @parameterized({
-    'O0': ([],      [], ['waka'], 22849), # noqa
-    'O1': (['-O1'], [], ['waka'], 10533), # noqa
-    'O2': (['-O2'], [], ['waka'], 10256), # noqa
+    'O0': ([],      [], ['waka'], 13768), # noqa
+    'O1': (['-O1'], [], ['waka'],  2763), # noqa
+    'O2': (['-O2'], [], ['waka'],  2511), # noqa
     'O3': (['-O3'], [], [],        1999), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'], [], [],        2010), # noqa
     'Oz': (['-Oz'], [], [],        2004), # noqa

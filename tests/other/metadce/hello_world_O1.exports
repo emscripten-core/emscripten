@@ -5,9 +5,7 @@ __wasm_call_ctors
 dynCall_ii
 dynCall_iiii
 dynCall_jiji
-free
 main
-malloc
 stackAlloc
 stackRestore
 stackSave

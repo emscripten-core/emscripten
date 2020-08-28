@@ -8,8 +8,6 @@ $__stdio_write
 $__towrite
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$dlfree
-$dlmalloc
 $dynCall_ii
 $dynCall_iiii
 $fwrite
@@ -17,7 +15,6 @@ $legalstub$dynCall_jiji
 $main
 $memcpy
 $puts
-$sbrk
 $stackAlloc
 $stackRestore
 $stackSave

@@ -8,9 +8,7 @@ dynCall_iiii
 dynCall_jiji
 dynCall_vii
 fflush
-free
 main
-malloc
 stackAlloc
 stackRestore
 stackSave
