@@ -290,6 +290,8 @@ function getMemory(size) {
   return _malloc(size);
 #else
   abort("getMemory - no malloc");
+  // TODO: perhaps instead of this, if !malloc implemented, define a malloc that
+  // throws a clear error especially in assertions builds?
 #endif
 }
 
