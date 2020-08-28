@@ -265,15 +265,9 @@ def apply_table(js):
 
 
 def report_missing_symbols(all_implemented, pre):
-  required_symbols = set(shared.Settings.USER_EXPORTED_FUNCTIONS)
-  # In standalone mode a request for `_main` is interpreted as a request for `_start`
-  # so don't warn about mossing main.
-  if shared.Settings.STANDALONE_WASM and '_main' in required_symbols:
-    required_symbols.discard('_main')
-
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = list(required_symbols - all_implemented)
+  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
 
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
@@ -864,7 +858,7 @@ def create_receiving_wasm(exports, initializers):
     else:
       if shared.Settings.MINIMAL_RUNTIME:
         # In wasm2js exports can be directly processed at top level, i.e.
-        # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+        # var asm = Module["asm"](asmLibraryArg, buffer);
         # var _main = asm["_main"];
         if shared.Settings.USE_PTHREADS and shared.Settings.MODULARIZE:
           # TODO: As a temp solution, multithreaded MODULARIZED MINIMAL_RUNTIME builds export all
@@ -888,9 +882,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   receiving += create_fp_accessors(metadata)
   module = []
-  module.append('var asmGlobalArg = {};\n')
-  if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append('var asmLibraryArg = %s;\n' % (sending))
   if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:

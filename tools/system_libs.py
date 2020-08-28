@@ -28,7 +28,8 @@ logger = logging.getLogger('system_libs')
 LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
-                'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c']
+                'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c',
+                'in6addr_any.c', 'in6addr_loopback.c']
 
 
 def files_in_path(path_components, filenames):
@@ -727,7 +728,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # Allowed files from ignored modules
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
-        filenames=['clock_settime.c'])
+        filenames=['clock_settime.c', 'asctime.c', 'ctime.c', 'gmtime.c', 'localtime.c'])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
         filenames=['getpagesize.c', 'err.c'])
@@ -1330,14 +1331,14 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__tm_to_secs.c',
                    '__tz.c',
                    '__year_to_secs.c',
+                   'asctime_r.c',
                    'clock.c',
                    'clock_gettime.c',
+                   'ctime_r.c',
                    'difftime.c',
                    'gettimeofday.c',
-                   'localtime.c',
-                   'localtime_r.c',
-                   'gmtime.c',
                    'gmtime_r.c',
+                   'localtime_r.c',
                    'nanosleep.c',
                    'mktime.c',
                    'time.c'])
@@ -1364,6 +1365,9 @@ class libjsmath(Library):
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
+  # In STANDALONE_WASM we don't expect main to be explictly exported
+  if shared.Settings.STANDALONE_WASM:
+    return
   if '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
     for symbols in symbolses:
       if 'main' in symbols.defs:

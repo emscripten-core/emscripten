@@ -2561,6 +2561,24 @@ int main()
       out = self.run_js('a.out.js', engine=engine)
       self.assertContained('File size: 724', out)
 
+  def test_node_emscripten_num_logical_cores(self):
+    # Test with node.js that the emscripten_num_logical_cores method is working
+    create_test_file('src.cpp', r'''
+#include <emscripten/threading.h>
+#include <stdio.h>
+#include <assert.h>
+
+int main() {
+  int num = emscripten_num_logical_cores();
+  assert(num != 0);
+  puts("ok");
+}
+''')
+    # Pass -s USE_PTHREADS=1 to ensure we don't link against libpthread_stub.a
+    self.run_process([EMCC, 'src.cpp', '-s', 'USE_PTHREADS=1', '-s', 'ENVIRONMENT=node'])
+    ret = self.run_process(NODE_JS + ['--experimental-wasm-threads', 'a.out.js'], stdout=PIPE).stdout
+    self.assertContained('ok', ret)
+
   def test_proxyfs(self):
     # This test supposes that 3 different programs share the same directory and files.
     # The same JS object is not used for each of them
@@ -9664,10 +9682,7 @@ int main () {
     self.assertContained('hello, world!', output)
 
   def test_standalone_export_main(self):
-    # Tests that explictly exported `_main` does not fail.   Since we interpret an
-    # export of `_main` to be be an export of `__start` in standalone mode the
-    # actual main function is not exported, but we also don't want to report an
-    # error
-    self.set_setting('STANDALONE_WASM')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
+    # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
+    # point.
+    # We should consider making this a warning since the `_main` export is redundant.
+    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=[_main]', '-sSTANDALONE_WASM', '-c', path_from_root('tests', 'core', 'test_hello_world.c')])
