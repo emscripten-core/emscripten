@@ -84,6 +84,7 @@
   "send": ["htons", "ntohs"],
   "ctime": ["_get_tzname", "_get_daylight", "_get_timezone", "malloc"],
   "ctime_r": ["_get_tzname", "_get_daylight", "_get_timezone", "malloc"],
+  "gmtime":  ["malloc"],
   "gmtime_r":  ["malloc"],
   "localtime": ["_get_tzname", "_get_daylight", "_get_timezone", "malloc"],
   "localtime_r": ["_get_tzname", "_get_daylight", "_get_timezone", "malloc"],
