@@ -40,6 +40,8 @@
   "uuid_copy": ["memcpy"],
   "SDL_Init": ["malloc", "free", "memset", "memcpy"],
   "SDL_GL_GetProcAddress": ["emscripten_GetProcAddress"],
+  "SDL_malloc": ["malloc"],
+  "SDL_free": ["free"],
   "Mix_LoadWAV_RW": ["fileno"],
   "eglQueryString": ["malloc"],
   "eglGetProcAddress": ["emscripten_GetProcAddress"],
