@@ -858,7 +858,7 @@ def create_receiving_wasm(exports, initializers):
     else:
       if shared.Settings.MINIMAL_RUNTIME:
         # In wasm2js exports can be directly processed at top level, i.e.
-        # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+        # var asm = Module["asm"](asmLibraryArg, buffer);
         # var _main = asm["_main"];
         if shared.Settings.USE_PTHREADS and shared.Settings.MODULARIZE:
           # TODO: As a temp solution, multithreaded MODULARIZED MINIMAL_RUNTIME builds export all
@@ -882,9 +882,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   receiving += create_fp_accessors(metadata)
   module = []
-  module.append('var asmGlobalArg = {};\n')
-  if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append('var asmLibraryArg = %s;\n' % (sending))
   if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:

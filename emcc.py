@@ -1135,6 +1135,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
+    if shared.Settings.WASM2C:
+      # wasm2c only makes sense with standalone wasm - there will be no JS,
+      # just wasm and then C
+      shared.Settings.STANDALONE_WASM = 1
+      # wasm2c doesn't need any special handling of i64, we have proper i64
+      # handling on the FFI boundary, which is exactly like the case of JS with
+      # BigInt support
+      shared.Settings.WASM_BIGINT = 1
+
     if options.no_entry:
       shared.Settings.EXPECT_MAIN = 0
     elif shared.Settings.STANDALONE_WASM:
@@ -1778,9 +1787,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.USE_PTHREADS:
       newargs.append('-pthread')
-
-    if not shared.Settings.LEGALIZE_JS_FFI:
-      assert building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS.'
 
     # check if we can address the 2GB mark and higher: either if we start at
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
