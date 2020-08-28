@@ -2411,7 +2411,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
                       '-o', 'test.js', '-O2', '--closure', '0',
                       '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]',
+                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest","_malloc","_free"]',
                       '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
@@ -2436,7 +2436,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
                       '-o', 'test.js', '-O2', '--closure', '1',
                       '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]',
+                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest","_malloc","_free"]',
                       '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
@@ -9695,7 +9695,12 @@ int main () {
       int main() {
         EM_ASM({
           try {
-            _malloc(10)
+            _malloc(1);
+          } catch(e) {
+            console.log('exception:', e);
+          }
+          try {
+            _free();
           } catch(e) {
             console.log('exception:', e);
           }
@@ -9703,4 +9708,6 @@ int main () {
       }
     ''')
     self.run_process([EMCC, 'unincluded_malloc.c'])
-    self.assertContained("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS", self.run_js('a.out.js'))
+    out = self.run_js('a.out.js')
+    self.assertContained("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS", out)
+    self.assertContained("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS", out)
