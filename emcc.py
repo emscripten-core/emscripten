@@ -1409,7 +1409,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        shared.Settings.ASMFS or \
        shared.Settings.FETCH:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
-      # TODO in JS: allocateUTF8(), ALLOC_NORMAL, stringToNewUTF8, mmapAlloc
 
     shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
     # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
