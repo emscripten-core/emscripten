@@ -702,13 +702,13 @@ var INCOMING_MODULE_JS_API = [
   'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
-  'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
+  'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
-  'preinitializedWebGLContextmemoryInitializerRequest', 'preloadPlugins',
+  'preinitializedWebGLContext', 'memoryInitializerRequest', 'preloadPlugins',
   'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
@@ -762,14 +762,13 @@ var NODE_CODE_CACHING = 0;
 
 // Functions that are explicitly exported. These functions are kept alive
 // through LLVM dead code elimination, and also made accessible outside of the
-// generated code even after running closure compiler (on "Module").  Note the
-// necessary prefix of "_".
+// generated code even after running closure compiler (on "Module").  The
+// symbols listed here require an `_` prefix.
 //
-// Note also that this is the full list of exported functions - if you have a
-// main() function and want it to run, you must include it in this list (as
-// _main is by default in this value, and if you override it without keeping it
-// there, you are in effect removing it).
-var EXPORTED_FUNCTIONS = ['_main'];
+// By default if this setting is not specified on the command line the
+// `_main` function will be implicitly exported.  In STANDALONE_WASM mode the
+// default export is `__start` (or `__initialize` if --no-entry is specified).
+var EXPORTED_FUNCTIONS = [];
 
 // If true, we export all the symbols that are present in JS onto the Module
 // object. This does not affect which symbols will be present - it does not

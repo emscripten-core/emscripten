@@ -35,19 +35,6 @@ var LibraryPThread = {
         PThread.allocateUnusedWorker();
       }
 #endif
-
-      // In asm.js we do not need to wait for Wasm Module to compile on the main thread, so can load
-      // up each Worker immediately. (in asm.js mode ignore PTHREAD_POOL_DELAY_LOAD altogether for
-      // simplicity, as multithreading performance optimizations are not interesting there)
-#if !WASM && PTHREAD_POOL_SIZE
-      addOnPreRun(function() { addRunDependency('pthreads'); });
-      var numWorkersToLoad = PThread.unusedWorkers.length;
-      PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
-        // PTHREAD_POOL_DELAY_LOAD==0: we wanted to synchronously wait until the Worker pool
-        // has loaded up. If all Workers have finished loading up the Wasm Module, proceed with main()
-        if (!--numWorkersToLoad) removeRunDependency('pthreads');
-      })});
-#endif
     },
     initRuntime: function() {
       PThread.mainThreadBlock = {{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}};
@@ -562,6 +549,9 @@ var LibraryPThread = {
   },
 
   emscripten_num_logical_cores: function() {
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
+#endif
     return navigator['hardwareConcurrency'];
   },
 
@@ -1110,7 +1100,7 @@ var LibraryPThread = {
   emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
-    if (ENVIRONMENT_IS_WORKER) {
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_WORKER) {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif

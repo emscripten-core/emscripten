@@ -609,7 +609,7 @@ LibraryManager.library = {
       console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
       if (replacement) {
-#if ASSERTIONS && (!WASM || WASM2JS)
+#if ASSERTIONS && WASM2JS
         err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
@@ -1060,12 +1060,6 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  // Statically allocated time struct.
-  __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-  // Statically allocated copy of the string "GMT" for gmtime() to point to
-  __tm_timezone: '{{{ makeStaticString("GMT") }}}',
-  // Statically allocated time strings.
-  __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   mktime__deps: ['tzset'],
   mktime__sig: 'ii',
   mktime: function(tmPtr) {
@@ -1105,12 +1099,10 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['__tm_current', 'gmtime_r'],
-  gmtime: function(time) {
-    return _gmtime_r(time, ___tm_current);
-  },
-
-  gmtime_r__deps: ['__tm_timezone'],
+#if MINIMAL_RUNTIME
+  gmtime_r__deps: ['allocateUTF8'],
+#endif
+  gmtime_r__sig: 'iii',
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -1125,10 +1117,13 @@ LibraryManager.library = {
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
-
+    // Allocate a string "GMT" for us to point to.
+    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
     return tmPtr;
   },
+  __gmtime_r: 'gmtime_r',
+
   timegm__deps: ['tzset'],
   timegm: function(tmPtr) {
     _tzset();
@@ -1149,12 +1144,8 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  localtime__deps: ['__tm_current', 'localtime_r'],
-  localtime: function(time) {
-    return _localtime_r(time, ___tm_current);
-  },
-
-  localtime_r__deps: ['__tm_timezone', 'tzset'],
+  localtime_r__deps: ['tzset'],
+  localtime_r__sig: 'iii',
   localtime_r: function(time, tmPtr) {
     _tzset();
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
@@ -1182,13 +1173,10 @@ LibraryManager.library = {
 
     return tmPtr;
   },
+  __localtime_r: 'localtime_r',
 
-  asctime__deps: ['__tm_formatted', 'asctime_r'],
-  asctime: function(tmPtr) {
-    return _asctime_r(tmPtr, ___tm_formatted);
-  },
-
-  asctime_r__deps: ['__tm_formatted', 'mktime'],
+  asctime_r__deps: ['mktime'],
+  asctime_r__sig: 'iii',
   asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -1216,19 +1204,17 @@ LibraryManager.library = {
     stringToUTF8(s, buf, 26);
     return buf;
   },
-
-  ctime__deps: ['__tm_current', 'ctime_r'],
-  ctime: function(timer) {
-    return _ctime_r(timer, ___tm_current);
-  },
+  __asctime_r: 'asctime_r',
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
     var stack = stackSave();
     var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
     stackRestore(stack);
     return rv;
   },
+  __ctime_r: 'ctime_r',
 
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
@@ -2342,15 +2328,6 @@ LibraryManager.library = {
     }
     return addr;
   },
-
-  // ==========================================================================
-  // netinet/in.h
-  // ==========================================================================
-
-  in6addr_any:
-    '{{{ makeStaticAlloc(16) }}}',
-  in6addr_loopback:
-    '{{{ makeStaticAlloc(16) }}}',
 
   // ==========================================================================
   // netdb.h
@@ -4025,6 +4002,26 @@ LibraryManager.library = {
         }
       });
     });
+  },
+
+  $callRuntimeCallbacks: function(callbacks) {
+    while(callbacks.length > 0) {
+      var callback = callbacks.shift();
+      if (typeof callback == 'function') {
+        callback(Module); // Pass the module as the first argument.
+        continue;
+      }
+      var func = callback.func;
+      if (typeof func === 'number') {
+        if (callback.arg === undefined) {
+          dynCall_v(func);
+        } else {
+          dynCall_vi(func, callback.arg);
+        }
+      } else {
+        func(callback.arg === undefined ? null : callback.arg);
+      }
+    }
   },
 };
 
