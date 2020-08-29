@@ -172,8 +172,26 @@ mergeInto(LibraryManager.library, {
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
+      // The typical case is an export.
       var func = Module['asm'][name];
-      return func;
+      if (func) return func;
+
+      // If we did a table call into the module, we have a special marker for
+      // that which tells us how to rewind, using the name which is in form
+      // +dynCall_$FUNCPTR_$COMMA_SEPARATED_ARGS.
+      assert(name.startsWith('+dynCall')) {
+      var parts = name.split('_');
+      var funcPtr = parts[1];
+      var args = parts[2].split(',').map(function(x) { return +x });
+      return function() {
+        // Note that we don't know the signature of the call here, but it
+        // does not matter in this code path: when using the legacy method
+        // of dynCalls in the wasm, we never do table calls into the wasm (we
+        // call the dynCall export). When we use the new direct table calls,
+        // we get to here but don't need to call getDynCaller which is the only
+        // part of makeDynCall that cares about the signature.
+        return ({{{ makeDynCall('?', 'funcPtr') }}}).apply(null, args);
+      };
     },
 
     handleSleep: function(startAsync) {
