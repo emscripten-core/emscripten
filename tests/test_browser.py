@@ -4619,7 +4619,7 @@ window.close = function() {
       </script>
     ''')
     self.run_browser('test.html', None, '/report_result?0')
-  
+
   # Test the operation of spawning a pthread in a web worker
   @requires_threads
   def test_pthread_in_worker(self):
@@ -4635,7 +4635,6 @@ window.close = function() {
         return 0;
       }
     ''')
-
     create_test_file('worker.js', r'''
       importScripts("test.js");
       const Module = {
@@ -4648,7 +4647,6 @@ window.close = function() {
       };
       PthreadInWorkerTest(Module);
     ''')
-
     html_file = open('test.html', 'w')
     html_file.write('''
       <!DOCTYPE html>
@@ -4663,13 +4661,12 @@ window.close = function() {
               xhr.send();
               setTimeout(function() { window.close() }, 1000);
             }, 1000)
-           
           </script>
         </body>
       </html>
     ''' % self.port)
-    html_file.close()
 
+    html_file.close()
     args = ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="PthreadInWorkerTest"', '-s', 'USE_PTHREADS=1', '-s', '''EXPORTED_FUNCTIONS=['_run']''']
     self.compile_btest(['test.c', '-o', 'test.js'] + args)
     self.run_browser('test.html', '', '/report_result?1')
