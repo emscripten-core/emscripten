@@ -4619,6 +4619,60 @@ window.close = function() {
       </script>
     ''')
     self.run_browser('test.html', None, '/report_result?0')
+  
+  # Test the operation of spawning a pthread in a web worker
+  @requires_threads
+  def test_pthread_in_worker(self):
+    create_test_file('test.c', r'''
+      #include <pthread.h>
+      void* tTask(void* arg) {
+        return NULL;
+      }
+      int run() {
+        pthread_t pid;
+        pthread_create(&pid, NULL, tTask, NULL);
+        pthread_join(pid, NULL);
+        return 0;
+      }
+    ''')
+
+    create_test_file('worker.js', r'''
+      importScripts("test.js");
+      const Module = {
+        locateFile: (file) => file,
+        onRuntimeInitialized: () => {
+          Module._run();
+          postMessage("done");
+        },
+        mainScriptUrlOrBlob: "test.js",
+      };
+      PthreadInWorkerTest(Module);
+    ''')
+
+    html_file = open('test.html', 'w')
+    html_file.write('''
+      <!DOCTYPE html>
+        <body>
+          <script>
+            const worker = new Worker('worker.js');
+            let result = 0;
+            worker.onmessage = () => result = 1; 
+            setTimeout(() => {
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:%s/report_result?' + result);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            }, 1000)
+           
+          </script>
+        </body>
+      </html>
+    ''' % self.port)
+    html_file.close()
+
+    args = ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="PthreadInWorkerTest"', '-s', 'USE_PTHREADS=1', '-s', '''EXPORTED_FUNCTIONS=['_run']''']
+    self.compile_btest(['test.c', '-o', 'test.js'] + args)
+    self.run_browser('test.html', '', '/report_result?1')
 
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')
