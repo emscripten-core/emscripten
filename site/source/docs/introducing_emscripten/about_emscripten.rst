@@ -4,15 +4,19 @@
 About Emscripten
 ================
 
-Emscripten is an :ref:`Open Source <emscripten-license>` LLVM to JavaScript compiler. Using Emscripten you can:
+Emscripten is an :ref:`Open Source <emscripten-license>` compiler to WebAssembly. Using Emscripten you can:
 
-- Compile C and C++ code into JavaScript
-- Compile any other code that can be translated into LLVM bitcode into JavaScript.
-- Compile the C/C++ **runtimes** of other languages into JavaScript, and then run code in those other languages in an *indirect* way (this has been done for Python and Lua)!
+- Compile C and C++ code, or any other language that uses LLVM, into WebAssembly.
+- Compile the C/C++ **runtimes** of other languages into WebAssembly, and then
+  run code in those other languages in an *indirect* way (for example, this has
+  been done for
+  `Python <https://github.com/iodide-project/pyodide>`_ and
+  `Lua <https://daurnimator.github.io/lua.vm.js/lua.vm.js.html>`_).
 
 .. tip:: Emscripten makes native code immediately available on the Web: a platform that is standards-based, has numerous independent compatible implementations, and runs everywhere from PCs to iPads.
 
-  With Emscripten, C/C++ developers don't have the high cost of porting code manually to JavaScript — or having to learn JavaScript at all. Web developers also benefit, as they can use the many thousands of pre-existing native utilities and libraries in their sites.
+  With Emscripten, C/C++ developers don't have the high cost of porting code manually to the Web.
+  Web developers also benefit, as they can use the many thousands of pre-existing native utilities and libraries in their sites.
 
 Practically any **portable** C or C++ codebase can be compiled into JavaScript using Emscripten, ranging from high performance games that need to render graphics, play sounds, and load and process files, through to application frameworks like Qt. Emscripten has already been used to convert a `very long list <https://github.com/emscripten-core/emscripten/wiki/Porting-Examples-and-Demos>`_ of real-world codebases to JavaScript, including large projects like *CPython*, `Poppler <https://github.com/coolwanglu/emscripten/tree/master/tests/poppler#readme>`_ and the `Bullet Physics Engine <http://kripken.github.io/ammo.js/examples/new/ammo.html>`_, as well as commercial projects like the `Unreal Engine 4 <https://blog.mozilla.org/blog/2014/03/12/mozilla-and-epic-preview-unreal-engine-4-running-in-firefox/>`_ and the `Unity <http://www.unity3d.com>`_ engine. Here are two demos using Unity:
 
@@ -32,16 +36,16 @@ Practically any **portable** C or C++ codebase can be compiled into JavaScript u
 
 For more demos, see the `list on the wiki <https://github.com/emscripten-core/emscripten/wiki/Porting-Examples-and-Demos>`_.
 
-Emscripten generates fast code! Its default output format is `asm.js <http://asmjs.org>`_ , a highly optimizable subset of JavaScript that can execute at close to native speed in many cases (check out the `current benchmark results <http://arewefastyet.com/#machine=11&view=breakdown&suite=asmjs-ubench>`_ or run the :ref:`benchmark tests <benchmarking>` yourself). Optimized Emscripten code has also been `shown to have <http://mozakai.blogspot.com/2011/11/code-size-when-compiling-to-javascript.html>`_ a similar *effective size* to native code, when both are gzipped.
-
-For a better understanding of just how fast and fluid Emscripten-ported code can be, check out the `Dead Trigger 2 <http://beta.unity3d.com/jonas/DT2/>`_ and `Angrybots <http://beta.unity3d.com/jonas/AngryBots/>`_ demos above.
+Emscripten generates fast code! Its default output format is
+`WebAssembly <http://webassembly.org/>`_ , a highly optimizable executable
+format, that runs almost as fast as native code, while being portable and safe.
 
 .. _about-emscripten-toolchain:
 
 Emscripten Toolchain
 ====================
 
-A high level view of the Emscripten toolchain is given below. The main tool is the :ref:`emccdoc`. This is a drop-in replacement for a standard compiler like *gcc*.
+A high level view of the Emscripten toolchain is given below. The main tool is the :ref:`emccdoc`. This is a drop-in replacement for a standard compiler like *gcc* or *clang*.
 
 .. image:: EmscriptenToolchain.png
 
