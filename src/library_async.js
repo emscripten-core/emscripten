@@ -179,7 +179,7 @@ mergeInto(LibraryManager.library, {
       // If we did a table call into the module, we have a special marker for
       // that which tells us how to rewind, using the name which is in form
       // +dynCall_$FUNCPTR_$COMMA_SEPARATED_ARGS.
-      assert(name.startsWith('+dynCall')) {
+      assert(name.startsWith('+dynCall'));
       var parts = name.split('_');
       var funcPtr = parts[1];
       var args = parts[2].split(',').map(function(x) { return +x });
