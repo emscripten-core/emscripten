@@ -549,6 +549,13 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
+
+  if not shared.Settings.USE_LEGACY_DYNCALLS:
+    if shared.Settings.WASM_BIGINT:
+      args.append('--no-dyncalls')
+    else:
+      args.append('--dyncalls-i64')
+
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     args.append('--no-legalize-javascript-ffi')
   if not shared.Settings.MEM_INIT_IN_WASM:

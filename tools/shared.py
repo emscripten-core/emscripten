@@ -1212,7 +1212,7 @@ function jsCall_%s(index%s) {
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.ASYNCIFY or Settings.WASM2C or not JS.is_legal_sig(sig):
+    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic

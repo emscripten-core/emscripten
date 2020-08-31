@@ -195,7 +195,7 @@ var LibraryExceptions = {
       var destructor = info.get_destructor();
       if (destructor) {
         // In Wasm, destructors return 'this' as in ARM
-        {{{ makeDynCall('ii') }}}(destructor, info.excPtr);
+        {{{ makeDynCall('ii', 'destructor') }}}(info.excPtr);
       }
       ___cxa_free_exception(info.excPtr);
 #if EXCEPTION_DEBUG

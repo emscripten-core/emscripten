@@ -454,12 +454,12 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #if FETCH_DEBUG
     console.log('fetch: operation success. e: ' + e);
 #endif
-    if (onsuccess) {{{ makeDynCall('vi') }}}(onsuccess, fetch);
+    if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
     else if (successcb) successcb(fetch);
   };
 
   var reportProgress = function(fetch, xhr, e) {
-    if (onprogress) {{{ makeDynCall('vi') }}}(onprogress, fetch);
+    if (onprogress) {{{ makeDynCall('vi', 'onprogress') }}}(fetch);
     else if (progresscb) progresscb(fetch);
   };
 
@@ -467,7 +467,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #if FETCH_DEBUG
     console.error('fetch: operation failed: ' + e);
 #endif
-    if (onerror) {{{ makeDynCall('vi') }}}(onerror, fetch);
+    if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(fetch);
     else if (errorcb) errorcb(fetch);
   };
 
@@ -475,7 +475,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #if FETCH_DEBUG
     console.log('fetch: ready state change. e: ' + e);
 #endif
-    if (onreadystatechange) {{{ makeDynCall('vi') }}}(onreadystatechange, fetch);
+    if (onreadystatechange) {{{ makeDynCall('vi', 'onreadystatechange') }}}(fetch);
     else if (readystatechangecb) readystatechangecb(fetch);
   };
 
@@ -495,14 +495,14 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB store succeeded.');
 #endif
-      if (onsuccess) {{{ makeDynCall('vi') }}}(onsuccess, fetch);
+      if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
     };
     var storeError = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
-      if (onsuccess) {{{ makeDynCall('vi') }}}(onsuccess, fetch);
+      if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
     };
     __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);

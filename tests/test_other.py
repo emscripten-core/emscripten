@@ -6254,7 +6254,8 @@ Resolved: "/" => "/"
                       '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'),
                       '--pre-js', path_from_root('tests', 'return64bit', bind_js),
                       '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_test_return64"]', '-o', 'test.js', '-O2',
+                      '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]',
+                      '-s', 'EXPORTED_FUNCTIONS=[_test_return64]', '-o', 'test.js', '-O2',
                       '--closure', '1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'] + args)
 
     # Simple test program to load the test.js binding library and call the binding to the

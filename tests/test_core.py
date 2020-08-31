@@ -6415,6 +6415,7 @@ return malloc(size);
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall.cpp')
 
   def test_EXTRA_EXPORTED_RUNTIME_METHODS(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS.c')
     # test dyncall (and other runtime methods in support.js) can be exported
     self.emcc_args += ['-DEXPORTED']
