@@ -2602,6 +2602,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
+    # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
+    # also strips the Names section. so to emit just the Names section we don't
+    # tell wasm-ld to strip anything, and we do it here.
     strip_debug = shared.Settings.DEBUG_LEVEL < 3
     strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
     # run wasm-opt if we have work for it
