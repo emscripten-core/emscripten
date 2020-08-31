@@ -1426,13 +1426,12 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   return js_file
 
 
-def strip(infile, outfile, debug=False, producers=False):
-  cmd = [LLVM_OBJCOPY, infile, outfile]
-  if debug:
-    cmd += ['--remove-section=.debug*']
-  if producers:
-    cmd += ['--remove-section=producers']
-  run_process(cmd)
+def strip_debug(infile, outfile):
+  run_process([LLVM_OBJCOPY, '--remove-section=.debug*', infile, outfile])
+
+
+def strip_producers(infile, outfile):
+  run_process([LLVM_OBJCOPY, '--remove-section=producers', infile, outfile])
 
 
 # extract the DWARF info from the main file, and leave the wasm with
