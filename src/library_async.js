@@ -40,10 +40,7 @@ mergeInto(LibraryManager.library, {
     // which is where we must call to rewind it.
     exportCallStack: [],
     callStackNameToId: {},
-    callStackIdToFunc: {},
-#if ASYNCIFY_LAZY_LOAD_CODE
     callStackIdToName: {},
-#endif
     callStackId: 0,
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
@@ -54,11 +51,7 @@ mergeInto(LibraryManager.library, {
       if (id === undefined) {
         id = Asyncify.callStackId++;
         Asyncify.callStackNameToId[funcName] = id;
-#if ASYNCIFY_LAZY_LOAD_CODE
         Asyncify.callStackIdToName[id] = funcName;
-#else
-        Asyncify.callStackIdToFunc[id] = Module['asm'][funcName];
-#endif
       }
       return id;
     },
@@ -100,36 +93,20 @@ mergeInto(LibraryManager.library, {
           var original = exports[x];
           if (typeof original === 'function') {
             ret[x] = function() {
-              Asyncify.exportCallStack.push(x);
 #if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', x);
+              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
 #endif
+              Asyncify.exportCallStack.push(x);
               try {
                 return original.apply(null, arguments);
               } finally {
                 if (ABORT) return;
-                var y = Asyncify.exportCallStack.pop(x);
+                var y = Asyncify.exportCallStack.pop();
                 assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);
+                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
 #endif
-                if (Asyncify.currData &&
-                    Asyncify.state === Asyncify.State.Unwinding &&
-                    Asyncify.exportCallStack.length === 0) {
-                  // We just finished unwinding.
-#if ASYNCIFY_DEBUG
-                  err('ASYNCIFY: stop unwind');
-#endif
-                  Asyncify.state = Asyncify.State.Normal;
-                  runAndAbortIfError(Module['_asyncify_stop_unwind']);
-                  if (typeof Fibers !== 'undefined') {
-                    Fibers.trampoline();
-                  }
-                  if (Asyncify.afterUnwind) {
-                    Asyncify.afterUnwind();
-                    Asyncify.afterUnwind = null;
-                  }
-                }
+                Asyncify.maybeStopUnwind();
               }
             };
           } else {
@@ -140,11 +117,34 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
 
+    maybeStopUnwind: function() {
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY: maybe stop unwind', Asyncify.exportCallStack);
+#endif
+      if (Asyncify.currData &&
+          Asyncify.state === Asyncify.State.Unwinding &&
+          Asyncify.exportCallStack.length === 0) {
+        // We just finished unwinding.
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY: stop unwind');
+#endif
+        Asyncify.state = Asyncify.State.Normal;
+        runAndAbortIfError(Module['_asyncify_stop_unwind']);
+        if (typeof Fibers !== 'undefined') {
+          Fibers.trampoline();
+        }
+        if (Asyncify.afterUnwind) {
+          Asyncify.afterUnwind();
+          Asyncify.afterUnwind = null;
+        }
+      }
+    },
+
     allocateData: function() {
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
-      //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
+      //  8  id of function at bottom of the call stack (callStackIdToName[id] == name of js function)
       //
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
@@ -171,15 +171,8 @@ mergeInto(LibraryManager.library, {
 
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
-      var func = Asyncify.callStackIdToFunc[id];
-
-#if ASYNCIFY_LAZY_LOAD_CODE
-      if (func === undefined) {
-        func = Module['asm'][Asyncify.callStackIdToName[id]];
-        Asyncify.callStackIdToFunc[id] = func;
-      }
-#endif
-
+      var name = Asyncify.callStackIdToName[id];
+      var func = Module['asm'][name];
       return func;
     },
 
