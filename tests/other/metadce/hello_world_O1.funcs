@@ -13,8 +13,6 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $dlfree
 $dlmalloc
-$dynCall_ii
-$dynCall_iiii
 $dynCall_jiji
 $emscripten_get_sbrk_ptr
 $fputs

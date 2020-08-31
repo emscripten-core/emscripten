@@ -23,11 +23,7 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $dlfree
 $dlmalloc
-$dynCall_ii
-$dynCall_iidiiii
-$dynCall_iiii
 $dynCall_jiji
-$dynCall_vii
 $emscripten_get_sbrk_ptr
 $fflush
 $fmt_fp

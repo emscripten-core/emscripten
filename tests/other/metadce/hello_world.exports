@@ -2,11 +2,7 @@ __data_end
 __errno_location
 __growWasmMemory
 __wasm_call_ctors
-dynCall_ii
-dynCall_iidiiii
-dynCall_iiii
 dynCall_jiji
-dynCall_vii
 fflush
 free
 main

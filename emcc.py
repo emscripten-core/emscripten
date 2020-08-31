@@ -1267,6 +1267,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.RELOCATABLE:
       shared.Settings.ALLOW_TABLE_GROWTH = 1
 
+    if shared.Settings.ASYNCIFY:
+      # See: https://github.com/emscripten-core/emscripten/issues/12065
+      # See: https://github.com/emscripten-core/emscripten/issues/12066
+      shared.Settings.USE_LEGACY_DYNCALLS = 1
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDynCaller']
+
     # Reconfigure the cache now that settings have been applied. Some settings
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
@@ -1522,19 +1528,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         'removeRunDependency',
       ]
 
-    if not shared.Settings.MINIMAL_RUNTIME or (shared.Settings.USE_PTHREADS or shared.Settings.EXIT_RUNTIME):
+    if not shared.Settings.MINIMAL_RUNTIME or shared.Settings.EXIT_RUNTIME:
       # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
       # always does.
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$dynCall']
 
     if shared.Settings.USE_PTHREADS:
       # memalign is used to ensure allocated thread stacks are aligned.
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_malloc']
 
-      # dynCall_ii is used to call pthread entry points in worker.js (as
+      # dynCall is used to call pthread entry points in worker.js (as
       # metadce does not consider worker.js, which is external, we must
-      # consider it a user export, i.e., one which can never be removed).
-      building.user_requested_exports += ['dynCall_ii']
+      # consider it an export, i.e., one which can never be removed).
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+      shared.Settings.EXPORTED_FUNCTIONS += ['dynCall']
 
       if shared.Settings.MINIMAL_RUNTIME:
         building.user_requested_exports += ['exit']
