@@ -18,6 +18,11 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`.
+- Simplify Fetch C API error handling: we used to check if the error code was
+  0 and switch that to 404, but that only really helps `file://` URLs, which
+  are not very useful for testing anyhow for other reasons (like not working
+  in chrome), and it made things more complex. The behavior has been changed
+  to be simpler and just leave the browser's error code as it is.
 - Enable `--no-heap-copy` file packager option by default, and remove the old
   default behavior entirely. That is the behavior we should have had from the
   beginning as it is more memory-efficient. (#12027)
