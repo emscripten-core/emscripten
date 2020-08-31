@@ -110,7 +110,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
   if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + brk);
-  assert(brk);
+  assert(brk >= STACK_BASE); // sbrk-managed memory must be above the stack
   assert(brk <= HEAP8.length);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
@@ -127,7 +127,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
   if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + brk);
-  assert(brk);
+  assert(brk >= STACK_BASE); // sbrk-managed memory must be above the stack
   assert(brk <= HEAP8.length);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
