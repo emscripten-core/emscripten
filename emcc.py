@@ -2608,6 +2608,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if options.binaryen_passes:
       # if we need to strip certain sections, and we have wasm-opt passes
       # to run anyhow, do it with them.
+      if strip_debug:
+        options.binaryen_passes += ['--strip-debug']
       if strip_producers:
         options.binaryen_passes += ['--strip-producers']
       building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')

@@ -490,6 +490,9 @@ def lld_flags_for_executable(external_symbol_list):
   if Settings.USE_PTHREADS:
     cmd.append('--shared-memory')
 
+  # wasm-ld can strip debug info for us. this strips both the Names
+  # section and DWARF, so we can only use it when we don't need any of
+  # those things.
   if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
                                    not Settings.PROFILING_FUNCS and
                                    not Settings.ASYNCIFY):
