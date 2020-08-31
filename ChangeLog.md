@@ -31,10 +31,6 @@ Current Trunk
   `EXPORTED_FUNCTIONS` is not relevant in the deciding the type of application
   to build.
 - Allow polymorphic types to be used without RTTI when using embind. (#10914)
-- Only strip debug info in release builds + when `-g` is not present. Previously
-  even in an `-O0` build without `-g` we would strip it. This was not documented
-  behavior, and has no effect on program behavior, but may be noticeable
-  if you inspect a build output with `-O0`.
 - Do not remove `__original_main` using `--inline-main`. We used to do this
   so that it didn't show up in stack traces (which could be confusing because
   it is added by the linker - it's not in the source code). But this has had

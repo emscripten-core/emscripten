@@ -550,9 +550,6 @@ def backend_binaryen_passes():
   # hardcoded value in the binaryen pass)
   if shared.Settings.OPT_LEVEL > 0 and shared.Settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
-  if shared.Settings.OPT_LEVEL > 0:
-    if shared.Settings.DEBUG_LEVEL < 3:
-      passes += ['--strip-debug']
   if shared.Settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']
@@ -2612,11 +2609,18 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
+    # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
+    # also strips the Names section. so to emit just the Names section we don't
+    # tell wasm-ld to strip anything, and we do it here.
+    strip_debug = shared.Settings.DEBUG_LEVEL < 3
+    strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
     # run wasm-opt if we have work for it
     if options.binaryen_passes:
-      # if we need to strip the producers section, and we have wasm-opt passes
-      # to run, do it with them.
-      if not shared.Settings.EMIT_PRODUCERS_SECTION:
+      # if we need to strip certain sections, and we have wasm-opt passes
+      # to run anyhow, do it with them.
+      if strip_debug:
+        options.binaryen_passes += ['--strip-debug']
+      if strip_producers:
         options.binaryen_passes += ['--strip-producers']
       building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
       building.run_wasm_opt(wasm_binary_target,
@@ -2624,12 +2628,13 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                             args=options.binaryen_passes,
                             debug=intermediate_debug_info)
     else:
-      # we are not running wasm-opt. if we need to strip the producers section
-      # then do so using llvm-objcpy which is faster and does not rewrite the
+      # we are not running wasm-opt. if we need to strip certain sections
+      # then do so using llvm-objcopy which is fast and does not rewrite the
       # code (which is better for debug info)
-      if not shared.Settings.EMIT_PRODUCERS_SECTION:
-        building.save_intermediate(wasm_binary_target, 'pre-noprosec.wasm')
-        building.strip_producers(wasm_binary_target, wasm_binary_target)
+      if strip_debug or strip_producers:
+        building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
+        building.strip(wasm_binary_target, wasm_binary_target,
+                       debug=strip_debug, producers=strip_producers)
 
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
