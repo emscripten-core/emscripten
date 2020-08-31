@@ -2031,11 +2031,7 @@ int f() {
       return compile_to_executable(compile_args, [])
 
     no_size, line_size, full_size = test(compile_to_O0_executable)
-    # the difference between these two is due to the producer's section which
-    # LLVM emits, and which we do not strip as this is not a release build.
-    # the specific difference is that LLVM emits language info (C_plus_plus_14)
-    # when emitting debug info, but not otherwise.
-    self.assertLess(no_size, line_size)
+    self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   def test_dwarf(self):
@@ -7898,17 +7894,14 @@ int main() {
       self.assertIn(b'somewhere.com/hosted.wasm', f.read())
 
   @parameterized({
-    'O0': (True, ['-O0']), # unoptimized builds try not to modify the LLVM wasm.
-    'O1': (False, ['-O1']), # optimized builds strip the producer's section
-    'O2': (False, ['-O2']), # by default.
+    'O0': (['-O0'],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
   })
-  def test_wasm_producers_section(self, expect_producers_by_default, args):
+  def test_wasm_producers_section(self, args):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.wasm', 'rb') as f:
       data = f.read()
-    if expect_producers_by_default:
-      self.assertIn('clang', str(data))
-      return
     # if there is no producers section expected by default, verify that, and
     # see that the flag works to add it.
     self.assertNotIn('clang', str(data))
