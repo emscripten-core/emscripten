@@ -90,7 +90,7 @@ def clear(ports, settings, shared):
 
 
 def process_dependencies(settings):
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext', '$dynCall']
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext']
 
 
 def process_args(ports):
