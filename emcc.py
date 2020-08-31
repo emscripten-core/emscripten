@@ -1267,7 +1267,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.RELOCATABLE:
       shared.Settings.ALLOW_TABLE_GROWTH = 1
 
-    if shared.Settings.WASM2C or shared.Settings.ASYNCIFY:
+    if shared.Settings.ASYNCIFY:
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
       shared.Settings.USE_LEGACY_DYNCALLS = 1
