@@ -1423,6 +1423,14 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   return js_file
 
 
+def strip_debug(infile, outfile):
+  run_process([LLVM_OBJCOPY, '--remove-section=.debug*', infile, outfile])
+
+
+def strip_producers(infile, outfile):
+  run_process([LLVM_OBJCOPY, '--remove-section=producers', infile, outfile])
+
+
 # extract the DWARF info from the main file, and leave the wasm with
 # debug into as a file on the side
 # TODO: emit only debug sections in the side file, and not the entire
@@ -1435,7 +1443,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
-  run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
+  strip_debug(wasm_file_with_dwarf, wasm_file)
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF

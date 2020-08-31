@@ -1062,42 +1062,20 @@ var LibraryEmbind = {
 #endif
   },
 
-  $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'],
+  $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError', '$getDynCaller'],
   $embind__requireFunction: function(signature, rawFunction) {
     signature = readLatin1String(signature);
 
-    function makeDynCaller(dynCall) {
-#if DYNAMIC_EXECUTION == 0
-      var argCache = [rawFunction];
-      return function() {
-          argCache.length = arguments.length + 1;
-          for (var i = 0; i < arguments.length; i++) {
-            argCache[i + 1] = arguments[i];
-          }
-          return dynCall.apply(null, argCache);
-      };
-#else
-        var args = [];
-        for (var i = 1; i < signature.length; ++i) {
-            args.push('a' + i);
-        }
-
-        var name = 'dynCall_' + signature + '_' + rawFunction;
-        var body = 'return function ' + name + '(' + args.join(', ') + ') {\n';
-        body    += '    return dynCall(rawFunction' + (args.length ? ', ' : '') + args.join(', ') + ');\n';
-        body    += '};\n';
-
-        return (new Function('dynCall', 'rawFunction', body))(dynCall, rawFunction);
+    function makeDynCaller() {
+#if !USE_LEGACY_DYNCALLS
+      if (signature.indexOf('j') == -1) {
+        return wasmTable.get(rawFunction);
+      }
 #endif
+      return getDynCaller(signature, rawFunction);
     }
 
-#if MINIMAL_RUNTIME
-    var dc = asm['dynCall_' + signature];
-#else
-    var dc = Module['dynCall_' + signature];
-#endif
-    var fp = makeDynCaller(dc);
-
+    var fp = makeDynCaller();
     if (typeof fp !== "function") {
         throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
     }
