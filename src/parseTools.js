@@ -1468,11 +1468,7 @@ function makeDynCall(sig, funcPtr) {
   // Asyncify.exportCallStack, which lets us track the export by which we
   // entered the wasm, but calling the table requires some help. Track which
   // function pointer and which parameters were used on that stack with
-  // special 'dynCall' entries, identifiable by their "+dynCall" prefix ("+"
-  // prevents any confusion with normal exports).
-  // TODO: Encoding arguments as strings in this way is not very efficient, but
-  // it is convenient for now as we have a mechanism to match strings to names
-  // in Asyncify. We could optimize this though.
+  // special entries.
   var debugPush = '', debugPop = '';
   if (ASYNCIFY_DEBUG >= 2) {
     debugPush = `err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + entry);`;
@@ -1481,8 +1477,9 @@ function makeDynCall(sig, funcPtr) {
   return `
 (function() {
   var args = Array.prototype.slice.call(arguments);
-  // Encode that this is a dynCall, the function pointer, and the arguments.
-  var entry = '+dynCall_' + ${funcPtr} + '_' + args;
+  // Encode the information for a dynamic call: the function pointer, and the arguments,
+  // with room for the ID that will be filled in later.
+  var entry = { funcPtr: ${funcPtr}, args: args, id: -1 };
   try {
     ${debugPush}
     Asyncify.exportCallStack.push(entry);

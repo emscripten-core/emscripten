@@ -40,19 +40,35 @@ mergeInto(LibraryManager.library, {
     // which is where we must call to rewind it.
     exportCallStack: [],
     callStackNameToId: {},
-    callStackIdToName: {},
+    callStackIdToIdent: {},
     callStackId: 0,
+    freeCallStackIds: [],
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
-    getCallStackId: function(funcName) {
-      var id = Asyncify.callStackNameToId[funcName];
-      if (id === undefined) {
-        id = Asyncify.callStackId++;
-        Asyncify.callStackNameToId[funcName] = id;
-        Asyncify.callStackIdToName[id] = funcName;
+    getCallStackId: function(ident) {
+      var id;
+      // A string identifier is an export name
+      if (typeof ident === 'string') {
+        id = Asyncify.callStackNameToId[ident];
+        if (id === undefined) {
+          id = Asyncify.callStackId++;
+          Asyncify.callStackNameToId[ident] = id;
+          Asyncify.callStackIdToIdent[id] = ident;
+        }
+        return id;
       }
+      // Otherwise, the identifier is an object with information for a table
+      // call. Create a new ID for each one, or use a free one if available.
+      if (Asyncify.freeCallStackIds.length > 0) {
+        id = Asyncify.freeCallStackIds.pop();
+      } else {
+        id = Asyncify.callStackId++;
+      }
+      // Note the ID so that we can free it later.
+      ident.id = id;
+      Asyncify.callStackIdToIdent[id] = ident;
       return id;
     },
 
@@ -144,7 +160,7 @@ mergeInto(LibraryManager.library, {
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
-      //  8  id of function at bottom of the call stack (callStackIdToName[id] == name of js function)
+      //  8  id of function at bottom of the call stack (callStackIdToIdent[id] == name of js function)
       //
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
@@ -171,18 +187,16 @@ mergeInto(LibraryManager.library, {
 
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
-      var name = Asyncify.callStackIdToName[id];
-      // The typical case is an export.
-      var func = Module['asm'][name];
-      if (func) return func;
-
+      var ident = Asyncify.callStackIdToIdent[id];
+      if (typeof ident === 'string') {
+        // The typical case is an export, identified by a string name.
+        var func = Module['asm'][ident];
+        if (func) return func;
+      }
       // If we did a table call into the module, we have a special marker for
-      // that which tells us how to rewind, using the name which is in form
-      // +dynCall_$FUNCPTR_$COMMA_SEPARATED_ARGS.
-      assert(name.startsWith('+dynCall'));
-      var parts = name.split('_');
-      var funcPtr = parts[1];
-      var args = parts[2].split(',').map(function(x) { return +x });
+      // that which tells us how to rewind. We can also free this ID now that
+      // we are about to rewind it.
+      Asyncify.freeCallStackIds.push(ident.id);
       return function() {
         // Note that we don't know the signature of the call here, but it
         // does not matter in this code path: when using the legacy method
@@ -190,7 +204,7 @@ mergeInto(LibraryManager.library, {
         // call the dynCall export). When we use the new direct table calls,
         // we get to here but don't need to call getDynCaller which is the only
         // part of makeDynCall that cares about the signature.
-        return ({{{ makeDynCall('?', 'funcPtr') }}}).apply(null, args);
+        return ({{{ makeDynCall('?', 'ident.funcPtr') }}}).apply(null, ident.args);
       };
     },
 
