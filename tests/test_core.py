@@ -786,6 +786,8 @@ class TestCoreBase(RunnerCore):
 
   def test_stack(self):
     self.set_setting('INLINING_LIMIT', 50)
+    # some extra coverage in all test suites for stack checks
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack.c')
 
