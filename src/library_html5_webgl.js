@@ -399,7 +399,7 @@ var LibraryHtml5WebGL = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, 0, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
     };
 
     var eventHandler = {

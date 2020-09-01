@@ -201,3 +201,5 @@ var EXPECT_MAIN = 1;
 // Provide and export a .ready() Promise. This is currently used by default with
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = 1;
+
+var USE_LEGACY_DYNCALLS = 0;
