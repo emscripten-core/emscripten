@@ -135,7 +135,7 @@ def also_with_noderawfs(func):
 
 def can_do_standalone(self):
   return self.get_setting('WASM') and \
-      not self.get_setting('SAFE_STACK') and \
+      self.get_setting('STACK_OVERFLOW_CHECK') < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       '-fsanitize=address' not in self.emcc_args
 
