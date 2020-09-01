@@ -7279,7 +7279,8 @@ int main() {
           assert 'a' in exports_and_imports
         else:
           assert 'a' not in exports_and_imports
-        assert 'memory' in exports_and_imports or 'fd_write' in exports_and_imports, 'some things are not minified anyhow'
+        if standalone:
+          assert 'fd_write' in exports_and_imports, 'standalone mode preserves import names for WASI APIs'
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', self.run_js('out.js'))
