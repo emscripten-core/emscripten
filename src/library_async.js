@@ -160,7 +160,7 @@ mergeInto(LibraryManager.library, {
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
-      //  8  id of function at bottom of the call stack (callStackIdToIdent[id] == name of js function)
+      //  8  id at the bottom of the call stack
       //
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
@@ -188,10 +188,13 @@ mergeInto(LibraryManager.library, {
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var ident = Asyncify.callStackIdToIdent[id];
+      // The typical case is an export, identified by a string name.
       if (typeof ident === 'string') {
-        // The typical case is an export, identified by a string name.
         var func = Module['asm'][ident];
-        if (func) return func;
+#if ASSERTIONS
+        assert(func);
+#endif
+        return func;
       }
       // If we did a table call into the module, we have a special marker for
       // that which tells us how to rewind. We can also free this ID now that
