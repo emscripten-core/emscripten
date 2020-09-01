@@ -499,8 +499,8 @@ LibraryManager.library = {
       console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
-    // return 0  could be done here, but the caller will cast "undefined" into 0
-    // anyhow.
+    // implicit 0 return to save code size (caller will cast "undefined" into 0
+    // anyhow)
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
