@@ -19,16 +19,10 @@ if (!Math.imul || Math.imul(0xffffffff, 5) !== -5) Math.imul = function imul(a, 
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/fround
 #if POLYFILL_OLD_MATH_FUNCTIONS || MIN_CHROME_VERSION < 38 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 26 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000 // || MIN_NODE_VERSION < 0.12
-#if PRECISE_F32
-#if PRECISE_F32 == 1
 if (!Math.fround) {
   var froundBuffer = new Float32Array(1);
   Math.fround = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
 }
-#else // 2
-if (!Math.fround) Math.fround = function(x) { return x };
-#endif
-#endif
 #endif
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/clz32

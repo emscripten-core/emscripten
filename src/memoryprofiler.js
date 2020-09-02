@@ -65,11 +65,7 @@ var emscriptenMemoryProfiler = {
   totalTimesFreeCalled: 0,
 
   // Tracks the highest seen location of the STACKTOP variable.
-#if WASM_BACKEND
   stackTopWatermark: Infinity,
-#else
-  stackTopWatermark: 0,
-#endif
 
   // The canvas DOM element to which to draw the allocation map.
   canvas: null,
@@ -160,11 +156,7 @@ var emscriptenMemoryProfiler = {
 
   recordStackWatermark: function() {
     var self = emscriptenMemoryProfiler;
-#if WASM_BACKEND
     self.stackTopWatermark = Math.min(self.stackTopWatermark, STACKTOP);
-#else
-    self.stackTopWatermark = Math.max(self.stackTopWatermark, STACKTOP);
-#endif
   },
 
   onMalloc: function onMalloc(ptr, size) {
@@ -494,7 +486,11 @@ var emscriptenMemoryProfiler = {
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(Math.abs(self.stackTopWatermark - STACK_BASE));
 
     var DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
-    var DYNAMICTOP = HEAP32[DYNAMICTOP_PTR>>2];
+    // During startup sbrk may not be defined yet. Ideally we should probably
+    // refactor memoryprofiler so that it only gets here after compiled code is
+    // ready to be called. For now, if the runtime is not yet initialized,
+    // assume the brk is right after the stack.
+    var DYNAMICTOP = runtimeInitialized ? _sbrk() : STACK_BASE;
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(DYNAMICTOP - DYNAMIC_BASE);
     html += ". DYNAMIC_BASE: " + toHex(DYNAMIC_BASE, width);
     html += ". DYNAMICTOP: " + toHex(DYNAMICTOP, width) + ".";

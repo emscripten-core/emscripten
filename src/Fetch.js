@@ -43,20 +43,8 @@ var Fetch = {
   },
 #endif
 
-#if USE_FETCH_WORKER
-  initFetchWorker: function() {
-    var stackSize = 128*1024;
-    var stack = allocate(stackSize>>2, "i32*", ALLOC_DYNAMIC);
-    Fetch.worker.postMessage({cmd: 'init', DYNAMICTOP_PTR: DYNAMICTOP_PTR, STACKTOP: stack, STACK_MAX: stack + stackSize, queuePtr: _fetch_work_queue, buffer: HEAPU8.buffer});
-  },
-#endif
-
   staticInit: function() {
-#if USE_FETCH_WORKER
-    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
-#else
     var isMainThread = true;
-#endif
 
 #if FETCH_SUPPORT_INDEXEDDB
     var onsuccess = function(db) {
@@ -66,9 +54,6 @@ var Fetch = {
       Fetch.dbInstance = db;
 
       if (isMainThread) {
-#if USE_FETCH_WORKER
-        Fetch.initFetchWorker();
-#endif
         removeRunDependency('library_fetch_init');
       }
     };
@@ -79,37 +64,14 @@ var Fetch = {
       Fetch.dbInstance = false;
 
       if (isMainThread) {
-#if USE_FETCH_WORKER
-        Fetch.initFetchWorker();
-#endif
         removeRunDependency('library_fetch_init');
       }
     };
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 
-#if USE_FETCH_WORKER
-    if (isMainThread) {
-#if FETCH_SUPPORT_INDEXEDDB
-      addRunDependency('library_fetch_init');
-#endif
-
-      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
-      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
-      // to the main html file is loaded.
-      var fetchJs = locateFile('{{{ FETCH_WORKER_FILE }}}');
-      Fetch.worker = new Worker(fetchJs);
-      Fetch.worker.onmessage = function(e) {
-        out('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
-      };
-      Fetch.worker.onerror = function(e) {
-        err('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
-      };
-    }
-#else
 #if FETCH_SUPPORT_INDEXEDDB
     if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
-#endif
 #endif
   }
 }
@@ -291,7 +253,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var requestMethod = UTF8ToString(fetch_attr);
   if (!requestMethod) requestMethod = 'GET';
-  var userData = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.userData }}} >> 2];
+  var userData = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.userData }}} >> 2];
   var fetchAttributes = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.attributes }}} >> 2];
   var timeoutMsecs = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.timeoutMSecs }}} >> 2];
   var withCredentials = !!HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.withCredentials }}} >> 2];
@@ -390,10 +352,6 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
       Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, len);
     }
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
-    if (xhr.readyState === 4 && xhr.status === 0) {
-      if (len > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we got data bytes.
-      else xhr.status = 404; // Conversely, no data bytes is 404.
-    }
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     if (xhr.status >= 200 && xhr.status < 300) {
@@ -411,7 +369,6 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
   xhr.onerror = function(e) {
     saveResponse(fetchAttrLoadToMemory);
     var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
-    if (xhr.readyState === 4 && status === 0) status = 404; // If no error recorded, pretend it was 404 Not Found.
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
 #endif
@@ -497,12 +454,12 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #if FETCH_DEBUG
     console.log('fetch: operation success. e: ' + e);
 #endif
-    if (onsuccess) {{{ makeDynCall('vi') }}}(onsuccess, fetch);
+    if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
     else if (successcb) successcb(fetch);
   };
 
   var reportProgress = function(fetch, xhr, e) {
-    if (onprogress) {{{ makeDynCall('vi') }}}(onprogress, fetch);
+    if (onprogress) {{{ makeDynCall('vi', 'onprogress') }}}(fetch);
     else if (progresscb) progresscb(fetch);
   };
 
@@ -510,7 +467,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #if FETCH_DEBUG
     console.error('fetch: operation failed: ' + e);
 #endif
-    if (onerror) {{{ makeDynCall('vi') }}}(onerror, fetch);
+    if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(fetch);
     else if (errorcb) errorcb(fetch);
   };
 
@@ -518,7 +475,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #if FETCH_DEBUG
     console.log('fetch: ready state change. e: ' + e);
 #endif
-    if (onreadystatechange) {{{ makeDynCall('vi') }}}(onreadystatechange, fetch);
+    if (onreadystatechange) {{{ makeDynCall('vi', 'onreadystatechange') }}}(fetch);
     else if (readystatechangecb) readystatechangecb(fetch);
   };
 
@@ -538,14 +495,14 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB store succeeded.');
 #endif
-      if (onsuccess) {{{ makeDynCall('vi') }}}(onsuccess, fetch);
+      if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
     };
     var storeError = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
-      if (onsuccess) {{{ makeDynCall('vi') }}}(onsuccess, fetch);
+      if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
     };
     __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);

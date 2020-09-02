@@ -5,15 +5,6 @@
  */
 
 var LibraryStackTrace = {
-
-  $demangle__deps: [
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  '$stackSave', '$stackAlloc', '$stackRestore'
-#if ASSERTIONS
-    , '$warnOnce'
-#endif
-#endif
-  ],
   $demangle: function(func) {
 #if DEMANGLE_SUPPORT
     // If demangle has failed before, stop demangling any further function names
@@ -54,11 +45,7 @@ var LibraryStackTrace = {
 
   $demangleAll: function(text) {
     var regex =
-#if WASM_BACKEND
       /\b_Z[\w\d_]+/g;
-#else
-      /\b__Z[\w\d_]+/g;
-#endif
     return text.replace(regex,
       function(x) {
         var y = demangle(x);
@@ -67,20 +54,20 @@ var LibraryStackTrace = {
   },
 
   $jsStackTrace: function() {
-    var err = new Error();
-    if (!err.stack) {
+    var error = new Error();
+    if (!error.stack) {
       // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
       // so try that as a special-case.
       try {
         throw new Error();
       } catch(e) {
-        err = e;
+        error = e;
       }
-      if (!err.stack) {
+      if (!error.stack) {
         return '(no stack trace available)';
       }
     }
-    return err.stack.toString();
+    return error.stack.toString();
   },
 
   $stackTrace: function() {

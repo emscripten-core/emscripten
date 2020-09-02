@@ -13,7 +13,6 @@ $__ofl_lock
 $__ofl_unlock
 $__original_main
 $__pthread_self
-$__set_stack_limit
 $__stdio_write
 $__towrite
 $__trunctfdf2
@@ -24,12 +23,7 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $dlfree
 $dlmalloc
-$dynCall_ii
-$dynCall_iidiiii
-$dynCall_iiii
 $dynCall_jiji
-$dynCall_vii
-$emscripten_get_sbrk_ptr
 $fflush
 $fmt_fp
 $fmt_o

@@ -4,10 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if SEPARATE_ASM && ASSERTIONS && WASM == 0 && MODULARIZE
-if (!({{{ASM_MODULE_NAME}}})) throw 'Must load asm.js Module in to variable {{{ASM_MODULE_NAME}}} before adding compiled output .js script to the DOM';
-#endif
-
 #include "runtime_safe_heap.js"
 
 #if ASSERTIONS
@@ -74,9 +70,6 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
-#if USES_DYNAMIC_ALLOC
-    , DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
-#endif
     ;
 
 #if WASM
@@ -123,7 +116,7 @@ var buffer = new ArrayBuffer({{{ INITIAL_MEMORY }}});
 #endif
 
 #if ASSERTIONS
-var WASM_PAGE_SIZE = 65536;
+var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
@@ -170,7 +163,7 @@ var HEAPF32 = new Float32Array(buffer);
 var HEAPF64 = new Float64Array(buffer);
 #endif
 
-#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || (SINGLE_FILE && !WASM && !WASM_BACKEND) || USES_DYNAMIC_ALLOC)
+#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
@@ -183,16 +176,7 @@ HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
 
 #endif
 
-#if SINGLE_FILE && !WASM && !WASM_BACKEND
-#include "base64Decode.js"
-HEAPU8.set(base64Decode('{{{ getQuoted("BASE64_MEMORY_INITIALIZER") }}}'), GLOBAL_BASE);
-#endif
-
-#if USES_DYNAMIC_ALLOC
-  HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
-#endif
-
-#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || (SINGLE_FILE && !WASM && !WASM_BACKEND) || USES_DYNAMIC_ALLOC)
+#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
 }
 #endif
 
@@ -210,27 +194,6 @@ var wasmOffsetConverter;
 #endif
 
 #if EXIT_RUNTIME
-
-function callRuntimeCallbacks(callbacks) {
-  while(callbacks.length > 0) {
-    var callback = callbacks.shift();
-    if (typeof callback == 'function') {
-      callback();
-      continue;
-    }
-    var func = callback.func;
-    if (typeof func === 'number') {
-      if (callback.arg === undefined) {
-        dynCall_v(func);
-      } else {
-        dynCall_vi(func, callback.arg);
-      }
-    } else {
-      func(callback.arg === undefined ? null : callback.arg);
-    }
-  }
-}
-
 var __ATEXIT__    = []; // functions called during shutdown
 #endif
 
@@ -240,11 +203,6 @@ var runtimeInitialized = false;
 // This is always false in minimal_runtime - the runtime does not have a concept of exiting (keeping this variable here for now since it is referenced from generated code)
 var runtimeExited = false;
 #endif
-
-/** @param {number|boolean=} ignore */
-{{{ unSign }}}
-/** @param {number|boolean=} ignore */
-{{{ reSign }}}
 
 #include "runtime_math.js"
 

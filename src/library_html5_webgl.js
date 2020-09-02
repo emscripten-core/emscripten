@@ -125,7 +125,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
 #endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+      return 0;
     }
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -151,7 +151,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
         console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
-        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+        return 0;
 #endif
       }
 
@@ -170,7 +170,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
           console.error('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
 #endif
-          return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+          return 0;
         }
         canvas = GL.offscreenCanvases[canvas.id];
       }
@@ -188,7 +188,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
 #endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+      return 0;
     }
 #endif // ~!OFFSCREEN_FRAMEBUFFER
 
@@ -399,7 +399,7 @@ var LibraryHtml5WebGL = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, 0, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
     };
 
     var eventHandler = {

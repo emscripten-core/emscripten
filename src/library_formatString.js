@@ -9,11 +9,44 @@ mergeInto(LibraryManager.library, {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
   },
 
+  // Converts a value we have as signed, into an unsigned value. For
+  // example, -1 in int32 would be a very large number as unsigned.
+  $unSign: function(value, bits) {
+    if (value >= 0) {
+      return value;
+    }
+    // Need some trickery, since if bits == 32, we are right at the limit of the
+    // bits JS uses in bitshifts
+    return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value
+                      : Math.pow(2, bits)         + value;
+  },
+
+  // Converts a value we have as unsigned, into a signed value. For
+  // example, 200 in a uint8 would be a negative number.
+  $reSign: function(value, bits) {
+    if (value <= 0) {
+      return value;
+    }
+    var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
+                          : Math.pow(2, bits-1);
+    // for huge values, we can hit the precision limit and always get true here.
+    // so don't do that but, in general there is no perfect solution here. With
+    // 64-bit ints, we get rounding and errors
+    // TODO: In i64 mode 1, resign the two parts separately and safely
+    if (value >= half && (bits <= 32 || value > half)) {
+      // Cannot bitshift half, as it may be at the limit of the bits JS uses in
+      // bitshifts
+      value = -2*half + value;
+    }
+    return value;
+  },
+
   // Performs printf-style formatting.
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53'
+  $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53',
+                        '$reSign', '$unSign'
 #if MINIMAL_RUNTIME
     , '$intArrayFromString'
 #endif

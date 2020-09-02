@@ -873,7 +873,7 @@ var LibrarySDL = {
       if (!SDL.eventHandler) return;
 
       while (SDL.pollEvent(SDL.eventHandlerTemp)) {
-        Module['dynCall_iii'](SDL.eventHandler, SDL.eventHandlerContext, SDL.eventHandlerTemp);
+        {{{ makeDynCall('iii', 'SDL.eventHandler') }}}(SDL.eventHandlerContext, SDL.eventHandlerTemp);
       }
     },
 
@@ -1730,7 +1730,7 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if !(WASM_BACKEND && ASYNCIFY)
+#if !ASYNCIFY
   SDL_Delay: function(delay) {
     if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
     // horrible busy-wait, but in a worker it at least does not block rendering
@@ -2498,13 +2498,13 @@ var LibrarySDL = {
           if (secsUntilNextPlayStart >= SDL.audio.bufferingDelay + SDL.audio.bufferDurationSecs*SDL.audio.numSimultaneouslyQueuedBuffers) return;
 
           // Ask SDL audio data from the user code.
-          {{{ makeDynCall('viii') }}}(SDL.audio.callback, SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
+          {{{ makeDynCall('viii', 'SDL.audio.callback') }}}(SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
           // And queue it to be played after the currently playing audio stream.
           SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
         }
       }
 
-#if (ASYNCIFY && WASM_BACKEND)
+#if ASYNCIFY
       var sleepCallback = function() {
         if (SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
       };
@@ -2966,7 +2966,7 @@ var LibrarySDL = {
     }
     audio['onended'] = function SDL_audio_onended() { // TODO: cache these
       if (channelInfo.audio == this) { channelInfo.audio.paused = true; channelInfo.audio = null; }
-      if (SDL.channelFinished) getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+      if (SDL.channelFinished)  {{{ makeDynCall('vi', 'SDL.channelFinished') }}}(channel);
     }
     channelInfo.audio = audio;
     // TODO: handle N loops. Behavior matches Mix_PlayMusic
@@ -2991,7 +2991,7 @@ var LibrarySDL = {
         info.audio = null;
       }
       if (SDL.channelFinished) {
-        getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+        {{{ makeDynCall('vi', 'SDL.channelFinished') }}}(channel);
       }
     }
     if (channel != -1) {
@@ -3088,7 +3088,7 @@ var LibrarySDL = {
     }
     SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
-      {{{ makeDynCall('v') }}}(SDL.hookMusicFinished);
+      {{{ makeDynCall('v', 'SDL.hookMusicFinished') }}}();
     }
     return 0;
   },
@@ -3719,7 +3719,7 @@ var LibrarySDL = {
   SDL_AddTimer__sig: 'iiii',
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
-      {{{ makeDynCall('iii') }}}(callback, interval, param);
+      {{{ makeDynCall('iii', 'callback') }}}(interval, param);
     }, interval);
   },
   SDL_RemoveTimer__proxy: 'sync',

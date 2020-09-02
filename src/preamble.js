@@ -47,9 +47,7 @@ var wasmMemory;
 // In fastcomp asm.js, we don't need a wasm Table at all.
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
-#if WASM_BACKEND || WASM
 #include "runtime_init_table.js"
-#endif // WASM_BACKEND || WASM
 
 #if USE_PTHREADS
 // For sending to workers.
@@ -137,7 +135,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
-#if ASYNCIFY && WASM_BACKEND
+#if ASYNCIFY
   var asyncMode = opts && opts.async;
   var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
   var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0;
@@ -163,7 +161,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if ASYNCIFY && WASM_BACKEND
+#if ASYNCIFY
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -191,8 +189,7 @@ function cwrap(ident, returnType, argTypes, opts) {
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
-var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
-var ALLOC_NONE = 3; // Do not allocate
+var ALLOC_NONE = 2; // Do not allocate
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -230,7 +227,7 @@ function allocate(slab, types, allocator, ptr) {
 #else
     typeof stackAlloc !== 'undefined' ? stackAlloc : null,
 #endif
-    dynamicAlloc][allocator](Math.max(size, singleType ? 1 : types.length));
+    ][allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -285,12 +282,6 @@ function allocate(slab, types, allocator, ptr) {
   return ret;
 }
 
-// Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
-function getMemory(size) {
-  if (!runtimeInitialized) return dynamicAlloc(size);
-  return _malloc(size);
-}
-
 #include "runtime_strings.js"
 #include "runtime_strings_extra.js"
 
@@ -298,7 +289,6 @@ function getMemory(size) {
 
 var PAGE_SIZE = {{{ POSIX_PAGE_SIZE }}};
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
-var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
 
 function alignUp(x, multiple) {
   if (x % multiple > 0) {
@@ -343,17 +333,51 @@ var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
-    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}},
-    DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
+    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
 
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
+#if RELOCATABLE
+// We support some amount of allocation during startup in the case of
+// dynamic linking, which needs to allocate memory for dynamic libraries that
+// are loaded. That has to happen before the main program can start to run,
+// because the main program needs those linked in before it runs (so we can't
+// use normally malloc from the main program to do these allocations).
+
+// Allocate memory no even if malloc isn't ready yet.
+function getMemory(size) {
+  if (!runtimeInitialized) return dynamicAlloc(size);
+  return _malloc(size);
+}
+
+// To support such allocations during startup, track them on __heap_base and
+// then when the main module is loaded it reads that value and uses it to
+// initialize sbrk (the main module is relocatable itself, and so it does not
+// have __heap_base hardcoded into it - it receives it from JS as an extern
+// global, basically).
+Module['___heap_base'] = DYNAMIC_BASE;
+
+function dynamicAlloc(size) {
+  // After the runtime is initialized, we must only use sbrk() normally.
+  assert(!runtimeInitialized);
+#if USE_PTHREADS
+  assert(!ENVIRONMENT_IS_PTHREAD); // this function is not thread-safe
+#endif
+  var ret = Module['___heap_base'];
+  var end = (ret + size + 15) & -16;
+#if ASSERTIONS
+  assert(end <= HEAP8.length, 'failure to dynamicAlloc - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
+#endif
+  Module['___heap_base'] = end;
+  return ret;
+}
+#endif // RELOCATABLE
+
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
-
   // At the 'load' stage of Worker startup, we are just loading this script
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
@@ -362,7 +386,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
-  // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
 }
 #endif
 
@@ -420,26 +443,6 @@ assert(!Module['wasmMemory']);
 
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
-
-function callRuntimeCallbacks(callbacks) {
-  while(callbacks.length > 0) {
-    var callback = callbacks.shift();
-    if (typeof callback == 'function') {
-      callback(Module); // Pass the module as the first argument.
-      continue;
-    }
-    var func = callback.func;
-    if (typeof func === 'number') {
-      if (callback.arg === undefined) {
-        Module['dynCall_v'](func);
-      } else {
-        Module['dynCall_vi'](func, callback.arg);
-      }
-    } else {
-      func(callback.arg === undefined ? null : callback.arg);
-    }
-  }
-}
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
@@ -552,11 +555,6 @@ function addOnExit(cb) {
 function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
-
-/** @param {number|boolean=} ignore */
-{{{ unSign }}}
-/** @param {number|boolean=} ignore */
-{{{ reSign }}}
 
 #include "runtime_math.js"
 
@@ -784,21 +782,12 @@ Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
-#if CYBERDWARF
-var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
-#endif
-
 #include "URIUtils.js"
 
 #if ASSERTIONS
 function createExportWrapper(name, fixedasm) {
   return function() {
     var displayName = name;
-#if !WASM_BACKEND
-    if (name[0] == '_') {
-      displayName = name.substr(1);
-    }
-#endif
     var asm = fixedasm;
     if (!fixedasm) {
       asm = Module['asm'];
@@ -865,9 +854,7 @@ function getBinaryPromise() {
     });
   }
   // Otherwise, getBinary should be able to get it synchronously
-  return new Promise(function(resolve, reject) {
-    resolve(getBinary());
-  });
+  return Promise.resolve().then(getBinary);
 }
 
 #if LOAD_SOURCE_MAP
@@ -891,15 +878,6 @@ function createWasm() {
     'env': asmLibraryArg,
     '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if WASM_BACKEND == 0
-    ,
-    'global': {
-      'NaN': NaN,
-      'Infinity': Infinity
-    },
-    'global.Math': Math,
-    'asm2wasm': asm2wasmImports
-#endif
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
@@ -910,7 +888,7 @@ function createWasm() {
 #if RELOCATABLE
     exports = relocateExports(exports, GLOBAL_BASE, 0);
 #endif
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
@@ -924,6 +902,7 @@ function createWasm() {
     // then exported.
     // TODO: do not create a Memory earlier in JS
     wasmMemory = exports['memory'];
+    wasmTable = exports['__indirect_function_table'];
     updateGlobalBufferAndViews(wasmMemory.buffer);
 #if ASSERTIONS
     writeStackCookie();
@@ -1126,7 +1105,7 @@ function createWasm() {
   if (Module['instantiateWasm']) {
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
-#if WASM_BACKEND && ASYNCIFY
+#if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
 #endif
       return exports;
@@ -1150,10 +1129,6 @@ function createWasm() {
   return Module['asm']; // exports were assigned here
 #endif
 }
-#endif
-
-#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like function
-Module['asm'] = createWasm;
 #endif
 
 // Globals used by JS i64 conversions

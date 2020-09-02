@@ -20,6 +20,8 @@ void waka(int w, long long xy, int z) {
 
 int main() {
   EM_ASM({
+    // Note that these would need to use BigInts if the file were built with
+    // -s WASM_BIGINT
 #if DIRECT
     dynCall_viji($0, 1, 4, 0xffffffff, 9);
     return;

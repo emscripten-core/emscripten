@@ -40,7 +40,7 @@ import base64
 from subprocess import PIPE
 
 import emscripten
-from tools import shared, system_libs, client_mods, js_optimizer
+from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
@@ -223,10 +223,7 @@ class EmccOptions(object):
     self.profiling_funcs = False
     self.tracing = False
     self.emit_symbol_map = False
-    self.js_opts = None
-    self.force_js_opts = False
     self.llvm_opts = None
-    self.llvm_lto = None
     self.use_closure_compiler = None
     self.closure_args = []
     self.js_transform = None
@@ -246,12 +243,10 @@ class EmccOptions(object):
     self.memory_profiler = False
     self.memory_init_file = None
     self.use_preload_cache = False
-    self.no_heap_copy = False
     self.use_preload_plugins = False
     self.proxy_to_worker = False
     self.default_object_extension = '.o'
     self.valid_abspaths = []
-    self.separate_asm = False
     self.cfi = False
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
@@ -302,107 +297,8 @@ def setup_environment_settings():
     exit_with_error('When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
 
-class JSOptimizer(object):
-  def __init__(self, target, options, js_transform_tempfiles, in_temp):
-    self.queue = []
-    self.extra_info = {}
-    self.queue_history = []
-    self.minify_whitespace = False
-    self.cleanup_shell = False
-
-    self.target = target
-    self.emit_symbol_map = options.emit_symbol_map
-    self.profiling_funcs = options.profiling_funcs
-    self.use_closure_compiler = options.use_closure_compiler
-    self.closure_args = options.closure_args
-
-    self.js_transform_tempfiles = js_transform_tempfiles
-    self.in_temp = in_temp
-
-  def flush(self, title='js_opts'):
-    assert not shared.Settings.WASM_BACKEND, 'JSOptimizer should not run with pure wasm output'
-
-    if self.extra_info is not None and len(self.extra_info) == 0:
-      self.extra_info = None
-
-    if len(self.queue) and not(not shared.Settings.ASM_JS and len(self.queue) == 1 and self.queue[0] == 'last'):
-      passes = self.queue[:]
-
-      if DEBUG != 2 or len(passes) < 2:
-        # by assumption, our input is JS, and our output is JS. If a pass is going to run in the native optimizer in C++, then we
-        # must give it JSON and receive from it JSON
-        chunks = []
-        curr = []
-        for p in passes:
-          if len(curr) == 0:
-            curr.append(p)
-          else:
-            native = js_optimizer.use_native(p, source_map=use_source_map(self))
-            last_native = js_optimizer.use_native(curr[-1], source_map=use_source_map(self))
-            if native == last_native:
-              curr.append(p)
-            else:
-              curr.append('emitJSON')
-              chunks.append(curr)
-              curr = ['receiveJSON', p]
-        if len(curr):
-          chunks.append(curr)
-        if len(chunks) == 1:
-          self.run_passes(chunks[0], title, just_split=False, just_concat=False)
-        else:
-          for i, chunk in enumerate(chunks):
-            self.run_passes(chunk, 'js_opts_' + str(i),
-                            just_split='receiveJSON' in chunk,
-                            just_concat='emitJSON' in chunk)
-      else:
-        # DEBUG 2, run each pass separately
-        extra_info = self.extra_info
-        for p in passes:
-          self.queue = [p]
-          self.flush(p)
-          self.extra_info = extra_info # flush wipes it
-          log_time('part of js opts')
-      self.queue_history += self.queue
-      self.queue = []
-    self.extra_info = {}
-
-  def run_passes(self, passes, title, just_split, just_concat):
-    global final
-    passes = ['asm'] + passes
-    if shared.Settings.PRECISE_F32:
-      passes = ['asmPreciseF32'] + passes
-    if (self.emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
-      passes += ['symbolMap=' + shared.replace_or_append_suffix(self.target, '.symbols')]
-    if self.profiling_funcs and 'minifyNames' in passes:
-      passes += ['profilingFuncs']
-    if self.minify_whitespace and 'last' in passes:
-      passes += ['minifyWhitespace']
-    if self.cleanup_shell and 'last' in passes:
-      passes += ['cleanup']
-    logger.debug('applying js optimization passes: %s', ' '.join(passes))
-    final = building.js_optimizer(final, passes, use_source_map(self),
-                                  self.extra_info, just_split=just_split,
-                                  just_concat=just_concat,
-                                  output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'),
-                                  extra_closure_args=self.closure_args)
-    self.js_transform_tempfiles.append(final)
-    save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
-
-  def do_minify(self):
-    """minifies the code.
-
-    this is also when we do certain optimizations that must be done right before or after minification
-    """
-    if shared.Settings.OPT_LEVEL >= 2:
-      if shared.Settings.DEBUG_LEVEL < 2 and not self.use_closure_compiler == 2:
-        self.queue += ['minifyNames']
-      if shared.Settings.DEBUG_LEVEL == 0:
-        self.minify_whitespace = True
-
-    if self.use_closure_compiler == 1:
-      self.queue += ['closure']
-    elif shared.Settings.DEBUG_LEVEL <= 2 and shared.Settings.FINALIZE_ASM_JS and not self.use_closure_compiler:
-      self.cleanup_shell = True
+def minify_whitespace():
+  return shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL == 0
 
 
 def embed_memfile(options):
@@ -484,9 +380,6 @@ def apply_settings(changes):
         exit_with_error('setting `%s` expects `%s` but got `%s`' % (user_key, type(existing), type(value)))
     setattr(shared.Settings, user_key, value)
 
-    if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
-      exit_with_error('BINARYEN_TRAP_MODE is not supported by the LLVM wasm backend')
-
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
       shared.Settings.USER_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -553,7 +446,7 @@ def is_ar_file_with_missing_index(archive_file):
 
 def ensure_archive_index(archive_file):
   # Fastcomp linking works without archive indexes.
-  if not shared.Settings.WASM_BACKEND or not shared.Settings.AUTO_ARCHIVE_INDEXES:
+  if not shared.Settings.AUTO_ARCHIVE_INDEXES:
     return
   if is_ar_file_with_missing_index(archive_file):
     diagnostics.warning('emcc', '%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
@@ -645,13 +538,7 @@ def backend_binaryen_passes():
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
   passes += ['--post-emscripten']
-  # always inline __original_main into main, as otherwise it makes debugging confusing,
-  # and doing so is never bad for code size
-  # FIXME however, don't do it with DWARF for now, as inlining is not
-  #       fully handled in DWARF updating yet
-  if shared.Settings.DEBUG_LEVEL < 3:
-    passes += ['--inline-main']
-  if not shared.Settings.EXIT_RUNTIME:
+  if shared.Settings.OPT_LEVEL > 0 and not shared.Settings.EXIT_RUNTIME:
     passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
     passes += [building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
@@ -659,12 +546,10 @@ def backend_binaryen_passes():
     # even if not optimizing, make an effort to remove all unused imports and
     # exports, to make the wasm as standalone as possible
     passes += ['--remove-unused-module-elements']
-  if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
+  # when optimizing, use the fact that low memory is never used (1024 is a
+  # hardcoded value in the binaryen pass)
+  if shared.Settings.OPT_LEVEL > 0 and shared.Settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
-  if shared.Settings.DEBUG_LEVEL < 3:
-    passes += ['--strip-debug']
-  if not shared.Settings.EMIT_PRODUCERS_SECTION:
-    passes += ['--strip-producers']
   if shared.Settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']
@@ -898,16 +783,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- Utilities ---------------
 
-  def suffix(name):
-    """Return the file extension"""
-    return os.path.splitext(name)[1]
-
   seen_names = {}
 
   def uniquename(name):
     if name not in seen_names:
       seen_names[name] = str(len(seen_names))
-    return unsuffixed(name) + '_' + seen_names[name] + suffix(name)
+    return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
 
   # ---------------- End configs -------------
 
@@ -931,7 +812,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return '-O0' not in opts
 
   def need_llvm_debug_info(options):
-    return shared.Settings.DEBUG_LEVEL >= 3 or shared.Settings.CYBERDWARF
+    return shared.Settings.DEBUG_LEVEL >= 3
 
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
@@ -976,9 +857,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.thread_profiler:
       options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
 
-    if options.js_opts is None:
-      options.js_opts = shared.Settings.OPT_LEVEL >= 2
-
     if options.llvm_opts is None:
       options.llvm_opts = LLVM_OPT_LEVEL[shared.Settings.OPT_LEVEL]
     elif type(options.llvm_opts) == int:
@@ -1022,12 +900,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [arg for arg in newargs if arg]
 
-    settings_key_changes = set()
+    settings_key_changes = {}
     for s in settings_changes:
       key, value = s.split('=', 1)
-      settings_key_changes.add(key)
-      if key == 'WASM_BACKEND':
-        exit_with_error('do not set -s WASM_BACKEND, this is detected based on the llvm version in use')
+      settings_key_changes[key] = value
 
     # Find input files
 
@@ -1155,12 +1031,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Libraries are searched before settings_changes are applied, so apply the
     # value for STRICT from command line already now.
 
-    def get_last_setting_change(setting):
-      return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
-
-    strict_cmdline = get_last_setting_change('STRICT')
+    strict_cmdline = settings_key_changes.get('STRICT')
     if strict_cmdline:
-      shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
+      shared.Settings.STRICT = int(strict_cmdline)
 
     # Apply optimization level settings
     shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
@@ -1170,21 +1043,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
-    if not shared.Settings.WASM_BACKEND:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['memset', 'memcpy', 'emscripten_get_heap_size']
-
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-    # Set ASM_JS default here so that we can override it from the command line.
-    shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
-
-    # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
-    # We do this before the user settings are applied so it affects the default value only and a
-    # user could use `--no-entry` and still export main too.
-    if options.no_entry:
-      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
@@ -1203,7 +1064,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       make_output_executable = True
       # Autoconf expects the executable output file to be called `a.out`
       default_target_name = 'a.out'
-    elif shared.Settings.SIDE_MODULE and shared.Settings.WASM:
+    elif shared.Settings.SIDE_MODULE:
       default_target_name = 'a.out.wasm'
     else:
       default_target_name = 'a.out.js'
@@ -1224,9 +1085,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
 
     final_suffix = get_file_suffix(target)
-
-    if options.separate_asm and final_suffix != '.html':
-      diagnostics.warning('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
 
     if has_dash_c or has_dash_S or has_dash_E:
       if has_dash_c:
@@ -1256,13 +1114,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
-    wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
-
-    if final_suffix == '.html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
-      options.separate_asm = True
-      diagnostics.warning('emcc', 'forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 was passed.')
-    if options.separate_asm:
-      shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
+    wasm_source_map_target = wasm_binary_target + '.map'
 
     # Apply user -jsD settings
     for s in user_js_defines:
@@ -1270,7 +1122,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.verify_settings()
 
-    if final_suffix in WASM_ENDINGS and shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
+    if final_suffix in WASM_ENDINGS and not shared.Settings.SIDE_MODULE:
       # if the output is just a wasm file, it will normally be a standalone one,
       # as there is no JS. an exception are side modules, as we can't tell at
       # compile time whether JS will be involved or not - the main module may
@@ -1278,15 +1130,33 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
-    # We allow this error to be supressed by the environment so that we can run the test
-    # suite against fastcomp for the time being.
-    # See: https://github.com/emscripten-core/emscripten/issues/11319
-    if not shared.Settings.WASM_BACKEND and 'EMCC_ALLOW_FASTCOMP' not in os.environ:
-      exit_with_error('the fastcomp compiler is no longer available in emscripten.  Please use the upstream llvm backend or use an older (< 2.0.0) version of emscripten.')
+    if shared.Settings.WASM2C:
+      # wasm2c only makes sense with standalone wasm - there will be no JS,
+      # just wasm and then C
+      shared.Settings.STANDALONE_WASM = 1
+      # wasm2c doesn't need any special handling of i64, we have proper i64
+      # handling on the FFI boundary, which is exactly like the case of JS with
+      # BigInt support
+      shared.Settings.WASM_BIGINT = 1
 
-    if options.no_entry or ('_main' not in shared.Settings.EXPORTED_FUNCTIONS and
-                            '__start' not in shared.Settings.EXPORTED_FUNCTIONS):
+    if options.no_entry:
       shared.Settings.EXPECT_MAIN = 0
+    elif shared.Settings.STANDALONE_WASM:
+      if '_main' in shared.Settings.EXPORTED_FUNCTIONS:
+        # TODO(sbc): Make this into a warning?
+        logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
+    else:
+      # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
+      # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
+      #    reactor.
+      # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
+      #    is specified (see above).
+      if 'EXPORTED_FUNCTIONS' in settings_key_changes:
+        if '_main' not in shared.Settings.USER_EXPORTED_FUNCTIONS:
+          shared.Settings.EXPECT_MAIN = 0
+      else:
+        assert(not shared.Settings.EXPORTED_FUNCTIONS)
+        shared.Settings.EXPORTED_FUNCTIONS = ['_main']
 
     if shared.Settings.STANDALONE_WASM:
       # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -1320,10 +1190,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Note the exports the user requested
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
-    # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
-    # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
+    # -s ASSERTIONS=1 implies basic stack overflow checks.
     if shared.Settings.ASSERTIONS:
-      shared.Settings.STACK_OVERFLOW_CHECK = 2
+      shared.Settings.STACK_OVERFLOW_CHECK = max(1, shared.Settings.STACK_OVERFLOW_CHECK)
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
       # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
@@ -1354,9 +1223,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM == 2 and shared.Settings.SINGLE_FILE:
       exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time (pick either JS to target with -s WASM=0 or Wasm to target with -s WASM=1)')
 
-    if shared.Settings.WASM == 2 and not shared.Settings.WASM_BACKEND:
-      exit_with_error('WASM=2 is a Wasm backend specific feature!')
-
     if shared.Settings.SEPARATE_DWARF and shared.Settings.WASM2JS:
       exit_with_error('cannot have both SEPARATE_DWARF and WASM2JS at the same time (as there is no wasm file)')
 
@@ -1370,11 +1236,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if options.use_closure_compiler:
       shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
-      # when we emit asm.js, closure 2 would break that, so warn (note that
-      # with wasm2js in the wasm backend, we don't emit asm.js anyhow)
-      if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1 and not shared.Settings.WASM_BACKEND:
-        diagnostics.warning('almost-asm', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
-        shared.Settings.ASM_JS = 2
 
     if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('Invalid option -s CLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % shared.Settings.CLOSURE_WARNINGS)
@@ -1389,7 +1250,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.memory_init_file = False
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
-      assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
       if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
         shared.Settings.LINKABLE = 1
         shared.Settings.EXPORT_ALL = 1
@@ -1403,6 +1263,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.RELOCATABLE:
       shared.Settings.ALLOW_TABLE_GROWTH = 1
+
+    # various settings require sbrk() access
+    if shared.Settings.DETERMINISTIC or \
+       shared.Settings.EMSCRIPTEN_TRACING or \
+       shared.Settings.MALLOC == 'emmalloc' or \
+       shared.Settings.SAFE_HEAP or \
+       shared.Settings.MEMORYPROFILER:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
+
+    if shared.Settings.ASYNCIFY:
+      # See: https://github.com/emscripten-core/emscripten/issues/12065
+      # See: https://github.com/emscripten-core/emscripten/issues/12066
+      shared.Settings.USE_LEGACY_DYNCALLS = 1
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDynCaller']
 
     # Reconfigure the cache now that settings have been applied. Some settings
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
@@ -1459,11 +1333,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          not shared.Settings.USE_PTHREADS:
         shared.Settings.EXPORT_READY_PROMISE = 0
 
-    if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-      shared.Settings.ALIASING_FUNCTION_POINTERS = 0
-
     if shared.Settings.LEGACY_VM_SUPPORT:
-      if not shared.Settings.WASM or shared.Settings.WASM2JS:
+      if shared.Settings.WASM2JS:
         shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
 
       # Support all old browser versions
@@ -1473,7 +1344,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MIN_EDGE_VERSION = 0
       shared.Settings.MIN_CHROME_VERSION = 0
 
-    if shared.Settings.MIN_SAFARI_VERSION <= 9 and (not shared.Settings.WASM or shared.Settings.WASM2JS):
+    if shared.Settings.MIN_SAFARI_VERSION <= 9 and shared.Settings.WASM2JS:
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
 
     if shared.Settings.MIN_CHROME_VERSION <= 37:
@@ -1482,7 +1353,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     setup_environment_settings()
 
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
-    if shared.Settings.WASM and not shared.Settings.WASM2JS:
+    if not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
@@ -1525,18 +1396,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 
-    if not shared.Settings.USE_PTHREADS or not shared.Settings.FETCH:
-      shared.Settings.USE_FETCH_WORKER = 0
-
-    # In asm.js+pthreads we can use a fetch worker, which is made from the main
-    # asm.js code. That lets us do sync operations by blocking on the worker etc.
-    # In the wasm backend we don't have a fetch worker implemented yet, however,
-    # we can still do basic synchronous fetches in the same places: if we can
-    # block on another thread then we aren't the main thread, and if we aren't
-    # the main thread then synchronous xhrs are legitimate.
-    if shared.Settings.FETCH and shared.Settings.WASM_BACKEND:
-      shared.Settings.USE_FETCH_WORKER = 0
-
     if shared.Settings.DEMANGLE_SUPPORT:
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
 
@@ -1553,14 +1412,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # JS runtime at all).
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
-    if shared.Settings.WASM_BACKEND:
-      shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
-      # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
-      # the STATIC_BUMP value.
-      shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
-      if not shared.Settings.STANDALONE_WASM:
-        # in standalone mode, crt1 will call the constructors from inside the wasm
-        shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
+    shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
+    # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
+    # the STATIC_BUMP value.
+    shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
+    if not shared.Settings.STANDALONE_WASM:
+      # in standalone mode, crt1 will call the constructors from inside the wasm
+      shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
       exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
@@ -1569,28 +1427,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
     if shared.Settings.RELOCATABLE:
-      if 'EMULATED_FUNCTION_POINTERS' not in settings_key_changes and not shared.Settings.WASM_BACKEND:
-        shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
       shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
-
-    if shared.Settings.ASYNCIFY:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('ASYNCIFY has been removed from fastcomp. There is a new implementation which can be used in the upstream wasm backend.')
 
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
     # if exception catching is disabled, we can prevent that code from being
     # generated in the frontend
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND and not shared.Settings.EXCEPTION_HANDLING:
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
       cflags.append('-fignore-exceptions')
-
-    if shared.Settings.DEAD_FUNCTIONS:
-      if not options.js_opts:
-        logger.debug('enabling js opts for DEAD_FUNCTIONS')
-        options.js_opts = True
-      options.force_js_opts = True
 
     if options.proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
@@ -1623,16 +1469,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.GLOBAL_BASE < 0:
       # default if nothing else sets it
-      if shared.Settings.WASM:
-        # a higher global base is useful for optimizing load/store offsets, as it
-        # enables the --post-emscripten pass
-        shared.Settings.GLOBAL_BASE = 1024
-      else:
-        shared.Settings.GLOBAL_BASE = 8
+      # a higher global base is useful for optimizing load/store offsets, as it
+      # enables the --post-emscripten pass
+      shared.Settings.GLOBAL_BASE = 1024
 
     if shared.Settings.SAFE_HEAP:
-      # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr().
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_get_sbrk_ptr']
+      # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
@@ -1648,23 +1492,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS == 2:
         exit_with_error('USE_PTHREADS=2 is not longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
-        if not shared.Settings.WASM:
-          exit_with_error('Memory growth is not supported with pthreads without wasm')
-        else:
-          logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
+        logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
       cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
-      if shared.Settings.WASM_BACKEND:
-        newargs += ['-pthread']
-        # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
-        # manually export them
+      newargs += ['-pthread']
+      # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
+      # manually export them
 
-        shared.Settings.EXPORTED_FUNCTIONS += [
-          '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
-          'registerPthreadPtr', '_pthread_self',
-          '___emscripten_pthread_data_constructor', '_emscripten_futex_wake']
+      shared.Settings.EXPORTED_FUNCTIONS += [
+        '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
+        'registerPthreadPtr', '_pthread_self',
+        '___emscripten_pthread_data_constructor', '_emscripten_futex_wake']
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1689,19 +1529,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         ]
 
       shared.Settings.EXPORTED_RUNTIME_METHODS += [
-        'getMemory',
         'addRunDependency',
         'removeRunDependency',
       ]
+
+    if not shared.Settings.MINIMAL_RUNTIME or shared.Settings.EXIT_RUNTIME:
+      # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
+      # always does.
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$dynCall']
 
     if shared.Settings.USE_PTHREADS:
       # memalign is used to ensure allocated thread stacks are aligned.
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_malloc']
 
-      # dynCall_ii is used to call pthread entry points in worker.js (as
+      # dynCall is used to call pthread entry points in worker.js (as
       # metadce does not consider worker.js, which is external, we must
-      # consider it a user export, i.e., one which can never be removed).
-      building.user_requested_exports += ['dynCall_ii']
+      # consider it an export, i.e., one which can never be removed).
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+      shared.Settings.EXPORTED_FUNCTIONS += ['dynCall']
 
       if shared.Settings.MINIMAL_RUNTIME:
         building.user_requested_exports += ['exit']
@@ -1747,32 +1592,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.PROXY_TO_PTHREAD:
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
-    # Enable minification of asm.js imports on -O1 and higher if -g1 or lower is used.
-    if shared.Settings.OPT_LEVEL >= 1 and shared.Settings.DEBUG_LEVEL < 2 and not shared.Settings.WASM:
-      shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
+    asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
+    misc_temp_files.note(asm_target)
 
-    if shared.Settings.WASM:
-      if not building.need_asm_js_file():
-        asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-        misc_temp_files.note(asm_target)
-
-    if shared.Settings.WASM:
-      if shared.Settings.INITIAL_MEMORY % 65536 != 0:
-        exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
-      if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
-        exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
-    else:
-      if shared.Settings.INITIAL_MEMORY < 16 * 1024 * 1024:
-        exit_with_error('INITIAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.INITIAL_MEMORY))
-      if shared.Settings.INITIAL_MEMORY % (16 * 1024 * 1024) != 0:
-        exit_with_error('For asm.js, INITIAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.INITIAL_MEMORY))
+    if shared.Settings.INITIAL_MEMORY % 65536 != 0:
+      exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
+    if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
+      exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
     if shared.Settings.INITIAL_MEMORY < shared.Settings.TOTAL_STACK:
       exit_with_error('INITIAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.INITIAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
     if shared.Settings.MAXIMUM_MEMORY != -1 and shared.Settings.MAXIMUM_MEMORY % 65536 != 0:
       exit_with_error('MAXIMUM_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.MAXIMUM_MEMORY))
     if shared.Settings.MEMORY_GROWTH_LINEAR_STEP != -1 and shared.Settings.MEMORY_GROWTH_LINEAR_STEP % 65536 != 0:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_LINEAR_STEP))
-    if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.MAXIMUM_MEMORY == -1:
+    if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.MAXIMUM_MEMORY == -1:
       exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
@@ -1805,27 +1638,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
             shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
       shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
-      # in fastcomp it's inconvenient to minify module names as there is the
-      # asm2wasm module etc.
-      if shared.Settings.WASM_BACKEND:
-        shared.Settings.MINIFY_WASM_IMPORTED_MODULES = 1
-
-    # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as
-    # the JS module. This allows code to share same loading function for both JS and asm.js modules,
-    # to save code size. The intent is that loader code captures the function variable from global
-    # scope to XHR loader local scope when it finishes loading, to avoid polluting global JS scope
-    # with variables. This provides safety via encapsulation. See src/shell_minimal_runtime.html for
-    # an example.
-    if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.SEPARATE_ASM_MODULE_NAME and not shared.Settings.WASM and shared.Settings.MODULARIZE:
-      shared.Settings.SEPARATE_ASM_MODULE_NAME = 'var ' + shared.Settings.EXPORT_NAME
-
-    if shared.Settings.MODULARIZE and shared.Settings.SEPARATE_ASM and not shared.Settings.WASM and not shared.Settings.SEPARATE_ASM_MODULE_NAME:
-      exit_with_error('Targeting asm.js with --separate-asm and -s MODULARIZE=1 requires specifying the target variable name to which the asm.js module is loaded into. See https://github.com/emscripten-core/emscripten/pull/7949 for details')
-    # Apply default option if no custom name is provided
-    if not shared.Settings.SEPARATE_ASM_MODULE_NAME:
-      shared.Settings.SEPARATE_ASM_MODULE_NAME = 'Module["asm"]'
-    elif shared.Settings.WASM:
-      exit_with_error('-s SEPARATE_ASM_MODULE_NAME option only applies to when targeting asm.js, not with WebAssembly!')
+      shared.Settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
     if shared.Settings.MINIMAL_RUNTIME:
       # Minimal runtime uses a different default shell file
@@ -1842,17 +1655,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Require explicit -lfoo.js flags to link with JS libraries.
       shared.Settings.AUTO_JS_LIBRARIES = 0
 
-      # In asm.js always use memory init file to get the best code size, other modes are not currently supported.
-      if not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
-        options.memory_init_file = True
-
     if shared.Settings.MODULARIZE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
     if shared.Settings.STANDALONE_WASM:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
       if shared.Settings.USE_PTHREADS:
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
       if shared.Settings.MINIMAL_RUNTIME:
@@ -1864,154 +1671,108 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM_BIGINT:
       shared.Settings.LEGALIZE_JS_FFI = 0
 
-    if shared.Settings.WASM:
-      if shared.Settings.SINGLE_FILE:
-        # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-        shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
-        shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
-        shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
-      else:
-        # set file locations, so that JS glue can find what it needs
-        shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
-        shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
-        shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
-      shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
-      if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
-        diagnostics.warning('emcc', 'for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
-        shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
-      # default precise-f32 to on, since it works well in wasm
-      shared.Settings.PRECISE_F32 = 1
-      if options.js_opts and not options.force_js_opts:
-        options.js_opts = None
-        logger.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
-      if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
-        exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
-      if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
-        exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
-      if shared.Settings.WASM2JS:
-        shared.Settings.MAYBE_WASM2JS = 1
-        # when using wasm2js, if the memory segments are in the wasm then they
-        # end up converted by wasm2js into base64 encoded JS. alternatively, we
-        # can use a .mem file like asm.js used to.
-        # generally we follow what the options tell us to do (which is to use
-        # a .mem file in most cases, since it is binary & compact). however, for
-        # pthreads we must keep the memory segments in the wasm as they will be
-        # passive segments which the .mem format cannot handle.
-        shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE or shared.Settings.USE_PTHREADS
-      else:
-        # wasm includes the mem init in the wasm binary. The exception is
-        # wasm2js, which behaves more like js.
-        options.memory_init_file = True
-        shared.Settings.MEM_INIT_IN_WASM = True if shared.Settings.WASM_BACKEND else not shared.Settings.USE_PTHREADS
-
-      # wasm side modules have suffix .wasm
-      if shared.Settings.SIDE_MODULE and target.endswith('.js'):
-        diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
-
-      if options.separate_asm:
-        exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
-
-      sanitize = set()
-
-      for arg in newargs:
-        if arg.startswith('-fsanitize='):
-          sanitize.update(arg.split('=', 1)[1].split(','))
-        elif arg.startswith('-fno-sanitize='):
-          sanitize.difference_update(arg.split('=', 1)[1].split(','))
-
-      if sanitize:
-        shared.Settings.USE_OFFSET_CONVERTER = 1
-        shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_emscripten_builtin_memalign',
-                                               '_emscripten_builtin_malloc', '_emscripten_builtin_free',
-                                               '___data_end', '___heap_base', '___global_base']
-
-        if not shared.Settings.WASM_BACKEND:
-          exit_with_error('Sanitizers are not compatible with the fastcomp backend. Please upgrade to the upstream wasm backend by following these instructions: https://v8.dev/blog/emscripten-llvm-wasm#testing')
-
-      if sanitize & UBSAN_SANITIZERS:
-        if '-fsanitize-minimal-runtime' in newargs:
-          shared.Settings.UBSAN_RUNTIME = 1
-        else:
-          shared.Settings.UBSAN_RUNTIME = 2
-
-      if 'leak' in sanitize:
-        shared.Settings.USE_LSAN = 1
-        shared.Settings.EXIT_RUNTIME = 1
-
-        if shared.Settings.LINKABLE:
-          exit_with_error('LSan does not support dynamic linking')
-
-      if 'address' in sanitize:
-        shared.Settings.USE_ASAN = 1
-
-        shared.Settings.EXPORTED_FUNCTIONS += [
-          '_asan_c_load_1', '_asan_c_load_1u',
-          '_asan_c_load_2', '_asan_c_load_2u',
-          '_asan_c_load_4', '_asan_c_load_4u',
-          '_asan_c_load_f', '_asan_c_load_d',
-          '_asan_c_store_1', '_asan_c_store_1u',
-          '_asan_c_store_2', '_asan_c_store_2u',
-          '_asan_c_store_4', '_asan_c_store_4u',
-          '_asan_c_store_f', '_asan_c_store_d',
-        ]
-
-        shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
-        shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
-        assert shared.Settings.INITIAL_MEMORY < 2**32
-
-        if shared.Settings.SAFE_HEAP:
-          # SAFE_HEAP instruments ASan's shadow memory accesses.
-          # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
-          # by SAFE_HEAP as a null pointer dereference.
-          exit_with_error('ASan does not work with SAFE_HEAP')
-
-        if shared.Settings.LINKABLE:
-          exit_with_error('ASan does not support dynamic linking')
-
-      if sanitize and '-g4' in args:
-        shared.Settings.LOAD_SOURCE_MAP = 1
-
-      if shared.Settings.WASM_BACKEND:
-        options.js_opts = None
-        options.binaryen_passes += backend_binaryen_passes()
-      else:
-        # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
-        # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
-        if shared.Settings.SAFE_HEAP and building.is_wasm_only():
-          options.binaryen_passes += ['--safe-heap']
-        if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-          # emulated function pointer casts is emulated in fastcomp wasm using a binaryen pass
-          options.binaryen_passes += ['--fpcast-emu']
-          # we also need emulated function pointers for that, as we need a single flat
-          # table, as is standard in wasm, and not asm.js split ones.
-          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
-
+    if shared.Settings.SINGLE_FILE:
+      # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
+      shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
+      shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
+      shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
+    else:
+      # set file locations, so that JS glue can find what it needs
+      shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
+      shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
+      shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
+    if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
+      exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
+    if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
+      exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
     if shared.Settings.WASM2JS:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('wasm2js is only available in the upstream wasm backend path')
-      if use_source_map(options):
-        exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
+      shared.Settings.MAYBE_WASM2JS = 1
+      # when using wasm2js, if the memory segments are in the wasm then they
+      # end up converted by wasm2js into base64 encoded JS. alternatively, we
+      # can use a .mem file like asm.js used to.
+      # generally we follow what the options tell us to do (which is to use
+      # a .mem file in most cases, since it is binary & compact). however, for
+      # pthreads we must keep the memory segments in the wasm as they will be
+      # passive segments which the .mem format cannot handle.
+      shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE or shared.Settings.USE_PTHREADS
+    else:
+      # wasm includes the mem init in the wasm binary. The exception is
+      # wasm2js, which behaves more like js.
+      options.memory_init_file = True
+      shared.Settings.MEM_INIT_IN_WASM = True
 
-    if shared.Settings.EVAL_CTORS and not shared.Settings.WASM:
-      # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
-      # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
-      shared.Settings.RUNNING_JS_OPTS = 1
+    # wasm side modules have suffix .wasm
+    if shared.Settings.SIDE_MODULE and target.endswith('.js'):
+      diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
-    # memory growth does not work in dynamic linking, except for wasm
-    if (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE) and shared.Settings.ALLOW_MEMORY_GROWTH and not shared.Settings.WASM:
-      exit_with_error('memory growth is not supported with shared asm.js modules')
+    sanitize = set()
 
-    if shared.Settings.MINIMAL_RUNTIME:
-      if shared.Settings.PRECISE_F32 == 2:
-        exit_with_error('-s PRECISE_F32=2 is not supported with -s MINIMAL_RUNTIME=1')
+    for arg in newargs:
+      if arg.startswith('-fsanitize='):
+        sanitize.update(arg.split('=', 1)[1].split(','))
+      elif arg.startswith('-fno-sanitize='):
+        sanitize.difference_update(arg.split('=', 1)[1].split(','))
 
-    if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
-      # this is an issue in asm.js, but not wasm
-      if not shared.Settings.WASM:
-        # memory growth does not validate as asm.js
-        # http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
-        diagnostics.warning('almost-asm', 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.')
-        shared.Settings.ASM_JS = 2
+    if sanitize:
+      shared.Settings.USE_OFFSET_CONVERTER = 1
+      shared.Settings.EXPORTED_FUNCTIONS += [
+          '_memalign',
+          '_emscripten_builtin_memalign',
+          '_emscripten_builtin_malloc',
+          '_emscripten_builtin_free',
+          '___data_end',
+          '___heap_base',
+          '___global_base'
+      ]
+
+    if sanitize & UBSAN_SANITIZERS:
+      if '-fsanitize-minimal-runtime' in newargs:
+        shared.Settings.UBSAN_RUNTIME = 1
+      else:
+        shared.Settings.UBSAN_RUNTIME = 2
+
+    if 'leak' in sanitize:
+      shared.Settings.USE_LSAN = 1
+      shared.Settings.EXIT_RUNTIME = 1
+
+      if shared.Settings.LINKABLE:
+        exit_with_error('LSan does not support dynamic linking')
+
+    if 'address' in sanitize:
+      shared.Settings.USE_ASAN = 1
+
+      shared.Settings.EXPORTED_FUNCTIONS += [
+        '_emscripten_builtin_memset',
+        '_asan_c_load_1', '_asan_c_load_1u',
+        '_asan_c_load_2', '_asan_c_load_2u',
+        '_asan_c_load_4', '_asan_c_load_4u',
+        '_asan_c_load_f', '_asan_c_load_d',
+        '_asan_c_store_1', '_asan_c_store_1u',
+        '_asan_c_store_2', '_asan_c_store_2u',
+        '_asan_c_store_4', '_asan_c_store_4u',
+        '_asan_c_store_f', '_asan_c_store_d',
+      ]
+
+      shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
+      shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+      assert shared.Settings.INITIAL_MEMORY < 2**32
+
+      if shared.Settings.SAFE_HEAP:
+        # SAFE_HEAP instruments ASan's shadow memory accesses.
+        # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
+        # by SAFE_HEAP as a null pointer dereference.
+        exit_with_error('ASan does not work with SAFE_HEAP')
+
+      if shared.Settings.LINKABLE:
+        exit_with_error('ASan does not support dynamic linking')
+
+    if sanitize and '-g4' in args:
+      shared.Settings.LOAD_SOURCE_MAP = 1
+
+    options.binaryen_passes += backend_binaryen_passes()
+
+    if shared.Settings.WASM2JS and use_source_map(options):
+      exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
 
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:
@@ -2021,49 +1782,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.SINGLE_FILE:
         exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
 
-    # safe heap in asm.js uses the js optimizer (in wasm-only mode we can use binaryen)
-    if shared.Settings.SAFE_HEAP and not building.is_wasm_only():
-      if not options.js_opts:
-        logger.debug('enabling js opts for SAFE_HEAP')
-        options.js_opts = True
-      options.force_js_opts = True
-
-    if options.js_opts:
-      shared.Settings.RUNNING_JS_OPTS = 1
-
-    if shared.Settings.CYBERDWARF:
-      shared.Settings.DEBUG_LEVEL = max(shared.Settings.DEBUG_LEVEL, 2)
-      shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
-      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_cyberdwarf.js')))
-      shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_debugger_toolkit.js')))
-      newargs.append('-g')
-
     if options.tracing:
       cflags.append('-D__EMSCRIPTEN_TRACING__=1')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
 
-    if shared.Settings.WASM_BACKEND:
-      if shared.Settings.USE_PTHREADS:
-        newargs.append('-pthread')
-    else:
-      # We leave the -O option in place so that the clang front-end runs in that
-      # optimization mode, but we disable the actual optimization passes, as we'll
-      # run them separately.
-      if shared.Settings.OPT_LEVEL > 0:
-        newargs.append('-mllvm')
-        newargs.append('-disable-llvm-optzns')
-
-    if not shared.Settings.LEGALIZE_JS_FFI:
-      assert building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS.'
+    if shared.Settings.USE_PTHREADS:
+      newargs.append('-pthread')
 
     # check if we can address the 2GB mark and higher: either if we start at
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
-    if shared.Settings.WASM_BACKEND and \
-       (shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
-        (shared.Settings.ALLOW_MEMORY_GROWTH and
-         (shared.Settings.MAXIMUM_MEMORY < 0 or
-          shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
+    if shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
+       (shared.Settings.ALLOW_MEMORY_GROWTH and
+        (shared.Settings.MAXIMUM_MEMORY < 0 or
+         shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
       shared.Settings.CAN_ADDRESS_2GB = 1
       if shared.Settings.MALLOC == 'emmalloc':
         if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
@@ -2103,19 +1835,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
 
-      # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
-      if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
-        cflags.append('-fno-discard-value-names')
-
       if not building.can_inline():
         cflags.append('-fno-inline-functions')
-
-      # For fastcomp backend, no LLVM IR functions should ever be annotated
-      # 'optnone', because that would skip running the SimplifyCFG pass on
-      # them, which is required to always run to clean up LandingPadInst
-      # instructions that are not needed.
-      if not shared.Settings.WASM_BACKEND:
-        cflags += ['-Xclang', '-disable-O0-optnone']
 
       def use_cxx(src):
         if 'c++' in language_mode or run_via_emxx:
@@ -2202,19 +1923,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           cmd = get_clang_command(input_file)
         cmd += ['-c', '-o', output_file]
-        if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
+        if shared.Settings.RELOCATABLE:
           cmd.append('-fPIC')
           cmd.append('-fvisibility=default')
-        if shared.Settings.WASM_BACKEND:
-          if shared.Settings.LTO:
-            cmd.append('-flto=' + shared.Settings.LTO)
-          else:
-            # With fastcomp (or with LTO mode) these args get passed instead
-            # at link time when the backend runs.
-            for a in building.llvm_backend_args():
-              cmd += ['-mllvm', a]
+        if shared.Settings.LTO:
+          cmd.append('-flto=' + shared.Settings.LTO)
         else:
-          cmd.append('-emit-llvm')
+          # With LTO mode these args get passed instead
+          # at link time when the backend runs.
+          for a in building.llvm_backend_args():
+            cmd += ['-mllvm', a]
         shared.print_compiler_stage(cmd)
         shared.check_call(cmd)
         if output_file not in ('-', os.devnull):
@@ -2239,16 +1957,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             building.llvm_as(input_file, temp_file)
             temp_files.append((i, temp_file))
           else:
-            if not shared.Settings.WASM_BACKEND:
-              exit_with_error('assembly files not supported by fastcomp')
             compile_source_file(i, input_file)
         elif language_mode:
           compile_source_file(i, input_file)
         elif input_file == '-':
           exit_with_error('-E or -x required when input is from standard input')
         else:
-          if not shared.Settings.WASM_BACKEND and building.is_wasm(input_file):
-            exit_with_error('fastcomp is not compatible with wasm object files:' + input_file)
           # Default to assuming the inputs are object files and pass them to the linker
           logger.debug('using object file: ' + input_file)
           temp_files.append((i, input_file))
@@ -2257,24 +1971,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('compile inputs')
 
     with ToolchainProfiler.profile_block('process inputs'):
-      if not shared.Settings.WASM_BACKEND:
-        assert len(temp_files) == len(input_files)
-
-        # Optimize source files
-        if optimizing(options.llvm_opts):
-          for pos, (_, input_file) in enumerate(input_files):
-            file_suffix = get_file_suffix(input_file)
-            if file_suffix in SOURCE_ENDINGS:
-              temp_file = temp_files[pos][1]
-              logger.debug('optimizing %s', input_file)
-              new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
-              # after optimizing, lower intrinsics to libc calls so that our linking code
-              # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
-              # we end up calling out to JS for Math.cos).
-              opts = options.llvm_opts + ['-lower-non-em-intrinsics']
-              building.llvm_opt(temp_file, opts, new_temp_file)
-              temp_files[pos] = (temp_files[pos][0], new_temp_file)
-
       # If we were just compiling stop here
       if compile_only:
         if not specified_target:
@@ -2314,7 +2010,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if specified_target and specified_target.startswith('-'):
       exit_with_error('invalid output filename: `%s`' % specified_target)
 
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
+    using_lld = not (link_to_object and shared.Settings.LTO)
     link_flags = filter_link_flags(link_flags, using_lld)
 
     # Decide what we will link
@@ -2372,10 +2068,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('link'):
       # final will be an array if linking is deferred, otherwise a normal string.
-      if shared.Settings.WASM_BACKEND:
-        DEFAULT_FINAL = in_temp(target_basename + '.wasm')
-      else:
-        DEFAULT_FINAL = in_temp(target_basename + '.bc')
+      DEFAULT_FINAL = in_temp(target_basename + '.wasm')
 
       def get_final():
         global final
@@ -2383,112 +2076,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           final = DEFAULT_FINAL
         return final
 
-      # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
-      perform_link = len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND
-      if not perform_link:
-        is_dylib = suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
-        is_ar = building.is_ar(temp_files[0][1])
-        is_bc = not is_ar and not is_dylib
-        perform_link = not (is_bc or is_dylib) and is_ar
-      if perform_link:
-        logger.debug('linking: ' + str(linker_inputs))
-        # force archive contents to all be included, if just archives, or if linking shared modules
-        force_archive_contents = all(t.endswith(STATICLIB_ENDINGS) for _, t in temp_files) or shared.Settings.LINKABLE
+      logger.debug('linking: ' + str(linker_inputs))
 
-        # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
-        # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
-        # fastcomp deferred linking opts.
-        # TODO: we could check if this is a fastcomp build, and still speed things up here
-        just_calculate = DEBUG != 2 and not shared.Settings.WASM_BACKEND
-        if shared.Settings.WASM_BACKEND:
-          js_funcs = None
-          if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
-            js_funcs = get_all_js_syms(misc_temp_files)
-            log_time('JS symbol generation')
-          final = building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=js_funcs)
-          # Special handling for when the user passed '-Wl,--version'.  In this case the linker
-          # does not create the output file, but just prints its version and exits with 0.
-          if '--version' in linker_inputs:
-            return 0
-        else:
-          final = building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
-      else:
-        logger.debug('skipping linking: ' + str(linker_inputs))
-        temp_file = temp_files[0][1]
-        input_file = input_files[0][1]
-        final = in_temp(target_basename + '.bc')
-        if temp_file != input_file:
-          shutil.move(temp_file, final)
-        else:
-          shutil.copyfile(temp_file, final)
+      # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
+      # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
+      # fastcomp deferred linking opts.
+      # TODO: we could check if this is a fastcomp build, and still speed things up here
+      js_funcs = None
+      if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
+        js_funcs = get_all_js_syms(misc_temp_files)
+        log_time('JS symbol generation')
+      final = building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=js_funcs)
+      # Special handling for when the user passed '-Wl,--version'.  In this case the linker
+      # does not create the output file, but just prints its version and exits with 0.
+      if '--version' in linker_inputs:
+        return 0
 
     # exit block 'link'
     log_time('link')
-
-    if not shared.Settings.WASM_BACKEND:
-      with ToolchainProfiler.profile_block('post-link'):
-        if DEBUG:
-          logger.debug('saving intermediate processing steps to %s', shared.get_emscripten_temp_dir())
-          save_intermediate('basebc', 'bc')
-
-        # Optimize, if asked to
-        # remove LLVM debug if we are not asked for it
-        link_opts = []
-        if not need_llvm_debug_info(options):
-          link_opts += ['-strip-debug']
-        if not shared.Settings.ASSERTIONS:
-          link_opts += ['-disable-verify']
-        else:
-          # when verifying, LLVM debug info has some tricky linking aspects, and llvm-link will
-          # disable the type map in that case. we added linking to opt, so we need to do
-          # something similar, which we can do with a param to opt
-          link_opts += ['-disable-debug-info-type-map']
-
-        if options.llvm_lto is not None and options.llvm_lto >= 2 and optimizing(options.llvm_opts):
-          logger.debug('running LLVM opts as pre-LTO')
-          final = building.llvm_opt(final, options.llvm_opts, DEFAULT_FINAL)
-          save_intermediate('opt', 'bc')
-
-        # If we can LTO, do it before dce, since it opens up dce opportunities
-        if (not shared.Settings.LINKABLE) and options.llvm_lto and options.llvm_lto != 2:
-          if not building.can_inline():
-            link_opts.append('-disable-inlining')
-          # add a manual internalize with the proper things we need to be kept alive during lto
-          link_opts += building.get_safe_internalize() + ['-std-link-opts']
-          # execute it now, so it is done entirely before we get to the stage of legalization etc.
-          final = building.llvm_opt(final, link_opts, DEFAULT_FINAL)
-          save_intermediate('lto', 'bc')
-          link_opts = []
-        else:
-          # At minimum remove dead functions etc., this potentially saves a
-          # lot in the size of the generated code (and the time to compile it)
-          link_opts += building.get_safe_internalize() + ['-globaldce']
-
-        if options.cfi:
-          link_opts.append("-wholeprogramdevirt")
-          link_opts.append("-lowertypetests")
-
-        if shared.Settings.AUTODEBUG:
-          # let llvm opt directly emit ll, to skip writing and reading all the bitcode
-          link_opts += ['-S']
-          final = building.llvm_opt(final, link_opts, get_final() + '.link.ll')
-          save_intermediate('linktime', 'll')
-        else:
-          if len(link_opts) > 0:
-            final = building.llvm_opt(final, link_opts, DEFAULT_FINAL)
-            save_intermediate('linktime', 'bc')
-
-        if shared.Settings.AUTODEBUG:
-          logger.debug('autodebug')
-          next = get_final() + '.ad.ll'
-          run_process([shared.PYTHON, shared.AUTODEBUGGER, final, next])
-          final = next
-          save_intermediate('autodebug', 'll')
-
-        assert not isinstance(final, list), 'we must have linked the final files, if linking was deferred, by this point'
-
-      # exit block 'post-link'
-      log_time('post-link')
 
     if target == os.devnull:
       # TODO(sbc): In theory we should really run the whole pipeline even if the output is
@@ -2509,17 +2114,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       final = do_emscripten(final, shared.replace_or_append_suffix(target, '.mem'))
       save_intermediate('original')
 
-      if shared.Settings.WASM_BACKEND:
-        # we also received wat and wasm at this stage
-        temp_basename = unsuffixed(final)
-        wasm_temp = temp_basename + '.wasm'
-        shutil.move(wasm_temp, wasm_binary_target)
-        if use_source_map(options):
-          shutil.move(wasm_temp + '.map', wasm_source_map_target)
-
-      if shared.Settings.CYBERDWARF:
-        cd_target = final + '.cd'
-        shutil.move(cd_target, shared.replace_or_append_suffix(target, '.cd'))
+      # we also received the wasm at this stage
+      temp_basename = unsuffixed(final)
+      wasm_temp = temp_basename + '.wasm'
+      shutil.move(wasm_temp, wasm_binary_target)
+      if use_source_map(options):
+        shutil.move(wasm_temp + '.map', wasm_source_map_target)
 
     # exit block 'emscript'
     log_time('emscript (llvm => executable code)')
@@ -2527,13 +2127,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
       if len(options.preload_files) or len(options.embed_files):
-
-        # Also, MEMFS is not aware of heap resizing feature in wasm, so if MEMFS and memory growth are used together, force
-        # no_heap_copy to be enabled.
-        if shared.Settings.ALLOW_MEMORY_GROWTH and not options.no_heap_copy:
-          logger.info('Enabling --no-heap-copy because -s ALLOW_MEMORY_GROWTH=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
-          options.no_heap_copy = True
-
         logger.debug('setting up files')
         file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
         if len(options.preload_files):
@@ -2547,8 +2140,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args += options.exclude_files
         if options.use_preload_cache:
           file_args.append('--use-preload-cache')
-        if options.no_heap_copy:
-          file_args.append('--no-heap-copy')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
         if options.use_preload_plugins:
@@ -2578,71 +2169,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.check_call(building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
         save_intermediate('transformed')
 
-      js_transform_tempfiles = [final]
-
     # exit block 'source transforms'
     log_time('source transforms')
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
-         (shared.Settings.WASM_BACKEND and not shared.Settings.MEM_INIT_IN_WASM):
+      if not shared.Settings.MEM_INIT_IN_WASM:
          memfile = shared.replace_or_append_suffix(target, '.mem')
 
       if memfile:
-        if shared.Settings.WASM_BACKEND:
-          # For the wasm backend, we don't have any memory info in JS. All we need to do
-          # is set the memory initializer url.
-          src = open(final).read()
-          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
-          open(final + '.mem.js', 'w').write(src)
-          final += '.mem.js'
-        else:
-          # Non-wasm backend path: Strip the memory initializer out of the asmjs file
-          shared.try_delete(memfile)
-
-          def parse_mem_bytes(s):
-            membytes = [int(x or '0') for x in s.split(',')]
-            while membytes and membytes[-1] == 0:
-              membytes.pop()
-            return membytes
-
-          def repl(m):
-            # handle chunking of the memory initializer
-            s = m.group(1)
-            if len(s) == 0:
-              return '' # don't emit 0-size ones
-            membytes = parse_mem_bytes(s)
-            if not membytes:
-              return ''
-            if shared.Settings.MEM_INIT_METHOD == 2:
-              # memory initializer in a string literal
-              return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
-            open(memfile, 'wb').write(bytearray(membytes))
-            if DEBUG:
-              # Copy into temp dir as well, so can be run there too
-              shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-            if not shared.Settings.WASM or not shared.Settings.MEM_INIT_IN_WASM:
-              return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
-            else:
-              return ''
-
-          if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.MEM_INIT_METHOD == 0 or (shared.Settings.SINGLE_FILE and not shared.Settings.WASM)):
-            # In MINIMAL_RUNTIME emit the base64 memory initializer directly into a HEAPU8.set() statement.
-            mem_init_data = re.search(shared.JS.memory_initializer_pattern, open(final).read())
-            src = open(final).read().replace('{{{ BASE64_MEMORY_INITIALIZER }}}', base64_encode(bytearray(parse_mem_bytes(mem_init_data.group(1)))))
-            src = re.sub(shared.JS.memory_initializer_pattern, '', src)
-          else:
-            src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
-          open(final + '.mem.js', 'w').write(src)
-          final += '.mem.js'
-          src = None
-          js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
-          if os.path.exists(memfile):
-            save_intermediate('meminit')
-            logger.debug('wrote memory initialization to %s', memfile)
-          else:
-            logger.debug('did not see memory initialization')
+        # For the wasm backend, we don't have any memory info in JS. All we need to do
+        # is set the memory initializer url.
+        src = open(final).read()
+        src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
+        open(final + '.mem.js', 'w').write(src)
+        final += '.mem.js'
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
@@ -2655,103 +2196,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
           open(worker_output, 'w').write(minified_worker)
 
-      # Generate the fetch.js worker script for multithreaded emscripten_fetch() support if targeting pthreads.
-      if shared.Settings.USE_FETCH_WORKER:
-        shared.make_fetch_worker(final, shared.Settings.FETCH_WORKER_FILE)
-
-    # exit block 'memory initializer'
-    log_time('memory initializer')
-
-    optimizer = JSOptimizer(
-      target=target,
-      options=options,
-      js_transform_tempfiles=js_transform_tempfiles,
-      in_temp=in_temp,
-    )
-    with ToolchainProfiler.profile_block('js opts'):
-      # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
-      if shared.Settings.DEAD_FUNCTIONS:
-        optimizer.queue += ['eliminateDeadFuncs']
-        optimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
-
-      if shared.Settings.OPT_LEVEL >= 1 and options.js_opts:
-        logger.debug('running js post-opts')
-
-        if DEBUG == 2:
-          # Clean up the syntax a bit
-          optimizer.queue += ['noop']
-
-        def get_eliminate():
-          if shared.Settings.ALLOW_MEMORY_GROWTH:
-            return 'eliminateMemSafe'
-          else:
-            return 'eliminate'
-
-        if shared.Settings.OPT_LEVEL >= 2:
-          optimizer.queue += [get_eliminate()]
-
-          if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
-            # note that this happens before registerize/minification, which can obfuscate the name of 'label', which is tricky
-            optimizer.queue += ['aggressiveVariableElimination']
-
-          optimizer.queue += ['simplifyExpressions']
-
-      if shared.Settings.OPT_LEVEL >= 1 and options.js_opts:
-        if shared.Settings.OPT_LEVEL >= 2:
-          # simplify ifs if it is ok to make the code somewhat unreadable,
-          # with commaified code breaks late aggressive variable elimination)
-          # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
-          debugging = shared.Settings.DEBUG_LEVEL == 0 or options.profiling
-          if shared.Settings.SIMPLIFY_IFS and debugging and not shared.Settings.WASM:
-            optimizer.queue += ['simplifyIfs']
-
-          if shared.Settings.PRECISE_F32:
-            optimizer.queue += ['optimizeFrounds']
-
-      if options.js_opts:
-        if shared.Settings.SAFE_HEAP and not building.is_wasm_only():
-          optimizer.queue += ['safeHeap']
-
-        if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL < 3:
-          if shared.Settings.OPT_LEVEL >= 3 or shared.Settings.SHRINK_LEVEL > 0:
-            optimizer.queue += ['registerizeHarder']
-          else:
-            optimizer.queue += ['registerize']
-
-        # NOTE: Important that this comes after registerize/registerizeHarder
-        if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and shared.Settings.OPT_LEVEL >= 2:
-          optimizer.flush()
-          building.eliminate_duplicate_funcs(final)
-          save_intermediate('dfe')
-
-      if shared.Settings.EVAL_CTORS and options.memory_init_file and not use_source_map(options) and not shared.Settings.WASM:
-        optimizer.flush()
-        building.eval_ctors(final, memfile)
-        save_intermediate('eval-ctors')
-
-      if options.js_opts:
-        # some compilation modes require us to minify later or not at all
-        if not shared.Settings.WASM:
-          optimizer.do_minify()
-
-        if shared.Settings.OPT_LEVEL >= 2:
-          optimizer.queue += ['asmLastOpts']
-
-        if shared.Settings.FINALIZE_ASM_JS:
-          optimizer.queue += ['last']
-
-        optimizer.flush()
-
-      if options.use_closure_compiler == 2 and not shared.Settings.WASM_BACKEND:
-        optimizer.flush()
-
-        logger.debug('running closure')
-        # no need to add this to js_transform_tempfiles, because closure and
-        # debug_level > 0 are never simultaneously true
-        final = building.closure_compiler(final, pretty=shared.Settings.DEBUG_LEVEL >= 1,
-                                          extra_closure_args=options.closure_args)
-        save_intermediate('closure')
-
     log_time('js opts')
 
     with ToolchainProfiler.profile_block('final emitting'):
@@ -2761,28 +2205,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
       # open(final, 'w').write(src)
 
-      # Bundle symbol data in with the cyberdwarf file
-      if shared.Settings.CYBERDWARF:
-        run_process([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), shared.replace_or_append_suffix(target, '.cd'), shared.replace_or_append_suffix(target, '.symbols')])
-
-      if use_source_map(options) and not shared.Settings.WASM:
-        emit_js_source_maps(target, optimizer.js_transform_tempfiles)
-
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      if (options.separate_asm or shared.Settings.WASM) and not shared.Settings.WASM_BACKEND:
-        separate_asm_js(final, asm_target)
-        if not shared.Settings.SINGLE_FILE:
-          generated_text_files_with_native_eols += [asm_target]
-
-      if shared.Settings.WASM:
-        do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                    wasm_text_target, wasm_source_map_target, misc_temp_files,
-                    optimizer)
-        # If we are building a wasm side module then we are all done now
-        if shared.Settings.SIDE_MODULE:
-          return
+      do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
+                  wasm_text_target, wasm_source_map_target, misc_temp_files)
+      # If we are building a wasm side module then we are all done now
+      if shared.Settings.SIDE_MODULE:
+        return
 
       if shared.Settings.MODULARIZE:
         modularize()
@@ -2796,9 +2226,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # here, so that it will not confuse the hacky script.
         shared.JS.handle_license(final)
         shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final])
-        # Process .asm.js file
-        if not shared.Settings.WASM and shared.Settings.SEPARATE_ASM:
-          shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), asm_target])
 
       # Apply pre and postjs files
       if options.extern_pre_js or options.extern_post_js:
@@ -2830,7 +2257,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if final_suffix == '.html':
         generate_html(target, options, js_target, target_basename,
                       asm_target, wasm_binary_target,
-                      memfile, optimizer)
+                      memfile)
       else:
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
@@ -2900,9 +2327,8 @@ def parse_args(newargs):
         settings_changes.append('INLINING_LIMIT=25')
       shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif check_arg('--js-opts'):
-      options.js_opts = int(consume_arg())
-      if options.js_opts:
-        options.force_js_opts = True
+      logger.warning('--js-opts ignored when using llvm backend')
+      consume_arg()
     elif check_arg('--llvm-opts'):
       options.llvm_opts = parse_value(consume_arg())
     elif newargs[i].startswith('-flto'):
@@ -2911,9 +2337,8 @@ def parse_args(newargs):
       else:
         shared.Settings.LTO = "full"
     elif check_arg('--llvm-lto'):
-      if shared.Settings.WASM_BACKEND:
-        logger.warning('--llvm-lto ignored when using llvm backend')
-      options.llvm_lto = int(consume_arg())
+      logger.warning('--llvm-lto ignored when using llvm backend')
+      consume_arg()
     elif check_arg('--closure-args'):
       args = consume_arg()
       options.closure_args += shlex.split(args)
@@ -3001,7 +2426,7 @@ def parse_args(newargs):
       options.use_preload_cache = True
       newargs[i] = ''
     elif newargs[i].startswith('--no-heap-copy'):
-      options.no_heap_copy = True
+      diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       newargs[i] = ''
     elif newargs[i].startswith('--use-preload-plugins'):
       options.use_preload_plugins = True
@@ -3051,8 +2476,7 @@ def parse_args(newargs):
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i] == '--separate-asm':
-      options.separate_asm = True
-      newargs[i] = ''
+      exit_with_error('cannot --separate-asm with the wasm backend, since not emitting asm.js')
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if os.path.isabs(path_name) and not is_valid_abspath(options, path_name):
@@ -3165,15 +2589,8 @@ def emit_js_source_maps(target, js_transform_tempfiles):
                       '--offset', '0'])
 
 
-def separate_asm_js(final, asm_target):
-  """Separate out the asm.js code, if asked. Or, if necessary for another option"""
-  logger.debug('separating asm')
-  shared.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final, shared.Settings.SEPARATE_ASM_MODULE_NAME])
-
-
 def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                wasm_text_target, wasm_source_map_target, misc_temp_files,
-                optimizer):
+                wasm_text_target, wasm_source_map_target, misc_temp_files):
   global final
   logger.debug('using binaryen')
   if use_source_map(options) and not shared.Settings.SOURCE_MAP_BASE:
@@ -3184,99 +2601,34 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
   # this is necessary for emitting a symbol map at the end.
   intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD)
-  emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
-  # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
-  if not shared.Settings.WASM_BACKEND:
-    if DEBUG:
-      # save the asm.js input
-      building.save_intermediate(asm_target, 'asmjs.js')
-    cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.INITIAL_MEMORY)]
-    if shared.Settings.BINARYEN_TRAP_MODE not in ('js', 'clamp', 'allow'):
-      exit_with_error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
-    cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
-    if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
-      cmd += ['--ignore-implicit-traps']
-    # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
-    if shared.Settings.OPT_LEVEL > 0:
-      cmd.append(building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL))
-    # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
-    mem_file_exists = options.memory_init_file and os.path.exists(memfile)
-    import_mem_init = mem_file_exists and shared.Settings.MEM_INIT_IN_WASM
-    if import_mem_init:
-      cmd += ['--mem-init=' + memfile]
-      if not shared.Settings.RELOCATABLE:
-        cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
-    # various options imply that the imported table may not be the exact size as
-    # the wasm module's own table segments
-    if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS > 0 or shared.Settings.EMULATED_FUNCTION_POINTERS:
-      cmd += ['--table-max=-1']
-    if shared.Settings.SIDE_MODULE:
-      cmd += ['--mem-max=-1']
-    elif not shared.Settings.ALLOW_MEMORY_GROWTH:
-      cmd += ['--mem-max=' + str(shared.Settings.INITIAL_MEMORY)]
-    elif shared.Settings.MAXIMUM_MEMORY >= 0:
-      cmd += ['--mem-max=' + str(shared.Settings.MAXIMUM_MEMORY)]
-    if shared.Settings.LEGALIZE_JS_FFI != 1:
-      cmd += ['--no-legalize-javascript-ffi']
-    if building.is_wasm_only():
-      cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, and can contain special fastcomp-wasm support
-    if shared.Settings.USE_PTHREADS:
-      cmd += ['--enable-threads']
-    if intermediate_debug_info:
-      cmd += ['-g']
-    if emit_symbol_map:
-      cmd += ['--symbolmap=' + shared.replace_or_append_suffix(target, '.symbols')]
-    # we prefer to emit a binary, as it is more efficient. however, when we
-    # want full debug info support (not just function names), then we must
-    # emit text (at least until wasm gains support for debug info in binaries)
-    target_binary = shared.Settings.DEBUG_LEVEL < 3
-    if target_binary:
-      cmd += ['-o', wasm_binary_target]
-    else:
-      cmd += ['-o', wasm_text_target, '-S']
-    cmd += building.get_binaryen_feature_flags()
-    logger.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
-    TimeLogger.update()
-    shared.check_call(cmd)
-
-    if not target_binary:
-      cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target, '--all-features', '--disable-bulk-memory']
-      if intermediate_debug_info:
-        cmd += ['-g']
-        if use_source_map(options):
-          cmd += ['--source-map=' + wasm_source_map_target]
-          cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
-      logger.debug('wasm-as (text => binary): ' + ' '.join(cmd))
-      shared.check_call(cmd)
-    if import_mem_init:
-      # remove the mem init file in later processing; it does not need to be prefetched in the html, etc.
-      if DEBUG:
-        safe_move(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-      else:
-        os.unlink(memfile)
-    log_time('asm2wasm')
 
   if options.binaryen_passes:
-    if '--post-emscripten' in options.binaryen_passes and not shared.Settings.SIDE_MODULE:
-      if shared.Settings.WASM_BACKEND and not shared.Settings.RELOCATABLE:
-        # With the wasm backend stack point value is baked in at link time.  However, emscripten's
-        # JS compiler can allocate more static data which then shifts the stack pointer.
-        # See `makeStaticAlloc` in the JS compiler.
-        options.binaryen_passes += ['--pass-arg=stack-pointer@%d' % shared.Settings.STACK_BASE]
-      # the value of the sbrk pointer has been computed by the JS compiler, and we can apply it in the wasm
-      # (we can't add this value when we placed post-emscripten in the proper position in the list of
-      # passes because that was before the value was computed)
-      # note that we don't pass this for a side module, as the value can't be applied - it must be
-      # imported
-      options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
-      if shared.Settings.STANDALONE_WASM:
-        options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
-    building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
-    args = options.binaryen_passes
-    building.run_wasm_opt(wasm_binary_target,
-                          wasm_binary_target,
-                          args=args,
-                          debug=intermediate_debug_info)
+    # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
+    # also strips the Names section. so to emit just the Names section we don't
+    # tell wasm-ld to strip anything, and we do it here.
+    strip_debug = shared.Settings.DEBUG_LEVEL < 3
+    strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
+    # run wasm-opt if we have work for it
+    if options.binaryen_passes:
+      # if we need to strip certain sections, and we have wasm-opt passes
+      # to run anyhow, do it with them.
+      if strip_debug:
+        options.binaryen_passes += ['--strip-debug']
+      if strip_producers:
+        options.binaryen_passes += ['--strip-producers']
+      building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
+      building.run_wasm_opt(wasm_binary_target,
+                            wasm_binary_target,
+                            args=options.binaryen_passes,
+                            debug=intermediate_debug_info)
+    else:
+      # we are not running wasm-opt. if we need to strip certain sections
+      # then do so using llvm-objcopy which is fast and does not rewrite the
+      # code (which is better for debug info)
+      if strip_debug or strip_producers:
+        building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
+        building.strip(wasm_binary_target, wasm_binary_target,
+                       debug=strip_debug, producers=strip_producers)
 
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
@@ -3294,12 +2646,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-  if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
-    shared.WebAssembly.add_dylink_section(wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
-    if not DEBUG:
-      os.unlink(asm_target) # we don't need the asm.js, it can just confuse
 
-  # after generating the wasm, do some final operations
+  # TODO: do this with upstream
+  # if shared.Settings.SIDE_MODULE:
+  #   shared.WebAssembly.add_dylink_section(wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
+
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
     shared.WebAssembly.add_emscripten_metadata(final, wasm_binary_target)
 
@@ -3321,12 +2672,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
     # minify the JS
-    optimizer.do_minify() # calculate how to minify
     save_intermediate_with_wasm('preclean', wasm_binary_target)
     final = building.minify_wasm_js(js_file=final,
                                     wasm_file=wasm_binary_target,
                                     expensive_optimizations=will_metadce(options),
-                                    minify_whitespace=optimizer.minify_whitespace,
+                                    minify_whitespace=minify_whitespace(),
                                     debug_info=intermediate_debug_info)
     save_intermediate_with_wasm('postclean', wasm_binary_target)
 
@@ -3340,14 +2690,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # We do not currently have a setup to preprocess {{{ }}} settings in user scripts, so manually
     # expand the settings that wasm2js.js actually uses.
     wasm2js = wasm2js.replace('{{{ WASM_PAGE_SIZE }}}', '65536')
-    for opt in ['RESERVED_FUNCTION_POINTERS']:
-      wasm2js = wasm2js.replace('{{{ %s }}}' % opt, str(shared.Settings.get(opt)))
     for opt in ['WASM_TABLE_SIZE']:
       wasm2js = wasm2js.replace("{{{ getQuoted('%s') }}}" % opt, str(shared.Settings.get(opt)))
     return wasm2js
 
   def run_closure_compiler(final):
-    final = building.closure_compiler(final, pretty=not optimizer.minify_whitespace,
+    final = building.closure_compiler(final, pretty=not minify_whitespace(),
                                       extra_closure_args=options.closure_args)
     save_intermediate_with_wasm('closure', wasm_binary_target)
     return final
@@ -3367,7 +2715,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     wasm2js = building.wasm2js(wasm2js_template,
                                wasm_binary_target,
                                opt_level=shared.Settings.OPT_LEVEL,
-                               minify_whitespace=optimizer.minify_whitespace,
+                               minify_whitespace=minify_whitespace(),
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_info,
                                symbols_file=symbols_file)
@@ -3505,7 +2853,7 @@ def module_export_name_substitution():
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
   with open(final, 'w') as f:
-    src = re.sub(r'{[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:1}', replacement, src)
+    src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
     # For Node.js and other shell environments, create an unminified Module object so that
     # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
     if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
@@ -3516,14 +2864,12 @@ def module_export_name_substitution():
 
 def generate_traditional_runtime_html(target, options, js_target, target_basename,
                                       asm_target, wasm_binary_target,
-                                      memfile, optimizer):
+                                      memfile):
   script = ScriptSource()
 
   shell = read_and_preprocess(options.shell_path)
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
-
-  asm_mods = []
 
   if options.proxy_to_worker:
     proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
@@ -3534,7 +2880,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     console.log('running code in a web worker');
 ''' % shared.JS.get_subresource_location(proxy_worker_filename)) + worker_js + '''
   } else {
-    // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');
     var fileBytes = tryParseAsDataURI(filename);
     var script = document.createElement('script');
@@ -3550,10 +2895,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     # Normal code generation path
     script.src = base_js_target
 
-    asm_mods = client_mods.get_mods(shared.Settings,
-                                    minified='minifyNames' in optimizer.queue_history,
-                                    separate_asm=options.separate_asm)
-
   if not shared.Settings.SINGLE_FILE:
     if options.memory_init_file and not shared.Settings.MEM_INIT_IN_WASM:
       # start to load the memory init file in the HTML, in parallel with the JS
@@ -3568,65 +2909,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
           meminitXHR.send(null);
 ''' % shared.JS.get_subresource_location(memfile)) + script.inline
 
-    # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
-    # of the wasm run methods.
-    if not options.separate_asm or shared.Settings.WASM:
-      if len(asm_mods):
-         exit_with_error('no --separate-asm means no client code mods are possible')
-    else:
-      script.un_src()
-      if len(asm_mods) == 0:
-        # just load the asm, then load the rest
-        script.inline = '''
-    var filename = '%s';
-    var fileBytes = tryParseAsDataURI(filename);
-    var script = document.createElement('script');
-    if (fileBytes) {
-      script.innerHTML = intArrayToString(fileBytes);
-    } else {
-      script.src = filename;
-    }
-    script.onload = function() {
-      setTimeout(function() {
-        %s
-      }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
-    };
-    document.body.appendChild(script);
-''' % (shared.JS.get_subresource_location(asm_target), script.inline)
-      else:
-        # may need to modify the asm code, load it as text, modify, and load asynchronously
-        script.inline = '''
-    var codeURL = '%s';
-    var codeXHR = new XMLHttpRequest();
-    codeXHR.open('GET', codeURL, true);
-    codeXHR.onload = function() {
-      var code;
-      if (codeXHR.status === 200 || codeXHR.status === 0) {
-        code = codeXHR.responseText;
-      } else {
-        var codeURLBytes = tryParseAsDataURI(codeURL);
-        if (codeURLBytes) {
-          code = intArrayToString(codeURLBytes);
-        }
-      }
-      %s
-      var blob = new Blob([code], { type: 'text/javascript' });
-      codeXHR = null;
-      var src = URL.createObjectURL(blob);
-      var script = document.createElement('script');
-      script.src = src;
-      script.onload = function() {
-        setTimeout(function() {
-          %s
-        }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
-        URL.revokeObjectURL(script.src);
-      };
-      document.body.appendChild(script);
-    };
-    codeXHR.send(null);
-''' % (shared.JS.get_subresource_location(asm_target), '\n'.join(asm_mods), script.inline)
-
-    if shared.Settings.WASM and not shared.Settings.WASM_ASYNC_COMPILATION:
+    if not shared.Settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
       script.un_src()
       script.inline = '''
@@ -3740,7 +3023,7 @@ def minify_html(filename, options):
 
 def generate_html(target, options, js_target, target_basename,
                   asm_target, wasm_binary_target,
-                  memfile, optimizer):
+                  memfile):
   logger.debug('generating HTML')
 
   if shared.Settings.EXPORT_NAME != 'Module' and \
@@ -3752,10 +3035,10 @@ def generate_html(target, options, js_target, target_basename,
 
   if shared.Settings.MINIMAL_RUNTIME:
     generate_minimal_runtime_html(target, options, js_target, target_basename, asm_target,
-                                  wasm_binary_target, memfile, optimizer)
+                                  wasm_binary_target, memfile)
   else:
     generate_traditional_runtime_html(target, options, js_target, target_basename, asm_target,
-                                      wasm_binary_target, memfile, optimizer)
+                                      wasm_binary_target, memfile)
 
   if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1):
     minify_html(target, options)
@@ -3796,8 +3079,6 @@ def process_libraries(libs, lib_dirs, temp_files):
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
     suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
-    if not shared.Settings.WASM_BACKEND:
-      suffixes.append('.bc')
 
     found = False
     for prefix in LIB_PREFIXES:

@@ -7,6 +7,7 @@
 var LibraryExceptions = {
   $exceptionLast: '0',
   $exceptionCaught: ' []',
+  $exceptionThrowBuf: '0',
 
   // Static fields for ExceptionInfo class.
   $ExceptionInfoAttrs: {
@@ -149,7 +150,6 @@ var LibraryExceptions = {
     this.get_exception_ptr = function() {
       // Work around a fastcomp bug, this code is still included for some reason in a build without
       // exceptions support.
-#if WASM_BACKEND || DISABLE_EXCEPTION_CATCHING != 1
       var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(
         this.get_exception_info().get_type());
       if (isPointer) {
@@ -158,9 +158,6 @@ var LibraryExceptions = {
       var adjusted = this.get_adjusted_ptr();
       if (adjusted !== 0) return adjusted;
       return this.get_base_ptr();
-#else
-      abort('No exceptions support');
-#endif
     };
 
     this.get_exception_info = function() {
@@ -197,12 +194,8 @@ var LibraryExceptions = {
     if (info.release_ref() && !info.get_rethrown()) {
       var destructor = info.get_destructor();
       if (destructor) {
-#if WASM_BACKEND == 0
-        Module['dynCall_vi'](destructor, info.excPtr);
-#else
         // In Wasm, destructors return 'this' as in ARM
-        Module['dynCall_ii'](destructor, info.excPtr);
-#endif
+        {{{ makeDynCall('ii', 'destructor') }}}(info.excPtr);
       }
       ___cxa_free_exception(info.excPtr);
 #if EXCEPTION_DEBUG
@@ -330,11 +323,7 @@ var LibraryExceptions = {
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
   __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '$exception_decRef',
-                          '$CatchInfo'
-#if WASM_BACKEND == 0
-  , 'setThrew'
-#endif
-  ],
+                          '$CatchInfo'],
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0);
@@ -407,7 +396,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '$CatchInfo', '__resumeException'],
+  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '$CatchInfo', '__resumeException', '$exceptionThrowBuf'],
   __cxa_find_matching_catch: function() {
     var thrown = exceptionLast;
     if (!thrown) {
@@ -428,12 +417,10 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-#if DISABLE_EXCEPTION_CATCHING == 1
-    var thrownBuf = 0;
-#else
-    var thrownBuf = {{{ makeStaticAlloc(4) }}};
-#endif
-    {{{ makeSetValue('thrownBuf', '0', 'thrown', '*') }}};
+    if (!exceptionThrowBuf) {
+      exceptionThrowBuf = _malloc(4);
+    }
+    {{{ makeSetValue('exceptionThrowBuf', '0', 'thrown', '*') }}};
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
@@ -444,8 +431,8 @@ var LibraryExceptions = {
         // Catch all clause matched or exactly the same type is caught
         break;
       }
-      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, thrownBuf)) {
-        var adjusted = {{{ makeGetValue('thrownBuf', '0', '*') }}};
+      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, exceptionThrowBuf)) {
+        var adjusted = {{{ makeGetValue('exceptionThrowBuf', '0', '*') }}};
         if (thrown !== adjusted) {
           catchInfo.set_adjusted_ptr(adjusted);
         }

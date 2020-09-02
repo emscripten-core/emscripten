@@ -12,7 +12,6 @@ extern bool preciseF32,
 
 extern cashew::Ref extraInfo;
 
-void eliminateDeadFuncs(cashew::Ref ast);
 void eliminate(cashew::Ref ast, bool memSafe=false);
 void eliminateMemSafe(cashew::Ref ast);
 void simplifyExpressions(cashew::Ref ast);

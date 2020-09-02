@@ -41,20 +41,13 @@ var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*
 // map: pair(sig, syncOrAsync) -> function body
 var proxiedFunctionInvokers = {};
 
-// We include asm2wasm imports if the trap mode is 'js' (to call out to JS to do some math stuff).
-// However, we always need some of them (like the frem import because % is in asm.js but not in wasm).
-// But we can avoid emitting all the others in many cases.
-var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
-
 // Used internally. set when there is a main() function.
 // Also set when in a linkable module, as the main() function might
 // arrive from a dynamically-linked library, and not necessarily
 // the current compilation unit.
 // Also set for STANDALONE_WASM since the _start function is needed to call
 // static ctors, even if there is no user main.
-var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE || STANDALONE_WASM;
-
-WEAK_DECLARES = set(WEAK_DECLARES);
+var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || STANDALONE_WASM;
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
@@ -80,8 +73,7 @@ function JSify(data, functionsOnly) {
 
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
-      assert(!SIDE_MODULE, 'Cannot have both INCLUDE_FULL_LIBRARY and SIDE_MODULE set.')
-      libFuncsToInclude = (MAIN_MODULE || SIDE_MODULE) ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
+      libFuncsToInclude = MAIN_MODULE ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
         if (!isJsLibraryConfigIdentifier(key)) {
           libFuncsToInclude.push(key);
@@ -168,13 +160,13 @@ function JSify(data, functionsOnly) {
       if (allExternPrimitives.indexOf(ident) != -1) {
         usedExternPrimitives[ident] = 1;
         return;
-      } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !(finalName in WEAK_DECLARES) && !LINKABLE) {
+      } else if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
+        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
-            if (WASM_BACKEND && !LLD_REPORT_UNDEFINED) {
+            if (!LLD_REPORT_UNDEFINED) {
               warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
             }
             warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
@@ -200,7 +192,7 @@ function JSify(data, functionsOnly) {
             realIdent = realIdent.substr(2);
           }
 
-          var target = (SIDE_MODULE ? 'parent' : '') + "Module['" + mangleCSymbolName(realIdent) + "']";
+          var target = "Module['" + mangleCSymbolName(realIdent) + "']";
           var assertion = '';
           if (ASSERTIONS) {
             var what = 'function';
@@ -217,11 +209,6 @@ function JSify(data, functionsOnly) {
             functionBody = assertion + "return " + target + ".apply(null, arguments);";
           }
           LibraryManager.library[ident] = new Function(functionBody);
-          if (SIDE_MODULE) {
-            // no dependencies, just emit the thunk
-            Functions.libraryFunctions[finalName] = 1;
-            return processLibraryFunction(LibraryManager.library[ident], ident, finalName);
-          }
           noExport = true;
         }
       }
@@ -282,7 +269,7 @@ function JSify(data, functionsOnly) {
         if (typeof postset === 'function') {
           postset = postset();
         }
-        if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
+        if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
           itemsDict.GlobalVariablePostSet.push({
             JS: postset + ';'
@@ -377,16 +364,6 @@ function JSify(data, functionsOnly) {
 
     itemsDict.functionStub.push(item);
     var shortident = demangleCSymbolName(item.ident);
-    // If this is not linkable, anything not in the library is definitely missing
-    if (item.ident in DEAD_FUNCTIONS) {
-      if (LibraryManager.library[shortident + '__asm']) {
-        warn('cannot kill asm library function ' + item.ident);
-      } else {
-        LibraryManager.library[shortident] = new Function("err('dead function: " + shortident + "'); abort(-1);");
-        delete LibraryManager.library[shortident + '__inline'];
-        delete LibraryManager.library[shortident + '__deps'];
-      }
-    }
     item.JS = addFromLibrary(shortident, 'top-level compiled C/C++ code');
   }
 
@@ -420,15 +397,6 @@ function JSify(data, functionsOnly) {
       if (!Variables.generatedGlobalBase) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
-        if (SIDE_MODULE) {
-          print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}} + ' + MAX_GLOBAL_ALIGN + '), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
-          // The static area consists of explicitly initialized data, followed by zero-initialized data.
-          // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
-          // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
-          // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
-          // from uninitialized memory.
-          print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
-        }
         // emit "metadata" in a comment. FIXME make this nicer
         print('// STATICTOP = STATIC_BASE + ' + alignMemory(Variables.nextIndexedOffset) + ';\n');
       }
@@ -459,7 +427,7 @@ function JSify(data, functionsOnly) {
         if (USE_PTHREADS) {
           print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
         }
-        print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
+        print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'GLOBAL_BASE', true));
         if (USE_PTHREADS) {
           print('}')
         }
@@ -467,46 +435,17 @@ function JSify(data, functionsOnly) {
         print('/* no memory initializer */'); // test purposes
       }
 
-      if (!SIDE_MODULE && !WASM_BACKEND) {
-        if (USE_PTHREADS) {
-          print('// Pthreads fill their tempDoublePtr memory area into the pthread stack when the thread is run.')
-          // Main thread still statically allocate tempDoublePtr - although it could theorerically also use its stack
-          // (that might allow removing the whole tempDoublePtr variable altogether from the codebase? but would need
-          // more refactoring)
-          print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : ' + makeStaticAlloc(8) + ';');
-        } else {
-          print('var tempDoublePtr = ' + makeStaticAlloc(8) + ';');
-        }
-        print('\nfunction copyTempFloat(ptr) { // functions, because inlining this code increases code size too much');
-        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
-        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
-        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];');
-        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];');
-        print('}\n');
-        print('function copyTempDouble(ptr) {');
-        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
-        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
-        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];');
-        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];');
-        print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];');
-        print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];');
-        print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];');
-        print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];');
-        print('}\n');
-      }
       print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
 
       return;
     }
 
-    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js'));
+    var shellFile = SHELL_FILE ? SHELL_FILE : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js');
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[0], shellFile)));
     var pre;
-    if (SIDE_MODULE) {
-      pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
-    } else if (MINIMAL_RUNTIME) {
+    if (MINIMAL_RUNTIME) {
       pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
     } else {
       pre = processMacros(preprocess(read('support.js'), 'support.js')) +
@@ -527,11 +466,9 @@ function JSify(data, functionsOnly) {
 
     legalizedI64s = legalizedI64sDefault;
 
-    if (!SIDE_MODULE) {
-      if (USE_PTHREADS) {
-        print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
-        print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
-      }
+    if (USE_PTHREADS) {
+      print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
+      print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
     }
 
     if (!MINIMAL_RUNTIME) {
@@ -583,7 +520,7 @@ function JSify(data, functionsOnly) {
       print(read('deterministic.js'));
     }
 
-    var postFile = SIDE_MODULE ? 'postamble_sharedlib.js' : (MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js');
+    var postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
     var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 

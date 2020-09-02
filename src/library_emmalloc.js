@@ -5,9 +5,8 @@
  */
 
 mergeInto(LibraryManager.library, {
-  emmalloc_unclaimed_heap_memory__deps: ['emscripten_get_sbrk_ptr'],
   emmalloc_unclaimed_heap_memory: function() {
-  	var dynamicTop = HEAPU32[_emscripten_get_sbrk_ptr()>>2];
+	var dynamicTop = _sbrk();
 #if ALLOW_MEMORY_GROWTH
 #if WASM
 #if MAXIMUM_MEMORY != -1

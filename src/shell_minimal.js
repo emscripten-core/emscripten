@@ -5,7 +5,6 @@ d
  * SPDX-License-Identifier: MIT
  */
 
-#if SIDE_MODULE == 0
 #if USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
@@ -13,7 +12,6 @@ if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_E
 #else
 var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
-#endif // SIDE_MODULE
 
 #if MODULARIZE && EXPORT_READY_PROMISE
 // Set up the promise that indicates the Module is initialized
@@ -69,9 +67,6 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 #endif
 #else
-#if SEPARATE_ASM
-  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
-#endif
 #endif
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
@@ -97,32 +92,6 @@ if (ENVIRONMENT_IS_SHELL) {
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }
-#endif
-
-#if !WASM && !WASM_BACKEND
-// asm.js loading in fastcomp backend:
-
-#if ENVIRONMENT_MAY_BE_NODE
-if (ENVIRONMENT_IS_NODE) {
-  var fs = require('fs');
-#if SEPARATE_ASM
-  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
-#endif
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
-  Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
-#endif
-}
-#endif
-
-#if ENVIRONMENT_MAY_BE_SHELL
-if (ENVIRONMENT_IS_SHELL) {
-  eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
-  Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
-#endif
-}
-#endif
-
 #endif
 
 #endif // !SINGLE_FILE
@@ -183,7 +152,6 @@ var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts === 'f
 if (ENVIRONMENT_IS_WORKER) {
   var buffer = {{{EXPORT_NAME}}}.buffer;
   var STATICTOP = {{{EXPORT_NAME}}}.STATICTOP;
-  var DYNAMICTOP_PTR = {{{EXPORT_NAME}}}.DYNAMICTOP_PTR;
   var STACK_BASE = {{{EXPORT_NAME}}}.STACK_BASE;
   var STACKTOP = {{{EXPORT_NAME}}}.STACKTOP;
   var STACK_MAX = {{{EXPORT_NAME}}}.STACK_MAX;

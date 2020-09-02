@@ -10,8 +10,6 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $dlfree
 $dlmalloc
-$dynCall_ii
-$dynCall_iiii
 $fwrite
 $legalstub$dynCall_jiji
 $main

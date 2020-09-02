@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import math
 import os
 import re
@@ -50,7 +49,7 @@ PROFILING = 0
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
 
-class Benchmarker(object):
+class Benchmarker():
   # called when we init the object, which is during startup, even if we are
   # not running benchmarks
   def __init__(self, name):
@@ -829,10 +828,6 @@ class benchmark(runner.RunnerCore):
   def test_fasta_double(self):
     self.fasta('fasta_double', 'double')
 
-  @non_core
-  def test_fasta_double_full(self):
-    self.fasta('fasta_double_full', 'double', emcc_args=['-s', 'DOUBLE_MODE=1'])
-
   def test_skinning(self):
     src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
     self.do_benchmark('skinning', src, 'blah=0.000000')
@@ -947,7 +942,7 @@ class benchmark(runner.RunnerCore):
     args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
            ['-I' + path_from_root('tests', 'nbody-java')]
     self.do_benchmark('nbody_java', '', '''Time(s)''',
-                      force_c=True, emcc_args=args + ['--llvm-lto', '2'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
+                      force_c=True, emcc_args=args + ['-flto'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     self.emcc_args.remove('-Werror')

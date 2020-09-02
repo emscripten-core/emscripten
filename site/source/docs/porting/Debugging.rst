@@ -90,7 +90,17 @@ Some important settings are:
   -
     .. _debugging-STACK_OVERFLOW_CHECK:
 
-    Passing the ``STACK_OVERFLOW_CHECK=1`` linker flag adds a runtime magic token value at the end of the stack, which is checked in certain locations to verify that the user code does not accidentally write past the end of the stack. While overrunning the Emscripten stack is not a security issue (JavaScript is sandboxed already), writing past the stack causes memory corruption in global data and dynamically allocated memory sections in the Emscripten HEAP, which makes the application fail in unexpected ways. The value ``STACK_OVERFLOW_CHECK=2`` enables slightly more detailed stack guard checks, which can give a more precise callstack at the expense of some performance. Default value is 2 if ``ASSERTIONS=1`` is set, and disabled otherwise.
+    Passing the ``STACK_OVERFLOW_CHECK=1`` linker flag adds a runtime magic
+    token value at the end of the stack, which is checked in certain locations
+    to verify that the user code does not accidentally write past the end of the
+    stack. While overrunning the Emscripten stack is not a security issue for
+    JavaScript (which is unaffected), writing past the stack causes memory
+    corruption in global data and dynamically allocated memory sections in the
+    Emscripten HEAP, which makes the application fail in unexpected ways. The
+    value ``STACK_OVERFLOW_CHECK=2`` enables slightly more detailed stack guard
+    checks, which can give a more precise callstack at the expense of some
+    performance. Default value is 1 if ``ASSERTIONS=1`` is set, and disabled
+    otherwise.
 
   -
     .. _debugging-DEMANGLE_SUPPORT:
@@ -189,30 +199,6 @@ distinguish between them:
       : exception;
   }
 
-
-Disabling optimizations
-=======================
-
-It can sometimes be useful to compile with either LLVM optimizations (:ref:`llvm-opts <emcc-llvm-opts>`) or JavaScript optimizations (:ref:`js-opts <emcc-js-opts>`) disabled.
-
-For example, the following command enables :ref:`debugging-debug-information-g` and :ref:`-O2 <emcc-O2>` optimization (for both LLVM and JavaScript), but then explicitly turns off the JavaScript optimizer.
-
-.. code-block:: bash
-
-  emcc -O2 --js-opts 0 -g4 tests/hello_world_loop.cpp
-
-The result is code that can be more useful for debugging issues related to LLVM-optimized code:
-
-.. code-block:: javascript
-
-  function _main() {
-    var label = 0;
-    var $puts=_puts(((8)|0)); //@line 4 "tests/hello_world.c"
-    return 1; //@line 5 "tests/hello_world.c"
-  }
-
-
-
 .. _debugging-emscripten-specific-issues:
 
 Emscripten-specific issues
@@ -251,13 +237,10 @@ In order to debug these sorts of issues:
 - Compile with ``-Werror``. This turns warnings into errors, which can be useful as some cases of undefined behavior would otherwise show warnings.
 - Use ``-s ASSERTIONS=2`` to get some useful information about the function pointer being called, and its type.
 - Look at the browser stack trace to see where the error occurs and which function should have been called.
-- Build with :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>` and function pointer aliasing disabled (``ALIASING_FUNCTION_POINTERS=0``). This should make it impossible for a function pointer to be called with the wrong type without raising an error: ``-s SAFE_HEAP=1 -s ALIASING_FUNCTION_POINTERS=0``
-
+- Build with :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>`.
+- :ref:`Sanitizers` can help here, in particular UBSan.
 
 Another function pointer issue is when the wrong function is called. :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>` can help with this as it detects some possible errors with function table accesses.
-
-``ALIASING_FUNCTION_POINTERS=0`` is also useful because it ensures that calls to function pointer addresses in the wrong table result in clear errors. Without this setting such calls just execute whatever function is at the address, which can be much harder to debug.
-
 
 
 Infinite loops

@@ -72,20 +72,9 @@ this.onmessage = function(e) {
       var imports = {};
 #endif
 
-#if !WASM_BACKEND
-      // Initialize the thread-local field(s):
-#if MINIMAL_RUNTIME
-      var imports = {};
-#endif
-#endif
-
       // Initialize the global "process"-wide fields:
 #if !MINIMAL_RUNTIME
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
-#endif
-
-#if USES_DYNAMIC_ALLOC
-      {{{ makeAsmImportsAccessInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
 #endif
 
 #if WASM
@@ -112,18 +101,6 @@ this.onmessage = function(e) {
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
 #else // asm.js:
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = e.data.buffer;
-
-#if SEPARATE_ASM
-      // load the separated-out asm.js
-      e.data.asmJsUrlOrBlob = e.data.asmJsUrlOrBlob || '{{{ SEPARATE_ASM }}}';
-      if (typeof e.data.asmJsUrlOrBlob === 'string') {
-        importScripts(e.data.asmJsUrlOrBlob);
-      } else {
-        var objectUrl = URL.createObjectURL(e.data.asmJsUrlOrBlob);
-        importScripts(objectUrl);
-        URL.revokeObjectURL(objectUrl);
-      }
-#endif
 
 #endif // WASM
 
@@ -190,31 +167,20 @@ this.onmessage = function(e) {
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
-#if WASM_BACKEND
       // The stack grows downwards
       var max = e.data.stackBase;
       var top = e.data.stackBase + e.data.stackSize;
-#else
-      var max = e.data.stackBase + e.data.stackSize;
-      var top = e.data.stackBase;
-#endif
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
       assert(parentThreadId);
       assert(top != 0);
       assert(max != 0);
-#if WASM_BACKEND
       assert(top > max);
-#else
-      assert(max > top);
-#endif
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace'](top, max);
-#if WASM_BACKEND
       Module['_emscripten_tls_init']();
-#endif
 #if STACK_OVERFLOW_CHECK
       Module['writeStackCookie']();
 #endif
@@ -230,7 +196,7 @@ this.onmessage = function(e) {
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
         // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-        var result = Module['dynCall_ii'](e.data.start_routine, e.data.arg);
+        var result = Module['dynCall']('ii', e.data.start_routine, [e.data.arg]);
 
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();

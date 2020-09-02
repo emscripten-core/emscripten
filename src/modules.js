@@ -258,12 +258,10 @@ var LibraryManager = {
       }
     }
 
-    if (WASM_BACKEND) {
-      // all asm.js methods should just be run in JS. We should optimize them eventually into wasm. TODO
-      for (var x in lib) {
-        if (lib[x + '__asm']) {
-          lib[x + '__asm'] = undefined;
-        }
+    // all asm.js methods should just be run in JS. We should optimize them eventually into wasm. TODO
+    for (var x in lib) {
+      if (lib[x + '__asm']) {
+        lib[x + '__asm'] = undefined;
       }
     }
 
@@ -305,7 +303,6 @@ var LibraryManager = {
   },
 
   isStubFunction: function(ident) {
-    if (SIDE_MODULE == 1) return false; // cannot eliminate these, as may be implement in the main module and imported by us
     var libCall = LibraryManager.library[ident.substr(1)];
     return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}'
                                          && !(ident in Functions.implementedFunctions);
@@ -525,7 +522,6 @@ function exportRuntime() {
   var runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
-    'ALLOC_DYNAMIC',
     'ALLOC_NONE',
   ];
   if (ASSERTIONS) {
@@ -550,7 +546,6 @@ var PassManager = {
       Functions: Functions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
       STATIC_BUMP: STATIC_BUMP, // updated with info from JS
-      DYNAMICTOP_PTR: DYNAMICTOP_PTR,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),

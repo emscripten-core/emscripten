@@ -720,14 +720,13 @@ FS.staticInit();` +
       var new_name = PATH.basename(new_path);
       // parents must exist
       var lookup, old_dir, new_dir;
-      try {
-        lookup = FS.lookupPath(old_path, { parent: true });
-        old_dir = lookup.node;
-        lookup = FS.lookupPath(new_path, { parent: true });
-        new_dir = lookup.node;
-      } catch (e) {
-        throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
-      }
+
+      // let the errors from non existant directories percolate up
+      lookup = FS.lookupPath(old_path, { parent: true });
+      old_dir = lookup.node;
+      lookup = FS.lookupPath(new_path, { parent: true });
+      new_dir = lookup.node;
+
       if (!old_dir || !new_dir) throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       // need to be part of the same mount
       if (old_dir.mount !== new_dir.mount) {

@@ -12,4 +12,6 @@ assert(false, "library_bootstrap.js only designed for use with BOOTSTRAPPING_STR
 #endif
 
 assert(!LibraryManager.library);
-LibraryManager.library = {};
+LibraryManager.library = {
+  $callRuntimeCallbacks: function() {}
+};

@@ -1018,7 +1018,7 @@ var LibraryWebGPU = {
       if (ev.error instanceof GPUValidationError) type = Validation;
       else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
       var messagePtr = allocateUTF8(ev.error.message);
-      dynCall_viii(callback, type, messagePtr, userdata);
+      {{{ makeDynCall('viii', 'callback') }}}(type, messagePtr, userdata);
       _free(messagePtr);
     };
   },
@@ -1031,9 +1031,9 @@ var LibraryWebGPU = {
     var completionValue = {{{ gpu.makeU64ToNumber('completionValue_low', 'completionValue_high') }}};
 
     fence.onCompletion(completionValue).then(function() {
-      dynCall_vii(callback, 0 /* WEBGPU_FENCE_COMPLETION_STATUS_SUCCESS */, userdata);
+      {{{ makeDynCall('vii', 'callback') }}}(0 /* WEBGPU_FENCE_COMPLETION_STATUS_SUCCESS */, userdata);
     }, function() {
-      dynCall_vii(callback, 1 /* WEBGPU_FENCE_COMPLETION_STATUS_ERROR */, userdata);
+      {{{ makeDynCall('vii', 'callback') }}}(1 /* WEBGPU_FENCE_COMPLETION_STATUS_ERROR */, userdata);
     });
   },
 
@@ -1374,10 +1374,10 @@ var LibraryWebGPU = {
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
     buffer["mapAsync"](mode, offset, size).then(function() {
-      dynCall_vii(callback, 0 /* WGPUBufferMapAsyncStatus_Success */, userdata);
+      {{{ makeDynCall('vii', 'callback') }}}(0 /* WGPUBufferMapAsyncStatus_Success */, userdata);
     }, function() {
       // TODO(kainino0x): Figure out how to pick other error status values.
-      dynCall_vii(callback, 1 /* WGPUBufferMapAsyncStatus_Error */, userdata);
+      {{{ makeDynCall('vii', 'callback') }}}(1 /* WGPUBufferMapAsyncStatus_Error */, userdata);
     });
   },
 

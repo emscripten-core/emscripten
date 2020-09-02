@@ -7,7 +7,6 @@
 """Usage: creduce ./creduce_tester.py newfail1.c
 """
 
-from __future__ import print_function
 import os
 import sys
 from subprocess import Popen, PIPE
@@ -18,7 +17,7 @@ import shared
 # creduce will only pass the filename of the C file as the first arg, so other
 # configuration options will have to be hardcoded.
 CSMITH_CFLAGS = ['-I', os.path.join(os.environ['CSMITH_PATH'], 'runtime')]
-EMCC_ARGS = ['-O2', '-s', 'ASM_JS=1']
+EMCC_ARGS = ['-O2']
 
 filename = sys.argv[1]
 obj_filename = shared.unsuffixed(filename)

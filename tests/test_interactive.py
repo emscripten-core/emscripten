@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import json
 import os
 import shutil
@@ -117,20 +116,21 @@ class interactive(BrowserCore):
     ])
 
   @parameterized({
-    'ogg': ('ogg', 'alarmvictory_1.ogg'),
-    'mp3': ('mp3', 'pudinha.mp3'),
+    'wav': ([],         '0',            'the_entertainer.wav'),
+    'ogg': (['ogg'],    'MIX_INIT_OGG', 'alarmvictory_1.ogg'),
+    'mp3': (['mp3'],    'MIX_INIT_MP3', 'pudinha.mp3'),
   })
-  def test_sdl2_mixer_music(self, fmt, music_name):
+  def test_sdl2_mixer_music(self, formats, flags, music_name):
     shutil.copyfile(path_from_root('tests', 'sounds', music_name), music_name)
     self.btest('sdl2_mixer_music.c', expected='1', args=[
       '-O2',
       '--minify', '0',
       '--preload-file', music_name,
       '-DSOUND_PATH=' + json.dumps(music_name),
-      '-DFLAGS=' + ('MIX_INIT_' + fmt.upper() if fmt else '0'),
+      '-DFLAGS=' + flags,
       '-s', 'USE_SDL=2',
       '-s', 'USE_SDL_MIXER=2',
-      '-s', 'SDL2_MIXER_FORMATS=' + json.dumps([fmt] if fmt else []),
+      '-s', 'SDL2_MIXER_FORMATS=' + json.dumps(formats),
       '-s', 'INITIAL_MEMORY=33554432'
     ])
 

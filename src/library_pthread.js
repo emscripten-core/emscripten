@@ -8,7 +8,12 @@ var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock(); else PThread.initWorker();',
   $PThread__deps: ['$registerPthreadPtr',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
-                   '$cancelThread', '$cleanupThread'],
+                   '$cancelThread', '$cleanupThread',
+                   '_main_thread_futex_wait_address'
+#if USE_ASAN || USE_LSAN
+                   , '$withBuiltinMalloc'
+#endif
+                   ],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
     mainThreadInfo: {
@@ -23,12 +28,6 @@ var LibraryPThread = {
     runningWorkers: [],
     // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
     // mainThreadBlock: undefined,
-    initRuntime: function() {
-      // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      // Global constructors trying to access this value will read the wrong value, but that is UB anyway.
-      registerPthreadPtr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-      _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
-    },
     initMainThreadBlock: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
@@ -41,21 +40,17 @@ var LibraryPThread = {
         PThread.allocateUnusedWorker();
       }
 #endif
-
-      // In asm.js we do not need to wait for Wasm Module to compile on the main thread, so can load
-      // up each Worker immediately. (in asm.js mode ignore PTHREAD_POOL_DELAY_LOAD altogether for
-      // simplicity, as multithreading performance optimizations are not interesting there)
-#if !WASM && PTHREAD_POOL_SIZE
-      addOnPreRun(function() { addRunDependency('pthreads'); });
-      var numWorkersToLoad = PThread.unusedWorkers.length;
-      PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
-        // PTHREAD_POOL_DELAY_LOAD==0: we wanted to synchronously wait until the Worker pool
-        // has loaded up. If all Workers have finished loading up the Wasm Module, proceed with main()
-        if (!--numWorkersToLoad) removeRunDependency('pthreads');
-      })});
+    },
+    initRuntime: function() {
+#if USE_ASAN || USE_LSAN
+      // When sanitizers are enabled, malloc is normally instrumented to call
+      // sanitizer code that checks some things about pthreads. As we are just
+      // setting up the main thread here, and are not ready for such calls,
+      // call malloc directly.
+      withBuiltinMalloc(function () {
 #endif
 
-      PThread.mainThreadBlock = {{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}};
+      PThread.mainThreadBlock = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
 
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
 
@@ -68,17 +63,28 @@ var LibraryPThread = {
       {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
 
       // Allocate memory for thread-local storage.
-      var tlsMemory = {{{ makeStaticAlloc(cDefine('PTHREAD_KEYS_MAX') * 4) }}};
+      var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
       for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, {{{ PROCINFO.pid }}}); // Process ID.
+
+      __main_thread_futex_wait_address = _malloc(4);
 
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(PThread.mainThreadBlock);
       PThread.setThreadName(PThread.mainThreadBlock, "Browser main thread");
       PThread.setThreadStatus(PThread.mainThreadBlock, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
+
+#if USE_ASAN || USE_LSAN
+      });
+#endif
+
+      // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+      // Global constructors trying to access this value will read the wrong value, but that is UB anyway.
+      registerPthreadPtr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+      _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
     },
     initWorker: function() {
 #if USE_CLOSURE_COMPILER
@@ -96,7 +102,7 @@ var LibraryPThread = {
 
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
-      var profilerBlock = (pthreadPtr == PThread.mainThreadBlock) ? {{{ makeStaticAlloc(C_STRUCTS.thread_profiler_block.__size__) }}} : _malloc({{{ C_STRUCTS.thread_profiler_block.__size__ }}});
+      var profilerBlock = _malloc({{{ C_STRUCTS.thread_profiler_block.__size__ }}});
       Atomics.store(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, profilerBlock);
 
       // Zero fill contents at startup.
@@ -368,7 +374,8 @@ var LibraryPThread = {
           worker.onerror(data);
         });
         worker.on('exit', function(data) {
-          console.log('worker exited - TODO: update the worker queue?');
+          // TODO: update the worker queue?
+          // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
       }
 #endif
@@ -408,9 +415,8 @@ var LibraryPThread = {
         'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
 #endif
 #if !MINIMAL_RUNTIME
-        'DYNAMIC_BASE': DYNAMIC_BASE,
+        'DYNAMIC_BASE': DYNAMIC_BASE
 #endif
-        'DYNAMICTOP_PTR': DYNAMICTOP_PTR
       });
     },
 
@@ -561,6 +567,9 @@ var LibraryPThread = {
   },
 
   emscripten_num_logical_cores: function() {
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
+#endif
     return navigator['hardwareConcurrency'];
   },
 
@@ -938,7 +947,6 @@ var LibraryPThread = {
   pthread_exit: function(status) {
     if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
     else PThread.threadExit(status);
-#if WASM_BACKEND
     // pthread_exit is marked noReturn, so we must not return from it.
     if (ENVIRONMENT_IS_NODE) {
       // exit the pthread properly on node, as a normal JS exception will halt
@@ -946,7 +954,6 @@ var LibraryPThread = {
       process.exit(status);
     }
     throw 'unwind';
-#endif
   },
 
   _pthread_ptr: 0,
@@ -1085,7 +1092,7 @@ var LibraryPThread = {
 
   pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
-    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
+    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });
   },
 
   pthread_cleanup_pop: function(execute) {
@@ -1105,13 +1112,13 @@ var LibraryPThread = {
   },
 
   // Stores the memory address that the main thread is waiting on, if any.
-  _main_thread_futex_wait_address: '{{{ makeStaticAlloc(4) }}}',
+  _main_thread_futex_wait_address: '0',
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
-    if (ENVIRONMENT_IS_WORKER) {
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_WORKER) {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
@@ -1262,9 +1269,6 @@ var LibraryPThread = {
 #endif
   },
 
-#if MINIMAL_RUNTIME && !WASM_BACKEND
-  emscripten_proxy_to_main_thread_js__deps: ['$stackSave', '$stackAlloc', '$stackRestore'],
-#endif
   emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -1315,28 +1319,12 @@ var LibraryPThread = {
     STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
 
-#if !WASM_BACKEND
-    // In fastcomp backend, locate tempDoublePtr memory area at the bottom of the stack, and bump up
-    // the stack by the bytes used.
-    tempDoublePtr = STACK_BASE;
-#if ASSERTIONS
-    assert(tempDoublePtr % 16 == 0);
-#endif
-    STACK_BASE += 16;
-    STACKTOP += 16;
-#endif
-
-#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+#if STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limit(STACK_MAX);
 #endif
 
-#if WASM_BACKEND
     // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
     stackRestore(stackTop);
-#else
-    // In old asm.js backend, use a dedicated function to establish the stack frame.
-    asmJsEstablishStackFrame(stackTop, stackMax);
-#endif
 
 #if STACK_OVERFLOW_CHECK
     // Write the stack cookie last, after we have set up the proper bounds and

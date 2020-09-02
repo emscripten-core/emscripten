@@ -8,7 +8,6 @@
 
 CSMITH_PATH should be set to something like /usr/local/include/csmith
 """
-from __future__ import print_function
 
 import os
 import sys
@@ -117,14 +116,8 @@ while 1:
     shared.try_delete(filename + '.js')
     js_args = [shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
     if TEST_BINARYEN:
-      js_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_TRAP_MODE="js"']
       if random.random() < 0.5:
         js_args += ['-g']
-      if random.random() < 0.1:
-        if random.random() < 0.5:
-          js_args += ['--js-opts', '0']
-        else:
-          js_args += ['--js-opts', '1']
       if random.random() < 0.5:
         # pick random passes
         BINARYEN_EXTRA_PASSES = [

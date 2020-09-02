@@ -61,9 +61,8 @@ def find_ctors_data(js, num):
   ctors_text = js[ctors_start:ctors_end]
   all_ctors = [ctor for ctor in ctors_text.split(' ') if ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor]
   all_ctors = [ctor.replace('()', '') for ctor in all_ctors]
-  if shared.Settings.WASM_BACKEND:
-    assert all(ctor.startswith('_') for ctor in all_ctors)
-    all_ctors = [ctor[1:] for ctor in all_ctors]
+  assert all(ctor.startswith('_') for ctor in all_ctors)
+  all_ctors = [ctor[1:] for ctor in all_ctors]
   assert len(all_ctors)
   ctors = all_ctors[:num]
   return ctors_start, ctors_end, all_ctors, ctors
@@ -106,7 +105,7 @@ def eval_ctors_js(js, mem_init, num):
     for bit in bits:
       name, value = [x.strip() for x in bit.split('=', 1)]
       if value in ['0', '+0', '0.0'] or name in [
-        'STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR',
+        'STACKTOP', 'STACK_MAX',
         'HEAP8', 'HEAP16', 'HEAP32',
         'HEAPU8', 'HEAPU16', 'HEAPU32',
         'HEAPF32', 'HEAPF64',
@@ -195,7 +194,6 @@ var globalArg = {
 var libraryArg = {
   STACKTOP: stackTop,
   STACK_MAX: stackMax,
-  DYNAMICTOP_PTR: dynamicTopPtr,
   ___dso_handle: 0, // used by atexit, value doesn't matter
   _emscripten_memcpy_big: function(dest, src, num) {
     heap.set(heap.subarray(src, src+num), dest);
