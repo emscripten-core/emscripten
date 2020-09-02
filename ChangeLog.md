@@ -19,6 +19,9 @@ Current Trunk
 -------------
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
   removes the internal `DYNAMICTOP_PTR` API.)
+
+2.0.2: 09/02/2020
+-----------------
 - Simplify Fetch C API error handling: we used to check if the error code was
   0 and switch that to 404, but that only really helps `file://` URLs, which
   are not very useful for testing anyhow for other reasons (like not working
@@ -33,10 +36,6 @@ Current Trunk
   `EXPORTED_FUNCTIONS` is not relevant in the deciding the type of application
   to build. (#12020)
 - Allow polymorphic types to be used without RTTI when using embind. (#10914)
-- Only strip debug info in release builds + when `-g` is not present. Previously
-  even in an `-O0` build without `-g` we would strip it. This was not documented
-  behavior, and has no effect on program behavior, but may be noticeable
-  if you inspect a build output with `-O0`. (#12016)
 - Do not remove `__original_main` using `--inline-main`. We used to do this
   so that it didn't show up in stack traces (which could be confusing because
   it is added by the linker - it's not in the source code). But this has had
