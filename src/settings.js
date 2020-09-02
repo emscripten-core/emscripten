@@ -531,7 +531,7 @@ var MIN_WEBGL_VERSION = 1;
 // to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
 // will default to creating a WebGL 2 context if no version is specified.
 // Note that there is no automatic fallback to WebGL1 if WebGL2 is not supported
-// in the browser at runtime, even if you build with both WebGL1 and WebGL2
+// by the user's device, even if you build with both WebGL1 and WebGL2
 // support, as that may not always be what the application wants. If you want
 // such a fallback, you can try to create a context with WebGL2, and if that
 // fails try to create one with WebGL1.
