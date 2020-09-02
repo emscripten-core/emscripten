@@ -778,10 +778,6 @@ var EXPORTED_FUNCTIONS = [];
 // library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
 
-// Export all bindings generator functions (prefixed with emscripten_bind_). This
-// is necessary to use the WebIDL binder with asm.js
-var EXPORT_BINDINGS = 0;
-
 // If true, export all the functions appearing in a function table, and the
 // tables themselves.
 var EXPORT_FUNCTION_TABLES = 0;
@@ -1683,4 +1679,5 @@ var LEGACY_SETTINGS = [
   ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
   ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
   ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
+  ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
 ];
