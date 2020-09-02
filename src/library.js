@@ -444,12 +444,6 @@ LibraryManager.library = {
     return HEAPU8.length;
   },
 
-  emscripten_get_sbrk_ptr__asm: true,
-  emscripten_get_sbrk_ptr__sig: 'i',
-  emscripten_get_sbrk_ptr: function() {
-    return {{{ DYNAMICTOP_PTR }}};
-  },
-
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS

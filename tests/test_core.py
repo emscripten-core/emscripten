@@ -6505,7 +6505,7 @@ return malloc(size);
     test('_assert', assert_returncode=NON_ZERO)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_DYNAMIC'])
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_STACK'])
     test()
 
   def test_response_file(self):
@@ -7744,8 +7744,7 @@ Module['onRuntimeInitialized'] = function() {
               typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
-              typeof DYNAMIC_BASE === 'number' &&
-              typeof DYNAMICTOP_PTR === 'number') {
+              typeof DYNAMIC_BASE === 'number') {
              out('able to run memprof');
            } else {
              out('missing the required variables to run memprof');
