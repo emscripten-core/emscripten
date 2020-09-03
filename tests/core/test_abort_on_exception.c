@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <emscripten.h>
 
-volatile int* addr = (int*)0xfffffff;
-
 EM_JS(void, throwException, (void), {
 	throw new Error("crash");
 });
@@ -22,4 +20,3 @@ EMSCRIPTEN_KEEPALIVE void crash() {
 int main() {
   return 0;
 } 
-
