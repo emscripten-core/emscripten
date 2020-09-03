@@ -2298,7 +2298,7 @@ void *getBindBuffer() {
       } catch(e) {
         out('expected fail 1');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
-        ABORT = 0; // hackish
+        ABORT = false; // hackish
       }
       assert(ok === expected_ok);
 
@@ -2309,7 +2309,7 @@ void *getBindBuffer() {
       } catch(e) {
         out('expected fail 2');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
-        ABORT = 0; // hackish
+        ABORT = false; // hackish
       }
       assert(ok === expected_ok);
 
@@ -2320,7 +2320,7 @@ void *getBindBuffer() {
       } catch(e) {
         out('expected fail 3');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
-        ABORT = 0; // hackish
+        ABORT = false; // hackish
       }
       assert(ok === expected_ok);
     '''

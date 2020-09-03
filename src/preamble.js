@@ -64,8 +64,8 @@ var selfThreadId = 0;
 //========================================
 
 // whether we are quitting the application. no code should run after this.
-// set to 1 in abort() and to 2 in exit() so we can tell them apart if needed
-var ABORT = 0;
+// set in exit() and abort()
+var ABORT = false;
 
 // set by exit() and abort().  Passed to 'onExit' handler.
 // NOTE: This is also used as the process return code code in shell environments
@@ -673,7 +673,7 @@ function abort(what) {
   what += '';
   err(what);
 
-  ABORT = 1;
+  ABORT = true;
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
@@ -818,12 +818,8 @@ function instrumentWasmExportsWithAbort(exports) {
       if (typeof original === 'function') {
         instExports[name] = function() {
           // Don't allow this function to be called if we're aborted!
-          if (ABORT == 1) { 
-#if ASSERTIONS
+          if (ABORT) { 
             throw "program has already aborted!";
-#else
-            throw "DEAD";	
-#endif
           }
           
 #if DISABLE_EXCEPTION_CATCHING != 1
@@ -833,8 +829,8 @@ function instrumentWasmExportsWithAbort(exports) {
             return original.apply(null, arguments);
           }
           catch (e) {
-            if(
-              ABORT === 1 // rethrow exception if abort() was called in the original function call above
+            if (
+              ABORT // rethrow exception if abort() was called in the original function call above
               || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
 #if SUPPORT_LONGJMP
               || e === 'longjmp' // rethrow longjmp if enabled
@@ -843,15 +839,11 @@ function instrumentWasmExportsWithAbort(exports) {
               throw e;
             }
             
-#if ASSERTIONS    
             abort("unhandled exception: " + [e, e.stack]);
-#else
-            abort("UHE:" + [e, e.stack]);
-#endif
           }
 #if DISABLE_EXCEPTION_CATCHING != 1
           finally {
-            wrapperDepth -= 1;
+            abortWrapperDepth -= 1;
           }
 #endif
         };

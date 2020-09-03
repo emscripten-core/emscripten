@@ -426,7 +426,6 @@ function exit(status, implicit) {
     PThread.terminateAllThreads();
 #endif
 
-    ABORT = 2;
     EXITSTATUS = status;
 
     exitRuntime();
@@ -434,6 +433,8 @@ function exit(status, implicit) {
 #if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](status);
 #endif
+
+    ABORT = true;
   }
 
   quit_(status, new ExitStatus(status));
