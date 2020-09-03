@@ -8359,7 +8359,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         }
         catch(e) {
           // Make sure it failed with the expected exception
-          out(e === "program has already aborted!" || e === "DEAD");
+          out(e === "program has already aborted!");
         }
       });
     ''')

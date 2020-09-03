@@ -1608,15 +1608,15 @@ var SEPARATE_DWARF_URL = '';
 
 // Whether the program should abort when an unhandled WASM exception is encountered.
 // This makes the Emscripten program behave more like a native program where the OS
-// would terminate the process and no further code can be executed when an unhanled
+// would terminate the process and no further code can be executed when an unhandled
 // exception (e.g. out-of-bounds memory access) happens.
 // This will instrument all exported functions to catch thrown exceptions and
 // call abort() when they happen. Once the program aborts any exported function calls
 // will fail with a "program has already aborted" exception to prevent calls into
 // code with a potentially corrupted program state.
-// This adds ~250 bytes to the code size in optimized builds and a slight overhead
+// This adds a small fixed amount to code size in optimized builds and a slight overhead
 // for the extra instrumented function indirection.
-// Enable this if you want Emscripten to handle nuhandled exceptions nicely at the
+// Enable this if you want Emscripten to handle unhandled exceptions nicely at the
 // cost of a few bytes extra.
 var ABORT_ON_WASM_EXCEPTIONS = 0;
 
