@@ -17,19 +17,24 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
+  removes the internal `DYNAMICTOP_PTR` API.)
+
+2.0.2: 09/02/2020
+-----------------
 - Simplify Fetch C API error handling: we used to check if the error code was
   0 and switch that to 404, but that only really helps `file://` URLs, which
   are not very useful for testing anyhow for other reasons (like not working
   in chrome), and it made things more complex. The behavior has been changed
   to be simpler and just leave the browser's error code as it is.
 - Enable `--no-heap-copy` file packager option by default, and remove the old
-  defualt behavior entirely. That is the behavior we should have had from the
-  beginning as it is more memory-efficient.
+  default behavior entirely. That is the behavior we should have had from the
+  beginning as it is more memory-efficient. (#12027)
 - `--no-entry` is now required in `STANDALONE_WASM` mode when building a reactor
   (application without a main function).  Previously exporting a list of
   functions that didn't include `_main` would imply this.  Now the list of
   `EXPORTED_FUNCTIONS` is not relevant in the deciding the type of application
-  to build.
+  to build. (#12020)
 - Allow polymorphic types to be used without RTTI when using embind. (#10914)
 - Do not remove `__original_main` using `--inline-main`. We used to do this
   so that it didn't show up in stack traces (which could be confusing because
@@ -40,7 +45,7 @@ Current Trunk
   to add `__original_main` to there (since you are doing manual fine-tuning of
   the list of functions, which depends on the wasm's internals). Note that this
   should not matter in `-O2+` anyhow as normal inlining generally removes
-  `__original_main`.
+  `__original_main`. (#11995)
 
 2.0.1: 08/21/2020
 -----------------

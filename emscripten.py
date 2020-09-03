@@ -120,6 +120,7 @@ def align_memory(addr):
 
 
 def align_static_bump(metadata):
+  # TODO: remove static bump entirely
   metadata['staticBump'] = align_memory(metadata['staticBump'])
   return metadata['staticBump']
 
@@ -191,7 +192,6 @@ def apply_forwarded_data(forwarded_data):
   forwarded_json = json.loads(forwarded_data)
   # Be aware of JS static allocations
   shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
-  shared.Settings.DYNAMICTOP_PTR = forwarded_json['DYNAMICTOP_PTR']
   # Be aware of JS static code hooks
   StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
   StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])

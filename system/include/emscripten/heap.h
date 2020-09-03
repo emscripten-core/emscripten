@@ -18,7 +18,7 @@ extern "C" {
 
 // Returns a pointer to a memory location that contains the heap DYNAMICTOP
 // variable (the end of the dynamic memory region)
-intptr_t *emscripten_get_sbrk_ptr(void) EM_IMPORT(emscripten_get_sbrk_ptr);
+intptr_t *emscripten_get_sbrk_ptr(void);
 
 // Attempts to geometrically or linearly increase the heap so that it
 // grows by at least requested_growth_bytes new bytes. The heap size may
