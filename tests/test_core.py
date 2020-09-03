@@ -61,6 +61,7 @@ def also_with_wasm_bigint(f):
     f(self)
     if self.get_setting('WASM'):
       self.set_setting('WASM_BIGINT', 1)
+      print('bigint')
       with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
         f(self)
   return decorated
@@ -6425,15 +6426,18 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS.c')
 
   @no_minimal_runtime('MINIMAL_RUNTIME does not blindly export all symbols to Module to save code size')
+  @also_with_wasm_bigint
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
     for which, exported_runtime_methods in [
         ('DIRECT', []),
-        ('EXPORTED', []),
+        ('EXPORTED', ['dynCall_viji']),
         ('FROM_OUTSIDE', ['dynCall_viji'])
       ]:
       print(which)
       self.emcc_args = emcc_args + ['-D' + which]
+      if self.get_setting('WASM_BIGINT'):
+        self.emcc_args = self.emcc_args + ['-DBIGINT']
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', exported_runtime_methods)
       self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific.c')
 

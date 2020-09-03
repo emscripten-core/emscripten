@@ -1272,7 +1272,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        shared.Settings.MEMORYPROFILER:
       shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
 
-    if shared.Settings.ASYNCIFY:
+    if shared.Settings.ASYNCIFY or \
+       any([x.startswith('dynCall_') for x in shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS]):
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
       shared.Settings.USE_LEGACY_DYNCALLS = 1

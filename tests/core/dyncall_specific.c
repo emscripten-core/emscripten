@@ -20,10 +20,27 @@ void waka(int w, long long xy, int z) {
 
 int main() {
   EM_ASM({
-    // Note that these would need to use BigInts if the file were built with
-    // -s WASM_BIGINT
+#if BIGINT
+
+    // Use a string to avoid double rounding.
+    var value = BigInt('0xffffffff00000004');
 #if DIRECT
-    dynCall_viji($0, 1, 4, 0xffffffff, 9);
+    dynCall("viji", $0, [1, value, 9]);
+    return;
+#endif
+#if EXPORTED
+    Module['dynCall_viji']($0, 1, value, 9);
+    return;
+#endif
+#if FROM_OUTSIDE
+    eval("Module['dynCall_viji'](" + $0 + ", 1, value, 9)");
+    return;
+#endif
+
+#else // BIGINT
+
+#if DIRECT
+    dynCall("viji", $0, [1, 4, 0xffffffff, 9]);
     return;
 #endif
 #if EXPORTED
@@ -34,6 +51,9 @@ int main() {
     eval("Module['dynCall_viji'](" + $0 + ", 1, 4, 0xffffffff, 9)");
     return;
 #endif
+
+
+#endif // BIGINT
     throw "no test mode";
   }, &waka);
 }
