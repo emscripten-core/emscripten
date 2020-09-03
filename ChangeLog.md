@@ -19,6 +19,13 @@ Current Trunk
 -------------
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
   removes the internal `DYNAMICTOP_PTR` API.)
+- Add `ABORT_ON_EXCEPTIONS` which will abort when an unhandled WASM exception
+  is encountered. This makes the Emscripten program behave more like a native
+  program where the OS would terminate the process and no further code can be
+  executed when an unhanled exception (e.g. out-of-bounds memory access) happens.
+  Once the program aborts any exported function calls will fail with a "program 
+  has already aborted" exception to prevent calls into code with a potentially
+  corrupted program state.
 
 2.0.2: 09/02/2020
 -----------------
