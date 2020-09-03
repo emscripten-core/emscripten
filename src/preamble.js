@@ -482,6 +482,9 @@ function initRuntime() {
   assert(!runtimeInitialized);
 #endif
   runtimeInitialized = true;
+#if STACK_OVERFLOW_CHECK >= 2
+  Module['___set_stack_limits'](STACK_BASE, STACK_MAX);
+#endif
   {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
 }

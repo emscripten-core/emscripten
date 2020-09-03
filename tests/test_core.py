@@ -135,7 +135,7 @@ def also_with_noderawfs(func):
 
 def can_do_standalone(self):
   return self.get_setting('WASM') and \
-      not self.get_setting('SAFE_STACK') and \
+      self.get_setting('STACK_OVERFLOW_CHECK') < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       '-fsanitize=address' not in self.emcc_args
 
@@ -786,6 +786,8 @@ class TestCoreBase(RunnerCore):
 
   def test_stack(self):
     self.set_setting('INLINING_LIMIT', 50)
+    # some extra coverage in all test suites for stack checks
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack.c')
 
@@ -7810,15 +7812,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run('int main() { return 0; }', expected)
 
   @sync
-  @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")
   def test_stack_overflow_check(self):
-    args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
+    self.set_setting('TOTAL_STACK', 1048576)
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
 
-    self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'ASSERTIONS=0']
-    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'Stack overflow! Attempted to allocate', assert_returncode=NON_ZERO)
-
-    self.emcc_args = args + ['-s', 'ASSERTIONS=1']
-    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'Stack overflow! Attempted to allocate', assert_returncode=NON_ZERO)
+    self.emcc_args += ['-DONE_BIG_STRING']
+    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
@@ -8206,7 +8206,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
 
   @needs_dlfcn
-  @unittest.skip('allow binaryen change to roll in')
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
