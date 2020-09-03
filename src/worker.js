@@ -77,10 +77,6 @@ this.onmessage = function(e) {
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
 #endif
 
-#if USES_DYNAMIC_ALLOC
-      {{{ makeAsmImportsAccessInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
-#endif
-
 #if WASM
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME

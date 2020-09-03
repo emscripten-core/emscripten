@@ -14,7 +14,6 @@ $__wasm_call_ctors
 $dlfree
 $dlmalloc
 $dynCall_jiji
-$emscripten_get_sbrk_ptr
 $fputs
 $fwrite
 $legalstub$dynCall_jiji

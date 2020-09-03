@@ -444,12 +444,6 @@ LibraryManager.library = {
     return HEAPU8.length;
   },
 
-  emscripten_get_sbrk_ptr__asm: true,
-  emscripten_get_sbrk_ptr__sig: 'i',
-  emscripten_get_sbrk_ptr: function() {
-    return {{{ DYNAMICTOP_PTR }}};
-  },
-
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
@@ -470,8 +464,8 @@ LibraryManager.library = {
   },
 #else
 
-  // Grows the asm.js/wasm heap to the given byte size, and updates both JS and asm.js/wasm side views to the buffer.
-  // Returns 1 on success, or undefined if growing failed.
+  // Grows the wasm memory to the given byte size, and updates the JS views to
+  // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
 #if MEMORYPROFILER
     var oldHeapSize = buffer.byteLength;
@@ -499,6 +493,8 @@ LibraryManager.library = {
       console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
+    // implicit 0 return to save code size (caller will cast "undefined" into 0
+    // anyhow)
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 

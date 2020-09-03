@@ -1333,8 +1333,6 @@ class WebAssembly(object):
     js = open(js_file).read()
     m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
     dynamic_base = int(m.group(2))
-    m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)
-    dynamictop_ptr = int(m.group(2))
 
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
     name = b'\x13emscripten_metadata' # section name, including prefixed size
@@ -1356,7 +1354,8 @@ class WebAssembly(object):
       WebAssembly.toLEB(table_size) +
       WebAssembly.toLEB(global_base) +
       WebAssembly.toLEB(dynamic_base) +
-      WebAssembly.toLEB(dynamictop_ptr) +
+      # dynamictopPtr, always 0 now
+      WebAssembly.toLEB(0) +
 
       # tempDoublePtr, always 0 in wasm backend
       WebAssembly.toLEB(0) +
