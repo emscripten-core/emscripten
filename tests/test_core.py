@@ -6505,7 +6505,7 @@ return malloc(size);
     test('_assert', assert_returncode=NON_ZERO)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_DYNAMIC'])
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_STACK'])
     test()
 
   def test_response_file(self):
@@ -7744,8 +7744,7 @@ Module['onRuntimeInitialized'] = function() {
               typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
-              typeof DYNAMIC_BASE === 'number' &&
-              typeof DYNAMICTOP_PTR === 'number') {
+              typeof DYNAMIC_BASE === 'number') {
              out('able to run memprof');
            } else {
              out('missing the required variables to run memprof');
@@ -8207,6 +8206,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
 
   @needs_dlfcn
+  @unittest.skip('allow binaryen change to roll in')
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)

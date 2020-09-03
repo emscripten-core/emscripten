@@ -11,7 +11,6 @@ $__wasm_call_ctors
 $add
 $dlfree
 $dlmalloc
-$emscripten_get_sbrk_ptr
 $fflush
 $sbrk
 $stackAlloc

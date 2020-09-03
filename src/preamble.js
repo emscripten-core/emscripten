@@ -189,8 +189,7 @@ function cwrap(ident, returnType, argTypes, opts) {
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
-var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
-var ALLOC_NONE = 3; // Do not allocate
+var ALLOC_NONE = 2; // Do not allocate
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -228,7 +227,7 @@ function allocate(slab, types, allocator, ptr) {
 #else
     typeof stackAlloc !== 'undefined' ? stackAlloc : null,
 #endif
-    dynamicAlloc][allocator](Math.max(size, singleType ? 1 : types.length));
+    ][allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -283,12 +282,6 @@ function allocate(slab, types, allocator, ptr) {
   return ret;
 }
 
-// Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
-function getMemory(size) {
-  if (!runtimeInitialized) return dynamicAlloc(size);
-  return _malloc(size);
-}
-
 #include "runtime_strings.js"
 #include "runtime_strings_extra.js"
 
@@ -340,17 +333,51 @@ var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
-    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}},
-    DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
+    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
 
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
+#if RELOCATABLE
+// We support some amount of allocation during startup in the case of
+// dynamic linking, which needs to allocate memory for dynamic libraries that
+// are loaded. That has to happen before the main program can start to run,
+// because the main program needs those linked in before it runs (so we can't
+// use normally malloc from the main program to do these allocations).
+
+// Allocate memory no even if malloc isn't ready yet.
+function getMemory(size) {
+  if (!runtimeInitialized) return dynamicAlloc(size);
+  return _malloc(size);
+}
+
+// To support such allocations during startup, track them on __heap_base and
+// then when the main module is loaded it reads that value and uses it to
+// initialize sbrk (the main module is relocatable itself, and so it does not
+// have __heap_base hardcoded into it - it receives it from JS as an extern
+// global, basically).
+Module['___heap_base'] = DYNAMIC_BASE;
+
+function dynamicAlloc(size) {
+  // After the runtime is initialized, we must only use sbrk() normally.
+  assert(!runtimeInitialized);
+#if USE_PTHREADS
+  assert(!ENVIRONMENT_IS_PTHREAD); // this function is not thread-safe
+#endif
+  var ret = Module['___heap_base'];
+  var end = (ret + size + 15) & -16;
+#if ASSERTIONS
+  assert(end <= HEAP8.length, 'failure to dynamicAlloc - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
+#endif
+  Module['___heap_base'] = end;
+  return ret;
+}
+#endif // RELOCATABLE
+
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
-
   // At the 'load' stage of Worker startup, we are just loading this script
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
@@ -359,7 +386,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
-  // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
 }
 #endif
 

@@ -64,10 +64,6 @@ var Runtime = {
 
 // Additional runtime elements, that need preprocessing
 
-// Allocated here in JS, after we have the runtime etc. prepared.
-// This constant is emitted into the JS or wasm code.
-var DYNAMICTOP_PTR = makeStaticAlloc(4);
-
 // "Process info" for syscalls is static and cannot change, so define it using
 // some fixed values
 var PROCINFO = {
