@@ -1235,7 +1235,7 @@ int main() {
       self.set_setting('SAFE_HEAP', safe)
       self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2.cpp')
 
-  @with_both_exception_handling
+  # TODO @with_both_exception_handling https://bugs.llvm.org/show_bug.cgi?id=47413
   def test_exceptions_3(self):
     src = r'''
 #include <iostream>
