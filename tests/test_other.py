@@ -6962,8 +6962,6 @@ int main() {
 
   def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, expected_size,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
-    return self.skipTest('allow binaryen change to roll in')
-
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
@@ -8454,7 +8452,6 @@ int main () {
         test(['-s', 'WASM=0'], closure, opt)
         test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  @unittest.skip('allow binaryen change to roll in')
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'ENVIRONMENT=web',
