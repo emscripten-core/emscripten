@@ -535,7 +535,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   base_wasm = infile
   building.save_intermediate(infile, 'base.wasm')
 
-  args = ['--detect-features']
+  args = ['--detect-features', '--minimize-wasm-changes']
 
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
@@ -656,7 +656,7 @@ def add_standard_wasm_imports(send_items_map):
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
 
-    send_items_map['table'] = 'wasmTable'
+    send_items_map['__indirect_function_table'] = 'wasmTable'
 
   # With the wasm backend __memory_base and __table_base are only needed for
   # relocatable output.
