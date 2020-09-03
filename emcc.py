@@ -537,9 +537,10 @@ def backend_binaryen_passes():
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
-  passes += ['--post-emscripten']
-  if shared.Settings.OPT_LEVEL > 0 and not shared.Settings.EXIT_RUNTIME:
-    passes += ['--no-exit-runtime']
+  if shared.Settings.OPT_LEVEL > 0:
+    passes += ['--post-emscripten']
+    if not shared.Settings.EXIT_RUNTIME:
+      passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
     passes += [building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
   elif shared.Settings.STANDALONE_WASM:
