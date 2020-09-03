@@ -1320,7 +1320,7 @@ var LibraryPThread = {
     STACK_MAX = stackMax;
 
 #if STACK_OVERFLOW_CHECK >= 2
-    ___set_stack_limit(STACK_MAX);
+    ___set_stack_limits(STACK_BASE, STACK_MAX);
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope

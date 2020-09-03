@@ -1,3 +1,4 @@
+__indirect_function_table
 __memory_base
 __stack_pointer
 __table_base
@@ -7,4 +8,3 @@ fd_write
 g$__heap_base
 memory
 setTempRet0
-table

@@ -19,6 +19,8 @@ Current Trunk
 -------------
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
   removes the internal `DYNAMICTOP_PTR` API.)
+- Use `__indirect_function_table` as the import name for the table, which is
+  what LLVM does.
 
 2.0.2: 09/02/2020
 -----------------
