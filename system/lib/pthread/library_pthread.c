@@ -706,7 +706,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_current_thread_process_queued_calls() {
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls() {
-  if (!emscripten_is_main_browser_thread())
+  if (!emscripten_is_main_runtime_thread())
     return;
 
   emscripten_current_thread_process_queued_calls();
