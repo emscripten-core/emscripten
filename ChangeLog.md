@@ -29,6 +29,12 @@ Current Trunk
   - STACK_MAX
   - STACKTOP
   - TOTAL_STACK
+- The ABI used for importing symbol by address in dynamic linking (MAIN_MODULE +
+  SIDE_MODULE) is now the same as the ABI used by llvm and wasm-ld.  That is,
+  symbol addresses are imported from the 'GOT.mem' and 'GOT.func' pseudo
+  modules.  As one side effect of this change it is now required that JavaScript
+  functions that are imported by address are now required to have a `__sig`
+  specified in the library JavaScript file.
 
 2.0.8: 10/24/2020
 -----------------
