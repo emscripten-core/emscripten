@@ -26,6 +26,8 @@ Current Trunk
   Once the program aborts any exported function calls will fail with a "program 
   has already aborted" exception to prevent calls into code with a potentially
   corrupted program state.
+- Use `__indirect_function_table` as the import name for the table, which is
+  what LLVM does.
 
 2.0.2: 09/02/2020
 -----------------
