@@ -70,9 +70,6 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
-#if USES_DYNAMIC_ALLOC
-    , DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
-#endif
     ;
 
 #if WASM
@@ -179,10 +176,6 @@ HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
 
 #endif
 
-#if USES_DYNAMIC_ALLOC
-  HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
-#endif
-
 #if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
 }
 #endif
@@ -201,27 +194,6 @@ var wasmOffsetConverter;
 #endif
 
 #if EXIT_RUNTIME
-
-function callRuntimeCallbacks(callbacks) {
-  while(callbacks.length > 0) {
-    var callback = callbacks.shift();
-    if (typeof callback == 'function') {
-      callback();
-      continue;
-    }
-    var func = callback.func;
-    if (typeof func === 'number') {
-      if (callback.arg === undefined) {
-        dynCall_v(func);
-      } else {
-        dynCall_vi(func, callback.arg);
-      }
-    } else {
-      func(callback.arg === undefined ? null : callback.arg);
-    }
-  }
-}
-
 var __ATEXIT__    = []; // functions called during shutdown
 #endif
 

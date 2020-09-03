@@ -22,7 +22,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -41,10 +41,6 @@ Usage:
   --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
 
   --indexedDB-name Use specified IndexedDB database name (Default: 'EM_PRELOAD_CACHE')
-
-  --no-heap-copy If specified, the preloaded filesystem is not copied inside the Emscripten HEAP, but kept in a separate typed array outside it.
-                 The default, if this is not specified, is to embed the VFS inside the HEAP, so that mmap()ing files in it is a no-op.
-                 Passing this flag optimizes for fread() usage, omitting it optimizes for mmap() usage.
 
   --separate-metadata Stores package metadata separately. Only applicable when preloading and js-output file is specified.
 
@@ -81,7 +77,7 @@ import fnmatch
 import json
 
 if len(sys.argv) == 1:
-  print('''Usage: file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  print('''Usage: file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
 See the source for more details.''')
   sys.exit(0)
 
@@ -177,12 +173,6 @@ def main():
   # offline cache instead.
   use_preload_cache = False
   indexeddb_name = 'EM_PRELOAD_CACHE'
-  # If set to True, the blob received from XHR is moved to the Emscripten HEAP,
-  # optimizing for mmap() performance (if ALLOW_MEMORY_GROWTH=0).
-  # If set to False, the XHR blob is kept intact, and fread()s etc. are performed
-  # directly to that data. This optimizes for minimal memory usage and fread()
-  # performance.
-  heap_copy = True
   # If set to True, the package metadata is stored separately from js-output
   # file which makes js-output file immutable to the package content changes.
   # If set to False, the package metadata is stored inside the js-output file
@@ -209,7 +199,7 @@ def main():
       indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
     elif arg == '--no-heap-copy':
-      heap_copy = False
+      print('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       leading = ''
     elif arg == '--separate-metadata':
       separate_metadata = True
@@ -497,16 +487,7 @@ def main():
   if has_preloaded:
     if not lz4:
       # Get the big archive and split it up
-      if heap_copy:
-        use_data = '''
-          // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
-          // (we may be allocating before malloc is ready, during startup).
-          var ptr = Module['getMemory'](byteArray.length);
-          Module['HEAPU8'].set(byteArray, ptr);
-          DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
-    '''
-      else:
-        use_data = '''
+      use_data = '''
           // Reuse the bytearray from the XHR as the source for file reads.
           DataRequest.prototype.byteArray = byteArray;
     '''

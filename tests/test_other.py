@@ -2031,11 +2031,7 @@ int f() {
       return compile_to_executable(compile_args, [])
 
     no_size, line_size, full_size = test(compile_to_O0_executable)
-    # the difference between these two is due to the producer's section which
-    # LLVM emits, and which we do not strip as this is not a release build.
-    # the specific difference is that LLVM emits language info (C_plus_plus_14)
-    # when emitting debug info, but not otherwise.
-    self.assertLess(no_size, line_size)
+    self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   def test_dwarf(self):
@@ -2560,6 +2556,24 @@ int main()
     for engine in JS_ENGINES:
       out = self.run_js('a.out.js', engine=engine)
       self.assertContained('File size: 724', out)
+
+  def test_node_emscripten_num_logical_cores(self):
+    # Test with node.js that the emscripten_num_logical_cores method is working
+    create_test_file('src.cpp', r'''
+#include <emscripten/threading.h>
+#include <stdio.h>
+#include <assert.h>
+
+int main() {
+  int num = emscripten_num_logical_cores();
+  assert(num != 0);
+  puts("ok");
+}
+''')
+    # Pass -s USE_PTHREADS=1 to ensure we don't link against libpthread_stub.a
+    self.run_process([EMCC, 'src.cpp', '-s', 'USE_PTHREADS=1', '-s', 'ENVIRONMENT=node'])
+    ret = self.run_process(NODE_JS + ['--experimental-wasm-threads', 'a.out.js'], stdout=PIPE).stdout
+    self.assertContained('ok', ret)
 
   def test_proxyfs(self):
     # This test supposes that 3 different programs share the same directory and files.
@@ -5334,10 +5348,10 @@ int main() {
   def test_failing_alloc(self):
     for pre_fail, post_fail, opts in [
       ('', '', []),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', []),
+      ('EM_ASM( Module.temp = _sbrk() );', 'EM_ASM( assert(Module.temp === _sbrk(), "must not adjust brk when an alloc fails!") );', []),
       # also test non-wasm in normal mode
       ('', '', ['-s', 'WASM=0']),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0']),
+      ('EM_ASM( Module.temp = _sbrk() );', 'EM_ASM( assert(Module.temp === _sbrk(), "must not adjust brk when an alloc fails!") );', ['-s', 'WASM=0']),
     ]:
       for growth in [0, 1]:
         for aborting_args in [[], ['-s', 'ABORTING_MALLOC=0'], ['-s', 'ABORTING_MALLOC=1']]:
@@ -5381,7 +5395,7 @@ int main() {
   printf("managed another malloc!\n");
 }
 ''' % (pre_fail, post_fail))
-          args = [EMCC, 'main.cpp'] + opts + aborting_args
+          args = [EMCC, 'main.cpp', '-s', 'EXPORTED_FUNCTIONS=[_main,_sbrk]'] + opts + aborting_args
           args += ['-s', 'TEST_MEMORY_GROWTH_FAILS=1'] # In this test, force memory growing to fail
           if growth:
             args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
@@ -6240,7 +6254,8 @@ Resolved: "/" => "/"
                       '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'),
                       '--pre-js', path_from_root('tests', 'return64bit', bind_js),
                       '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_test_return64"]', '-o', 'test.js', '-O2',
+                      '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]',
+                      '-s', 'EXPORTED_FUNCTIONS=[_test_return64]', '-o', 'test.js', '-O2',
                       '--closure', '1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'] + args)
 
     # Simple test program to load the test.js binding library and call the binding to the
@@ -7264,7 +7279,8 @@ int main() {
           assert 'a' in exports_and_imports
         else:
           assert 'a' not in exports_and_imports
-        assert 'memory' in exports_and_imports or 'fd_write' in exports_and_imports, 'some things are not minified anyhow'
+        if standalone:
+          assert 'fd_write' in exports_and_imports, 'standalone mode preserves import names for WASI APIs'
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', self.run_js('out.js'))
@@ -7880,17 +7896,14 @@ int main() {
       self.assertIn(b'somewhere.com/hosted.wasm', f.read())
 
   @parameterized({
-    'O0': (True, ['-O0']), # unoptimized builds try not to modify the LLVM wasm.
-    'O1': (False, ['-O1']), # optimized builds strip the producer's section
-    'O2': (False, ['-O2']), # by default.
+    'O0': (['-O0'],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
   })
-  def test_wasm_producers_section(self, expect_producers_by_default, args):
+  def test_wasm_producers_section(self, args):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.wasm', 'rb') as f:
       data = f.read()
-    if expect_producers_by_default:
-      self.assertIn('clang', str(data))
-      return
     # if there is no producers section expected by default, verify that, and
     # see that the flag works to add it.
     self.assertNotIn('clang', str(data))
@@ -9664,10 +9677,7 @@ int main () {
     self.assertContained('hello, world!', output)
 
   def test_standalone_export_main(self):
-    # Tests that explictly exported `_main` does not fail.   Since we interpret an
-    # export of `_main` to be be an export of `__start` in standalone mode the
-    # actual main function is not exported, but we also don't want to report an
-    # error
-    self.set_setting('STANDALONE_WASM')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
-    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
+    # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
+    # point.
+    # We should consider making this a warning since the `_main` export is redundant.
+    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=[_main]', '-sSTANDALONE_WASM', '-c', path_from_root('tests', 'core', 'test_hello_world.c')])

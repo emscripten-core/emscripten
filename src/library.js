@@ -444,12 +444,6 @@ LibraryManager.library = {
     return HEAPU8.length;
   },
 
-  emscripten_get_sbrk_ptr__asm: true,
-  emscripten_get_sbrk_ptr__sig: 'i',
-  emscripten_get_sbrk_ptr: function() {
-    return {{{ DYNAMICTOP_PTR }}};
-  },
-
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
@@ -470,8 +464,8 @@ LibraryManager.library = {
   },
 #else
 
-  // Grows the asm.js/wasm heap to the given byte size, and updates both JS and asm.js/wasm side views to the buffer.
-  // Returns 1 on success, or undefined if growing failed.
+  // Grows the wasm memory to the given byte size, and updates the JS views to
+  // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
 #if MEMORYPROFILER
     var oldHeapSize = buffer.byteLength;
@@ -499,6 +493,8 @@ LibraryManager.library = {
       console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
+    // implicit 0 return to save code size (caller will cast "undefined" into 0
+    // anyhow)
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
@@ -609,7 +605,7 @@ LibraryManager.library = {
       console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
       if (replacement) {
-#if ASSERTIONS && (!WASM || WASM2JS)
+#if ASSERTIONS && WASM2JS
         err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
@@ -1060,12 +1056,6 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  // Statically allocated time struct.
-  __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-  // Statically allocated copy of the string "GMT" for gmtime() to point to
-  __tm_timezone: '{{{ makeStaticString("GMT") }}}',
-  // Statically allocated time strings.
-  __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   mktime__deps: ['tzset'],
   mktime__sig: 'ii',
   mktime: function(tmPtr) {
@@ -1105,12 +1095,10 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['__tm_current', 'gmtime_r'],
-  gmtime: function(time) {
-    return _gmtime_r(time, ___tm_current);
-  },
-
-  gmtime_r__deps: ['__tm_timezone'],
+#if MINIMAL_RUNTIME
+  gmtime_r__deps: ['allocateUTF8'],
+#endif
+  gmtime_r__sig: 'iii',
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -1125,10 +1113,13 @@ LibraryManager.library = {
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
-
+    // Allocate a string "GMT" for us to point to.
+    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
     return tmPtr;
   },
+  __gmtime_r: 'gmtime_r',
+
   timegm__deps: ['tzset'],
   timegm: function(tmPtr) {
     _tzset();
@@ -1149,12 +1140,8 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  localtime__deps: ['__tm_current', 'localtime_r'],
-  localtime: function(time) {
-    return _localtime_r(time, ___tm_current);
-  },
-
-  localtime_r__deps: ['__tm_timezone', 'tzset'],
+  localtime_r__deps: ['tzset'],
+  localtime_r__sig: 'iii',
   localtime_r: function(time, tmPtr) {
     _tzset();
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
@@ -1182,13 +1169,10 @@ LibraryManager.library = {
 
     return tmPtr;
   },
+  __localtime_r: 'localtime_r',
 
-  asctime__deps: ['__tm_formatted', 'asctime_r'],
-  asctime: function(tmPtr) {
-    return _asctime_r(tmPtr, ___tm_formatted);
-  },
-
-  asctime_r__deps: ['__tm_formatted', 'mktime'],
+  asctime_r__deps: ['mktime'],
+  asctime_r__sig: 'iii',
   asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -1216,19 +1200,17 @@ LibraryManager.library = {
     stringToUTF8(s, buf, 26);
     return buf;
   },
-
-  ctime__deps: ['__tm_current', 'ctime_r'],
-  ctime: function(timer) {
-    return _ctime_r(timer, ___tm_current);
-  },
+  __asctime_r: 'asctime_r',
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
     var stack = stackSave();
     var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
     stackRestore(stack);
     return rv;
   },
+  __ctime_r: 'ctime_r',
 
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
@@ -3886,7 +3868,7 @@ LibraryManager.library = {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
-      var ret = {{{ makeDynCall('iii') }}}(func, 0, arg);
+      var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
       if (ret !== 0) return;
     }
   },
@@ -3935,7 +3917,7 @@ LibraryManager.library = {
   emscripten_scan_stack: function(func) {
     var base = STACK_BASE; // TODO verify this is right on pthreads
     var end = stackSave();
-    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
+    {{{ makeDynCall('vii', 'func') }}}(Math.min(base, end), Math.max(base, end));
   },
 
   // misc definitions to avoid unnecessary unresolved symbols being reported
@@ -4016,6 +3998,80 @@ LibraryManager.library = {
         }
       });
     });
+  },
+
+#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+  $dynCallLegacy: function(sig, ptr, args) {
+#if ASSERTIONS
+    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+    if (args && args.length) {
+      // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
+      assert(args.length === sig.substring(1).replace(/j/g, '--').length);
+    } else {
+      assert(sig.length == 1);
+    }
+#endif
+    if (args && args.length) {
+      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
+    }
+    return Module['dynCall_' + sig].call(null, ptr);
+  },
+  $dynCall__deps: ['$dynCallLegacy'],
+
+  // Used in library code to get JS function from wasm function pointer.
+  // All callers should use direct table access where possible and only fall
+  // back to this function if needed.
+  $getDynCaller__deps: ['$dynCall'],
+  $getDynCaller: function(sig, ptr) {
+#if !USE_LEGACY_DYNCALLS
+    assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
+#endif
+    var argCache = [];
+    return function() {
+      argCache.length = arguments.length;
+      for (var i = 0; i < arguments.length; i++) {
+        argCache[i] = arguments[i];
+      }
+      return dynCall(sig, ptr, argCache);
+    };
+  },
+#endif
+
+  $dynCall: function (sig, ptr, args) {
+#if USE_LEGACY_DYNCALLS
+    return dynCallLegacy(sig, ptr, args);
+#else
+#if !WASM_BIGINT
+    // Without WASM_BIGINT support we cannot directly call function with i64 as
+    // part of thier signature, so we rely the dynCall functions generated by
+    // wasm-emscripten-finalize
+    if (sig.indexOf('j') != -1) {
+      return dynCallLegacy(sig, ptr, args);
+    }
+#endif
+
+    return wasmTable.get(ptr).apply(null, args)
+#endif
+  },
+
+  $callRuntimeCallbacks: function(callbacks) {
+    while(callbacks.length > 0) {
+      var callback = callbacks.shift();
+      if (typeof callback == 'function') {
+        callback(Module); // Pass the module as the first argument.
+        continue;
+      }
+      var func = callback.func;
+      if (typeof func === 'number') {
+        if (callback.arg === undefined) {
+          {{{ makeDynCall('v', 'func') }}}();
+        } else {
+          {{{ makeDynCall('vi', 'func') }}}(callback.arg);
+        }
+      } else {
+        func(callback.arg === undefined ? null : callback.arg);
+      }
+    }
   },
 };
 

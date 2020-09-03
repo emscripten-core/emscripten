@@ -120,6 +120,7 @@ def align_memory(addr):
 
 
 def align_static_bump(metadata):
+  # TODO: remove static bump entirely
   metadata['staticBump'] = align_memory(metadata['staticBump'])
   return metadata['staticBump']
 
@@ -191,7 +192,6 @@ def apply_forwarded_data(forwarded_data):
   forwarded_json = json.loads(forwarded_data)
   # Be aware of JS static allocations
   shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
-  shared.Settings.DYNAMICTOP_PTR = forwarded_json['DYNAMICTOP_PTR']
   # Be aware of JS static code hooks
   StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
   StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
@@ -265,15 +265,9 @@ def apply_table(js):
 
 
 def report_missing_symbols(all_implemented, pre):
-  required_symbols = set(shared.Settings.USER_EXPORTED_FUNCTIONS)
-  # In standalone mode a request for `_main` is interpreted as a request for `_start`
-  # so don't warn about mossing main.
-  if shared.Settings.STANDALONE_WASM and '_main' in required_symbols:
-    required_symbols.discard('_main')
-
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = list(required_symbols - all_implemented)
+  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
 
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
@@ -555,6 +549,13 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
+
+  if not shared.Settings.USE_LEGACY_DYNCALLS:
+    if shared.Settings.WASM_BIGINT:
+      args.append('--no-dyncalls')
+    else:
+      args.append('--dyncalls-i64')
+
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     args.append('--no-legalize-javascript-ffi')
   if not shared.Settings.MEM_INIT_IN_WASM:
@@ -584,7 +585,6 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('--pass-arg=legalize-js-interface-export-originals')
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
-  args.append('--minimize-wasm-changes')
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
                                          infile=base_wasm,
                                          outfile=wasm,
@@ -864,7 +864,7 @@ def create_receiving_wasm(exports, initializers):
     else:
       if shared.Settings.MINIMAL_RUNTIME:
         # In wasm2js exports can be directly processed at top level, i.e.
-        # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+        # var asm = Module["asm"](asmLibraryArg, buffer);
         # var _main = asm["_main"];
         if shared.Settings.USE_PTHREADS and shared.Settings.MODULARIZE:
           # TODO: As a temp solution, multithreaded MODULARIZED MINIMAL_RUNTIME builds export all
@@ -888,9 +888,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   receiving += create_fp_accessors(metadata)
   module = []
-  module.append('var asmGlobalArg = {};\n')
-  if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append('var asmLibraryArg = %s;\n' % (sending))
   if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:

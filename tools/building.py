@@ -490,6 +490,9 @@ def lld_flags_for_executable(external_symbol_list):
   if Settings.USE_PTHREADS:
     cmd.append('--shared-memory')
 
+  # wasm-ld can strip debug info for us. this strips both the Names
+  # section and DWARF, so we can only use it when we don't need any of
+  # those things.
   if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
                                    not Settings.PROFILING_FUNCS and
                                    not Settings.ASYNCIFY):
@@ -511,8 +514,6 @@ def lld_flags_for_executable(external_symbol_list):
     if external_symbol_list:
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbol_list]
-    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN and 'main' in c_exports:
-      c_exports.remove('main')
     for export in c_exports:
       cmd += ['--export', export]
 
@@ -856,14 +857,6 @@ def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None)
 
 def can_inline():
   return Settings.INLINING_LIMIT == 0
-
-
-def is_wasm_only():
-  # not even wasm, much less wasm-only
-  if not Settings.WASM:
-    return False
-  # llvm backend can only ever produce wasm
-  return True
 
 
 def get_safe_internalize():
@@ -1433,6 +1426,15 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   return js_file
 
 
+def strip(infile, outfile, debug=False, producers=False):
+  cmd = [LLVM_OBJCOPY, infile, outfile]
+  if debug:
+    cmd += ['--remove-section=.debug*']
+  if producers:
+    cmd += ['--remove-section=producers']
+  run_process(cmd)
+
+
 # extract the DWARF info from the main file, and leave the wasm with
 # debug into as a file on the side
 # TODO: emit only debug sections in the side file, and not the entire
@@ -1445,7 +1447,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
-  run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
+  strip(wasm_file_with_dwarf, wasm_file, debug=True)
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
@@ -1640,7 +1642,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
     #       which we may need
     # TODO: once fastcomp is gone, either remove source maps entirely, or
     #       support them by emitting a source map at the end from the dwarf,
-    #       and use llvm-objcpy to remove that final dwarf
+    #       and use llvm-objcopy to remove that final dwarf
     cmd += ['--strip-dwarf']
   cmd += args
   if infile:

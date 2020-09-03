@@ -62,9 +62,6 @@ var EMBIND = 0;
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
 
-// The computed location of the pointer to the sbrk position.
-var DYNAMICTOP_PTR = -1;
-
 // The computed initial value of the program break (the sbrk position), which
 // is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
 var DYNAMIC_BASE = -1;
@@ -201,3 +198,5 @@ var EXPECT_MAIN = 1;
 // Provide and export a .ready() Promise. This is currently used by default with
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = 1;
+
+var USE_LEGACY_DYNCALLS = 0;

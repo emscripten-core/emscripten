@@ -430,6 +430,11 @@ var MIN_WEBGL_VERSION = 1;
 // Specifies the highest WebGL version to target. Pass -s MAX_WEBGL_VERSION=2
 // to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
 // will default to creating a WebGL 2 context if no version is specified.
+// Note that there is no automatic fallback to WebGL1 if WebGL2 is not supported
+// by the user's device, even if you build with both WebGL1 and WebGL2
+// support, as that may not always be what the application wants. If you want
+// such a fallback, you can try to create a context with WebGL2, and if that
+// fails try to create one with WebGL1.
 var MAX_WEBGL_VERSION = 1;
 
 // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that
@@ -762,14 +767,13 @@ var NODE_CODE_CACHING = 0;
 
 // Functions that are explicitly exported. These functions are kept alive
 // through LLVM dead code elimination, and also made accessible outside of the
-// generated code even after running closure compiler (on "Module").  Note the
-// necessary prefix of "_".
+// generated code even after running closure compiler (on "Module").  The
+// symbols listed here require an `_` prefix.
 //
-// Note also that this is the full list of exported functions - if you have a
-// main() function and want it to run, you must include it in this list (as
-// _main is by default in this value, and if you override it without keeping it
-// there, you are in effect removing it).
-var EXPORTED_FUNCTIONS = ['_main'];
+// By default if this setting is not specified on the command line the
+// `_main` function will be implicitly exported.  In STANDALONE_WASM mode the
+// default export is `__start` (or `__initialize` if --no-entry is specified).
+var EXPORTED_FUNCTIONS = [];
 
 // If true, we export all the symbols that are present in JS onto the Module
 // object. This does not affect which symbols will be present - it does not
@@ -778,10 +782,6 @@ var EXPORTED_FUNCTIONS = ['_main'];
 // for all X that end up in the JS file. This is useful to export the JS
 // library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
-
-// Export all bindings generator functions (prefixed with emscripten_bind_). This
-// is necessary to use the WebIDL binder with asm.js
-var EXPORT_BINDINGS = 0;
 
 // If true, export all the functions appearing in a function table, and the
 // tables themselves.
@@ -1148,16 +1148,12 @@ var WASM_ASYNC_COMPILATION = 1;
 var WASM_BIGINT = 0;
 
 // WebAssembly defines a "producers section" which compilers and tools can
-// annotate themselves in, and LLVM emits this by default. In release builds,
+// annotate themselves in, and LLVM emits this by default.
 // Emscripten will strip that out so that it is *not* emitted because it
 // increases code size, and also some users may not want information
 // about their tools to be included in their builds for privacy or security
 // reasons, see
 // https://github.com/WebAssembly/tool-conventions/issues/93.
-// (In debug builds (-O0) we leave the wasm file as it is from LLVM, in which
-// case it may contain this section, if you didn't tell LLVM to not emit it. You
-// can also run wasm-opt --strip-producers manually, which is what Emscripten
-// does in release builds for you automatically.)
 var EMIT_PRODUCERS_SECTION = 0;
 
 // If set then generated WASM files will contain a custom
@@ -1702,4 +1698,5 @@ var LEGACY_SETTINGS = [
   ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
   ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
   ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
+  ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
 ];

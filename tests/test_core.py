@@ -135,7 +135,7 @@ def also_with_noderawfs(func):
 
 def can_do_standalone(self):
   return self.get_setting('WASM') and \
-      not self.get_setting('SAFE_STACK') and \
+      self.get_setting('STACK_OVERFLOW_CHECK') < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       '-fsanitize=address' not in self.emcc_args
 
@@ -786,6 +786,8 @@ class TestCoreBase(RunnerCore):
 
   def test_stack(self):
     self.set_setting('INLINING_LIMIT', 50)
+    # some extra coverage in all test suites for stack checks
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack.c')
 
@@ -5834,7 +5836,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_mmap.c')
 
   def test_mmap_file(self):
-    for extra_args in [[], ['--no-heap-copy']]:
+    for extra_args in [[]]:
       self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
       x = 'data from the file........'
       s = ''
@@ -6415,6 +6417,7 @@ return malloc(size);
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall.cpp')
 
   def test_EXTRA_EXPORTED_RUNTIME_METHODS(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS.c')
     # test dyncall (and other runtime methods in support.js) can be exported
     self.emcc_args += ['-DEXPORTED']
@@ -6504,7 +6507,7 @@ return malloc(size);
     test('_assert', assert_returncode=NON_ZERO)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_DYNAMIC'])
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_STACK'])
     test()
 
   def test_response_file(self):
@@ -6614,6 +6617,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'interop', 'test_add_function.cpp')
 
   def test_getFuncWrapper_sig_alias(self):
+    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$getFuncWrapper]']
     src = r'''
     #include <stdio.h>
     #include <emscripten.h>
@@ -7743,8 +7747,7 @@ Module['onRuntimeInitialized'] = function() {
               typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
-              typeof DYNAMIC_BASE === 'number' &&
-              typeof DYNAMICTOP_PTR === 'number') {
+              typeof DYNAMIC_BASE === 'number') {
              out('able to run memprof');
            } else {
              out('missing the required variables to run memprof');
@@ -7810,15 +7813,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run('int main() { return 0; }', expected)
 
   @sync
-  @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")
   def test_stack_overflow_check(self):
-    args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
+    self.set_setting('TOTAL_STACK', 1048576)
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
 
-    self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'ASSERTIONS=0']
-    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'Stack overflow! Attempted to allocate', assert_returncode=NON_ZERO)
-
-    self.emcc_args = args + ['-s', 'ASSERTIONS=1']
-    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'Stack overflow! Attempted to allocate', assert_returncode=NON_ZERO)
+    self.emcc_args += ['-DONE_BIG_STRING']
+    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
@@ -8257,6 +8258,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS', '1')
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
+  @no_asan('incompatibility with atomics')
+  @node_pthreads
+  def test_emscripten_futexes(self):
+    self.set_setting('USE_PTHREADS', '1')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_futexes.c')
+
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
@@ -8293,12 +8300,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
       err = self.expect_fail([EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
       self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
 
+      # In non-standalone mode exporting an empty list of functions signal that we don't
+      # have a main and so should not generate an error.
+      self.set_setting('EXPORTED_FUNCTIONS', [])
+      self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
+      self.clear_setting('EXPORTED_FUNCTIONS')
+
     # If we pass --no-entry or set EXPORTED_FUNCTIONS to empty should never see any errors
     self.emcc_args.append('--no-entry')
-    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
-
-    self.emcc_args.remove('--no-entry')
-    self.set_setting('EXPORTED_FUNCTIONS', [])
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
 
   def test_export_start(self):

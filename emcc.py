@@ -243,7 +243,6 @@ class EmccOptions(object):
     self.memory_profiler = False
     self.memory_init_file = None
     self.use_preload_cache = False
-    self.no_heap_copy = False
     self.use_preload_plugins = False
     self.proxy_to_worker = False
     self.default_object_extension = '.o'
@@ -551,11 +550,6 @@ def backend_binaryen_passes():
   # hardcoded value in the binaryen pass)
   if shared.Settings.OPT_LEVEL > 0 and shared.Settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
-  if shared.Settings.OPT_LEVEL > 0:
-    if shared.Settings.DEBUG_LEVEL < 3:
-      passes += ['--strip-debug']
-    if not shared.Settings.EMIT_PRODUCERS_SECTION:
-      passes += ['--strip-producers']
   if shared.Settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']
@@ -906,10 +900,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [arg for arg in newargs if arg]
 
-    settings_key_changes = set()
+    settings_key_changes = {}
     for s in settings_changes:
       key, value = s.split('=', 1)
-      settings_key_changes.add(key)
+      settings_key_changes[key] = value
 
     # Find input files
 
@@ -1037,12 +1031,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Libraries are searched before settings_changes are applied, so apply the
     # value for STRICT from command line already now.
 
-    def get_last_setting_change(setting):
-      return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
-
-    strict_cmdline = get_last_setting_change('STRICT')
+    strict_cmdline = settings_key_changes.get('STRICT')
     if strict_cmdline:
-      shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
+      shared.Settings.STRICT = int(strict_cmdline)
 
     # Apply optimization level settings
     shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
@@ -1055,12 +1046,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-    # Remove the default _main function from shared.Settings.EXPORTED_FUNCTIONS.
-    # We do this before the user settings are applied so it affects the default value only and a
-    # user could use `--no-entry` and still export main too.
-    if options.no_entry:
-      shared.Settings.EXPORTED_FUNCTIONS.remove('_main')
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
@@ -1145,9 +1130,33 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
-    if options.no_entry or ('_main' not in shared.Settings.EXPORTED_FUNCTIONS and
-                            '__start' not in shared.Settings.EXPORTED_FUNCTIONS):
+    if shared.Settings.WASM2C:
+      # wasm2c only makes sense with standalone wasm - there will be no JS,
+      # just wasm and then C
+      shared.Settings.STANDALONE_WASM = 1
+      # wasm2c doesn't need any special handling of i64, we have proper i64
+      # handling on the FFI boundary, which is exactly like the case of JS with
+      # BigInt support
+      shared.Settings.WASM_BIGINT = 1
+
+    if options.no_entry:
       shared.Settings.EXPECT_MAIN = 0
+    elif shared.Settings.STANDALONE_WASM:
+      if '_main' in shared.Settings.EXPORTED_FUNCTIONS:
+        # TODO(sbc): Make this into a warning?
+        logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
+    else:
+      # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
+      # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
+      #    reactor.
+      # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
+      #    is specified (see above).
+      if 'EXPORTED_FUNCTIONS' in settings_key_changes:
+        if '_main' not in shared.Settings.USER_EXPORTED_FUNCTIONS:
+          shared.Settings.EXPECT_MAIN = 0
+      else:
+        assert(not shared.Settings.EXPORTED_FUNCTIONS)
+        shared.Settings.EXPORTED_FUNCTIONS = ['_main']
 
     if shared.Settings.STANDALONE_WASM:
       # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -1254,6 +1263,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.RELOCATABLE:
       shared.Settings.ALLOW_TABLE_GROWTH = 1
+
+    # various settings require sbrk() access
+    if shared.Settings.DETERMINISTIC or \
+       shared.Settings.EMSCRIPTEN_TRACING or \
+       shared.Settings.MALLOC == 'emmalloc' or \
+       shared.Settings.SAFE_HEAP or \
+       shared.Settings.MEMORYPROFILER:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
+
+    if shared.Settings.ASYNCIFY:
+      # See: https://github.com/emscripten-core/emscripten/issues/12065
+      # See: https://github.com/emscripten-core/emscripten/issues/12066
+      shared.Settings.USE_LEGACY_DYNCALLS = 1
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDynCaller']
 
     # Reconfigure the cache now that settings have been applied. Some settings
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
@@ -1451,8 +1474,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.GLOBAL_BASE = 1024
 
     if shared.Settings.SAFE_HEAP:
-      # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr().
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_get_sbrk_ptr', '$unSign']
+      # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
@@ -1505,19 +1529,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         ]
 
       shared.Settings.EXPORTED_RUNTIME_METHODS += [
-        'getMemory',
         'addRunDependency',
         'removeRunDependency',
       ]
+
+    if not shared.Settings.MINIMAL_RUNTIME or shared.Settings.EXIT_RUNTIME:
+      # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
+      # always does.
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$dynCall']
 
     if shared.Settings.USE_PTHREADS:
       # memalign is used to ensure allocated thread stacks are aligned.
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_malloc']
 
-      # dynCall_ii is used to call pthread entry points in worker.js (as
+      # dynCall is used to call pthread entry points in worker.js (as
       # metadce does not consider worker.js, which is external, we must
-      # consider it a user export, i.e., one which can never be removed).
-      building.user_requested_exports += ['dynCall_ii']
+      # consider it an export, i.e., one which can never be removed).
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+      shared.Settings.EXPORTED_FUNCTIONS += ['dynCall']
 
       if shared.Settings.MINIMAL_RUNTIME:
         building.user_requested_exports += ['exit']
@@ -1760,9 +1789,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.USE_PTHREADS:
       newargs.append('-pthread')
-
-    if not shared.Settings.LEGALIZE_JS_FFI:
-      assert building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS.'
 
     # check if we can address the 2GB mark and higher: either if we start at
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
@@ -2101,13 +2127,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
       if len(options.preload_files) or len(options.embed_files):
-
-        # Also, MEMFS is not aware of heap resizing feature in wasm, so if MEMFS and memory growth are used together, force
-        # no_heap_copy to be enabled.
-        if shared.Settings.ALLOW_MEMORY_GROWTH and not options.no_heap_copy:
-          logger.info('Enabling --no-heap-copy because -s ALLOW_MEMORY_GROWTH=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
-          options.no_heap_copy = True
-
         logger.debug('setting up files')
         file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
         if len(options.preload_files):
@@ -2121,8 +2140,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args += options.exclude_files
         if options.use_preload_cache:
           file_args.append('--use-preload-cache')
-        if options.no_heap_copy:
-          file_args.append('--no-heap-copy')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
         if options.use_preload_plugins:
@@ -2409,7 +2426,7 @@ def parse_args(newargs):
       options.use_preload_cache = True
       newargs[i] = ''
     elif newargs[i].startswith('--no-heap-copy'):
-      options.no_heap_copy = True
+      diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       newargs[i] = ''
     elif newargs[i].startswith('--use-preload-plugins'):
       options.use_preload_plugins = True
@@ -2586,26 +2603,32 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD)
 
   if options.binaryen_passes:
-    if '--post-emscripten' in options.binaryen_passes and not shared.Settings.SIDE_MODULE:
-      if not shared.Settings.RELOCATABLE:
-        # With the wasm backend stack point value is baked in at link time.  However, emscripten's
-        # JS compiler can allocate more static data which then shifts the stack pointer.
-        # See `makeStaticAlloc` in the JS compiler.
-        options.binaryen_passes += ['--pass-arg=stack-pointer@%d' % shared.Settings.STACK_BASE]
-      # the value of the sbrk pointer has been computed by the JS compiler, and we can apply it in the wasm
-      # (we can't add this value when we placed post-emscripten in the proper position in the list of
-      # passes because that was before the value was computed)
-      # note that we don't pass this for a side module, as the value can't be applied - it must be
-      # imported
-      options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
-      if shared.Settings.STANDALONE_WASM:
-        options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
-    building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
-    args = options.binaryen_passes
-    building.run_wasm_opt(wasm_binary_target,
-                          wasm_binary_target,
-                          args=args,
-                          debug=intermediate_debug_info)
+    # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
+    # also strips the Names section. so to emit just the Names section we don't
+    # tell wasm-ld to strip anything, and we do it here.
+    strip_debug = shared.Settings.DEBUG_LEVEL < 3
+    strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
+    # run wasm-opt if we have work for it
+    if options.binaryen_passes:
+      # if we need to strip certain sections, and we have wasm-opt passes
+      # to run anyhow, do it with them.
+      if strip_debug:
+        options.binaryen_passes += ['--strip-debug']
+      if strip_producers:
+        options.binaryen_passes += ['--strip-producers']
+      building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
+      building.run_wasm_opt(wasm_binary_target,
+                            wasm_binary_target,
+                            args=options.binaryen_passes,
+                            debug=intermediate_debug_info)
+    else:
+      # we are not running wasm-opt. if we need to strip certain sections
+      # then do so using llvm-objcopy which is fast and does not rewrite the
+      # code (which is better for debug info)
+      if strip_debug or strip_producers:
+        building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
+        building.strip(wasm_binary_target, wasm_binary_target,
+                       debug=strip_debug, producers=strip_producers)
 
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')

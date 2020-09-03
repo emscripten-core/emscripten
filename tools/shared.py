@@ -63,6 +63,7 @@ diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined', error=True)
 diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')
+diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
@@ -1091,7 +1092,7 @@ class JS(object):
   #   Copyright 2017 The Emscripten Authors
   #   SPDX-License-Identifier: MIT
   #  */
-  emscripten_license_regex = '''\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/''' # noqa
+  emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/'
 
   @staticmethod
   def handle_license(js_target):
@@ -1211,7 +1212,7 @@ function jsCall_%s(index%s) {
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.ASYNCIFY or Settings.WASM2C or not JS.is_legal_sig(sig):
+    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
@@ -1332,8 +1333,6 @@ class WebAssembly(object):
     js = open(js_file).read()
     m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
     dynamic_base = int(m.group(2))
-    m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)
-    dynamictop_ptr = int(m.group(2))
 
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
     name = b'\x13emscripten_metadata' # section name, including prefixed size
@@ -1355,7 +1354,8 @@ class WebAssembly(object):
       WebAssembly.toLEB(table_size) +
       WebAssembly.toLEB(global_base) +
       WebAssembly.toLEB(dynamic_base) +
-      WebAssembly.toLEB(dynamictop_ptr) +
+      # dynamictopPtr, always 0 now
+      WebAssembly.toLEB(0) +
 
       # tempDoublePtr, always 0 in wasm backend
       WebAssembly.toLEB(0) +
