@@ -2607,8 +2607,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # tell wasm-ld to strip anything, and we do it here.
   strip_debug = shared.Settings.DEBUG_LEVEL < 3
   strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
-  # run wasm-opt if we have work for it
-  if options.binaryen_passes:
+  # run wasm-opt if we have work for it: either passes, or if we are using
+  # source maps (which requires some extra processing to keep the source map
+  # but remove DWARF)
+  if options.binaryen_passes or use_source_map(options):
     # if we need to strip certain sections, and we have wasm-opt passes
     # to run anyhow, do it with them.
     if strip_debug:
