@@ -377,7 +377,6 @@ function makeGlobalUse(ident) {
       return ident;
     }
     var ret = (Runtime.GLOBAL_BASE + index).toString();
-    if (SIDE_MODULE) ret = '(H_BASE+' + ret + ')';
     return ret;
   }
   return ident;
@@ -1056,15 +1055,11 @@ function makeHEAPView(which, start, end) {
 // When dynamically linking, some things like dynCalls may not exist in one module and
 // be provided by a linked module, so they must be accessed indirectly using Module
 function exportedAsmFunc(func) {
-  if (!MAIN_MODULE && !SIDE_MODULE) {
+  if (!MAIN_MODULE) {
     return func;
   } else {
     return "Module['" + func + "']";
   }
-}
-
-function makeDynCall(sig) {
-  return exportedAsmFunc('dynCall_' + sig);
 }
 
 var TWO_TWENTY = Math.pow(2, 20);
@@ -1261,9 +1256,6 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
       // writing out into memory, without a normal allocation. We put all of these into a single big chunk.
       assert(typeof slab == 'object');
       assert(slab.length % QUANTUM_SIZE == 0, slab.length); // must be aligned already
-      if (SIDE_MODULE && typeof ptr == 'string') {
-        ptr = parseInt(ptr.substring(ptr.indexOf('+'), ptr.length-1)); // parse into (H_BASE+X)
-      }
       var offset = ptr - Runtime.GLOBAL_BASE;
       for (var i = 0; i < slab.length; i++) {
         memoryInitialization[offset + i] = slab[i];
@@ -1462,8 +1454,13 @@ function asmFFICoercion(value, type) {
   return value;
 }
 
-function makeDynCall(sig) {
-  return 'dynCall_' + sig;
+function makeDynCall(sig, funcPtr) {
+  assert(sig.indexOf('j') == -1);
+  if (USE_LEGACY_DYNCALLS) {
+    return `getDynCaller("${sig}", ${funcPtr})`;
+  } else {
+    return `wasmTable.get(${funcPtr})`;
+  }
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
@@ -1546,11 +1543,6 @@ function makeRetainedCompilerSettings() {
 // In wasm, the heap size must be a multiple of 64KB.
 // In asm.js, it must be a multiple of 16MB.
 var WASM_PAGE_SIZE = 65536;
-var ASMJS_PAGE_SIZE = 16777216;
-
-function getMemoryPageSize() {
-  return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
-}
 
 // Page size reported by some POSIX calls, mostly filesystem. This does not
 // depend on the memory page size which differs between wasm and asm.js, and

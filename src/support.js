@@ -8,22 +8,6 @@
 
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
 
-function dynamicAlloc(size) {
-#if ASSERTIONS
-  assert(DYNAMICTOP_PTR);
-#if USE_PTHREADS
-  assert(!ENVIRONMENT_IS_PTHREAD); // this function is not thread-safe
-#endif
-#endif
-  var ret = HEAP32[DYNAMICTOP_PTR>>2];
-  var end = (ret + size + 15) & -16;
-#if ASSERTIONS
-  assert(end <= HEAP8.length, 'failure to dynamicAlloc - memory growth etc. is not supported there, call malloc/sbrk directly');
-#endif
-  HEAP32[DYNAMICTOP_PTR>>2] = end;
-  return ret;
-}
-
 {{{ alignMemory }}}
 
 {{{ getNativeTypeSize }}}
@@ -301,7 +285,7 @@ function createInvokeFunction(sig) {
   return function() {
     var sp = stackSave();
     try {
-      return Module['dynCall_' + sig].apply(null, arguments);
+      return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
     } catch(e) {
       stackRestore(sp);
       if (e !== e+0 && e !== 'longjmp') throw e;
@@ -565,61 +549,10 @@ Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
 
 #include "runtime_functions.js"
 
-var funcWrappers = {};
-
-function getFuncWrapper(func, sig) {
-  if (!func) return; // on null pointer, return undefined
-  assert(sig);
-  if (!funcWrappers[sig]) {
-    funcWrappers[sig] = {};
-  }
-  var sigCache = funcWrappers[sig];
-  if (!sigCache[func]) {
-    // optimize away arguments usage in common cases
-    if (sig.length === 1) {
-      sigCache[func] = function dynCall_wrapper() {
-        return dynCall(sig, func);
-      };
-    } else if (sig.length === 2) {
-      sigCache[func] = function dynCall_wrapper(arg) {
-        return dynCall(sig, func, [arg]);
-      };
-    } else {
-      // general case
-      sigCache[func] = function dynCall_wrapper() {
-        return dynCall(sig, func, Array.prototype.slice.call(arguments));
-      };
-    }
-  }
-  return sigCache[func];
-}
-
 #include "runtime_debug.js"
 
 function makeBigInt(low, high, unsigned) {
   return unsigned ? ((+((low>>>0)))+((+((high>>>0)))*4294967296.0)) : ((+((low>>>0)))+((+((high|0)))*4294967296.0));
-}
-
-/** @param {Array=} args */
-function dynCall(sig, ptr, args) {
-  if (args && args.length) {
-#if ASSERTIONS
-    // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
-    assert(args.length === sig.substring(1).replace(/j/g, '--').length);
-#endif
-#if ASSERTIONS
-    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
-#endif
-    return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
-  } else {
-#if ASSERTIONS
-    assert(sig.length == 1);
-#endif
-#if ASSERTIONS
-    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
-#endif
-    return Module['dynCall_' + sig].call(null, ptr);
-  }
 }
 
 var tempRet0 = 0;

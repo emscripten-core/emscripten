@@ -64,36 +64,6 @@ var Runtime = {
 
 // Additional runtime elements, that need preprocessing
 
-// Converts a value we have as signed, into an unsigned value. For
-// example, -1 in int32 would be a very large number as unsigned.
-function unSign(value, bits, ignore) {
-  if (value >= 0) {
-    return value;
-  }
-  return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
-                    : Math.pow(2, bits)         + value;
-}
-
-// Converts a value we have as unsigned, into a signed value. For
-// example, 200 in a uint8 would be a negative number.
-function reSign(value, bits, ignore) {
-  if (value <= 0) {
-    return value;
-  }
-  var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
-                        : Math.pow(2, bits-1);
-  if (value >= half && (bits <= 32 || value > half)) { // for huge values, we can hit the precision limit and always get true here. so don't do that
-                                                       // but, in general there is no perfect solution here. With 64-bit ints, we get rounding and errors
-                                                       // TODO: In i64 mode 1, resign the two parts separately and safely
-    value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
-  }
-  return value;
-}
-
-// Allocated here in JS, after we have the runtime etc. prepared.
-// This constant is emitted into the JS or wasm code.
-var DYNAMICTOP_PTR = makeStaticAlloc(4);
-
 // "Process info" for syscalls is static and cannot change, so define it using
 // some fixed values
 var PROCINFO = {

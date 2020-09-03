@@ -1207,7 +1207,7 @@ struct mallinfo emmalloc_mallinfo()
   struct mallinfo info;
   // Non-mmapped space allocated (bytes): For emmalloc,
   // let's define this as the difference between heap size and dynamic top end.
-  info.arena = emscripten_get_heap_size() - (size_t)*emscripten_get_sbrk_ptr();
+  info.arena = emscripten_get_heap_size() - (size_t)sbrk(0);
   // Number of "ordinary" blocks. Let's define this as the number of highest
   // size blocks. (subtract one from each, since there is a sentinel node in each list)
   info.ordblks = count_linked_list_size(&freeRegionBuckets[NUM_FREE_BUCKETS-1])-1;
@@ -1360,7 +1360,7 @@ emmalloc.c:
 int emmalloc_shrink_heap()
 {
   MALLOC_ACQUIRE();
-  size_t sbrkTop = (size_t)*emscripten_get_sbrk_ptr();
+  size_t sbrkTop = (size_t)sbrk(0);
   size_t heapSize = emscripten_get_heap_size();
   assert(heapSize >= sbrkTop);
   int success = 0;

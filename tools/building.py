@@ -484,10 +484,15 @@ def lld_flags_for_executable(external_symbol_list):
   if not Settings.STANDALONE_WASM:
     cmd.append('--import-memory')
     cmd.append('--import-table')
+  else:
+    cmd.append('--export-table')
 
   if Settings.USE_PTHREADS:
     cmd.append('--shared-memory')
 
+  # wasm-ld can strip debug info for us. this strips both the Names
+  # section and DWARF, so we can only use it when we don't need any of
+  # those things.
   if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
                                    not Settings.PROFILING_FUNCS and
                                    not Settings.ASYNCIFY):
@@ -509,8 +514,6 @@ def lld_flags_for_executable(external_symbol_list):
     if external_symbol_list:
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbol_list]
-    if Settings.STANDALONE_WASM and Settings.EXPECT_MAIN and 'main' in c_exports:
-      c_exports.remove('main')
     for export in c_exports:
       cmd += ['--export', export]
 
@@ -856,14 +859,6 @@ def can_inline():
   return Settings.INLINING_LIMIT == 0
 
 
-def is_wasm_only():
-  # not even wasm, much less wasm-only
-  if not Settings.WASM:
-    return False
-  # llvm backend can only ever produce wasm
-  return True
-
-
 def get_safe_internalize():
   if Settings.LINKABLE:
     return [] # do not internalize anything
@@ -1092,6 +1087,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     if Settings.MINIMAL_RUNTIME and Settings.USE_PTHREADS and not Settings.MODULARIZE:
       CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
     outfile = filename + '.cc.js'
+    configuration.get_temp_files().note(outfile)
 
     args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
             '--language_in', 'ECMASCRIPT5']
@@ -1135,7 +1131,10 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
       logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
 
       # Exit and print final hint to get clearer output
-      exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set')
+      msg = 'closure compiler failed (rc: %d): %s' % (proc.returncode, shared.shlex_join(cmd))
+      if not pretty:
+        msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
+      exit_with_error(msg)
 
     if len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet':
       # print list of warnings (possibly long wall of text if input was minified)
@@ -1223,6 +1222,12 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     graph.append({
       'export': 'memory',
       'name': 'emcc$export$memory',
+      'reaches': [],
+      'root': True
+    })
+    graph.append({
+      'export': '__indirect_function_table',
+      'name': 'emcc$export$__indirect_function_table',
       'reaches': [],
       'root': True
     })
@@ -1421,6 +1426,15 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   return js_file
 
 
+def strip(infile, outfile, debug=False, producers=False):
+  cmd = [LLVM_OBJCOPY, infile, outfile]
+  if debug:
+    cmd += ['--remove-section=.debug*']
+  if producers:
+    cmd += ['--remove-section=producers']
+  run_process(cmd)
+
+
 # extract the DWARF info from the main file, and leave the wasm with
 # debug into as a file on the side
 # TODO: emit only debug sections in the side file, and not the entire
@@ -1433,7 +1447,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
-  run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
+  strip(wasm_file_with_dwarf, wasm_file, debug=True)
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
@@ -1628,7 +1642,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
     #       which we may need
     # TODO: once fastcomp is gone, either remove source maps entirely, or
     #       support them by emitting a source map at the end from the dwarf,
-    #       and use llvm-objcpy to remove that final dwarf
+    #       and use llvm-objcopy to remove that final dwarf
     cmd += ['--strip-dwarf']
   cmd += args
   if infile:

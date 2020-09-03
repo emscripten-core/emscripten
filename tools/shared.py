@@ -64,7 +64,7 @@ diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined', error=True)
 diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')
-diagnostics.add_warning('fastcomp')
+diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 
 
@@ -235,6 +235,7 @@ def run_js_tool(filename, jsargs=[], *args, **kw):
   implemented in javascript.
   """
   command = NODE_JS + [filename] + jsargs
+  print_compiler_stage(command)
   return check_call(command, *args, **kw).stdout
 
 
@@ -1096,7 +1097,7 @@ class JS(object):
   #   Copyright 2017 The Emscripten Authors
   #   SPDX-License-Identifier: MIT
   #  */
-  emscripten_license_regex = '''\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/''' # noqa
+  emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/'
 
   @staticmethod
   def handle_license(js_target):
@@ -1214,28 +1215,34 @@ function jsCall_%s(index%s) {
     return ret
 
   @staticmethod
-  def make_dynCall(sig):
-    # Optimize dynCall accesses in the case when not building with dynamic
-    # linking enabled.
-    if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
-      return 'dynCall_' + sig
+  def make_dynCall(sig, args):
+    # wasm2c and asyncify are not yet compatible with direct wasm table calls
+    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
+      args = ','.join(args)
+      if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
+        # Optimize dynCall accesses in the case when not building with dynamic
+        # linking enabled.
+        return 'dynCall_%s(%s)' % (sig, args)
+      else:
+        return 'Module["dynCall_%s"](%s)' % (sig, args)
     else:
-      return 'Module["dynCall_' + sig + '"]'
+      return 'wasmTable.get(%s)(%s)' % (args[0], ','.join(args[1:]))
 
   @staticmethod
   def make_invoke(sig, named=True):
     legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
-    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
-    args = 'index' + (',' if args else '') + args
+    args = ['index'] + ['a' + str(i) for i in range(1, len(legal_sig))]
     ret = 'return ' if sig[0] != 'v' else ''
-    body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
+    body = '%s%s;' % (ret, JS.make_dynCall(sig, args))
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     if Settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
     else:
       rethrow = "if (e !== e+0) throw e;"
 
-    ret = '''function%s(%s) {
+    name = (' invoke_' + sig) if named else ''
+    ret = '''\
+function%s(%s) {
   var sp = stackSave();
   try {
     %s
@@ -1244,7 +1251,8 @@ function jsCall_%s(index%s) {
     %s
     _setThrew(1, 0);
   }
-}''' % ((' invoke_' + sig) if named else '', args, body, rethrow)
+}''' % (name, ','.join(args), body, rethrow)
+
     return ret
 
   @staticmethod
@@ -1330,8 +1338,6 @@ class WebAssembly(object):
     js = open(js_file).read()
     m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
     dynamic_base = int(m.group(2))
-    m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)
-    dynamictop_ptr = int(m.group(2))
 
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
     name = b'\x13emscripten_metadata' # section name, including prefixed size
@@ -1353,7 +1359,8 @@ class WebAssembly(object):
       WebAssembly.toLEB(table_size) +
       WebAssembly.toLEB(global_base) +
       WebAssembly.toLEB(dynamic_base) +
-      WebAssembly.toLEB(dynamictop_ptr) +
+      # dynamictopPtr, always 0 now
+      WebAssembly.toLEB(0) +
 
       # tempDoublePtr, always 0 in wasm backend
       WebAssembly.toLEB(0) +
@@ -1379,7 +1386,8 @@ class WebAssembly(object):
   @staticmethod
   def add_dylink_section(wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
-    assert not Settings.WASM_BACKEND
+    # TODO: use this in the wasm backend
+    assert False
     mem_align = Settings.MAX_GLOBAL_ALIGN
     mem_size = Settings.STATIC_BUMP
     table_size = Settings.WASM_TABLE_SIZE
@@ -1673,7 +1681,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 26)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 27)
 
 # Tools/paths
 if LLVM_ADD_VERSION is None:

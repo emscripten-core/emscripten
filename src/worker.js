@@ -77,10 +77,6 @@ this.onmessage = function(e) {
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
 #endif
 
-#if USES_DYNAMIC_ALLOC
-      {{{ makeAsmImportsAccessInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
-#endif
-
 #if WASM
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
@@ -200,7 +196,7 @@ this.onmessage = function(e) {
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
         // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-        var result = Module['dynCall_ii'](e.data.start_routine, e.data.arg);
+        var result = Module['dynCall']('ii', e.data.start_routine, [e.data.arg]);
 
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();

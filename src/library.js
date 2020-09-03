@@ -444,12 +444,6 @@ LibraryManager.library = {
     return HEAPU8.length;
   },
 
-  emscripten_get_sbrk_ptr__asm: true,
-  emscripten_get_sbrk_ptr__sig: 'i',
-  emscripten_get_sbrk_ptr: function() {
-    return {{{ DYNAMICTOP_PTR }}};
-  },
-
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
@@ -470,8 +464,8 @@ LibraryManager.library = {
   },
 #else
 
-  // Grows the asm.js/wasm heap to the given byte size, and updates both JS and asm.js/wasm side views to the buffer.
-  // Returns 1 on success, or undefined if growing failed.
+  // Grows the wasm memory to the given byte size, and updates the JS views to
+  // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
 #if MEMORYPROFILER
     var oldHeapSize = buffer.byteLength;
@@ -499,6 +493,8 @@ LibraryManager.library = {
       console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
+    // implicit 0 return to save code size (caller will cast "undefined" into 0
+    // anyhow)
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
@@ -538,8 +534,6 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ getMemoryPageSize() }}};
-
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
     // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
@@ -547,7 +541,7 @@ LibraryManager.library = {
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
     // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
-    // 4. Max size for the heap is capped at 2048MB-PAGE_MULTIPLE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+    // 4. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
     // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
     //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
@@ -556,7 +550,7 @@ LibraryManager.library = {
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #else
-    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - PAGE_MULTIPLE;
+    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - {{{ WASM_PAGE_SIZE }}};
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
@@ -600,7 +594,7 @@ LibraryManager.library = {
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
 
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
@@ -611,7 +605,7 @@ LibraryManager.library = {
       console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
       if (replacement) {
-#if ASSERTIONS && (!WASM || WASM2JS)
+#if ASSERTIONS && WASM2JS
         err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
@@ -711,12 +705,6 @@ LibraryManager.library = {
   atexit__proxy: 'sync',
   atexit__sig: 'iii',
   atexit: function(func, arg) {
-#if ASSERTIONS
-#if EXIT_RUNTIME == 0
-    warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
-#endif
-#endif
-
 #if EXIT_RUNTIME
     __ATEXIT__.unshift({ func: func, arg: arg });
 #endif
@@ -794,180 +782,10 @@ LibraryManager.library = {
   },
 #endif
 
-  memcpy__sig: 'iiii',
-  memmove__sig: 'iiii',
-  memset__sig: 'iiii',
-
-#if DECLARE_ASM_MODULE_EXPORTS
-  llvm_memcpy_i32: 'memcpy',
-  llvm_memcpy_i64: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
-
-  llvm_memmove_i32: 'memmove',
-  llvm_memmove_i64: 'memmove',
-  llvm_memmove_p0i8_p0i8_i32: 'memmove',
-  llvm_memmove_p0i8_p0i8_i64: 'memmove',
-
-  llvm_memset_i32: 'memset',
-  llvm_memset_p0i8_i32: 'memset',
-  llvm_memset_p0i8_i64: 'memset',
-#else
-  // When DECLARE_ASM_MODULE_EXPORTS==0, cannot alias asm.js functions from non-asm.js
-  // functions, so use an intermediate function as a pass-through.
-  _memcpy_js__deps: ['memcpy'],
-  _memcpy_js__sig: 'iiii',
-  _memcpy_js: function(dst, src, num) {
-    return _memcpy(dst, src, num);
-  },
-
-  _memmove_js__deps: ['memmove'],
-  _memmove_js__sig: 'iiii',
-  _memmove_js: function(dst, src, num) {
-    return _memmove(dst, src, num);
-  },
-
-  _memset_js__deps: ['memset'],
-  _memset_js__sig: 'iiii',
-  _memset_js: function(ptr, value, num) {
-    return _memset(ptr, value, num);
-  },
-
-  llvm_memcpy_i32: '_memcpy_js',
-  llvm_memcpy_i64: '_memcpy_js',
-  llvm_memcpy_p0i8_p0i8_i32: '_memcpy_js',
-  llvm_memcpy_p0i8_p0i8_i64: '_memcpy_js',
-
-  llvm_memmove_i32: '_memmove_js',
-  llvm_memmove_i64: '_memmove_js',
-  llvm_memmove_p0i8_p0i8_i32: '_memmove_js',
-  llvm_memmove_p0i8_p0i8_i64: '_memmove_js',
-
-  llvm_memset_i32: '_memset_js',
-  llvm_memset_p0i8_i32: '_memset_js',
-  llvm_memset_p0i8_i64: '_memset_js',
-#endif // ~DECLARE_ASM_MODULE_EXPORTS
   // ==========================================================================
   // GCC/LLVM specifics
   // ==========================================================================
   __builtin_prefetch: function(){},
-
-  // ==========================================================================
-  // LLVM specifics
-  // ==========================================================================
-
-  llvm_va_start__inline: function(ptr) {
-    // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
-    // 2-word structure: struct { void* start; void* currentOffset; }
-    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
-  },
-
-  llvm_va_end: function() {},
-
-  llvm_va_copy: function(ppdest, ppsrc) {
-    // copy the list start
-    {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-
-    // copy the list's current offset (will be advanced with each call to va_arg)
-    {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-  },
-
-  llvm_bswap_i16__asm: true,
-  llvm_bswap_i16__sig: 'ii',
-  llvm_bswap_i16: function(x) {
-    x = x|0;
-    return (((x&0xff)<<8) | ((x>>8)&0xff))|0;
-  },
-
-  llvm_bswap_i32__asm: true,
-  llvm_bswap_i32__sig: 'ii',
-  llvm_bswap_i32: function(x) {
-    x = x|0;
-    return (((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24))|0;
-  },
-
-  llvm_bswap_i64__deps: ['llvm_bswap_i32'],
-  llvm_bswap_i64: function(l, h) {
-    var retl = _llvm_bswap_i32(h)>>>0;
-    var reth = _llvm_bswap_i32(l)>>>0;
-    {{{ makeStructuralReturn(['retl', 'reth']) }}};
-  },
-
-  llvm_ctlz_i8__asm: true,
-  llvm_ctlz_i8__sig: 'ii',
-  llvm_ctlz_i8__deps: ['Math_clz32'],
-  llvm_ctlz_i8: function(x, isZeroUndef) {
-    x = x | 0;
-    isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x & 0xff) | 0) - 24 | 0;
-  },
-
-  llvm_ctlz_i16__asm: true,
-  llvm_ctlz_i16__sig: 'ii',
-  llvm_ctlz_i16__deps: ['Math_clz32'],
-  llvm_ctlz_i16: function(x, isZeroUndef) {
-    x = x | 0;
-    isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x & 0xffff) | 0) - 16 | 0
-  },
-
-  llvm_ctlz_i64__asm: true,
-  llvm_ctlz_i64__sig: 'iii',
-  llvm_ctlz_i64__deps: ['Math_clz32'],
-  llvm_ctlz_i64: function(l, h, isZeroUndef) {
-    l = l | 0;
-    h = h | 0;
-    isZeroUndef = isZeroUndef | 0;
-    var ret = 0;
-    ret = Math_clz32(h) | 0;
-    if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
-    {{{ makeSetTempRet0('0') }}};
-    return ret | 0;
-  },
-
-#if WASM == 0 // binaryen will convert these calls to wasm anyhow
-  llvm_cttz_i32__asm: true,
-#endif
-  llvm_cttz_i32__sig: 'ii',
-  llvm_cttz_i32__deps: ['Math_clz32'],
-  llvm_cttz_i32: function(x) { // Note: Currently doesn't take isZeroUndef()
-    x = x | 0;
-    return (x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32) | 0;
-  },
-
-  llvm_cttz_i64__deps: ['llvm_cttz_i32'],
-  llvm_cttz_i64: function(l, h) {
-    var ret = _llvm_cttz_i32(l);
-    if (ret == 32) ret += _llvm_cttz_i32(h);
-    {{{ makeStructuralReturn(['ret', '0']) }}};
-  },
-
-  llvm_ctpop_i32__asm: true,
-  llvm_ctpop_i32__sig: 'ii',
-  llvm_ctpop_i32__deps: ['Math_imul'],
-  llvm_ctpop_i32: function(x) {
-    // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-    // http://bits.stephan-brumme.com/countBits.html
-    x = x | 0;
-    x = x - ((x >>> 1) & 0x55555555) | 0;
-    x = (x & 0x33333333) + ((x >>> 2) & 0x33333333) | 0;
-    return (Math_imul((x + (x >>> 4) & 252645135 /* 0xF0F0F0F, but hits uglify parse bug? */), 0x1010101) >>> 24) | 0;
-  },
-
-  llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],
-  llvm_ctpop_i64__asm: true,
-  llvm_ctpop_i64__sig: 'iii',
-  llvm_ctpop_i64: function(l, h) {
-    l = l | 0;
-    h = h | 0;
-    return (_llvm_ctpop_i32(l) | 0) + (_llvm_ctpop_i32(h) | 0) | 0;
-  },
-
-  llvm_trap: function() {
-    abort('trap!');
-  },
-
-  llvm_prefetch: function(){},
 
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
@@ -984,81 +802,6 @@ LibraryManager.library = {
   },
 
   __gcc_personality_v0: function() {
-  },
-
-  llvm_stacksave: function() {
-    var self = _llvm_stacksave;
-    if (!self.LLVM_SAVEDSTACKS) {
-      self.LLVM_SAVEDSTACKS = [];
-    }
-    self.LLVM_SAVEDSTACKS.push(stackSave());
-    return self.LLVM_SAVEDSTACKS.length-1;
-  },
-
-  llvm_stackrestore: function(p) {
-    var self = _llvm_stacksave;
-    var ret = self.LLVM_SAVEDSTACKS[p];
-    self.LLVM_SAVEDSTACKS.splice(p, 1);
-    stackRestore(ret);
-  },
-
-  llvm_flt_rounds: function() {
-    return -1; // 'indeterminable' for FLT_ROUNDS
-  },
-
-  llvm_expect_i32__inline: function(val, expected) {
-    return '(' + val + ')';
-  },
-
-  llvm_objectsize_i32: function() { return -1 }, // TODO: support this
-
-  llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
-
-  llvm_bitreverse_i32__asm: true,
-  llvm_bitreverse_i32__sig: 'ii',
-  llvm_bitreverse_i32: function(x) {
-    x = x|0;
-    x = ((x & 0xaaaaaaaa) >>> 1) | ((x & 0x55555555) << 1);
-    x = ((x & 0xcccccccc) >>> 2) | ((x & 0x33333333) << 2);
-    x = ((x & 0xf0f0f0f0) >>> 4) | ((x & 0x0f0f0f0f) << 4);
-    x = ((x & 0xff00ff00) >>> 8) | ((x & 0x00ff00ff) << 8);
-    return (x >>> 16) | (x << 16);
-  },
-
-  // llvm-nacl
-
-  llvm_nacl_atomic_store_i32__inline: true,
-
-  llvm_nacl_atomic_cmpxchg_i8__inline: true,
-  llvm_nacl_atomic_cmpxchg_i16__inline: true,
-  llvm_nacl_atomic_cmpxchg_i32__inline: true,
-
-  // ==========================================================================
-  // llvm-mono integration
-  // ==========================================================================
-
-  llvm_mono_load_i8_p0i8: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i8') }}};
-  },
-
-  llvm_mono_store_i8_p0i8: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i8') }}};
-  },
-
-  llvm_mono_load_i16_p0i16: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i16') }}};
-  },
-
-  llvm_mono_store_i16_p0i16: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i16') }}};
-  },
-
-  llvm_mono_load_i32_p0i32: function(ptr) {
-    return {{{ makeGetValue('ptr', 0, 'i32') }}};
-  },
-
-  llvm_mono_store_i32_p0i32: function(value, ptr) {
-    {{{ makeSetValue('ptr', 0, 'value', 'i32') }}};
   },
 
   // ==========================================================================
@@ -1313,12 +1056,6 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  // Statically allocated time struct.
-  __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-  // Statically allocated copy of the string "GMT" for gmtime() to point to
-  __tm_timezone: '{{{ makeStaticString("GMT") }}}',
-  // Statically allocated time strings.
-  __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   mktime__deps: ['tzset'],
   mktime__sig: 'ii',
   mktime: function(tmPtr) {
@@ -1358,12 +1095,10 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['__tm_current', 'gmtime_r'],
-  gmtime: function(time) {
-    return _gmtime_r(time, ___tm_current);
-  },
-
-  gmtime_r__deps: ['__tm_timezone'],
+#if MINIMAL_RUNTIME
+  gmtime_r__deps: ['allocateUTF8'],
+#endif
+  gmtime_r__sig: 'iii',
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -1378,10 +1113,13 @@ LibraryManager.library = {
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
-
+    // Allocate a string "GMT" for us to point to.
+    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
     return tmPtr;
   },
+  __gmtime_r: 'gmtime_r',
+
   timegm__deps: ['tzset'],
   timegm: function(tmPtr) {
     _tzset();
@@ -1402,12 +1140,8 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  localtime__deps: ['__tm_current', 'localtime_r'],
-  localtime: function(time) {
-    return _localtime_r(time, ___tm_current);
-  },
-
-  localtime_r__deps: ['__tm_timezone', 'tzset'],
+  localtime_r__deps: ['tzset'],
+  localtime_r__sig: 'iii',
   localtime_r: function(time, tmPtr) {
     _tzset();
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
@@ -1435,13 +1169,10 @@ LibraryManager.library = {
 
     return tmPtr;
   },
+  __localtime_r: 'localtime_r',
 
-  asctime__deps: ['__tm_formatted', 'asctime_r'],
-  asctime: function(tmPtr) {
-    return _asctime_r(tmPtr, ___tm_formatted);
-  },
-
-  asctime_r__deps: ['__tm_formatted', 'mktime'],
+  asctime_r__deps: ['mktime'],
+  asctime_r__sig: 'iii',
   asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -1469,19 +1200,17 @@ LibraryManager.library = {
     stringToUTF8(s, buf, 26);
     return buf;
   },
-
-  ctime__deps: ['__tm_current', 'ctime_r'],
-  ctime: function(timer) {
-    return _ctime_r(timer, ___tm_current);
-  },
+  __asctime_r: 'asctime_r',
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
     var stack = stackSave();
     var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
     stackRestore(stack);
     return rv;
   },
+  __ctime_r: 'ctime_r',
 
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
@@ -2595,15 +2324,6 @@ LibraryManager.library = {
     }
     return addr;
   },
-
-  // ==========================================================================
-  // netinet/in.h
-  // ==========================================================================
-
-  in6addr_any:
-    '{{{ makeStaticAlloc(16) }}}',
-  in6addr_loopback:
-    '{{{ makeStaticAlloc(16) }}}',
 
   // ==========================================================================
   // netdb.h
@@ -3981,6 +3701,49 @@ LibraryManager.library = {
     return readAsmConstArgsArray;
   },
 
+  emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
+    var args = readAsmConstArgs(sigPtr, argbuf);
+    return ASM_CONSTS[code].apply(null, args);
+  },
+  emscripten_asm_const_double: 'emscripten_asm_const_int',
+  $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
+    var args = readAsmConstArgs(sigPtr, argbuf);
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      // EM_ASM functions are variadic, receiving the actual arguments as a buffer
+      // in memory. the last parameter (argBuf) points to that data. We need to
+      // always un-variadify that, *before proxying*, as in the async case this
+      // is a stack allocation that LLVM made, which may go away before the main
+      // thread gets the message. For that reason we handle proxying *after* the
+      // call to readAsmConstArgs, and therefore we do that manually here instead
+      // of using __proxy. (And dor simplicity, do the same in the sync
+      // case as well, even though it's not strictly necessary, to keep the two
+      // code paths as similar as possible on both sides.)
+      // -1 - code is the encoding of a proxied EM_ASM, as a negative number
+      // (positive numbers are non-EM_ASM calls).
+      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
+    }
+#endif
+    return ASM_CONSTS[code].apply(null, args);
+  },
+  emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
+  emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
+    return mainThreadEM_ASM(code, sigPtr, argbuf, 1);
+  },
+  emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
+  emscripten_asm_const_async_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
+    return mainThreadEM_ASM(code, sigPtr, argbuf, 0);
+  },
+
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
@@ -4105,7 +3868,7 @@ LibraryManager.library = {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
-      var ret = {{{ makeDynCall('iii') }}}(func, 0, arg);
+      var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
       if (ret !== 0) return;
     }
   },
@@ -4154,7 +3917,7 @@ LibraryManager.library = {
   emscripten_scan_stack: function(func) {
     var base = STACK_BASE; // TODO verify this is right on pthreads
     var end = stackSave();
-    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
+    {{{ makeDynCall('vii', 'func') }}}(Math.min(base, end), Math.max(base, end));
   },
 
   // misc definitions to avoid unnecessary unresolved symbols being reported
@@ -4186,12 +3949,6 @@ LibraryManager.library = {
   llvm_dbg_value: function() {},
   llvm_debugtrap: function() {},
   llvm_ctlz_i32: function() {},
-  emscripten_asm_const: function() {},
-  emscripten_asm_const_int: function() {},
-  emscripten_asm_const_double: function() {},
-  emscripten_asm_const_int_sync_on_main_thread: function() {},
-  emscripten_asm_const_double_sync_on_main_thread: function() {},
-  emscripten_asm_const_async_on_main_thread: function() {},
 
   __handle_stack_overflow: function() {
     abort('stack overflow')
@@ -4241,6 +3998,80 @@ LibraryManager.library = {
         }
       });
     });
+  },
+
+#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+  $dynCallLegacy: function(sig, ptr, args) {
+#if ASSERTIONS
+    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+    if (args && args.length) {
+      // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
+      assert(args.length === sig.substring(1).replace(/j/g, '--').length);
+    } else {
+      assert(sig.length == 1);
+    }
+#endif
+    if (args && args.length) {
+      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
+    }
+    return Module['dynCall_' + sig].call(null, ptr);
+  },
+  $dynCall__deps: ['$dynCallLegacy'],
+
+  // Used in library code to get JS function from wasm function pointer.
+  // All callers should use direct table access where possible and only fall
+  // back to this function if needed.
+  $getDynCaller__deps: ['$dynCall'],
+  $getDynCaller: function(sig, ptr) {
+#if !USE_LEGACY_DYNCALLS
+    assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
+#endif
+    var argCache = [];
+    return function() {
+      argCache.length = arguments.length;
+      for (var i = 0; i < arguments.length; i++) {
+        argCache[i] = arguments[i];
+      }
+      return dynCall(sig, ptr, argCache);
+    };
+  },
+#endif
+
+  $dynCall: function (sig, ptr, args) {
+#if USE_LEGACY_DYNCALLS
+    return dynCallLegacy(sig, ptr, args);
+#else
+#if !WASM_BIGINT
+    // Without WASM_BIGINT support we cannot directly call function with i64 as
+    // part of thier signature, so we rely the dynCall functions generated by
+    // wasm-emscripten-finalize
+    if (sig.indexOf('j') != -1) {
+      return dynCallLegacy(sig, ptr, args);
+    }
+#endif
+
+    return wasmTable.get(ptr).apply(null, args)
+#endif
+  },
+
+  $callRuntimeCallbacks: function(callbacks) {
+    while(callbacks.length > 0) {
+      var callback = callbacks.shift();
+      if (typeof callback == 'function') {
+        callback(Module); // Pass the module as the first argument.
+        continue;
+      }
+      var func = callback.func;
+      if (typeof func === 'number') {
+        if (callback.arg === undefined) {
+          {{{ makeDynCall('v', 'func') }}}();
+        } else {
+          {{{ makeDynCall('vi', 'func') }}}(callback.arg);
+        }
+      } else {
+        func(callback.arg === undefined ? null : callback.arg);
+      }
+    }
   },
 };
 

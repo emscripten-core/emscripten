@@ -14,6 +14,10 @@ function run() {
   emscriptenMemoryProfiler.onPreloadComplete();
 #endif
 
+#if STACK_OVERFLOW_CHECK >= 2
+    ___set_stack_limits(STACK_BASE, STACK_MAX);
+#endif
+
 #if PROXY_TO_PTHREAD
     // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
     // that will call the user's real main() for the application.
@@ -56,7 +60,7 @@ function initRuntime(asm) {
   // Export needed variables that worker.js needs to Module.
   Module['_emscripten_tls_init'] = _emscripten_tls_init;
   Module['HEAPU32'] = HEAPU32;
-  Module['dynCall_ii'] = dynCall_ii;
+  Module['dynCall'] = dynCall;
   Module['registerPthreadPtr'] = registerPthreadPtr;
   Module['_pthread_self'] = _pthread_self;
 

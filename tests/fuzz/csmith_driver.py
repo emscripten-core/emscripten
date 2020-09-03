@@ -8,7 +8,6 @@
 
 CSMITH_PATH should be set to something like /usr/local/include/csmith
 """
-from __future__ import print_function
 
 import os
 import sys

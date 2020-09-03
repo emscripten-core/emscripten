@@ -68,9 +68,9 @@ var RUNTIME_LOGGING = 0;
 // 0: Stack overflows are not checked.
 // 1: Adds a security cookie at the top of the stack, which is checked at end of
 //    each tick and at exit (practically zero performance overhead)
+//    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=1.
 // 2: Same as above, but also adds an explicit check for allocate() calls which
 //    call ALLOC_STACK. Has a small performance cost.
-//    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=2.
 var STACK_OVERFLOW_CHECK = 0;
 
 // When set to 1, will generate more verbose output during compilation.
@@ -430,6 +430,11 @@ var MIN_WEBGL_VERSION = 1;
 // Specifies the highest WebGL version to target. Pass -s MAX_WEBGL_VERSION=2
 // to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
 // will default to creating a WebGL 2 context if no version is specified.
+// Note that there is no automatic fallback to WebGL1 if WebGL2 is not supported
+// by the user's device, even if you build with both WebGL1 and WebGL2
+// support, as that may not always be what the application wants. If you want
+// such a fallback, you can try to create a context with WebGL2, and if that
+// fails try to create one with WebGL1.
 var MAX_WEBGL_VERSION = 1;
 
 // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that
@@ -702,13 +707,13 @@ var INCOMING_MODULE_JS_API = [
   'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
-  'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
+  'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
-  'preinitializedWebGLContextmemoryInitializerRequest', 'preloadPlugins',
+  'preinitializedWebGLContext', 'memoryInitializerRequest', 'preloadPlugins',
   'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
@@ -762,14 +767,13 @@ var NODE_CODE_CACHING = 0;
 
 // Functions that are explicitly exported. These functions are kept alive
 // through LLVM dead code elimination, and also made accessible outside of the
-// generated code even after running closure compiler (on "Module").  Note the
-// necessary prefix of "_".
+// generated code even after running closure compiler (on "Module").  The
+// symbols listed here require an `_` prefix.
 //
-// Note also that this is the full list of exported functions - if you have a
-// main() function and want it to run, you must include it in this list (as
-// _main is by default in this value, and if you override it without keeping it
-// there, you are in effect removing it).
-var EXPORTED_FUNCTIONS = ['_main'];
+// By default if this setting is not specified on the command line the
+// `_main` function will be implicitly exported.  In STANDALONE_WASM mode the
+// default export is `__start` (or `__initialize` if --no-entry is specified).
+var EXPORTED_FUNCTIONS = [];
 
 // If true, we export all the symbols that are present in JS onto the Module
 // object. This does not affect which symbols will be present - it does not
@@ -778,10 +782,6 @@ var EXPORTED_FUNCTIONS = ['_main'];
 // for all X that end up in the JS file. This is useful to export the JS
 // library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
-
-// Export all bindings generator functions (prefixed with emscripten_bind_). This
-// is necessary to use the WebIDL binder with asm.js
-var EXPORT_BINDINGS = 0;
 
 // If true, export all the functions appearing in a function table, and the
 // tables themselves.
@@ -1115,10 +1115,6 @@ var WASM = 1;
 // or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
 var STANDALONE_WASM = 0;
 
-// Soon to be legacy setting for controlling whether to use WebAssembly backend.
-// There is no need to set this manually.
-var WASM_BACKEND = 1;
-
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
@@ -1152,13 +1148,12 @@ var WASM_ASYNC_COMPILATION = 1;
 var WASM_BIGINT = 0;
 
 // WebAssembly defines a "producers section" which compilers and tools can
-// annotate themselves in. Emscripten does not emit this by default, as it
-// increases code size, and some users may not want information about their tools
-// to be included in their builds for privacy or security reasons, see
+// annotate themselves in, and LLVM emits this by default.
+// Emscripten will strip that out so that it is *not* emitted because it
+// increases code size, and also some users may not want information
+// about their tools to be included in their builds for privacy or security
+// reasons, see
 // https://github.com/WebAssembly/tool-conventions/issues/93.
-// TODO: currently this flag just controls whether we run the binaryen pass
-//       to strip it out from the wasm (where the LLVM wasm backend may have
-//       created it)
 var EMIT_PRODUCERS_SECTION = 0;
 
 // If set then generated WASM files will contain a custom
@@ -1688,4 +1683,6 @@ var LEGACY_SETTINGS = [
   ['AGGRESSIVE_VARIABLE_ELIMINATION', [0, 1], 'Wasm ignores asm.js-specific optimization flags'],
   ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
   ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
+  ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
+  ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
 ];

@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
-
 """Listens on 2 ports and relays between them.
 
 Listens to ports A and B. When someone connects to port A, and then
