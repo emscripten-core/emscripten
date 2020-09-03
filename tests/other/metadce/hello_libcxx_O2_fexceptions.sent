@@ -8,6 +8,7 @@ __cxa_free_exception
 __cxa_rethrow
 __cxa_throw
 __cxa_uncaught_exceptions
+__indirect_function_table
 __map_file
 __resumeException
 __sys_munmap
@@ -46,4 +47,3 @@ invoke_viiiiiiiiiiiiiii
 memory
 setTempRet0
 strftime_l
-table
