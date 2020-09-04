@@ -4001,6 +4001,141 @@ LibraryManager.library = {
   },
 
 #if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+  $makeDynCall: function(sig) {
+#if !WASM_BIGINT
+    assert(sig.indexOf('j') < 0); // TODO: legalization
+#endif // !WASM_BIGINT
+
+    var sigRet = sig.slice(0, 1);
+    var sigParam = sig.slice(1);
+
+    // Create a tiny wasm module with an exported function to call the table
+    // for us.
+    var typeSection = [
+      0x01, // id: section,
+      -1,   // length (placeholder)
+      0x01, // count: 2
+    ];
+
+    function addType(sig) {
+      var sigRet = sig.slice(0, 1);
+      var sigParam = sig.slice(1);
+
+      typeSection.push(0x60); // func
+      typeSection.push(sigParam.length + numExtraParams);
+      for (var i = 0; i < sigParam.length; ++i) {
+        typeSection.push(wasmTypeCodes[sigParam[i]]);
+      }
+      if (sigRet == 'v') {
+        typeSection.push(0x00);
+      } else {
+        typeSection = typeSection.concat([0x01, wasmTypeCodes[sigRet]]);
+      }
+    }
+
+    // First type: fptr, params (for the dyncall itself)
+    addType(sigRet + 'i' + sigParam);
+    // Second type: just params (for the indirect call inside it)
+    addType(sig);
+
+    // Write the overall length of the type section back into the section header
+    // (excepting the 2 bytes for the section id and length)
+    typeSection[1] = typeSection.length - 2;
+
+    // Import section:
+    // (import "a" "a" (table $t (0 anyref)))
+    var importSection = [0x02, 0x09, 0x01, 0x01, 0x61, 0x01, 0x61, 0x01, 0x70, 0x00, 0x00];
+
+    // Function section: declare one function with the first type
+    var functionSection = [0x03, 0x02, 0x01, 0x00];
+
+    // Export section: Export the function as "a"
+    var exportSection = [0x07, 0x05, 0x01, 0x01, 0x61, 0x00, 0x00];
+
+    // Code section: read the params and do the indirect call.
+    var codeSection = [
+      0x0a, // section id
+      -1,   // section length (placeholder)
+      0x01, // num functions
+      -1,   // function length (placeholder)
+      0x00, // no vars
+    ];
+
+    for (var i = 0; i < sigParam.length; ++i) {
+      codeSection.push(wasmTypeCodes[sigParam[i]]);
+    }
+    if (sigRet == 'v') {
+      codeSection.push(0x00);
+    } else {
+      codeSection = codeSection.concat([0x01, wasmTypeCodes[sigRet]]);
+    }
+    for (var i = 0; i < sigParam.length; ++i) {
+      codeSection.push(0x20); // local.get
+      codeSection.push(i + 1); // get params after the function pointer
+    }
+    codeSection.push(0x20); // local.get
+    codeSection.push(0); // function pointer
+    if (sigRet == 'v') {
+      codeSection.push(0x00);
+    } else {
+      codeSection = codeSection.concat([0x01, wasmTypeCodes[sigRet]]);
+    }
+    codeSection.push(0x11); // call_indirect
+    codeSection.push(0x01); // second function type
+    codeSection.push(0x0b); // end function
+
+    codeSection[1] = codeSection.length - 2;
+    codeSection[3] = codeSection.length - 4;
+
+    /*
+    Example output for signature dif (return f64, params i32, f32):
+
+    00 61 73 6d
+    01 00 00 00
+    01 0e 02 60   type section, func
+    03 7f 7f 7d   i32 i32 f32
+    01 7c         f64
+    60            another func
+    02 7f 7d
+    01 7c
+    02 09         import section
+    01 01 61 01 61 01
+    70 00 00
+    03 02 01 00   function section
+    07 05         export section
+    01 01 61 00 00
+    0a 0d         code section
+    01 0b 00 20 01 20 02 20  00 11 01 00 0b          
+
+    (module
+     (type $t (func (param $x i32) (param $y f32) (result f64)))
+     (import "a" "a" (table $t (0 anyref)))
+     (func "a" (param $ptr i32) (param $x i32) (param $y f32) (result f64)
+      (call_indirect (type $t)
+       (local.get $x)
+       (local.get $y)
+       (local.get $ptr)
+      )
+     )
+    )
+    */
+
+    var bytes = new Uint8Array([
+      0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
+      0x01, 0x00, 0x00, 0x00, // version: 1
+    ].concat(typeSection, importSection, functionSection, exportSection, codeSection));
+
+    // We can compile this wasm module synchronously because it is very small.
+    var module = new WebAssembly.Module(bytes);
+    var instance = new WebAssembly.Instance(module, {
+      'a': {
+        'a': wasmTable
+      }
+    });
+    return instance.exports['a'];
+  },
+
+  $dynCallLegacy__deps: ['$makeDynCall'],
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
@@ -4011,6 +4146,9 @@ LibraryManager.library = {
       assert(sig.length == 1);
     }
 #endif
+    if (!Module['dynCall_' + sig]) {
+      makeDynCall(sig);
+    }
     if (args && args.length) {
       return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
     }
@@ -4043,7 +4181,7 @@ LibraryManager.library = {
 #else
 #if !WASM_BIGINT
     // Without WASM_BIGINT support we cannot directly call function with i64 as
-    // part of thier signature, so we rely the dynCall functions generated by
+    // part of their signature, so we rely on the dynCall functions generated by
     // wasm-emscripten-finalize
     if (sig.indexOf('j') != -1) {
       return dynCallLegacy(sig, ptr, args);

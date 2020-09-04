@@ -4,6 +4,13 @@
  * SPDX-License-Identifier: MIT
  */
 
+var wasmTypeCodes = {
+  'i': 0x7f, // i32
+  'j': 0x7e, // i64
+  'f': 0x7d, // f32
+  'd': 0x7c, // f64
+};
+
 #if WASM
 // Wraps a JS function as a wasm function with a given signature.
 function convertJsFunctionToWasm(func, sig) {
@@ -42,17 +49,11 @@ function convertJsFunctionToWasm(func, sig) {
   ];
   var sigRet = sig.slice(0, 1);
   var sigParam = sig.slice(1);
-  var typeCodes = {
-    'i': 0x7f, // i32
-    'j': 0x7e, // i64
-    'f': 0x7d, // f32
-    'd': 0x7c, // f64
-  };
 
   // Parameters, length + signatures
   typeSection.push(sigParam.length);
   for (var i = 0; i < sigParam.length; ++i) {
-    typeSection.push(typeCodes[sigParam[i]]);
+    typeSection.push(wasmTypeCodes[sigParam[i]]);
   }
 
   // Return values, length + signatures
@@ -60,7 +61,7 @@ function convertJsFunctionToWasm(func, sig) {
   if (sigRet == 'v') {
     typeSection.push(0x00);
   } else {
-    typeSection = typeSection.concat([0x01, typeCodes[sigRet]]);
+    typeSection = typeSection.concat([0x01, wasmTypeCodes[sigRet]]);
   }
 
   // Write the overall length of the type section back into the section header
