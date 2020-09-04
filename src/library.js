@@ -4006,15 +4006,18 @@ LibraryManager.library = {
     assert(sig.indexOf('j') < 0); // TODO: legalization
 #endif // !WASM_BIGINT
 
+
+sig = 'dif';
+
     var sigRet = sig.slice(0, 1);
     var sigParam = sig.slice(1);
 
     // Create a tiny wasm module with an exported function to call the table
     // for us.
     var typeSection = [
-      0x01, // id: section,
+      0x01, // section id
       -1,   // length (placeholder)
-      0x01, // count: 2
+      0x02, // 2 types
     ];
 
     function addType(sig) {
@@ -4022,7 +4025,7 @@ LibraryManager.library = {
       var sigParam = sig.slice(1);
 
       typeSection.push(0x60); // func
-      typeSection.push(sigParam.length + numExtraParams);
+      typeSection.push(sigParam.length);
       for (var i = 0; i < sigParam.length; ++i) {
         typeSection.push(wasmTypeCodes[sigParam[i]]);
       }
@@ -4062,26 +4065,14 @@ LibraryManager.library = {
     ];
 
     for (var i = 0; i < sigParam.length; ++i) {
-      codeSection.push(wasmTypeCodes[sigParam[i]]);
-    }
-    if (sigRet == 'v') {
-      codeSection.push(0x00);
-    } else {
-      codeSection = codeSection.concat([0x01, wasmTypeCodes[sigRet]]);
-    }
-    for (var i = 0; i < sigParam.length; ++i) {
       codeSection.push(0x20); // local.get
       codeSection.push(i + 1); // get params after the function pointer
     }
     codeSection.push(0x20); // local.get
     codeSection.push(0); // function pointer
-    if (sigRet == 'v') {
-      codeSection.push(0x00);
-    } else {
-      codeSection = codeSection.concat([0x01, wasmTypeCodes[sigRet]]);
-    }
     codeSection.push(0x11); // call_indirect
     codeSection.push(0x01); // second function type
+    codeSection.push(0x00); // table index 0
     codeSection.push(0x0b); // end function
 
     codeSection[1] = codeSection.length - 2;
@@ -4124,7 +4115,7 @@ LibraryManager.library = {
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
       0x01, 0x00, 0x00, 0x00, // version: 1
     ].concat(typeSection, importSection, functionSection, exportSection, codeSection));
-
+ console.log('bytes', bytes.forEach(function(x) { console.log('0x' + x.toString(16)) }));
     // We can compile this wasm module synchronously because it is very small.
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {
@@ -4146,9 +4137,9 @@ LibraryManager.library = {
       assert(sig.length == 1);
     }
 #endif
-    if (!Module['dynCall_' + sig]) {
+//    if (!Module['dynCall_' + sig]) {
       makeDynCall(sig);
-    }
+  //  }
     if (args && args.length) {
       return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
     }
