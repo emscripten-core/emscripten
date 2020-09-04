@@ -4006,9 +4006,6 @@ LibraryManager.library = {
     assert(sig.indexOf('j') < 0); // TODO: legalization
 #endif // !WASM_BIGINT
 
-
-sig = 'dif';
-
     var sigRet = sig.slice(0, 1);
     var sigParam = sig.slice(1);
 
@@ -4115,7 +4112,7 @@ sig = 'dif';
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
       0x01, 0x00, 0x00, 0x00, // version: 1
     ].concat(typeSection, importSection, functionSection, exportSection, codeSection));
- console.log('bytes', bytes.forEach(function(x) { console.log('0x' + x.toString(16)) }));
+console.log(bytes);
     // We can compile this wasm module synchronously because it is very small.
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {
@@ -4138,7 +4135,7 @@ sig = 'dif';
     }
 #endif
 //    if (!Module['dynCall_' + sig]) {
-      makeDynCall(sig);
+      Module['dynCall_' + sig] = makeDynCall(sig);
   //  }
     if (args && args.length) {
       return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
