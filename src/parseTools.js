@@ -743,29 +743,14 @@ function getHeapOffset(offset, type) {
   return '(' + offset + '>>' + shifts + ')';
 }
 
-function ensureDot(value) {
-  value = value.toString();
-  // if already dotted, or Infinity or NaN, nothing to do here
-  // if smaller than 1 and running js opts, we always need to force a coercion (0.001 will turn into 1e-3, which has no .)
-  if ((value.indexOf('.') >= 0 || /[IN]/.test(value)) && Math.abs(value) >= 1) return value;
-  var e = value.indexOf('e');
-  if (e < 0) return value + '.0';
-  return value.substr(0, e) + '.0' + value.substr(e);
-}
-
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!isNumber(value)) return value;
   if (type === 'float') {
     // normally ok to just emit Math_fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
     if (value == 0) return 'Math_fround(0)';
-    value = ensureDot(value);
     return 'Math_fround(' + value + ')';
   }
-  if (type in Compiletime.FLOAT_TYPES) {
-    return ensureDot(value);
-  } else {
-    return value;
-  }
+  return value;
 }
 
 function asmInitializer(type) {
