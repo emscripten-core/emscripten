@@ -4039,12 +4039,20 @@ LibraryManager.library = {
     )
     */
 
-#if !WASM_BIGINT
-    assert(sig.indexOf('j') < 0); // TODO: legalization
-#endif // !WASM_BIGINT
-
     var sigRet = sig.slice(0, 1);
     var sigParam = sig.slice(1);
+
+    // Prepare for legalization
+    var illegalReturn = false;
+    var illegalParams = 0;
+#if !WASM_BIGINT
+    illegalReturn = sigRet === 'j';
+    for (var i = 0; i < sigParam.length; i++) {
+      if (sigParam[i] === 'j') {
+        illegalParams++;
+      }
+    }
+#endif
 
     // Create a tiny wasm module with an exported function to call the table
     // for us.
@@ -4059,14 +4067,27 @@ LibraryManager.library = {
       var sigParam = sig.slice(1);
 
       typeSection.push(0x60); // func
-      typeSection.push(sigParam.length);
+      typeSection.push(sigParam.length + illegalParams);
       for (var i = 0; i < sigParam.length; ++i) {
+#if !WASM_BIGINT
+        if (sigParam[i] === 'j') {
+          typeSection.push(wasmTypeCodes['i']);
+          typeSection.push(wasmTypeCodes['i']);
+          continue;
+        }
+#endif
         typeSection.push(wasmTypeCodes[sigParam[i]]);
       }
       if (sigRet == 'v') {
         typeSection.push(0x00);
       } else {
-        typeSection = typeSection.concat([0x01, wasmTypeCodes[sigRet]]);
+        typeSection.push(0x01);
+#if !WASM_BIGINT
+        if (illegalReturn) {
+          typeSection.push(wasmTypeCodes['i']);
+        } else
+#endif
+        typeSection.push(wasmTypeCodes[sigRet]]);
       }
     }
 
@@ -4081,6 +4102,7 @@ LibraryManager.library = {
 
     // Import section:
     // (import "a" "a" (table $t (0 anyref)))
+// TODO: import setTempRet0 for illegalReturn
     var importSection = [0x02, 0x09, 0x01, 0x01, 0x61, 0x01, 0x61, 0x01, 0x70, 0x00, 0x00];
 
     // Function section: declare one function with the first type
