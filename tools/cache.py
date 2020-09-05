@@ -79,7 +79,6 @@ class Cache(object):
     shared.safe_ensure_dirs(self.dirname)
 
   def erase(self):
-    return
     self.acquire_cache_lock()
     try:
       if os.path.exists(self.root_dirname):
