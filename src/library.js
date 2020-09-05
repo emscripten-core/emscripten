@@ -4134,9 +4134,9 @@ console.log(bytes);
       assert(sig.length == 1);
     }
 #endif
-//    if (!Module['dynCall_' + sig]) {
+    if (!Module['dynCall_' + sig]) {
       Module['dynCall_' + sig] = makeDynCall(sig);
-  //  }
+    }
     if (args && args.length) {
       return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
     }
