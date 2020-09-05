@@ -4112,7 +4112,7 @@ LibraryManager.library = {
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
       0x01, 0x00, 0x00, 0x00, // version: 1
     ].concat(typeSection, importSection, functionSection, exportSection, codeSection));
-console.log(bytes);
+
     // We can compile this wasm module synchronously because it is very small.
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {
