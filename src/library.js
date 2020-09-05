@@ -4002,6 +4002,43 @@ LibraryManager.library = {
 
 #if USE_LEGACY_DYNCALLS || !WASM_BIGINT
   $makeDynCall: function(sig) {
+    /*
+    Creates a new dynCall function, that is a wasm function that is called
+    with a function pointer and arguments and does a call_indirect for us.
+    To do this we create a tiny wasm module with a single export.
+
+    Example output for signature "dif" (returns f64, has 2 params i32, f32):
+
+    00 61 73 6d
+    01 00 00 00
+    01 0e 02 60   type section, func
+    03 7f 7f 7d   i32 i32 f32
+    01 7c         f64
+    60            another func
+    02 7f 7d
+    01 7c
+    02 09         import section
+    01 01 61 01 61 01
+    70 00 00
+    03 02 01 00   function section
+    07 05         export section
+    01 01 61 00 00
+    0a 0d         code section
+    01 0b 00 20 01 20 02 20  00 11 01 00 0b
+
+    (module
+     (type $t (func (param $x i32) (param $y f32) (result f64)))
+     (import "a" "a" (table $t (0 anyref)))
+     (func "a" (param $ptr i32) (param $x i32) (param $y f32) (result f64)
+      (call_indirect (type $t)
+       (local.get $x)
+       (local.get $y)
+       (local.get $ptr)
+      )
+     )
+    )
+    */
+
 #if !WASM_BIGINT
     assert(sig.indexOf('j') < 0); // TODO: legalization
 #endif // !WASM_BIGINT
@@ -4074,39 +4111,6 @@ LibraryManager.library = {
 
     codeSection[1] = codeSection.length - 2;
     codeSection[3] = codeSection.length - 4;
-
-    /*
-    Example output for signature dif (return f64, params i32, f32):
-
-    00 61 73 6d
-    01 00 00 00
-    01 0e 02 60   type section, func
-    03 7f 7f 7d   i32 i32 f32
-    01 7c         f64
-    60            another func
-    02 7f 7d
-    01 7c
-    02 09         import section
-    01 01 61 01 61 01
-    70 00 00
-    03 02 01 00   function section
-    07 05         export section
-    01 01 61 00 00
-    0a 0d         code section
-    01 0b 00 20 01 20 02 20  00 11 01 00 0b
-
-    (module
-     (type $t (func (param $x i32) (param $y f32) (result f64)))
-     (import "a" "a" (table $t (0 anyref)))
-     (func "a" (param $ptr i32) (param $x i32) (param $y f32) (result f64)
-      (call_indirect (type $t)
-       (local.get $x)
-       (local.get $y)
-       (local.get $ptr)
-      )
-     )
-    )
-    */
 
     var bytes = new Uint8Array([
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
