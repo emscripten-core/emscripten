@@ -4087,7 +4087,9 @@ LibraryManager.library = {
           typeSection.push(wasmTypeCodes['i']);
         } else
 #endif
-        typeSection.push(wasmTypeCodes[sigRet]]);
+        {
+          typeSection.push(wasmTypeCodes[sigRet]]);
+        }
       }
     }
 
@@ -4095,6 +4097,12 @@ LibraryManager.library = {
     addType(sigRet + 'i' + sigParam);
     // Second type: just params (for the indirect call inside it)
     addType(sig);
+#if !WASM_BIGINT
+    if (illegalReturn) {
+      // Third type for setTempRet0.
+      addType('vi');
+    }
+#endif
 
     // Write the overall length of the type section back into the section header
     // (excepting the 2 bytes for the section id and length)
@@ -4102,8 +4110,24 @@ LibraryManager.library = {
 
     // Import section:
     // (import "a" "a" (table $t (0 anyref)))
-// TODO: import setTempRet0 for illegalReturn
-    var importSection = [0x02, 0x09, 0x01, 0x01, 0x61, 0x01, 0x61, 0x01, 0x70, 0x00, 0x00];
+    var importSection = [
+      0x02, // section id
+      -1,   // placeholder for size
+      -1    // placeholder for number
+    ];
+    var numImports = 1;
+    var tableImport = [0x01, 0x61, 0x01, 0x61, 0x01, 0x70, 0x00, 0x00];
+    importSection = importSection.concat(tableImport);
+#if !WASM_BIGINT
+    if (illegalReturn) {
+      // Also import setTempRet0 for the high bits.
+      numImports++;
+      var setTempRetImport = [0x02, 0x01, 0x61, 0x01, 0x62, 0x00, 0x00];
+      importSection = importSection.concat(setTempRetImport);
+    }
+#endif
+    importSection[1] = importSection.length - 2;
+    importSection[2] = numImports;
 
     // Function section: declare one function with the first type
     var functionSection = [0x03, 0x02, 0x01, 0x00];
@@ -4116,13 +4140,33 @@ LibraryManager.library = {
       0x0a, // section id
       -1,   // section length (placeholder)
       0x01, // num functions
-      -1,   // function length (placeholder)
-      0x00, // no vars
+      -1    // function length (placeholder)
     ];
+#if !WASM_BIGINT
+    if (illegalReturn) {
+      // Add an i64 var to use when splitting up the i64 return value
+      codeSection.push(0x01);
+    } else
+#endif
+    {
+      codeSection.push(0x00); // no vars
+    }
 
-    for (var i = 0; i < sigParam.length; ++i) {
+    // i64 params are legalized as pairs of i32, i32. "i" tracks the index
+    // in the true signature, "j" tracks the index of the legalized one. Note
+    // that j starts at 1 because 0 is the function pointer.
+    for (var i = 0, j = 1; i < sigParam.length; ++i) {
+#if !WASM_BIGINT
+      if (sigParam[i] === 'j') {
+        // Receive two i32s and compose an i64
+        codeSection.push(0x20); // local.get
+        codeSection.push(j);    // index
+        continue;
+      }
+#endif
       codeSection.push(0x20); // local.get
-      codeSection.push(i + 1); // get params after the function pointer
+      codeSection.push(j);    // index
+      j++;
     }
     codeSection.push(0x20); // local.get
     codeSection.push(0); // function pointer
