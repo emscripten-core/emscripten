@@ -4093,7 +4093,7 @@ LibraryManager.library = {
     07 05         export section
     01 01 61 00 00
     0a 0d         code section
-    01 0b 00 20 01 20 02 20  00 11 01 00 0b          
+    01 0b 00 20 01 20 02 20  00 11 01 00 0b
 
     (module
      (type $t (func (param $x i32) (param $y f32) (result f64)))
