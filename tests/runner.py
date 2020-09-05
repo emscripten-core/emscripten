@@ -357,13 +357,13 @@ class RunnerMeta(type):
 
     # Add suffix to the function name so that it displays correctly.
     if suffix:
-      resulting_test.__name__ = name#f'{name}_{suffix}'
+      resulting_test.__name__ = f'{name}_{suffix}'
     else:
       resulting_test.__name__ = name
 
     # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the
     # function.  We add the suffix to it as well.
-    resulting_test.__qualname__ = name # f'{func.__qualname__}_{suffix}'
+    resulting_test.__qualname__ = f'{func.__qualname__}_{suffix}'
 
     return resulting_test.__name__, resulting_test
 
@@ -642,7 +642,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     stderr = self.in_dir('stderr')
     error = None
     if EMTEST_VERBOSE:
-      print("Running '{filename}' under '{engine}'")
+      print(f"Running '{filename}' under '{engine}'")
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=open(stdout, 'w'),
@@ -799,7 +799,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         generated_libs.append(bc_file)
       return generated_libs
 
-    print('<building and saving {cache_name} into cache>', file=sys.stderr)
+    print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
@@ -1061,7 +1061,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False):
-    logger.debug('_build_and_run: {filename}')
+    logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename
@@ -1415,7 +1415,7 @@ class BrowserCore(RunnerCore):
   def with_report_result(self, user_code):
     report_header = path_from_root('tests', 'report_result.h')
     report_main = open(path_from_root('tests', 'report_result.cpp')).read()
-    return '''
+    return f'''
 #define EMTEST_PORT_NUMBER {self.port}
 #include "{report_header}"
 {report_main}
