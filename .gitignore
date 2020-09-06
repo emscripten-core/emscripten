@@ -30,3 +30,6 @@ third_party/lzma.js/lzma-native
 third_party/lzma.js/lzma-native.exe
 
 .DS_Store
+
+*.out
+*.geany
