@@ -876,7 +876,7 @@ LibraryManager.library = {
     }
 
     try {
-      var handle = loadDynamicLibrary(filename, flags)
+      return loadDynamicLibrary(filename, flags)
     } catch (e) {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
@@ -884,8 +884,6 @@ LibraryManager.library = {
       DLFCN.errorMsg = 'Could not load dynamic lib: ' + filename + '\n' + e;
       return 0;
     }
-
-    return handle;
   },
 
   // int dlclose(void* handle);
@@ -895,20 +893,16 @@ LibraryManager.library = {
   dlclose: function(handle) {
     // int dlclose(void *handle);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
-    if (!LDSO.loadedLibs[handle]) {
+    var lib = LDSO.loadedLibs[handle];
+    if (!lib) {
       DLFCN.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
       return 1;
-    } else {
-      var lib_record = LDSO.loadedLibs[handle];
-      if (--lib_record.refcount == 0) {
-        if (lib_record.module.cleanups) {
-          lib_record.module.cleanups.forEach(function(cleanup) { cleanup() });
-        }
-        delete LDSO.loadedLibNames[lib_record.name];
-        delete LDSO.loadedLibs[handle];
-      }
-      return 0;
     }
+    if (--lib.refcount == 0) {
+      delete LDSO.loadedLibNames[lib.name];
+      delete LDSO.loadedLibs[handle];
+    }
+    return 0;
   },
 
   // void* dlsym(void* handle, const char* symbol);
@@ -920,37 +914,22 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = UTF8ToString(symbol);
 
-    if (!LDSO.loadedLibs[handle]) {
+    var lib = LDSO.loadedLibs[handle];
+    if (!lib) {
       DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
     }
 
-    var lib = LDSO.loadedLibs[handle];
-    var isMainModule = lib.module == Module;
-
-    var mangled = '_' + symbol;
-    var modSymbol = mangled;
-    if (!isMainModule) {
-      modSymbol = symbol;
-    }
-
-    if (!lib.module.hasOwnProperty(modSymbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + modSymbol +
+    if (!lib.module.hasOwnProperty(symbol)) {
+      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
                              '" in dynamic lib: ' + lib.name);
       return 0;
     }
 
-    var result = lib.module[modSymbol];
-    // Attempt to get the real "unwrapped" symbol so we have more chance of
-    // getting wasm function which can be added to a table.
-    if (isMainModule) {
-      var asmSymbol = symbol;
-      if (lib.module["asm"][asmSymbol]) {
-        result = lib.module["asm"][asmSymbol];
-      }
-    }
-    if (typeof result !== 'function')
+    var result = lib.module[symbol];
+    if (typeof result !== 'function') {
       return result;
+    }
 
 #if EMULATE_FUNCTION_POINTER_CASTS
     // for wasm with emulated function pointers, the i64 ABI is used for all
@@ -986,12 +965,11 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
     if (DLFCN.errorMsg === null) {
       return 0;
-    } else {
-      if (DLFCN.error) _free(DLFCN.error);
-      DLFCN.error = stringToNewUTF8(DLFCN.errorMsg);
-      DLFCN.errorMsg = null;
-      return DLFCN.error;
     }
+    if (DLFCN.error) _free(DLFCN.error);
+    DLFCN.error = stringToNewUTF8(DLFCN.errorMsg);
+    DLFCN.errorMsg = null;
+    return DLFCN.error;
   },
 
   dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],

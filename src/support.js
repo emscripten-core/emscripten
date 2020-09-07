@@ -27,21 +27,11 @@ var LDSO = {
   // (handle=0 is avoided as it means "error" in dlopen)
   nextHandle: 1,
 
-  loadedLibs: {         // handle -> dso [refcount, name, module, global]
-    // program itself
-    // XXX uglifyjs fails on "[-1]: {"
-    '-1': {
-      refcount: Infinity,   // = nodelete
-      name:     '__self__',
-      module:   Module,
-      global:   true
-    }
-  },
+  // handle -> dso [refcount, name, module, global]
+  loadedLibs: {},
 
-  loadedLibNames: {     // name   -> handle
-    // program itself
-    '__self__': -1
-  },
+  // name   -> handle
+  loadedLibNames: {},
 }
 
 // fetchBinary fetches binaray data @ url. (async)
@@ -84,6 +74,16 @@ function asmjsMangle(x) {
 function loadDynamicLibrary(lib, flags) {
   // when loadDynamicLibrary did not have flags, libraries were loaded globally & permanently
   flags = flags || {global: true, nodelete: true}
+
+  if (lib == '__self__' && !LDSO.loadedLibNames[lib]) {
+    LDSO.loadedLibs[-1] = {
+      refcount: Infinity,   // = nodelete
+      name:     '__self__',
+      module:   Module['asm'],
+      global:   true
+    };
+    LDSO.loadedLibNames['__self__'] = -1;
+  }
 
   var handle = LDSO.loadedLibNames[lib];
   var dso;
