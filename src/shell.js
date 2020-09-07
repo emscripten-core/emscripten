@@ -296,7 +296,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #if MODULARIZE
   // When MODULARIZE, this JS may be executed later, after document.currentScript
   // is gone, so we saved it, and we use it here instead of any other info.
-  if (_scriptDir) {
+  if (Module.scriptDirectory !== undefined) {
+    scriptDirectory = Module.scriptDirectory;
+  } else if (_scriptDir) {
     scriptDirectory = _scriptDir;
   }
 #endif
