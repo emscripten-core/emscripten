@@ -40,7 +40,7 @@ var out = function() {
 var err = threadPrintErr;
 this.alert = threadAlert;
 
-#if WASM && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
@@ -77,7 +77,6 @@ this.onmessage = function(e) {
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
 #endif
 
-#if WASM
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
 #if MODULARIZE
@@ -99,10 +98,6 @@ this.onmessage = function(e) {
 #endif
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
-#else // asm.js:
-      {{{ makeAsmImportsAccessInPthread('buffer') }}} = e.data.buffer;
-
-#endif // WASM
 
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
@@ -137,7 +132,7 @@ this.onmessage = function(e) {
 #endif
 #endif
 
-#if !MODULARIZE && (!MINIMAL_RUNTIME || !WASM)
+#if !MODULARIZE && !MINIMAL_RUNTIME
       // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
       // regular runtime and asm.js are loaded synchronously, so in those cases
       // we are now loaded, and can post back to main thread.

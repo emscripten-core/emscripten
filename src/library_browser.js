@@ -234,7 +234,6 @@ var LibraryBrowser = {
       };
       Module['preloadPlugins'].push(audioPlugin);
 
-#if WASM
 #if MAIN_MODULE
       var wasmPlugin = {};
       wasmPlugin['asyncWasmLoadPromise'] = new Promise(
@@ -261,7 +260,6 @@ var LibraryBrowser = {
       };
       Module['preloadPlugins'].push(wasmPlugin);
 #endif // MAIN_MODULE
-#endif // WASM
 
       // Canvas event setup
 
