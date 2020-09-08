@@ -537,9 +537,10 @@ def backend_binaryen_passes():
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
-  passes += ['--post-emscripten']
-  if shared.Settings.OPT_LEVEL > 0 and not shared.Settings.EXIT_RUNTIME:
-    passes += ['--no-exit-runtime']
+  if shared.Settings.OPT_LEVEL > 0:
+    passes += ['--post-emscripten']
+    if not shared.Settings.EXIT_RUNTIME:
+      passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
     passes += [building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
   elif shared.Settings.STANDALONE_WASM:
@@ -2601,34 +2602,34 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
   # this is necessary for emitting a symbol map at the end.
   intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD)
-
-  if options.binaryen_passes:
-    # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
-    # also strips the Names section. so to emit just the Names section we don't
-    # tell wasm-ld to strip anything, and we do it here.
-    strip_debug = shared.Settings.DEBUG_LEVEL < 3
-    strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
-    # run wasm-opt if we have work for it
-    if options.binaryen_passes:
-      # if we need to strip certain sections, and we have wasm-opt passes
-      # to run anyhow, do it with them.
-      if strip_debug:
-        options.binaryen_passes += ['--strip-debug']
-      if strip_producers:
-        options.binaryen_passes += ['--strip-producers']
-      building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
-      building.run_wasm_opt(wasm_binary_target,
-                            wasm_binary_target,
-                            args=options.binaryen_passes,
-                            debug=intermediate_debug_info)
-    else:
-      # we are not running wasm-opt. if we need to strip certain sections
-      # then do so using llvm-objcopy which is fast and does not rewrite the
-      # code (which is better for debug info)
-      if strip_debug or strip_producers:
-        building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
-        building.strip(wasm_binary_target, wasm_binary_target,
-                       debug=strip_debug, producers=strip_producers)
+  # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
+  # also strips the Names section. so to emit just the Names section we don't
+  # tell wasm-ld to strip anything, and we do it here.
+  strip_debug = shared.Settings.DEBUG_LEVEL < 3
+  strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
+  # run wasm-opt if we have work for it: either passes, or if we are using
+  # source maps (which requires some extra processing to keep the source map
+  # but remove DWARF)
+  if options.binaryen_passes or use_source_map(options):
+    # if we need to strip certain sections, and we have wasm-opt passes
+    # to run anyhow, do it with them.
+    if strip_debug:
+      options.binaryen_passes += ['--strip-debug']
+    if strip_producers:
+      options.binaryen_passes += ['--strip-producers']
+    building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
+    building.run_wasm_opt(wasm_binary_target,
+                          wasm_binary_target,
+                          args=options.binaryen_passes,
+                          debug=intermediate_debug_info)
+  else:
+    # we are not running wasm-opt. if we need to strip certain sections
+    # then do so using llvm-objcopy which is fast and does not rewrite the
+    # code (which is better for debug info)
+    if strip_debug or strip_producers:
+      building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
+      building.strip(wasm_binary_target, wasm_binary_target,
+                     debug=strip_debug, producers=strip_producers)
 
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
