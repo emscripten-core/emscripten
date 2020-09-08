@@ -1006,9 +1006,6 @@ def verify_settings():
   if Settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
-  if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
-      exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
-
   if not Settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
     # we still compile to wasm normally, but we compile the final output

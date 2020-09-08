@@ -27,21 +27,11 @@ var LDSO = {
   // (handle=0 is avoided as it means "error" in dlopen)
   nextHandle: 1,
 
-  loadedLibs: {         // handle -> dso [refcount, name, module, global]
-    // program itself
-    // XXX uglifyjs fails on "[-1]: {"
-    '-1': {
-      refcount: Infinity,   // = nodelete
-      name:     '__self__',
-      module:   Module,
-      global:   true
-    }
-  },
+  // handle -> dso [refcount, name, module, global]
+  loadedLibs: {},
 
-  loadedLibNames: {     // name   -> handle
-    // program itself
-    '__self__': -1
-  },
+  // name   -> handle
+  loadedLibNames: {},
 }
 
 // fetchBinary fetches binaray data @ url. (async)
@@ -85,6 +75,16 @@ function loadDynamicLibrary(lib, flags) {
   // when loadDynamicLibrary did not have flags, libraries were loaded globally & permanently
   flags = flags || {global: true, nodelete: true}
 
+  if (lib == '__self__' && !LDSO.loadedLibNames[lib]) {
+    LDSO.loadedLibs[-1] = {
+      refcount: Infinity,   // = nodelete
+      name:     '__self__',
+      module:   Module['asm'],
+      global:   true
+    };
+    LDSO.loadedLibNames['__self__'] = -1;
+  }
+
   var handle = LDSO.loadedLibNames[lib];
   var dso;
   if (handle) {
@@ -121,7 +121,6 @@ function loadDynamicLibrary(lib, flags) {
 
   // libData <- libFile
   function loadLibData(libFile) {
-#if WASM
     // for wasm, we can use fetch for async, but for fs mode we can only imitate it
     if (flags.fs) {
       var libData = flags.fs.readFile(libFile, {encoding: 'binary'});
@@ -136,44 +135,11 @@ function loadDynamicLibrary(lib, flags) {
     }
     // load the binary synchronously
     return readBinary(libFile);
-#else
-    // for js we only imitate async for both native & fs modes.
-    var libData;
-    if (flags.fs) {
-      libData = flags.fs.readFile(libFile, {encoding: 'utf8'});
-    } else {
-      libData = read_(libFile);
-    }
-    return flags.loadAsync ? Promise.resolve(libData) : libData;
-#endif
   }
 
   // libModule <- libData
   function createLibModule(libData) {
-#if WASM
     return loadWebAssemblyModule(libData, flags)
-#else
-    var libModule = /**@type{function(...)}*/(eval(libData))(
-      alignFunctionTables(),
-      Module
-    );
-    // load dynamic libraries that this js lib depends on
-    // (wasm loads needed libraries _before_ lib in its own codepath)
-    if (libModule.dynamicLibraries) {
-      if (flags.loadAsync) {
-        return Promise.all(libModule.dynamicLibraries.map(function(dynNeeded) {
-          return loadDynamicLibrary(dynNeeded, flags);
-        })).then(function() {
-          return libModule;
-        });
-      }
-
-      libModule.dynamicLibraries.forEach(function(dynNeeded) {
-        loadDynamicLibrary(dynNeeded, flags);
-      });
-    }
-    return libModule;
-#endif
   }
 
   // libModule <- lib
@@ -244,7 +210,6 @@ function loadDynamicLibrary(lib, flags) {
   return handle;
 }
 
-#if WASM
 // Applies relocations to exported things.
 function relocateExports(exports, memoryBase, tableBase, moduleLocal) {
   var relocated = {};
@@ -544,7 +509,6 @@ function loadWebAssemblyModule(binary, flags) {
 }
 Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
 
-#endif // WASM
 #endif // RELOCATABLE
 
 #include "runtime_functions.js"
