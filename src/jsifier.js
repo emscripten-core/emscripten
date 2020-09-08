@@ -528,13 +528,6 @@ function JSify(data, functionsOnly) {
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
-    // Print out some useful metadata
-    if (RUNNING_JS_OPTS) {
-      var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions));
-      if (RUNNING_JS_OPTS) {
-        print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + generatedFunctions + '\n');
-      }
-    }
 
     PassManager.serialize();
   }

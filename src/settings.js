@@ -1045,9 +1045,6 @@ var EXPORT_NAME = 'Module';
 // to warnings instead of throwing an exception.
 var DYNAMIC_EXECUTION = 1;
 
-// whether js opts will be run, after the main compiler
-var RUNNING_JS_OPTS = 0;
-
 // whether we are in the generate struct_info bootstrap phase
 var BOOTSTRAPPING_STRUCT_INFO = 0;
 
@@ -1161,7 +1158,6 @@ var EMIT_EMSCRIPTEN_LICENSE = 0;
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
 // non-web/non-JS embeddings, setting this to 0 may be desirable.
-// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
 // Ports
@@ -1692,5 +1688,6 @@ var LEGACY_SETTINGS = [
   ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
   ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
   ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
+  ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
 ];

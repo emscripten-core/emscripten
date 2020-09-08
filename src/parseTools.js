@@ -628,7 +628,7 @@ function parseNumerical(value, type) {
       if (value[0] === '-' && ret === 0) { return '-.0'; } // fix negative 0, toString makes it 0
     }
     if (type === 'double' || type === 'float') {
-      if (!RUNNING_JS_OPTS) ret = asmEnsureFloat(ret, type);
+      ret = asmEnsureFloat(ret, type);
     }
     return ret.toString();
   } else {
@@ -747,8 +747,7 @@ function ensureDot(value) {
   value = value.toString();
   // if already dotted, or Infinity or NaN, nothing to do here
   // if smaller than 1 and running js opts, we always need to force a coercion (0.001 will turn into 1e-3, which has no .)
-  if ((value.indexOf('.') >= 0 || /[IN]/.test(value)) && (!RUNNING_JS_OPTS || Math.abs(value) >= 1)) return value;
-  if (RUNNING_JS_OPTS) return '(+' + value + ')'; // JS optimizer will run, we must do +x, and it will be corrected later
+  if ((value.indexOf('.') >= 0 || /[IN]/.test(value))) return value;
   var e = value.indexOf('e');
   if (e < 0) return value + '.0';
   return value.substr(0, e) + '.0' + value.substr(e);
@@ -772,7 +771,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 function asmInitializer(type) {
   if (type in Compiletime.FLOAT_TYPES) {
     if (type === 'float') return 'Math_fround(0)';
-    return RUNNING_JS_OPTS ? '+0' : '.0';
+    return '.0';
   } else {
     return '0';
   }
