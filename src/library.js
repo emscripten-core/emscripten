@@ -4061,6 +4061,34 @@ LibraryManager.library = {
       )
      )
     )
+
+    or for "j",
+
+    (module
+     (type $legal (func (param $fptr i32) (result i32)))
+     (type $call (func (result i64)))
+     (type $imported (func (param i32)))
+     (import "a" "a" (table $t (0 anyref)))
+     (import "a" "b" (func $setTempRet0 (type $imported)))
+     (func "a" (type $legal) (param $fptr i32) (result i32)
+      (local $temp i64)
+      (call $setTempRet0
+       (i32.wrap_i64
+        (i64.shr_u
+         (local.tee $temp
+          (call_indirect (type $call)
+           (local.get $fptr)
+          )
+         )
+         (i64.const 32)
+        )
+       )
+      )
+      (i32.wrap_i64
+       (local.get $temp)
+      )
+     )
+    )
     */
 
     var sigRet = sig.slice(0, 1);
@@ -4083,10 +4111,14 @@ LibraryManager.library = {
     var typeSection = [
       0x01, // section id
       -1,   // length (placeholder)
-      0x02, // 2 types
+      -1,   // number of types (placeholder)
     ];
 
+    var numTypes = 0;
+
     function addType(sig, legalize) {
+      numTypes++;
+
       var sigRet = sig.slice(0, 1);
       var sigParam = sig.slice(1);
 
@@ -4134,6 +4166,7 @@ LibraryManager.library = {
     // Write the overall length of the type section back into the section header
     // (excepting the 2 bytes for the section id and length)
     typeSection[1] = typeSection.length - 2;
+    typeSection[2] = numTypes;
 
     // Import section:
     // (import "a" "a" (table $t (0 anyref)))
@@ -4143,24 +4176,30 @@ LibraryManager.library = {
       -1    // placeholder for number
     ];
     var numImports = 1;
-    var tableImport = [0x01, 0x61, 0x01, 0x61, 0x01, 0x70, 0x00, 0x00];
-    importSection = importSection.concat(tableImport);
 #if !WASM_BIGINT
     if (illegalReturn) {
       // Also import setTempRet0 for the high bits.
       numImports++;
-      var setTempRetImport = [0x02, 0x01, 0x61, 0x01, 0x62, 0x00, 0x00];
-      importSection = importSection.concat(setTempRetImport);
+      importSection.push(0x01, 0x61, 0x01, 0x62, 0x00, 0x02);
     }
+    // Table import
+    importSection.push(0x01, 0x61, 0x01, 0x61, 0x01, 0x70, 0x00, 0x00);
 #endif
     importSection[1] = importSection.length - 2;
     importSection[2] = numImports;
+console.log('mprot section', importSection)
 
     // Function section: declare one function with the first type
     var functionSection = [0x03, 0x02, 0x01, 0x00];
 
     // Export section: Export the function as "a"
     var exportSection = [0x07, 0x05, 0x01, 0x01, 0x61, 0x00, 0x00];
+#if !WASM_BIGINT
+    if (illegalReturn) {
+      // If we also imported setTempRet0, the export index is of function 1.
+      exportSection[exportSection.length - 1] = 0x01;
+    }
+#endif
 
     // Code section: read the params and do the indirect call.
     var codeSection = [
@@ -4172,7 +4211,10 @@ LibraryManager.library = {
 #if !WASM_BIGINT
     if (illegalReturn) {
       // Add an i64 var to use when splitting up the i64 return value
-      codeSection.push(0x01);
+      codeSection.push(0x01, 0x01, wasmTypeCodes['j']);
+      // The temp index is after the fptr, the params, and the extra legalized
+      // ones.
+      var tempIndex = sigParam.length + illegalParams + 1;
     } else
 #endif
     {
@@ -4209,11 +4251,22 @@ LibraryManager.library = {
     codeSection.push(0x11); // call_indirect
     codeSection.push(0x01); // second function type
     codeSection.push(0x00); // table index 0
-    codeSection.push(0x0b); // end function
 #if !WASM_BIGINT
-    assert(!illegalReturn); // TODO
+    if (illegalReturn) {
+      // Split the i64 into parts, return the high bits in tempRet0, and the
+      // low bits directly.
+      codeSection.push(
+        0x22, tempIndex, // tee the result of the call
+        0x42, 0x20,      // i64.const 32
+        0x88,            // i64.shr_u
+        0xA7,            // wrap
+        0x10, 0x00,      // call the import setTempRet0
+        0x20, tempIndex, // get the result of the call again
+        0xA7            // wrap
+      );
+    }
 #endif
-
+    codeSection.push(0x0b); // end function
     codeSection[1] = codeSection.length - 2;
     codeSection[3] = codeSection.length - 4;
 
@@ -4223,7 +4276,7 @@ LibraryManager.library = {
     ].concat(typeSection, importSection, functionSection, exportSection, codeSection));
 
     // We can compile this wasm module synchronously because it is very small.
-    console.log(sig, bytes);
+    console.log(sig, illegalReturn, illegalParams, bytes);
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {
       'a': {
