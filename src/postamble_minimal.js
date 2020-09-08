@@ -79,8 +79,6 @@ function initRuntime(asm) {
   {{{ getQuoted('ATINITS') }}}
 }
 
-#if WASM
-
 // Initialize wasm (asynchronous)
 
 var imports = {
@@ -94,11 +92,11 @@ var imports = {
 
 // In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
 // for emscripten_get_exported_function() to be able to access them.
-#if LibraryManager.has('library_exports.js') && WASM
+#if LibraryManager.has('library_exports.js')
 var asm;
 #endif
 
-#if USE_PTHREADS && WASM
+#if USE_PTHREADS
 var wasmModule;
 #if PTHREAD_POOL_SIZE
 function loadWasmModuleToWorkers() {
@@ -151,7 +149,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   wasmModule = output.module || Module['wasm'];
 #endif
 
-#if !(LibraryManager.has('library_exports.js') && WASM) && !EMBIND
+#if !LibraryManager.has('library_exports.js') && !EMBIND
   // If not using the emscripten_get_exported_function() API or embind, keep the 'asm'
   // exports variable in local scope to this instantiate function to save code size.
   // (otherwise access it without to export it to outer scope)
@@ -233,23 +231,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 })
 #endif // ASSERTIONS || WASM == 2
 ;
-
-#else
-
-// Initialize asm.js (synchronous)
-initRuntime(asm);
-
-#if USE_PTHREADS && PTHREAD_POOL_SIZE
-if (!ENVIRONMENT_IS_PTHREAD) loadWasmModuleToWorkers();
-#if !PTHREAD_POOL_DELAY_LOAD  
-else
-#endif
-  ready();
-#else
-ready();
-#endif
-
-#endif
 
 {{GLOBAL_VARS}}
 
