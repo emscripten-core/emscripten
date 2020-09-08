@@ -12,7 +12,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   buffer = Module['buffer'];
 } else {
 #endif // USE_PTHREADS
-#if WASM
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
@@ -47,34 +46,18 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   }
 
-#else // WASM
-
-  if (Module['buffer']) {
-    buffer = Module['buffer'];
-  }
-#ifdef USE_PTHREADS
-  else if (typeof SharedArrayBuffer !== 'undefined') {
-    buffer = new SharedArrayBuffer(INITIAL_INITIAL_MEMORY);
-  }
-#endif
-  else {
-    buffer = new ArrayBuffer(INITIAL_INITIAL_MEMORY);
-  }
-#endif // WASM
 #if USE_PTHREADS
 }
 #endif
 
-#if WASM
 if (wasmMemory) {
   buffer = wasmMemory.buffer;
 }
-#endif
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
 // specifically provide the memory length with Module['INITIAL_MEMORY'].
 INITIAL_INITIAL_MEMORY = buffer.byteLength;
-#ifdef ASSERTIONS && WASM
+#ifdef ASSERTIONS
 assert(INITIAL_INITIAL_MEMORY % WASM_PAGE_SIZE === 0);
 #ifdef ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
 assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);

@@ -548,29 +548,27 @@ a function,
 
   mergeInto(LibraryManager.library, {
     $method_support__postset: 'method_support();',
-    $method_support: {
-      init: function() {
-        var SomeLib = function() {
-          this.callCount = 0;
-        };
+    $method_support: function() {
+      var SomeLib = function() {
+        this.callCount = 0;
+      };
 
-        SomeLib.prototype.getCallCount = function() {
-          return this.callCount;
-        };
+      SomeLib.prototype.getCallCount = function() {
+        return this.callCount;
+      };
 
-        SomeLib.prototype.process = function() {
-          ++this.callCount;
-        };
+      SomeLib.prototype.process = function() {
+        ++this.callCount;
+      };
 
-        SomeLib.prototype.reset = function() {
-          this.callCount = 0;
-        };
+      SomeLib.prototype.reset = function() {
+        this.callCount = 0;
+      };
 
-        var inst = new SomeLib();
-        _method_01 = inst.getCallCount.bind(inst);
-        _method_02 = inst.process.bind(inst);
-        _method_03 = inst.reset.bind(inst);
-      }
+      var inst = new SomeLib();
+      _method_01 = inst.getCallCount.bind(inst);
+      _method_02 = inst.process.bind(inst);
+      _method_03 = inst.reset.bind(inst);
     },
     method_01: function() {},
     method_01__deps: ['$method_support'],

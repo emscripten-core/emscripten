@@ -2728,15 +2728,10 @@ var LibraryJSEvents = {
       var t = performance.now();
       var n = t + msecs;
       if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
-        setTimeout(tick,
-#if WASM
-          // Save a little bit of code space: modern browsers should treat negative setTimeout as timeout of 0 (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
-          t - performance.now()
-#else
-          // For old browsers, cap the timeout to zero.
-          Math.max(0, t - performance.now())
-#endif
-          );
+        // Save a little bit of code space: modern browsers should treat
+        // negative setTimeout as timeout of 0
+        // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
+        setTimeout(tick, t - performance.now());
       }
     }
     return setTimeout(tick, 0);
