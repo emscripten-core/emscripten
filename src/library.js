@@ -4187,7 +4187,6 @@ LibraryManager.library = {
 #endif
     importSection[1] = importSection.length - 2;
     importSection[2] = numImports;
-console.log('mprot section', importSection)
 
     // Function section: declare one function with the first type
     var functionSection = [0x03, 0x02, 0x01, 0x00];
@@ -4276,11 +4275,14 @@ console.log('mprot section', importSection)
     ].concat(typeSection, importSection, functionSection, exportSection, codeSection));
 
     // We can compile this wasm module synchronously because it is very small.
-    console.log(sig, illegalReturn, illegalParams, bytes);
+    //console.log(sig, illegalReturn, illegalParams, bytes);
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {
       'a': {
         'a': wasmTable
+#if !WASM_BIGINT
+        , 'b': setTempRet0
+#endif
       }
     });
     return instance.exports['a'];
