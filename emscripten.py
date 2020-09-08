@@ -983,23 +983,20 @@ def normalize_line_endings(text):
 
 
 def generate_struct_info():
-  if not shared.Settings.STRUCT_INFO and not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
-    generated_struct_info_name = 'generated_struct_info.json'
+  def generate_struct_info():
+    with ToolchainProfiler.profile_block('gen_struct_info'):
+      out = shared.Cache.get_path(generated_struct_info_name)
+      gen_struct_info.main(['-q', '-c', '-o', out])
+      return out
 
-    def generate_struct_info():
-      with ToolchainProfiler.profile_block('gen_struct_info'):
-        out = shared.Cache.get_path(generated_struct_info_name)
-        gen_struct_info.main(['-q', '-c', '-o', out])
-        return out
-
-    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
-  # do we need an else, to define it for the bootstrap case?
+  shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
 
 
 def run(infile, outfile, memfile):
   temp_files = shared.configuration.get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
-  generate_struct_info()
+  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
+    generate_struct_info()
 
   outfile_obj = open(outfile, 'w')
 

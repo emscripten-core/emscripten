@@ -1055,9 +1055,6 @@ var RUNNING_JS_OPTS = 0;
 // whether we are in the generate struct_info bootstrap phase
 var BOOTSTRAPPING_STRUCT_INFO = 0;
 
-// struct_info that is either generated or cached
-var STRUCT_INFO = '';
-
 // Add some calls to emscripten tracing APIs
 var EMSCRIPTEN_TRACING = 0;
 

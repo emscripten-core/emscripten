@@ -200,3 +200,6 @@ var EXPECT_MAIN = 1;
 var EXPORT_READY_PROMISE = 1;
 
 var USE_LEGACY_DYNCALLS = 0;
+
+// struct_info that is either generated or cached
+var STRUCT_INFO = '';
