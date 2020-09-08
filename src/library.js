@@ -471,17 +471,9 @@ LibraryManager.library = {
     var oldHeapSize = buffer.byteLength;
 #endif
     try {
-#if WASM
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
-#else // asm.js:
-      var newBuffer = new ArrayBuffer(size);
-      if (newBuffer.byteLength != size) return /*undefined, allocation did not succeed*/;
-      new Int8Array(newBuffer).set(/**@type{!Int8Array}*/(HEAP8));
-      _emscripten_replace_memory(newBuffer);
-      updateGlobalBufferAndViews(newBuffer);
-#endif
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler !== 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, buffer.byteLength);
@@ -949,7 +941,6 @@ LibraryManager.library = {
     }
 
     var result = lib.module[modSymbol];
-#if WASM
     // Attempt to get the real "unwrapped" symbol so we have more chance of
     // getting wasm function which can be added to a table.
     if (isMainModule) {
@@ -958,11 +949,10 @@ LibraryManager.library = {
         result = lib.module["asm"][asmSymbol];
       }
     }
-#endif
     if (typeof result !== 'function')
       return result;
 
-#if WASM && EMULATE_FUNCTION_POINTER_CASTS
+#if EMULATE_FUNCTION_POINTER_CASTS
     // for wasm with emulated function pointers, the i64 ABI is used for all
     // function calls, so we can't just call addFunction on something JS
     // can call (which does not use that ABI), as the function pointer would
@@ -980,16 +970,10 @@ LibraryManager.library = {
     return result;
 #else // WASM && EMULATE_FUNCTION_POINTER_CASTS
 
-#if WASM
     // Insert the function into the wasm table.  Since we know the function
     // comes directly from the loaded wasm module we can insert it directly
     // into the table, avoiding any JS interaction.
     return addFunctionWasm(result);
-#else
-    // convert the exported function into a function pointer using our generic
-    // JS mechanism.
-    return addFunction(result);
-#endif // WASM
 #endif // WASM && EMULATE_FUNCTION_POINTER_CASTS
   },
 

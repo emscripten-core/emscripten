@@ -393,10 +393,6 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
-#if MAIN_MODULE && !WASM
-// JS side modules use this value to decide their stack size.
-Module['TOTAL_STACK'] = TOTAL_STACK;
-#endif
 
 {{{ makeModuleReceiveWithVar('INITIAL_INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
 
@@ -428,8 +424,6 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 }
 #endif
 #endif
-
-#include "runtime_sab_polyfill.js"
 
 #if STANDALONE_WASM
 #if ASSERTIONS
@@ -664,7 +658,7 @@ function removeRunDependency(id) {
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
-#if WASM && MAIN_MODULE
+#if MAIN_MODULE
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
@@ -692,14 +686,10 @@ function abort(what) {
   what = output;
 #endif // ASSERTIONS
 
-#if WASM
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
   var e = new WebAssembly.RuntimeError(what);
-#else
-  var e = what;
-#endif
 
 #if MODULARIZE
   readyPromiseReject(e);
@@ -732,7 +722,6 @@ addOnPreRun(function() {
     }
   }
   // if we can load dynamic libraries synchronously, do so, otherwise, preload
-#if WASM
   if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !readBinary) {
     // we can't read binary data synchronously, so preload
     addRunDependency('preload_dynamicLibraries');
@@ -744,7 +733,6 @@ addOnPreRun(function() {
     });
     return;
   }
-#endif
   loadDynamicLibraries(Module['dynamicLibraries']);
 });
 
@@ -866,7 +854,6 @@ function instrumentWasmExportsWithAbort(exports) {
 }
 #endif
 
-#if WASM
 var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
 if (!isDataURI(wasmBinaryFile)) {
   wasmBinaryFile = locateFile(wasmBinaryFile);
@@ -1196,7 +1183,6 @@ function createWasm() {
   return Module['asm']; // exports were assigned here
 #endif
 }
-#endif
 
 // Globals used by JS i64 conversions
 var tempDouble;

@@ -783,10 +783,6 @@ var EXPORTED_FUNCTIONS = [];
 // library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
 
-// If true, export all the functions appearing in a function table, and the
-// tables themselves.
-var EXPORT_FUNCTION_TABLES = 0;
-
 // Remembers the values of these settings, and makes them accessible
 // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
@@ -1699,4 +1695,5 @@ var LEGACY_SETTINGS = [
   ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
   ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
   ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
+  ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
 ];
