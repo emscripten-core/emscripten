@@ -4037,6 +4037,30 @@ LibraryManager.library = {
       )
      )
     )
+
+    With legalization, the module for e.g. "vj" could look like
+
+    (module
+     (type $legal (func (param $fptr i32) (param $low i32) (param $high i32)))
+     (type $call (func (param $x i64)))
+     (import "a" "a" (table $t (0 anyref)))
+     (func "a" (type $legal) (param $fptr i32) (param $low i32) (param $high i32)
+      (call_indirect (type $call)
+       (i64.or
+        (i64.extend_i32_u
+         (local.get $low)
+        )
+        (i64.shl
+         (i64.extend_i32_u
+          (local.get $high)
+         )
+         (i64.const 32)
+        )
+       )
+       (local.get $fptr)
+      )
+     )
+    )
     */
 
     var sigRet = sig.slice(0, 1);
@@ -4062,15 +4086,15 @@ LibraryManager.library = {
       0x02, // 2 types
     ];
 
-    function addType(sig) {
+    function addType(sig, legalize) {
       var sigRet = sig.slice(0, 1);
       var sigParam = sig.slice(1);
 
       typeSection.push(0x60); // func
-      typeSection.push(sigParam.length + illegalParams);
+      typeSection.push(sigParam.length + (legalize ? illegalParams : 0));
       for (var i = 0; i < sigParam.length; ++i) {
 #if !WASM_BIGINT
-        if (sigParam[i] === 'j') {
+        if (sigParam[i] === 'j' && legalize) {
           typeSection.push(wasmTypeCodes['i']);
           typeSection.push(wasmTypeCodes['i']);
           continue;
@@ -4083,7 +4107,7 @@ LibraryManager.library = {
       } else {
         typeSection.push(0x01);
 #if !WASM_BIGINT
-        if (illegalReturn) {
+        if (illegalReturn && legalize) {
           typeSection.push(wasmTypeCodes['i']);
         } else
 #endif
@@ -4093,9 +4117,12 @@ LibraryManager.library = {
       }
     }
 
-    // First type: fptr, params (for the dyncall itself)
-    addType(sigRet + 'i' + sigParam);
-    // Second type: just params (for the indirect call inside it)
+    // First type: fptr, params (for the exported dyncall itself)
+    addType(
+      sigRet + 'i' + sigParam,
+      {{{ !WASM_BIGINT }}} // optionally legalize for JS
+    );
+    // Second type: no fptr, just params (for the indirect call inside)
     addType(sig);
 #if !WASM_BIGINT
     if (illegalReturn) {
@@ -4159,14 +4186,23 @@ LibraryManager.library = {
 #if !WASM_BIGINT
       if (sigParam[i] === 'j') {
         // Receive two i32s and compose an i64
-        codeSection.push(0x20); // local.get
-        codeSection.push(j);    // index
+        codeSection.push(
+          0x20, // local.get
+          j++,  // index of low 32 bits
+          0xAD, // i64.extend_i32_u
+          0x20, // local.get
+          j++,  // index of high 32 bits
+          0xAD, // i64.extend_i32_u
+          0x42, // i64.const 32
+          0x20,
+          0x86, // i64.shl
+          0x84 // i64.or
+        )
         continue;
       }
 #endif
       codeSection.push(0x20); // local.get
-      codeSection.push(j);    // index
-      j++;
+      codeSection.push(j++);    // index
     }
     codeSection.push(0x20); // local.get
     codeSection.push(0); // function pointer
@@ -4174,6 +4210,9 @@ LibraryManager.library = {
     codeSection.push(0x01); // second function type
     codeSection.push(0x00); // table index 0
     codeSection.push(0x0b); // end function
+#if !WASM_BIGINT
+    assert(!illegalReturn); // TODO
+#endif
 
     codeSection[1] = codeSection.length - 2;
     codeSection[3] = codeSection.length - 4;
@@ -4184,6 +4223,7 @@ LibraryManager.library = {
     ].concat(typeSection, importSection, functionSection, exportSection, codeSection));
 
     // We can compile this wasm module synchronously because it is very small.
+    console.log(sig, bytes);
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {
       'a': {
