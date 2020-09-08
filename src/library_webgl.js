@@ -1813,7 +1813,7 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (data) {
-        GLctx.bufferData(target, HEAPU8, usage, data, size);
+        if (size !== 0) GLctx.bufferData(target, HEAPU8, usage, data, size);
       } else {
         GLctx.bufferData(target, size, usage);
       }
@@ -1831,7 +1831,7 @@ var LibraryGL = {
   glBufferSubData: function(target, offset, size, data) {
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.bufferSubData(target, offset, HEAPU8, data, size);
+      if (size !== 0) GLctx.bufferSubData(target, offset, HEAPU8, data, size);
       return;
     }
 #endif
@@ -2255,7 +2255,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform1iv(GL.uniforms[location], HEAP32, value>>2, count);
+      if (count !== 0) GLctx.uniform1iv(GL.uniforms[location], HEAP32, value>>2, count);
       return;
     }
 #endif
@@ -2298,7 +2298,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform2iv(GL.uniforms[location], HEAP32, value>>2, count*2);
+      if (count !== 0) GLctx.uniform2iv(GL.uniforms[location], HEAP32, value>>2, count*2);
       return;
     }
 #endif
@@ -2342,7 +2342,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*3);
+      if (count !== 0) GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*3);
       return;
     }
 #endif
@@ -2387,7 +2387,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform4iv(GL.uniforms[location], HEAP32, value>>2, count*4);
+      if (count !== 0) GLctx.uniform4iv(GL.uniforms[location], HEAP32, value>>2, count*4);
       return;
     }
 #endif
@@ -2433,7 +2433,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform1fv(GL.uniforms[location], HEAPF32, value>>2, count);
+      if (count !== 0) GLctx.uniform1fv(GL.uniforms[location], HEAPF32, value>>2, count);
       return;
     }
 #endif
@@ -2476,7 +2476,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform2fv(GL.uniforms[location], HEAPF32, value>>2, count*2);
+      if (count !== 0) GLctx.uniform2fv(GL.uniforms[location], HEAPF32, value>>2, count*2);
       return;
     }
 #endif
@@ -2520,7 +2520,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform3fv(GL.uniforms[location], HEAPF32, value>>2, count*3);
+      if (count !== 0) GLctx.uniform3fv(GL.uniforms[location], HEAPF32, value>>2, count*3);
       return;
     }
 #endif
@@ -2565,7 +2565,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform4fv(GL.uniforms[location], HEAPF32, value>>2, count*4);
+      if (count !== 0) GLctx.uniform4fv(GL.uniforms[location], HEAPF32, value>>2, count*4);
       return;
     }
 #endif
@@ -2615,7 +2615,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*4);
+      if (count !== 0) GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*4);
       return;
     }
 #endif
@@ -2661,7 +2661,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*9);
+      if (count !== 0) GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*9);
       return;
     }
 #endif
@@ -2712,7 +2712,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*16);
+      if (count !== 0) GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*16);
       return;
     }
 #endif
@@ -3834,7 +3834,7 @@ var LibraryGL = {
 
     if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
       if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-        GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
+        if (mapping.length !== 0) GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
       } else {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
       }
