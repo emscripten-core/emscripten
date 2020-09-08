@@ -1235,11 +1235,8 @@ int main() {
       self.set_setting('SAFE_HEAP', safe)
       self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2.cpp')
 
+  @with_both_exception_handling
   def test_exceptions_3(self):
-    # TODO remove this line and restore @with_both_exception_handling
-    # https://bugs.llvm.org/show_bug.cgi?id=47413
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-
     src = r'''
 #include <iostream>
 #include <stdexcept>
