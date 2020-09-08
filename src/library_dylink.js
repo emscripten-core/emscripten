@@ -464,7 +464,7 @@ var LibraryDylink = {
   $preloadDylibs: function() {
     var libs = {{{ JSON.stringify(RUNTIME_LINKED_LIBS) }}};
     if (Module['dynamicLibraries']) {
-      libc.concat(Module['dynamicLibraries'])
+      libs = libs.concat(Module['dynamicLibraries'])
     }
     if (!libs.length) {
       return;
