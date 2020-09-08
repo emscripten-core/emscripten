@@ -4065,9 +4065,9 @@ LibraryManager.library = {
     or for "j",
 
     (module
+     (type $imported (func (param i32)))
      (type $legal (func (param $fptr i32) (result i32)))
      (type $call (func (result i64)))
-     (type $imported (func (param i32)))
      (import "a" "a" (table $t (0 anyref)))
      (import "a" "b" (func $setTempRet0 (type $imported)))
      (func "a" (type $legal) (param $fptr i32) (result i32)
