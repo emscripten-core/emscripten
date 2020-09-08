@@ -1461,7 +1461,7 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
-        GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, imageSize, data);
+        if (imageSize !== 0) GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, imageSize, data);
       } else {
         GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
       }
@@ -1477,7 +1477,7 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
-        GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, imageSize, data);
+        if (imageSize !== 0) GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, imageSize, data);
       } else {
         GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
       }
