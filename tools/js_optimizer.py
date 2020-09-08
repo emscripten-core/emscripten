@@ -449,6 +449,7 @@ EMSCRIPTEN_FUNCS();
         commands = [shared.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] +
                     (['--debug'] if source_map else []) + passes for f in filenames]
       else:
+        assert False
         # use the native optimizer
         shared.logging.debug('js optimizer using native')
         assert not source_map # XXX need to use js optimizer
