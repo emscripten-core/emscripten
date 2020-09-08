@@ -4088,7 +4088,7 @@ LibraryManager.library = {
         } else
 #endif
         {
-          typeSection.push(wasmTypeCodes[sigRet]]);
+          typeSection.push(wasmTypeCodes[sigRet]);
         }
       }
     }
@@ -4195,15 +4195,6 @@ LibraryManager.library = {
 
   $dynCallLegacy__deps: ['$makeDynCall'],
   $dynCallLegacy: function(sig, ptr, args) {
-#if ASSERTIONS
-    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
-    if (args && args.length) {
-      // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
-      assert(args.length === sig.substring(1).replace(/j/g, '--').length);
-    } else {
-      assert(sig.length == 1);
-    }
-#endif
     if (!Module['dynCall_' + sig]) {
       Module['dynCall_' + sig] = makeDynCall(sig);
     }

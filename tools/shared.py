@@ -1222,7 +1222,7 @@ function jsCall_%s(index%s) {
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
         # linking enabled.
-        return 'dynCall_%s(%s)' % (sig, args)
+        return 'dynCallLegacy("%s", %s)' % (sig, args)
       else:
         return 'Module["dynCall_%s"](%s)' % (sig, args)
     else:
