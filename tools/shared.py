@@ -66,7 +66,7 @@ diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
-diagnostics.add_warning('pthreads-mem-growth', enabled=True, part_of_all=False)
+diagnostics.add_warning('pthreads-mem-growth')
 
 
 def exit_with_error(msg, *args):
