@@ -399,6 +399,16 @@ def fix_js_engine(old, new):
   return new
 
 
+def get_npm_cmd(name):
+  if WINDOWS:
+    cmd = [path_from_root('node_modules', '.bin', name + '.cmd')]
+  else:
+    cmd = NODE_JS + [path_from_root('node_modules', '.bin', name)]
+  if not os.path.exists(cmd[-1]):
+    exit_with_error('%s was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies' % name)
+  return cmd
+
+
 def normalize_config_settings():
   global CACHE, PORTS, JAVA, CLOSURE_COMPILER
   global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
@@ -435,11 +445,10 @@ def normalize_config_settings():
     PORTS = os.path.join(CACHE, 'ports')
 
   if CLOSURE_COMPILER is None:
-    if WINDOWS:
-      CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
-    else:
+    CLOSURE_COMPILER = get_npm_cmd('google-closure-compiler')
+    if not WINDOWS:
       # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-     # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
+      # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
       CLOSURE_COMPILER = NODE_JS + ['--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:

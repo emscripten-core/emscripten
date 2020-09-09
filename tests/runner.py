@@ -564,11 +564,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return args
 
   def verify_es5(self, filename):
-    es_check = path_from_root('node_modules', '.bin', 'es-check')
+    es_check = shared.get_npm_cmd('es-check')
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     try:
-      shared.run_process(shared.NODE_JS + [es_check, 'es5', os.path.abspath(filename)], stderr=PIPE)
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE)
     except subprocess.CalledProcessError as e:
       print(e.stderr)
       self.fail('es-check failed to verify ES5 output compliance')
