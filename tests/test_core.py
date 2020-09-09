@@ -8344,6 +8344,35 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free.c')
 
+  # Tests Settings.ABORT_ON_WASM_EXCEPTIONS
+  def test_abort_on_exceptions(self):
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS', 1)
+    self.emcc_args += ['--bind', '--post-js', 'post.js']
+    create_test_file('post.js', '''
+      addOnPostRun(function() {
+        try {
+          // Crash the program
+          _crash();
+        }
+        catch(e) {
+          // Catch the abort
+          out(true);
+        }
+
+        out("again");
+
+        try {
+          // Try executing some function again
+          _crash();
+        }
+        catch(e) {
+          // Make sure it failed with the expected exception
+          out(e === "program has already aborted!");
+        }
+      });
+    ''')
+    self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):

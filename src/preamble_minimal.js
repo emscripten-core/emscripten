@@ -54,7 +54,6 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 
 #include "runtime_functions.js"
 #include "runtime_strings.js"
-#include "runtime_sab_polyfill.js"
 
 #if USE_PTHREADS
 var STATIC_BASE = {{{ GLOBAL_BASE }}};
@@ -71,8 +70,6 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
     ;
-
-#if WASM
 
 #if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
 var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
@@ -100,20 +97,6 @@ assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memo
 #endif
 
 #include "runtime_init_table.js"
-
-#else
-
-#if USE_PTHREADS
-var buffer = new SharedArrayBuffer({{{ INITIAL_MEMORY }}});
-#else
-var buffer = new ArrayBuffer({{{ INITIAL_MEMORY }}});
-#endif
-
-#if USE_PTHREADS
-}
-#endif
-
-#endif
 
 #if ASSERTIONS
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
