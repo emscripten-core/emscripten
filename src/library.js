@@ -4252,6 +4252,9 @@ LibraryManager.library = {
 
   $dynCallLegacy__deps: ['$jitDynCall'],
   $dynCallLegacy: function(sig, ptr, args) {
+#if WASM2JS
+    return wasmTable.get(ptr).apply(null, args);
+#endif
     if (!Module['dynCall_' + sig]) {
       Module['dynCall_' + sig] = jitDynCall(sig);
     }
