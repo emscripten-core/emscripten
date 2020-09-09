@@ -438,6 +438,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args = ['-Werror']
     self.env = {}
     self.temp_files_before_run = []
+    self.uses_es6 = False
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -562,6 +563,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       args = [arg for arg in args if arg is not None]
     return args
 
+  def verify_es5(self, filename):
+    es_check = path_from_root('node_modules', '.bin', 'es-check')
+    # use --quiet once its available
+    # See: https://github.com/dollarshaveclub/es-check/pull/126/
+    try:
+      shared.run_process(shared.NODE_JS + [es_check, 'es5', os.path.abspath(filename)], stderr=PIPE)
+    except subprocess.CalledProcessError as e:
+      print(e.stderr)
+      self.fail('es-check failed to verify ES5 output compliance')
+
   # Build JavaScript code from source code
   def build(self, filename, libraries=[], includes=[], force_c=False,
             post_build=None, js_outfile=True):
@@ -580,6 +591,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
+    if js_outfile and not self.uses_es6:
+      self.verify_es5(output)
 
     if post_build:
       post_build(output)

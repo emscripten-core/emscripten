@@ -1,6 +1,7 @@
 {
   "private": true,
   "devDependencies": {
+    "es-check": "^5.1.0",
     "ws": "~0.4.28"
   },
   "dependencies": {
