@@ -85,7 +85,7 @@ var LibraryWebGL2 = {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, imageSize, data);
     } else {
-      GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
+      if (imageSize) GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
     }
   },
 
@@ -94,7 +94,7 @@ var LibraryWebGL2 = {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data);
     } else {
-      GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
+      if (imageSize) GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
     }
   },
 
@@ -805,7 +805,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
 #endif
-    GLctx.uniform1uiv(GL.uniforms[location], HEAPU32, value>>2, count);
+    if (count) GLctx.uniform1uiv(GL.uniforms[location], HEAPU32, value>>2, count);
   },
 
   glUniform2uiv__sig: 'viii',
@@ -814,7 +814,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
 #endif
-    GLctx.uniform2uiv(GL.uniforms[location], HEAPU32, value>>2, count*2);
+    if (count) GLctx.uniform2uiv(GL.uniforms[location], HEAPU32, value>>2, count*2);
   },
 
   glUniform3uiv__sig: 'viii',
@@ -823,7 +823,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
 #endif
-    GLctx.uniform3uiv(GL.uniforms[location], HEAPU32, value>>2, count*3);
+    if (count) GLctx.uniform3uiv(GL.uniforms[location], HEAPU32, value>>2, count*3);
   },
 
   glUniform4uiv__sig: 'viii',
@@ -832,7 +832,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
 #endif
-    GLctx.uniform4uiv(GL.uniforms[location], HEAPU32, value>>2, count*4);
+    if (count) GLctx.uniform4uiv(GL.uniforms[location], HEAPU32, value>>2, count*4);
   },
 
   glUniformMatrix2x3fv__sig: 'viiii',
@@ -841,7 +841,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix2x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
+    if (count) GLctx.uniformMatrix2x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
   },
 
   glUniformMatrix3x2fv__sig: 'viiii',
@@ -850,7 +850,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix3x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
+    if (count) GLctx.uniformMatrix3x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
   },
 
   glUniformMatrix2x4fv__sig: 'viiii',
@@ -859,7 +859,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix2x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
+    if (count) GLctx.uniformMatrix2x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
   },
 
   glUniformMatrix4x2fv__sig: 'viiii',
@@ -868,7 +868,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix4x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
+    if (count) GLctx.uniformMatrix4x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
   },
 
   glUniformMatrix3x4fv__sig: 'viiii',
@@ -877,7 +877,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix3x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
+    if (count) GLctx.uniformMatrix3x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
   },
 
   glUniformMatrix4x3fv__sig: 'viiii',
@@ -886,7 +886,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix4x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
+    if (count) GLctx.uniformMatrix4x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
   },
 
   glVertexAttribI4iv__sig: 'vii',
