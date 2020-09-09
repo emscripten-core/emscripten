@@ -3779,6 +3779,9 @@ LibraryManager.library = {
     with a function pointer and arguments and does a call_indirect for us.
     To do this we create a tiny wasm module with a single export.
 
+    This takes around 1ms, so it can be noticeable if a lot of dynCalls are
+    jitted.
+
     Example output for signature "dif" (returns f64, has 2 params i32, f32):
 
     00 61 73 6d
@@ -4063,7 +4066,10 @@ LibraryManager.library = {
   $dynCallLegacy__deps: ['$jitDynCall'],
   $dynCallLegacy: function(sig, ptr, args) {
 #if WASM2JS
-    return wasmTable.get(ptr).apply(null, args);
+    var ret = wasmTable.get(ptr).apply(null, args);
+console.log('wasm2js!', sig, ptr, args, ' => ', ret, new Error().stack);
+setTempRet0(-1);
+    return ret;
 #endif
     if (!Module['dynCall_' + sig]) {
       Module['dynCall_' + sig] = jitDynCall(sig);
