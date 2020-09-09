@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- The native optimizer and the corresponding config setting
+  (`EMSCRIPTEN_NATIVE_OPTIMIZER`) have been removed (it was only relevant to
+  asmjs/fastcomp backend).
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
   removes the internal `DYNAMICTOP_PTR` API.)
 - Add `ABORT_ON_EXCEPTIONS` which will abort when an unhandled WASM exception
