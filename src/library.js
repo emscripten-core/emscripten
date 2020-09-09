@@ -4001,7 +4001,7 @@ LibraryManager.library = {
   },
 
 #if USE_LEGACY_DYNCALLS || !WASM_BIGINT
-  $makeDynCall: function(sig) {
+  $jitDynCall: function(sig) {
     /*
     Creates a new dynCall function, that is a wasm function that is called
     with a function pointer and arguments and does a call_indirect for us.
@@ -4288,10 +4288,10 @@ LibraryManager.library = {
     return instance.exports['a'];
   },
 
-  $dynCallLegacy__deps: ['$makeDynCall'],
+  $dynCallLegacy__deps: ['$jitDynCall'],
   $dynCallLegacy: function(sig, ptr, args) {
     if (!Module['dynCall_' + sig]) {
-      Module['dynCall_' + sig] = makeDynCall(sig);
+      Module['dynCall_' + sig] = jitDynCall(sig);
     }
     if (args && args.length) {
       return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
