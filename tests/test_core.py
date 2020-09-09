@@ -5896,6 +5896,14 @@ return malloc(size);
     self.emcc_args.extend(['-munimplemented-simd128', '-xc', '-std=c99'])
     self.build(path_from_root('tests', 'test_wasm_intrinsics_simd.c'))
 
+  # Tests invoking the NEON SIMD API via arm_neon.h header
+  @wasm_simd
+  def test_neon_wasm_simd(self):
+    self.emcc_args.append('-Wno-c++11-narrowing')
+    self.emcc_args.append('-mfpu=neon')
+    self.emcc_args.append('-msimd128')
+    self.do_runf(path_from_root('tests', 'neon', 'test_neon_wasm_simd.cpp'), 'Success!')
+
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
@@ -8335,6 +8343,35 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-lstack.js']
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free.c')
+
+  # Tests Settings.ABORT_ON_WASM_EXCEPTIONS
+  def test_abort_on_exceptions(self):
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS', 1)
+    self.emcc_args += ['--bind', '--post-js', 'post.js']
+    create_test_file('post.js', '''
+      addOnPostRun(function() {
+        try {
+          // Crash the program
+          _crash();
+        }
+        catch(e) {
+          // Catch the abort
+          out(true);
+        }
+
+        out("again");
+
+        try {
+          // Try executing some function again
+          _crash();
+        }
+        catch(e) {
+          // Make sure it failed with the expected exception
+          out(e === "program has already aborted!");
+        }
+      });
+    ''')
+    self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.c')
 
 
 # Generate tests for everything

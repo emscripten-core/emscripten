@@ -393,10 +393,6 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
-#if MAIN_MODULE && !WASM
-// JS side modules use this value to decide their stack size.
-Module['TOTAL_STACK'] = TOTAL_STACK;
-#endif
 
 {{{ makeModuleReceiveWithVar('INITIAL_INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
 
@@ -428,8 +424,6 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 }
 #endif
 #endif
-
-#include "runtime_sab_polyfill.js"
 
 #if STANDALONE_WASM
 #if ASSERTIONS
@@ -664,7 +658,7 @@ function removeRunDependency(id) {
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
-#if WASM && MAIN_MODULE
+#if MAIN_MODULE
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
@@ -692,14 +686,10 @@ function abort(what) {
   what = output;
 #endif // ASSERTIONS
 
-#if WASM
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
   var e = new WebAssembly.RuntimeError(what);
-#else
-  var e = what;
-#endif
 
 #if MODULARIZE
   readyPromiseReject(e);
@@ -732,7 +722,6 @@ addOnPreRun(function() {
     }
   }
   // if we can load dynamic libraries synchronously, do so, otherwise, preload
-#if WASM
   if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !readBinary) {
     // we can't read binary data synchronously, so preload
     addRunDependency('preload_dynamicLibraries');
@@ -744,7 +733,6 @@ addOnPreRun(function() {
     });
     return;
   }
-#endif
   loadDynamicLibraries(Module['dynamicLibraries']);
 });
 
@@ -805,7 +793,67 @@ function createExportWrapper(name, fixedasm) {
 }
 #endif
 
-#if WASM
+#if ABORT_ON_WASM_EXCEPTIONS
+// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion 
+// level of the wrapper function so that we only handle exceptions at the top level
+// letting the exception mechanics work uninterrupted at the inner level.
+// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that 
+// we know to ignore exceptions from there since they're handled by callMain directly.
+var abortWrapperDepth = 0;
+
+// Instrument all the exported functions to:
+// - abort if an unhandled exception occurs
+// - throw an exception if someone tries to call them after the program has aborted
+// See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
+function instrumentWasmExportsWithAbort(exports) {
+  var instExports = {};
+  for (var name in exports) {
+    (function(name) {
+      var original = exports[name];
+      
+      // Wrap all functions, copy the other symbols.
+      if (typeof original === 'function') {
+        instExports[name] = function() {
+          // Don't allow this function to be called if we're aborted!
+          if (ABORT) { 
+            throw "program has already aborted!";
+          }
+          
+#if DISABLE_EXCEPTION_CATCHING != 1
+          abortWrapperDepth += 1;
+#endif
+          try {
+            return original.apply(null, arguments);
+          }
+          catch (e) {
+            if (
+              ABORT // rethrow exception if abort() was called in the original function call above
+              || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
+#if SUPPORT_LONGJMP
+              || e === 'longjmp' // rethrow longjmp if enabled
+#endif
+            ) {
+              throw e;
+            }
+            
+            abort("unhandled exception: " + [e, e.stack]);
+          }
+#if DISABLE_EXCEPTION_CATCHING != 1
+          finally {
+            abortWrapperDepth -= 1;
+          }
+#endif
+        };
+      }
+      else {
+        instExports[name] = original;
+      }
+    })(name);
+  }
+  return instExports;
+}
+#endif
+
 var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
 if (!isDataURI(wasmBinaryFile)) {
   wasmBinaryFile = locateFile(wasmBinaryFile);
@@ -893,6 +941,9 @@ function createWasm() {
 #endif
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
+#endif
+#if ABORT_ON_WASM_EXCEPTIONS
+    exports = instrumentWasmExportsWithAbort(exports);
 #endif
     Module['asm'] = exports;
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -1132,7 +1183,6 @@ function createWasm() {
   return Module['asm']; // exports were assigned here
 #endif
 }
-#endif
 
 // Globals used by JS i64 conversions
 var tempDouble;

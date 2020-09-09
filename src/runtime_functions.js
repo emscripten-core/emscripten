@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if WASM
 // Wraps a JS function as a wasm function with a given signature.
 function convertJsFunctionToWasm(func, sig) {
 #if WASM2JS
@@ -170,7 +169,6 @@ function removeFunctionWasm(index) {
   functionsInTableMap.delete(wasmTable.get(index));
   freeTableIndexes.push(index);
 }
-#endif
 
 // 'sig' parameter is required for the llvm backend but only when func is not
 // already a WebAssembly function.

@@ -380,7 +380,7 @@ var LibraryPThread = {
       }
 #endif
 
-#if ASSERTIONS && WASM
+#if ASSERTIONS
       assert(wasmMemory instanceof WebAssembly.Memory, 'WebAssembly memory should have been loaded by now!');
       assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
 #endif
@@ -394,7 +394,6 @@ var LibraryPThread = {
         // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
         // independently load up the same main application file.
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
-#if WASM
 #if WASM2JS
         // the polyfill WebAssembly.Memory instance has function properties,
         // which will fail in postMessage, so just send a custom object with the
@@ -409,10 +408,6 @@ var LibraryPThread = {
 #endif
 #if USE_OFFSET_CONVERTER
         'wasmOffsetConverter': wasmOffsetConverter,
-#endif
-#else
-        'buffer': HEAPU8.buffer,
-        'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
 #endif
 #if !MINIMAL_RUNTIME
         'DYNAMIC_BASE': DYNAMIC_BASE
@@ -1320,7 +1315,7 @@ var LibraryPThread = {
     STACK_MAX = stackMax;
 
 #if STACK_OVERFLOW_CHECK >= 2
-    ___set_stack_limit(STACK_MAX);
+    ___set_stack_limits(STACK_BASE, STACK_MAX);
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
