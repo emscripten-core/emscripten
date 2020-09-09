@@ -783,10 +783,6 @@ var EXPORTED_FUNCTIONS = [];
 // library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
 
-// If true, export all the functions appearing in a function table, and the
-// tables themselves.
-var EXPORT_FUNCTION_TABLES = 0;
-
 // Remembers the values of these settings, and makes them accessible
 // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
@@ -1049,14 +1045,8 @@ var EXPORT_NAME = 'Module';
 // to warnings instead of throwing an exception.
 var DYNAMIC_EXECUTION = 1;
 
-// whether js opts will be run, after the main compiler
-var RUNNING_JS_OPTS = 0;
-
 // whether we are in the generate struct_info bootstrap phase
 var BOOTSTRAPPING_STRUCT_INFO = 0;
-
-// struct_info that is either generated or cached
-var STRUCT_INFO = '';
 
 // Add some calls to emscripten tracing APIs
 var EMSCRIPTEN_TRACING = 0;
@@ -1168,7 +1158,6 @@ var EMIT_EMSCRIPTEN_LICENSE = 0;
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
 // non-web/non-JS embeddings, setting this to 0 may be desirable.
-// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
 // Ports
@@ -1606,6 +1595,20 @@ var WASM2C = 0;
 // in a custom location.
 var SEPARATE_DWARF_URL = '';
 
+// Whether the program should abort when an unhandled WASM exception is encountered.
+// This makes the Emscripten program behave more like a native program where the OS
+// would terminate the process and no further code can be executed when an unhandled
+// exception (e.g. out-of-bounds memory access) happens.
+// This will instrument all exported functions to catch thrown exceptions and
+// call abort() when they happen. Once the program aborts any exported function calls
+// will fail with a "program has already aborted" exception to prevent calls into
+// code with a potentially corrupted program state.
+// This adds a small fixed amount to code size in optimized builds and a slight overhead
+// for the extra instrumented function indirection.
+// Enable this if you want Emscripten to handle unhandled exceptions nicely at the
+// cost of a few bytes extra.
+var ABORT_ON_WASM_EXCEPTIONS = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
@@ -1685,4 +1688,6 @@ var LEGACY_SETTINGS = [
   ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
   ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
   ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
+  ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
+  ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
 ];

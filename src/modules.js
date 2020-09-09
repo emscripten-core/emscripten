@@ -71,7 +71,8 @@ var LibraryManager = {
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
-      'library_int53.js'
+      'library_int53.js',
+      'library_dylink.js'
     ];
 
     if (!EXCEPTION_HANDLING) {
@@ -428,8 +429,6 @@ function exportRuntime() {
     'FS_createDevice',
     'FS_unlink',
     'dynamicAlloc',
-    'loadDynamicLibrary',
-    'loadWebAssemblyModule',
     'getLEB',
     'getFunctionTables',
     'alignFunctionTables',

@@ -135,7 +135,7 @@ def also_with_noderawfs(func):
 
 def can_do_standalone(self):
   return self.get_setting('WASM') and \
-      not self.get_setting('SAFE_STACK') and \
+      self.get_setting('STACK_OVERFLOW_CHECK') < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       '-fsanitize=address' not in self.emcc_args
 
@@ -786,6 +786,8 @@ class TestCoreBase(RunnerCore):
 
   def test_stack(self):
     self.set_setting('INLINING_LIMIT', 50)
+    # some extra coverage in all test suites for stack checks
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack.c')
 
@@ -1233,8 +1235,11 @@ int main() {
       self.set_setting('SAFE_HEAP', safe)
       self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2.cpp')
 
-  @with_both_exception_handling
   def test_exceptions_3(self):
+    # TODO remove this line and restore @with_both_exception_handling
+    # https://bugs.llvm.org/show_bug.cgi?id=47413
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+
     src = r'''
 #include <iostream>
 #include <stdexcept>
@@ -5894,6 +5899,14 @@ return malloc(size);
     self.emcc_args.extend(['-munimplemented-simd128', '-xc', '-std=c99'])
     self.build(path_from_root('tests', 'test_wasm_intrinsics_simd.c'))
 
+  # Tests invoking the NEON SIMD API via arm_neon.h header
+  @wasm_simd
+  def test_neon_wasm_simd(self):
+    self.emcc_args.append('-Wno-c++11-narrowing')
+    self.emcc_args.append('-mfpu=neon')
+    self.emcc_args.append('-msimd128')
+    self.do_runf(path_from_root('tests', 'neon', 'test_neon_wasm_simd.cpp'), 'Success!')
+
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
@@ -7810,15 +7823,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run('int main() { return 0; }', expected)
 
   @sync
-  @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")
   def test_stack_overflow_check(self):
-    args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
+    self.set_setting('TOTAL_STACK', 1048576)
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
 
-    self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'ASSERTIONS=0']
-    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'Stack overflow! Attempted to allocate', assert_returncode=NON_ZERO)
-
-    self.emcc_args = args + ['-s', 'ASSERTIONS=1']
-    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'Stack overflow! Attempted to allocate', assert_returncode=NON_ZERO)
+    self.emcc_args += ['-DONE_BIG_STRING']
+    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
@@ -8206,7 +8217,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
 
   @needs_dlfcn
-  @unittest.skip('allow binaryen change to roll in')
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
@@ -8337,6 +8347,35 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free.c')
 
+  # Tests Settings.ABORT_ON_WASM_EXCEPTIONS
+  def test_abort_on_exceptions(self):
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS', 1)
+    self.emcc_args += ['--bind', '--post-js', 'post.js']
+    create_test_file('post.js', '''
+      addOnPostRun(function() {
+        try {
+          // Crash the program
+          _crash();
+        }
+        catch(e) {
+          // Catch the abort
+          out(true);
+        }
+
+        out("again");
+
+        try {
+          // Try executing some function again
+          _crash();
+        }
+        catch(e) {
+          // Make sure it failed with the expected exception
+          out(e === "program has already aborted!");
+        }
+      });
+    ''')
+    self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
@@ -8412,9 +8451,6 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
-
-# asm.js
-asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})

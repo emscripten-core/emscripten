@@ -6962,8 +6962,6 @@ int main() {
 
   def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, expected_size,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
-    return self.skipTest('allow binaryen change to roll in')
-
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
@@ -7248,7 +7246,6 @@ int main() {
     run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1'], (2 * 1024 * 1024 * 1024) // 16384)
     run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'], (2 * 1024 * 1024 * 1024) // 16384)
 
-  @unittest.skip('allow binaryen improvements to roll in')
   def test_wasm_target_and_STANDALONE_WASM(self):
     # STANDALONE_WASM means we never minify imports and exports.
     for opts, potentially_expect_minified_exports_and_imports in (
@@ -7282,7 +7279,8 @@ int main() {
           assert 'a' in exports_and_imports
         else:
           assert 'a' not in exports_and_imports
-        assert 'memory' in exports_and_imports or 'fd_write' in exports_and_imports, 'some things are not minified anyhow'
+        if standalone:
+          assert 'fd_write' in exports_and_imports, 'standalone mode preserves import names for WASI APIs'
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', self.run_js('out.js'))
@@ -8454,7 +8452,6 @@ int main () {
         test(['-s', 'WASM=0'], closure, opt)
         test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  @unittest.skip('allow binaryen change to roll in')
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'ENVIRONMENT=web',
