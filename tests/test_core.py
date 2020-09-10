@@ -6903,6 +6903,7 @@ someweirdtext
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_negative_constants.cpp'),
                           path_from_root('tests', 'embind', 'test_negative_constants.out'))
 
+  @also_with_wasm_bigint
   def test_embind_unsigned(self):
     self.emcc_args += ['--bind']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
