@@ -24,7 +24,7 @@ from . import shared
 from .toolchain_profiler import ToolchainProfiler
 from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_AR
-from .shared import JS, LLVM_OPT, LLVM_LINK, LLVM_DIS, LLVM_AS, LLVM_OBJCOPY
+from .shared import LLVM_OPT, LLVM_LINK, LLVM_DIS, LLVM_AS, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import safe_move, configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA, CLOSURE_COMPILER, EM_CONFIG
@@ -945,64 +945,6 @@ def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
   #   cmd += get_binaryen_feature_flags()
   # print_compiler_stage(cmd)
   # check_call(cmd)
-
-
-def calculate_reachable_functions(infile, initial_list, can_reach=True):
-  with ToolchainProfiler.profile_block('calculate_reachable_functions'):
-    from . import asm_module
-    temp = configuration.get_temp_files().get('.js').name
-    js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
-    asm = asm_module.AsmModule(temp)
-    lines = asm.funcs_js.split('\n')
-    can_call = {}
-    for i in range(len(lines)):
-      line = lines[i]
-      if line.startswith('// REACHABLE '):
-        curr = json.loads(line[len('// REACHABLE '):])
-        func = curr[0]
-        targets = curr[2]
-        can_call[func] = set(targets)
-    # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
-    for name, funcs in asm.tables.items():
-      can_call[name] = set([x.strip() for x in funcs[1:-1].split(',')])
-    # print can_call
-    # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
-    #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
-    # print 'can call', can_call, '\n!!!\n', asm.tables, '!'
-    reachable_from = {}
-    for func, targets in can_call.items():
-      for target in targets:
-        if target not in reachable_from:
-          reachable_from[target] = set()
-        reachable_from[target].add(func)
-    # print 'reachable from', reachable_from
-    to_check = initial_list[:]
-    advised = set()
-    if can_reach:
-      # find all functions that can reach the initial list
-      while len(to_check):
-        curr = to_check.pop()
-        if curr in reachable_from:
-          for reacher in reachable_from[curr]:
-            if reacher not in advised:
-              if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher):
-                advised.add(str(reacher))
-              to_check.append(reacher)
-    else:
-      # find all functions that are reachable from the initial list, including it
-      # all tables are assumed reachable, as they can be called from dyncall from outside
-      for name, funcs in asm.tables.items():
-        to_check.append(name)
-      while len(to_check):
-        curr = to_check.pop()
-        if not JS.is_function_table(curr):
-          advised.add(curr)
-        if curr in can_call:
-          for target in can_call[curr]:
-            if target not in advised:
-              advised.add(str(target))
-              to_check.append(target)
-    return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
 
 def check_closure_compiler(args, env):
