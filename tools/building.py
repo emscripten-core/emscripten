@@ -27,7 +27,7 @@ from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_
 from .shared import LLVM_OPT, LLVM_LINK, LLVM_DIS, LLVM_AS, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import safe_move, configuration, path_from_root, EXPECTED_BINARYEN_VERSION
-from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA, CLOSURE_COMPILER, EM_CONFIG
+from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
 from .shared import get_emscripten_temp_dir, exe_suffix, WebAssembly, which, is_c_symbol
@@ -947,16 +947,30 @@ def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
   # check_call(cmd)
 
 
-def check_closure_compiler(args, env):
-  if not os.path.exists(CLOSURE_COMPILER[-1]):
-    exit_with_error('google-closure-compiler executable (%s) does not exist, check the paths in %s.  To install closure compiler, run "npm install" in emscripten root directory.', CLOSURE_COMPILER[-1], EM_CONFIG)
+def get_closure_compiler():
+  # First check if the user configured a specific CLOSURE_COMPILER in thier settings
+  if shared.CLOSURE_COMPILER:
+    return shared.CLOSURE_COMPILER
+
+  # Otherwise use the one installed vai npm
+  cmd = shared.get_npm_cmd('google-closure-compiler')
+  if not WINDOWS:
+    # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
+    # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
+    # out of memory"
+    cmd.insert(-1, '--max_old_space_size=8192')
+  return cmd
+
+
+def check_closure_compiler(cmd, args, env):
   try:
-    output = run_process(CLOSURE_COMPILER + args + ['--version'], stdout=PIPE, env=env).stdout
+    output = run_process(cmd + args + ['--version'], stdout=PIPE, env=env).stdout
   except Exception as e:
     logger.warn(str(e))
-    exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
+    exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(cmd))
+
   if 'Version:' not in output:
-    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
+    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(cmd), output))
 
 
 def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
@@ -985,7 +999,8 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
       # https://github.com/google/closure-compiler-npm/issues/147
       user_args.append('--platform=java')
 
-    check_closure_compiler(user_args, env)
+    closure_cmd = get_closure_compiler()
+    check_closure_compiler(closure_cmd, user_args, env)
 
     # Closure externs file contains known symbols to be extern to the minification, Closure
     # should not minify these symbol names.
@@ -1050,7 +1065,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     if pretty:
       args += ['--formatting', 'PRETTY_PRINT']
     args += ['--js', filename]
-    cmd = CLOSURE_COMPILER + args + user_args
+    cmd = closure_cmd + args + user_args
     logger.debug('closure compiler: ' + ' '.join(cmd))
 
     proc = run_process(cmd, stderr=PIPE, check=False, env=env)
