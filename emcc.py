@@ -358,7 +358,7 @@ def apply_settings(changes):
                'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(expand_byte_size_suffixes(value))
 
-    if value[0] == '@':
+    if value and value[0] == '@':
       filename = value[1:]
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
@@ -2632,17 +2632,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       building.strip(wasm_binary_target, wasm_binary_target,
                      debug=strip_debug, producers=strip_producers)
 
-  if shared.Settings.BINARYEN_SCRIPTS:
-    binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
-    script_env = os.environ.copy()
-    root_dir = os.path.abspath(os.path.dirname(__file__))
-    if script_env.get('PYTHONPATH'):
-      script_env['PYTHONPATH'] += ':' + root_dir
-    else:
-      script_env['PYTHONPATH'] = root_dir
-    for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
-      logger.debug('running binaryen script: ' + script)
-      shared.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
     building.save_intermediate(wasm_binary_target, 'pre-ctors.wasm')
     building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
@@ -3156,6 +3145,9 @@ def is_valid_abspath(options, path_name):
 
 
 def parse_value(text):
+  if not text:
+    return text
+
   # Note that using response files can introduce whitespace, if the file
   # has a newline at the end. For that reason, we rstrip() in relevant
   # places here.

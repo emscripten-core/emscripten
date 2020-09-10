@@ -31,6 +31,7 @@ Current Trunk
   corrupted program state.
 - Use `__indirect_function_table` as the import name for the table, which is
   what LLVM does.
+- Remove `BINARYEN_SCRIPTS` setting.
 
 2.0.2: 09/02/2020
 -----------------
