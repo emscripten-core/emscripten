@@ -1714,7 +1714,6 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
-AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 apply_configuration()

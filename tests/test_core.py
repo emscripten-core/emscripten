@@ -20,7 +20,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
 from tools.shared import try_delete, PIPE
-from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
+from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, LLVM_ROOT
 from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
@@ -6300,28 +6300,6 @@ return malloc(size);
     self.emcc_args += ['-flto']
 
     run_all('lto')
-
-  def test_autodebug_bitcode(self):
-    if '-flto' not in self.get_emcc_args():
-      return self.skipTest('must use bitcode object files for bitcode autodebug')
-
-    self.emcc_args += ['--llvm-opts', '0']
-
-    # Run a test that should work, generating some code
-    test_path = path_from_root('tests', 'core', 'test_structs.c')
-    src = test_path + '.c'
-    output = test_path + '.out'
-    self.do_run_from_file(src, output)
-
-    filename = 'out'
-    self.run_process([EMCC, '-c', src, '-o', filename + '.o'] + self.get_emcc_args())
-
-    # Autodebug the code
-    objfile = filename + '.o'
-    building.llvm_dis(objfile, filename + '.ll')
-    self.run_process([PYTHON, AUTODEBUGGER, filename + '.ll', filename + '.auto.ll'])
-    building.llvm_as(filename + '.auto.ll', objfile)
-    self.do_run_object(objfile, 'AD:-1,1')
 
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   @no_asan('autodebug logging interferes with asan')
