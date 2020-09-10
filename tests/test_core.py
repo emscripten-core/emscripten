@@ -5205,6 +5205,7 @@ main( int argv, char ** argc ) {
       self.do_run_in_out_file_test('tests', 'core', 'test_istream.cpp')
 
   def test_fs_base(self):
+    self.uses_es6 = True
     # TODO(sbc): It seems that INCLUDE_FULL_LIBRARY will generally generate
     # undefined symbols at link time so perhaps have it imply this setting?
     self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
@@ -5267,6 +5268,7 @@ main( int argv, char ** argc ) {
     self.do_runf(path_from_root('tests', 'fs', 'test_append.c'), 'success')
 
   def test_fs_mmap(self):
+    self.uses_es6 = True
     orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       src = path_from_root('tests', 'fs', 'test_mmap.c')
@@ -5312,7 +5314,7 @@ main( int argv, char ** argc ) {
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_access(self):
-    self.clear()
+    self.uses_es6 = True
     orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
@@ -5326,6 +5328,7 @@ main( int argv, char ** argc ) {
       self.do_run_in_out_file_test('tests', 'unistd', 'access.c', js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
+    self.uses_es6 = True
     self.do_run_in_out_file_test('tests', 'unistd', 'curdir.c')
 
   @also_with_noderawfs
@@ -5350,7 +5353,7 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'unistd', 'pathconf.c')
 
   def test_unistd_truncate(self):
-    self.clear()
+    self.uses_es6 = True
     orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
