@@ -155,8 +155,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
 
 def generate_minimal_runtime_html(target, options, js_target, target_basename,
-                                  asm_target, wasm_binary_target,
-                                  memfile):
+                                  wasm_binary_target, memfile):
   logger.debug('generating HTML for minimal runtime')
   shell = open(options.shell_path, 'r').read()
   if shared.Settings.SINGLE_FILE:

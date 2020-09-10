@@ -1112,9 +1112,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
 
-    asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
-    wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
-    wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
+    wasm_binary_target = unsuffixed(target) + '.wasm' # might not be used
     wasm_source_map_target = wasm_binary_target + '.map'
 
     # Apply user -jsD settings
@@ -1594,9 +1592,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.PROXY_TO_PTHREAD:
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
-    asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-    misc_temp_files.note(asm_target)
-
     if shared.Settings.INITIAL_MEMORY % 65536 != 0:
       exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
     if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
@@ -1675,11 +1670,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.SINGLE_FILE:
       # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-      shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
       shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
     else:
       # set file locations, so that JS glue can find what it needs
-      shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
       shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
@@ -2208,8 +2201,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                  wasm_text_target, wasm_source_map_target, misc_temp_files)
+      do_binaryen(target, options, memfile, wasm_binary_target,
+                  wasm_source_map_target, misc_temp_files)
       # If we are building a wasm side module then we are all done now
       if shared.Settings.SIDE_MODULE:
         return
@@ -2256,8 +2249,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # If we were asked to also generate HTML, do that
       if final_suffix == '.html':
         generate_html(target, options, js_target, target_basename,
-                      asm_target, wasm_binary_target,
-                      memfile)
+                      wasm_binary_target, memfile)
       else:
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
@@ -2589,8 +2581,8 @@ def emit_js_source_maps(target, js_transform_tempfiles):
                       '--offset', '0'])
 
 
-def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                wasm_text_target, wasm_source_map_target, misc_temp_files):
+def do_binaryen(target, options, memfile, wasm_binary_target,
+                wasm_source_map_target, misc_temp_files):
   global final
   logger.debug('using binaryen')
   if use_source_map(options) and not shared.Settings.SOURCE_MAP_BASE:
@@ -2841,8 +2833,7 @@ def module_export_name_substitution():
 
 
 def generate_traditional_runtime_html(target, options, js_target, target_basename,
-                                      asm_target, wasm_binary_target,
-                                      memfile):
+                                      wasm_binary_target, memfile):
   script = ScriptSource()
 
   shell = read_and_preprocess(options.shell_path)
@@ -2997,8 +2988,7 @@ def minify_html(filename, options):
 
 
 def generate_html(target, options, js_target, target_basename,
-                  asm_target, wasm_binary_target,
-                  memfile):
+                  wasm_binary_target, memfile):
   logger.debug('generating HTML')
 
   if shared.Settings.EXPORT_NAME != 'Module' and \
@@ -3009,10 +2999,10 @@ def generate_html(target, options, js_target, target_basename,
     exit_with_error('Customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
   if shared.Settings.MINIMAL_RUNTIME:
-    generate_minimal_runtime_html(target, options, js_target, target_basename, asm_target,
+    generate_minimal_runtime_html(target, options, js_target, target_basename,
                                   wasm_binary_target, memfile)
   else:
-    generate_traditional_runtime_html(target, options, js_target, target_basename, asm_target,
+    generate_traditional_runtime_html(target, options, js_target, target_basename,
                                       wasm_binary_target, memfile)
 
   if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1):
