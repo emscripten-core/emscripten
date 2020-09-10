@@ -1788,14 +1788,13 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if SUPPORT_LONGJMP
+  longjmp__sig: 'vii',
   longjmp: function(env, value) {
     _setThrew(env, value || 1);
     throw 'longjmp';
   },
-  emscripten_longjmp__deps: ['longjmp'],
-  emscripten_longjmp: function(env, value) {
-    _longjmp(env, value);
-  },
+  emscripten_longjmp: 'longjmp',
+  emscripten_longjmp_jmpbuf: 'longjmp',
 #endif
 
   // ==========================================================================
