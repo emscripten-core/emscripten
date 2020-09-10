@@ -8037,6 +8037,30 @@ test_module().then((test_module_instance) => {
         'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
         proc.stderr)
 
+  def test_asyncify_advise(self):
+    src = path_from_root('tests', 'other', 'asyncify_advise.c')
+
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCIFY_ADVISE', 1)
+    self.set_setting('ASYNCIFY_IMPORTS', ['async_func'])
+
+    out = self.run_process([EMCC, src, '-o', 'asyncify_advise.js'] + self.get_emcc_args(), stdout=PIPE).stdout
+    self.assertContained('[asyncify] main can', out)
+    self.assertContained('[asyncify] a can', out)
+    self.assertContained('[asyncify] c can', out)
+    self.assertContained('[asyncify] e can', out)
+    self.assertContained('[asyncify] g can', out)
+    self.assertContained('[asyncify] i can', out)
+
+    self.set_setting('ASYNCIFY_REMOVE', ['e'])
+    out = self.run_process([EMCC, src, '-o', 'asyncify_advise.js'] + self.get_emcc_args(), stdout=PIPE).stdout
+    self.assertContained('[asyncify] main can', out)
+    self.assertNotContained('[asyncify] a can', out)
+    self.assertNotContained('[asyncify] c can', out)
+    self.assertNotContained('[asyncify] e can', out)
+    self.assertContained('[asyncify] g can', out)
+    self.assertContained('[asyncify] i can', out)
+
   # Sockets and networking
 
   def test_inet(self):

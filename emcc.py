@@ -579,6 +579,8 @@ def backend_binaryen_passes():
     passes += ['--asyncify']
     if shared.Settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
+    if shared.Settings.ASYNCIFY_ADVISE:
+      passes += ['--pass-arg=asyncify-verbose']
     if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
       passes += ['--pass-arg=asyncify-ignore-indirect']
     else:
