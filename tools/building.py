@@ -26,7 +26,7 @@ from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_AR
 from .shared import LLVM_OPT, LLVM_LINK, LLVM_DIS, LLVM_AS, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
-from .shared import safe_move, configuration, path_from_root, EXPECTED_BINARYEN_VERSION
+from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
@@ -896,16 +896,12 @@ def opt_level_to_str(opt_level, shrink_level=0):
     return '-O' + str(min(opt_level, 3))
 
 
-def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[], no_license=False):
+def js_optimizer(filename, passes):
   from . import js_optimizer
   try:
-    ret = js_optimizer.run(filename, passes, debug, extra_info, just_split, just_concat, extra_closure_args)
+    return js_optimizer.run(filename, passes)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
-  if output_filename:
-    safe_move(ret, output_filename)
-    ret = output_filename
-  return ret
 
 
 # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
