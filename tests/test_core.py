@@ -5312,6 +5312,9 @@ main( int argv, char ** argc ) {
   def test_fs_64bit(self):
     self.do_runf(path_from_root('tests', 'fs', 'test_64bit.c'), 'success')
 
+  def test_sigalrm(self):
+    self.do_runf(path_from_root('tests', 'sigalrm.cpp'), '')
+
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_access(self):
     self.uses_es6 = True
