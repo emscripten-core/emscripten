@@ -1315,7 +1315,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         link_to_object = True
 
-    if not link_to_object and not compile_only and final_suffix not in EXECUTABLE_ENDINGS:
+    if not link_to_object and not compile_only and final_suffix not in EXECUTABLE_ENDINGS and not os.environ.get('EMMAKEN_JUST_CONFIGURE'):
       # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
       # file output with an explicit `-c` or `-r`.
       diagnostics.warning('emcc', 'assuming object file output, based on output filename alone.  Add an explict `-c`, `-r` or `-shared` to avoid this warning')
