@@ -823,7 +823,7 @@ var SHELL_FILE = 0;
 var RELOCATABLE = 0;
 
 // A main module is a file compiled in a way that allows us to link it to
-// a side module using emlink.py.
+// a side module at runtime.
 //  1: Normal main module.
 //  2: DCE'd main module. We eliminate dead code normally. If a side
 //     module needs something from main, it is up to you to make sure

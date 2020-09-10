@@ -53,7 +53,6 @@ if sys.version_info < (2, 7, 12):
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
-diagnostics.add_warning('separate-asm')
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('invalid-input')
 # Don't show legacy settings warnings by default

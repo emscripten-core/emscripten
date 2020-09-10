@@ -1555,9 +1555,6 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'WASM=0' not in args:
-      # Filter out separate-asm, which is implied by wasm
-      args = [a for a in args if a != '--separate-asm']
     # add in support for reporting results. this adds as an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
