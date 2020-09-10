@@ -1555,16 +1555,13 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'WASM=0' not in args:
-      # Filter out separate-asm, which is implied by wasm
-      args = [a for a in args if a != '--separate-asm']
     # add in support for reporting results. this adds as an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
-             '-include', path_from_root('tests', 'report_result.h'),
-             path_from_root('tests', 'report_result.cpp')]
+    args = args + ['-DEMTEST_PORT_NUMBER=%d' % self.port,
+                   '-include', path_from_root('tests', 'report_result.h'),
+                   path_from_root('tests', 'report_result.cpp')]
     if filename_is_src:
       filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
       with open(filepath, 'w') as f:
@@ -1576,7 +1573,7 @@ class BrowserCore(RunnerCore):
       expected = [str(i) for i in range(0, reference_slack + 1)]
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
-        args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)

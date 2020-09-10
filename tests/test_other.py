@@ -6721,15 +6721,11 @@ int main() {
     syms = building.llvm_nm('test2.bc', include_internal=True)
     assert 'foo' in syms.defs, 'foo() should not be inlined'
 
-  @no_wasm_backend('--separate-asm')
   def test_output_eol(self):
-    # --separate-asm only makes sense without wasm (no asm.js with wasm)
-    for params in [[], ['--separate-asm', '-s', 'WASM=0'], ['--proxy-to-worker'], ['--proxy-to-worker', '--separate-asm', '-s', 'WASM=0']]:
+    for params in [[], ['--proxy-to-worker'], ['--proxy-to-worker', '-s', 'WASM=0']]:
       for output_suffix in ['html', 'js']:
         for eol in ['windows', 'linux']:
           files = ['a.js']
-          if '--separate-asm' in params:
-            files += ['a.asm.js']
           if output_suffix == 'html':
             files += ['a.html']
           cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.' + output_suffix, '--output_eol', eol] + params
@@ -6787,37 +6783,6 @@ int main() {
     # and with memory growth, all should be good
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'INITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM_ASYNC_COMPILATION=0'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
-
-  @no_wasm_backend('asm.js specific')
-  def test_binaryen_asmjs_outputs(self):
-    # Test that an .asm.js file is outputted exactly when it is requested.
-    for args, output_asmjs in [
-      ([], False),
-      (['-s', 'MAIN_MODULE=2'], False),
-    ]:
-      with temp_directory(self.get_dir()) as temp_dir:
-        cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')] + args
-        print(' '.join(cmd))
-        self.run_process(cmd)
-        if output_asmjs:
-          self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
-        self.assertNotExists(os.path.join(temp_dir, 'a.temp.asm.js'))
-
-    # Test that outputting to .wasm does not nuke an existing .asm.js file, if
-    # user wants to manually dual-deploy both to same directory.
-    with temp_directory(self.get_dir()) as temp_dir:
-      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-o', os.path.join(temp_dir, 'a.js'), '--separate-asm']
-      print(' '.join(cmd))
-      self.run_process(cmd)
-      self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
-
-      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')]
-      print(' '.join(cmd))
-      self.run_process(cmd)
-      self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
-      self.assertExists(os.path.join(temp_dir, 'a.wasm'))
-
-      self.assertNotExists(os.path.join(temp_dir, 'a.temp.asm.js'))
 
   def test_binaryen_mem(self):
     for args, expect_initial, expect_max in [
