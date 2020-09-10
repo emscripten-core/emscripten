@@ -81,7 +81,7 @@ Current Trunk
   (#11319)
 - Python2 is no longer supported by Emscripten.  Emsdk now includes a bundled
   copy of Python3 on both macOS and Windows.  This means that only non-emsdk
-  users and linux users should be effected by this change.
+  users and linux users should be affected by this change.
 - Store exceptions metadata in wasm memory instead of JS. This makes exception
   handling almost 100% thread-safe. (#11518)
 
