@@ -2977,6 +2977,9 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
 
 def minify_html(filename, options):
+  if shared.Settings.DEBUG_LEVEL >= 2:
+    return
+
   opts = []
   # -g1 and greater retain whitespace and comments in source
   if shared.Settings.DEBUG_LEVEL == 0:
@@ -3006,13 +3009,10 @@ def minify_html(filename, options):
   # '--remove-empty-elements': removes all elements with empty contents.
   #                            (Breaks at least browser.test_asm_swapping)
 
-  if shared.Settings.DEBUG_LEVEL >= 2:
-    return
-
   logger.debug('minifying HTML file ' + filename)
   size_before = os.path.getsize(filename)
   start_time = time.time()
-  run_process(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
+  shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
 
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)

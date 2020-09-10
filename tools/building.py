@@ -1089,8 +1089,16 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     outfile = filename + '.cc.js'
     configuration.get_temp_files().note(outfile)
 
-    args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
-            '--language_in', 'ECMASCRIPT5']
+    args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
+    # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
+    args += ['--language_in', 'ECMASCRIPT_2018']
+    # Tell closure not to do any transpiling or inject any polyfills.
+    # At some point we may want to look into using this as way to convert to ES5 but
+    # babel is perhaps a better tool for that.
+    args += ['--language_out', 'NO_TRANSPILE']
+    # Tell closure never to inject the 'use strict' directive.
+    args += ['--emit_use_strict=false']
+
     for e in CLOSURE_EXTERNS:
       args += ['--externs', e]
     args += ['--js_output_file', outfile]

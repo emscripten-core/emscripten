@@ -7760,18 +7760,25 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIdentical(normal, tiny)
     self.assertIdentical(normal, huge)
 
-  def test_EM_ASM_ES6(self):
+  @parameterized({
+    '': ([],), # noqa
+    'O3': (['-O3'],), # noqa
+    'closure': (['--closure', '1'],), # noqa
+    'closure_O3': (['--closure', '1', '-O3'],), # noqa
+  })
+  def test_EM_ASM_ES6(self, args):
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
 int main() {
   EM_ASM({
-    var x = (a, b) => 5; // valid ES6
+    let x = (a, b) => 5; // valid ES6
     async function y() {} // valid ES2017
     out('hello!');
+    return x;
   });
 }
 ''')
-    self.run_process([EMCC, 'src.cpp', '-O2'])
+    self.run_process([EMCC, 'src.cpp'] + args)
     self.assertContained('hello!', self.run_js('a.out.js'))
 
   def test_check_sourcemapurl(self):
