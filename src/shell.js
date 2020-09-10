@@ -64,13 +64,7 @@ Module['ready'] = new Promise(function(resolve, reject) {
 // we collect those properties and reapply _after_ we configure
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
-var moduleOverrides = {};
-var key;
-for (key in Module) {
-  if (Module.hasOwnProperty(key)) {
-    moduleOverrides[key] = Module[key];
-  }
-}
+var moduleOverrides = Object.assign({}, Module)
 
 var arguments_ = [];
 var thisProgram = './this.program';
@@ -356,11 +350,8 @@ if (ENVIRONMENT_IS_NODE) {
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
 
 // Merge back in the overrides
-for (key in moduleOverrides) {
-  if (moduleOverrides.hasOwnProperty(key)) {
-    Module[key] = moduleOverrides[key];
-  }
-}
+Object.assign(Module, moduleOverrides);
+
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
 moduleOverrides = null;
