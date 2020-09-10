@@ -33,8 +33,6 @@ def restore():
 def restore_and_set_up():
   restore()
   with open(CONFIG_FILE, 'a') as f:
-    # don't use the native optimizer from the emsdk - we want to test how it builds
-    f.write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
     # make LLVM_ROOT sensitive to the LLVM env var, as we test that
     f.write('LLVM_ROOT = "%s"\n' % LLVM_ROOT)
     # unfreeze the cache, so we can test that

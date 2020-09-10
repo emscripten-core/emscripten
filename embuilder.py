@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Tool to manage building of system libraries and other components.
-such as ports and the native optimizer.
+"""Tool to manage building of system libraries and ports.
 
 In general emcc will build them automatically on demand, so you do not
 strictly need to use this tool, but it gives you more control over the
@@ -20,7 +19,6 @@ import sys
 
 from tools import shared
 from tools import system_libs
-from tools import js_optimizer
 import emscripten
 
 
@@ -97,15 +95,6 @@ Available targets:
   build %s
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
-
-It is also possible to build native_optimizer manually by using CMake. To
-do that, run
-
-   1. cd $EMSCRIPTEN/tools/optimizer
-   2. cmake . -DCMAKE_BUILD_TYPE=Release
-   3. make (or mingw32-make/vcbuild/msbuild on Windows)
-
-and set up the location to the native optimizer in .emscripten
 ''' % '\n        '.join(all_tasks)
 
 
@@ -196,10 +185,6 @@ def main():
       if force:
         shared.Cache.erase_file('generated_struct_info.json')
       emscripten.generate_struct_info()
-    elif what == 'native_optimizer':
-      if force:
-        shared.Cache.erase_file('optimizer.2.exe')
-      js_optimizer.get_native_optimizer()
     elif what == 'icu':
       build_port('icu', libname('libicuuc'))
     elif what == 'zlib':

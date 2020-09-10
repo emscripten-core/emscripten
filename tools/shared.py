@@ -39,7 +39,8 @@ DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 95
 EXPECTED_LLVM_VERSION = "12.0"
-SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_NEON_FLAGS = ['-mfpu=neon']
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -52,7 +53,6 @@ if sys.version_info < (2, 7, 12):
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
-diagnostics.add_warning('separate-asm')
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('invalid-input')
 # Don't show legacy settings warnings by default
@@ -65,6 +65,7 @@ diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
+diagnostics.add_warning('pthreads-mem-growth')
 
 
 def exit_with_error(msg, *args):
@@ -347,7 +348,6 @@ def parse_config_file():
     'BINARYEN_ROOT',
     'POPEN_WORKAROUND',
     'SPIDERMONKEY_ENGINE',
-    'EMSCRIPTEN_NATIVE_OPTIMIZER',
     'V8_ENGINE',
     'LLVM_ROOT',
     'LLVM_ADD_VERSION',
@@ -398,8 +398,18 @@ def fix_js_engine(old, new):
   return new
 
 
+def get_npm_cmd(name):
+  if WINDOWS:
+    cmd = [path_from_root('node_modules', '.bin', name + '.cmd')]
+  else:
+    cmd = NODE_JS + [path_from_root('node_modules', '.bin', name)]
+  if not os.path.exists(cmd[-1]):
+    exit_with_error('%s was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies' % name)
+  return cmd
+
+
 def normalize_config_settings():
-  global CACHE, PORTS, JAVA, CLOSURE_COMPILER
+  global CACHE, PORTS, JAVA
   global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
@@ -432,14 +442,6 @@ def normalize_config_settings():
       CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
-
-  if CLOSURE_COMPILER is None:
-    if WINDOWS:
-      CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
-    else:
-      # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-     # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
-      CLOSURE_COMPILER = NODE_JS + ['--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
     logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
@@ -762,6 +764,7 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
+    path_from_root('system', 'include', 'neon'),
     path_from_root('system', 'lib', 'compiler-rt', 'include'),
     path_from_root('system', 'lib', 'libunwind', 'include'),
     Cache.get_path('include')
@@ -783,28 +786,31 @@ def emsdk_cflags(user_args, cxx):
       if n in hay:
         return True
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_FEATURE_TOWER) + ' flags also requires passing -msimd128!')
+      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
     c_opts += ['-D__SSE__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[1:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
     c_opts += ['-D__SSE2__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[2:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
     c_opts += ['-D__SSE3__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[3:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
     c_opts += ['-D__SSSE3__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[4:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
     c_opts += ['-D__SSE4_1__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[5:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
     c_opts += ['-D__SSE4_2__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[6:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
     c_opts += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    c_opts += ['-D__ARM_NEON__=1']
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if cxx:
@@ -1000,9 +1006,6 @@ class SettingsManager(object):
 def verify_settings():
   if Settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
-
-  if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
-      exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
 
   if not Settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
@@ -1611,7 +1614,6 @@ LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
 JS_ENGINE = None
 JS_ENGINES = []
@@ -1676,7 +1678,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 26)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 27)
 
 # Tools/paths
 if LLVM_ADD_VERSION is None:
@@ -1704,7 +1706,6 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
-AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 apply_configuration()

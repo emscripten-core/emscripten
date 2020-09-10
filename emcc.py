@@ -537,9 +537,10 @@ def backend_binaryen_passes():
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
-  passes += ['--post-emscripten']
-  if shared.Settings.OPT_LEVEL > 0 and not shared.Settings.EXIT_RUNTIME:
-    passes += ['--no-exit-runtime']
+  if shared.Settings.OPT_LEVEL > 0:
+    passes += ['--post-emscripten']
+    if not shared.Settings.EXIT_RUNTIME:
+      passes += ['--no-exit-runtime']
   if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
     passes += [building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
   elif shared.Settings.STANDALONE_WASM:
@@ -1254,15 +1255,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.LINKABLE = 1
         shared.Settings.EXPORT_ALL = 1
       shared.Settings.RELOCATABLE = 1
+
+    if shared.Settings.RELOCATABLE:
       assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
       # shared modules need memory utilities to allocate their memory
       shared.Settings.EXPORTED_RUNTIME_METHODS += [
         'allocate',
         'getMemory',
       ]
-
-    if shared.Settings.RELOCATABLE:
       shared.Settings.ALLOW_TABLE_GROWTH = 1
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDynamicLibrary', '$preloadDylibs']
 
     # various settings require sbrk() access
     if shared.Settings.DETERMINISTIC or \
@@ -1294,7 +1296,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
-    newargs = [x for x in newargs if x not in shared.SIMD_FEATURE_TOWER]
+    newargs = [x for x in newargs if x not in shared.SIMD_INTEL_FEATURE_TOWER and x not in shared.SIMD_NEON_FLAGS]
 
     if not shared.Settings.STRICT:
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
@@ -1492,7 +1494,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS == 2:
         exit_with_error('USE_PTHREADS=2 is not longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
-        logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
+        diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
@@ -2601,34 +2603,34 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
   # this is necessary for emitting a symbol map at the end.
   intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD)
-
-  if options.binaryen_passes:
-    # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
-    # also strips the Names section. so to emit just the Names section we don't
-    # tell wasm-ld to strip anything, and we do it here.
-    strip_debug = shared.Settings.DEBUG_LEVEL < 3
-    strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
-    # run wasm-opt if we have work for it
-    if options.binaryen_passes:
-      # if we need to strip certain sections, and we have wasm-opt passes
-      # to run anyhow, do it with them.
-      if strip_debug:
-        options.binaryen_passes += ['--strip-debug']
-      if strip_producers:
-        options.binaryen_passes += ['--strip-producers']
-      building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
-      building.run_wasm_opt(wasm_binary_target,
-                            wasm_binary_target,
-                            args=options.binaryen_passes,
-                            debug=intermediate_debug_info)
-    else:
-      # we are not running wasm-opt. if we need to strip certain sections
-      # then do so using llvm-objcopy which is fast and does not rewrite the
-      # code (which is better for debug info)
-      if strip_debug or strip_producers:
-        building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
-        building.strip(wasm_binary_target, wasm_binary_target,
-                       debug=strip_debug, producers=strip_producers)
+  # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
+  # also strips the Names section. so to emit just the Names section we don't
+  # tell wasm-ld to strip anything, and we do it here.
+  strip_debug = shared.Settings.DEBUG_LEVEL < 3
+  strip_producers = not shared.Settings.EMIT_PRODUCERS_SECTION
+  # run wasm-opt if we have work for it: either passes, or if we are using
+  # source maps (which requires some extra processing to keep the source map
+  # but remove DWARF)
+  if options.binaryen_passes or use_source_map(options):
+    # if we need to strip certain sections, and we have wasm-opt passes
+    # to run anyhow, do it with them.
+    if strip_debug:
+      options.binaryen_passes += ['--strip-debug']
+    if strip_producers:
+      options.binaryen_passes += ['--strip-producers']
+    building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
+    building.run_wasm_opt(wasm_binary_target,
+                          wasm_binary_target,
+                          args=options.binaryen_passes,
+                          debug=intermediate_debug_info)
+  else:
+    # we are not running wasm-opt. if we need to strip certain sections
+    # then do so using llvm-objcopy which is fast and does not rewrite the
+    # code (which is better for debug info)
+    if strip_debug or strip_producers:
+      building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
+      building.strip(wasm_binary_target, wasm_binary_target,
+                     debug=strip_debug, producers=strip_producers)
 
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
@@ -2975,6 +2977,9 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
 
 def minify_html(filename, options):
+  if shared.Settings.DEBUG_LEVEL >= 2:
+    return
+
   opts = []
   # -g1 and greater retain whitespace and comments in source
   if shared.Settings.DEBUG_LEVEL == 0:
@@ -3004,16 +3009,10 @@ def minify_html(filename, options):
   # '--remove-empty-elements': removes all elements with empty contents.
   #                            (Breaks at least browser.test_asm_swapping)
 
-  if shared.Settings.DEBUG_LEVEL >= 2:
-    return
-
   logger.debug('minifying HTML file ' + filename)
   size_before = os.path.getsize(filename)
   start_time = time.time()
-  try:
-    run_process([shared.path_from_root('node_modules', '.bin', 'html-minifier-terser' + ('.cmd' if WINDOWS else '')), filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
-  except OSError:
-    exit_with_error('html-minifier-terser was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies!')
+  shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
 
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)

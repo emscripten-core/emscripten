@@ -17,8 +17,20 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- The native optimizer and the corresponding config setting
+  (`EMSCRIPTEN_NATIVE_OPTIMIZER`) have been removed (it was only relevant to
+  asmjs/fastcomp backend).
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
   removes the internal `DYNAMICTOP_PTR` API.)
+- Add `ABORT_ON_EXCEPTIONS` which will abort when an unhandled WASM exception
+  is encountered. This makes the Emscripten program behave more like a native
+  program where the OS would terminate the process and no further code can be
+  executed when an unhandled exception (e.g. out-of-bounds memory access) happens.
+  Once the program aborts any exported function calls will fail with a "program 
+  has already aborted" exception to prevent calls into code with a potentially
+  corrupted program state.
+- Use `__indirect_function_table` as the import name for the table, which is
+  what LLVM does.
 
 2.0.2: 09/02/2020
 -----------------
@@ -69,7 +81,7 @@ Current Trunk
   (#11319)
 - Python2 is no longer supported by Emscripten.  Emsdk now includes a bundled
   copy of Python3 on both macOS and Windows.  This means that only non-emsdk
-  users and linux users should be effected by this change.
+  users and linux users should be affected by this change.
 - Store exceptions metadata in wasm memory instead of JS. This makes exception
   handling almost 100% thread-safe. (#11518)
 
