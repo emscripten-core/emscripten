@@ -40,8 +40,6 @@ from tools import shared, building
 import jsrun
 import clang_native
 import tools.line_endings
-import tools.js_optimizer
-import tools.tempfiles
 
 scons_path = shared.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))

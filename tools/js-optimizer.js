@@ -5019,22 +5019,6 @@ function findUninitializedVars(func, asmData) {
   return bad;
 }
 
-function trample(x, y) { // x = y, by trampling it
-  for (var i = 0; i < y.length; i++) {
-    x[i] = y[i];
-  }
-  x.length = y.length;
-}
-
-function ilog2(x) {
-  x = Math.round(x);
-  if (x === 1) return 0;
-  if (x === 2) return 1;
-  if (x === 4) return 2;
-  if (x === 8) return 3;
-  throw 'ilog2 is not smart enough for ' + x;
-}
-
 // emits which functions are directly reachable, except for some that are
 // ignored
 function findReachable(ast) {
@@ -5073,7 +5057,8 @@ function dumpCallGraph(ast) {
 
 // Last pass utilities
 
-// Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
+// Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast
+// cannot differentiate between 5 and 5.0 directly)
 function prepDotZero(ast) {
   traverse(ast, function(node, type) {
     if (type === 'unary-prefix' && node[1] === '+') {
@@ -5084,6 +5069,7 @@ function prepDotZero(ast) {
     }
   });
 }
+
 function fixDotZero(js) {
   return js.replace(/-DOT\$ZERO\(-/g, '- DOT$ZERO(-') // avoid x - (-y.0) turning into x--y.0 when minified
            .replace(/DOT\$ZERO\(([-+]?(0x)?[0-9a-f]*\.?[0-9]*([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
@@ -5198,125 +5184,6 @@ function asmLastOpts(ast) {
   });
 }
 
-// Cleans up globals in an asm.js module that are not used. Assumes it
-// receives a full asm.js module, as from the side file in --separate-asm
-function eliminateDeadGlobals(ast) {
-  traverse(ast, function(func, type) {
-    if (type !== 'function') return;
-    // find all symbols used by name that are not locals, so they must be globals
-    var stats = func[3];
-    var used = {};
-    for (var i = 0; i < stats.length; i++) {
-      var asmFunc = stats[i];
-      if (asmFunc[0] === 'defun') {
-        // the memory growth function does not contain valid asm.js, and can be ignored
-        var isAsmJS = asmFunc[1] !== '_emscripten_replace_memory';
-        if (isAsmJS) {
-          var asmData = normalizeAsm(asmFunc);
-        }
-        traverse(asmFunc, function(node, type) {
-          if (type == 'name') {
-            var name = node[1];
-            if (!isAsmJS || !(name in asmData.params || name in asmData.vars)) {
-              used[name] = 1;
-            }
-          }
-        });
-        if (isAsmJS) {
-          denormalizeAsm(asmFunc, asmData);
-        }
-      } else {
-        traverse(asmFunc, function(node, type) {
-          if (type == 'name') {
-            var name = node[1];
-            used[name] = 1;
-          }
-        });
-      }
-    }
-    for (var i = 0; i < stats.length; i++) {
-      var node = stats[i];
-      if (node[0] === 'var') {
-        for (var j = 0; j < node[1].length; j++) {
-          var v = node[1][j];
-          var name = v[0];
-          var value = v[1];
-          if (!(name in used)) {
-            node[1].splice(j, 1);
-            j--;
-            if (node[1].length == 0) {
-              // remove the whole var
-              stats[i] = emptyNode();
-            }
-          }
-        }
-      } else if (node[0] === 'defun') {
-        if (!(node[1] in used)) {
-          stats[i] = emptyNode();
-        }
-      }
-    }
-    removeEmptySubNodes(func);
-  });
-}
-
-function isAsmLibraryArgAssign(node) {
-  return node[0] === 'var' && node[1][0] && node[1][0][0] == 'asmLibraryArg';
-}
-
-function asmLibraryArgs(node) {
-  return node[1][0][1];
-}
-
-function isAsmUse(node) {
-  return node[0] === 'sub' &&
-         ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
-          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm')) && // Module
-         node[2][0] === 'string';
-}
-
-function getAsmUseName(node) {
-  return node[2][1];
-}
-
-function isModuleUse(node) {
-  return node[0] === 'sub' &&
-         node[1][0] === 'name' && node[1][1] === 'Module' && // Module['X']
-         node[2][0] === 'string';
-}
-
-function getModuleUseName(node) {
-  return node[2][1];
-}
-
-function isModuleAsmUse(node) { // Module["asm"][..string..]
-  return node[0] === 'sub' &&
-         node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm' &&
-         node[2][0] === 'string';
-}
-
-// A static dyncall is dynCall('vii', ..), which is actually static even
-// though we call dynCall() - we see the string signature statically.
-function isStaticDynCall(node) {
-  return node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] === 'string';
-}
-
-function getStaticDynCallName(node) {
-  return 'dynCall_' + node[2][0][1];
-}
-
-// a dynamic dyncall is one in which all we know is *some* dynCall may
-// be called, but not who. This can be either
-//   dynCall(*not a string*, ..)
-// or, to be conservative,
-//   "dynCall_"
-// as that prefix means we may be constructing a dynamic dyncall name
-// (dynCall and embind's requireFunction do this internally).
-function isDynamicDynCall(node) {
-  return (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] !== 'string') ||
-         (node[0] === 'string' && node[1] === 'dynCall_');
-}
-
 function removeFuncs(ast) {
   assert(ast[0] === 'toplevel');
   var keep = set(extraInfo.keep);
@@ -5346,7 +5213,6 @@ var passes = {
   loopOptimizer: loopOptimizer,
   registerize: registerize,
   registerizeHarder: registerizeHarder,
-  eliminateDeadGlobals: eliminateDeadGlobals,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   minifyGlobals: minifyGlobals,
