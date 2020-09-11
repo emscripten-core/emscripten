@@ -7676,8 +7676,7 @@ Module['onRuntimeInitialized'] = function() {
     create_test_file('lib.js', '''
       mergeInto(LibraryManager.library, {
         check_memprof_requirements: function() {
-          if (typeof STATIC_BASE === 'number' &&
-              typeof STACK_BASE === 'number' &&
+          if (typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
               typeof DYNAMIC_BASE === 'number') {
