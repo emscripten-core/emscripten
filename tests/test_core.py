@@ -1236,7 +1236,7 @@ int main() {
 
   def test_exceptions_3(self):
     # TODO remove this line and restore @with_both_exception_handling
-    # https://bugs.llvm.org/show_bug.cgi?id=47413
+    # https://github.com/WebAssembly/binaryen/issues/3114
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     src = r'''
