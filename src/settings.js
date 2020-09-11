@@ -1105,10 +1105,6 @@ var WASM = 1;
 // or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
 var STANDALONE_WASM = 0;
 
-// An optional comma-separated list of script hooks to run after binaryen,
-// in binaryen's /scripts dir.
-var BINARYEN_SCRIPTS = "";
-
 // Whether to ignore implicit traps when optimizing in binaryen.  Implicit
 // traps are the traps that happen in a load that is out of bounds, or
 // div/rem of 0, etc. With this option set, the optimizer assumes that loads
@@ -1690,4 +1686,5 @@ var LEGACY_SETTINGS = [
   ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
   ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
+  ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
 ];

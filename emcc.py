@@ -358,7 +358,7 @@ def apply_settings(changes):
                'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(expand_byte_size_suffixes(value))
 
-    if value[0] == '@':
+    if value and value[0] == '@':
       filename = value[1:]
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
@@ -1112,9 +1112,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
 
-    asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
-    wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
-    wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
+    wasm_binary_target = unsuffixed(target) + '.wasm' # might not be used
     wasm_source_map_target = wasm_binary_target + '.map'
 
     # Apply user -jsD settings
@@ -1594,9 +1592,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.PROXY_TO_PTHREAD:
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
-    asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-    misc_temp_files.note(asm_target)
-
     if shared.Settings.INITIAL_MEMORY % 65536 != 0:
       exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
     if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
@@ -1675,14 +1670,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.SINGLE_FILE:
       # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-      shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
       shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
-      shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
     else:
       # set file locations, so that JS glue can find what it needs
-      shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
       shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
-      shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
     if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
@@ -1943,7 +1934,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
         file_suffix = get_file_suffix(input_file)
-        if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
+        if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (has_dash_c and file_suffix == '.bc'):
           compile_source_file(i, input_file)
         elif file_suffix in DYNAMICLIB_ENDINGS:
           logger.debug('using shared library: ' + input_file)
@@ -1952,14 +1943,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logger.debug('using static library: ' + input_file)
           ensure_archive_index(input_file)
           temp_files.append((i, input_file))
-        elif file_suffix in ASSEMBLY_ENDINGS:
-          if file_suffix == '.ll':
-            temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-            logger.debug('assembling assembly file: ' + input_file)
-            building.llvm_as(input_file, temp_file)
-            temp_files.append((i, temp_file))
-          else:
-            compile_source_file(i, input_file)
         elif language_mode:
           compile_source_file(i, input_file)
         elif input_file == '-':
@@ -2210,8 +2193,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                  wasm_text_target, wasm_source_map_target, misc_temp_files)
+      do_binaryen(target, options, memfile, wasm_binary_target,
+                  wasm_source_map_target, misc_temp_files)
       # If we are building a wasm side module then we are all done now
       if shared.Settings.SIDE_MODULE:
         return
@@ -2258,8 +2241,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # If we were asked to also generate HTML, do that
       if final_suffix == '.html':
         generate_html(target, options, js_target, target_basename,
-                      asm_target, wasm_binary_target,
-                      memfile)
+                      wasm_binary_target, memfile)
       else:
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
@@ -2591,8 +2573,8 @@ def emit_js_source_maps(target, js_transform_tempfiles):
                       '--offset', '0'])
 
 
-def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                wasm_text_target, wasm_source_map_target, misc_temp_files):
+def do_binaryen(target, options, memfile, wasm_binary_target,
+                wasm_source_map_target, misc_temp_files):
   global final
   logger.debug('using binaryen')
   if use_source_map(options) and not shared.Settings.SOURCE_MAP_BASE:
@@ -2632,17 +2614,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       building.strip(wasm_binary_target, wasm_binary_target,
                      debug=strip_debug, producers=strip_producers)
 
-  if shared.Settings.BINARYEN_SCRIPTS:
-    binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
-    script_env = os.environ.copy()
-    root_dir = os.path.abspath(os.path.dirname(__file__))
-    if script_env.get('PYTHONPATH'):
-      script_env['PYTHONPATH'] += ':' + root_dir
-    else:
-      script_env['PYTHONPATH'] = root_dir
-    for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
-      logger.debug('running binaryen script: ' + script)
-      shared.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
     building.save_intermediate(wasm_binary_target, 'pre-ctors.wasm')
     building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
@@ -2753,19 +2724,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if '{{{ WASM_BINARY_DATA }}}' in js:
       js = js.replace('{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_binary_target, 'rb').read()))
 
-    for target, replacement_string, should_embed in (
-        (wasm_binary_target,
-         shared.FilenameReplacementStrings.WASM_BINARY_FILE,
-         True),
-        (asm_target,
-         shared.FilenameReplacementStrings.ASMJS_CODE_FILE,
-         False),
-      ):
-      if should_embed and os.path.isfile(target):
-        js = js.replace(replacement_string, shared.JS.get_subresource_location(target))
-      else:
-        js = js.replace(replacement_string, '')
-      shared.try_delete(target)
+    js = js.replace(shared.FilenameReplacementStrings.WASM_BINARY_FILE, shared.JS.get_subresource_location(wasm_binary_target))
+    shared.try_delete(wasm_binary_target)
     with open(final, 'w') as f:
       f.write(js)
 
@@ -2865,8 +2825,7 @@ def module_export_name_substitution():
 
 
 def generate_traditional_runtime_html(target, options, js_target, target_basename,
-                                      asm_target, wasm_binary_target,
-                                      memfile):
+                                      wasm_binary_target, memfile):
   script = ScriptSource()
 
   shell = read_and_preprocess(options.shell_path)
@@ -3021,8 +2980,7 @@ def minify_html(filename, options):
 
 
 def generate_html(target, options, js_target, target_basename,
-                  asm_target, wasm_binary_target,
-                  memfile):
+                  wasm_binary_target, memfile):
   logger.debug('generating HTML')
 
   if shared.Settings.EXPORT_NAME != 'Module' and \
@@ -3033,10 +2991,10 @@ def generate_html(target, options, js_target, target_basename,
     exit_with_error('Customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
   if shared.Settings.MINIMAL_RUNTIME:
-    generate_minimal_runtime_html(target, options, js_target, target_basename, asm_target,
+    generate_minimal_runtime_html(target, options, js_target, target_basename,
                                   wasm_binary_target, memfile)
   else:
-    generate_traditional_runtime_html(target, options, js_target, target_basename, asm_target,
+    generate_traditional_runtime_html(target, options, js_target, target_basename,
                                       wasm_binary_target, memfile)
 
   if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1):
@@ -3156,6 +3114,9 @@ def is_valid_abspath(options, path_name):
 
 
 def parse_value(text):
+  if not text:
+    return text
+
   # Note that using response files can introduce whitespace, if the file
   # has a newline at the end. For that reason, we rstrip() in relevant
   # places here.

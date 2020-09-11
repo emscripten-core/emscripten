@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.3: 09/10/2020
+-----------------
 - The native optimizer and the corresponding config setting
   (`EMSCRIPTEN_NATIVE_OPTIMIZER`) have been removed (it was only relevant to
   asmjs/fastcomp backend).
@@ -31,6 +34,7 @@ Current Trunk
   corrupted program state.
 - Use `__indirect_function_table` as the import name for the table, which is
   what LLVM does.
+- Remove `BINARYEN_SCRIPTS` setting.
 
 2.0.2: 09/02/2020
 -----------------
