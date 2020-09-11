@@ -187,29 +187,21 @@ function cwrap(ident, returnType, argTypes, opts) {
   }
 }
 
+#if ASSERTIONS
 // We used to include malloc/free by default in the past. Show a helpful error in
-// builds with assertions. In non-assertions builds, also define these functions
-// as they are called from places like FS code, so we need something to be
-// defined for closure.
+// builds with assertions.
 #if !('_malloc' in IMPLEMENTED_FUNCTIONS)
 function _malloc() {
-#if ASSERTIONS
   abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
-#else
-  abort();
-#endif // ASSERTIONS
 }
 #endif // malloc
 #if !('_free' in IMPLEMENTED_FUNCTIONS)
 function _free() {
-#if ASSERTIONS
   // Show a helpful error since we used to include free by default in the past.
   abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
-#else
-  abort();
-#endif // ASSERTIONS
 }
 #endif // free
+#endif // ASSERTIONS
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
