@@ -440,8 +440,6 @@ def emscript(infile, outfile, memfile, temp_files, DEBUG):
 
   global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
-  staticbump = metadata['staticBump']
-
   if shared.Settings.MINIMAL_RUNTIME:
     # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
     global_initializers = ''
