@@ -17,7 +17,7 @@ import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared, js_optimizer
+from tools import shared
 
 
 js_file = sys.argv[1]
@@ -36,10 +36,6 @@ assert global_base > 0
 logger = logging.getLogger('ctor_evaller')
 
 # helpers
-
-
-def get_asm(js):
-  return js[js.find(js_optimizer.start_asm_marker):js.find(js_optimizer.end_asm_marker)]
 
 
 def find_ctors(js):
