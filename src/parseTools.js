@@ -1482,6 +1482,9 @@ function makeEval(code) {
 }
 
 function makeStaticAlloc(size) {
+  if (ERROR_ON_WASM_CHANGES_AFTER_LINK) {
+    error('Static allocations in JS at compile time are not allowed due to ERROR_ON_WASM_CHANGES_AFTER_LINK');
+  }
   size = alignMemory(size);
   var ret = alignMemory(GLOBAL_BASE + STATIC_BUMP);
   STATIC_BUMP = ret + size - GLOBAL_BASE;
