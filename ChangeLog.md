@@ -17,8 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Stop including `malloc` and `free` by default. If you need access to them, you
-  must export them manually using `-s EXPORTED_FUNCTIONS=['_malloc', ..]` etc.
+- Stop including `malloc` and `free` by default. If you need access to them from
+  JS, you must export them manually using
+  `-s EXPORTED_FUNCTIONS=['_malloc', ..]`.
 
 2.0.3: 09/10/2020
 -----------------
