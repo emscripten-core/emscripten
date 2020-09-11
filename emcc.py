@@ -1887,7 +1887,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return 0
 
       # Precompiled headers support
-      if has_header_inputs or 'header' in language_mode:
+      if has_header_inputs:
         headers = [header for _, header in input_files]
         for header in headers:
           if not header.endswith(HEADER_ENDINGS):
