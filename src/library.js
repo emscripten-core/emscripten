@@ -20,9 +20,6 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-// Memory allocated during startup, in postsets, should only be static
-// (using makeStaticAlloc)
-
 LibraryManager.library = {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
