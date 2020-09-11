@@ -78,7 +78,7 @@
   "__cxa_free_exception": ["free"],
   "__cxa_throw": ["setThrew"],
   "formatString": ["strlen"],
-  "glfwInit": ["malloc"],
+  "glfwInit": ["malloc", "free"],
   "glfwSleep": ["sleep"],
   "glBegin": ["malloc", "free"],
   "glewInit": ["malloc"],
@@ -102,7 +102,7 @@
   "emscripten_pc_get_function": ["malloc"],
   "emscripten_pc_get_file": ["malloc"],
   "emscripten_set_canvas_element_size_calling_thread": ["_emscripten_call_on_thread"],
-  "emscripten_set_offscreencanvas_size_on_target_thread": ["_emscripten_call_on_thread"],
+  "emscripten_set_offscreencanvas_size_on_target_thread": ["_emscripten_call_on_thread", "malloc"],
   "emscripten_set_offscreencanvas_size_on_target_thread_js": ["malloc"],
   "emscripten_websocket_new": ["malloc"],
   "emscripten_wget_data": ["malloc"],
@@ -179,7 +179,9 @@
   "emscripten_webgl_get_shader_info_log_utf8": ["malloc"],
   "emscripten_webgl_get_shader_source_utf8": ["malloc"],
   "emscripten_webgl_get_parameter_utf8": ["malloc"],
+  "emscripten_webgl_create_context": ["malloc"],
   "glMapBufferRange": ["malloc", "free"],
   "glGetString": ["malloc"],
-  "glGetStringi": ["malloc"]
+  "glGetStringi": ["malloc"],
+  "syslog": ["malloc"]
 }

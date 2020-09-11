@@ -1419,7 +1419,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        shared.Settings.DEMANGLE_SUPPORT or \
        shared.Settings.STB_IMAGE or \
        shared.Settings.EMBIND or \
-       shared.Settings.FETCH:
+       shared.Settings.FETCH or \
+       shared.Settings.PROXY_POSIX_SOCKETS or \
+       shared.Settings.USE_ASAN or \
+       shared.Settings.USE_LSAN or \
+       shared.Settings.UBSAN_RUNTIME or \
+       options.memory_profiler:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
