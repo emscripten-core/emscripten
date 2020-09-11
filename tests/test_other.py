@@ -9368,7 +9368,7 @@ int main() {
 
     # -O0 with BigInt support (to avoid the need for legalization) and without
     # longjmp
-    required_flags = ['-sWASM_BIGINT', '-sNO_SUPPORT_LONGJMP']
+    required_flags = ['-sWASM_BIGINT', '-sSUPPORT_LONGJMP=0']
     ok(required_flags)
     # Same with DWARF
     ok(required_flags + ['-g'])
@@ -9384,14 +9384,17 @@ int main() {
       self.assertContained(details, err)
 
     # plain -O0
-    fail([], 'to disable legalization (which requires changes after link) use -s WASM_BIGINT')
-    fail(['-sWASM_BIGINT'], 'longjmp')
-    fail(['-sNO_SUPPORT_LONGJMP'], 'longjmp')
+    legalization_message = 'to disable legalization (which requires changes after link) use -s WASM_BIGINT'
+    longjmp_message = 'to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
+    fail([], legalization_message)
+    fail(['-sWASM_BIGINT'], longjmp_message)
+    fail(['-sSUPPORT_LONGJMP=0'], legalization_message)
     # optimized builds even without legalization
-    fail(required_flags + ['-O1'], 'optimizations always require changes, build with -O0 instead')
-    fail(required_flags + ['-O2'], 'optimizations always require changes, build with -O0 instead')
+    optimization_message = 'optimizations always require changes, build with -O0 instead'
+    fail(required_flags + ['-O1'], optimization_message)
+    fail(required_flags + ['-O2'], optimization_message)
     # exceptions fails until invokes are fixed
-    fail(required_flags + ['-fexceptions'], 'waka')
+    fail(required_flags + ['-fexceptions'], 'C++ exceptions always require changes')
 
   def test_output_to_nowhere(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', os.devnull, '-c'])
