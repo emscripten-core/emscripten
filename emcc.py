@@ -1112,8 +1112,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
 
-    wasm_binary_target = unsuffixed(target) + '.wasm' # might not be used
-    wasm_source_map_target = wasm_binary_target + '.map'
+    wasm_target = unsuffixed(target) + '.wasm' # might not be used
+    wasm_source_map_target = wasm_target + '.map'
 
     # Apply user -jsD settings
     for s in user_js_defines:
@@ -1673,7 +1673,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
     else:
       # set file locations, so that JS glue can find what it needs
-      shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
+      shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_target))
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
     if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
@@ -2102,7 +2102,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also received the wasm at this stage
       temp_basename = unsuffixed(final)
       wasm_temp = temp_basename + '.wasm'
-      shutil.move(wasm_temp, wasm_binary_target)
+      shutil.move(wasm_temp, wasm_target)
       if use_source_map(options):
         shutil.move(wasm_temp + '.map', wasm_source_map_target)
 
@@ -2193,7 +2193,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      do_binaryen(target, options, memfile, wasm_binary_target,
+      do_binaryen(target, options, memfile, wasm_target,
                   wasm_source_map_target, misc_temp_files)
       # If we are building a wasm side module then we are all done now
       if shared.Settings.SIDE_MODULE:
@@ -2241,7 +2241,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # If we were asked to also generate HTML, do that
       if final_suffix == '.html':
         generate_html(target, options, js_target, target_basename,
-                      wasm_binary_target, memfile)
+                      wasm_target, memfile)
       else:
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
@@ -2573,7 +2573,7 @@ def emit_js_source_maps(target, js_transform_tempfiles):
                       '--offset', '0'])
 
 
-def do_binaryen(target, options, memfile, wasm_binary_target,
+def do_binaryen(target, options, memfile, wasm_target,
                 wasm_source_map_target, misc_temp_files):
   global final
   logger.debug('using binaryen')
@@ -2600,9 +2600,9 @@ def do_binaryen(target, options, memfile, wasm_binary_target,
       options.binaryen_passes += ['--strip-debug']
     if strip_producers:
       options.binaryen_passes += ['--strip-producers']
-    building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
-    building.run_wasm_opt(wasm_binary_target,
-                          wasm_binary_target,
+    building.save_intermediate(wasm_target, 'pre-byn.wasm')
+    building.run_wasm_opt(wasm_target,
+                          wasm_target,
                           args=options.binaryen_passes,
                           debug=intermediate_debug_info)
   else:
@@ -2610,22 +2610,21 @@ def do_binaryen(target, options, memfile, wasm_binary_target,
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
     if strip_debug or strip_producers:
-      building.save_intermediate(wasm_binary_target, 'pre-strip.wasm')
-      building.strip(wasm_binary_target, wasm_binary_target,
-                     debug=strip_debug, producers=strip_producers)
+      building.save_intermediate(wasm_target, 'pre-strip.wasm')
+      building.strip(wasm_target, wasm_target, debug=strip_debug, producers=strip_producers)
 
   if shared.Settings.EVAL_CTORS:
-    building.save_intermediate(wasm_binary_target, 'pre-ctors.wasm')
-    building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
+    building.save_intermediate(wasm_target, 'pre-ctors.wasm')
+    building.eval_ctors(final, wasm_target, binaryen_bin, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
 
   # TODO: do this with upstream
   # if shared.Settings.SIDE_MODULE:
-  #   shared.WebAssembly.add_dylink_section(wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
+  #   shared.WebAssembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
-    shared.WebAssembly.add_emscripten_metadata(final, wasm_binary_target)
+    shared.WebAssembly.add_emscripten_metadata(final, wasm_target)
 
   if shared.Settings.SIDE_MODULE:
     return # and we are done.
@@ -2645,18 +2644,18 @@ def do_binaryen(target, options, memfile, wasm_binary_target,
 
   if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
     # minify the JS
-    save_intermediate_with_wasm('preclean', wasm_binary_target)
+    save_intermediate_with_wasm('preclean', wasm_target)
     final = building.minify_wasm_js(js_file=final,
-                                    wasm_file=wasm_binary_target,
+                                    wasm_file=wasm_target,
                                     expensive_optimizations=will_metadce(options),
                                     minify_whitespace=minify_whitespace(),
                                     debug_info=intermediate_debug_info)
-    save_intermediate_with_wasm('postclean', wasm_binary_target)
+    save_intermediate_with_wasm('postclean', wasm_target)
 
   if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
     if not shared.Settings.ASYNCIFY:
       exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
-    building.asyncify_lazy_load_code(wasm_binary_target, debug=intermediate_debug_info)
+    building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   def preprocess_wasm2js_script():
     wasm2js = read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'))
@@ -2670,7 +2669,7 @@ def do_binaryen(target, options, memfile, wasm_binary_target,
   def run_closure_compiler(final):
     final = building.closure_compiler(final, pretty=not minify_whitespace(),
                                       extra_closure_args=options.closure_args)
-    save_intermediate_with_wasm('closure', wasm_binary_target)
+    save_intermediate_with_wasm('closure', wasm_target)
     return final
 
   if options.use_closure_compiler:
@@ -2680,13 +2679,13 @@ def do_binaryen(target, options, memfile, wasm_binary_target,
 
   if shared.Settings.WASM2JS:
     if shared.Settings.WASM == 2:
-      wasm2js_template = wasm_binary_target + '.js'
+      wasm2js_template = wasm_target + '.js'
       open(wasm2js_template, 'w').write(preprocess_wasm2js_script())
     else:
       wasm2js_template = final
 
     wasm2js = building.wasm2js(wasm2js_template,
-                               wasm_binary_target,
+                               wasm_target,
                                opt_level=shared.Settings.OPT_LEVEL,
                                minify_whitespace=minify_whitespace(),
                                use_closure_compiler=options.use_closure_compiler,
@@ -2699,7 +2698,7 @@ def do_binaryen(target, options, memfile, wasm_binary_target,
     if shared.Settings.WASM != 2:
       final = wasm2js
       # if we only target JS, we don't need the wasm any more
-      shared.try_delete(wasm_binary_target)
+      shared.try_delete(wasm_target)
 
     save_intermediate('wasm2js')
 
@@ -2707,25 +2706,25 @@ def do_binaryen(target, options, memfile, wasm_binary_target,
   # this will also remove debug info if we only kept it around in the intermediate invocations.
   # note that if we aren't emitting a binary (like in wasm2js) then we don't
   # have anything to do here.
-  if options.emit_symbol_map and os.path.exists(wasm_binary_target):
-    building.handle_final_wasm_symbols(wasm_file=wasm_binary_target, symbols_file=symbols_file, debug_info=debug_info)
-    save_intermediate_with_wasm('symbolmap', wasm_binary_target)
+  if options.emit_symbol_map and os.path.exists(wasm_target):
+    building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=debug_info)
+    save_intermediate_with_wasm('symbolmap', wasm_target)
 
-  if shared.Settings.DEBUG_LEVEL >= 3 and shared.Settings.SEPARATE_DWARF and os.path.exists(wasm_binary_target):
-    building.emit_debug_on_side(wasm_binary_target, shared.Settings.SEPARATE_DWARF)
+  if shared.Settings.DEBUG_LEVEL >= 3 and shared.Settings.SEPARATE_DWARF and os.path.exists(wasm_target):
+    building.emit_debug_on_side(wasm_target, shared.Settings.SEPARATE_DWARF)
 
   if shared.Settings.WASM2C:
-    wasm2c.do_wasm2c(wasm_binary_target)
+    wasm2c.do_wasm2c(wasm_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     js = open(final).read()
 
     if '{{{ WASM_BINARY_DATA }}}' in js:
-      js = js.replace('{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_binary_target, 'rb').read()))
+      js = js.replace('{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_target, 'rb').read()))
 
-    js = js.replace(shared.FilenameReplacementStrings.WASM_BINARY_FILE, shared.JS.get_subresource_location(wasm_binary_target))
-    shared.try_delete(wasm_binary_target)
+    js = js.replace(shared.FilenameReplacementStrings.WASM_BINARY_FILE, shared.JS.get_subresource_location(wasm_target))
+    shared.try_delete(wasm_target)
     with open(final, 'w') as f:
       f.write(js)
 
@@ -2825,7 +2824,7 @@ def module_export_name_substitution():
 
 
 def generate_traditional_runtime_html(target, options, js_target, target_basename,
-                                      wasm_binary_target, memfile):
+                                      wasm_target, memfile):
   script = ScriptSource()
 
   shell = read_and_preprocess(options.shell_path)
@@ -2890,7 +2889,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 %s
           };
           wasmXHR.send(null);
-''' % (shared.JS.get_subresource_location(wasm_binary_target), script.inline)
+''' % (shared.JS.get_subresource_location(wasm_target), script.inline)
 
     if shared.Settings.WASM == 2:
       # If target browser does not support WebAssembly, we need to load the .wasm.js file before the main .js file.
@@ -2910,7 +2909,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             // Current browser supports Wasm, proceed with loading the main JS runtime.
             loadMainJs();
           }
-''' % (script.inline, shared.JS.get_subresource_location(wasm_binary_target) + '.js')
+''' % (script.inline, shared.JS.get_subresource_location(wasm_target) + '.js')
 
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
@@ -2980,7 +2979,7 @@ def minify_html(filename, options):
 
 
 def generate_html(target, options, js_target, target_basename,
-                  wasm_binary_target, memfile):
+                  wasm_target, memfile):
   logger.debug('generating HTML')
 
   if shared.Settings.EXPORT_NAME != 'Module' and \
@@ -2991,11 +2990,10 @@ def generate_html(target, options, js_target, target_basename,
     exit_with_error('Customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
   if shared.Settings.MINIMAL_RUNTIME:
-    generate_minimal_runtime_html(target, options, js_target, target_basename,
-                                  wasm_binary_target, memfile)
+    generate_minimal_runtime_html(target, options, js_target, target_basename)
   else:
     generate_traditional_runtime_html(target, options, js_target, target_basename,
-                                      wasm_binary_target, memfile)
+                                      wasm_target, memfile)
 
   if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1):
     minify_html(target, options)
