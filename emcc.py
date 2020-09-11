@@ -1414,7 +1414,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
     # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
-    # the STATIC_BUMP value.
+    # where static data ends (and correspondingly where the stack begins).
     shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
     if not shared.Settings.STANDALONE_WASM:
       # in standalone mode, crt1 will call the constructors from inside the wasm
