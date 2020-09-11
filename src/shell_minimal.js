@@ -57,7 +57,6 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
-#if WASM
 #if WASM == 2
   if (typeof WebAssembly !== 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
   else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
@@ -65,8 +64,6 @@ if (ENVIRONMENT_IS_NODE) {
 #if !WASM2JS
   Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
 #endif
-#endif
-#else
 #endif
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
@@ -76,7 +73,6 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
 if (ENVIRONMENT_IS_SHELL) {
-#if WASM
 #if WASM == 2
   if (typeof WebAssembly !== 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
   else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
@@ -84,9 +80,6 @@ if (ENVIRONMENT_IS_SHELL) {
 #if !WASM2JS
   Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
 #endif
-#endif
-#else
-  eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
 #endif
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
@@ -152,7 +145,6 @@ var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts === 'f
 if (ENVIRONMENT_IS_WORKER) {
   var buffer = {{{EXPORT_NAME}}}.buffer;
   var STATICTOP = {{{EXPORT_NAME}}}.STATICTOP;
-  var DYNAMICTOP_PTR = {{{EXPORT_NAME}}}.DYNAMICTOP_PTR;
   var STACK_BASE = {{{EXPORT_NAME}}}.STACK_BASE;
   var STACKTOP = {{{EXPORT_NAME}}}.STACKTOP;
   var STACK_MAX = {{{EXPORT_NAME}}}.STACK_MAX;

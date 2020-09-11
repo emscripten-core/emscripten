@@ -40,20 +40,17 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
   # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
   post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(initializers)]))
 
-  if shared.Settings.WASM:
-    # Declare all exports out to global JS scope so that JS library functions can access them in a
-    # way that minifies well with Closure
-    # e.g. var a,b,c,d,e,f;
-    exports_that_are_not_initializers = [x for x in exports if x not in initializers]
-    # In Wasm backend the exports are still unmangled at this point, so mangle the names here
-    exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
-    post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(exports_that_are_not_initializers) + ';')
+  # Declare all exports out to global JS scope so that JS library functions can access them in a
+  # way that minifies well with Closure
+  # e.g. var a,b,c,d,e,f;
+  exports_that_are_not_initializers = [x for x in exports if x not in initializers]
+  # In Wasm backend the exports are still unmangled at this point, so mangle the names here
+  exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
+  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(exports_that_are_not_initializers) + ';')
 
-    # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-    post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
-    receiving = ''
-
-  return post, receiving
+  # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+  post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
+  return post
 
 
 def global_initializer_funcs(initializers):
@@ -120,6 +117,7 @@ def align_memory(addr):
 
 
 def align_static_bump(metadata):
+  # TODO: remove static bump entirely
   metadata['staticBump'] = align_memory(metadata['staticBump'])
   return metadata['staticBump']
 
@@ -191,7 +189,6 @@ def apply_forwarded_data(forwarded_data):
   forwarded_json = json.loads(forwarded_data)
   # Be aware of JS static allocations
   shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
-  shared.Settings.DYNAMICTOP_PTR = forwarded_json['DYNAMICTOP_PTR']
   # Be aware of JS static code hooks
   StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
   StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
@@ -399,12 +396,11 @@ for (var named in NAMED_GLOBALS) {
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 ''' % ',\n  '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
 
-  if shared.Settings.WASM:
-    # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
-    # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
-    #       we'll need another solution for that. one option is to scan the module imports, if/when
-    #       wasm supports that, then the loader can do this.
-    named_globals += '''
+  # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+  # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+  #       we'll need another solution for that. one option is to scan the module imports, if/when
+  #       wasm supports that, then the loader can do this.
+  named_globals += '''
 for (var named in NAMED_GLOBALS) {
   (function(named) {
     var addr = Module['_' + named];
@@ -509,7 +505,8 @@ def emscript(infile, outfile, memfile, temp_files, DEBUG):
   receiving = create_receiving_wasm(exports, metadata['initializers'])
 
   if shared.Settings.MINIMAL_RUNTIME:
-    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
+    post = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
+    receiving = ''
 
   module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
 
@@ -535,7 +532,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   base_wasm = infile
   building.save_intermediate(infile, 'base.wasm')
 
-  args = ['--detect-features']
+  args = ['--detect-features', '--minimize-wasm-changes']
 
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
@@ -549,6 +546,13 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
+
+  if not shared.Settings.USE_LEGACY_DYNCALLS:
+    if shared.Settings.WASM_BIGINT:
+      args.append('--no-dyncalls')
+    else:
+      args.append('--dyncalls-i64')
+
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     args.append('--no-legalize-javascript-ffi')
   if not shared.Settings.MEM_INIT_IN_WASM:
@@ -578,7 +582,6 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('--pass-arg=legalize-js-interface-export-originals')
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
-  args.append('--minimize-wasm-changes')
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
                                          infile=base_wasm,
                                          outfile=wasm,
@@ -649,8 +652,7 @@ def add_standard_wasm_imports(send_items_map):
       # Module scope, so lookup via Module as well.
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
-
-    send_items_map['table'] = 'wasmTable'
+    send_items_map['__indirect_function_table'] = 'wasmTable'
 
   # With the wasm backend __memory_base and __table_base are only needed for
   # relocatable output.
@@ -846,9 +848,9 @@ def create_receiving_wasm(exports, initializers):
 
   # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
   # so we need to support delayed assignment.
-  delay_assignment = (shared.Settings.WASM and shared.Settings.WASM_ASYNC_COMPILATION) and not shared.Settings.MINIMAL_RUNTIME
+  delay_assignment = shared.Settings.WASM_ASYNC_COMPILATION and not shared.Settings.MINIMAL_RUNTIME
   if not delay_assignment:
-    if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
+    if shared.Settings.MINIMAL_RUNTIME:
       # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
       # var _main;
       # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
@@ -858,7 +860,7 @@ def create_receiving_wasm(exports, initializers):
     else:
       if shared.Settings.MINIMAL_RUNTIME:
         # In wasm2js exports can be directly processed at top level, i.e.
-        # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+        # var asm = Module["asm"](asmLibraryArg, buffer);
         # var _main = asm["_main"];
         if shared.Settings.USE_PTHREADS and shared.Settings.MODULARIZE:
           # TODO: As a temp solution, multithreaded MODULARIZED MINIMAL_RUNTIME builds export all
@@ -882,9 +884,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   receiving += create_fp_accessors(metadata)
   module = []
-  module.append('var asmGlobalArg = {};\n')
-  if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append('var asmLibraryArg = %s;\n' % (sending))
   if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:
@@ -981,23 +980,22 @@ def normalize_line_endings(text):
 
 
 def generate_struct_info():
-  if not shared.Settings.STRUCT_INFO and not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
-    generated_struct_info_name = 'generated_struct_info.json'
+  generated_struct_info_name = 'generated_struct_info.json'
 
-    def generate_struct_info():
-      with ToolchainProfiler.profile_block('gen_struct_info'):
-        out = shared.Cache.get_path(generated_struct_info_name)
-        gen_struct_info.main(['-q', '-c', '-o', out])
-        return out
+  def generate_struct_info():
+    with ToolchainProfiler.profile_block('gen_struct_info'):
+      out = shared.Cache.get_path(generated_struct_info_name)
+      gen_struct_info.main(['-q', '-c', '-o', out])
+      return out
 
-    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
-  # do we need an else, to define it for the bootstrap case?
+  shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
 
 
 def run(infile, outfile, memfile):
   temp_files = shared.configuration.get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
-  generate_struct_info()
+  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
+    generate_struct_info()
 
   outfile_obj = open(outfile, 'w')
 

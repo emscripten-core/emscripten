@@ -39,7 +39,8 @@ DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 95
 EXPECTED_LLVM_VERSION = "12.0"
-SIMD_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_NEON_FLAGS = ['-mfpu=neon']
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -52,7 +53,6 @@ if sys.version_info < (2, 7, 12):
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
-diagnostics.add_warning('separate-asm')
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('invalid-input')
 # Don't show legacy settings warnings by default
@@ -65,6 +65,7 @@ diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
+diagnostics.add_warning('pthreads-mem-growth')
 
 
 def exit_with_error(msg, *args):
@@ -347,7 +348,6 @@ def parse_config_file():
     'BINARYEN_ROOT',
     'POPEN_WORKAROUND',
     'SPIDERMONKEY_ENGINE',
-    'EMSCRIPTEN_NATIVE_OPTIMIZER',
     'V8_ENGINE',
     'LLVM_ROOT',
     'LLVM_ADD_VERSION',
@@ -398,8 +398,18 @@ def fix_js_engine(old, new):
   return new
 
 
+def get_npm_cmd(name):
+  if WINDOWS:
+    cmd = [path_from_root('node_modules', '.bin', name + '.cmd')]
+  else:
+    cmd = NODE_JS + [path_from_root('node_modules', '.bin', name)]
+  if not os.path.exists(cmd[-1]):
+    exit_with_error('%s was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies' % name)
+  return cmd
+
+
 def normalize_config_settings():
-  global CACHE, PORTS, JAVA, CLOSURE_COMPILER
+  global CACHE, PORTS, JAVA
   global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
@@ -432,14 +442,6 @@ def normalize_config_settings():
       CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
-
-  if CLOSURE_COMPILER is None:
-    if WINDOWS:
-      CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
-    else:
-      # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-     # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
-      CLOSURE_COMPILER = NODE_JS + ['--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
     logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
@@ -558,7 +560,7 @@ def perform_sanify_checks():
       exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', NODE_JS, config_file_location, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG_CC, LLVM_AR, LLVM_AS, LLVM_NM]:
+    for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
 
@@ -762,6 +764,7 @@ def emsdk_cflags(user_args, cxx):
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include'),
     path_from_root('system', 'include', 'SSE'),
+    path_from_root('system', 'include', 'neon'),
     path_from_root('system', 'lib', 'compiler-rt', 'include'),
     path_from_root('system', 'lib', 'libunwind', 'include'),
     Cache.get_path('include')
@@ -783,28 +786,31 @@ def emsdk_cflags(user_args, cxx):
       if n in hay:
         return True
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_FEATURE_TOWER) + ' flags also requires passing -msimd128!')
+      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
     c_opts += ['-D__SSE__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[1:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
     c_opts += ['-D__SSE2__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[2:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
     c_opts += ['-D__SSE3__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[3:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
     c_opts += ['-D__SSSE3__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[4:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
     c_opts += ['-D__SSE4_1__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[5:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
     c_opts += ['-D__SSE4_2__=1']
 
-  if array_contains_any_of(user_args, SIMD_FEATURE_TOWER[6:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
     c_opts += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    c_opts += ['-D__ARM_NEON__=1']
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   if cxx:
@@ -1001,9 +1007,6 @@ def verify_settings():
   if Settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
-  if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
-      exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
-
   if not Settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
     # we still compile to wasm normally, but we compile the final output
@@ -1064,7 +1067,6 @@ def reconfigure_cache():
 class FilenameReplacementStrings:
   WASM_TEXT_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_TEXT_FILE }}}'
   WASM_BINARY_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE }}}'
-  ASMJS_CODE_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE }}}'
 
 
 class JS(object):
@@ -1212,7 +1214,7 @@ function jsCall_%s(index%s) {
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.ASYNCIFY or Settings.WASM2C or not JS.is_legal_sig(sig):
+    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
@@ -1333,8 +1335,6 @@ class WebAssembly(object):
     js = open(js_file).read()
     m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
     dynamic_base = int(m.group(2))
-    m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)
-    dynamictop_ptr = int(m.group(2))
 
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
     name = b'\x13emscripten_metadata' # section name, including prefixed size
@@ -1356,7 +1356,8 @@ class WebAssembly(object):
       WebAssembly.toLEB(table_size) +
       WebAssembly.toLEB(global_base) +
       WebAssembly.toLEB(dynamic_base) +
-      WebAssembly.toLEB(dynamictop_ptr) +
+      # dynamictopPtr, always 0 now
+      WebAssembly.toLEB(0) +
 
       # tempDoublePtr, always 0 in wasm backend
       WebAssembly.toLEB(0) +
@@ -1612,7 +1613,6 @@ LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
 JS_ENGINE = None
 JS_ENGINES = []
@@ -1677,7 +1677,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 26)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 27)
 
 # Tools/paths
 if LLVM_ADD_VERSION is None:
@@ -1692,8 +1692,6 @@ LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
 LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
-LLVM_AS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
-LLVM_DIS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
@@ -1705,7 +1703,6 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
-AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 apply_configuration()

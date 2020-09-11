@@ -71,9 +71,10 @@ var LibraryPThreadStub = {
   pthread_setcancelstate: function() { return 0; },
   pthread_setcanceltype: function() { return 0; },
 
+  pthread_cleanup_push__deps: ['$makeDynCaller'],
   pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) })
+    __ATEXIT__.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) })
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 

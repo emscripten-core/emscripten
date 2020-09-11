@@ -269,7 +269,7 @@ var LibraryTracing = {
 #if !MINIMAL_RUNTIME
         'dynamic_base': DYNAMIC_BASE,
 #endif
-        'dynamic_top':  HEAP32[DYNAMICTOP_PTR>>2],
+        'dynamic_top':  _sbrk(),
         'total_memory': HEAP8.length
       };
       var now = EmscriptenTrace.now();

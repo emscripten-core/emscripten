@@ -189,8 +189,9 @@ function callMain(args) {
     var start = Date.now();
 #endif
 
-#if STACK_OVERFLOW_CHECK >= 2
-    Module['___set_stack_limit'](STACK_MAX);
+#if ABORT_ON_WASM_EXCEPTIONS
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth += 2; 
 #endif
 
 #if PROXY_TO_PTHREAD
@@ -246,6 +247,11 @@ function callMain(args) {
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
+
+#if ABORT_ON_WASM_EXCEPTIONS
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth -= 2; 
+#endif
   }
 }
 #endif // HAS_MAIN
@@ -416,7 +422,6 @@ function exit(status, implicit) {
     PThread.terminateAllThreads();
 #endif
 
-    ABORT = true;
     EXITSTATUS = status;
 
     exitRuntime();
@@ -424,6 +429,8 @@ function exit(status, implicit) {
 #if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](status);
 #endif
+
+    ABORT = true;
   }
 
   quit_(status, new ExitStatus(status));

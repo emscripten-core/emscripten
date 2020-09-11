@@ -42,6 +42,9 @@ int rand_32()
 
 void *ThreadMain(void *arg)
 {
+	// Do some stdio to test proxying to the main thread.
+	printf("pthread %p starting\n", arg);
+
 	assert(pthread_self() != 0);
 	assert(globalUchar == 5);
 	assert(globalUshort == 5);

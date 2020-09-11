@@ -40,8 +40,6 @@ from tools import shared, building
 import jsrun
 import clang_native
 import tools.line_endings
-import tools.js_optimizer
-import tools.tempfiles
 
 scons_path = shared.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
@@ -1775,8 +1773,6 @@ int f() {
   def test_js_optimizer(self):
     ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers', 'asanify']
     for input, expected, passes in [
-      (path_from_root('tests', 'optimizer', 'eliminateDeadGlobals.js'), open(path_from_root('tests', 'optimizer', 'eliminateDeadGlobals-output.js')).read(),
-       ['eliminateDeadGlobals']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-output.js')).read(),
        ['hoistMultiples', 'removeAssignsToUndefined', 'simplifyExpressions']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-output.js')).read(),
@@ -2031,11 +2027,7 @@ int f() {
       return compile_to_executable(compile_args, [])
 
     no_size, line_size, full_size = test(compile_to_O0_executable)
-    # the difference between these two is due to the producer's section which
-    # LLVM emits, and which we do not strip as this is not a release build.
-    # the specific difference is that LLVM emits language info (C_plus_plus_14)
-    # when emitting debug info, but not otherwise.
-    self.assertLess(no_size, line_size)
+    self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   def test_dwarf(self):
@@ -4173,6 +4165,16 @@ int main() {
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-S'])
     self.assertExists('hello_world.s')
 
+  def assertIsLLVMAsm(self, filename):
+    bitcode = open(filename).read()
+    self.assertContained('target triple = "', bitcode)
+
+  def test_dashS_ll_input(self):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-emit-llvm'])
+    self.assertIsLLVMAsm('hello_world.ll')
+    self.run_process([EMCC, 'hello_world.ll', '-S', '-emit-llvm', '-o', 'another.ll'])
+    self.assertIsLLVMAsm('another.ll')
+
   def test_dashS_stdout(self):
     stdout = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-o', '-'], stdout=PIPE).stdout
     self.assertEqual(os.listdir('.'), [])
@@ -4182,11 +4184,8 @@ int main() {
     # TODO(https://github.com/emscripten-core/emscripten/issues/9016):
     # We shouldn't need to copy the file here but if we don't then emcc will
     # internally clobber the hello_world.ll in tests.
-    shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'hello_world.c')
-    self.run_process([EMCC, 'hello_world.c', '-S', '-emit-llvm'])
-    self.assertExists('hello_world.ll')
-    bitcode = open('hello_world.ll').read()
-    self.assertContained('target triple = "', bitcode)
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-emit-llvm'])
+    self.assertIsLLVMAsm('hello_world.ll')
 
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm'])
     self.assertTrue(building.is_bitcode('hello_world.bc'))
@@ -5352,10 +5351,10 @@ int main() {
   def test_failing_alloc(self):
     for pre_fail, post_fail, opts in [
       ('', '', []),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', []),
+      ('EM_ASM( Module.temp = _sbrk() );', 'EM_ASM( assert(Module.temp === _sbrk(), "must not adjust brk when an alloc fails!") );', []),
       # also test non-wasm in normal mode
       ('', '', ['-s', 'WASM=0']),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0']),
+      ('EM_ASM( Module.temp = _sbrk() );', 'EM_ASM( assert(Module.temp === _sbrk(), "must not adjust brk when an alloc fails!") );', ['-s', 'WASM=0']),
     ]:
       for growth in [0, 1]:
         for aborting_args in [[], ['-s', 'ABORTING_MALLOC=0'], ['-s', 'ABORTING_MALLOC=1']]:
@@ -5399,7 +5398,7 @@ int main() {
   printf("managed another malloc!\n");
 }
 ''' % (pre_fail, post_fail))
-          args = [EMCC, 'main.cpp'] + opts + aborting_args
+          args = [EMCC, 'main.cpp', '-s', 'EXPORTED_FUNCTIONS=[_main,_sbrk]'] + opts + aborting_args
           args += ['-s', 'TEST_MEMORY_GROWTH_FAILS=1'] # In this test, force memory growing to fail
           if growth:
             args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
@@ -6258,7 +6257,8 @@ Resolved: "/" => "/"
                       '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'),
                       '--pre-js', path_from_root('tests', 'return64bit', bind_js),
                       '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_test_return64"]', '-o', 'test.js', '-O2',
+                      '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]',
+                      '-s', 'EXPORTED_FUNCTIONS=[_test_return64]', '-o', 'test.js', '-O2',
                       '--closure', '1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'] + args)
 
     # Simple test program to load the test.js binding library and call the binding to the
@@ -6716,27 +6716,25 @@ int main() {
   return 0;
 }
 ''')
+
     # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
     cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1', '-flto']
     self.run_process(cmd)
     # If foo() had been wrongly inlined above, internalizing foo and running
     # global DCE makes foo DCE'd
-    building.llvm_opt('test.bc', ['-internalize', '-internalize-public-api-list=main', '-globaldce'], 'test2.bc')
+    opts = ['-internalize', '-internalize-public-api-list=main', '-globaldce']
+    self.run_process([shared.LLVM_OPT] + opts + ['test.bc', '-o', 'test2.bc'])
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
     syms = building.llvm_nm('test2.bc', include_internal=True)
     assert 'foo' in syms.defs, 'foo() should not be inlined'
 
-  @no_wasm_backend('--separate-asm')
   def test_output_eol(self):
-    # --separate-asm only makes sense without wasm (no asm.js with wasm)
-    for params in [[], ['--separate-asm', '-s', 'WASM=0'], ['--proxy-to-worker'], ['--proxy-to-worker', '--separate-asm', '-s', 'WASM=0']]:
+    for params in [[], ['--proxy-to-worker'], ['--proxy-to-worker', '-s', 'WASM=0']]:
       for output_suffix in ['html', 'js']:
         for eol in ['windows', 'linux']:
           files = ['a.js']
-          if '--separate-asm' in params:
-            files += ['a.asm.js']
           if output_suffix == 'html':
             files += ['a.html']
           cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.' + output_suffix, '--output_eol', eol] + params
@@ -6794,37 +6792,6 @@ int main() {
     # and with memory growth, all should be good
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'INITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM_ASYNC_COMPILATION=0'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
-
-  @no_wasm_backend('asm.js specific')
-  def test_binaryen_asmjs_outputs(self):
-    # Test that an .asm.js file is outputted exactly when it is requested.
-    for args, output_asmjs in [
-      ([], False),
-      (['-s', 'MAIN_MODULE=2'], False),
-    ]:
-      with temp_directory(self.get_dir()) as temp_dir:
-        cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')] + args
-        print(' '.join(cmd))
-        self.run_process(cmd)
-        if output_asmjs:
-          self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
-        self.assertNotExists(os.path.join(temp_dir, 'a.temp.asm.js'))
-
-    # Test that outputting to .wasm does not nuke an existing .asm.js file, if
-    # user wants to manually dual-deploy both to same directory.
-    with temp_directory(self.get_dir()) as temp_dir:
-      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-o', os.path.join(temp_dir, 'a.js'), '--separate-asm']
-      print(' '.join(cmd))
-      self.run_process(cmd)
-      self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
-
-      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')]
-      print(' '.join(cmd))
-      self.run_process(cmd)
-      self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
-      self.assertExists(os.path.join(temp_dir, 'a.wasm'))
-
-      self.assertNotExists(os.path.join(temp_dir, 'a.temp.asm.js'))
 
   def test_binaryen_mem(self):
     for args, expect_initial, expect_max in [
@@ -7282,7 +7249,8 @@ int main() {
           assert 'a' in exports_and_imports
         else:
           assert 'a' not in exports_and_imports
-        assert 'memory' in exports_and_imports or 'fd_write' in exports_and_imports, 'some things are not minified anyhow'
+        if standalone:
+          assert 'fd_write' in exports_and_imports, 'standalone mode preserves import names for WASI APIs'
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', self.run_js('out.js'))
@@ -7762,18 +7730,25 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIdentical(normal, tiny)
     self.assertIdentical(normal, huge)
 
-  def test_EM_ASM_ES6(self):
+  @parameterized({
+    '': ([],), # noqa
+    'O3': (['-O3'],), # noqa
+    'closure': (['--closure', '1'],), # noqa
+    'closure_O3': (['--closure', '1', '-O3'],), # noqa
+  })
+  def test_EM_ASM_ES6(self, args):
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
 int main() {
   EM_ASM({
-    var x = (a, b) => 5; // valid ES6
+    let x = (a, b) => 5; // valid ES6
     async function y() {} // valid ES2017
     out('hello!');
+    return x;
   });
 }
 ''')
-    self.run_process([EMCC, 'src.cpp', '-O2'])
+    self.run_process([EMCC, 'src.cpp'] + args)
     self.assertContained('hello!', self.run_js('a.out.js'))
 
   def test_check_sourcemapurl(self):
@@ -7898,17 +7873,14 @@ int main() {
       self.assertIn(b'somewhere.com/hosted.wasm', f.read())
 
   @parameterized({
-    'O0': (True, ['-O0']), # unoptimized builds try not to modify the LLVM wasm.
-    'O1': (False, ['-O1']), # optimized builds strip the producer's section
-    'O2': (False, ['-O2']), # by default.
+    'O0': (['-O0'],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
   })
-  def test_wasm_producers_section(self, expect_producers_by_default, args):
+  def test_wasm_producers_section(self, args):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.wasm', 'rb') as f:
       data = f.read()
-    if expect_producers_by_default:
-      self.assertIn('clang', str(data))
-      return
     # if there is no producers section expected by default, verify that, and
     # see that the flag works to add it.
     self.assertNotIn('clang', str(data))
@@ -9315,6 +9287,10 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # check that `-Werror=foo` also enales foo
     stderr = self.expect_fail(cmd + ['-Werror=legacy-settings', '-s', 'TOTAL_MEMORY=1'])
     self.assertContained('error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]', stderr)
+
+    # check that `-Wno-pthreads-mem` disables USE_PTHREADS + ALLOW_GROWTH_MEMORY warning
+    stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-s', 'USE_PTHREADS=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], stderr=PIPE).stderr
+    self.assertNotContained('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
 
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')

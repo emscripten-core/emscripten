@@ -531,7 +531,7 @@ var LibraryGL = {
       var realf = 'real_' + f;
       glCtx[realf] = glCtx[f];
       var numArgs = GL.webGLFunctionLengths[f]; // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
-      if (numArgs === undefined) throw 'Unexpected WebGL function ' + f;
+      if (numArgs === undefined) console.warn('Unexpected WebGL function ' + f + ' when binding TRACE_WEBGL_CALLS');
       var contextHandle = glCtx.canvas.GLctxObject.handle;
       var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : function() { return 1; };
       // Accessing 'arguments' is super slow, so to avoid overhead, statically reason the number of arguments.
@@ -548,7 +548,7 @@ var LibraryGL = {
         case 9: glCtx[f] = function webgl_9(a1, a2, a3, a4, a5, a6, a7, a8, a9) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +') -> ' + ret); return ret; }; break;
         case 10: glCtx[f] = function webgl_10(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +', ' + a10 +') -> ' + ret); return ret; }; break;
         case 11: glCtx[f] = function webgl_11(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +', ' + a10 +', ' + a11 +') -> ' + ret); return ret; }; break;
-        default: throw 'hookWebGL failed! Unexpected length ' + glCtx[realf].length;
+        default: console.warn('hookWebGL failed! Unexpected length ' + glCtx[realf].length);
       }
     },
 
@@ -2246,7 +2246,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1iv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniform1iv(GL.uniforms[location], HEAP32, value>>2, count);
 #else
 
@@ -2273,7 +2276,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform1iv(GL.uniforms[location], view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniform2iv__sig: 'viii',
@@ -2286,7 +2289,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2iv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniform2iv(GL.uniforms[location], HEAP32, value>>2, count*2);
 #else
 
@@ -2314,7 +2320,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform2iv(GL.uniforms[location], view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniform3iv__sig: 'viii',
@@ -2327,7 +2333,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3iv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*3);
 #else
 
@@ -2356,7 +2365,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform3iv(GL.uniforms[location], view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniform4iv__sig: 'viii',
@@ -2369,7 +2378,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4iv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniform4iv(GL.uniforms[location], HEAP32, value>>2, count*4);
 #else
 
@@ -2399,7 +2411,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform4iv(GL.uniforms[location], view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniform1fv__sig: 'viii',
@@ -2412,7 +2424,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform1fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniform1fv(GL.uniforms[location], HEAPF32, value>>2, count);
 #else
 
@@ -2439,7 +2454,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform1fv(GL.uniforms[location], view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniform2fv__sig: 'viii',
@@ -2452,7 +2467,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform2fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniform2fv(GL.uniforms[location], HEAPF32, value>>2, count*2);
 #else
 
@@ -2480,7 +2498,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform2fv(GL.uniforms[location], view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniform3fv__sig: 'viii',
@@ -2493,7 +2511,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniform3fv(GL.uniforms[location], HEAPF32, value>>2, count*3);
 #else
 
@@ -2522,7 +2543,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform3fv(GL.uniforms[location], view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniform4fv__sig: 'viii',
@@ -2535,7 +2556,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform4fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniform4fv(GL.uniforms[location], HEAPF32, value>>2, count*4);
 #else
 
@@ -2569,7 +2593,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniform4fv(GL.uniforms[location], view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniformMatrix2fv__sig: 'viiii',
@@ -2582,7 +2606,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*4);
 #else
 
@@ -2612,7 +2639,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniformMatrix3fv__sig: 'viiii',
@@ -2625,7 +2652,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*9);
 #else
 
@@ -2660,7 +2690,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glUniformMatrix4fv__sig: 'viiii',
@@ -2673,7 +2703,10 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION == 2
+#if MIN_WEBGL_VERSION >= 2
+#if GL_ASSERTIONS
+    assert(GL.currentContext.version >= 2);
+#endif
     GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*16);
 #else
 
@@ -2719,7 +2752,7 @@ var LibraryGL = {
 #endif
     }
     GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, view);
-#endif // MIN_WEBGL_VERSION == 2
+#endif // MIN_WEBGL_VERSION >= 2
   },
 
   glBindBuffer__sig: 'vii',
