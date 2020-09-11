@@ -476,8 +476,8 @@ var emscriptenMemoryProfiler = {
 
     var width = (nBits(HEAP8.length) + 3) / 4; // Pointer 'word width'
     var html = 'Total HEAP size: ' + self.formatBytes(HEAP8.length) + '.';
-    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(Math.min(STACK_BASE, STACK_MAX) - STATIC_BASE);
-    html += '. STATIC_BASE: ' + toHex(STATIC_BASE, width);
+    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(Math.min(STACK_BASE, STACK_MAX) - {{{ GLOBAL_BASE }}});
+    html += '. {{{ GLOBAL_BASE }}}: ' + toHex({{{ GLOBAL_BASE }}}, width);
 
     html += '<br />' + colorBar('#FF8080') + 'STACK memory area size: ' + self.formatBytes(Math.abs(STACK_MAX - STACK_BASE));
     html += '. STACK_BASE: ' + toHex(STACK_BASE, width);

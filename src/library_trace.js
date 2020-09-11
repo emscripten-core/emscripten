@@ -262,7 +262,7 @@ var LibraryTracing = {
   emscripten_trace_report_memory_layout: function() {
     if (EmscriptenTrace.postEnabled) {
       var memory_layout = {
-        'static_base':  STATIC_BASE,
+        'static_base':  {{{ GLOBAL_BASE }}},
         'stack_base':   STACK_BASE,
         'stack_top':    STACKTOP,
         'stack_max':    STACK_MAX,
