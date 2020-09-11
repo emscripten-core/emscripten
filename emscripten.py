@@ -538,13 +538,13 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
 
-  # When optimizing, we want to modify the wasm so that we optimize invokes
-  # (which we can handle in an unoptimal way otherwise, using a Proxy, which is
-  # good enough for -O0).
-  if shared.Settings.OPT_LEVEL > 0:
+  # C++ exceptions and longjmp require invoke processing,
+  # https://github.com/WebAssembly/binaryen/issues/3081
+  if shared.Settings.SUPPORT_LONGJMP or shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
     modify_wasm = True
   if shared.Settings.WASM2JS:
-    # wasm2js requires full legalization and processing
+    # wasm2js requires full legalization (and will do extra wasm binary
+    # later processing later anyhow)
     modify_wasm = True
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:

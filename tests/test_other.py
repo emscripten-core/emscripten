@@ -9366,19 +9366,14 @@ int main() {
       self.run_process([EMCC, path_from_root('tests', filename)] + args)
       self.assertContained(expected, self.run_js('a.out.js'))
 
-    # -O0 with BigInt support (to avoid the need for legalization)
-    ok(['-sWASM_BIGINT'])
+    # -O0 with BigInt support (to avoid the need for legalization) and without
+    # longjmp
+    required_flags = ['-sWASM_BIGINT', '-sNO_SUPPORT_LONGJMP']
+    ok(required_flags)
     # Same with DWARF
-    ok(['-sWASM_BIGINT', '-g'])
+    ok(required_flags + ['-g'])
     # Function pointer calls from JS work too
-    ok(['-sWASM_BIGINT'], filename='hello_world_main_loop.cpp')
-    # setjmp/longjmp should not require special renamings in wasm-emscripten-finalize
-    ok(['-sWASM_BIGINT'], filename=os.path.join('core', 'test_longjmp.c'),
-                          expected='result: 2 -1')
-    # Exceptions also require dynCall/invoke work.
-    # dyncalls are done, but awaiting invoke on the LLVM side,
-    # https://github.com/WebAssembly/binaryen/issues/3081
-    ok(['-sWASM_BIGINT', '-fexceptions'], filename='hello_libcxx.cpp')
+    ok(required_flags, filename='hello_world_main_loop.cpp')
 
     # other builds fail with a standard message + extra details
     def fail(args, details):
@@ -9390,9 +9385,13 @@ int main() {
 
     # plain -O0
     fail([], 'to disable legalization (which requires changes after link) use -s WASM_BIGINT')
+    fail(['-sWASM_BIGINT'], 'longjmp')
+    fail(['-sNO_SUPPORT_LONGJMP'], 'longjmp')
     # optimized builds even without legalization
-    fail(['-O1', '-sWASM_BIGINT'], 'optimizations always require changes, build with -O0 instead')
-    fail(['-O2', '-sWASM_BIGINT'], 'optimizations always require changes, build with -O0 instead')
+    fail(required_flags + ['-O1'], 'optimizations always require changes, build with -O0 instead')
+    fail(required_flags + ['-O2'], 'optimizations always require changes, build with -O0 instead')
+    # exceptions fails until invokes are fixed
+    fail(required_flags + ['-fexceptions'], 'waka')
 
   def test_output_to_nowhere(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', os.devnull, '-c'])
