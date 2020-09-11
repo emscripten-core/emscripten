@@ -19,26 +19,41 @@ Current Trunk
 -------------
 - Stop including `malloc` and `free` by default. If you need access to them, you
   must export them manually using `-s EXPORTED_FUNCTIONS=['_malloc', ..]` etc.
+
+2.0.3: 09/10/2020
+-----------------
+- The native optimizer and the corresponding config setting
+  (`EMSCRIPTEN_NATIVE_OPTIMIZER`) have been removed (it was only relevant to
+  asmjs/fastcomp backend).
+- Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
+  removes the internal `DYNAMICTOP_PTR` API.)
+- Add `ABORT_ON_EXCEPTIONS` which will abort when an unhandled WASM exception
+  is encountered. This makes the Emscripten program behave more like a native
+  program where the OS would terminate the process and no further code can be
+  executed when an unhandled exception (e.g. out-of-bounds memory access) happens.
+  Once the program aborts any exported function calls will fail with a "program 
+  has already aborted" exception to prevent calls into code with a potentially
+  corrupted program state.
+- Use `__indirect_function_table` as the import name for the table, which is
+  what LLVM does.
+- Remove `BINARYEN_SCRIPTS` setting.
+
+2.0.2: 09/02/2020
+-----------------
+- Simplify Fetch C API error handling: we used to check if the error code was
+  0 and switch that to 404, but that only really helps `file://` URLs, which
+  are not very useful for testing anyhow for other reasons (like not working
+  in chrome), and it made things more complex. The behavior has been changed
+  to be simpler and just leave the browser's error code as it is.
 - Enable `--no-heap-copy` file packager option by default, and remove the old
-  defualt behavior entirely. That is the behavior we should have had from the
-  beginning as it is more memory-efficient.
+  default behavior entirely. That is the behavior we should have had from the
+  beginning as it is more memory-efficient. (#12027)
 - `--no-entry` is now required in `STANDALONE_WASM` mode when building a reactor
   (application without a main function).  Previously exporting a list of
   functions that didn't include `_main` would imply this.  Now the list of
   `EXPORTED_FUNCTIONS` is not relevant in the deciding the type of application
-  to build.
+  to build. (#12020)
 - Allow polymorphic types to be used without RTTI when using embind. (#10914)
-- Only strip the LLVM producer's section in release builds. In `-O0` builds, we
-  try to leave the wasm from LLVM unmodified as much as possible, so if it
-  emitted the producers section, it will be there. Normally that only matters
-  in release builds, which is not changing here. If you want to not have a
-  producer's section in debug builds, you can remove it a tool like
-  `wasm-opt --strip-producers` (which is what Emscripten still does in release
-  builds, as always) or use `llvm-objcopy`.
-- Only strip debug info in release builds + when `-g` is not present. Previously
-  even in an `-O0` build without `-g` we would strip it. This was not documented
-  behavior, and has no effect on program behavior, but may be noticeable
-  if you inspect a build output with `-O0`.
 - Do not remove `__original_main` using `--inline-main`. We used to do this
   so that it didn't show up in stack traces (which could be confusing because
   it is added by the linker - it's not in the source code). But this has had
@@ -48,7 +63,7 @@ Current Trunk
   to add `__original_main` to there (since you are doing manual fine-tuning of
   the list of functions, which depends on the wasm's internals). Note that this
   should not matter in `-O2+` anyhow as normal inlining generally removes
-  `__original_main`.
+  `__original_main`. (#11995)
 
 2.0.1: 08/21/2020
 -----------------
@@ -72,7 +87,7 @@ Current Trunk
   (#11319)
 - Python2 is no longer supported by Emscripten.  Emsdk now includes a bundled
   copy of Python3 on both macOS and Windows.  This means that only non-emsdk
-  users and linux users should be effected by this change.
+  users and linux users should be affected by this change.
 - Store exceptions metadata in wasm memory instead of JS. This makes exception
   handling almost 100% thread-safe. (#11518)
 

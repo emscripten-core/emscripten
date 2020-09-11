@@ -430,6 +430,11 @@ var MIN_WEBGL_VERSION = 1;
 // Specifies the highest WebGL version to target. Pass -s MAX_WEBGL_VERSION=2
 // to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
 // will default to creating a WebGL 2 context if no version is specified.
+// Note that there is no automatic fallback to WebGL1 if WebGL2 is not supported
+// by the user's device, even if you build with both WebGL1 and WebGL2
+// support, as that may not always be what the application wants. If you want
+// such a fallback, you can try to create a context with WebGL2, and if that
+// fails try to create one with WebGL1.
 var MAX_WEBGL_VERSION = 1;
 
 // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that
@@ -778,14 +783,6 @@ var EXPORTED_FUNCTIONS = [];
 // library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
 
-// Export all bindings generator functions (prefixed with emscripten_bind_). This
-// is necessary to use the WebIDL binder with asm.js
-var EXPORT_BINDINGS = 0;
-
-// If true, export all the functions appearing in a function table, and the
-// tables themselves.
-var EXPORT_FUNCTION_TABLES = 0;
-
 // Remembers the values of these settings, and makes them accessible
 // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
@@ -826,7 +823,7 @@ var SHELL_FILE = 0;
 var RELOCATABLE = 0;
 
 // A main module is a file compiled in a way that allows us to link it to
-// a side module using emlink.py.
+// a side module at runtime.
 //  1: Normal main module.
 //  2: DCE'd main module. We eliminate dead code normally. If a side
 //     module needs something from main, it is up to you to make sure
@@ -1048,14 +1045,8 @@ var EXPORT_NAME = 'Module';
 // to warnings instead of throwing an exception.
 var DYNAMIC_EXECUTION = 1;
 
-// whether js opts will be run, after the main compiler
-var RUNNING_JS_OPTS = 0;
-
 // whether we are in the generate struct_info bootstrap phase
 var BOOTSTRAPPING_STRUCT_INFO = 0;
-
-// struct_info that is either generated or cached
-var STRUCT_INFO = '';
 
 // Add some calls to emscripten tracing APIs
 var EMSCRIPTEN_TRACING = 0;
@@ -1114,10 +1105,6 @@ var WASM = 1;
 // or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
 var STANDALONE_WASM = 0;
 
-// An optional comma-separated list of script hooks to run after binaryen,
-// in binaryen's /scripts dir.
-var BINARYEN_SCRIPTS = "";
-
 // Whether to ignore implicit traps when optimizing in binaryen.  Implicit
 // traps are the traps that happen in a load that is out of bounds, or
 // div/rem of 0, etc. With this option set, the optimizer assumes that loads
@@ -1147,16 +1134,12 @@ var WASM_ASYNC_COMPILATION = 1;
 var WASM_BIGINT = 0;
 
 // WebAssembly defines a "producers section" which compilers and tools can
-// annotate themselves in, and LLVM emits this by default. In release builds,
+// annotate themselves in, and LLVM emits this by default.
 // Emscripten will strip that out so that it is *not* emitted because it
 // increases code size, and also some users may not want information
 // about their tools to be included in their builds for privacy or security
 // reasons, see
 // https://github.com/WebAssembly/tool-conventions/issues/93.
-// (In debug builds (-O0) we leave the wasm file as it is from LLVM, in which
-// case it may contain this section, if you didn't tell LLVM to not emit it. You
-// can also run wasm-opt --strip-producers manually, which is what Emscripten
-// does in release builds for you automatically.)
 var EMIT_PRODUCERS_SECTION = 0;
 
 // If set then generated WASM files will contain a custom
@@ -1171,7 +1154,6 @@ var EMIT_EMSCRIPTEN_LICENSE = 0;
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
 // non-web/non-JS embeddings, setting this to 0 may be desirable.
-// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
 // Ports
@@ -1609,6 +1591,20 @@ var WASM2C = 0;
 // in a custom location.
 var SEPARATE_DWARF_URL = '';
 
+// Whether the program should abort when an unhandled WASM exception is encountered.
+// This makes the Emscripten program behave more like a native program where the OS
+// would terminate the process and no further code can be executed when an unhandled
+// exception (e.g. out-of-bounds memory access) happens.
+// This will instrument all exported functions to catch thrown exceptions and
+// call abort() when they happen. Once the program aborts any exported function calls
+// will fail with a "program has already aborted" exception to prevent calls into
+// code with a potentially corrupted program state.
+// This adds a small fixed amount to code size in optimized builds and a slight overhead
+// for the extra instrumented function indirection.
+// Enable this if you want Emscripten to handle unhandled exceptions nicely at the
+// cost of a few bytes extra.
+var ABORT_ON_WASM_EXCEPTIONS = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
@@ -1687,4 +1683,8 @@ var LEGACY_SETTINGS = [
   ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
   ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
   ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
+  ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
+  ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
+  ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
+  ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
 ];

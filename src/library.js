@@ -20,9 +20,6 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-// Memory allocated during startup, in postsets, should only be static
-// (using makeStaticAlloc)
-
 LibraryManager.library = {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
@@ -444,12 +441,6 @@ LibraryManager.library = {
     return HEAPU8.length;
   },
 
-  emscripten_get_sbrk_ptr__asm: true,
-  emscripten_get_sbrk_ptr__sig: 'i',
-  emscripten_get_sbrk_ptr: function() {
-    return {{{ DYNAMICTOP_PTR }}};
-  },
-
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
@@ -470,24 +461,16 @@ LibraryManager.library = {
   },
 #else
 
-  // Grows the asm.js/wasm heap to the given byte size, and updates both JS and asm.js/wasm side views to the buffer.
-  // Returns 1 on success, or undefined if growing failed.
+  // Grows the wasm memory to the given byte size, and updates the JS views to
+  // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
 #if MEMORYPROFILER
     var oldHeapSize = buffer.byteLength;
 #endif
     try {
-#if WASM
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
-#else // asm.js:
-      var newBuffer = new ArrayBuffer(size);
-      if (newBuffer.byteLength != size) return /*undefined, allocation did not succeed*/;
-      new Int8Array(newBuffer).set(/**@type{!Int8Array}*/(HEAP8));
-      _emscripten_replace_memory(newBuffer);
-      updateGlobalBufferAndViews(newBuffer);
-#endif
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler !== 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, buffer.byteLength);
@@ -499,6 +482,8 @@ LibraryManager.library = {
       console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
+    // implicit 0 return to save code size (caller will cast "undefined" into 0
+    // anyhow)
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
@@ -807,226 +792,6 @@ LibraryManager.library = {
 
   __gcc_personality_v0: function() {
   },
-
-  // ==========================================================================
-  // dlfcn.h - Dynamic library loading
-  //
-  // Some limitations:
-  //
-  //  * Minification on each file separately may not work, as they will
-  //    have different shortened names. You can in theory combine them, then
-  //    minify, then split... perhaps.
-  //
-  //  * LLVM optimizations may fail. If the child wants to access a function
-  //    in the parent, LLVM opts may remove it from the parent when it is
-  //    being compiled. Not sure how to tell LLVM to not do so.
-  // ==========================================================================
-
-#if MAIN_MODULE == 0
-  dlopen: function(filename, flag) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dlclose: function(handle) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dlsym: function(handle, symbol) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dlerror: function() {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dladdr: function(address, info) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-#else // MAIN_MODULE != 0
-
-  $DLFCN: {
-    error: null,
-    errorMsg: null,
-  },
-
-  // void* dlopen(const char* filename, int flag);
-  dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
-  dlopen__proxy: 'sync',
-  dlopen__sig: 'iii',
-  dlopen: function(filenameAddr, flag) {
-    // void *dlopen(const char *file, int mode);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
-    var searchpaths = [];
-    var filename;
-    if (filenameAddr === 0) {
-      filename = '__self__';
-    } else {
-      filename = UTF8ToString(filenameAddr);
-
-      var isValidFile = function (filename) {
-        var target = FS.findObject(filename);
-        return target && !target.isFolder && !target.isDevice;
-      };
-
-      if (!isValidFile(filename)) {
-        if (ENV['LD_LIBRARY_PATH']) {
-          searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
-        }
-
-        for (var ident in searchpaths) {
-          var searchfile = PATH.join2(searchpaths[ident], filename);
-          if (isValidFile(searchfile)) {
-            filename = searchfile;
-            break;
-          }
-        }
-      }
-    }
-
-    // We don't care about RTLD_NOW and RTLD_LAZY.
-    var flags = {
-      global:   Boolean(flag & 256),  // RTLD_GLOBAL
-      nodelete: Boolean(flag & 4096), // RTLD_NODELETE
-
-      fs: FS, // load libraries from provided filesystem
-    }
-
-    try {
-      var handle = loadDynamicLibrary(filename, flags)
-    } catch (e) {
-#if ASSERTIONS
-      err('Error in loading dynamic library ' + filename + ": " + e);
-#endif
-      DLFCN.errorMsg = 'Could not load dynamic lib: ' + filename + '\n' + e;
-      return 0;
-    }
-
-    return handle;
-  },
-
-  // int dlclose(void* handle);
-  dlclose__deps: ['$DLFCN'],
-  dlclose__proxy: 'sync',
-  dlclose__sig: 'ii',
-  dlclose: function(handle) {
-    // int dlclose(void *handle);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
-    if (!LDSO.loadedLibs[handle]) {
-      DLFCN.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
-      return 1;
-    } else {
-      var lib_record = LDSO.loadedLibs[handle];
-      if (--lib_record.refcount == 0) {
-        if (lib_record.module.cleanups) {
-          lib_record.module.cleanups.forEach(function(cleanup) { cleanup() });
-        }
-        delete LDSO.loadedLibNames[lib_record.name];
-        delete LDSO.loadedLibs[handle];
-      }
-      return 0;
-    }
-  },
-
-  // void* dlsym(void* handle, const char* symbol);
-  dlsym__deps: ['$DLFCN'],
-  dlsym__proxy: 'sync',
-  dlsym__sig: 'iii',
-  dlsym: function(handle, symbol) {
-    // void *dlsym(void *restrict handle, const char *restrict name);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
-    symbol = UTF8ToString(symbol);
-
-    if (!LDSO.loadedLibs[handle]) {
-      DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
-      return 0;
-    }
-
-    var lib = LDSO.loadedLibs[handle];
-    var isMainModule = lib.module == Module;
-
-    var mangled = '_' + symbol;
-    var modSymbol = mangled;
-    if (!isMainModule) {
-      modSymbol = symbol;
-    }
-
-    if (!lib.module.hasOwnProperty(modSymbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + modSymbol +
-                             '" in dynamic lib: ' + lib.name);
-      return 0;
-    }
-
-    var result = lib.module[modSymbol];
-#if WASM
-    // Attempt to get the real "unwrapped" symbol so we have more chance of
-    // getting wasm function which can be added to a table.
-    if (isMainModule) {
-      var asmSymbol = symbol;
-      if (lib.module["asm"][asmSymbol]) {
-        result = lib.module["asm"][asmSymbol];
-      }
-    }
-#endif
-    if (typeof result !== 'function')
-      return result;
-
-#if WASM && EMULATE_FUNCTION_POINTER_CASTS
-    // for wasm with emulated function pointers, the i64 ABI is used for all
-    // function calls, so we can't just call addFunction on something JS
-    // can call (which does not use that ABI), as the function pointer would
-    // not be usable from wasm. instead, the wasm has exported function pointers
-    // for everything we need, with prefix fp$, use those
-    result = lib.module['fp$' + symbol];
-    if (typeof result === 'object') {
-      // a breaking change in the wasm spec, globals are now objects
-      // https://github.com/WebAssembly/mutable-global/issues/1
-      result = result.value;
-    }
-#if ASSERTIONS
-    assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
-#endif // ASSERTIONS
-    return result;
-#else // WASM && EMULATE_FUNCTION_POINTER_CASTS
-
-#if WASM
-    // Insert the function into the wasm table.  Since we know the function
-    // comes directly from the loaded wasm module we can insert it directly
-    // into the table, avoiding any JS interaction.
-    return addFunctionWasm(result);
-#else
-    // convert the exported function into a function pointer using our generic
-    // JS mechanism.
-    return addFunction(result);
-#endif // WASM
-#endif // WASM && EMULATE_FUNCTION_POINTER_CASTS
-  },
-
-  // char* dlerror(void);
-  dlerror__deps: ['$DLFCN', '$stringToNewUTF8'],
-  dlerror__proxy: 'sync',
-  dlerror__sig: 'i',
-  dlerror: function() {
-    // char *dlerror(void);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
-    if (DLFCN.errorMsg === null) {
-      return 0;
-    } else {
-      if (DLFCN.error) _free(DLFCN.error);
-      DLFCN.error = stringToNewUTF8(DLFCN.errorMsg);
-      DLFCN.errorMsg = null;
-      return DLFCN.error;
-    }
-  },
-
-  dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],
-  dladdr__proxy: 'sync',
-  dladdr__sig: 'iii',
-  dladdr: function(addr, info) {
-    // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(getExecutableName()); // XXX leak
-    {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*3, '0', 'i32') }}};
-    return 1;
-  },
-#endif // MAIN_MODULE != 0
 
   // ==========================================================================
   // pwd.h
@@ -2020,14 +1785,17 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if SUPPORT_LONGJMP
+  longjmp__sig: 'vii',
   longjmp: function(env, value) {
     _setThrew(env, value || 1);
     throw 'longjmp';
   },
-  emscripten_longjmp__deps: ['longjmp'],
-  emscripten_longjmp: function(env, value) {
-    _longjmp(env, value);
-  },
+  // TODO: remove these aliases if/when the LLVM backend can stop emitting them
+  // (it emits them atm as they are generated by an IR pass, at at that time
+  // they each have a different signature - it is only at the wasm level that
+  // they become identical).
+  emscripten_longjmp: 'longjmp',
+  emscripten_longjmp_jmpbuf: 'longjmp',
 #endif
 
   // ==========================================================================
@@ -3872,7 +3640,7 @@ LibraryManager.library = {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
-      var ret = {{{ makeDynCall('iii') }}}(func, 0, arg);
+      var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
       if (ret !== 0) return;
     }
   },
@@ -3921,7 +3689,7 @@ LibraryManager.library = {
   emscripten_scan_stack: function(func) {
     var base = STACK_BASE; // TODO verify this is right on pthreads
     var end = stackSave();
-    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
+    {{{ makeDynCall('vii', 'func') }}}(Math.min(base, end), Math.max(base, end));
   },
 
   // misc definitions to avoid unnecessary unresolved symbols being reported
@@ -4004,6 +3772,60 @@ LibraryManager.library = {
     });
   },
 
+#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+  $dynCallLegacy: function(sig, ptr, args) {
+#if ASSERTIONS
+    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+    if (args && args.length) {
+      // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
+      assert(args.length === sig.substring(1).replace(/j/g, '--').length);
+    } else {
+      assert(sig.length == 1);
+    }
+#endif
+    if (args && args.length) {
+      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
+    }
+    return Module['dynCall_' + sig].call(null, ptr);
+  },
+  $dynCall__deps: ['$dynCallLegacy'],
+
+  // Used in library code to get JS function from wasm function pointer.
+  // All callers should use direct table access where possible and only fall
+  // back to this function if needed.
+  $getDynCaller__deps: ['$dynCall'],
+  $getDynCaller: function(sig, ptr) {
+#if !USE_LEGACY_DYNCALLS
+    assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
+#endif
+    var argCache = [];
+    return function() {
+      argCache.length = arguments.length;
+      for (var i = 0; i < arguments.length; i++) {
+        argCache[i] = arguments[i];
+      }
+      return dynCall(sig, ptr, argCache);
+    };
+  },
+#endif
+
+  $dynCall: function (sig, ptr, args) {
+#if USE_LEGACY_DYNCALLS
+    return dynCallLegacy(sig, ptr, args);
+#else
+#if !WASM_BIGINT
+    // Without WASM_BIGINT support we cannot directly call function with i64 as
+    // part of thier signature, so we rely the dynCall functions generated by
+    // wasm-emscripten-finalize
+    if (sig.indexOf('j') != -1) {
+      return dynCallLegacy(sig, ptr, args);
+    }
+#endif
+
+    return wasmTable.get(ptr).apply(null, args)
+#endif
+  },
+
   $callRuntimeCallbacks: function(callbacks) {
     while(callbacks.length > 0) {
       var callback = callbacks.shift();
@@ -4014,9 +3836,9 @@ LibraryManager.library = {
       var func = callback.func;
       if (typeof func === 'number') {
         if (callback.arg === undefined) {
-          dynCall_v(func);
+          {{{ makeDynCall('v', 'func') }}}();
         } else {
-          dynCall_vi(func, callback.arg);
+          {{{ makeDynCall('vi', 'func') }}}(callback.arg);
         }
       } else {
         func(callback.arg === undefined ? null : callback.arg);

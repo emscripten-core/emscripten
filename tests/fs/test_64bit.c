@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
         }
         return length;
       },
-      llseek(stream, offset, whence) {
+      llseek: function(stream, offset, whence) {
         var position = offset;
         if (whence === 1) {
           position += stream.position;

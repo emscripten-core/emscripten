@@ -738,10 +738,10 @@ mergeInto(LibraryManager.library, {
         if (event === 'error') {
           var sp = stackSave();
           var msg = allocate(intArrayFromString(data[2]), 'i8', ALLOC_STACK);
-          {{{ makeDynCall('viiii') }}}(callback, data[0], data[1], msg, userData);
+          {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
           stackRestore(sp);
         } else {
-          {{{ makeDynCall('vii') }}}(callback, data, userData);
+          {{{ makeDynCall('vii', 'callback') }}}(data, userData);
         }
       } catch (e) {
         if (e instanceof ExitStatus) {
