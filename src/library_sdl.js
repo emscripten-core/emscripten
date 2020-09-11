@@ -30,7 +30,7 @@ var LibrarySDL = {
     '$FS',
 #endif
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
-    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio'
+    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio', '$MainLoop'
   ],
   $SDL: {
     defaults: {
@@ -783,10 +783,10 @@ var LibrarySDL = {
           event.preventDefault();
           break;
         case 'unload':
-          if (Browser.mainLoop.runner) {
+          if (MainLoop.runner) {
             SDL.events.push(event);
             // Force-run a main event loop, since otherwise this event will never be caught!
-            Browser.mainLoop.runner();
+            MainLoop.runner();
           }
           return;
         case 'resize':
@@ -2532,12 +2532,12 @@ var LibrarySDL = {
 
         if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
           ++SDL.audio.numAudioTimersPending;
-          SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
+          SDL.audio.timer = MainLoop.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
 
           // If we are risking starving, immediately queue an extra buffer.
           if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
             ++SDL.audio.numAudioTimersPending;
-            Browser.safeSetTimeout(SDL.audio.caller, 1.0);
+            MainLoop.safeSetTimeout(SDL.audio.caller, 1.0);
           }
         }
       };
@@ -2648,7 +2648,7 @@ var LibrarySDL = {
     } else if (!SDL.audio.timer) {
       // Start the audio playback timer callback loop.
       SDL.audio.numAudioTimersPending = 1;
-      SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
+      SDL.audio.timer = MainLoop.safeSetTimeout(SDL.audio.caller, 1);
     }
     SDL.audio.paused = pauseOn;
   },
@@ -3488,7 +3488,7 @@ var LibrarySDL = {
   SDL_GL_GetSwapInterval__proxy: 'sync',
   SDL_GL_GetSwapInterval__sig: 'ii',
   SDL_GL_GetSwapInterval: function(state) {
-    if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
+    if (MainLoop.timingMode == 1/*EM_TIMING_RAF*/) return MainLoop.timingValue;
     else return 0;
   },
 

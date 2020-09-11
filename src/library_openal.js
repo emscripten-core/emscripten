@@ -11,7 +11,7 @@ var LibraryOpenAL = {
   // ** INTERNALS 
   // ************************************************************************
 
-  $AL__deps: ['$Browser'],
+  $AL__deps: ['$Browser', '$MainLoop'],
   $AL: {
     // ------------------------------------------------------
     // -- Constants 
@@ -90,7 +90,7 @@ var LibraryOpenAL = {
       // If we are animating using the requestAnimationFrame method, then the main loop does not run when in the background.
       // To give a perfect glitch-free audio stop when switching from foreground to background, we need to avoid updating
       // audio altogether when in the background, so detect that case and kill audio buffer streaming if so.
-      if (Browser.mainLoop.timingMode === 1 /* EM_TIMING_RAF */ && document['visibilityState'] != 'visible') {
+      if (MainLoop.timingMode === 1 /* EM_TIMING_RAF */ && document['visibilityState'] != 'visible') {
         return;
       }
 
@@ -107,7 +107,7 @@ var LibraryOpenAL = {
     // to OpenAL parameters, such as pitch, may require the web audio queue to be flushed and rescheduled.
     scheduleSourceAudio: function(src, lookahead) {
       // See comment on scheduleContextAudio above.
-      if (Browser.mainLoop.timingMode === 1 /*EM_TIMING_RAF*/ && document['visibilityState'] != 'visible') {
+      if (MainLoop.timingMode === 1 /*EM_TIMING_RAF*/ && document['visibilityState'] != 'visible') {
         return;
       }
       if (src.state !== 0x1012 /* AL_PLAYING */) {

@@ -143,7 +143,7 @@ window.scrollX = window.scrollY = 0; // TODO: proxy these
 window.WebGLRenderingContext = WebGLWorker;
 
 window.requestAnimationFrame = (function() {
-  // similar to Browser.requestAnimationFrame
+  // similar to MainLoop.requestAnimationFrame
   var nextRAF = 0;
   return function(func) {
     // try to keep 60fps between calls to here
