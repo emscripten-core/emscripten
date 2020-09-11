@@ -1941,7 +1941,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
         file_suffix = get_file_suffix(input_file)
-        if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
+        if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (has_dash_c and file_suffix == '.bc'):
           compile_source_file(i, input_file)
         elif file_suffix in DYNAMICLIB_ENDINGS:
           logger.debug('using shared library: ' + input_file)
@@ -1950,14 +1950,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logger.debug('using static library: ' + input_file)
           ensure_archive_index(input_file)
           temp_files.append((i, input_file))
-        elif file_suffix in ASSEMBLY_ENDINGS:
-          if file_suffix == '.ll':
-            temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-            logger.debug('assembling assembly file: ' + input_file)
-            building.llvm_as(input_file, temp_file)
-            temp_files.append((i, temp_file))
-          else:
-            compile_source_file(i, input_file)
         elif language_mode:
           compile_source_file(i, input_file)
         elif input_file == '-':

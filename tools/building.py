@@ -24,7 +24,7 @@ from . import shared
 from .toolchain_profiler import ToolchainProfiler
 from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_AR
-from .shared import LLVM_OPT, LLVM_LINK, LLVM_DIS, LLVM_AS, LLVM_OBJCOPY
+from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
@@ -734,42 +734,6 @@ def get_command_with_possible_response_file(cmd):
   filename = response_file.create_response_file(cmd[1:], TEMP_DIR)
   new_cmd = [cmd[0], "@" + filename]
   return new_cmd
-
-
-# LLVM optimizations
-# @param opt A list of LLVM optimization parameters
-def llvm_opt(filename, opts, out=None):
-  inputs = filename
-  if not isinstance(inputs, list):
-    inputs = [inputs]
-  else:
-    assert out, 'must provide out if llvm_opt on a list of inputs'
-  assert len(opts), 'should not call opt with nothing to do'
-  opts = opts[:]
-
-  target = out or (filename + '.opt.bc')
-  cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
-  cmd = get_command_with_possible_response_file(cmd)
-  print_compiler_stage(cmd)
-  check_call(cmd)
-  assert os.path.exists(target), 'llvm optimizer emitted no output.'
-  if not out:
-    shutil.move(filename + '.opt.bc', filename)
-  return target
-
-
-def llvm_dis(input_filename, output_filename):
-  # LLVM binary ==> LLVM assembly
-  try_delete(output_filename)
-  output = run_process([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE).stdout
-  assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
-
-
-def llvm_as(input_filename, output_filename):
-  # LLVM assembly ==> LLVM binary
-  try_delete(output_filename)
-  output = run_process([LLVM_AS, input_filename, '-o', output_filename], stdout=PIPE).stdout
-  assert os.path.exists(output_filename), 'Could not create bc file: ' + output
 
 
 def parse_symbols(output, include_internal=False):

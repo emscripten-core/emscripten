@@ -4165,6 +4165,16 @@ int main() {
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-S'])
     self.assertExists('hello_world.s')
 
+  def assertIsLLVMAsm(self, filename):
+    bitcode = open(filename).read()
+    self.assertContained('target triple = "', bitcode)
+
+  def test_dashS_ll_input(self):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-emit-llvm'])
+    self.assertIsLLVMAsm('hello_world.ll')
+    self.run_process([EMCC, 'hello_world.ll', '-S', '-emit-llvm', '-o', 'another.ll'])
+    self.assertIsLLVMAsm('another.ll')
+
   def test_dashS_stdout(self):
     stdout = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-o', '-'], stdout=PIPE).stdout
     self.assertEqual(os.listdir('.'), [])
@@ -4174,11 +4184,8 @@ int main() {
     # TODO(https://github.com/emscripten-core/emscripten/issues/9016):
     # We shouldn't need to copy the file here but if we don't then emcc will
     # internally clobber the hello_world.ll in tests.
-    shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'hello_world.c')
-    self.run_process([EMCC, 'hello_world.c', '-S', '-emit-llvm'])
-    self.assertExists('hello_world.ll')
-    bitcode = open('hello_world.ll').read()
-    self.assertContained('target triple = "', bitcode)
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-emit-llvm'])
+    self.assertIsLLVMAsm('hello_world.ll')
 
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm'])
     self.assertTrue(building.is_bitcode('hello_world.bc'))
@@ -6709,12 +6716,14 @@ int main() {
   return 0;
 }
 ''')
+
     # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
     cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1', '-flto']
     self.run_process(cmd)
     # If foo() had been wrongly inlined above, internalizing foo and running
     # global DCE makes foo DCE'd
-    building.llvm_opt('test.bc', ['-internalize', '-internalize-public-api-list=main', '-globaldce'], 'test2.bc')
+    opts = ['-internalize', '-internalize-public-api-list=main', '-globaldce']
+    self.run_process([shared.LLVM_OPT] + opts + ['test.bc', '-o', 'test2.bc'])
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
