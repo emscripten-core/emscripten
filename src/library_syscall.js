@@ -219,7 +219,7 @@ var SyscallsLibrary = {
     }
   },
 
-  $syscallMmap2__deps: ['$SYSCALLS',
+  $syscallMmap2__deps: ['$SYSCALLS', '$mmapAlloc',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif

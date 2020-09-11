@@ -373,7 +373,7 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
-          ptr = FS.mmapAlloc(length);
+          ptr = mmapAlloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }
