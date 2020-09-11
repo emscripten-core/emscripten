@@ -96,6 +96,23 @@ var LibrarySafeTimers = {
       RAF(func);
     },
   },
+
+  // Runs natively in pthread, no __proxy needed.
+  emscripten_async_call: function(func, arg, millis) {
+    noExitRuntime = true;
+
+    function wrapper() {
+      {{{ makeDynCall('vi', 'func') }}}(arg);
+    }
+
+    if (millis >= 0) {
+      SafeTimers.safeSetTimeout(wrapper, millis);
+    } else {
+      SafeTimers.safeRequestAnimationFrame(wrapper);
+    }
+  },
 };
+
+autoAddDeps(LibrarySafeTimers, '$SafeTimers');
 
 mergeInto(LibraryManager.library, LibrarySafeTimers);
