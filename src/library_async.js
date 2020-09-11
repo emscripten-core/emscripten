@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$MainLoop', '$runAndAbortIfError'],
+  $Asyncify__deps: ['$runAndAbortIfError'],
   $Asyncify: {
     State: {
       Normal: 0,
@@ -213,7 +213,7 @@ mergeInto(LibraryManager.library, {
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
-          if (MainLoop.func) {
+          if (typeof MainLoop !== 'undefined' && MainLoop.func) {
             MainLoop.resume();
           }
           var start = Asyncify.getDataRewindFunc(Asyncify.currData);
@@ -251,7 +251,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
           runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
-          if (MainLoop.func) {
+          if (typeof MainLoop !== 'undefined' && MainLoop.func) {
             MainLoop.pause();
           }
         }
