@@ -103,8 +103,8 @@ Bisecting
 
 If you find a regression, bisection is often the fastest way to figure out what
 went wrong. This is true not just for finding an actual regression in Emscripten
-that you want to fix, but also if your project stopped working when you upgrade,
-and you need to investigate if it's an Emscripten regression or something else.
+but also if your project stopped working when you upgrade, and you need to
+investigate if it's an Emscripten regression or something else.
 
 The normal ``git bisect`` workflow can work if you just need to bisect a single
 repository. For example, you can bisect only on the emscripten repo if you are on
@@ -115,23 +115,21 @@ If you have a large bisection range, you generally can't bisect a single repo.
 You can still bisect, though! To do that you need the emsdk and to understand
 how the
 `release process <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#release-processes>`_
-works for all the repos together. The key "trick" is that
-
-::
+works for all the repos together. The key "trick" is that::
 
      emsdk install tot
 
 can install an arbitrary build of emscripten: it installs the one identified
 in ``emscripten-releases-tot.txt``. You can therefore bisect on the
 `releases repo <https://chromium.googlesource.com/emscripten-releases>`_ which
-has a DEPS file that basically says what version of all the various repos are
-in which release. In each bisection step on that repo you get the git hash in
-that repo, which is the identifier of the corresponding ``tot`` build (which
-when it was built, was tip-of-tree).
+has a DEPS file that specifies what version of all the various repos are
+in which release. At each bisection step in this repo the git hash identifies a
+particular `tot` release (which when it was built, was tip-of-tree).
 
-Each step in this bisection will download a complete build which is not a
-trivial download. However, at least the number of such steps will be
-logarithmic!
+For the actual bisection you can use
+`git bisect <https://git-scm.com/docs/git-bisect>`_. Each step in will download
+a complete build which is not a trivial download. However, at least the number
+of such steps will be logarithmic!
 
 This bisects down to a single commit in the releases repo. That commit will
 generally update a single sub-repo from one commit to another. That will often
