@@ -30,7 +30,7 @@ var LibrarySDL = {
     '$FS',
 #endif
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
-    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio', '$MainLoop'
+    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio', '$MainLoop', '$SafeTimers'
   ],
   $SDL: {
     defaults: {
@@ -2532,12 +2532,12 @@ var LibrarySDL = {
 
         if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
           ++SDL.audio.numAudioTimersPending;
-          SDL.audio.timer = MainLoop.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
+          SDL.audio.timer = SafeTimers.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
 
           // If we are risking starving, immediately queue an extra buffer.
           if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
             ++SDL.audio.numAudioTimersPending;
-            MainLoop.safeSetTimeout(SDL.audio.caller, 1.0);
+            SafeTimers.safeSetTimeout(SDL.audio.caller, 1.0);
           }
         }
       };
@@ -2648,7 +2648,7 @@ var LibrarySDL = {
     } else if (!SDL.audio.timer) {
       // Start the audio playback timer callback loop.
       SDL.audio.numAudioTimersPending = 1;
-      SDL.audio.timer = MainLoop.safeSetTimeout(SDL.audio.caller, 1);
+      SDL.audio.timer = SafeTimers.safeSetTimeout(SDL.audio.caller, 1);
     }
     SDL.audio.paused = pauseOn;
   },

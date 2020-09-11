@@ -6,7 +6,7 @@
 
 // Utilities for browser environments
 var LibraryBrowser = {
-  $Browser__deps: ['$MainLoop'],
+  $Browser__deps: ['$SafeTimers'],
   $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) { Browser.requestFullscreen(lockPointer, resizeCanvas) };\n' + // exports
 #if ASSERTIONS
                      'Module["requestFullScreen"] = function Module_requestFullScreen() { Browser.requestFullScreen() };\n' +
@@ -156,7 +156,7 @@ var LibraryBrowser = {
           };
           audio.src = url;
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          MainLoop.safeSetTimeout(function() {
+          SafeTimers.safeSetTimeout(function() {
             finish(audio); // try to use it even though it is not necessarily ready to play
           }, 10000);
         } else {
@@ -940,12 +940,12 @@ var LibraryBrowser = {
   },
 
   // Callable from pthread, executes in pthread context.
-  emscripten_async_run_script__deps: ['emscripten_run_script', '$MainLoop'],
+  emscripten_async_run_script__deps: ['emscripten_run_script', '$SafeTimers'],
   emscripten_async_run_script: function(script, millis) {
     noExitRuntime = true;
 
     // TODO: cache these to avoid generating garbage
-    MainLoop.safeSetTimeout(function() {
+    SafeTimers.safeSetTimeout(function() {
       _emscripten_run_script(script);
     }, millis);
   },

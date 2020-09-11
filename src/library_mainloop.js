@@ -8,7 +8,6 @@
 var LibraryMainLoop = {
   $MainLoop__deps: ['$setMainLoop', 'emscripten_set_main_loop_timing'],
   $MainLoop__postset: 'Module["pauseMainLoop"] = function Module_pauseMainLoop() { MainLoop.pause() };\n' +
-                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { MainLoop.requestAnimationFrame(func) };\n' +
                       'Module["resumeMainLoop"] = function Module_resumeMainLoop() { MainLoop.resume() };\n',
 
   $MainLoop: {
@@ -76,91 +75,6 @@ var LibraryMainLoop = {
       }
       if (Module['postMainLoop']) Module['postMainLoop']();
     },
-
-    nextRAF: 0,
-
-    fakeRequestAnimationFrame: function(func) {
-      // try to keep 60fps between calls to here
-      var now = Date.now();
-      if (MainLoop.nextRAF === 0) {
-        MainLoop.nextRAF = now + 1000/60;
-      } else {
-        while (now + 2 >= MainLoop.nextRAF) { // fudge a little, to avoid timer jitter causing us to do lots of delay:0
-          MainLoop.nextRAF += 1000/60;
-        }
-      }
-      var delay = Math.max(MainLoop.nextRAF - now, 0);
-      setTimeout(func, delay);
-    },
-
-    requestAnimationFrame: function(func) {
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(func);
-        return;
-      }
-      var RAF = MainLoop.fakeRequestAnimationFrame;
-#if LEGACY_VM_SUPPORT
-      if (typeof window !== 'undefined') {
-        RAF = window['requestAnimationFrame'] ||
-              window['mozRequestAnimationFrame'] ||
-              window['webkitRequestAnimationFrame'] ||
-              window['msRequestAnimationFrame'] ||
-              window['oRequestAnimationFrame'] ||
-              RAF;
-      }
-#endif
-      RAF(func);
-    },
-
-    // abort and pause-aware versions TODO: build main loop on top of this?
-
-    allowAsyncCallbacks: true,
-    queuedAsyncCallbacks: [],
-
-    pauseAsyncCallbacks: function() {
-      MainLoop.allowAsyncCallbacks = false;
-    },
-    resumeAsyncCallbacks: function() { // marks future callbacks as ok to execute, and synchronously runs any remaining ones right now
-      MainLoop.allowAsyncCallbacks = true;
-      if (MainLoop.queuedAsyncCallbacks.length > 0) {
-        var callbacks = MainLoop.queuedAsyncCallbacks;
-        MainLoop.queuedAsyncCallbacks = [];
-        callbacks.forEach(function(func) {
-          func();
-        });
-      }
-    },
-
-    safeRequestAnimationFrame: function(func) {
-      return MainLoop.requestAnimationFrame(function() {
-        if (ABORT) return;
-        if (MainLoop.allowAsyncCallbacks) {
-          func();
-        } else {
-          MainLoop.queuedAsyncCallbacks.push(func);
-        }
-      });
-    },
-    safeSetTimeout: function(func, timeout) {
-      noExitRuntime = true;
-      return setTimeout(function() {
-        if (ABORT) return;
-        if (MainLoop.allowAsyncCallbacks) {
-          func();
-        } else {
-          MainLoop.queuedAsyncCallbacks.push(func);
-        }
-      }, timeout);
-    },
-    safeSetInterval: function(func, timeout) {
-      noExitRuntime = true;
-      return setInterval(function() {
-        if (ABORT) return;
-        if (MainLoop.allowAsyncCallbacks) {
-          func();
-        } // drop it on the floor otherwise, next interval will kick in
-      }, timeout);
-    },
   },
 
   // Runs natively in pthread, no __proxy needed.
@@ -170,6 +84,7 @@ var LibraryMainLoop = {
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_set_main_loop_timing__deps: ['$SafeTimers'],
   emscripten_set_main_loop_timing: function(mode, value) {
     MainLoop.timingMode = mode;
     MainLoop.timingValue = value;
@@ -189,7 +104,7 @@ var LibraryMainLoop = {
       MainLoop.method = 'timeout';
     } else if (mode == 1 /*EM_TIMING_RAF*/) {
       MainLoop.scheduler = function MainLoop_scheduler_rAF() {
-        MainLoop.requestAnimationFrame(MainLoop.runner);
+        SafeTimers.requestAnimationFrame(MainLoop.runner);
       };
       MainLoop.method = 'rAF';
     } else if (mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
@@ -405,6 +320,7 @@ var LibraryMainLoop = {
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_async_call__deps: ['$SafeTimers'],
   emscripten_async_call: function(func, arg, millis) {
     noExitRuntime = true;
 
@@ -413,9 +329,9 @@ var LibraryMainLoop = {
     }
 
     if (millis >= 0) {
-      MainLoop.safeSetTimeout(wrapper, millis);
+      SafeTimers.safeSetTimeout(wrapper, millis);
     } else {
-      MainLoop.safeRequestAnimationFrame(wrapper);
+      SafeTimers.safeRequestAnimationFrame(wrapper);
     }
   },
 };

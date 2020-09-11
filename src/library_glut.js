@@ -421,27 +421,27 @@ var LibraryGLUT = {
     }
   },
 
-  glutIdleFunc__deps: ['$MainLoop'],
+  glutIdleFunc__deps: ['$SafeTimers'],
   glutIdleFunc__proxy: 'sync',
   glutIdleFunc__sig: 'vi',
   glutIdleFunc: function(func) {
     function callback() {
       if (GLUT.idleFunc) {
         {{{ makeDynCall('v', 'GLUT.idleFunc') }}}();
-        MainLoop.safeSetTimeout(callback, 4); // HTML spec specifies a 4ms minimum delay on the main thread; workers might get more, but we standardize here
+        SafeTimers.safeSetTimeout(callback, 4); // HTML spec specifies a 4ms minimum delay on the main thread; workers might get more, but we standardize here
       }
     }
     if (!GLUT.idleFunc) {
-      MainLoop.safeSetTimeout(callback, 0);
+      SafeTimers.safeSetTimeout(callback, 0);
     }
     GLUT.idleFunc = func;
   },
 
-  glutTimerFunc__deps: ['$MainLoop'],
+  glutTimerFunc__deps: ['$SafeTimers'],
   glutTimerFunc__proxy: 'sync',
   glutTimerFunc__sig: 'viii',
   glutTimerFunc: function(msec, func, value) {
-    MainLoop.safeSetTimeout(function() { {{{ makeDynCall('vi', 'func') }}}(value); }, msec);
+    SafeTimers.safeSetTimeout(function() { {{{ makeDynCall('vi', 'func') }}}(value); }, msec);
   },
 
   glutDisplayFunc__proxy: 'sync',
@@ -647,13 +647,13 @@ var LibraryGLUT = {
   glutSwapBuffers__sig: 'v',
   glutSwapBuffers: function() {},
 
-  glutPostRedisplay__deps: ['$MainLoop'],
+  glutPostRedisplay__deps: ['$MainLoop', '$SafeTimers'],
   glutPostRedisplay__proxy: 'sync',
   glutPostRedisplay__sig: 'v',
   glutPostRedisplay: function() {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
       GLUT.requestedAnimationFrame = true;
-      MainLoop.requestAnimationFrame(function() {
+      SafeTimers.requestAnimationFrame(function() {
         GLUT.requestedAnimationFrame = false;
         MainLoop.runIter(function() {
           {{{ makeDynCall('v', 'GLUT.displayFunc') }}}();

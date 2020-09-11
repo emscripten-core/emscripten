@@ -4965,14 +4965,14 @@ main(const int argc, const char * const * const argv)
     test(['-O3', '--closure', '1', '-s', 'WASM=0'], 36000)
     test(['-O3', '--closure', '2', '-s', 'WASM=0'], 33000) # might change now and then
 
-  def test_no_browser(self):
-    BROWSER_INIT = 'var Browser'
+  def test_no_mainloop(self):
+    MAINLOOP_INIT = 'var MainLoop'
 
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
-    self.assertNotContained(BROWSER_INIT, open('a.out.js').read())
+    self.assertNotContained(MAINLOOP_INIT, open('a.out.js').read())
 
-    self.run_process([EMCC, path_from_root('tests', 'browser_main_loop.c')]) # uses emscripten_set_main_loop, which needs Browser
-    self.assertContained(BROWSER_INIT, open('a.out.js').read())
+    self.run_process([EMCC, path_from_root('tests', 'browser_main_loop.c')]) # uses emscripten_set_main_loop, which needs MainLoop
+    self.assertContained(MAINLOOP_INIT, open('a.out.js').read())
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     def test(opts, has, not_has):

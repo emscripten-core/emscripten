@@ -287,9 +287,10 @@ mergeInto(LibraryManager.library, {
     },
   },
 
+  emscripten_sleep__deps: ['$SafeTimers'],
   emscripten_sleep: function(ms) {
     Asyncify.handleSleep(function(wakeUp) {
-      MainLoop.safeSetTimeout(wakeUp, ms);
+      SafeTimers.safeSetTimeout(wakeUp, ms);
     });
   },
 
