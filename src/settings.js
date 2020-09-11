@@ -861,7 +861,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 // PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
 // the same amount of stack.
 //
-// This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
+// This proxies Module['canvas'], if present, and if OFFSCREENCANVAS_SUPPORT
 // is enabled. This has to happen because this is the only chance - this browser
 // main thread does the only pthread_create call that happens on
 // that thread, so it's the only chance to transfer the canvas from there.
