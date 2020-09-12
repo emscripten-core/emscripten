@@ -17,7 +17,6 @@ import re
 import select
 import shlex
 import shutil
-import struct
 import subprocess
 import sys
 import time
@@ -39,7 +38,8 @@ from runner import js_engines_modify, NON_ZERO
 from tools import shared, building
 import jsrun
 import clang_native
-import tools.line_endings
+from tools import line_endings
+from tools import webassembly
 
 scons_path = shared.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
@@ -6740,7 +6740,7 @@ int main() {
             else:
               expected_ending = '\r\n'
 
-            ret = tools.line_endings.check_line_endings(f, expect_only=expected_ending)
+            ret = line_endings.check_line_endings(f, expect_only=expected_ending)
             assert ret == 0
 
           for f in files:
