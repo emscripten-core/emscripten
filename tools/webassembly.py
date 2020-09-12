@@ -119,7 +119,8 @@ def add_dylink_section(wasm_file, needed_dynlibs):
   # a wasm shared library has a special "dylink" section, see tools-conventions repo
   # TODO: use this in the wasm backend
   assert False
-  mem_align = shared.Settings.MAX_GLOBAL_ALIGN
+  # TODO read mem_align from existing "dylink" section.
+  mem_align = 1
   mem_size = shared.Settings.STATIC_BUMP
   table_size = shared.Settings.WASM_TABLE_SIZE
   mem_align = int(math.log(mem_align, 2))

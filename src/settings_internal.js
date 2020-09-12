@@ -66,9 +66,6 @@ var MAIN_READS_PARAMS = 1;
 // is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
 var DYNAMIC_BASE = -1;
 
-// Maximum seen global alignment; received from the backend.
-var MAX_GLOBAL_ALIGN = -1;
-
 // List of functions implemented in compiled code; received from the backend.
 var IMPLEMENTED_FUNCTIONS = [];
 

@@ -129,8 +129,6 @@ def update_settings_glue(metadata, DEBUG):
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(implemented_funcs))
 
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
-
-  shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
 
   if metadata['asmConsts']:
@@ -897,7 +895,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'implementedFunctions': [],
     'externs': [],
     'simd': False, # Obsolete, always False
-    'maxGlobalAlign': 0,
     'staticBump': 0,
     'tableSize': 0,
     'initializers': [],
