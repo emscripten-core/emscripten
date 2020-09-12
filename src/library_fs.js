@@ -2020,19 +2020,16 @@ FS.staticInit();` +
         transaction.onerror = onerror;
       };
       openRequest.onerror = onerror;
-    }
-  },
+    },
 
-  // Allocate memory for an mmap operation. This allocates space of the right
-  // page-aligned size, and clears the padding.
-  // Note that this is split off from the FS object since it depends on malloc,
-  // and we don't want the entire object to. When mmap is used, that syscall
-  // depends on this, which brings it in.
-  $mmapAlloc: function(size) {
-    var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
-    var ptr = _malloc(alignedSize);
-    while (size < alignedSize) HEAP8[ptr + size++] = 0;
-    return ptr;
+    // Allocate memory for an mmap operation. This allocates space of the right
+    // page-aligned size, and clears the padding.
+    mmapAlloc: function(size) {
+      var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
+      var ptr = _malloc(alignedSize);
+      while (size < alignedSize) HEAP8[ptr + size++] = 0;
+      return ptr;
+    }
   }
 });
 
