@@ -195,3 +195,6 @@ var USE_LEGACY_DYNCALLS = 0;
 
 // struct_info that is either generated or cached
 var STRUCT_INFO = '';
+
+// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+var MEMORYPROFILER = 0;

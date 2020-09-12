@@ -1301,9 +1301,6 @@ var ALLOW_BLOCKING_ON_MAIN_THREAD = 1;
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
 
-// If true, building against Emscripten's asm.js/wasm heap memory profiler.
-var MEMORYPROFILER = 0;
-
 // This tries to evaluate global ctors at compile-time, applying their effects
 // into the mem init file. This saves running code during startup, and also
 // allows removing the global ctor functions and other code that only they used,
