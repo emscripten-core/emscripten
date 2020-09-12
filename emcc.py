@@ -2227,12 +2227,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       shared.JS.handle_license(final)
 
-      if final_suffix in WASM_ENDINGS:
-        js_target = misc_temp_files.get(suffix='.js').name
-      elif final_suffix == '.html':
-        js_target = unsuffixed(target) + '.js'
-      else:
+      if final_suffix in JS_ENDINGS:
         js_target = target
+      elif final_suffix in WASM_ENDINGS:
+        js_target = misc_temp_files.get(suffix='.js').name
+      else:
+        js_target = unsuffixed(target) + '.js'
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
