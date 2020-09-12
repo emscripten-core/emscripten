@@ -1256,7 +1256,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.RELOCATABLE = 1
 
     if shared.Settings.RELOCATABLE:
-      assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
+      if options.use_closure_compiler:
+        exit_with_error('cannot use closure compiler on shared modules')
+      if shared.Settings.MINIMAL_RUNTIME:
+        exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
       # shared modules need memory utilities to allocate their memory
       shared.Settings.EXPORTED_RUNTIME_METHODS += [
         'allocate',
