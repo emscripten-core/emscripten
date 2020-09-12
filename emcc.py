@@ -2171,6 +2171,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         open(final + '.mem.js', 'w').write(src)
         final += '.mem.js'
 
+    log_time('memory initializer')
+
+    with ToolchainProfiler.profile_block('binaryen'):
+      do_binaryen(target, options, memfile, wasm_target,
+                  wasm_source_map_target, misc_temp_files)
+
+    log_time('binaryen')
+    # If we are building a wasm side module then we are all done now
+    if shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS:
+      return
+
+    with ToolchainProfiler.profile_block('final emitting'):
+      # Remove some trivial whitespace
+      # TODO: do not run when compress has already been done on all parts of the code
+      # src = open(final).read()
+      # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
+      # open(final, 'w').write(src)
+
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
         worker_output = os.path.join(target_dir, shared.Settings.PTHREAD_WORKER_FILE)
@@ -2182,23 +2200,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
           open(worker_output, 'w').write(minified_worker)
 
-    log_time('js opts')
-
-    with ToolchainProfiler.profile_block('final emitting'):
-      # Remove some trivial whitespace
-      # TODO: do not run when compress has already been done on all parts of the code
-      # src = open(final).read()
-      # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-      # open(final, 'w').write(src)
-
       # track files that will need native eols
       generated_text_files_with_native_eols = []
-
-      do_binaryen(target, options, memfile, wasm_target,
-                  wasm_source_map_target, misc_temp_files)
-      # If we are building a wasm side module then we are all done now
-      if shared.Settings.SIDE_MODULE:
-        return
 
       if shared.Settings.MODULARIZE:
         modularize()
@@ -2228,8 +2231,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if final_suffix in JS_ENDINGS:
         js_target = target
-      elif final_suffix in WASM_ENDINGS:
-        js_target = misc_temp_files.get(suffix='.js').name
       else:
         js_target = unsuffixed(target) + '.js'
 
