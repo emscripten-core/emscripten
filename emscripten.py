@@ -116,12 +116,6 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def align_static_bump(metadata):
-  # TODO: remove static bump entirely
-  metadata['staticBump'] = align_memory(metadata['staticBump'])
-  return metadata['staticBump']
-
-
 def update_settings_glue(metadata, DEBUG):
   optimize_syscalls(metadata['declares'], DEBUG)
 
@@ -159,7 +153,7 @@ def update_settings_glue(metadata, DEBUG):
 
     shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
-  shared.Settings.STATIC_BUMP = align_static_bump(metadata)
+  metadata['staticBump'] = align_memory(metadata['staticBump'])
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
   shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
@@ -188,7 +182,6 @@ def apply_static_code_hooks(code):
 def apply_forwarded_data(forwarded_data):
   forwarded_json = json.loads(forwarded_data)
   # Be aware of JS static allocations
-  shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
   # Be aware of JS static code hooks
   StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
   StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
@@ -216,7 +209,7 @@ def compile_settings(temp_files):
 
 
 class Memory():
-  def __init__(self):
+  def __init__(self, metadata):
     # Note: if RELOCATABLE, then only relative sizes can be computed, and we don't
     #       actually write out any absolute memory locations ({{{ STACK_BASE }}}
     #       does not exist, etc.)
@@ -224,7 +217,7 @@ class Memory():
     # Memory layout:
     #  * first the static globals
     self.global_base = shared.Settings.GLOBAL_BASE
-    self.static_bump = shared.Settings.STATIC_BUMP
+    self.static_bump = metadata['staticBump']
     #  * then the stack (up on fastcomp, down on upstream)
     self.stack_low = align_memory(self.global_base + self.static_bump)
     self.stack_high = align_memory(self.stack_low + shared.Settings.TOTAL_STACK)
@@ -237,9 +230,9 @@ class Memory():
      exit_with_error('Memory is not large enough for static data (%d) plus the stack (%d), please increase INITIAL_MEMORY (%d) to at least %d' % (self.static_bump, shared.Settings.TOTAL_STACK, shared.Settings.INITIAL_MEMORY, self.dynamic_base))
 
 
-def apply_memory(js):
+def apply_memory(js, metadata):
   # Apply the statically-at-compile-time computed memory locations.
-  memory = Memory()
+  memory = Memory(metadata)
 
   # Write it all out
   js = js.replace('{{{ STATIC_BUMP }}}', str(memory.static_bump))
@@ -447,8 +440,6 @@ def emscript(infile, outfile, memfile, temp_files, DEBUG):
 
   global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
-  staticbump = shared.Settings.STATIC_BUMP
-
   if shared.Settings.MINIMAL_RUNTIME:
     # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
     global_initializers = ''
@@ -458,11 +449,9 @@ def emscript(infile, outfile, memfile, temp_files, DEBUG):
 ''' % ('if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
        global_initializers)
 
-  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
-%s
-''' % (staticbump, global_initializers))
+  pre += '\n' + global_initializers + '\n'
 
-  pre = apply_memory(pre)
+  pre = apply_memory(pre, metadata)
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
 

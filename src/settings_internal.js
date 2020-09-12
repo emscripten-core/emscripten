@@ -129,11 +129,6 @@ var MEM_INIT_IN_WASM = 0;
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = 0;
 
-// the total static allocation, that is, how much to bump the start of memory
-// for static globals. received from the backend, and possibly increased due
-// to JS static allocations
-var STATIC_BUMP = -1;
-
 // the total initial wasm table size.
 var WASM_TABLE_SIZE = 0;
 

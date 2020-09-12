@@ -56,16 +56,11 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 #include "runtime_strings.js"
 
 #if USE_PTHREADS
-var STATIC_BASE = {{{ GLOBAL_BASE }}};
-
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
 var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     TOTAL_STACK = {{{ TOTAL_STACK }}},
-#if !USE_PTHREADS
-    STATIC_BASE = {{{ GLOBAL_BASE }}},
-#endif
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}

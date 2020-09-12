@@ -1073,8 +1073,6 @@ class JS(object):
   memory_initializer_pattern = r'/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = r'/\* no memory initializer \*/'
 
-  memory_staticbump_pattern = r'STATICTOP = STATIC_BASE \+ (\d+);'
-
   global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
 
   emscripten_license = '''\
