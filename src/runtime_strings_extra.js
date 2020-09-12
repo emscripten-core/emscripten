@@ -208,10 +208,18 @@ function lengthBytesUTF32(str) {
 // Allocate heap space for a JS string, and write it there.
 // It is the responsibility of the caller to free() that memory.
 function allocateUTF8(str) {
+#if '_malloc' in IMPLEMENTED_FUNCTIONS
   var size = lengthBytesUTF8(str) + 1;
   var ret = _malloc(size);
   if (ret) stringToUTF8Array(str, HEAP8, ret, size);
   return ret;
+#else
+  // It should be impossible to call this function without malloc being
+  // included (unless we have a deps_info.json bug). To let closure not error
+  // on `_malloc` not being present, just have an abort() here to catch any
+  // errors.
+  abort();
+#endif
 }
 
 // Allocate stack space for a JS string, and write it there.
