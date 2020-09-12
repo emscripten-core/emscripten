@@ -1145,8 +1145,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Otherwise the wasm file is produced alongside the final target.
       wasm_target = unsuffixed(target) + '.wasm'
 
-    wasm_source_map_target = wasm_target + '.map'
-
     # Apply user -jsD settings
     for s in user_js_defines:
       shared.Settings.attrs[s[0]] = s[1]
@@ -2134,7 +2132,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('link'):
       logger.debug('linking: ' + str(linker_inputs))
-      tmp_wasm = in_temp(target_basename + '.wasm')
 
       # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
       # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
@@ -2144,7 +2141,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
         js_funcs = get_all_js_syms(misc_temp_files)
         log_time('JS symbol generation')
-      building.link_lld(linker_inputs, tmp_wasm, external_symbol_list=js_funcs)
+      building.link_lld(linker_inputs, wasm_target, external_symbol_list=js_funcs)
       # Special handling for when the user passed '-Wl,--version'.  In this case the linker
       # does not create the output file, but just prints its version and exits with 0.
       if '--version' in linker_inputs:
@@ -2176,18 +2173,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile():
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      if wasm_only:
-        final_js = None
-      else:
-        final_js = tmp_wasm + '.js'
-      emscripten.run(tmp_wasm, final_js, memfile)
-
+      if not wasm_only:
+        final_js = in_temp(target_basename + '.js')
+      emscripten.run(wasm_target, final_js, memfile)
       save_intermediate('original')
-
-      # we also received the wasm at this stage
-      safe_move(tmp_wasm, wasm_target)
-      if shared.Settings.GENERATE_SOURCE_MAP:
-        safe_move(tmp_wasm + '.map', wasm_source_map_target)
 
     # exit block 'emscript'
     log_time('emscript (llvm => executable code)')
@@ -2323,9 +2312,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if final_suffix == '.html':
         generate_html(target, options, js_target, target_basename,
                       wasm_target, memfile)
-      else:
-        if options.proxy_to_worker:
-          generate_worker_js(target, js_target, target_basename)
+      elif options.proxy_to_worker:
+        generate_worker_js(target, js_target, target_basename)
 
       if embed_memfile() and memfile:
         shared.try_delete(memfile)
