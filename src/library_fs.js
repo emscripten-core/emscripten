@@ -2025,10 +2025,18 @@ FS.staticInit();` +
     // Allocate memory for an mmap operation. This allocates space of the right
     // page-aligned size, and clears the padding.
     mmapAlloc: function(size) {
+#if '_malloc' in IMPLEMENTED_FUNCTIONS
       var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
       var ptr = _malloc(alignedSize);
       while (size < alignedSize) HEAP8[ptr + size++] = 0;
       return ptr;
+#else
+      // If malloc() is not present, then mmap() was not called, and also the
+      // user did not enable full filesystem support, so this should never be
+      // reached. (If you do want full FS support, build with
+      // -s FORCE_FILESYSTEM).
+      abort();
+#endif
     }
   }
 });

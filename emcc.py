@@ -1417,6 +1417,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        shared.Settings.ASYNCIFY or \
        shared.Settings.ASMFS or \
        shared.Settings.DEMANGLE_SUPPORT or \
+       shared.Settings.FORCE_FILESYSTEM or \
        shared.Settings.STB_IMAGE or \
        shared.Settings.EMBIND or \
        shared.Settings.FETCH or \
