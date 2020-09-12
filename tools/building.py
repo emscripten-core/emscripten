@@ -21,6 +21,7 @@ from subprocess import STDOUT, PIPE
 from . import diagnostics
 from . import response_file
 from . import shared
+from . import webassembly
 from .toolchain_profiler import ToolchainProfiler
 from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_AR
@@ -30,7 +31,7 @@ from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
-from .shared import get_emscripten_temp_dir, exe_suffix, WebAssembly, which, is_c_symbol
+from .shared import get_emscripten_temp_dir, exe_suffix, which, is_c_symbol
 
 logger = logging.getLogger('building')
 
@@ -1378,11 +1379,11 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
   filename_bytes = asbytes(embedded_path)
-  contents = WebAssembly.toLEB(len(filename_bytes)) + filename_bytes
+  contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
     f.write(b'\0') # user section is code 0
-    f.write(WebAssembly.toLEB(section_size))
+    f.write(webassembly.toLEB(section_size))
     f.write(section_name)
     f.write(contents)
 

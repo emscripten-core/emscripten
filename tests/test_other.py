@@ -17,7 +17,6 @@ import re
 import select
 import shlex
 import shutil
-import struct
 import subprocess
 import sys
 import time
@@ -39,7 +38,8 @@ from runner import js_engines_modify, NON_ZERO
 from tools import shared, building
 import jsrun
 import clang_native
-import tools.line_endings
+from tools import line_endings
+from tools import webassembly
 
 scons_path = shared.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
@@ -87,13 +87,6 @@ def uses_canonical_tmp(func):
       shutil.rmtree(self.canonical_temp_dir)
 
   return decorated
-
-
-def encode_leb(number):
-  # TODO(sbc): handle larger numbers
-  assert(number < 255)
-  # pack the integer then take only the first (little end) byte
-  return struct.pack('<i', number)[:1]
 
 
 def parse_wasm(filename):
@@ -6747,7 +6740,7 @@ int main() {
             else:
               expected_ending = '\r\n'
 
-            ret = tools.line_endings.check_line_endings(f, expect_only=expected_ending)
+            ret = line_endings.check_line_endings(f, expect_only=expected_ending)
             assert ret == 0
 
           for f in files:
@@ -7757,7 +7750,7 @@ int main() {
     self.run_process([EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js', '--source-map-base', 'dir/'])
     output = open('a.wasm', 'rb').read()
     # has sourceMappingURL section content and points to 'dir/a.wasm.map' file
-    source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
+    source_mapping_url_content = webassembly.toLEB(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.toLEB(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
     self.assertEqual(output.count(source_mapping_url_content), 1)
     # make sure no DWARF debug info sections remain - they would just waste space
     self.assertNotIn(b'.debug_', output)
@@ -7782,7 +7775,7 @@ int main() {
     self.run_process([EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'] + list(args))
     output = open('a.wasm', 'rb').read()
     # has sourceMappingURL section content and points to 'a.wasm.map' file
-    source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('a.wasm.map')) + b'a.wasm.map'
+    source_mapping_url_content = webassembly.toLEB(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.toLEB(len('a.wasm.map')) + b'a.wasm.map'
     self.assertIn(source_mapping_url_content, output)
 
   def test_wasm_sourcemap(self):

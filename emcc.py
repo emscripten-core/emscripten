@@ -49,6 +49,7 @@ import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
 from tools import js_manipulation
 from tools import wasm2c
+from tools import webassembly
 
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -2621,10 +2622,10 @@ def do_binaryen(target, options, memfile, wasm_target,
 
   # TODO: do this with upstream
   # if shared.Settings.SIDE_MODULE:
-  #   shared.WebAssembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
+  #   webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
-    shared.WebAssembly.add_emscripten_metadata(final, wasm_target)
+    webassembly.add_emscripten_metadata(final, wasm_target)
 
   if shared.Settings.SIDE_MODULE:
     return # and we are done.
