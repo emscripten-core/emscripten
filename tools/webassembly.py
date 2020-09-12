@@ -18,7 +18,7 @@ logger = logging.getLogger('shared')
 # NB: major version 0 implies no compatibility
 # NB: when changing the metadata format, we should only append new fields, not
 #     reorder, modify, or remove existing ones.
-EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
+EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (1, 0)
 # For the JS/WASM ABI, specifies the minimum ABI version required of
 # the WASM runtime implementation by the generated WASM binary. It follows
 # semver and changes whenever C types change size/signedness or
@@ -59,14 +59,7 @@ def readLEB(buf, offset):
 
 
 def add_emscripten_metadata(wasm_file):
-  WASM_PAGE_SIZE = 65536
-
-  mem_size = shared.Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
-  table_size = shared.Settings.WASM_TABLE_SIZE
-  global_base = shared.Settings.GLOBAL_BASE
-  dynamic_base = shared.Settings.LEGACY_DYNAMIC_BASE
-
-  logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
+  logger.debug('creating wasm emscripten metadata section')
   name = b'\x13emscripten_metadata' # section name, including prefixed size
   contents = (
     # metadata section version
@@ -78,19 +71,6 @@ def add_emscripten_metadata(wasm_file):
     # Minimum ABI version
     toLEB(EMSCRIPTEN_ABI_MAJOR) +
     toLEB(EMSCRIPTEN_ABI_MINOR) +
-
-    # Wasm backend, always 1 now
-    toLEB(1) +
-
-    toLEB(mem_size) +
-    toLEB(table_size) +
-    toLEB(global_base) +
-    toLEB(dynamic_base) +
-    # dynamictopPtr, always 0 now
-    toLEB(0) +
-
-    # tempDoublePtr, always 0 in wasm backend
-    toLEB(0) +
 
     toLEB(int(shared.Settings.STANDALONE_WASM))
 
