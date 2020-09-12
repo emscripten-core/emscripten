@@ -235,7 +235,6 @@ def apply_memory(js, metadata):
   memory = Memory(metadata)
 
   # Write it all out
-  js = js.replace('{{{ STATIC_BUMP }}}', str(memory.static_bump))
   js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
   js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
   js = js.replace('{{{ DYNAMIC_BASE }}}', str(memory.dynamic_base))
