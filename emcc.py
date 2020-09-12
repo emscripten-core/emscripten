@@ -2651,7 +2651,7 @@ def do_binaryen(target, options, memfile, wasm_target,
   #   webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
-    webassembly.add_emscripten_metadata(final_js, wasm_target)
+    webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
     # pthreads memory growth requires some additional JS fixups

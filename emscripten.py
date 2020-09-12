@@ -224,11 +224,12 @@ def apply_memory(js, metadata):
   # Write it all out
   js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
   js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
-  js = js.replace('{{{ DYNAMIC_BASE }}}', str(memory.dynamic_base))
+  if shared.Settings.RELOCATABLE:
+    js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
 
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
-  shared.Settings.DYNAMIC_BASE = memory.dynamic_base
+  shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
 
   return js
 
