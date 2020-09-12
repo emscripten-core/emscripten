@@ -1481,22 +1481,6 @@ function makeEval(code) {
   return ret;
 }
 
-function makeStaticAlloc(size) {
-  if (ERROR_ON_WASM_CHANGES_AFTER_LINK) {
-    error('Static allocations in JS at compile time are not allowed due to ERROR_ON_WASM_CHANGES_AFTER_LINK');
-  }
-  size = alignMemory(size);
-  var ret = alignMemory(GLOBAL_BASE + STATIC_BUMP);
-  STATIC_BUMP = ret + size - GLOBAL_BASE;
-  return ret;
-}
-
-function makeStaticString(string) {
-  var len = lengthBytesUTF8(string) + 1;
-  var ptr = makeStaticAlloc(len);
-  return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
-}
-
 var ATINITS = [];
 
 function addAtInit(code) {

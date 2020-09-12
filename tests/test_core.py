@@ -1236,7 +1236,7 @@ int main() {
 
   def test_exceptions_3(self):
     # TODO remove this line and restore @with_both_exception_handling
-    # https://bugs.llvm.org/show_bug.cgi?id=47413
+    # https://github.com/WebAssembly/binaryen/issues/3114
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     src = r'''
@@ -4189,31 +4189,6 @@ res64 - external 64\n''', header='''
         return test_lib_func(temp);
       }
     ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'])
-
-  @needs_dlfcn
-  def test_dylink_global_var_jslib(self):
-    create_test_file('lib.js', r'''
-      mergeInto(LibraryManager.library, {
-        jslib_x: '{{{ makeStaticAlloc(4) }}}',
-        jslib_x__postset: 'HEAP32[_jslib_x>>2] = 148;',
-      });
-    ''')
-    self.dylink_test(main=r'''
-      #include <stdio.h>
-      extern "C" int jslib_x;
-      extern void call_side();
-      int main() {
-        printf("main: jslib_x is %d.\n", jslib_x);
-        call_side();
-        return 0;
-      }
-    ''', side=r'''
-      #include <stdio.h>
-      extern "C" int jslib_x;
-      void call_side() {
-        printf("side: jslib_x is %d.\n", jslib_x);
-      }
-    ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
 
   @needs_dlfcn
   def test_dylink_many_postsets(self):
@@ -7701,8 +7676,7 @@ Module['onRuntimeInitialized'] = function() {
     create_test_file('lib.js', '''
       mergeInto(LibraryManager.library, {
         check_memprof_requirements: function() {
-          if (typeof STATIC_BASE === 'number' &&
-              typeof STACK_BASE === 'number' &&
+          if (typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
               typeof DYNAMIC_BASE === 'number') {

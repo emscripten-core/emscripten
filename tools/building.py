@@ -1213,15 +1213,15 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
-def asyncify_lazy_load_code(wasm_binary_target, debug):
+def asyncify_lazy_load_code(wasm_target, debug):
   # create the lazy-loaded wasm. remove the memory segments from it, as memory
   # segments have already been applied by the initial wasm, and apply the knowledge
   # that it will only rewind, after which optimizations can remove some code
   args = ['--remove-memory', '--mod-asyncify-never-unwind']
   if Settings.OPT_LEVEL > 0:
     args.append(opt_level_to_str(Settings.OPT_LEVEL, Settings.SHRINK_LEVEL))
-  run_wasm_opt(wasm_binary_target,
-               wasm_binary_target + '.lazy.wasm',
+  run_wasm_opt(wasm_target,
+               wasm_target + '.lazy.wasm',
                args=args,
                debug=debug)
   # re-optimize the original, by applying the knowledge that imports will
@@ -1232,8 +1232,8 @@ def asyncify_lazy_load_code(wasm_binary_target, debug):
   args = ['--mod-asyncify-always-and-only-unwind']
   if Settings.OPT_LEVEL > 0:
     args.append(opt_level_to_str(Settings.OPT_LEVEL, Settings.SHRINK_LEVEL))
-  run_wasm_opt(infile=wasm_binary_target,
-               outfile=wasm_binary_target,
+  run_wasm_opt(infile=wasm_target,
+               outfile=wasm_target,
                args=args,
                debug=debug)
 
