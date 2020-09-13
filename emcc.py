@@ -2178,7 +2178,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                   wasm_source_map_target, misc_temp_files)
 
     log_time('binaryen')
-    # If we are building a wasm side module then we are all done now
+    # If we are not emitting any JS then we are all done now
     if shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS:
       return
 
