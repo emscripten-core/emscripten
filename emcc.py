@@ -411,18 +411,6 @@ def find_output_arg(args):
   return specified_target, outargs
 
 
-def do_emscripten(infile, memfile):
-  # Run Emscripten
-  outfile = infile + '.o.js'
-  with ToolchainProfiler.profile_block('emscripten.py'):
-    emscripten.run(infile, outfile, memfile)
-
-  # Detect compilation crashes and errors
-  assert os.path.exists(outfile), 'Emscripten failed to generate .js'
-
-  return outfile
-
-
 def is_ar_file_with_missing_index(archive_file):
   # We parse the archive header outselves because llvm-nm --print-armap is slower and less
   # reliable.
@@ -2056,16 +2044,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.Settings.EXPORTED_FUNCTIONS = dedup_list(shared.Settings.EXPORTED_FUNCTIONS)
 
     with ToolchainProfiler.profile_block('link'):
-      # final will be an array if linking is deferred, otherwise a normal string.
-      DEFAULT_FINAL = in_temp(target_basename + '.wasm')
-
-      def get_final():
-        global final
-        if isinstance(final, list):
-          final = DEFAULT_FINAL
-        return final
-
       logger.debug('linking: ' + str(linker_inputs))
+      final = in_temp(target_basename + '.wasm')
 
       # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
       # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
@@ -2075,7 +2055,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
         js_funcs = get_all_js_syms(misc_temp_files)
         log_time('JS symbol generation')
-      final = building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=js_funcs)
+      building.link_lld(linker_inputs, final, external_symbol_list=js_funcs)
       # Special handling for when the user passed '-Wl,--version'.  In this case the linker
       # does not create the output file, but just prints its version and exits with 0.
       if '--version' in linker_inputs:
@@ -2100,7 +2080,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = do_emscripten(final, shared.replace_or_append_suffix(target, '.mem'))
+      emscripten.run(final, final + '.o.js', shared.replace_or_append_suffix(target, '.mem'))
+      final = final + '.o.js'
+
       save_intermediate('original')
 
       # we also received the wasm at this stage

@@ -6377,32 +6377,6 @@ int main() {
     self.assertContained('nan\n', out)
     self.assertContained('0x7fc01234\n', out)
 
-  @no_wasm_backend('tests our python linking logic')
-  def test_link_response_file_does_not_force_absolute_paths(self):
-    with_space = 'with space'
-    ensure_dir(with_space)
-
-    create_test_file(os.path.join(with_space, 'main.cpp'), '''
-      int main() {
-        return 0;
-      }
-    ''')
-
-    building.emcc(os.path.join(with_space, 'main.cpp'), ['-c', '-g'])
-
-    with chdir(with_space):
-      link_args = building.link(['main.cpp.o'], 'all.bc', just_calculate=True)
-
-    time.sleep(0.2) # Wait for Windows FS to release access to the directory
-    shutil.rmtree(with_space)
-
-    # We want only the relative path to be in the linker args, it should not be converted to an absolute path.
-    if hasattr(self, 'assertCountEqual'):
-      self.assertCountEqual(link_args, ['main.cpp.o'])
-    else:
-      # Python 2 compatibility
-      self.assertItemsEqual(link_args, ['main.cpp.o'])
-
   def test_memory_growth_noasm(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1'])
     src = open('a.out.js').read()
