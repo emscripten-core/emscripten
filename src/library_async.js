@@ -294,7 +294,7 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_wget__deps: ['$PATH_FS', '$FS'],
+  emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget: function(url, file) {
     Asyncify.handleSleep(function(wakeUp) {
       var _url = UTF8ToString(url);
