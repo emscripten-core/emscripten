@@ -38,7 +38,7 @@ if STDERR_FILE:
 
 def compute_minimal_runtime_initializer_and_exports(post, initializers, exports, receiving):
   # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
-  post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(initializers)]))
+  post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in initializers]))
 
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
@@ -51,13 +51,6 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
   post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
   return post
-
-
-def global_initializer_funcs(initializers):
-  # If we have at most one global ctor, no need to group global initializers.
-  # Also in EVAL_CTORS mode, we want to try to evaluate the individual ctor functions, so in that mode,
-  # do not group ctors into one.
-  return ['globalCtors'] if (len(initializers) > 1 and not shared.Settings.EVAL_CTORS) else initializers
 
 
 def write_output_file(outfile, post, module):
