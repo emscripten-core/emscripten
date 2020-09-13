@@ -32,7 +32,6 @@ import logging
 import os
 import re
 import shlex
-import shutil
 import stat
 import sys
 import time
@@ -42,7 +41,8 @@ from subprocess import PIPE
 import emscripten
 from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
-from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, safe_copy
+from tools.shared import run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -1976,7 +1976,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if temp_file != input_file:
               safe_move(temp_file, specified_target)
             else:
-              shutil.copyfile(temp_file, specified_target)
+              safe_copy(temp_file, specified_target)
           temp_output_base = unsuffixed(temp_file)
           if os.path.exists(temp_output_base + '.d'):
             # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
@@ -2022,7 +2022,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if len(temp_files) == 1:
           temp_file = temp_files[0][1]
           # skip running the linker and just copy the object file
-          shutil.copyfile(temp_file, target)
+          safe_copy(temp_file, target)
         else:
           building.link_to_object(linker_inputs, target)
         logger.debug('stopping after linking to object file')
@@ -2106,9 +2106,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also received the wasm at this stage
       temp_basename = unsuffixed(final)
       wasm_temp = temp_basename + '.wasm'
-      shutil.move(wasm_temp, wasm_target)
+      safe_move(wasm_temp, wasm_target)
       if use_source_map(options):
-        shutil.move(wasm_temp + '.map', wasm_source_map_target)
+        safe_move(wasm_temp + '.map', wasm_source_map_target)
 
     # exit block 'emscript'
     log_time('emscript (llvm => executable code)')
@@ -2151,7 +2151,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Apply a source code transformation, if requested
       if options.js_transform:
-        shutil.copyfile(final, final + '.tr.js')
+        safe_copy(final, final + '.tr.js')
         final += '.tr.js'
         posix = not shared.WINDOWS
         logger.debug('applying transform: %s', options.js_transform)
@@ -2238,7 +2238,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         js_target = unsuffixed(target) + '.js'
 
       # The JS is now final. Move it to its final location
-      shutil.move(final, js_target)
+      safe_move(final, js_target)
 
       if not shared.Settings.SINGLE_FILE:
         generated_text_files_with_native_eols += [js_target]
@@ -2697,7 +2697,7 @@ def do_binaryen(target, options, memfile, wasm_target,
                                debug_info=debug_info,
                                symbols_file=symbols_file)
     if shared.Settings.WASM == 2:
-      shutil.copyfile(wasm2js, wasm2js_template)
+      safe_copy(wasm2js, wasm2js_template)
       shared.try_delete(wasm2js)
 
     if shared.Settings.WASM != 2:
@@ -3011,7 +3011,7 @@ def generate_worker_js(target, js_target, target_basename):
 
   # compiler output goes in .worker.js file
   else:
-    shutil.move(js_target, unsuffixed(js_target) + '.worker.js')
+    safe_move(js_target, unsuffixed(js_target) + '.worker.js')
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
