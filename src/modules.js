@@ -336,12 +336,10 @@ function isFSPrefixed(name) {
 
 // forcing the filesystem exports a few things by default
 function isExportedByForceFilesystem(name) {
-  return name === 'FS_createFolder' ||
-         name === 'FS_createPath' ||
+  return name === 'FS_createPath' ||
          name === 'FS_createDataFile' ||
          name === 'FS_createPreloadedFile' ||
          name === 'FS_createLazyFile' ||
-         name === 'FS_createLink' ||
          name === 'FS_createDevice' ||
          name === 'FS_unlink' ||
          name === 'addRunDependency' ||
