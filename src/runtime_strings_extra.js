@@ -214,11 +214,7 @@ function allocateUTF8(str) {
   if (ret) stringToUTF8Array(str, HEAP8, ret, size);
   return ret;
 #else
-  // It should be impossible to call this function without malloc being
-  // included (unless we have a deps_info.json bug). To let closure not error
-  // on `_malloc` not being present, just have an abort() here to catch any
-  // errors.
-  abort();
+  {{{ makeMallocAbort("allocateUTF8") }}}
 #endif
 }
 

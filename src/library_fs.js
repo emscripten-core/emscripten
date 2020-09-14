@@ -2031,11 +2031,7 @@ FS.staticInit();` +
       while (size < alignedSize) HEAP8[ptr + size++] = 0;
       return ptr;
 #else
-      // If malloc() is not present, then mmap() was not called, and also the
-      // user did not enable full filesystem support, so this should never be
-      // reached. (If you do want full FS support, build with
-      // -s FORCE_FILESYSTEM).
-      abort();
+      {{{ makeMallocAbort("mmapAlloc") }}}
 #endif
     }
   }
