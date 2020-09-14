@@ -9687,7 +9687,7 @@ int main () {
       "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
       "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
 
-  def test_missing_malloc_export_2(self):
+  def test_missing_malloc_export_indirect(self):
     # we used to include malloc by default. show a clear error in builds with
     # ASSERTIONS to help with any confusion when the user calls a JS API that
     # requires malloc
