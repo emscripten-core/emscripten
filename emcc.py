@@ -522,7 +522,7 @@ def backend_binaryen_passes():
   # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
   # we run the optimizer during asm2wasm itself). use it, if not overridden.
 
-  # run the binaryen optimize in -O2+. in -O0 we don't need it obviously, while
+  # run the binaryen optimizer in -O2+. in -O0 we don't need it obviously, while
   # in -O1 we don't run it as the LLVM optimizer has been run, and it does the
   # great majority of the work; not running the binaryen optimizer in that case
   # keeps -O1 mostly-optimized while compiling quickly and without rewriting
