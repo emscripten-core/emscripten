@@ -20,6 +20,10 @@ Current Trunk
 - Stop including `malloc` and `free` by default. If you need access to them from
   JS, you must export them manually using
   `-s EXPORTED_FUNCTIONS=['_malloc', ..]`.
+- Stop running Binaryen optimizations in `-O1`. This makes `-O1` builds a little
+  larger but they compile a lot faster, which makes more sense in a "compromise"
+  build (in between `-O0` and higher optimization levels suitable for release
+  builds). (#12178)
 - Add `ERROR_ON_WASM_CHANGES_AFTER_LINK` option that errors if we need to do
   any work in `wasm-emscripten-finalize` or `wasm-opt` after linking. This
   can verify the link is maximally fast and also does no DWARF rewriting.

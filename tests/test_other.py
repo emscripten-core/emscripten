@@ -9259,18 +9259,26 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.assertContained('Archive map', output)
 
   def test_pthread_stub(self):
-    # Verify that programs containing pthread code can still be compiled even
+    # Verify that programs containing pthread code can still work even
     # without enabling threads.  This is possible becase we link in
     # libpthread_stub.a
-    create_test_file('pthread.c', '''
+    create_test_file('pthread.c', r'''
+#include <stdint.h>
+#include <stdio.h>
 #include <pthread.h>
+
+static void cleanup (void* arg) {
+  printf("cleanup: %ld\n", (intptr_t)arg);
+}
 
 int main() {
   pthread_atfork(NULL, NULL, NULL);
+  pthread_cleanup_push(cleanup, (void*)42);
+  pthread_cleanup_pop(1);
   return 0;
 }
 ''')
-    self.run_process([EMCC, 'pthread.c'])
+    self.do_runf('pthread.c', 'cleanup: 42')
 
   def test_stdin_preprocess(self):
     create_test_file('temp.h', '#include <string>')
@@ -9325,6 +9333,8 @@ int main() {
     ok(required_flags + ['-g'])
     # Function pointer calls from JS work too
     ok(required_flags, filename='hello_world_main_loop.cpp')
+    # -O1 is ok as we don't run wasm-opt there (but no higher, see below)
+    ok(required_flags + ['-O1'])
 
     # other builds fail with a standard message + extra details
     def fail(args, details):
@@ -9335,15 +9345,15 @@ int main() {
       self.assertContained(details, err)
 
     # plain -O0
-    legalization_message = 'to disable legalization (which requires changes after link) use -s WASM_BIGINT'
+    legalization_message = 'to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
     longjmp_message = 'to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
     fail([], legalization_message)
     fail(['-sWASM_BIGINT'], longjmp_message)
     fail(['-sSUPPORT_LONGJMP=0'], legalization_message)
     # optimized builds even without legalization
-    optimization_message = 'optimizations always require changes, build with -O0 instead'
-    fail(required_flags + ['-O1'], optimization_message)
+    optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(required_flags + ['-O2'], optimization_message)
+    fail(required_flags + ['-O3'], optimization_message)
     # exceptions fails until invokes are fixed
     fail(required_flags + ['-fexceptions'], 'C++ exceptions always require changes')
 

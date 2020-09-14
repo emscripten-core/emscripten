@@ -522,15 +522,22 @@ def backend_binaryen_passes():
   # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
   # we run the optimizer during asm2wasm itself). use it, if not overridden.
 
+  # run the binaryen optimizer in -O2+. in -O0 we don't need it obviously, while
+  # in -O1 we don't run it as the LLVM optimizer has been run, and it does the
+  # great majority of the work; not running the binaryen optimizer in that case
+  # keeps -O1 mostly-optimized while compiling quickly and without rewriting
+  # DWARF etc.
+  run_binaryen_optimizer = shared.Settings.OPT_LEVEL >= 2
+
   passes = []
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
-  if shared.Settings.OPT_LEVEL > 0:
+  if run_binaryen_optimizer:
     passes += ['--post-emscripten']
     if not shared.Settings.EXIT_RUNTIME:
       passes += ['--no-exit-runtime']
-  if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
+  if run_binaryen_optimizer:
     passes += [building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
   elif shared.Settings.STANDALONE_WASM:
     # even if not optimizing, make an effort to remove all unused imports and
@@ -538,7 +545,7 @@ def backend_binaryen_passes():
     passes += ['--remove-unused-module-elements']
   # when optimizing, use the fact that low memory is never used (1024 is a
   # hardcoded value in the binaryen pass)
-  if shared.Settings.OPT_LEVEL > 0 and shared.Settings.GLOBAL_BASE >= 1024:
+  if run_binaryen_optimizer and shared.Settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
   if shared.Settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
