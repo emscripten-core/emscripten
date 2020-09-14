@@ -9700,3 +9700,9 @@ int main () {
   def test_emmaken_compiler(self):
     stderr = self.run_process([EMCC, '-c', path_from_root('tests', 'core', 'test_hello_world.c')], stderr=PIPE).stderr
     self.assertContained('warning: EMMAKEN_COMPILER is deprecated', stderr)
+
+  def test_llvm_option_dash_o(self):
+    # emcc used to interpret -mllvm's option value as the output file if it began with -o
+    self.run_process([EMCC, '-o', 'llvm_option_dash_o_output', '-mllvm', '-opt-bisect-limit=1', path_from_root('tests', 'hello_world.c')])
+    self.assertExists('llvm_option_dash_o_output')
+    self.assertNotExists('pt-bisect-limit=1')
