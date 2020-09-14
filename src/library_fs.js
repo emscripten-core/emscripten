@@ -2025,14 +2025,10 @@ FS.staticInit();` +
     // Allocate memory for an mmap operation. This allocates space of the right
     // page-aligned size, and clears the padding.
     mmapAlloc: function(size) {
-#if '_malloc' in IMPLEMENTED_FUNCTIONS
       var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
-      var ptr = _malloc(alignedSize);
+      var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
       while (size < alignedSize) HEAP8[ptr + size++] = 0;
       return ptr;
-#else
-      {{{ makeMallocAbort("mmapAlloc") }}}
-#endif
     }
   }
 });
