@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add `ERROR_ON_WASM_CHANGES_AFTER_LINK` option that errors if we need to do
+  any work in `wasm-emscripten-finalize` or `wasm-opt` after linking. This
+  can verify the link is maximally fast and also does no DWARF rewriting.
+  (#12173)
 
 2.0.3: 09/10/2020
 -----------------
