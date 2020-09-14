@@ -1398,28 +1398,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EMBIND:
       forced_stdlibs.append('libembind')
 
-    # various settings require malloc/free support from JS
-    if shared.Settings.RELOCATABLE or \
-       shared.Settings.BUILD_AS_WORKER or \
-       shared.Settings.USE_WEBGPU or \
-       shared.Settings.USE_PTHREADS or \
-       shared.Settings.OFFSCREENCANVAS_SUPPORT or \
-       shared.Settings.LEGACY_GL_EMULATION or \
-       shared.Settings.DISABLE_EXCEPTION_CATCHING != 1 or \
-       shared.Settings.ASYNCIFY or \
-       shared.Settings.ASMFS or \
-       shared.Settings.DEMANGLE_SUPPORT or \
-       shared.Settings.FORCE_FILESYSTEM or \
-       shared.Settings.STB_IMAGE or \
-       shared.Settings.EMBIND or \
-       shared.Settings.FETCH or \
-       shared.Settings.PROXY_POSIX_SOCKETS or \
-       shared.Settings.USE_ASAN or \
-       shared.Settings.USE_LSAN or \
-       shared.Settings.UBSAN_RUNTIME or \
-       options.memory_profiler:
-      shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
-
     shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
     # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
     # where static data ends (and correspondingly where the stack begins).
@@ -1769,6 +1747,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if sanitize and '-g4' in args:
       shared.Settings.LOAD_SOURCE_MAP = 1
+
+    # various settings require malloc/free support from JS
+    if shared.Settings.RELOCATABLE or \
+       shared.Settings.BUILD_AS_WORKER or \
+       shared.Settings.USE_WEBGPU or \
+       shared.Settings.USE_PTHREADS or \
+       shared.Settings.OFFSCREENCANVAS_SUPPORT or \
+       shared.Settings.LEGACY_GL_EMULATION or \
+       shared.Settings.DISABLE_EXCEPTION_CATCHING != 1 or \
+       shared.Settings.ASYNCIFY or \
+       shared.Settings.ASMFS or \
+       shared.Settings.DEMANGLE_SUPPORT or \
+       shared.Settings.FORCE_FILESYSTEM or \
+       shared.Settings.STB_IMAGE or \
+       shared.Settings.EMBIND or \
+       shared.Settings.FETCH or \
+       shared.Settings.PROXY_POSIX_SOCKETS or \
+       options.memory_profiler or \
+       sanitize:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     options.binaryen_passes += backend_binaryen_passes()
 
