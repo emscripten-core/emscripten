@@ -1108,7 +1108,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
 
-    wasm_target = unsuffixed(target) + '.wasm' # might not be used
+    if shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS:
+      # If the user asks directly for a wasm file then this *is* the target
+      wasm_target = target
+    else:
+      # Otherwise the wasm file is produced alongside the final target.
+      wasm_target = unsuffixed(target) + '.wasm'
+
     wasm_source_map_target = wasm_target + '.map'
 
     # Apply user -jsD settings
@@ -1312,7 +1318,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         link_to_object = True
 
-    if not link_to_object and not compile_only and final_suffix not in EXECUTABLE_ENDINGS:
+    if not link_to_object and not compile_only and final_suffix not in EXECUTABLE_ENDINGS and not shared.Settings.SIDE_MODULE:
       # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
       # file output with an explicit `-c` or `-r`.
       diagnostics.warning('emcc', 'assuming object file output, based on output filename alone.  Add an explict `-c`, `-r` or `-shared` to avoid this warning')
@@ -2007,12 +2013,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if link_to_object:
       with ToolchainProfiler.profile_block('linking to object file'):
-        # We have a specified target (-o <target>), which is not JavaScript or HTML, and
-        # we have multiple files: Link them
-        if shared.Settings.SIDE_MODULE:
-          exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
         if final_suffix.lower() in ('.so', '.dylib', '.dll'):
-          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
+          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits a standard object file. This can then be linked into an emscripten SIDE_MODULE (using that flag) with suffix .wasm. You may also want to adapt your build system to use the more standard suffix for an object file (\'.o\'), which would avoid this warning.')
         logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
         if len(temp_files) == 1:
           temp_file = temp_files[0][1]
