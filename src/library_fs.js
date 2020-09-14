@@ -1979,22 +1979,22 @@ FS.staticInit();` +
     // Removed v1 functions
 #if ASSERTIONS
     absolutePath: function() {
-      abort('FS.absolutePath has been removed');
+      abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
     },
     createFolder: function() {
-      abort('FS.createFolder has been removed');
+      abort('FS.createFolder has been removed; use FS.mkdir instead');
     },
     createLink: function() {
-      abort('FS.createLink has been removed');
+      abort('FS.createLink has been removed; use FS.symlink instead');
     },
     joinPath: function() {
-      abort('FS.joinPath has been removed');
+      abort('FS.joinPath has been removed; use PATH.join instead');
     },
     mmapAlloc: function() {
       abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
     },
     standardizePath: function() {
-      abort('FS.standardizePath has been removed');
+      abort('FS.standardizePath has been removed; use PATH.normalize instead');
     },
 #endif
   },
