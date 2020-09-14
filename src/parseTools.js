@@ -1717,5 +1717,5 @@ function makeMallocAbort(name) {
   if (!ASSERTIONS) {
     return "abort();";
   }
-  return `abort('malloc was not included, but is needed in ${name}. This may be a bug in the compiler, please file an issue');`
+  return `abort('malloc was not included, but is needed in ${name}. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');`
 }
