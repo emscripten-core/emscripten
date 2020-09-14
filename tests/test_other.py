@@ -6972,7 +6972,7 @@ int main() {
 
   @parameterized({
     'O0': ([],      [], ['waka'],   977), # noqa
-    'O1': (['-O1'], [], ['waka'],   384), # noqa
+    'O1': (['-O1'], [], ['waka'],   467), # noqa
     'O2': (['-O2'], [], ['waka'],   384), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'], [], [],          85), # noqa
@@ -6999,7 +6999,7 @@ int main() {
 
   @parameterized({
     'O0': ([],      [], ['waka'], 13768), # noqa
-    'O1': (['-O1'], [], ['waka'],  2763), # noqa
+    'O1': (['-O1'], [], ['waka'],  3954), # noqa
     'O2': (['-O2'], [], ['waka'],  2511), # noqa
     'O3': (['-O3'], [], [],        1999), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'], [], [],        2010), # noqa
@@ -9662,7 +9662,7 @@ int main () {
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=[_main]', '-sSTANDALONE_WASM', '-c', path_from_root('tests', 'core', 'test_hello_world.c')])
 
-  def test_unincluded_malloc(self):
+  def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
     # ASSERTIONS to help with any confusion when the user calls malloc/free
     # directly
@@ -9683,12 +9683,11 @@ int main () {
         });
       }
     ''')
-    self.run_process([EMCC, 'unincluded_malloc.c'])
-    out = self.run_js('a.out.js')
-    self.assertContained("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS", out)
-    self.assertContained("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS", out)
+    self.do_runf('unincluded_malloc.c', (
+      "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
+      "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
 
-  def test_unincluded_malloc_2(self):
+  def test_missing_malloc_export_2(self):
     # we used to include malloc by default. show a clear error in builds with
     # ASSERTIONS to help with any confusion when the user calls a JS API that
     # requires malloc
@@ -9704,8 +9703,7 @@ int main () {
         });
       }
     ''')
-    self.run_process([EMCC, 'unincluded_malloc.c'])
-    self.assertContained('malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.', self.run_js('a.out.js'))
+    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
 
   def test_getrusage(self):
     self.do_runf(path_from_root('tests', 'other', 'test_getrusage.c'))
