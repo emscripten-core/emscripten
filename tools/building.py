@@ -456,7 +456,7 @@ def link_to_object(linker_inputs, target):
   if not Settings.LTO:
     link_lld(linker_inputs + ['--relocatable'], target)
   else:
-    link(linker_inputs, target)
+    link_bitcode(linker_inputs, target)
 
 
 def link_llvm(linker_inputs, target):
@@ -464,9 +464,7 @@ def link_llvm(linker_inputs, target):
   cmd = [LLVM_LINK] + linker_inputs + ['-o', target]
   cmd = get_command_with_possible_response_file(cmd)
   print_compiler_stage(cmd)
-  output = run_process(cmd, stdout=PIPE).stdout
-  assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-  return target
+  check_call(cmd)
 
 
 def lld_flags_for_executable(external_symbol_list):
@@ -580,10 +578,9 @@ def link_lld(args, target, external_symbol_list=None):
   print_compiler_stage(cmd)
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)
-  return target
 
 
-def link(files, target, force_archive_contents=False, just_calculate=False):
+def link_bitcode(files, target, force_archive_contents=False):
   # "Full-featured" linking: looks into archives (duplicates lld functionality)
   actual_files = []
   # Tracking unresolveds is necessary for .a linking, see below.
@@ -716,13 +713,9 @@ def link(files, target, force_archive_contents=False, just_calculate=False):
   # Finish link
   # tolerate people trying to link a.so a.so etc.
   actual_files = unique_ordered(actual_files)
-  if just_calculate:
-    # just calculating; return the link arguments which is the final list of files to link
-    return actual_files
 
   logger.debug('emcc: linking: %s to %s', actual_files, target)
   link_llvm(actual_files, target)
-  return target
 
 
 def get_command_with_possible_response_file(cmd):
