@@ -8,7 +8,7 @@ Emscripten is a complete :ref:`Open Source <emscripten-license>` compiler
 toolchain to WebAssembly. Using Emscripten you can:
 
 - Compile C and C++ code, or any other language that uses LLVM, into WebAssembly,
-  and run it on the Web, Node.js, or wasm runtimes.
+  and run it on the Web, Node.js, or other wasm runtimes.
 - Compile the C/C++ **runtimes** of other languages into WebAssembly, and then
   run code in those other languages in an *indirect* way (for example, this has
   been done for
@@ -42,7 +42,7 @@ Emscripten Toolchain
 A high level view of the Emscripten toolchain is given below. The main tool is
 the :ref:`emccdoc`. This is a drop-in replacement for a standard compiler like *gcc* or *clang*.
 
-*Emcc* uses :term:`Clang` and LLVM to compile to WebAssembly. Emscripten also
+*Emcc* uses :term:`Clang` and LLVM to compile to WebAssembly. Emcc also
 emits JavaScript that provides API support to the compiled code. That JavaScript
 can be executed by :term:`node.js`, or from within HTML in a browser.
 
