@@ -9655,3 +9655,6 @@ int main () {
     # point.
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=[_main]', '-sSTANDALONE_WASM', '-c', path_from_root('tests', 'core', 'test_hello_world.c')])
+
+  def test_getrusage(self):
+    self.do_runf(path_from_root('tests', 'other', 'test_getrusage.c'))
