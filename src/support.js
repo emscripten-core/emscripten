@@ -111,10 +111,6 @@ function getCompilerSetting(name) {
 // Then 'dynamic' memory for sbrk.
 var GLOBAL_BASE = {{{ GLOBAL_BASE }}};
 
-#if RELOCATABLE
-GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
-#endif
-
 #if USE_PTHREADS
 // JS library code refers to Atomics in the manner used from asm.js, provide
 // the same API here.

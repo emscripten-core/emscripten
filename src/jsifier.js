@@ -394,12 +394,6 @@ function JSify(data, functionsOnly) {
     //
 
     if (!mainPass) {
-      if (!Variables.generatedGlobalBase) {
-        Variables.generatedGlobalBase = true;
-        // Globals are done, here is the rest of static memory
-        // emit "metadata" in a comment. FIXME make this nicer
-        print('// STATICTOP = STATIC_BASE + ' + alignMemory(Variables.nextIndexedOffset) + ';\n');
-      }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
 

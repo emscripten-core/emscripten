@@ -345,8 +345,7 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-var STATIC_BASE = {{{ GLOBAL_BASE }}},
-    STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
+var STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
     DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
