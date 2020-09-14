@@ -1710,7 +1710,7 @@ function addReadyPromiseAssertions(promise) {
 
 function makeMalloc(source, param) {
   if ('_malloc' in IMPLEMENTED_FUNCTIONS) {
-    return '_malloc' + param + ')';
+    return '_malloc(' + param + ')';
   }
   // It should be impossible to call some functions without malloc being
   // included, unless we have a deps_info.json bug. To let closure not error
