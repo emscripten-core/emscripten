@@ -1054,7 +1054,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         f.write(src)
     self._build_and_run(filename, expected_output, **kwargs)
 
-  def do_runf(self, filename, expected_output, **kwargs):
+  def do_runf(self, filename, expected_output=None, **kwargs):
     self._build_and_run(filename, expected_output, **kwargs)
 
   ## Just like `do_run` but with filename of expected output

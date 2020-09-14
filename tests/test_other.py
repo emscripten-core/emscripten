@@ -9696,3 +9696,7 @@ int main () {
     ''')
     self.run_process([EMCC, 'unincluded_malloc.c'])
     self.assertContained('malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.', self.run_js('a.out.js'))
+
+  def test_getrusage(self):
+    self.do_runf(path_from_root('tests', 'other', 'test_getrusage.c'))
+
