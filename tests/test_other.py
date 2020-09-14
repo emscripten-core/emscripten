@@ -9355,7 +9355,7 @@ int main() {
       self.assertContained(details, err)
 
     # plain -O0
-    legalization_message = 'to disable legalization (which requires changes after link) use -s WASM_BIGINT'
+    legalization_message = 'to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
     longjmp_message = 'to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
     fail([], legalization_message)
     fail(['-sWASM_BIGINT'], longjmp_message)

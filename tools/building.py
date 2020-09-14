@@ -1575,7 +1575,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
       # legalization and longjmp. show a clear error for those (as the flags
       # the user passed in are not enough to see what went wrong)
       if shared.Settings.LEGALIZE_JS_FFI:
-        extra += '\nnote: to disable legalization (which requires changes after link) use -s WASM_BIGINT'
+        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
       if shared.Settings.SUPPORT_LONGJMP:
         extra += '\nnote: to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
       if shared.Settings.OPT_LEVEL > 0:
