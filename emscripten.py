@@ -14,6 +14,7 @@ from __future__ import print_function
 import os
 import json
 import subprocess
+import shutil
 import time
 import logging
 import pprint
@@ -509,31 +510,49 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
 
   args = ['--detect-features', '--minimize-wasm-changes']
 
+  # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
+  modify_wasm = False
+
+  # C++ exceptions and longjmp require invoke processing,
+  # https://github.com/WebAssembly/binaryen/issues/3081
+  if shared.Settings.SUPPORT_LONGJMP or shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+    modify_wasm = True
+  if shared.Settings.WASM2JS:
+    # wasm2js requires full legalization (and will do extra wasm binary
+    # later processing later anyhow)
+    modify_wasm = True
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
     building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
     building.save_intermediate(base_wasm + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
-
+    modify_wasm = True
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD:
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
-
-  if not shared.Settings.USE_LEGACY_DYNCALLS:
+  if shared.Settings.USE_LEGACY_DYNCALLS:
+    # we need to add all dyncalls to the wasm
+    modify_wasm = True
+  else:
     if shared.Settings.WASM_BIGINT:
       args.append('--no-dyncalls')
     else:
       args.append('--dyncalls-i64')
-
-  if shared.Settings.LEGALIZE_JS_FFI != 1:
+      # we need to add some dyncalls to the wasm
+      modify_wasm = True
+  if not shared.Settings.LEGALIZE_JS_FFI:
     args.append('--no-legalize-javascript-ffi')
+  else:
+    modify_wasm = True
   if not shared.Settings.MEM_INIT_IN_WASM:
     args.append('--separate-data-segments=' + memfile)
+    modify_wasm = True
   if shared.Settings.SIDE_MODULE:
     args.append('--side-module')
+    modify_wasm = True
   else:
     # --global-base is used by wasm-emscripten-finalize to calculate the size
     # of the static data used.  The argument we supply here needs to match the
@@ -548,23 +567,30 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
   if shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
+    modify_wasm = True
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
+    modify_wasm = True
   # When we dynamically link our JS loader adds functions from wasm modules to
   # the table. It must add the original versions of them, not legalized ones,
   # so that indirect calls have the right type, so export those.
   if shared.Settings.RELOCATABLE:
     args.append('--pass-arg=legalize-js-interface-export-originals')
+    modify_wasm = True
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
-  stdout = building.run_binaryen_command('wasm-emscripten-finalize',
-                                         infile=base_wasm,
-                                         outfile=wasm,
-                                         args=args,
-                                         stdout=subprocess.PIPE)
+  stdout = building.run_binaryen_command(
+      'wasm-emscripten-finalize',
+      infile=base_wasm,
+      outfile=wasm if modify_wasm else None,
+      args=args,
+      stdout=subprocess.PIPE)
+  if modify_wasm:
+    building.save_intermediate(wasm, 'post_finalize.wasm')
+  else:
+    shutil.copyfile(base_wasm, wasm)
   if write_source_map:
     building.save_intermediate(wasm + '.map', 'post_finalize.map')
-  building.save_intermediate(wasm, 'post_finalize.wasm')
 
   if not shared.Settings.MEM_INIT_IN_WASM:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,

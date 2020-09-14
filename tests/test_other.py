@@ -9327,6 +9327,44 @@ int main() {
     self.assertContained('invalid output filename: `-foo`', err)
     self.assertNotExists('-foo')
 
+  def test_immutable_after_link(self):
+    # some builds are guaranteed to not require any binaryen work after wasm-ld
+    def ok(args, filename='hello_world.cpp', expected='hello, world!'):
+      print('ok', args, filename)
+      args += ['-sERROR_ON_WASM_CHANGES_AFTER_LINK']
+      self.run_process([EMCC, path_from_root('tests', filename)] + args)
+      self.assertContained(expected, self.run_js('a.out.js'))
+
+    # -O0 with BigInt support (to avoid the need for legalization) and without
+    # longjmp
+    required_flags = ['-sWASM_BIGINT', '-sSUPPORT_LONGJMP=0']
+    ok(required_flags)
+    # Same with DWARF
+    ok(required_flags + ['-g'])
+    # Function pointer calls from JS work too
+    ok(required_flags, filename='hello_world_main_loop.cpp')
+
+    # other builds fail with a standard message + extra details
+    def fail(args, details):
+      print('fail', args, details)
+      args += ['-sERROR_ON_WASM_CHANGES_AFTER_LINK']
+      err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp')] + args)
+      self.assertContained('changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', err)
+      self.assertContained(details, err)
+
+    # plain -O0
+    legalization_message = 'to disable legalization (which requires changes after link) use -s WASM_BIGINT'
+    longjmp_message = 'to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
+    fail([], legalization_message)
+    fail(['-sWASM_BIGINT'], longjmp_message)
+    fail(['-sSUPPORT_LONGJMP=0'], legalization_message)
+    # optimized builds even without legalization
+    optimization_message = 'optimizations always require changes, build with -O0 instead'
+    fail(required_flags + ['-O1'], optimization_message)
+    fail(required_flags + ['-O2'], optimization_message)
+    # exceptions fails until invokes are fixed
+    fail(required_flags + ['-fexceptions'], 'C++ exceptions always require changes')
+
   def test_output_to_nowhere(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', os.devnull, '-c'])
 
