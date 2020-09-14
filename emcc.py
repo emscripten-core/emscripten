@@ -21,8 +21,6 @@ emcc can be influenced by a few environment variables:
 
   EMMAKEN_NO_SDK - Will tell emcc *not* to use the emscripten headers. Instead
                    your system headers will be used.
-
-  EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 """
 
 from __future__ import print_function
@@ -771,9 +769,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       arg = args[i][2:]
     return arg.split('=')[0].isupper()
 
-  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
-  CC = cxx_to_c_compiler(CXX)
-
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
     args += shlex.split(EMMAKEN_CFLAGS)
@@ -835,6 +830,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i + 1] = ''
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
+
+    CXX = shared.CLANG_CXX
+    CC = shared.CLANG_CC
+    if 'EMMAKEN_COMPILER' in os.environ:
+      diagnostics.warning('deprecated', 'EMMAKEN_COMPILER is deprecated.  Please set LLVM_ROOT in config file or EM_LLVM_ROOT in the environment')
+      CXX = os.environ['EMMAKEN_COMPILER']
+      CC = cxx_to_c_compiler(CXX)
 
     if '-print-search-dirs' in newargs:
       return run_process([CC, '-print-search-dirs'], check=False).returncode

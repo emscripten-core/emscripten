@@ -465,7 +465,6 @@ Environment variables
 *emcc* is affected by several environment variables, as listed below:
 
   - ``EMMAKEN_JUST_CONFIGURE``
-  - ``EMMAKEN_COMPILER``
   - ``EMMAKEN_CFLAGS``
   - ``EMCC_DEBUG``
   - ``EMCC_CLOSURE_ARGS`` : arguments to be passed to *Closure Compiler*
