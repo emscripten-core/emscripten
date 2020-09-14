@@ -9699,4 +9699,3 @@ int main () {
 
   def test_getrusage(self):
     self.do_runf(path_from_root('tests', 'other', 'test_getrusage.c'))
-
