@@ -54,28 +54,17 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 
 #include "runtime_functions.js"
 #include "runtime_strings.js"
-#include "runtime_sab_polyfill.js"
 
 #if USE_PTHREADS
-var STATIC_BASE = {{{ GLOBAL_BASE }}};
-
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
 var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     TOTAL_STACK = {{{ TOTAL_STACK }}},
-#if !USE_PTHREADS
-    STATIC_BASE = {{{ GLOBAL_BASE }}},
-#endif
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
-#if USES_DYNAMIC_ALLOC
-    , DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
-#endif
     ;
-
-#if WASM
 
 #if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
 var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
@@ -103,20 +92,6 @@ assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memo
 #endif
 
 #include "runtime_init_table.js"
-
-#else
-
-#if USE_PTHREADS
-var buffer = new SharedArrayBuffer({{{ INITIAL_MEMORY }}});
-#else
-var buffer = new ArrayBuffer({{{ INITIAL_MEMORY }}});
-#endif
-
-#if USE_PTHREADS
-}
-#endif
-
-#endif
 
 #if ASSERTIONS
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
@@ -177,10 +152,6 @@ if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to 
 #endif
 HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
 
-#endif
-
-#if USES_DYNAMIC_ALLOC
-  HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
 #endif
 
 #if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)

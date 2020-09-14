@@ -103,10 +103,6 @@ def main():
                       help='symbol files to regenerate (default: all)')
   args = parser.parse_args()
 
-  if not shared.Settings.WASM:
-    sys.stderr.write('This script only runs in WASM mode\n')
-    sys.exit(1)
-
   shared.safe_ensure_dirs(get_symbols_dir())
   if args.files:
     for symbol_file in args.files:

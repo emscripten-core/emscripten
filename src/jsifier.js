@@ -394,12 +394,6 @@ function JSify(data, functionsOnly) {
     //
 
     if (!mainPass) {
-      if (!Variables.generatedGlobalBase) {
-        Variables.generatedGlobalBase = true;
-        // Globals are done, here is the rest of static memory
-        // emit "metadata" in a comment. FIXME make this nicer
-        print('// STATICTOP = STATIC_BASE + ' + alignMemory(Variables.nextIndexedOffset) + ';\n');
-      }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
 
@@ -528,13 +522,6 @@ function JSify(data, functionsOnly) {
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
-    // Print out some useful metadata
-    if (RUNNING_JS_OPTS) {
-      var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions));
-      if (RUNNING_JS_OPTS) {
-        print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + generatedFunctions + '\n');
-      }
-    }
 
     PassManager.serialize();
   }

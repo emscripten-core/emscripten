@@ -438,6 +438,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args = ['-Werror']
     self.env = {}
     self.temp_files_before_run = []
+    self.uses_es6 = False
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -562,6 +563,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       args = [arg for arg in args if arg is not None]
     return args
 
+  def verify_es5(self, filename):
+    es_check = shared.get_npm_cmd('es-check')
+    # use --quiet once its available
+    # See: https://github.com/dollarshaveclub/es-check/pull/126/
+    try:
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE)
+    except subprocess.CalledProcessError as e:
+      print(e.stderr)
+      self.fail('es-check failed to verify ES5 output compliance')
+
   # Build JavaScript code from source code
   def build(self, filename, libraries=[], includes=[], force_c=False,
             post_build=None, js_outfile=True):
@@ -580,6 +591,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
+    if js_outfile and not self.uses_es6:
+      self.verify_es5(output)
 
     if post_build:
       post_build(output)
@@ -1041,7 +1054,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         f.write(src)
     self._build_and_run(filename, expected_output, **kwargs)
 
-  def do_runf(self, filename, expected_output, **kwargs):
+  def do_runf(self, filename, expected_output=None, **kwargs):
     self._build_and_run(filename, expected_output, **kwargs)
 
   ## Just like `do_run` but with filename of expected output
@@ -1542,16 +1555,13 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'WASM=0' not in args:
-      # Filter out separate-asm, which is implied by wasm
-      args = [a for a in args if a != '--separate-asm']
     # add in support for reporting results. this adds as an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
-             '-include', path_from_root('tests', 'report_result.h'),
-             path_from_root('tests', 'report_result.cpp')]
+    args = args + ['-DEMTEST_PORT_NUMBER=%d' % self.port,
+                   '-include', path_from_root('tests', 'report_result.h'),
+                   path_from_root('tests', 'report_result.cpp')]
     if filename_is_src:
       filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
       with open(filepath, 'w') as f:
@@ -1563,7 +1573,7 @@ class BrowserCore(RunnerCore):
       expected = [str(i) for i in range(0, reference_slack + 1)]
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
-        args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)

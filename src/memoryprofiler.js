@@ -476,8 +476,8 @@ var emscriptenMemoryProfiler = {
 
     var width = (nBits(HEAP8.length) + 3) / 4; // Pointer 'word width'
     var html = 'Total HEAP size: ' + self.formatBytes(HEAP8.length) + '.';
-    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(Math.min(STACK_BASE, STACK_MAX) - STATIC_BASE);
-    html += '. STATIC_BASE: ' + toHex(STATIC_BASE, width);
+    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(Math.min(STACK_BASE, STACK_MAX) - {{{ GLOBAL_BASE }}});
+    html += '. {{{ GLOBAL_BASE }}}: ' + toHex({{{ GLOBAL_BASE }}}, width);
 
     html += '<br />' + colorBar('#FF8080') + 'STACK memory area size: ' + self.formatBytes(Math.abs(STACK_MAX - STACK_BASE));
     html += '. STACK_BASE: ' + toHex(STACK_BASE, width);
@@ -486,7 +486,11 @@ var emscriptenMemoryProfiler = {
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(Math.abs(self.stackTopWatermark - STACK_BASE));
 
     var DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
-    var DYNAMICTOP = HEAP32[DYNAMICTOP_PTR>>2];
+    // During startup sbrk may not be defined yet. Ideally we should probably
+    // refactor memoryprofiler so that it only gets here after compiled code is
+    // ready to be called. For now, if the runtime is not yet initialized,
+    // assume the brk is right after the stack.
+    var DYNAMICTOP = runtimeInitialized ? _sbrk() : STACK_BASE;
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(DYNAMICTOP - DYNAMIC_BASE);
     html += ". DYNAMIC_BASE: " + toHex(DYNAMIC_BASE, width);
     html += ". DYNAMICTOP: " + toHex(DYNAMICTOP, width) + ".";

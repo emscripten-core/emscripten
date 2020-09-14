@@ -73,21 +73,19 @@ var LibraryPThreadStub = {
 
   pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) })
+    __ATEXIT__.push({ func: routine, arg: arg });
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
-  pthread_cleanup_pop: function() {
+  pthread_cleanup_pop__sig: 'vi',
+  pthread_cleanup_pop: function(execute) {
     assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
-    __ATEXIT__.pop();
+    callback = __ATEXIT__.pop();
+    if (execute) {
+      {{{ makeDynCall('vi', 'callback.func') }}}(callback.arg)
+    }
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
-
-  _pthread_cleanup_push__sig: 'vii',
-  _pthread_cleanup_push: 'pthread_cleanup_push',
-
-  _pthread_cleanup_pop__sig: 'v',
-  _pthread_cleanup_pop: 'pthread_cleanup_pop',
 
   // pthread_sigmask - examine and change mask of blocked signals
   pthread_sigmask: function(how, set, oldset) {
