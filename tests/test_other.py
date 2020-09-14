@@ -9654,7 +9654,8 @@ int main () {
 
   def test_unincluded_malloc(self):
     # we used to include malloc by default. show a clear error in builds with
-    # ASSERTIONS to help with any confusion
+    # ASSERTIONS to help with any confusion when the user calls malloc/free
+    # directly
     create_test_file('unincluded_malloc.c', r'''
       #include <emscripten.h>
       int main() {
@@ -9676,3 +9677,22 @@ int main () {
     out = self.run_js('a.out.js')
     self.assertContained("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS", out)
     self.assertContained("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS", out)
+
+  def test_unincluded_malloc_2(self):
+    # we used to include malloc by default. show a clear error in builds with
+    # ASSERTIONS to help with any confusion when the user calls a JS API that
+    # requires malloc
+    create_test_file('unincluded_malloc.c', r'''
+      #include <emscripten.h>
+      int main() {
+        EM_ASM({
+          try {
+            allocateUTF8("foo");
+          } catch(e) {
+            console.log('exception:', e);
+          }
+        });
+      }
+    ''')
+    self.run_process([EMCC, 'unincluded_malloc.c'])
+    self.assertContained('malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.', self.run_js('a.out.js'))
