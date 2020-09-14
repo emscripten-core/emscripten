@@ -9343,6 +9343,8 @@ int main() {
     ok(required_flags + ['-g'])
     # Function pointer calls from JS work too
     ok(required_flags, filename='hello_world_main_loop.cpp')
+    # -O1 is ok as we don't run wasm-opt there (but no higher, see below)
+    ok(required_flags + ['-O1'])
 
     # other builds fail with a standard message + extra details
     def fail(args, details):
@@ -9359,9 +9361,9 @@ int main() {
     fail(['-sWASM_BIGINT'], longjmp_message)
     fail(['-sSUPPORT_LONGJMP=0'], legalization_message)
     # optimized builds even without legalization
-    optimization_message = 'optimizations always require changes, build with -O0 instead'
-    fail(required_flags + ['-O1'], optimization_message)
+    optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(required_flags + ['-O2'], optimization_message)
+    fail(required_flags + ['-O3'], optimization_message)
     # exceptions fails until invokes are fixed
     fail(required_flags + ['-fexceptions'], 'C++ exceptions always require changes')
 

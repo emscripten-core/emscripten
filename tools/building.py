@@ -1579,7 +1579,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
       if shared.Settings.SUPPORT_LONGJMP:
         extra += '\nnote: to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
       if shared.Settings.OPT_LEVEL > 0:
-        extra += '\nnote: optimizations always require changes, build with -O0 instead'
+        extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
         extra += '\nnote: C++ exceptions always require changes'
       exit_with_error('changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: ' + str(cmd) + extra)
