@@ -66,9 +66,6 @@ var MAIN_READS_PARAMS = 1;
 // is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
 var DYNAMIC_BASE = -1;
 
-// Maximum seen global alignment; received from the backend.
-var MAX_GLOBAL_ALIGN = -1;
-
 // List of functions implemented in compiled code; received from the backend.
 var IMPLEMENTED_FUNCTIONS = [];
 
@@ -129,11 +126,6 @@ var MEM_INIT_IN_WASM = 0;
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = 0;
 
-// the total static allocation, that is, how much to bump the start of memory
-// for static globals. received from the backend, and possibly increased due
-// to JS static allocations
-var STATIC_BUMP = -1;
-
 // the total initial wasm table size.
 var WASM_TABLE_SIZE = 0;
 
@@ -183,9 +175,6 @@ var EXCEPTION_HANDLING = 0;
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
 // JS library symbols.
 var ONLY_CALC_JS_SYMBOLS = 0;
-
-// Used internally to store the starting value of the stack pointer.
-var STACK_BASE = 0;
 
 // Set to true if the program has a main function.  By default this is
 // enabled, but if `--no-entry` is passed, or if `_main` is not part of

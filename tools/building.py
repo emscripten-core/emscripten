@@ -21,6 +21,7 @@ from subprocess import STDOUT, PIPE
 from . import diagnostics
 from . import response_file
 from . import shared
+from . import webassembly
 from .toolchain_profiler import ToolchainProfiler
 from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_AR
@@ -30,7 +31,7 @@ from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
-from .shared import get_emscripten_temp_dir, exe_suffix, WebAssembly, which, is_c_symbol
+from .shared import get_emscripten_temp_dir, exe_suffix, which, is_c_symbol
 
 logger = logging.getLogger('building')
 
@@ -455,7 +456,7 @@ def link_to_object(linker_inputs, target):
   if not Settings.LTO:
     link_lld(linker_inputs + ['--relocatable'], target)
   else:
-    link(linker_inputs, target)
+    link_bitcode(linker_inputs, target)
 
 
 def link_llvm(linker_inputs, target):
@@ -463,9 +464,7 @@ def link_llvm(linker_inputs, target):
   cmd = [LLVM_LINK] + linker_inputs + ['-o', target]
   cmd = get_command_with_possible_response_file(cmd)
   print_compiler_stage(cmd)
-  output = run_process(cmd, stdout=PIPE).stdout
-  assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-  return target
+  check_call(cmd)
 
 
 def lld_flags_for_executable(external_symbol_list):
@@ -579,10 +578,9 @@ def link_lld(args, target, external_symbol_list=None):
   print_compiler_stage(cmd)
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)
-  return target
 
 
-def link(files, target, force_archive_contents=False, just_calculate=False):
+def link_bitcode(files, target, force_archive_contents=False):
   # "Full-featured" linking: looks into archives (duplicates lld functionality)
   actual_files = []
   # Tracking unresolveds is necessary for .a linking, see below.
@@ -715,13 +713,9 @@ def link(files, target, force_archive_contents=False, just_calculate=False):
   # Finish link
   # tolerate people trying to link a.so a.so etc.
   actual_files = unique_ordered(actual_files)
-  if just_calculate:
-    # just calculating; return the link arguments which is the final list of files to link
-    return actual_files
 
   logger.debug('emcc: linking: %s to %s', actual_files, target)
   link_llvm(actual_files, target)
-  return target
 
 
 def get_command_with_possible_response_file(cmd):
@@ -1378,11 +1372,11 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
   filename_bytes = asbytes(embedded_path)
-  contents = WebAssembly.toLEB(len(filename_bytes)) + filename_bytes
+  contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
     f.write(b'\0') # user section is code 0
-    f.write(WebAssembly.toLEB(section_size))
+    f.write(webassembly.toLEB(section_size))
     f.write(section_name)
     f.write(contents)
 
@@ -1574,6 +1568,21 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
     cmd += [infile]
   if outfile:
     cmd += ['-o', outfile]
+    if Settings.ERROR_ON_WASM_CHANGES_AFTER_LINK:
+      # emit some extra helpful text for common issues
+      extra = ''
+      # a plain -O0 build *almost* doesn't need post-link changes, except for
+      # legalization and longjmp. show a clear error for those (as the flags
+      # the user passed in are not enough to see what went wrong)
+      if shared.Settings.LEGALIZE_JS_FFI:
+        extra += '\nnote: to disable legalization (which requires changes after link) use -s WASM_BIGINT'
+      if shared.Settings.SUPPORT_LONGJMP:
+        extra += '\nnote: to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
+      if shared.Settings.OPT_LEVEL > 0:
+        extra += '\nnote: optimizations always require changes, build with -O0 instead'
+      if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+        extra += '\nnote: C++ exceptions always require changes'
+      exit_with_error('changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: ' + str(cmd) + extra)
   if debug:
     cmd += ['-g'] # preserve the debug info
   # if the features are not already handled, handle them
