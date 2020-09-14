@@ -6990,7 +6990,7 @@ int main() {
 
   @parameterized({
     'O0': ([],      [], ['waka'],  9766), # noqa
-    'O1': (['-O1'], [], ['waka'],  7886), # noqa
+    'O1': (['-O1'], [], ['waka'],  9093), # noqa
     'O2': (['-O2'], [], ['waka'],  7871), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'], [], [],          85), # noqa
@@ -7017,7 +7017,7 @@ int main() {
 
   @parameterized({
     'O0': ([],      [], ['waka'], 22849), # noqa
-    'O1': (['-O1'], [], ['waka'], 10533), # noqa
+    'O1': (['-O1'], [], ['waka'], 12578), # noqa
     'O2': (['-O2'], [], ['waka'], 10256), # noqa
     'O3': (['-O3'], [], [],        1999), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'], [], [],        2010), # noqa
@@ -9351,6 +9351,8 @@ int main() {
     ok(required_flags + ['-g'])
     # Function pointer calls from JS work too
     ok(required_flags, filename='hello_world_main_loop.cpp')
+    # -O1 is ok as we don't run wasm-opt there (but no higher, see below)
+    ok(required_flags + ['-O1'])
 
     # other builds fail with a standard message + extra details
     def fail(args, details):
@@ -9361,15 +9363,15 @@ int main() {
       self.assertContained(details, err)
 
     # plain -O0
-    legalization_message = 'to disable legalization (which requires changes after link) use -s WASM_BIGINT'
+    legalization_message = 'to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
     longjmp_message = 'to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
     fail([], legalization_message)
     fail(['-sWASM_BIGINT'], longjmp_message)
     fail(['-sSUPPORT_LONGJMP=0'], legalization_message)
     # optimized builds even without legalization
-    optimization_message = 'optimizations always require changes, build with -O0 instead'
-    fail(required_flags + ['-O1'], optimization_message)
+    optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(required_flags + ['-O2'], optimization_message)
+    fail(required_flags + ['-O3'], optimization_message)
     # exceptions fails until invokes are fixed
     fail(required_flags + ['-fexceptions'], 'C++ exceptions always require changes')
 

@@ -51,7 +51,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-O1:
 
 ``-O1``
-  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this removes various runtime assertions in JS and also runs the Binaryen optimizer (that makes link slower, so even if you compiled with a higher optimization level, you may want to link with ``-O0`` for fast incremental builds).
+  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this does not include various runtime assertions in JS that `-O0` would do.
 
 .. _emcc-O2:
 
