@@ -736,10 +736,10 @@ function createExportWrapper(name, fixedasm) {
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion
+// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion 
 // level of the wrapper function so that we only handle exceptions at the top level
 // letting the exception mechanics work uninterrupted at the inner level.
-// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that
+// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that 
 // we know to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
@@ -752,17 +752,15 @@ function instrumentWasmExportsWithAbort(exports) {
   for (var name in exports) {
     (function(name) {
       var original = exports[name];
-
+      
       // Wrap all functions, copy the other symbols.
-      // Don't wrap the asan helper functions since they are used during
-      // checkStackCookie and would causes our tests to fail.
-      if (typeof original === 'function' && name.indexOf('asan_c_') != 0) {
+      if (typeof original === 'function') {
         instExports[name] = function() {
           // Don't allow this function to be called if we're aborted!
-          if (ABORT) {
+          if (ABORT) { 
             throw "program has already aborted!";
           }
-
+          
 #if DISABLE_EXCEPTION_CATCHING != 1
           abortWrapperDepth += 1;
 #endif
@@ -779,6 +777,7 @@ function instrumentWasmExportsWithAbort(exports) {
             ) {
               throw e;
             }
+            
             abort("unhandled exception: " + [e, e.stack]);
           }
 #if DISABLE_EXCEPTION_CATCHING != 1
