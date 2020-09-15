@@ -3,9 +3,7 @@ __errno_location
 __growWasmMemory
 __wasm_call_ctors
 dynCall_jiji
-free
 main
-malloc
 stackAlloc
 stackRestore
 stackSave

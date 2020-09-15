@@ -4,9 +4,7 @@ __growWasmMemory
 __wasm_call_ctors
 dynCall_jiji
 fflush
-free
 main
-malloc
 stackAlloc
 stackRestore
 stackSave

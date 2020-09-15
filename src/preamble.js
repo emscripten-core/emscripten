@@ -187,6 +187,22 @@ function cwrap(ident, returnType, argTypes, opts) {
   }
 }
 
+#if ASSERTIONS
+// We used to include malloc/free by default in the past. Show a helpful error in
+// builds with assertions.
+#if !('_malloc' in IMPLEMENTED_FUNCTIONS)
+function _malloc() {
+  abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
+}
+#endif // malloc
+#if !('_free' in IMPLEMENTED_FUNCTIONS)
+function _free() {
+  // Show a helpful error since we used to include free by default in the past.
+  abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
+}
+#endif // free
+#endif // ASSERTIONS
+
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_NONE = 2; // Do not allocate
@@ -221,7 +237,7 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [_malloc,
+    ret = [{{{ ('_malloc' in IMPLEMENTED_FUNCTIONS) ? '_malloc' : 'null' }}},
 #if DECLARE_ASM_MODULE_EXPORTS
     stackAlloc,
 #else

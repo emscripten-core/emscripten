@@ -209,7 +209,7 @@ function lengthBytesUTF32(str) {
 // It is the responsibility of the caller to free() that memory.
 function allocateUTF8(str) {
   var size = lengthBytesUTF8(str) + 1;
-  var ret = _malloc(size);
+  var ret = {{{ makeMalloc('allocateUTF8', 'size') }}};
   if (ret) stringToUTF8Array(str, HEAP8, ret, size);
   return ret;
 }

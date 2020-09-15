@@ -6974,7 +6974,7 @@ someweirdtext
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js']
+    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc","_free"]', '--post-js', 'glue.js']
     if allow_memory_growth:
       self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-Wno-almost-asm']
 

@@ -9,10 +9,7 @@ $__unlock
 $__unlockfile
 $__wasm_call_ctors
 $add
-$dlfree
-$dlmalloc
 $fflush
-$sbrk
 $stackAlloc
 $stackRestore
 $stackSave

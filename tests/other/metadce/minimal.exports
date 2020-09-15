@@ -4,9 +4,7 @@ __growWasmMemory
 __wasm_call_ctors
 add
 fflush
-free
 global_val
-malloc
 stackAlloc
 stackRestore
 stackSave

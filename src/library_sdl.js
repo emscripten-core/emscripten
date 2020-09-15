@@ -1846,10 +1846,14 @@ var LibrarySDL = {
   SDL_SetError: function() {},
 
   SDL_malloc__sig: 'ii',
-  SDL_malloc: 'malloc',
+  SDL_malloc: function(size) {
+    return _malloc(size);
+  },
 
   SDL_free__sig: 'vi',
-  SDL_free: 'free',
+  SDL_free: function(ptr) {
+    _free(ptr);
+  },
 
   SDL_CreateRGBSurface__proxy: 'sync',
   SDL_CreateRGBSurface__sig: 'iiiiiiiii',
@@ -2653,7 +2657,7 @@ var LibrarySDL = {
     SDL.audio.paused = pauseOn;
   },
 
-  SDL_CloseAudio__deps: ['SDL_PauseAudio', 'free'],
+  SDL_CloseAudio__deps: ['SDL_PauseAudio'],
   SDL_CloseAudio__proxy: 'sync',
   SDL_CloseAudio__sig: 'v',
   SDL_CloseAudio: function() {

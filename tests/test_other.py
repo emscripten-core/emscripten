@@ -2398,7 +2398,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
                       '-o', 'test.js', '-O2', '--closure', '0',
                       '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]',
+                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest","_malloc","_free"]',
                       '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
@@ -2423,7 +2423,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
                       '-o', 'test.js', '-O2', '--closure', '1',
                       '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]',
+                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest","_malloc","_free"]',
                       '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
@@ -4775,24 +4775,6 @@ main(const int argc, const char * const * const argv)
     self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
                          self.run_js('a.out.js', assert_returncode=NON_ZERO))
 
-  def test_js_malloc(self):
-    create_test_file('src.cpp', r'''
-#include <stdio.h>
-#include <emscripten.h>
-
-int main() {
-  EM_ASM({
-    for (var i = 0; i < 1000; i++) {
-      var ptr = Module._malloc(1024 * 1024); // only done in JS, but still must not leak
-      Module._free(ptr);
-    }
-  });
-  printf("ok.\n");
-}
-    ''')
-    self.run_process([EMCC, 'src.cpp'])
-    self.assertContained('ok.', self.run_js('a.out.js', args=['C']))
-
   def test_locale_wrong(self):
     create_test_file('src.cpp', r'''
 #include <locale>
@@ -6730,7 +6712,7 @@ int main() {
       print(args, expect_names)
       try_delete('a.out.js')
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"'])
+      self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"', '-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]'])
       code = open('a.out.wasm', 'rb').read()
       if expect_names:
         # name section adds the name of malloc (there is also another one for the export)
@@ -6981,9 +6963,9 @@ int main() {
       self.assertFileContents(filename, data)
 
   @parameterized({
-    'O0': ([],      [], ['waka'],  9766), # noqa
-    'O1': (['-O1'], [], ['waka'],  9093), # noqa
-    'O2': (['-O2'], [], ['waka'],  7871), # noqa
+    'O0': ([],      [], ['waka'],   977), # noqa
+    'O1': (['-O1'], [], ['waka'],   467), # noqa
+    'O2': (['-O2'], [], ['waka'],   384), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'], [], [],          85), # noqa
     'Os': (['-Os'], [], [],          85), # noqa
@@ -7008,9 +6990,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
 
   @parameterized({
-    'O0': ([],      [], ['waka'], 22849), # noqa
-    'O1': (['-O1'], [], ['waka'], 12578), # noqa
-    'O2': (['-O2'], [], ['waka'], 10256), # noqa
+    'O0': ([],      [], ['waka'], 13768), # noqa
+    'O1': (['-O1'], [], ['waka'],  3954), # noqa
+    'O2': (['-O2'], [], ['waka'],  2511), # noqa
     'O3': (['-O3'], [], [],        1999), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'], [], [],        2010), # noqa
     'Oz': (['-Oz'], [], [],        2004), # noqa
@@ -9675,6 +9657,49 @@ int main () {
     # point.
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=[_main]', '-sSTANDALONE_WASM', '-c', path_from_root('tests', 'core', 'test_hello_world.c')])
+
+  def test_missing_malloc_export(self):
+    # we used to include malloc by default. show a clear error in builds with
+    # ASSERTIONS to help with any confusion when the user calls malloc/free
+    # directly
+    create_test_file('unincluded_malloc.c', r'''
+      #include <emscripten.h>
+      int main() {
+        EM_ASM({
+          try {
+            _malloc(1);
+          } catch(e) {
+            console.log('exception:', e);
+          }
+          try {
+            _free();
+          } catch(e) {
+            console.log('exception:', e);
+          }
+        });
+      }
+    ''')
+    self.do_runf('unincluded_malloc.c', (
+      "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
+      "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
+
+  def test_missing_malloc_export_indirect(self):
+    # we used to include malloc by default. show a clear error in builds with
+    # ASSERTIONS to help with any confusion when the user calls a JS API that
+    # requires malloc
+    create_test_file('unincluded_malloc.c', r'''
+      #include <emscripten.h>
+      int main() {
+        EM_ASM({
+          try {
+            allocateUTF8("foo");
+          } catch(e) {
+            console.log('exception:', e);
+          }
+        });
+      }
+    ''')
+    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
 
   def test_getrusage(self):
     self.do_runf(path_from_root('tests', 'other', 'test_getrusage.c'))

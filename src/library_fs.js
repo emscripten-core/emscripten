@@ -2026,7 +2026,7 @@ FS.staticInit();` +
     // page-aligned size, and clears the padding.
     mmapAlloc: function(size) {
       var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
-      var ptr = _malloc(alignedSize);
+      var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
       while (size < alignedSize) HEAP8[ptr + size++] = 0;
       return ptr;
     }
