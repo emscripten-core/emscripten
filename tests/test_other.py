@@ -2830,27 +2830,32 @@ myreade(){
     ''')
 
     self.run_process([EMCC, '-MMD', '-c', 'test.cpp', '-o', 'test.o'])
-
     self.assertExists('test.d')
     deps = open('test.d').read()
     # Look for ': ' instead of just ':' to not confuse C:\path\ notation with make "target: deps" rule. Not perfect, but good enough for this test.
     head, tail = deps.split(': ', 2)
-    assert 'test.o' in head, 'Invalid dependency target'
-    assert 'test.cpp' in tail and 'test.hpp' in tail, 'Invalid dependencies generated'
+    self.assertContained('test.o', head)
+    self.assertContained('test.cpp', tail)
+    self.assertContained('test.hpp', tail)
 
   def test_dependency_file_2(self):
     shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c'])
-    self.assertContained(open('test.d').read(), 'a.o: a.c\n')
+    self.assertContained('a.o: a.c\n', open('test.d').read())
 
     shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test2.d', '-c', '-o', 'test.o'])
-    self.assertContained(open('test2.d').read(), 'test.o: a.c\n')
+    self.assertContained('test.o: a.c\n', open('test2.d').read())
 
     shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
     ensure_dir('obj')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test3.d', '-c', '-o', 'obj/test.o'])
-    self.assertContained(open('test3.d').read(), 'obj/test.o: a.c\n')
+    self.assertContained('obj/test.o: a.c\n', open('test3.d').read())
+
+  def test_compilation_database(self):
+    shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
+    self.run_process([EMCC, 'a.c', '-MJ', 'hello.json', '-c', '-o', 'test.o'])
+    self.assertContained('"file": "a.c", "output": "test.o"', open('hello.json').read())
 
   def test_js_lib_quoted_key(self):
     create_test_file('lib.js', r'''
