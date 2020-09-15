@@ -34,7 +34,7 @@ extern size_t __heap_base;
 static intptr_t sbrk_val = (intptr_t)&__heap_base;
 
 intptr_t* emscripten_get_sbrk_ptr() {
-#ifdef __USING_EMSCRIPTEN_RELOCATABLE__
+#ifdef __PIC__
   // In relocatable code we may call emscripten_get_sbrk_ptr() during startup,
   // potentially *before* the setup of the dynamically-linked __heap_base, when
   // using SAFE_HEAP. (SAFE_HEAP instruments *all* memory accesses, so even the
