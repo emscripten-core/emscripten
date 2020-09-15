@@ -324,12 +324,12 @@ mergeInto(LibraryManager.library, {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
-        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
-        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValue('perror',  0, '0', 'i32') }}};
         wakeUp();
       }, function() {
-        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        {{{ makeSetValue('perror',  0, '1', 'i32') }}};
         wakeUp();
       }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
     });

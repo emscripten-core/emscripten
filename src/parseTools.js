@@ -908,7 +908,7 @@ function makeGetValueAsm(ptr, pos, type, unsigned) {
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, forceAsm) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
   sep = sep || ';';
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -974,44 +974,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join(sep);
 }
 
-function makeSetValueAsm(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
-  return makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, true);
-}
-
 var UNROLL_LOOP_MAX = 8;
-
-function makeSetValues(ptr, pos, value, type, num, align) {
-  function unroll(type, num, jump, value$) {
-    jump = jump || 1;
-    value$ = value$ || value;
-    return range(num).map(function(i) {
-      return makeSetValue(ptr, getFastValue(pos, '+', i*jump), value$, type);
-    }).join('; ');
-  }
-  // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
-  // TODO: optimize the case of numeric num but non-numeric value
-  if (!isNumber(num) || !isNumber(value) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
-    return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')|0';
-  }
-  num = parseInt(num);
-  value = parseInt(value);
-  if (value < 0) value += 256; // make it unsigned
-  var values = {
-    1: value,
-    2: value | (value << 8),
-    4: value | (value << 8) | (value << 16) | (value << 24)
-  };
-  var ret = [];
-  [4, 2, 1].forEach(function(possibleAlign) {
-    if (num == 0) return;
-    if (align >= possibleAlign) {
-      ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
-      pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
-      num %= possibleAlign;
-    }
-  });
-  return ret.join('; ');
-}
 
 var TYPED_ARRAY_SET_MIN = Infinity; // .set() as memcpy seems to just slow us down
 
