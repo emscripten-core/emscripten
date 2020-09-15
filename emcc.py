@@ -394,18 +394,35 @@ def find_output_arg(args):
   """
   outargs = []
   specified_target = None
-  use_next = False
-  for arg in args:
-    if use_next:
-      specified_target = arg
-      use_next = False
-      continue
+
+  arg_count = len(args)
+  i = 0
+
+  while i < arg_count:
+    arg = args[i]
+
     if arg == '-o':
-      use_next = True
-    elif arg.startswith('-o'):
+      if i != arg_count - 1:
+        specified_target = args[i + 1]
+      i += 2
+      continue
+
+    if arg.startswith('-o'):
       specified_target = arg[2:]
+      i += 1
+      continue
+
+    outargs.append(arg)
+
+    if arg == '-mllvm' and i != arg_count - 1:
+      # Explicitly skip over -mllvm arguments and their values because their
+      # values could potentially start with -o and be confused for output file
+      # specifiers.
+      outargs.append(arg[i + 1])
+      i += 2
     else:
-      outargs.append(arg)
+      i += 1
+
   return specified_target, outargs
 
 
@@ -1275,6 +1292,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        shared.Settings.SAFE_HEAP or \
        shared.Settings.MEMORYPROFILER:
       shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
+
+    if shared.Settings.MEMORYPROFILER:
+      shared.Settings.EXPORTED_FUNCTIONS += ['___heap_base']
 
     if shared.Settings.ASYNCIFY:
       # See: https://github.com/emscripten-core/emscripten/issues/12065
