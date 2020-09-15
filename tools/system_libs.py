@@ -61,7 +61,7 @@ def get_cflags(force_object_files=False):
   if shared.Settings.LTO and not force_object_files:
     flags += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
-    flags += ['-s', 'RELOCATABLE']
+    flags += ['-s', 'RELOCATABLE', '-D__USING_EMSCRIPTEN_RELOCATABLE__']
   return flags
 
 

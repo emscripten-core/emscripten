@@ -33,8 +33,17 @@ extern size_t __heap_base;
 
 static intptr_t sbrk_val = (intptr_t)&__heap_base;
 
-// TODO: remove this, but SAFE_HEAP depends on it currently
 intptr_t* emscripten_get_sbrk_ptr() {
+#ifdef __USING_EMSCRIPTEN_RELOCATABLE__
+  // In relocatable code we may call emscripten_get_sbrk_ptr() during startup,
+  // potentially *before* the setup of the dynamically-linked __heap_base, when
+  // using SAFE_HEAP. (SAFE_HEAP instruments *all* memory accesses, so even the
+  // code doing dynamic linking itself ends up instrumented, which is why we can
+  // get such an instrumented call before sbrk_val has its proper value.)
+  if (sbrk_val == 0) {
+    sbrk_val = (intptr_t)&__heap_base;
+  }
+#endif
   return &sbrk_val;
 }
 
@@ -50,7 +59,7 @@ void *sbrk(intptr_t increment) {
   intptr_t expected;
   while (1) {
 #endif // __EMSCRIPTEN_PTHREADS__
-    intptr_t* sbrk_ptr = &sbrk_val;
+    intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 #if __EMSCRIPTEN_PTHREADS__
     intptr_t old_brk = __c11_atomic_load((_Atomic(intptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else
