@@ -53,8 +53,28 @@ var LibraryDylink = {
     }
   },
 
+  // We support some amount of allocation during startup in the case of
+  // dynamic linking, which needs to allocate memory for dynamic libraries that
+  // are loaded. That has to happen before the main program can start to run,
+  // because the main program needs those linked in before it runs (so we can't
+  // use normally malloc from the main program to do these allocations).
+
+  // Allocate memory no even if malloc isn't ready yet.
+  $getMemory: function(size) {
+    // After the runtime is initialized, we must only use sbrk() normally.
+    if (runtimeInitialized)
+      return _malloc(size);
+    var ret = Module['___heap_base'];
+    var end = (ret + size + 15) & -16;
+#if ASSERTIONS
+    assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
+#endif
+    Module['___heap_base'] = end;
+    return ret;
+  },
+
   // Loads a side module from binary data
-  $loadWebAssemblyModule__deps: ['$createInvokeFunction'],
+  $loadWebAssemblyModule__deps: ['$createInvokeFunction', '$getMemory'],
   $loadWebAssemblyModule: function(binary, flags) {
     var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
     assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
