@@ -4480,8 +4480,8 @@ res64 - external 64\n''', header='''
     create_test_file('third.cpp', 'extern "C" int sidef() { return 36; }')
     create_test_file('fourth.cpp', 'extern "C" int sideg() { return 17; }')
 
-    self.run_process([EMCC, '-c', 'third.cpp', '-o', 'third.o'] + self.get_emcc_args())
-    self.run_process([EMCC, '-c', 'fourth.cpp', '-o', 'fourth.o'] + self.get_emcc_args())
+    self.run_process([EMCC, '-fPIC', '-c', 'third.cpp', '-o', 'third.o'] + self.get_emcc_args())
+    self.run_process([EMCC, '-fPIC', '-c', 'fourth.cpp', '-o', 'fourth.o'] + self.get_emcc_args())
     self.run_process([EMAR, 'rc', 'libfourth.a', 'fourth.o'])
 
     self.dylink_test(main=r'''
