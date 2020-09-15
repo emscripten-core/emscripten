@@ -47,13 +47,16 @@ and Binaryen, which Emscripten invokes, and
 Submitting patches
 ==================
 
-Patches should be submitted as *pull requests* to the **master** branch.
+Patches should be submitted as *pull requests* in the normal way on GitHub.
 
-.. note:: Before submitting your first patch, add yourself to the `AUTHORS <https://github.com/emscripten-core/emscripten/blob/master/AUTHORS>`_ file. By doing so, you agree to license your code under the project's :ref:`open source licenses (MIT/LLVM) <emscripten-license>`.
+.. note::
+   Together with your first patch, add yourself to the
+   `AUTHORS <https://github.com/emscripten-core/emscripten/blob/master/AUTHORS>`_
+   file. By doing so, you agree to license your code under the project's
+   :ref:`open source licenses (MIT/LLVM) <emscripten-license>`.
 
 When submitting patches, please:
 
-- Make pull requests to **master**.
 - Add an automatic test if you add any new functionality or fix a bug. Search
   in ``tests/*.py`` for related tests, as often the simplest thing is to add to
   an existing one. If you're not sure how to test your code, feel free to ask
@@ -94,6 +97,44 @@ covers virtually all Emscripten functionality. These tests are run on CI
 automatically when you create a pull request, and they should all pass. If you
 run into trouble with a test failure you can't fix, please let the developers
 know.
+
+Bisecting
+=========
+
+If you find a regression, bisection is often the fastest way to figure out what
+went wrong. This is true not just for finding an actual regression in Emscripten
+but also if your project stopped working when you upgrade, and you need to
+investigate if it's an Emscripten regression or something else.
+
+The normal ``git bisect`` workflow can work if you just need to bisect a single
+repository. For example, you can bisect only on the emscripten repo if you are on
+a range that all works with the same versions of LLVM and Binaryen (which was
+mentioned earlier, are two separate codebases that are depended on).
+
+If you have a large bisection range, you generally can't bisect a single repo.
+You can still bisect, though! To do that you need the emsdk and to understand
+how the
+`release process <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#release-processes>`_
+works for all the repos together. The key "trick" is that::
+
+     emsdk install tot
+
+can install an arbitrary build of emscripten: it installs the one identified
+in ``emscripten-releases-tot.txt``. You can therefore bisect on the
+`releases repo <https://chromium.googlesource.com/emscripten-releases>`_ which
+has a DEPS file that specifies what version of all the various repos are
+in which release. At each bisection step in this repo the git hash identifies a
+particular `tot` release (which when it was built, was tip-of-tree).
+
+For the actual bisection you can use
+`git bisect <https://git-scm.com/docs/git-bisect>`_. Each step in will download
+a complete build which is not a trivial download. However, at least the number
+of such steps will be logarithmic!
+
+This bisects down to a single commit in the releases repo. That commit will
+generally update a single sub-repo from one commit to another. That will often
+be a very short list or even a single commit. If it's more than one, you can
+bisect there while using a fixed build for the other repos.
 
 See also
 ========

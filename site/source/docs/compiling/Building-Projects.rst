@@ -207,6 +207,13 @@ You should see some notifications about SDL2 being used, and built if it wasn't 
 
 .. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/master/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
 
+.. note:: You can also build a library from ports in a manual way if you prefer
+    that, but then you will need to also apply the python logic that ports does.
+    That code (under ``tools/ports/``) may do things like ensure necessary JS
+    functions are included in the build, add exports, and so forth. In general,
+    it's better to use the ports version as it is what is tested and known to
+    work.
+
 Adding more ports
 -----------------
 
