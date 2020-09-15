@@ -344,7 +344,6 @@ function isExportedByForceFilesystem(name) {
          name === 'FS_createLink' ||
          name === 'FS_createDevice' ||
          name === 'FS_unlink' ||
-         name === 'getMemory' ||
          name === 'addRunDependency' ||
          name === 'removeRunDependency';
 }
@@ -403,7 +402,6 @@ function exportRuntime() {
     'setValue',
     'getValue',
     'allocate',
-    'getMemory',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
@@ -428,7 +426,6 @@ function exportRuntime() {
     'FS_createLink',
     'FS_createDevice',
     'FS_unlink',
-    'dynamicAlloc',
     'getLEB',
     'getFunctionTables',
     'alignFunctionTables',

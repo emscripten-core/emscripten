@@ -21,8 +21,6 @@ emcc can be influenced by a few environment variables:
 
   EMMAKEN_NO_SDK - Will tell emcc *not* to use the emscripten headers. Instead
                    your system headers will be used.
-
-  EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 """
 
 from __future__ import print_function
@@ -771,9 +769,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       arg = args[i][2:]
     return arg.split('=')[0].isupper()
 
-  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CXX)
-  CC = cxx_to_c_compiler(CXX)
-
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
     args += shlex.split(EMMAKEN_CFLAGS)
@@ -835,6 +830,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i + 1] = ''
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
+
+    CXX = shared.CLANG_CXX
+    CC = shared.CLANG_CC
+    if 'EMMAKEN_COMPILER' in os.environ:
+      diagnostics.warning('deprecated', 'EMMAKEN_COMPILER is deprecated.  Please set LLVM_ROOT in config file or EM_LLVM_ROOT in the environment')
+      CXX = os.environ['EMMAKEN_COMPILER']
+      CC = cxx_to_c_compiler(CXX)
 
     if '-print-search-dirs' in newargs:
       return run_process([CC, '-print-search-dirs'], check=False).returncode
@@ -949,7 +951,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         continue
 
       arg = newargs[i]
-      if arg in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
+      if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
                  '-Xpreprocessor', '-include', '-imacros', '-idirafter',
                  '-iprefix', '-iwithprefix', '-iwithprefixbefore',
                  '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
@@ -1262,10 +1264,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.MINIMAL_RUNTIME:
         exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
       # shared modules need memory utilities to allocate their memory
-      shared.Settings.EXPORTED_RUNTIME_METHODS += [
-        'allocate',
-        'getMemory',
-      ]
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['allocate']
       shared.Settings.ALLOW_TABLE_GROWTH = 1
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDynamicLibrary', '$preloadDylibs']
 
@@ -1306,7 +1305,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       cflags.append('-DEMSCRIPTEN')
 
-    # Treat the empty extension as an executable, to handle the commond case of `emcc -o foo foo.c`
     link_to_object = False
     if options.shared or options.relocatable:
       # Until we have a better story for actually producing runtime shared libraries
@@ -1316,13 +1314,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if final_suffix in EXECUTABLE_ENDINGS:
         diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
       else:
+        if options.shared:
+          diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
         link_to_object = True
-
-    if not link_to_object and not compile_only and final_suffix not in EXECUTABLE_ENDINGS and not shared.Settings.SIDE_MODULE:
-      # TODO(sbc): Remove this emscripten-specific special case.  We should only generate object
-      # file output with an explicit `-c` or `-r`.
-      diagnostics.warning('emcc', 'assuming object file output, based on output filename alone.  Add an explict `-c`, `-r` or `-shared` to avoid this warning')
-      link_to_object = True
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
@@ -2027,8 +2021,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if link_to_object:
       with ToolchainProfiler.profile_block('linking to object file'):
-        if final_suffix.lower() in ('.so', '.dylib', '.dll'):
-          diagnostics.warning('emcc', 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits a standard object file. This can then be linked into an emscripten SIDE_MODULE (using that flag) with suffix .wasm. You may also want to adapt your build system to use the more standard suffix for an object file (\'.o\'), which would avoid this warning.')
         logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
         if len(temp_files) == 1:
           temp_file = temp_files[0][1]
@@ -2038,6 +2030,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           building.link_to_object(linker_inputs, target)
         logger.debug('stopping after linking to object file')
         return 0
+
+    if final_suffix in ('.o', '.bc', '.so', '.dylib') and not shared.Settings.SIDE_MODULE:
+     diagnostics.warning('emcc', 'generating an executable with an object extension (%s).  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
 
     ## Continue on to create JavaScript
 
