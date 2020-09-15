@@ -9703,3 +9703,8 @@ int main () {
 
   def test_getrusage(self):
     self.do_runf(path_from_root('tests', 'other', 'test_getrusage.c'))
+
+  @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
+  def test_emmaken_compiler(self):
+    stderr = self.run_process([EMCC, '-c', path_from_root('tests', 'core', 'test_hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('warning: EMMAKEN_COMPILER is deprecated', stderr)

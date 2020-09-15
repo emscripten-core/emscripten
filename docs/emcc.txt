@@ -603,8 +603,6 @@ Environment variables
 
    * "EMMAKEN_JUST_CONFIGURE"
 
-   * "EMMAKEN_COMPILER"
-
    * "EMMAKEN_CFLAGS"
 
    * "EMCC_DEBUG"
