@@ -951,7 +951,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         continue
 
       arg = newargs[i]
-      if arg in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
+      if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
                  '-Xpreprocessor', '-include', '-imacros', '-idirafter',
                  '-iprefix', '-iwithprefix', '-iwithprefixbefore',
                  '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
