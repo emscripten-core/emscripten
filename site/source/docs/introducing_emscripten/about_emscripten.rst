@@ -16,7 +16,7 @@ toolchain to WebAssembly. Using Emscripten you can:
   `Lua <https://daurnimator.github.io/lua.vm.js/lua.vm.js.html>`_).
 
 Practically any **portable** C or C++ codebase can be compiled into WebAssembly
-using Emscripten, ranging from high performance games that need to render
+using Emscripten, ranging from high-performance games that need to render
 graphics, play sounds, and load and process files, through to application
 frameworks like Qt. Emscripten has already been used to convert a very long list
 of real-world codebases to WebAssembly, including commercial codebases like the
@@ -44,7 +44,7 @@ the :ref:`emccdoc`. This is a drop-in replacement for a standard compiler like *
 
 *Emcc* uses :term:`Clang` and LLVM to compile to WebAssembly. Emcc also
 emits JavaScript that provides API support to the compiled code. That JavaScript
-can be executed by :term:`node.js`, or from within HTML in a browser.
+can be executed by :term:`Node.js`, or from within HTML in a browser.
 
 The :ref:`Emscripten SDK <sdk-download-and-install>` is used to install the entire toolchain, including emcc and
 LLVM and so forth. The :ref:`emsdk` can be used on Linux, Windows or MacOS.
