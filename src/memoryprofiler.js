@@ -6,25 +6,26 @@
 
 #if MEMORYPROFILER
 
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
-
 var emscriptenMemoryProfiler = {
-  // If true, walks all allocated pointers at graphing time to print a detailed memory fragmentation map. If false, used
-  // memory is only graphed in one block (at the bottom of DYNAMIC memory space). Set this to false to improve performance at the expense of
-  // accuracy.
+  // If true, walks all allocated pointers at graphing time to print a detailed
+  // memory fragmentation map. If false, used memory is only graphed in one
+  // block (at the bottom of DYNAMIC memory space). Set this to false to improve
+  // performance at the expense of accuracy.
   detailedHeapUsage: true,
 
-  // Allocations of memory blocks larger than this threshold will get their detailed callstack captured and logged at runtime.
+  // Allocations of memory blocks larger than this threshold will get their
+  // detailed callstack captured and logged at runtime.
   trackedCallstackMinSizeBytes: (typeof new Error().stack === 'undefined') ? Infinity : 16*1024*1024,
 
-  // Allocations from call sites having more than this many outstanding allocated pointers will get their detailed callstack captured and logged at runtime.
+  // Allocations from call sites having more than this many outstanding
+  // allocated pointers will get their detailed callstack captured and logged at
+  // runtime.
   trackedCallstackMinAllocCount: (typeof new Error().stack === 'undefined') ? Infinity : 10000,
 
-  // If true, we hook into stackAlloc to be able to catch better estimate of the maximum used STACK space.
-  // You might only ever want to set this to false for performance reasons. Since stack allocations may occur often, this might impact performance.
+  // If true, we hook into stackAlloc to be able to catch better estimate of the
+  // maximum used STACK space.  You might only ever want to set this to false
+  // for performance reasons. Since stack allocations may occur often, this
+  // might impact performance.
   hookStackAlloc: true,
 
   // How often the log page is refreshed.
@@ -34,13 +35,16 @@ var emscriptenMemoryProfiler = {
   allocationsAtLoc: {},
   allocationSitePtrs: {},
 
-  // Stores an associative array of records HEAP ptr -> size so that we can retrieve how much memory was freed in calls to 
-  // _free() and decrement the tracked usage accordingly.
-  // E.g. sizeOfAllocatedPtr[address] returns the size of the heap pointer starting at 'address'.
+  // Stores an associative array of records HEAP ptr -> size so that we can
+  // retrieve how much memory was freed in calls to _free() and decrement the
+  // tracked usage accordingly.
+  // E.g. sizeOfAllocatedPtr[address] returns the size of the heap pointer
+  // starting at 'address'.
   sizeOfAllocatedPtr: {},
 
-  // Conceptually same as the above array, except this one tracks only pointers that were allocated during the application preRun step, which
-  // corresponds to the data added to the VFS with --preload-file.
+  // Conceptually same as the above array, except this one tracks only pointers
+  // that were allocated during the application preRun step, which corresponds
+  // to the data added to the VFS with --preload-file.
   sizeOfPreRunAllocatedPtr: {},
 
   resizeMemorySources: [],
@@ -59,8 +63,10 @@ var emscriptenMemoryProfiler = {
   // Grand total of memory currently allocated via malloc(). Decremented on free()s.
   totalMemoryAllocated: 0,
 
-  // The running count of the number of times malloc() and free() have been called in the app. Used to keep track of # of currently alive pointers.
-  // TODO: Perhaps in the future give a statistic of allocations per second to see how trashing memory usage is.
+  // The running count of the number of times malloc() and free() have been
+  // called in the app. Used to keep track of # of currently alive pointers.
+  // TODO: Perhaps in the future give a statistic of allocations per second to
+  // see how trashing memory usage is.
   totalTimesMallocCalled: 0,
   totalTimesFreeCalled: 0,
 
@@ -176,7 +182,7 @@ var emscriptenMemoryProfiler = {
     ++self.totalTimesMallocCalled;
 
     self.recordStackWatermark();
-    
+
     // Remember the size of the allocated block to know how much will be _free()d later.
     self.sizeOfAllocatedPtr[ptr] = size;
     // Also track if this was a _malloc performed at preRun time.
@@ -268,7 +274,7 @@ var emscriptenMemoryProfiler = {
       div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas><input type='checkbox' id='showHeapResizes' onclick='emscriptenMemoryProfiler.updateUi()'>Display heap and sbrk() resizes. Filter sbrk() and heap resize callstacks by keywords: <input type='text' id='sbrkFilter'>(reopen page with ?sbrkFilter=foo,bar query params to prepopulate this list)<br/>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
     }
     var populateHtmlBody = function() {
-      if (div) { 
+      if (div) {
         document.body.appendChild(div);
 
         function getValueOfParam(key) {
@@ -277,7 +283,7 @@ var emscriptenMemoryProfiler = {
         }
         // Allow specifying a precreated filter in page URL ?query parameters for convenience.
         if (document.getElementById('sbrkFilter').value = getValueOfParam('sbrkFilter')) {
-          document.getElementById('showHeapResizes').checked = true;  
+          document.getElementById('showHeapResizes').checked = true;
         }
       }
       var self = emscriptenMemoryProfiler;
@@ -295,24 +301,28 @@ var emscriptenMemoryProfiler = {
       setInterval(function() { emscriptenMemoryProfiler.updateUi() }, self.uiUpdateIntervalMsecs);
 
     };
-    // User might initialize memoryprofiler in the <head> of a page, when document.body does not yet exist. In that case, delay initialization
+    // User might initialize memoryprofiler in the <head> of a page, when
+    // document.body does not yet exist. In that case, delay initialization
     // of the memoryprofiler UI until page has loaded
     if (document.body) populateHtmlBody();
     else setTimeout(populateHtmlBody, 1000);
   },
 
-  // Given a pointer 'bytes', compute the linear 1D position on the graph as pixels, rounding down for start address of a block.
+  // Given a pointer 'bytes', compute the linear 1D position on the graph as
+  // pixels, rounding down for start address of a block.
   bytesToPixelsRoundedDown: function bytesToPixelsRoundedDown(bytes) {
     return (bytes * emscriptenMemoryProfiler.canvas.width * emscriptenMemoryProfiler.canvas.height / HEAP8.length) | 0;
   },
 
-  // Same as bytesToPixelsRoundedDown, but rounds up for the end address of a block. The different rounding will
-  // guarantee that even 'thin' allocations should get at least one pixel dot in the graph.
+  // Same as bytesToPixelsRoundedDown, but rounds up for the end address of a
+  // block. The different rounding will guarantee that even 'thin' allocations
+  // should get at least one pixel dot in the graph.
   bytesToPixelsRoundedUp: function bytesToPixelsRoundedUp(bytes) {
     return ((bytes * emscriptenMemoryProfiler.canvas.width * emscriptenMemoryProfiler.canvas.height + HEAP8.length - 1) / HEAP8.length) | 0;
   },
 
-  // Graphs a range of allocated memory. The memory range will be drawn as a top-to-bottom, left-to-right stripes or columns of pixels.
+  // Graphs a range of allocated memory. The memory range will be drawn as a
+  // top-to-bottom, left-to-right stripes or columns of pixels.
   fillLine: function fillLine(startBytes, endBytes) {
     var self = emscriptenMemoryProfiler;
     var startPixels = self.bytesToPixelsRoundedDown(startBytes);
@@ -339,7 +349,8 @@ var emscriptenMemoryProfiler = {
       y1 = self.canvas.height - 1;
       --x1;
     }
-    // After filling the previous leftovers with one-pixel-wide lines, we are only left with a rectangular shape of full columns to blit.
+    // After filling the previous leftovers with one-pixel-wide lines, we are
+    // only left with a rectangular shape of full columns to blit.
     self.drawContext.fillRect(x0, 0, x1 - x0 + 1, self.canvas.height);
   },
 
@@ -485,17 +496,22 @@ var emscriptenMemoryProfiler = {
     html += '. STACK_MAX: ' + toHex(STACK_MAX, width) + '.';
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(Math.abs(self.stackTopWatermark - STACK_BASE));
 
-    var DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
-    // During startup sbrk may not be defined yet. Ideally we should probably
-    // refactor memoryprofiler so that it only gets here after compiled code is
-    // ready to be called. For now, if the runtime is not yet initialized,
-    // assume the brk is right after the stack.
-    var DYNAMICTOP = runtimeInitialized ? _sbrk() : STACK_BASE;
-    html += "<br />DYNAMIC memory area size: " + self.formatBytes(DYNAMICTOP - DYNAMIC_BASE);
-    html += ". DYNAMIC_BASE: " + toHex(DYNAMIC_BASE, width);
-    html += ". DYNAMICTOP: " + toHex(DYNAMICTOP, width) + ".";
-    html += "<br />" + colorBar("#6699CC") + colorBar("#003366") + colorBar("#0000FF") + "DYNAMIC memory area used: " + self.formatBytes(self.totalMemoryAllocated) + " (" + (self.totalMemoryAllocated * 100 / (HEAP8.length - DYNAMIC_BASE)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
-    html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + self.formatBytes(DYNAMICTOP - DYNAMIC_BASE - self.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + self.formatBytes(HEAP8.length - DYNAMICTOP) + " (" + ((HEAP8.length - DYNAMIC_BASE - self.totalMemoryAllocated) * 100 / (HEAP8.length - DYNAMIC_BASE)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
+    if (runtimeInitialized) {
+      // During startup sbrk may not be defined yet. Ideally we should probably
+      // refactor memoryprofiler so that it only gets here after compiled code is
+      // ready to be called. For now, if the runtime is not yet initialized,
+      // assume the brk is right after the stack.
+      var heap_base = Module['___heap_base'];
+      var heap_end = _sbrk();
+    } else {
+      var heap_base = STACK_BASE;
+      var heap_end = STACK_BASE;
+    }
+    html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
+    html += ". start: " + toHex(heap_base, width);
+    html += ". end: " + toHex(heap_end, width) + ".";
+    html += "<br />" + colorBar("#6699CC") + colorBar("#003366") + colorBar("#0000FF") + "DYNAMIC memory area used: " + self.formatBytes(self.totalMemoryAllocated) + " (" + (self.totalMemoryAllocated * 100 / (HEAP8.length - heap_base)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
+    html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + self.formatBytes(heap_end - heap_base - self.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + self.formatBytes(HEAP8.length - heap_end) + " (" + ((HEAP8.length - heap_base - self.totalMemoryAllocated) * 100 / (HEAP8.length - heap_base)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
 
     var preloadedMemoryUsed = 0;
     for (i in self.sizeOfPreRunAllocatedPtr) preloadedMemoryUsed += self.sizeOfPreRunAllocatedPtr[i]|0;
@@ -518,7 +534,7 @@ var emscriptenMemoryProfiler = {
     self.fillLine(Math.min(STACK_BASE, STACKTOP), Math.max(STACK_BASE, STACKTOP));
 
     self.drawContext.fillStyle = "#70FF70";
-    self.fillLine(DYNAMIC_BASE, DYNAMICTOP);
+    self.fillLine(heap_base, heap_end);
 
     if (self.detailedHeapUsage) {
       self.printAllocsWithCyclingColors(["#6699CC", "#003366", "#0000FF"], self.sizeOfAllocatedPtr);
@@ -526,7 +542,7 @@ var emscriptenMemoryProfiler = {
     } else {
       // Print only a single naive blob of individual allocations. This will not be accurate, but is constant-time.
       self.drawContext.fillStyle = "#0000FF";
-      self.fillLine(DYNAMIC_BASE, DYNAMIC_BASE + self.totalMemoryAllocated);
+      self.fillLine(heap_base, heap_base + self.totalMemoryAllocated);
     }
 
     if (document.getElementById('showHeapResizes').checked) {
@@ -613,7 +629,8 @@ var emscriptenMemoryProfiler = {
   }
 };
 
-// Backwards compatibility with previously compiled code. Don't call this anymore!
+// Backwards compatibility with previously compiled code. Don't call this
+// anymore!
 function memoryprofiler_add_hooks() { emscriptenMemoryProfiler.initialize(); }
 
 if (typeof Module !== 'undefined' && typeof document !== 'undefined' && typeof window !== 'undefined' && typeof process === 'undefined') emscriptenMemoryProfiler.initialize();

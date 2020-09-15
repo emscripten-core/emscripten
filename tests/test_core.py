@@ -7679,7 +7679,7 @@ Module['onRuntimeInitialized'] = function() {
           if (typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
-              typeof DYNAMIC_BASE === 'number') {
+              typeof Module['___heap_base'] === 'number') {
              out('able to run memprof');
            } else {
              out('missing the required variables to run memprof');
@@ -7687,7 +7687,7 @@ Module['onRuntimeInitialized'] = function() {
         }
       });
     ''')
-    self.emcc_args += ['--js-library', 'lib.js']
+    self.emcc_args += ['--memoryprofiler', '--js-library', 'lib.js']
     self.do_runf('main.cpp', 'able to run memprof')
 
   def test_fs_dict(self):
