@@ -29,29 +29,12 @@
 #define SET_ERRNO()
 #endif
 
-// FIXME just use  = &sbrk_val  here. That is simpler, but currently it has a
-// code size cost for tiny programs that don't use malloc. We link in malloc by
-// default, and depend on metadce to remove it when not used, which we can do,
-// but a static assignment here would mean a nonzero value in a memory segment,
-// which metadce cannot remove (it can remove code, but not data in segments).
-// The current code allows tiny programs without malloc to have no data segments
-// at all, while programs that use malloc may suffer a few more bytes of code
-// size, but that's negligible compared to malloc itself.
-// TODO: when we stop including malloc by default we can use the simpler way.
-static intptr_t sbrk_val = 0;
+extern size_t __heap_base;
 
+static intptr_t sbrk_val = (intptr_t)&__heap_base;
+
+// TODO: remove this, but SAFE_HEAP depends on it currently
 intptr_t* emscripten_get_sbrk_ptr() {
-  extern size_t __heap_base;
-  intptr_t* sbrk_ptr = &sbrk_val;
-#if __EMSCRIPTEN_PTHREADS__
-  if (__c11_atomic_load((_Atomic(intptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST) == 0) {
-    __c11_atomic_store((_Atomic(intptr_t)*)sbrk_ptr, (intptr_t)&__heap_base, __ATOMIC_SEQ_CST);
-  }
-#else
-  if (sbrk_val == 0) {
-    sbrk_val = (intptr_t)&__heap_base;
-  }
-#endif
   return &sbrk_val;
 }
 
@@ -67,7 +50,7 @@ void *sbrk(intptr_t increment) {
   intptr_t expected;
   while (1) {
 #endif // __EMSCRIPTEN_PTHREADS__
-    intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
+    intptr_t* sbrk_ptr = &sbrk_val;
 #if __EMSCRIPTEN_PTHREADS__
     intptr_t old_brk = __c11_atomic_load((_Atomic(intptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else
