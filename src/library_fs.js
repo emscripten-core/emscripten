@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
+  $FS__deps: ['$setErrNo', '$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -1344,33 +1344,7 @@ FS.staticInit();` +
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
-      var random_device;
-      if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
-        // for modern web browsers
-        var randomBuffer = new Uint8Array(1);
-        random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
-      } else
-#if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) {
-        // for nodejs with or without crypto support included
-        try {
-          var crypto_module = require('crypto');
-          // nodejs has crypto support
-          random_device = function() { return crypto_module['randomBytes'](1)[0]; };
-        } catch (e) {
-          // nodejs doesn't have crypto support
-        }
-      } else
-#endif // ENVIRONMENT_MAY_BE_NODE
-      {}
-      if (!random_device) {
-        // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
-#if ASSERTIONS
-        random_device = function() { abort("no cryptographic support found for random_device. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
-#else
-        random_device = function() { abort("random_device"); };
-#endif
-      }
+      var random_device = getRandomDevice();
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);
       // we're not going to emulate the actual shm device,
