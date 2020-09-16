@@ -166,6 +166,11 @@ def get_wasm_libc_rt_files():
   return math_files + other_files + iprintf_files
 
 
+def in_temp(*args):
+  """Gets the path of a file in our temporary directory."""
+  return os.path.join(shared.get_emscripten_temp_dir(), *args)
+
+
 class Library(object):
   """
   `Library` is the base class of all system libraries.
@@ -301,10 +306,6 @@ class Library(object):
     elif os.path.isfile(default_symbols_file):
       self.symbols = read_symbols(default_symbols_file)
 
-  def in_temp(cls, *args):
-    """Gets the path of a file in our temporary directory."""
-    return os.path.join(shared.get_emscripten_temp_dir(), *args)
-
   def can_use(self):
     """
     Whether this library can be used in the current environment.
@@ -362,7 +363,7 @@ class Library(object):
     objects = []
     cflags = self.get_cflags()
     for src in self.get_files():
-      o = self.in_temp(shared.unsuffixed_basename(src) + '.o')
+      o = in_temp(shared.unsuffixed_basename(src) + '.o')
       ext = shared.suffix(src)
       if ext in ('.s', '.c'):
         cmd = [shared.EMCC]
@@ -377,7 +378,7 @@ class Library(object):
 
   def build(self):
     """Builds the library and returns the path to the file."""
-    out_filename = self.in_temp(self.get_filename())
+    out_filename = in_temp(self.get_filename())
     create_lib(out_filename, self.build_objects())
     return out_filename
 
@@ -1375,7 +1376,7 @@ def warn_on_unexported_main(symbolses):
         return
 
 
-def calculate(temp_files, in_temp, cxx, forced, stdout_=None, stderr_=None):
+def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
   global stdout, stderr
   stdout = stdout_
   stderr = stderr_
