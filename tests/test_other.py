@@ -9707,7 +9707,21 @@ int main () {
     self.assertContained('warning: EMMAKEN_COMPILER is deprecated', stderr)
 
   def test_llvm_option_dash_o(self):
-    # emcc used to interpret -mllvm's option value as the output file if it began with -o
-    self.run_process([EMCC, '-o', 'llvm_option_dash_o_output', '-mllvm', '-opt-bisect-limit=1', path_from_root('tests', 'hello_world.c')])
+    # emcc used to interpret -mllvm's option value as the output file if it
+    # began with -o
+    stderr = self.run_process(
+      [EMCC, '-v', '-o', 'llvm_option_dash_o_output', '-mllvm',
+       '-opt-bisect-limit=1', path_from_root('tests', 'hello_world.c')],
+      stderr=PIPE).stderr
+
     self.assertExists('llvm_option_dash_o_output')
     self.assertNotExists('pt-bisect-limit=1')
+    self.assertContained(' -mllvm -opt-bisect-limit=1 ', stderr)
+
+    # Regression test for #12236: the '-mllvm' argument was indexed instead of
+    # its value, and the index was out of bounds if the argument was sixth or
+    # further on the command line
+    self.run_process(
+      [EMCC, '-DFOO', '-DBAR', '-DFOOBAR', '-DBARFOO',
+       '-o', 'llvm_option_dash_o_output', '-mllvm', '-opt-bisect-limit=1',
+       path_from_root('tests', 'hello_world.c')])
