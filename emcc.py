@@ -2698,7 +2698,7 @@ def do_binaryen(target, options, memfile, wasm_target,
     save_intermediate_with_wasm('closure', wasm_target)
 
   if final_js and options.use_closure_compiler:
-    run_closure_compiler(final_js)
+    run_closure_compiler()
 
   symbols_file = shared.replace_or_append_suffix(target, '.symbols') if options.emit_symbol_map else None
 
