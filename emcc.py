@@ -257,11 +257,11 @@ class EmccOptions(object):
     self.relocatable = False
 
 
-def use_source_map(options):
+def use_source_map():
   return shared.Settings.DEBUG_LEVEL >= 4
 
 
-def will_metadce(options):
+def will_metadce():
   # The metadce JS parsing code does not currently support the JS that gets generated
   # when assertions are enabled.
   if shared.Settings.ASSERTIONS:
@@ -300,12 +300,12 @@ def minify_whitespace():
   return shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL == 0
 
 
-def embed_memfile(options):
+def embed_memfile():
   return (shared.Settings.SINGLE_FILE or
           (shared.Settings.MEM_INIT_METHOD == 0 and
            (not shared.Settings.MAIN_MODULE and
             not shared.Settings.SIDE_MODULE and
-            not use_source_map(options))))
+            not use_source_map())))
 
 
 def expand_byte_size_suffixes(value):
@@ -820,7 +820,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def optimizing(opts):
     return '-O0' not in opts
 
-  def need_llvm_debug_info(options):
+  def need_llvm_debug_info():
     return shared.Settings.DEBUG_LEVEL >= 3
 
   with ToolchainProfiler.profile_block('parse arguments and setup'):
@@ -882,7 +882,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
 
     # TODO: support source maps with js_transform
-    if options.js_transform and use_source_map(options):
+    if options.js_transform and use_source_map():
       logger.warning('disabling source maps because a js transform is being done')
       shared.Settings.DEBUG_LEVEL = 3
 
@@ -1636,7 +1636,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
     # Things that process the JS after this operation would be done must disable this.
     # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names.
-    if will_metadce(options) and \
+    if will_metadce() and \
         shared.Settings.OPT_LEVEL >= 2 and \
         shared.Settings.DEBUG_LEVEL <= 2 and \
         not shared.Settings.LINKABLE and \
@@ -1797,7 +1797,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options.binaryen_passes += backend_binaryen_passes()
 
-    if shared.Settings.WASM2JS and use_source_map(options):
+    if shared.Settings.WASM2JS and use_source_map():
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
 
     if shared.Settings.NODE_CODE_CACHING:
@@ -2115,7 +2115,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         assert shared.Settings.MEM_INIT_METHOD != 1
 
-      if embed_memfile(options):
+      if embed_memfile():
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
       emscripten.run(final, final + '.o.js', shared.replace_or_append_suffix(target, '.mem'))
@@ -2127,7 +2127,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       temp_basename = unsuffixed(final)
       wasm_temp = temp_basename + '.wasm'
       safe_move(wasm_temp, wasm_target)
-      if use_source_map(options):
+      if use_source_map():
         safe_move(wasm_temp + '.map', wasm_source_map_target)
 
     # exit block 'emscript'
@@ -2271,7 +2271,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
 
-      if embed_memfile(options) and memfile:
+      if embed_memfile() and memfile:
         shared.try_delete(memfile)
 
       for f in generated_text_files_with_native_eols:
@@ -2602,7 +2602,7 @@ def do_binaryen(target, options, memfile, wasm_target,
                 wasm_source_map_target, misc_temp_files):
   global final
   logger.debug('using binaryen')
-  if use_source_map(options) and not shared.Settings.SOURCE_MAP_BASE:
+  if use_source_map() and not shared.Settings.SOURCE_MAP_BASE:
     logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   binaryen_bin = building.get_binaryen_bin()
   # whether we need to emit -g (function name debug info) in the final wasm
@@ -2618,7 +2618,7 @@ def do_binaryen(target, options, memfile, wasm_target,
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  if options.binaryen_passes or use_source_map(options):
+  if options.binaryen_passes or use_source_map():
     # if we need to strip certain sections, and we have wasm-opt passes
     # to run anyhow, do it with them.
     if strip_debug:
@@ -2672,7 +2672,7 @@ def do_binaryen(target, options, memfile, wasm_target,
     save_intermediate_with_wasm('preclean', wasm_target)
     final = building.minify_wasm_js(js_file=final,
                                     wasm_file=wasm_target,
-                                    expensive_optimizations=will_metadce(options),
+                                    expensive_optimizations=will_metadce(),
                                     minify_whitespace=minify_whitespace(),
                                     debug_info=intermediate_debug_info)
     save_intermediate_with_wasm('postclean', wasm_target)
