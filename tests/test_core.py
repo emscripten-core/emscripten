@@ -6468,7 +6468,7 @@ return malloc(size);
       # emulation code. when ASSERTIONS are enabled we show a clear message, but
       # in optimized builds we don't waste code size on that, and the JS engine
       # shows a generic error.
-      expected = 'table.grow is not a function'
+      expected = 'wasmTable.grow is not a function'
 
     self.do_runf(src, expected, assert_returncode=NON_ZERO)
 
