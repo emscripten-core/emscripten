@@ -161,6 +161,30 @@ def run_on_chunk(command):
     raise Exception()
 
 
+# Given a set of functions of form (ident, text), and a preferred chunk size,
+# generates a set of chunks for parallel processing and caching.
+def chunkify(funcs, chunk_size):
+  with ToolchainProfiler.profile_block('chunkify'):
+    chunks = []
+    # initialize reasonably, the rest of the funcs we need to split out
+    curr = []
+    total_size = 0
+    for i in range(len(funcs)):
+      func = funcs[i]
+      curr_size = len(func[1])
+      if total_size + curr_size < chunk_size:
+        curr.append(func)
+        total_size += curr_size
+      else:
+        chunks.append(curr)
+        curr = [func]
+        total_size = curr_size
+    if curr:
+      chunks.append(curr)
+      curr = None
+    return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
+
+
 def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=False):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
@@ -277,7 +301,7 @@ EMSCRIPTEN_FUNCS();
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
       chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
-      chunks = shared.chunkify(funcs, chunk_size)
+      chunks = chunkify(funcs, chunk_size)
     else:
       # keep same chunks as before
       chunks = [f[1] for f in funcs]

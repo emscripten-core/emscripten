@@ -1554,6 +1554,3 @@ verify_settings()
 Cache = cache.Cache(CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
-
-# compatibility with existing emcc, etc. scripts
-chunkify = cache.chunkify
