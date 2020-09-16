@@ -817,7 +817,7 @@ def emsdk_cflags(user_args, cxx):
   return c_opts + include_directive(c_include_paths)
 
 
-def get_asmflags(user_args):
+def get_asmflags():
   return ['-target', get_llvm_target()]
 
 
