@@ -1746,6 +1746,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if 'address' in sanitize:
       shared.Settings.USE_ASAN = 1
+      if not shared.Settings.UBSAN_RUNTIME:
+        shared.Settings.UBSAN_RUNTIME = 2
 
       shared.Settings.EXPORTED_FUNCTIONS += [
         '_emscripten_builtin_memset',
