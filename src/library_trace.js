@@ -266,9 +266,6 @@ var LibraryTracing = {
         'stack_base':   STACK_BASE,
         'stack_top':    STACKTOP,
         'stack_max':    STACK_MAX,
-#if !MINIMAL_RUNTIME
-        'dynamic_base': DYNAMIC_BASE,
-#endif
         'dynamic_top':  _sbrk(),
         'total_memory': HEAP8.length
       };

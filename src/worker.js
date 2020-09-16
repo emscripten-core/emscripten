@@ -72,11 +72,6 @@ this.onmessage = function(e) {
       var imports = {};
 #endif
 
-      // Initialize the global "process"-wide fields:
-#if !MINIMAL_RUNTIME
-      Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
-#endif
-
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
 #if MODULARIZE
