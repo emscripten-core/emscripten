@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.4: 09/16/2020
+-----------------
+- First release with Bazel support.
 - Stop including `malloc` and `free` by default. If you need access to them from
   JS, you must export them manually using
   `-s EXPORTED_FUNCTIONS=['_malloc', ..]`.
