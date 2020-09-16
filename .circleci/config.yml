@@ -330,7 +330,7 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: pip3 install flake8==3.7.8 flake8-unused-arguments==0.0.6
+      - run: pip3 install -r requirements.txt
       - run: python3 -m flake8 --show-source --statistics
   test-sanity:
     executor: bionic

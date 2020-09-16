@@ -1,0 +1,5 @@
+# Currently these requirements only needed by emscripten developers
+# and are not needed by users of the toolchian.
+# Install with `pip3 install -r requirements.txt`
+flake8==3.7.8
+flake8-unused-arguments==0.0.6
