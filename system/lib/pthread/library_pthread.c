@@ -418,7 +418,16 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeou
     double waitEndTime = now + timeoutMSecs;
     emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
     while (!done && now < waitEndTime) {
-      r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
+      // Wait at most one second in each loop iteration. That keeps CPU load low
+      // while also avoids a possible race condition, as call->operationDone
+      // can be set *after* we checked it but *before* we do the futex_wait. The
+      // futex_wait is not aware of call->operationDone which means if we wait
+      // forever there we'd never return to the loop and get another chance to
+      // check.
+      // FIXME: this does mean we can end up with an almost 1 second wait that
+      // is unnecessary in some cases. Exponential backoff may make more sense.
+      double currWait = fmin(waitEndTime - now, 1000);
+      r = emscripten_futex_wait(&call->operationDone, 0, currWait);
       done = emscripten_atomic_load_u32(&call->operationDone);
       now = emscripten_get_now();
     }
