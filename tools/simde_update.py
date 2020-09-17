@@ -21,7 +21,7 @@ tmpdir = get_emscripten_temp_dir()
 emdir = path.join(path.dirname(path.realpath(__file__)), "..")
 
 
-def main(simde_path=None):
+def main():
   if len(sys.argv) == 2:
     simde_dir = sys.argv[1]
   elif len(sys.argv) == 1:

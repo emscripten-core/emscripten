@@ -890,7 +890,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
 
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
-def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
+def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
   return
   # TODO re-enable

@@ -347,12 +347,10 @@ function updateGlobalBufferAndViews(buf) {
 
 var STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
-    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
+    STACK_MAX = {{{ getQuoted('STACK_MAX') }}};
 
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
-assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if RELOCATABLE
@@ -361,7 +359,7 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 // initialize sbrk (the main module is relocatable itself, and so it does not
 // have __heap_base hardcoded into it - it receives it from JS as an extern
 // global, basically).
-Module['___heap_base'] = DYNAMIC_BASE;
+Module['___heap_base'] = {{{ getQuoted('HEAP_BASE') }}};
 #endif // RELOCATABLE
 
 #if USE_PTHREADS
@@ -373,7 +371,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
-  // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
 }
 #endif
 
