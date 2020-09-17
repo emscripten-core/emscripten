@@ -182,5 +182,6 @@
   "glMapBufferRange": ["malloc", "free"],
   "glGetString": ["malloc", "free"],
   "glGetStringi": ["malloc", "free"],
-  "syslog": ["malloc", "free"]
+  "syslog": ["malloc", "free"],
+  "_ZNKSt3__28ios_base6getlocEv": ["malloc", "free"]
 }

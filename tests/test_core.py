@@ -5551,6 +5551,7 @@ PORT: 3979
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec.cpp')
 
   def test_random_device(self):
+    self.maybe_closure()
     self.do_run_in_out_file_test('tests', 'core', 'test_random_device.cpp')
 
   def test_reinterpreted_ptrs(self):
