@@ -18,8 +18,8 @@ public:
 };
 
 random_device::random_device()
-    : __f_(open("/dev/urandom", O_RDONLY))
 {
+    __f_ = open("/dev/urandom", O_RDONLY);
     if (__f_ < 0) abort();
 }
 
@@ -49,20 +49,24 @@ random_device::operator()()
     return r;
 }
 
-void* ptr;
-
 int main() {
   int total = 0;
-  for (int i = 0; i < 128; i++) {
-    EM_ASM({ out($0, $1) }, i, total);
-    for (int j = 0; j < 128; j++) {
-      auto* rd = new random_device;
-      total += (*rd)();
-      ptr = (void*)rd; // make sure the optimizer doesn't remove the allocation
+  for (int i = 0; i < 1024; i++) {
+    // printf causes proxying
+    printf("%d %d\n", i, total);
+    for (int j = 0; j < 1024; j++) {
+      // allocation uses a mutex
+      auto* rd = new random_device();
+      // reading data causes proxying
+      for (int k = 0; k < 4; k++) {
+        total += (*rd)();
+      }
+      // make sure the optimizer doesn't remove the allocation
+      EM_ASM({ out("iter") }, rd);
       delete rd;
     }
   }
-  EM_ASM({ out("done") });
+  printf("done: %d", total);
 #ifdef REPORT_RESULT
 	REPORT_RESULT(0);
 #endif
