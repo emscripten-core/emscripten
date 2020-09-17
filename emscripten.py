@@ -421,18 +421,15 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
 
   # memory and global initializers
 
-  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
-
-  if shared.Settings.MINIMAL_RUNTIME:
-    # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
-    global_initializers = ''
-  else:
+  # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
+  if not shared.Settings.MINIMAL_RUNTIME:
+    global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
     # In regular runtime, global initializers are recorded in an __ATINIT__ array.
-    global_initializers = '''/* global initializers */ %s __ATINIT__.push(%s);
-''' % ('if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
-       global_initializers)
+    global_initializers  = '__ATINIT__.push(%s);' % global_initializers
+    if shared.Settings.USE_PTHREADS:
+      global_initializers = 'if (!ENVIRONMENT_IS_PTHREAD) ' + global_initializers
 
-  pre += '\n' + global_initializers + '\n'
+    pre += '\n' + global_initializers + '\n'
 
   pre = apply_memory(pre, metadata)
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
