@@ -17,12 +17,10 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 	// may be set to the value we want *just* before the __timedwait. __timedwait
 	// does not check if the value is what we want, it just checks for a wake on
 	// that address, so it would wait forever.
-	// FIXME waiting for 1 second avoids too busy a wait, but also means that we
-	// may wait up to 1 second in that rare race condition. A more complex
-	// exponential backoff may make more sense.
+	// TODO what is a good amount of time to wait here?
 	// TODO is this due to limitations of futexes on the Web platform, or our
 	// implementation of them, or is it a general issue in musl?
-	struct timespec default_at = {.tv_sec = 1, .tv_nsec = 0};
+	struct timespec default_at = {.tv_sec = 0, .tv_nsec = 1000};
 	if (!at) at = &default_at;
 #endif
 
