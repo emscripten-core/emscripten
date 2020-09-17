@@ -174,6 +174,7 @@ static em_queued_call* em_queued_call_malloc() {
     call->operationDone = 0;
     call->functionPtr = 0;
     call->satelliteData = 0;
+    call->targetThread = 0;
   }
   return call;
 }
@@ -420,6 +421,9 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeou
     while (!done && now < waitEndTime) {
       r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
       done = emscripten_atomic_load_u32(&call->operationDone);
+      if (!done) {
+        _emscripten_notify_thread_queue(call->targetThread, emscripten_main_browser_thread_id());
+      }
       now = emscripten_get_now();
     }
     emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
@@ -754,6 +758,7 @@ EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(int index, 
   c->calleeDelete = 1-sync;
   c->functionEnum = EM_PROXIED_JS_FUNCTION;
   c->functionPtr = (void*)index;
+  c->targetThread = emscripten_main_browser_thread_id();
   // We write out the JS doubles into args[], which must be of appropriate size - JS will assume that.
   assert(sizeof(em_variant_val) == sizeof(double));
   assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
@@ -781,6 +786,7 @@ void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* f
     return;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
+  q->targetThread = emscripten_main_browser_thread_id();
 
   EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
@@ -818,6 +824,7 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
     return NULL;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
+  q->targetThread = emscripten_main_browser_thread_id();
 
   EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
@@ -864,6 +871,7 @@ int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
   q->satelliteData = satellite;
+  q->targetThread = targetThread;
 
   EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;

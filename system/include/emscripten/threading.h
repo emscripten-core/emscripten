@@ -152,6 +152,9 @@ typedef struct em_queued_call
   // after it has been executed. If false, the caller is in control of the
   // memory.
   int calleeDelete;
+
+  // The thread on which to perform the call.
+  void* targetThread;
 } em_queued_call;
 
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
