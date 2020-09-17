@@ -1480,12 +1480,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # so setErrNo JS library function can report errno back to C
       shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
-    if shared.Settings.GLOBAL_BASE < 0:
-      # default if nothing else sets it
-      # a higher global base is useful for optimizing load/store offsets, as it
-      # enables the --post-emscripten pass
-      shared.Settings.GLOBAL_BASE = 1024
-
     if shared.Settings.SAFE_HEAP:
       # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr']
@@ -1764,10 +1758,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.ASAN_SHADOW_SIZE != -1:
         diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
 
+      if shared.Settings.GLOBAL_BASE != -1:
+        exit_with_error("ASan does not support custom GLOBAL_BASE")
+
       max_mem = shared.Settings.INITIAL_MEMORY
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         max_mem = shared.Settings.MAXIMUM_MEMORY
-        if max_mem < 0:
+        if max_mem == -1:
           exit_with_error('ASan requires a finite MAXIMUM_MEMORY')
 
       shadow_size = max_mem // 8
@@ -1792,6 +1789,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if sanitize and '-g4' in args:
       shared.Settings.LOAD_SOURCE_MAP = 1
+
+    if shared.Settings.GLOBAL_BASE == -1:
+      # default if nothing else sets it
+      # a higher global base is useful for optimizing load/store offsets, as it
+      # enables the --post-emscripten pass
+      shared.Settings.GLOBAL_BASE = 1024
 
     # various settings require malloc/free support from JS
     if shared.Settings.RELOCATABLE or \
