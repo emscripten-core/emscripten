@@ -412,7 +412,7 @@ static CallQueue* GetOrAllocateQueue(
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
   int r;
-
+  int notifiedThread = 0;
   int done = emscripten_atomic_load_u32(&call->operationDone);
   if (!done) {
     double now = emscripten_get_now();
@@ -421,8 +421,15 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeou
     while (!done && now < waitEndTime) {
       r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
       done = emscripten_atomic_load_u32(&call->operationDone);
-      if (!done) {
+      if (!done && !notifiedThread) {
+        // If we are not done even after the wait, notify the target thread,
+        // which in a race condition may have finished handling its event queue
+        // just after we added our event. (We could also notify it once right
+        // after adding the event to the queue, but that could lead to a lot of
+        // unnecessary postMessages, so just do it when we are sure it needs to
+        // be woken up.
         _emscripten_notify_thread_queue(call->targetThread, emscripten_main_browser_thread_id());
+        notifiedThread = 1;
       }
       now = emscripten_get_now();
     }
