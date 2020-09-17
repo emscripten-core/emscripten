@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add `getentropy` in `sys/random.h`, and use that from libc++'s
+  `random_device`. This is more efficient, see #12240.
 
 2.0.4: 09/16/2020
 -----------------

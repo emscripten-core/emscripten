@@ -12,7 +12,7 @@ auto main()
 try
 {
   std::random_device rd;
-  std::cout << "random was read" << "\n";
+  std::cout << rd() << ", a random was read\n";
 }
 catch( const std::exception& e )
 {
