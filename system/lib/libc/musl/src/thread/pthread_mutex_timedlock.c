@@ -10,7 +10,22 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 
 	r = pthread_mutex_trylock(m);
 	if (r != EBUSY) return r;
-	
+
+#ifdef __EMSCRIPTEN__
+	// If no time is given, do not sleep forever - there is a possible race
+	// condition here. In the below loop, we need to keep iterating, since _m_lock
+	// may be set to the value we want *just* before the __timedwait. __timedwait
+	// does not check if the value is what we want, it just checks for a wake on
+	// that address, so it would wait forever.
+	// FIXME waiting for 1 second avoids too busy a wait, but also means that we
+	// may wait up to 1 second in that rare race condition. A more complex
+	// exponential backoff may make more sense.
+	// TODO is this due to limitations of futexes on the Web platform, or our
+	// implementation of them, or is it a general issue in musl?
+	struct timespec default_at = {.tv_sec = 1, .tv_nsec = 0};
+	if (!at) at = &default_at;
+#endif
+
 	int spins = 100;
 	while (spins-- && m->_m_lock && !m->_m_waiters) a_spin();
 
