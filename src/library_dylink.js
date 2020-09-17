@@ -490,7 +490,6 @@ var LibraryDylink = {
       return;
     }
     // if we can load dynamic libraries synchronously, do so, otherwise, preload
-#if WASM
     if (!readBinary) {
       // we can't read binary data synchronously, so preload
       addRunDependency('preloadDylibs');
@@ -502,7 +501,6 @@ var LibraryDylink = {
       });
       return;
     }
-#endif
     libs.forEach(function(lib) {
       // libraries linked to main never go away
       loadDynamicLibrary(lib, {global: true, nodelete: true});
@@ -607,7 +605,7 @@ var LibraryDylink = {
       return result;
     }
 
-#if WASM && EMULATE_FUNCTION_POINTER_CASTS
+#if EMULATE_FUNCTION_POINTER_CASTS
     // for wasm with emulated function pointers, the i64 ABI is used for all
     // function calls, so we can't just call addFunction on something JS
     // can call (which does not use that ABI), as the function pointer would
@@ -623,19 +621,12 @@ var LibraryDylink = {
     assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
 #endif // ASSERTIONS
     return result;
-#else // WASM && EMULATE_FUNCTION_POINTER_CASTS
-
-#if WASM
+#else // EMULATE_FUNCTION_POINTER_CASTS
     // Insert the function into the wasm table.  Since we know the function
     // comes directly from the loaded wasm module we can insert it directly
     // into the table, avoiding any JS interaction.
     return addFunctionWasm(result);
-#else
-    // convert the exported function into a function pointer using our generic
-    // JS mechanism.
-    return addFunction(result);
-#endif // WASM
-#endif // WASM && EMULATE_FUNCTION_POINTER_CASTS
+#endif // EMULATE_FUNCTION_POINTER_CASTS
   },
 
   // char* dlerror(void);
