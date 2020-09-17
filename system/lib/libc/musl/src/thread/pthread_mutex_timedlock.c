@@ -10,20 +10,7 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 
 	r = pthread_mutex_trylock(m);
 	if (r != EBUSY) return r;
-
-#ifdef __EMSCRIPTEN__
-	// If no time is given, do not sleep forever - there is a possible race
-	// condition here. In the below loop, we need to keep iterating, since _m_lock
-	// may be set to the value we want *just* before the __timedwait. __timedwait
-	// does not check if the value is what we want, it just checks for a wake on
-	// that address, so it would wait forever.
-	// TODO what is a good amount of time to wait here?
-	// TODO is this due to limitations of futexes on the Web platform, or our
-	// implementation of them, or is it a general issue in musl?
-	struct timespec default_at = {.tv_sec = 0, .tv_nsec = 1000};
-	if (!at) at = &default_at;
-#endif
-
+	
 	int spins = 100;
 	while (spins-- && m->_m_lock && !m->_m_waiters) a_spin();
 
@@ -33,7 +20,19 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 		if ((m->_m_type&3) == PTHREAD_MUTEX_ERRORCHECK
 		 && (r&0x7fffffff) == __pthread_self()->tid)
 			return EDEADLK;
-
+#ifdef __EMSCRIPTEN__
+		// If no time is given, do not sleep forever - there is a possible race
+		// condition here. We need to keep iterating in this loop, since _m_lock
+		// may be set to the value we want *just* before the __timedwait. __timedwait
+		// does not check if the value is what we want, it just checks for a wake on
+		// that address, so it would wait forever.
+		// Instead of picking some arbitrary time to wait, just keep busy-waiting.
+		if (!at) {
+			r = pthread_mutex_trylock(m);
+			if (r != EBUSY) return r;
+		}
+		continue;
+#endif
 		a_inc(&m->_m_waiters);
 		t = r | 0x80000000;
 		a_cas(&m->_m_lock, r, t);
