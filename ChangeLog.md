@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- ASAN_SHADOW_SIZE is deprecated. When using AddressSanitizer, the correct
+  amount of shadow memory will now be calculated automatically and added to
+  INITIAL_MEMORY and MAXIMUM_MEMORY.
 
 2.0.4: 09/16/2020
 -----------------

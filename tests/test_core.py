@@ -6280,12 +6280,6 @@ return malloc(size);
   @no_asan('autodebug logging interferes with asan')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
-    # Autodebug does not work with too much shadow memory.
-    # Memory consumed by autodebug depends on the size of the WASM linear memory.
-    # With a large shadow memory, the JS engine runs out of memory.
-    if '-fsanitize=address' in self.emcc_args:
-      self.set_setting('ASAN_SHADOW_SIZE', 16 * 1024 * 1024)
-
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
     # used and so forth, which will change between opt modes and updates of
@@ -8375,10 +8369,11 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
-lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
-asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                 settings={'ALLOW_MEMORY_GROWTH': 1})
+lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
+# default MAXIMUM_MEMORY to 7/8 of 2GB to allow plenty of room for shadow memory
+asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'MAXIMUM_MEMORY': 1879048192})
+asani = make_run('asani', emcc_args=['-fsanitize=address', '-O2', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+                 settings={'ALLOW_MEMORY_GROWTH': 1, 'MAXIMUM_MEMORY': 1879048192})
 
 # Experimental modes (not tested by CI)
 lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})

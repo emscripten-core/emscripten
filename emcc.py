@@ -1761,9 +1761,25 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '_asan_c_store_f', '_asan_c_store_d',
       ]
 
-      shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
-      shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
-      assert shared.Settings.INITIAL_MEMORY < 2**32
+      if shared.Settings.ASAN_SHADOW_SIZE != -1:
+        diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
+
+      max_mem = shared.Settings.INITIAL_MEMORY
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        max_mem = shared.Settings.MAXIMUM_MEMORY
+        if max_mem < 0:
+          exit_with_error('ASan requires a finite MAXIMUM_MEMORY')
+
+      shadow_size = max_mem // 8
+      shared.Settings.GLOBAL_BASE = shadow_size
+      shared.Settings.INITIAL_MEMORY += shadow_size
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        shared.Settings.MAXIMUM_MEMORY += shadow_size
+
+      if shared.Settings.INITIAL_MEMORY > 2**32:
+          exit_with_error("ASan's additional shadow memory makes INITIAL_MEMORY greater than 4GB")
+      if shared.Settings.MAXIMUM_MEMORY > 2**32:
+          exit_with_error("ASan's additional shadow memory makes MAXIMUM_MEMORY greater than 4GB")
 
       if shared.Settings.SAFE_HEAP:
         # SAFE_HEAP instruments ASan's shadow memory accesses.
@@ -1832,6 +1848,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           suggestion = 'set MAXIMUM_MEMORY'
         else:
           suggestion = 'decrease MAXIMUM_MEMORY'
+        if shared.Settings.USE_ASAN:
+          suggestion += '. (Note that ASan increases memory limits by 1/8th of the maximum requested size)'
         exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or ' + suggestion)
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
