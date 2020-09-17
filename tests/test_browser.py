@@ -4915,8 +4915,6 @@ window.close = function() {
   @unittest.skip("only run this manually, to test for race conditions")
   @requires_threads
   def test_manual_pthread_proxy_hammer(self):
-    # don't run this with the default extra_tries value, as this is *meant* to
-    # notice flakes. that is, this looks for a race condition.
     # the specific symptom of the hangs that were fixed is that the test hangs
     # at some point, using 0% CPU. often that occured in 0-200 iterations out
     # of the 1024 the test runs by default, but this can vary by machine and
@@ -4925,4 +4923,6 @@ window.close = function() {
                expected='0',
                args=['-s', 'USE_PTHREADS=1', '-O2', '-s', 'PROXY_TO_PTHREAD'],
                timeout=10000,
+               # don't run this with the default extra_tries value, as this is
+               # *meant* to notice something random, a race condition.
                extra_tries=0)
