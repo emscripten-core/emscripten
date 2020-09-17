@@ -409,9 +409,6 @@ var LibraryPThread = {
 #if USE_OFFSET_CONVERTER
         'wasmOffsetConverter': wasmOffsetConverter,
 #endif
-#if !MINIMAL_RUNTIME
-        'DYNAMIC_BASE': DYNAMIC_BASE
-#endif
       });
     },
 
