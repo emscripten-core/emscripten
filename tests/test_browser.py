@@ -4509,6 +4509,10 @@ window.close = function() {
   def test_pthread_reltime(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_reltime.cpp'), expected='3', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
+  @requires_threads
+  def test_pthread_proxy_hammer(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxy_hammer.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-O2', '-s', 'PROXY_TO_PTHREAD'])
+
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
   @no_wasm_backend("WASM2JS does not yet support pthreads")
