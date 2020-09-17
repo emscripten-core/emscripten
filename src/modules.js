@@ -489,9 +489,7 @@ function exportRuntime() {
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
     var threadExports = ['PThread', '_pthread_self'];
-    if (WASM) {
-      threadExports.push('wasmMemory');
-    }
+    threadExports.push('wasmMemory');
     if (!MINIMAL_RUNTIME) {
       threadExports.push('ExitStatus');
     }
