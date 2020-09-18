@@ -99,7 +99,6 @@ var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 assert(STACK_BASE % 16 === 0, 'stack must start aligned to 16 bytes, STACK_BASE==' + STACK_BASE);
-assert(({{{ getQuoted('DYNAMIC_BASE') }}}) % 16 === 0, 'heap must start aligned to 16 bytes, DYNAMIC_BASE==' + {{{ getQuoted('DYNAMIC_BASE') }}});
 assert({{{ INITIAL_MEMORY }}} >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ INITIAL_MEMORY }}} + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 assert({{{ INITIAL_MEMORY }}} % WASM_PAGE_SIZE === 0);
 #if MAXIMUM_MEMORY != -1

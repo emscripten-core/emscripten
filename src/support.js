@@ -20,58 +20,6 @@ function warnOnce(text) {
   }
 }
 
-#if RELOCATABLE
-// fetchBinary fetches binaray data @ url. (async)
-function fetchBinary(url) {
-  return fetch(url, { credentials: 'same-origin' }).then(function(response) {
-    if (!response['ok']) {
-      throw "failed to load binary file at '" + url + "'";
-    }
-    return response['arrayBuffer']();
-  }).then(function(buffer) {
-    return new Uint8Array(buffer);
-  });
-}
-
-function asmjsMangle(x) {
-  var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
-  return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-}
-
-// Applies relocations to exported things.
-function relocateExports(exports, memoryBase, tableBase, moduleLocal) {
-  var relocated = {};
-
-  for (var e in exports) {
-    var value = exports[e];
-    if (typeof value === 'object') {
-      // a breaking change in the wasm spec, globals are now objects
-      // https://github.com/WebAssembly/mutable-global/issues/1
-      value = value.value;
-    }
-    if (typeof value === 'number') {
-      // relocate it - modules export the absolute value, they can't relocate before they export
-#if EMULATE_FUNCTION_POINTER_CASTS
-      // it may be a function pointer
-      if (e.substr(0, 3) == 'fp$' && typeof exports[e.substr(3)] === 'function') {
-        value += tableBase;
-      } else {
-#endif
-        value += memoryBase;
-#if EMULATE_FUNCTION_POINTER_CASTS
-      }
-#endif
-    }
-    relocated[e] = value;
-    if (moduleLocal) {
-      moduleLocal['_' + e] = value;
-    }
-  }
-  return relocated;
-}
-
-#endif // RELOCATABLE
-
 #include "runtime_functions.js"
 
 #include "runtime_debug.js"

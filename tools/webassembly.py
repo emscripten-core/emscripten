@@ -6,7 +6,6 @@
 """Utilties for manipulating WebAssembly binaries from python.
 """
 
-import re
 import math
 import logging
 
@@ -59,16 +58,13 @@ def readLEB(buf, offset):
   return (result, offset)
 
 
-def add_emscripten_metadata(js_file, wasm_file):
+def add_emscripten_metadata(wasm_file):
   WASM_PAGE_SIZE = 65536
 
   mem_size = shared.Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
   table_size = shared.Settings.WASM_TABLE_SIZE
   global_base = shared.Settings.GLOBAL_BASE
-
-  js = open(js_file).read()
-  m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
-  dynamic_base = int(m.group(2))
+  dynamic_base = shared.Settings.LEGACY_DYNAMIC_BASE
 
   logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
   name = b'\x13emscripten_metadata' # section name, including prefixed size

@@ -421,12 +421,10 @@ function JSify(data, functionsOnly) {
         if (USE_PTHREADS) {
           print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
         }
-        print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'GLOBAL_BASE', true));
+        print(makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'GLOBAL_BASE', true));
         if (USE_PTHREADS) {
           print('}')
         }
-      } else {
-        print('/* no memory initializer */'); // test purposes
       }
 
       print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates

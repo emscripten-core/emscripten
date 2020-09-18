@@ -1,6 +1,4 @@
 __indirect_function_table
-__map_file
-__sys_munmap
 abort
 emscripten_memcpy_big
 emscripten_resize_heap

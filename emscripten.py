@@ -224,11 +224,12 @@ def apply_memory(js, metadata):
   # Write it all out
   js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
   js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
-  js = js.replace('{{{ DYNAMIC_BASE }}}', str(memory.dynamic_base))
+  if shared.Settings.RELOCATABLE:
+    js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
 
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
-  shared.Settings.DYNAMIC_BASE = memory.dynamic_base
+  shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
 
   return js
 
@@ -392,7 +393,8 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
 
-  metadata = finalize_wasm(temp_files, infile, memfile, DEBUG)
+  metadata = finalize_wasm(infile, memfile, DEBUG)
+
   update_settings_glue(metadata, DEBUG)
 
   if not outfile_js:
@@ -419,18 +421,15 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
 
   # memory and global initializers
 
-  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
-
-  if shared.Settings.MINIMAL_RUNTIME:
-    # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
-    global_initializers = ''
-  else:
+  # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
+  if not shared.Settings.MINIMAL_RUNTIME:
+    global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
     # In regular runtime, global initializers are recorded in an __ATINIT__ array.
-    global_initializers = '''/* global initializers */ %s __ATINIT__.push(%s);
-''' % ('if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
-       global_initializers)
+    global_initializers = '__ATINIT__.push(%s);' % global_initializers
+    if shared.Settings.USE_PTHREADS:
+      global_initializers = 'if (!ENVIRONMENT_IS_PTHREAD) ' + global_initializers
 
-  pre += '\n' + global_initializers + '\n'
+    pre += '\n' + global_initializers + '\n'
 
   pre = apply_memory(pre, metadata)
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
@@ -453,7 +452,7 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
 
   report_missing_symbols(set([asmjs_mangle(f) for f in exports]), pre)
 
-  asm_consts = create_asm_consts_wasm(forwarded_json, metadata)
+  asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
@@ -473,14 +472,14 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
     except KeyError:
       pass
 
-    sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
-    receiving = create_receiving_wasm(exports, metadata['initializers'])
+    sending = create_sending(invoke_funcs, metadata)
+    receiving = create_receiving(exports, metadata['initializers'])
 
     if shared.Settings.MINIMAL_RUNTIME:
       post = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
       receiving = ''
 
-    module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
+    module = create_module(sending, receiving, invoke_funcs, metadata)
 
     write_output_file(out, post, module)
     module = None
@@ -496,7 +495,7 @@ def remove_trailing_zeros(memfile):
     f.write(mem_data[:end])
 
 
-def finalize_wasm(temp_files, infile, memfile, DEBUG):
+def finalize_wasm(infile, memfile, DEBUG):
   building.save_intermediate(infile, 'base.wasm')
   args = ['--detect-features', '--minimize-wasm-changes']
 
@@ -589,7 +588,7 @@ def finalize_wasm(temp_files, infile, memfile, DEBUG):
   return load_metadata_wasm(stdout, DEBUG)
 
 
-def create_asm_consts_wasm(forwarded_json, metadata):
+def create_asm_consts(metadata):
   asm_consts = {}
   for k, v in metadata['asmConsts'].items():
     const, sigs, call_types = v
@@ -755,7 +754,7 @@ def add_standard_wasm_imports(send_items_map):
     }'''
 
 
-def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
+def create_sending(invoke_funcs, metadata):
   basic_funcs = []
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
@@ -824,7 +823,7 @@ var %(mangled)s = Module["%(mangled)s"] = asm["%(name)s"]
   return wrappers
 
 
-def create_receiving_wasm(exports, initializers):
+def create_receiving(exports, initializers):
   # When not declaring asm exports this section is empty and we instead programatically export
   # symbols on the global object by calling exportAsmFunctions after initialization
   if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -867,7 +866,7 @@ def create_receiving_wasm(exports, initializers):
   return '\n'.join(receiving) + '\n'
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, metadata):
+def create_module(sending, receiving, invoke_funcs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   receiving += create_named_globals(metadata)
   receiving += create_fp_accessors(metadata)

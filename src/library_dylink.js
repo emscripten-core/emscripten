@@ -4,6 +4,40 @@
 // ==========================================================================
 
 var LibraryDylink = {
+#if RELOCATABLE
+  // Applies relocations to exported things.
+  $relocateExports: function(exports, memoryBase, tableBase, moduleLocal) {
+    var relocated = {};
+
+    for (var e in exports) {
+      var value = exports[e];
+      if (typeof value === 'object') {
+        // a breaking change in the wasm spec, globals are now objects
+        // https://github.com/WebAssembly/mutable-global/issues/1
+        value = value.value;
+      }
+      if (typeof value === 'number') {
+        // relocate it - modules export the absolute value, they can't relocate before they export
+#if EMULATE_FUNCTION_POINTER_CASTS
+        // it may be a function pointer
+        if (e.substr(0, 3) == 'fp$' && typeof exports[e.substr(3)] === 'function') {
+          value += tableBase;
+        } else {
+#endif
+          value += memoryBase;
+#if EMULATE_FUNCTION_POINTER_CASTS
+        }
+#endif
+      }
+      relocated[e] = value;
+      if (moduleLocal) {
+        moduleLocal['_' + e] = value;
+      }
+    }
+    return relocated;
+  },
+#endif
+
 #if MAIN_MODULE == 0
   dlopen: function(filename, flag) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
@@ -73,8 +107,25 @@ var LibraryDylink = {
     return ret;
   },
 
+  // fetchBinary fetches binaray data @ url. (async)
+  $fetchBinary: function(url) {
+    return fetch(url, { credentials: 'same-origin' }).then(function(response) {
+      if (!response['ok']) {
+        throw "failed to load binary file at '" + url + "'";
+      }
+      return response['arrayBuffer']();
+    }).then(function(buffer) {
+      return new Uint8Array(buffer);
+    });
+  },
+
+  $asmjsMangle: function(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  },
+
   // Loads a side module from binary data
-  $loadWebAssemblyModule__deps: ['$createInvokeFunction', '$getMemory'],
+  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle'],
   $loadWebAssemblyModule: function(binary, flags) {
     var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
     assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
@@ -340,7 +391,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__self__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
@@ -490,7 +541,6 @@ var LibraryDylink = {
       return;
     }
     // if we can load dynamic libraries synchronously, do so, otherwise, preload
-#if WASM
     if (!readBinary) {
       // we can't read binary data synchronously, so preload
       addRunDependency('preloadDylibs');
@@ -502,7 +552,6 @@ var LibraryDylink = {
       });
       return;
     }
-#endif
     libs.forEach(function(lib) {
       // libraries linked to main never go away
       loadDynamicLibrary(lib, {global: true, nodelete: true});
@@ -607,7 +656,7 @@ var LibraryDylink = {
       return result;
     }
 
-#if WASM && EMULATE_FUNCTION_POINTER_CASTS
+#if EMULATE_FUNCTION_POINTER_CASTS
     // for wasm with emulated function pointers, the i64 ABI is used for all
     // function calls, so we can't just call addFunction on something JS
     // can call (which does not use that ABI), as the function pointer would
@@ -623,19 +672,12 @@ var LibraryDylink = {
     assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
 #endif // ASSERTIONS
     return result;
-#else // WASM && EMULATE_FUNCTION_POINTER_CASTS
-
-#if WASM
+#else // EMULATE_FUNCTION_POINTER_CASTS
     // Insert the function into the wasm table.  Since we know the function
     // comes directly from the loaded wasm module we can insert it directly
     // into the table, avoiding any JS interaction.
     return addFunctionWasm(result);
-#else
-    // convert the exported function into a function pointer using our generic
-    // JS mechanism.
-    return addFunction(result);
-#endif // WASM
-#endif // WASM && EMULATE_FUNCTION_POINTER_CASTS
+#endif // EMULATE_FUNCTION_POINTER_CASTS
   },
 
   // char* dlerror(void);
