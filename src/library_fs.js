@@ -1516,17 +1516,6 @@ FS.staticInit();` +
       if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
       return mode;
     },
-    joinPath: function(parts, forceRelative) {
-      var path = PATH.join.apply(null, parts);
-      if (forceRelative && path[0] == '/') path = path.substr(1);
-      return path;
-    },
-    absolutePath: function(relative, base) {
-      return PATH_FS.resolve(base, relative);
-    },
-    standardizePath: function(path) {
-      return PATH.normalize(path);
-    },
     findObject: function(path, dontResolveLastLink) {
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (ret.exists) {
@@ -1563,11 +1552,6 @@ FS.staticInit();` +
         ret.error = e.errno;
       };
       return ret;
-    },
-    createFolder: function(parent, name, canRead, canWrite) {
-      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = FS.getMode(canRead, canWrite);
-      return FS.mkdir(path, mode);
     },
     createPath: function(parent, path, canRead, canWrite) {
       parent = typeof parent === 'string' ? parent : FS.getPath(parent);
@@ -1662,10 +1646,6 @@ FS.staticInit();` +
         }
       });
       return FS.mkdev(path, mode, dev);
-    },
-    createLink: function(parent, name, target, canRead, canWrite) {
-      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      return FS.symlink(target, path);
     },
     // Makes sure a file's contents are loaded. Returns whether the file has
     // been loaded successfully. No-op for files that have been loaded already.
@@ -1996,15 +1976,37 @@ FS.staticInit();` +
       openRequest.onerror = onerror;
     },
 
-    // Allocate memory for an mmap operation. This allocates space of the right
-    // page-aligned size, and clears the padding.
-    mmapAlloc: function(size) {
-      var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
-      var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
-      while (size < alignedSize) HEAP8[ptr + size++] = 0;
-      return ptr;
-    }
-  }
+    // Removed v1 functions
+#if ASSERTIONS
+    absolutePath: function() {
+      abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
+    },
+    createFolder: function() {
+      abort('FS.createFolder has been removed; use FS.mkdir instead');
+    },
+    createLink: function() {
+      abort('FS.createLink has been removed; use FS.symlink instead');
+    },
+    joinPath: function() {
+      abort('FS.joinPath has been removed; use PATH.join instead');
+    },
+    mmapAlloc: function() {
+      abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
+    },
+    standardizePath: function() {
+      abort('FS.standardizePath has been removed; use PATH.normalize instead');
+    },
+#endif
+  },
+
+  // Allocate memory for an mmap operation. This allocates space of the right
+  // page-aligned size, and clears the padding.
+  $mmapAlloc: function(size) {
+    var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
+    var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
+    while (size < alignedSize) HEAP8[ptr + size++] = 0;
+    return ptr;
+  },
 });
 
 if (FORCE_FILESYSTEM) {
