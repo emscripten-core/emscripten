@@ -1071,12 +1071,16 @@ var LibraryEmbind = {
     signature = readLatin1String(signature);
 
     function makeDynCaller() {
-#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+#if USE_LEGACY_DYNCALLS
+      return getDynCaller(signature, rawFunction);
+#else
+#if !WASM_BIGINT
       if (signature.indexOf('j') != -1) {
         return getDynCaller(signature, rawFunction);
       }
 #endif
       return wasmTable.get(rawFunction);
+#endif
     }
 
     var fp = makeDynCaller();

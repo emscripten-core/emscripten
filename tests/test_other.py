@@ -2066,6 +2066,24 @@ int f() {
     out = self.expect_fail([EMCC, path_from_root('tests', 'embind', 'test_unsigned.cpp')])
     self.assertContained("undefined symbol: _embind_register_function", out)
 
+  def test_embind_asyncify(self):
+    create_test_file('post.js', '''
+      addOnPostRun(function() {
+        Module.sleep(10);
+        out('done');
+      });
+    ''')
+    create_test_file('main.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      using namespace emscripten;
+      EMSCRIPTEN_BINDINGS(asyncify) {
+          function("sleep", &emscripten_sleep);
+      }
+    ''')
+    self.run_process([EMCC, 'main.cpp', '--bind', '-s', 'ASYNCIFY=1', '--post-js', 'post.js'])
+    self.assertContained('done', self.run_js('a.out.js'))
+
   @is_slow_test
   def test_embind(self):
     environ = os.environ.copy()
