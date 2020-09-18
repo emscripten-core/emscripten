@@ -229,8 +229,6 @@ def apply_memory(js, metadata):
 
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
-  shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
-
   return js
 
 
