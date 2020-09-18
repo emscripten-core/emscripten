@@ -2404,7 +2404,7 @@ LibraryManager.library = {
     if (lookup) {
       host = lookup;
     }
-    var hostp = allocate(intArrayFromString(host), 'i8', ALLOC_STACK);
+    var hostp = allocate(intArrayFromString(host), ALLOC_STACK);
     return _gethostbyname(hostp);
   },
 
@@ -3196,7 +3196,7 @@ LibraryManager.library = {
     var fullname = name + '__str';
     var fullret = cache[fullname];
     if (fullret) return fullret;
-    return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
+    return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
   },
 
   emscripten_has_asyncify: function() {

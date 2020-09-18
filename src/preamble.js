@@ -214,14 +214,10 @@ var ALLOC_STACK = 1; // Lives for the duration of the current function call
 // @slab: An array of data, or a number. If a number, then the size of the block to allocate,
 //        in *bytes* (note that this is sometimes confusing: the next parameter does not
 //        affect this!)
-// @types: Either an array of types, one for each byte (or 0 if no type at that position),
-//         or a single type which is used for the entire block. This only matters if there
-//         is initial data - if @slab is a number, then this does not matter at all and is
-//         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
 /** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
-function allocate(slab, types, allocator) {
-  var zeroinit, size;
+function allocate(slab, allocator) {
+  var zeroinit, size, ret;
   if (typeof slab === 'number') {
     zeroinit = true;
     size = slab;
@@ -229,16 +225,19 @@ function allocate(slab, types, allocator) {
     zeroinit = false;
     size = slab.length;
   }
-
-  var singleType = typeof types === 'string' ? types : null;
-
-  var ret = [{{{ ('_malloc' in IMPLEMENTED_FUNCTIONS) ? '_malloc' : 'null' }}},
-#if DECLARE_ASM_MODULE_EXPORTS
-  stackAlloc,
-#else
-  typeof stackAlloc !== 'undefined' ? stackAlloc : null,
+#if ASSERTIONS
+  assert(typeof allocator === 'number', 'allocate no longer takes a type argument')
 #endif
-  ][allocator](Math.max(size, singleType ? 1 : types.length));
+
+  if (allocator == ALLOC_STACK) {
+#if DECLARE_ASM_MODULE_EXPORTS
+    ret = stackAlloc(size);
+#else
+    ret = (typeof stackAlloc !== 'undefined' ? stackAlloc : null)(size);
+#endif
+  } else {
+    ret = {{{ makeMalloc('allocate', 'size') }}};
+  }
 
   if (zeroinit) {
     var stop;
@@ -255,40 +254,11 @@ function allocate(slab, types, allocator) {
     return ret;
   }
 
-  if (singleType === 'i8') {
-    if (slab.subarray || slab.slice) {
-      HEAPU8.set(/** @type {!Uint8Array} */slab, ret);
-    } else {
-      HEAPU8.set(new Uint8Array(slab), ret);
-    }
-    return ret;
+  if (slab.subarray || slab.slice) {
+    HEAPU8.set(/** @type {!Uint8Array} */slab, ret);
+  } else {
+    HEAPU8.set(new Uint8Array(slab), ret);
   }
-
-  var i = 0, type, typeSize, previousType;
-  while (i < size) {
-    var curr = slab[i];
-
-    type = singleType || types[i];
-    if (type === 0) {
-      i++;
-      continue;
-    }
-#if ASSERTIONS
-    assert(type, 'Must know what type to store in allocate!');
-#endif
-
-    if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
-
-    setValue(ret+i, curr, type);
-
-    // no need to look up size unless type changes, so cache it
-    if (previousType !== type) {
-      typeSize = getNativeTypeSize(type);
-      previousType = type;
-    }
-    i += typeSize;
-  }
-
   return ret;
 }
 
