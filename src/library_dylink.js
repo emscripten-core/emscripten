@@ -6,7 +6,7 @@
 var LibraryDylink = {
 #if RELOCATABLE
   // Applies relocations to exported things.
-  $relocateExports: function(exports, memoryBase, tableBase, moduleLocal) {
+  $relocateExports: function(exports, memoryBase, moduleLocal) {
     var relocated = {};
 
     for (var e in exports) {
@@ -17,17 +17,7 @@ var LibraryDylink = {
         value = value.value;
       }
       if (typeof value === 'number') {
-        // relocate it - modules export the absolute value, they can't relocate before they export
-#if EMULATE_FUNCTION_POINTER_CASTS
-        // it may be a function pointer
-        if (e.substr(0, 3) == 'fp$' && typeof exports[e.substr(3)] === 'function') {
-          value += tableBase;
-        } else {
-#endif
-          value += memoryBase;
-#if EMULATE_FUNCTION_POINTER_CASTS
-        }
-#endif
+        value += memoryBase;
       }
       relocated[e] = value;
       if (moduleLocal) {
@@ -332,7 +322,7 @@ var LibraryDylink = {
           assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
         }
 #endif
-        var exports = relocateExports(instance.exports, memoryBase, tableBase, moduleLocal);
+        var exports = relocateExports(instance.exports, memoryBase, moduleLocal);
         // initialize the module
         var init = exports['__post_instantiate'];
         if (init) {

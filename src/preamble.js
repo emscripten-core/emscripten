@@ -876,7 +876,7 @@ function createWasm() {
   function receiveInstance(instance, module) {
     var exports = instance.exports;
 #if RELOCATABLE
-    exports = relocateExports(exports, GLOBAL_BASE, 0);
+    exports = relocateExports(exports, GLOBAL_BASE);
 #endif
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
