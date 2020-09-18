@@ -745,49 +745,72 @@ var abortWrapperDepth = 0;
 // - throw an exception if someone tries to call them after the program has aborted
 // See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
 function instrumentWasmExportsWithAbort(exports) {
+  // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
+  var makeWrapper = (function(original) {
+    return function() {
+      // Don't allow this function to be called if we're aborted!
+      if (ABORT) { 
+        throw "program has already aborted!";
+      }
+      
+#if DISABLE_EXCEPTION_CATCHING != 1
+      abortWrapperDepth += 1;
+#endif
+      try {
+        return original.apply(null, arguments);
+      }
+      catch (e) {
+        if (
+          ABORT // rethrow exception if abort() was called in the original function call above
+          || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
+#if SUPPORT_LONGJMP
+          || e === 'longjmp' // rethrow longjmp if enabled
+#endif
+        ) {
+          throw e;
+        }
+        
+        abort("unhandled exception: " + [e, e.stack]);
+      }
+#if DISABLE_EXCEPTION_CATCHING != 1
+      finally {
+        abortWrapperDepth -= 1;
+      }
+#endif
+    };
+  });
+  
+  // A cache for wrappers based on the original function reference so we don't end up
+  // creating the same wrappers over and over again
+  var wrapperCache = {};
+
+  // Override the wasmTable get function to return the wrappers
+  var realGet = wasmTable.get; 
+  wasmTable.get = function(i) { 
+    var original = realGet.call(wasmTable, i);
+    var wrapper = wrapperCache[original];
+    if(!wrapper) {
+      wrapper = makeWrapper(original);
+      wrapperCache[original] = wrapper;
+    }
+    return wrapper;
+  };  
+  
+  // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
   for (var name in exports) {
-    (function(name) {
       var original = exports[name];
-      
-      // Wrap all functions, copy the other symbols.
       if (typeof original === 'function') {
-        instExports[name] = function() {
-          // Don't allow this function to be called if we're aborted!
-          if (ABORT) { 
-            throw "program has already aborted!";
-          }
-          
-#if DISABLE_EXCEPTION_CATCHING != 1
-          abortWrapperDepth += 1;
-#endif
-          try {
-            return original.apply(null, arguments);
-          }
-          catch (e) {
-            if (
-              ABORT // rethrow exception if abort() was called in the original function call above
-              || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
-#if SUPPORT_LONGJMP
-              || e === 'longjmp' // rethrow longjmp if enabled
-#endif
-            ) {
-              throw e;
-            }
-            
-            abort("unhandled exception: " + [e, e.stack]);
-          }
-#if DISABLE_EXCEPTION_CATCHING != 1
-          finally {
-            abortWrapperDepth -= 1;
-          }
-#endif
-        };
+        var wrapper = wrapperCache[original];
+        if(!wrapper) {
+          wrapper = makeWrapper(original);
+          wrapperCache[original] = wrapper;
+        }
+        instExports[name] = wrapper;
       }
       else {
         instExports[name] = original;
       }
-    })(name);
   }
   return instExports;
 }
