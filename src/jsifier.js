@@ -396,39 +396,7 @@ function JSify(data, functionsOnly) {
     if (!mainPass) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
-
-      if (memoryInitialization.length > 0) {
-        // apply postsets directly into the big memory initialization
-        itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
-          var m;
-          if (m = /^HEAP([\dFU]+)\[([()>\d]+)\] *= *([()|\d{}\w_' ]+);?$/.exec(item.JS)) {
-            var type = getTypeFromHeap(m[1]);
-            var bytes = Runtime.getNativeTypeSize(type);
-            var target = eval(m[2]) << log2(bytes);
-            var value = m[3];
-            try {
-              value = eval(value);
-            } catch(e) {
-              // possibly function table {{{ FT_* }}} etc.
-              if (value.indexOf('{{ ') < 0) return true;
-            }
-            writeInt8s(memoryInitialization, target - Runtime.GLOBAL_BASE, value, type);
-            return false;
-          }
-          return true;
-        });
-        // write out the singleton big memory initialization value
-        if (USE_PTHREADS) {
-          print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
-        }
-        print(makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'GLOBAL_BASE', true));
-        if (USE_PTHREADS) {
-          print('}')
-        }
-      }
-
       print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
-
       return;
     }
 
