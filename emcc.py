@@ -1264,6 +1264,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert not shared.Settings.SIDE_MODULE
       if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$preloadDylibs']
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
       # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
@@ -1283,7 +1284,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # shared modules need memory utilities to allocate their memory
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['allocate']
       shared.Settings.ALLOW_TABLE_GROWTH = 1
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDynamicLibrary', '$preloadDylibs']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$relocateExports']
 
     # various settings require sbrk() access
     if shared.Settings.DETERMINISTIC or \
