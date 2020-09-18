@@ -425,7 +425,7 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
   if not shared.Settings.MINIMAL_RUNTIME:
     global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
     # In regular runtime, global initializers are recorded in an __ATINIT__ array.
-    global_initializers  = '__ATINIT__.push(%s);' % global_initializers
+    global_initializers = '__ATINIT__.push(%s);' % global_initializers
     if shared.Settings.USE_PTHREADS:
       global_initializers = 'if (!ENVIRONMENT_IS_PTHREAD) ' + global_initializers
 
