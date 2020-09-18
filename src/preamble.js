@@ -205,7 +205,6 @@ function _free() {
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
-var ALLOC_NONE = 2; // Do not allocate
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -221,7 +220,7 @@ var ALLOC_NONE = 2; // Do not allocate
 //         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
 /** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
-function allocate(slab, types, allocator, ptr) {
+function allocate(slab, types, allocator) {
   var zeroinit, size;
   if (typeof slab === 'number') {
     zeroinit = true;
@@ -233,22 +232,17 @@ function allocate(slab, types, allocator, ptr) {
 
   var singleType = typeof types === 'string' ? types : null;
 
-  var ret;
-  if (allocator == ALLOC_NONE) {
-    ret = ptr;
-  } else {
-    ret = [{{{ ('_malloc' in IMPLEMENTED_FUNCTIONS) ? '_malloc' : 'null' }}},
+  var ret = [{{{ ('_malloc' in IMPLEMENTED_FUNCTIONS) ? '_malloc' : 'null' }}},
 #if DECLARE_ASM_MODULE_EXPORTS
-    stackAlloc,
+  stackAlloc,
 #else
-    typeof stackAlloc !== 'undefined' ? stackAlloc : null,
+  typeof stackAlloc !== 'undefined' ? stackAlloc : null,
 #endif
-    ][allocator](Math.max(size, singleType ? 1 : types.length));
-  }
+  ][allocator](Math.max(size, singleType ? 1 : types.length));
 
   if (zeroinit) {
     var stop;
-    ptr = ret;
+    var ptr = ret;
     assert((ret & 3) == 0);
     stop = ret + (size & ~3);
     for (; ptr < stop; ptr += 4) {
@@ -263,7 +257,7 @@ function allocate(slab, types, allocator, ptr) {
 
   if (singleType === 'i8') {
     if (slab.subarray || slab.slice) {
-      HEAPU8.set(/** @type {!Uint8Array} */ (slab), ret);
+      HEAPU8.set(/** @type {!Uint8Array} */slab, ret);
     } else {
       HEAPU8.set(new Uint8Array(slab), ret);
     }

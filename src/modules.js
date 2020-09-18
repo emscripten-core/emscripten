@@ -514,7 +514,6 @@ function exportRuntime() {
   var runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
-    'ALLOC_NONE',
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
