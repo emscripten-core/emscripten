@@ -5776,7 +5776,10 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_fakestat.c')
 
   def test_mmap(self):
-    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+    # ASan needs more memory, but that is set up separately
+    if '-fsanitize=address' not in self.emcc_args:
+      self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_mmap.c')
@@ -8370,10 +8373,9 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
-# default MAXIMUM_MEMORY to 7/8 of 2GB to allow plenty of room for shadow memory
-asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'MAXIMUM_MEMORY': 1879048192})
+asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': 314572800})
 asani = make_run('asani', emcc_args=['-fsanitize=address', '-O2', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                 settings={'ALLOW_MEMORY_GROWTH': 1, 'MAXIMUM_MEMORY': 1879048192})
+                 settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': 314572800})
 
 # Experimental modes (not tested by CI)
 lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})

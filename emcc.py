@@ -1769,14 +1769,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       shadow_size = max_mem // 8
       shared.Settings.GLOBAL_BASE = shadow_size
-      shared.Settings.INITIAL_MEMORY += shadow_size
-      if shared.Settings.ALLOW_MEMORY_GROWTH:
-        shared.Settings.MAXIMUM_MEMORY += shadow_size
-
-      if shared.Settings.INITIAL_MEMORY > 2**32:
-          exit_with_error("ASan's additional shadow memory makes INITIAL_MEMORY greater than 4GB")
-      if shared.Settings.MAXIMUM_MEMORY > 2**32:
-          exit_with_error("ASan's additional shadow memory makes MAXIMUM_MEMORY greater than 4GB")
 
       if shared.Settings.SAFE_HEAP:
         # SAFE_HEAP instruments ASan's shadow memory accesses.
@@ -1851,8 +1843,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           suggestion = 'set MAXIMUM_MEMORY'
         else:
           suggestion = 'decrease MAXIMUM_MEMORY'
-        if shared.Settings.USE_ASAN:
-          suggestion += '. (Note that ASan increases memory limits by 1/8th of the maximum requested size)'
         exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or ' + suggestion)
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
