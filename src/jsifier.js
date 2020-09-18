@@ -295,7 +295,7 @@ function JSify(data, functionsOnly) {
       function addDependency(dep) {
         return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
       }
-      var depsText = (deps ? '\n' + deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') : '');
+      var depsText = (deps ? deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') + '\n' : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
