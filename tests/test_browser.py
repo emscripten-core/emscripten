@@ -4196,13 +4196,13 @@ window.close = function() {
     for multiDraw in [0, 1]:
       for drawElements in [0, 1]:
         self.btest('webgl_draw_base_vertex_base_instance_test.c', reference='webgl_draw_instanced_base_vertex_base_instance.png',
-                  args=['-lGL',
-                        '-s', 'MAX_WEBGL_VERSION=2',
-                        '-s', 'OFFSCREEN_FRAMEBUFFER=1',
-                        '-DMULTI_DRAW=' + str(multiDraw),
-                        '-DDRAW_ELEMENTS=' + str(drawElements),
-                        '-DEXPLICIT_SWAP=1',
-                        '-DWEBGL_CONTEXT_VERSION=2'])
+                   args=['-lGL',
+                         '-s', 'MAX_WEBGL_VERSION=2',
+                         '-s', 'OFFSCREEN_FRAMEBUFFER=1',
+                         '-DMULTI_DRAW=' + str(multiDraw),
+                         '-DDRAW_ELEMENTS=' + str(drawElements),
+                         '-DEXPLICIT_SWAP=1',
+                         '-DWEBGL_CONTEXT_VERSION=2'])
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
