@@ -388,7 +388,8 @@ var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
 // enable any WebGL extension. If false, to save code size,
 // emscripten_webgl_enable_extension() cannot be called to enable any of extensions
 // 'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers',
-// 'WEBGL_multi_draw', or 'WEBGL_draw_instanced_base_vertex_base_instance',
+// 'WEBGL_multi_draw', 'WEBGL_draw_instanced_base_vertex_base_instance',
+// or 'WEBGL_multi_draw_instanced_base_vertex_base_instance',
 // but the dedicated functions emscripten_webgl_enable_*()
 // found in html5.h are used to enable each of those extensions.
 // This way code size is increased only for the extensions that are actually used.
