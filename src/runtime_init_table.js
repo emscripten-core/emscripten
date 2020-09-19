@@ -1,8 +1,8 @@
-#if !STANDALONE_WASM // standalone wasm creates the table in the wasm
+#if RELOCATABLE // normal static binaries export the table
 var wasmTable = new WebAssembly.Table({
-  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+  'initial': {{{ WASM_TABLE_SIZE }}},
 #if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+  'maximum': {{{ WASM_TABLE_SIZE }}},
 #endif
   'element': 'anyfunc'
 });

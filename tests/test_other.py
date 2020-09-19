@@ -6987,12 +6987,12 @@ int main() {
   @parameterized({
     'O0': ([],      [], ['waka'],   977), # noqa
     'O1': (['-O1'], [], ['waka'],   467), # noqa
-    'O2': (['-O2'], [], ['waka'],   384), # noqa
+    'O2': (['-O2'], [], ['waka'],   419), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'], [], [],          85), # noqa
-    'Os': (['-Os'], [], [],          85), # noqa
-    'Oz': (['-Oz'], [], [],          85), # noqa
-    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 85), # noqa
+    'O3': (['-O3'], [], [],          96), # noqa
+    'Os': (['-Os'], [], [],          96), # noqa
+    'Oz': (['-Oz'], [], [],          96), # noqa
+    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 96), # noqa
   })
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
@@ -7020,7 +7020,7 @@ int main() {
     'Oz': (['-Oz'], [], [],        2004), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
-          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     61), # noqa
+          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     72), # noqa
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
@@ -8931,7 +8931,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5795), 150)
+    self.assertLess(abs(changed - 5627), 150)
 
   def test_llvm_includes(self):
     create_test_file('atomics.c', '#include <stdatomic.h>')
