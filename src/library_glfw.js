@@ -919,7 +919,7 @@ var LibraryGLFW = {
       if (x) {
         setValue(x, wx, 'i32');
       }
-      
+
       if (y) {
         setValue(y, wy, 'i32');
       }
@@ -945,7 +945,7 @@ var LibraryGLFW = {
       if (width) {
         setValue(width, ww, 'i32');
       }
-      
+
       if (height) {
         setValue(height, wh, 'i32');
       }
@@ -1228,7 +1228,8 @@ var LibraryGLFW = {
   glfwGetMonitors: function(count) {
     setValue(count, 1, 'i32');
     if (!GLFW.monitors) {
-      GLFW.monitors = allocate([1, 0, 0, 0], 'i32', ALLOC_NORMAL);
+      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', Runtime.POINTER_SIZE) }}};
+      setValue(GLFW.monitors, 1, 'i32');
     }
     return GLFW.monitors;
   },
@@ -1341,11 +1342,11 @@ var LibraryGLFW = {
       ww = win.width;
       wh = win.height;
     }
-    
+
     if (width) {
       setValue(width, ww, 'i32');
     }
-    
+
     if (height) {
       setValue(height, wh, 'i32');
     }
