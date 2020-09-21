@@ -418,7 +418,7 @@ def find_output_arg(args):
       # Explicitly skip over -mllvm arguments and their values because their
       # values could potentially start with -o and be confused for output file
       # specifiers.
-      outargs.append(arg[i + 1])
+      outargs.append(args[i + 1])
       i += 2
     else:
       i += 1
