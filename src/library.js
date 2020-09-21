@@ -2389,7 +2389,7 @@ LibraryManager.library = {
   },
 
   // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', 'gethostbyname', '_inet_ntop4_raw'],
+  gethostbyaddr__deps: ['$DNS', '$getHostByName', '_inet_ntop4_raw'],
   gethostbyaddr__proxy: 'sync',
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
@@ -2404,19 +2404,20 @@ LibraryManager.library = {
     if (lookup) {
       host = lookup;
     }
-    var hostp = allocate(intArrayFromString(host), ALLOC_STACK);
-    return _gethostbyname(hostp);
+    return getHostByName(host);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', '$getHostByName'],
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
-    name = UTF8ToString(name);
+    return getHostByName(UTF8ToString(name));
+  },
 
+  $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = _malloc(name.length+1);
+    var nameBuf = {{{ makeMalloc('getHostByName', 'name.length+1') }}};
     stringToUTF8(name, nameBuf, name.length+1);
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', 'i8*') }}};
     var aliasesBuf = _malloc(4);
