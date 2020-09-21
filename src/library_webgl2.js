@@ -977,17 +977,17 @@ var LibraryWebGL2 = {
   },
 
   glDrawArraysInstancedBaseInstanceWEBGL_sig: 'viiiii',
-  glDrawArraysInstancedBaseInstance: 'glDrawArraysInstancedBaseInstanceWEBGL',
-  glDrawArraysInstancedBaseInstanceANGLE: 'glDrawArraysInstancedBaseInstanceWEBGL',
   glDrawArraysInstancedBaseInstanceWEBGL: function(mode, first, count, instanceCount, baseInstance) {
     GLctx.dibvbi['drawArraysInstancedBaseInstanceWEBGL'](mode, first, count, instanceCount, baseInstance);
   },
+  glDrawArraysInstancedBaseInstance: 'glDrawArraysInstancedBaseInstanceWEBGL',
+  glDrawArraysInstancedBaseInstanceANGLE: 'glDrawArraysInstancedBaseInstanceWEBGL',
 
   glDrawElementsInstancedBaseVertexBaseInstanceWEBGL_sig: 'viiiiii',
-  glDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
   glDrawElementsInstancedBaseVertexBaseInstanceWEBGL: function(mode, count, type, offset, instanceCount, baseVertex, baseinstance) {
     GLctx.dibvbi['drawElementsInstancedBaseVertexBaseInstanceWEBGL'](mode, count, type, offset, instanceCount, baseVertex, baseinstance);
   },
+  glDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
   _webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
     // Closure is expected to be allowed to minify the '.dibvbi' property, so not accessing it quoted.
@@ -1000,7 +1000,6 @@ var LibraryWebGL2 = {
   },
 
   glMultiDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiiii',
-  glMultiDrawArraysInstancedBaseInstanceANGLE: 'glMultiDrawArraysInstancedBaseInstanceWEBGL',
   glMultiDrawArraysInstancedBaseInstanceWEBGL: function(mode, firsts, counts, instanceCounts, baseInstances, drawCount) {
     GLctx.mdibvbi['multiDrawArraysInstancedBaseInstanceWEBGL'](
       mode,
@@ -1014,9 +1013,9 @@ var LibraryWebGL2 = {
       baseInstances >> 2,
       drawCount);
   },
+  glMultiDrawArraysInstancedBaseInstanceANGLE: 'glMultiDrawArraysInstancedBaseInstanceWEBGL',
 
   glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL__sig: 'viiiiiiii',
-  glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
   glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL: function(mode, counts, type, offsets, instanceCounts, baseVertices, baseInstances, drawCount) {
     GLctx.mdibvbi['multiDrawElementsInstancedBaseVertexBaseInstanceWEBGL'](
       mode,
@@ -1033,6 +1032,7 @@ var LibraryWebGL2 = {
       baseInstances >> 2,
       drawCount);
   },
+  glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
   _webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
     // Closure is expected to be allowed to minify the '.mdibvbi' property, so not accessing it quoted.
