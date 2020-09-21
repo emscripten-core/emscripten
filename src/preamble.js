@@ -211,47 +211,24 @@ var ALLOC_STACK = 1; // Lives for the duration of the current function call
 //             for multiple syntaxes to save space in generated code. So you should
 //             normally not use allocate(), and instead allocate memory using _malloc(),
 //             initialize it with setValue(), and so forth.
-// @slab: An array of data, or a number. If a number, then the size of the block to allocate,
-//        in *bytes* (note that this is sometimes confusing: the next parameter does not
-//        affect this!)
+// @slab: An array of data.
 // @allocator: How to allocate memory, see ALLOC_*
 /** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
 function allocate(slab, allocator) {
-  var zeroinit, size, ret;
-  if (typeof slab === 'number') {
-    zeroinit = true;
-    size = slab;
-  } else {
-    zeroinit = false;
-    size = slab.length;
-  }
+  var ret;
 #if ASSERTIONS
   assert(typeof allocator === 'number', 'allocate no longer takes a type argument')
+  assert(typeof slab !== 'number', 'allocate no longer takes a number as arg0')
 #endif
 
   if (allocator == ALLOC_STACK) {
 #if DECLARE_ASM_MODULE_EXPORTS
-    ret = stackAlloc(size);
+    ret = stackAlloc(slab.length);
 #else
-    ret = (typeof stackAlloc !== 'undefined' ? stackAlloc : null)(size);
+    ret = (typeof stackAlloc !== 'undefined' ? stackAlloc : null)(slab.length);
 #endif
   } else {
-    ret = {{{ makeMalloc('allocate', 'size') }}};
-  }
-
-  if (zeroinit) {
-    var stop;
-    var ptr = ret;
-    assert((ret & 3) == 0);
-    stop = ret + (size & ~3);
-    for (; ptr < stop; ptr += 4) {
-      {{{ makeSetValue('ptr', '0', '0', 'i32', null, true) }}};
-    }
-    stop = ret + size;
-    while (ptr < stop) {
-      {{{ makeSetValue('ptr++', '0', '0', 'i8', null, true) }}};
-    }
-    return ret;
+    ret = {{{ makeMalloc('allocate', 'slab.length') }}};
   }
 
   if (slab.subarray || slab.slice) {
