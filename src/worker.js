@@ -118,9 +118,6 @@ this.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
-      // After the script has been fully loaded, initialize the worker's JS
-      // runtime.
-      Module['PThread']['initWorker']();
 #if MODULARIZE
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {
