@@ -546,11 +546,11 @@ The following table highlights the availability and expected performance of diff
    * - _mm_or_si128
      - 🟡 wasm_v128_or. VM must guess type.
    * - _mm_packs_epi16
-     - ❌ scalarized
+     - ✅ wasm_i8x16_narrow_i16x8
    * - _mm_packs_epi32
-     - ❌ scalarized
+     - ✅ wasm_i16x8_narrow_i32x4
    * - _mm_packus_epi16
-     - ❌ scalarized
+     - ✅ wasm_u8x16_narrow_i16x8
    * - _mm_pause
      - 💭 No-op.
    * - _mm_sad_epu8
