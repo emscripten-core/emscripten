@@ -51,7 +51,7 @@ random_device::operator()()
 
 int main() {
   int total = 0;
-  for (int i = 0; i < 1024; i++) {
+  for (int i = 0; i < ITERATIONS; i++) {
     // printf causes proxying
     printf("%d %d\n", i, total);
     for (int j = 0; j < 1024; j++) {

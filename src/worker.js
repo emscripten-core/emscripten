@@ -76,6 +76,7 @@ this.onmessage = function(e) {
 #if !MINIMAL_RUNTIME
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
 #endif
+      Module['mainThreadFutex'] = e.data.mainThreadFutex;
 
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME

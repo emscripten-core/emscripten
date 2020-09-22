@@ -9,7 +9,6 @@ var LibraryPThread = {
   $PThread__deps: ['$registerPthreadPtr',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
-                   '_main_thread_futex_wait_address'
 #if USE_ASAN || USE_LSAN
                    , '$withBuiltinMalloc'
 #endif
@@ -28,6 +27,9 @@ var LibraryPThread = {
     runningWorkers: [],
     // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
     // mainThreadBlock: undefined,
+    // Stores the memory address that the main thread is waiting on, if any. If
+    // the main thread is waiting, we wake it up before waking up any workers.
+    // mainThreadFutex: undefined,
     initMainThreadBlock: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
@@ -69,7 +71,7 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, {{{ PROCINFO.pid }}}); // Process ID.
 
-      __main_thread_futex_wait_address = _malloc(4);
+      PThread.mainThreadFutex = _malloc(4);
 
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(PThread.mainThreadBlock);
@@ -87,6 +89,8 @@ var LibraryPThread = {
       _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
     },
     initWorker: function() {
+      PThread.mainThreadFutex = Module['mainThreadFutex'];
+
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
       // things.
@@ -394,6 +398,7 @@ var LibraryPThread = {
         // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
         // independently load up the same main application file.
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
+        'mainThreadFutex': PThread.mainThreadFutex,
 #if WASM2JS
         // the polyfill WebAssembly.Memory instance has function properties,
         // which will fail in postMessage, so just send a custom object with the
@@ -1106,11 +1111,8 @@ var LibraryPThread = {
     return 0;
   },
 
-  // Stores the memory address that the main thread is waiting on, if any.
-  _main_thread_futex_wait_address: '0',
-
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
-  emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
+  emscripten_futex_wait__deps: ['emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
     if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_WORKER) {
@@ -1136,10 +1138,13 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
-
       // Register globally which address the main thread is simulating to be waiting on. When zero, main thread is not waiting on anything,
-      // and on nonzero, the contents of address pointed by __main_thread_futex_wait_address tell which address the main thread is simulating its wait on.
-      Atomics.store(HEAP32, __main_thread_futex_wait_address >> 2, addr);
+      // and on nonzero, the contents of address pointed by PThread.mainThreadFutex tell which address the main thread is simulating its wait on.
+      var old = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, addr);
+#if ASSERTIONS
+      assert(PThread.mainThreadFutex > 0);
+      assert(old == 0); // we must not have been waiting before.
+#endif
       var ourWaitAddress = addr; // We may recursively re-enter this function while processing queued calls, in which case we'll do a spurious wakeup of the older wait operation.
       while (addr == ourWaitAddress) {
         tNow = performance.now();
@@ -1150,7 +1155,7 @@ var LibraryPThread = {
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
         _emscripten_main_thread_process_queued_calls(); // We are performing a blocking loop here, so must pump any pthreads if they want to perform operations that are proxied.
-        addr = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2); // Look for a worker thread waking us up.
+        addr = Atomics.load(HEAP32, PThread.mainThreadFutex >> 2); // Look for a worker thread waking us up.
       }
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
@@ -1161,7 +1166,6 @@ var LibraryPThread = {
 
   // Returns the number of threads (>= 0) woken up, or the value -EINVAL on error.
   // Pass count == INT_MAX to wake up all threads.
-  emscripten_futex_wake__deps: ['_main_thread_futex_wait_address'],
   emscripten_futex_wake: function(addr, count) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0 || count < 0) return -{{{ cDefine('EINVAL') }}};
     if (count == 0) return 0;
@@ -1172,10 +1176,13 @@ var LibraryPThread = {
     // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
     // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
     // this scheme does not adhere to real queue-based waiting.
-    var mainThreadWaitAddress = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2);
+#if ASSERTIONS
+    assert(PThread.mainThreadFutex > 0);
+#endif
+    var mainThreadWaitAddress = Atomics.load(HEAP32, PThread.mainThreadFutex >> 2);
     var mainThreadWoken = 0;
     if (mainThreadWaitAddress == addr) {
-      var loadedAddr = Atomics.compareExchange(HEAP32, __main_thread_futex_wait_address >> 2, mainThreadWaitAddress, 0);
+      var loadedAddr = Atomics.compareExchange(HEAP32, PThread.mainThreadFutex >> 2, mainThreadWaitAddress, 0);
       if (loadedAddr == mainThreadWaitAddress) {
         --count;
         mainThreadWoken = 1;
