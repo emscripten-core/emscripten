@@ -258,6 +258,10 @@ void emscripten_main_thread_process_queued_calls() {
   // nop
 }
 
+void emscripten_current_thread_process_proxied_queued_calls() {
+  // nop
+}
+
 void emscripten_current_thread_process_queued_calls() {
   // nop
 }

@@ -52,7 +52,7 @@ int __timedwait_cp(volatile int *addr, int val,
 				return ECANCELED;
 			}
 			// Assist other threads by executing proxied operations that are effectively singlethreaded.
-			if (is_main_thread) emscripten_main_thread_process_queued_calls();
+			if (is_main_thread) emscripten_current_thread_process_proxied_queued_calls();
 			// Must wait in slices in case this thread is cancelled in between.
 			double waitMsecs = sleepUntilTime - emscripten_get_now();
 			if (waitMsecs <= 0) {

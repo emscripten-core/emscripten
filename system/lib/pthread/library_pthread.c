@@ -122,7 +122,7 @@ void emscripten_thread_sleep(double msecs) {
 
   __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
                           // thread is cancelled during the sleep.
-  emscripten_current_thread_process_queued_calls();
+  emscripten_current_thread_process_proxied_queued_calls();
 
   // If we have less than this many msecs left to wait, busy spin that instead.
   const double minimumTimeSliceToSleep = 0.1;
@@ -137,7 +137,7 @@ void emscripten_thread_sleep(double msecs) {
     // Keep processing the main loop of the calling thread.
     __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
                             // thread is cancelled during the sleep.
-    emscripten_current_thread_process_queued_calls();
+    emscripten_current_thread_process_proxied_queued_calls();
 
     now = emscripten_get_now();
     double msecsToSleep = target - now;
@@ -200,6 +200,10 @@ int emscripten_builtin_pthread_create(void *thread, void *attr,
 
 static void _do_call(em_queued_call* q) {
   // C function pointer
+  if (q == 0) {
+	  return;
+  }
+
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
     case EM_PROXIED_PTHREAD_CREATE:
@@ -649,6 +653,51 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_7(int function, vo
   q.returnValue.vp = 0;
   emscripten_sync_run_in_main_thread(&q);
   return q.returnValue.vp;
+}
+
+void EMSCRIPTEN_KEEPALIVE emscripten_current_thread_process_proxied_queued_calls() {
+	// this call should just handled proxied calls
+  pthread_mutex_lock(&call_queue_lock);
+  CallQueue* q = GetQueue(pthread_self());
+  if (!q) {
+    pthread_mutex_unlock(&call_queue_lock);
+    return;
+  }
+
+  if (!emscripten_is_main_browser_thread()) {
+	EM_ASM({console.log('!!!emscripten_current_thread_process_proxied_queued_calls called from worker: thread ' + _pthread_self() + "\n" + new Error().stack)});
+  }
+      
+  int head = emscripten_atomic_load_u32((void*)&q->call_queue_head);
+  int tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+  while (head != tail) {
+    // Assume that the call is heavy, so unlock access to the call queue while it is being
+    // performed.
+    em_queued_call* call = q->call_queue[head];
+    if (call == 0) {
+		// already processed
+		head = (head + 1) % CALL_QUEUE_SIZE;
+		continue;
+	}
+    if ((call->functionEnum & EM_FUNC_SIG_SPECIAL_INTERNAL) == 0) {
+		head = (head + 1) % CALL_QUEUE_SIZE;
+		continue;
+	}
+    pthread_mutex_unlock(&call_queue_lock);
+    _do_call(call);
+    pthread_mutex_lock(&call_queue_lock);
+
+	// remove from queue
+    q->call_queue[head] = 0;
+
+    head = (head + 1) % CALL_QUEUE_SIZE;
+    //emscripten_atomic_store_u32((void*)&q->call_queue_head, head);
+    tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+  }
+  pthread_mutex_unlock(&call_queue_lock);
+
+  // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
+  emscripten_futex_wake((void*)&q->call_queue_head, 0x7FFFFFFF);
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_current_thread_process_queued_calls() {

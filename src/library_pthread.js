@@ -858,7 +858,7 @@ var LibraryPThread = {
       __pthread_testcancel_js();
       // In main runtime thread (the thread that initialized the Emscripten C runtime and launched main()), assist pthreads in performing operations
       // that they need to access the Emscripten main runtime for.
-      if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
+      if (!ENVIRONMENT_IS_PTHREAD) _emscripten_current_thread_process_proxied_queued_calls();
       _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
     }
   },
@@ -1107,7 +1107,7 @@ var LibraryPThread = {
   _main_thread_futex_wait_address: '0',
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
-  emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
+  emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_current_thread_process_proxied_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
     if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_WORKER) {
@@ -1146,7 +1146,7 @@ var LibraryPThread = {
 #endif
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
-        _emscripten_main_thread_process_queued_calls(); // We are performing a blocking loop here, so must pump any pthreads if they want to perform operations that are proxied.
+        _emscripten_current_thread_process_proxied_queued_calls(); // We are performing a blocking loop here, so must pump any pthreads if they want to perform operations that are proxied.
         addr = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2); // Look for a worker thread waking us up.
       }
 #if PTHREADS_PROFILING
