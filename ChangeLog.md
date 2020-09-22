@@ -19,6 +19,12 @@ Current Trunk
 -------------
 - ASAN_SHADOW_SIZE is deprecated. When using AddressSanitizer, the correct
   amount of shadow memory will now be calculated automatically.
+- Add `getentropy` in `sys/random.h`, and use that from libc++'s
+  `random_device`. This is more efficient, see #12240.
+- Fixed `ABORT_ON_WASM_EXCEPTIONS` to work with the recent dynCall changes where
+  functions can be called via the WASM table directly, bypassing WASM exports.
+- Add `ASYNCIFY_ADVISE` to output which functions have been instrumented for
+  Asyncify mode, and why they need to be handled.
 
 2.0.4: 09/16/2020
 -----------------
@@ -42,7 +48,7 @@ Current Trunk
   asmjs/fastcomp backend).
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
   removes the internal `DYNAMICTOP_PTR` API.)
-- Add `ABORT_ON_EXCEPTIONS` which will abort when an unhandled WASM exception
+- Add `ABORT_ON_WASM_EXCEPTIONS` which will abort when an unhandled WASM exception
   is encountered. This makes the Emscripten program behave more like a native
   program where the OS would terminate the process and no further code can be
   executed when an unhandled exception (e.g. out-of-bounds memory access) happens.

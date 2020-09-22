@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
+  $FS__deps: ['$setErrNo', '$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -1344,33 +1344,7 @@ FS.staticInit();` +
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
-      var random_device;
-      if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
-        // for modern web browsers
-        var randomBuffer = new Uint8Array(1);
-        random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
-      } else
-#if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) {
-        // for nodejs with or without crypto support included
-        try {
-          var crypto_module = require('crypto');
-          // nodejs has crypto support
-          random_device = function() { return crypto_module['randomBytes'](1)[0]; };
-        } catch (e) {
-          // nodejs doesn't have crypto support
-        }
-      } else
-#endif // ENVIRONMENT_MAY_BE_NODE
-      {}
-      if (!random_device) {
-        // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
-#if ASSERTIONS
-        random_device = function() { abort("no cryptographic support found for random_device. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
-#else
-        random_device = function() { abort("random_device"); };
-#endif
-      }
+      var random_device = getRandomDevice();
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);
       // we're not going to emulate the actual shm device,
@@ -1542,17 +1516,6 @@ FS.staticInit();` +
       if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
       return mode;
     },
-    joinPath: function(parts, forceRelative) {
-      var path = PATH.join.apply(null, parts);
-      if (forceRelative && path[0] == '/') path = path.substr(1);
-      return path;
-    },
-    absolutePath: function(relative, base) {
-      return PATH_FS.resolve(base, relative);
-    },
-    standardizePath: function(path) {
-      return PATH.normalize(path);
-    },
     findObject: function(path, dontResolveLastLink) {
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (ret.exists) {
@@ -1589,11 +1552,6 @@ FS.staticInit();` +
         ret.error = e.errno;
       };
       return ret;
-    },
-    createFolder: function(parent, name, canRead, canWrite) {
-      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = FS.getMode(canRead, canWrite);
-      return FS.mkdir(path, mode);
     },
     createPath: function(parent, path, canRead, canWrite) {
       parent = typeof parent === 'string' ? parent : FS.getPath(parent);
@@ -1688,10 +1646,6 @@ FS.staticInit();` +
         }
       });
       return FS.mkdev(path, mode, dev);
-    },
-    createLink: function(parent, name, target, canRead, canWrite) {
-      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      return FS.symlink(target, path);
     },
     // Makes sure a file's contents are loaded. Returns whether the file has
     // been loaded successfully. No-op for files that have been loaded already.
@@ -2022,15 +1976,37 @@ FS.staticInit();` +
       openRequest.onerror = onerror;
     },
 
-    // Allocate memory for an mmap operation. This allocates space of the right
-    // page-aligned size, and clears the padding.
-    mmapAlloc: function(size) {
-      var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
-      var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
-      while (size < alignedSize) HEAP8[ptr + size++] = 0;
-      return ptr;
-    }
-  }
+    // Removed v1 functions
+#if ASSERTIONS
+    absolutePath: function() {
+      abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
+    },
+    createFolder: function() {
+      abort('FS.createFolder has been removed; use FS.mkdir instead');
+    },
+    createLink: function() {
+      abort('FS.createLink has been removed; use FS.symlink instead');
+    },
+    joinPath: function() {
+      abort('FS.joinPath has been removed; use PATH.join instead');
+    },
+    mmapAlloc: function() {
+      abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
+    },
+    standardizePath: function() {
+      abort('FS.standardizePath has been removed; use PATH.normalize instead');
+    },
+#endif
+  },
+
+  // Allocate memory for an mmap operation. This allocates space of the right
+  // page-aligned size, and clears the padding.
+  $mmapAlloc: function(size) {
+    var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
+    var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
+    while (size < alignedSize) HEAP8[ptr + size++] = 0;
+    return ptr;
+  },
 });
 
 if (FORCE_FILESYSTEM) {

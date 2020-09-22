@@ -1776,7 +1776,7 @@ var LibrarySDL = {
   SDL_GetKeyName__sig: 'ii',
   SDL_GetKeyName: function(key) {
     if (!SDL.keyName) {
-      SDL.keyName = allocate(intArrayFromString('unknown key'), 'i8', ALLOC_NORMAL);
+      SDL.keyName = allocate(intArrayFromString('unknown key'), ALLOC_NORMAL);
     }
     return SDL.keyName;
   },
@@ -1838,7 +1838,7 @@ var LibrarySDL = {
   SDL_GetError__sig: 'i',
   SDL_GetError: function() {
     if (!SDL.errorMessage) {
-      SDL.errorMessage = allocate(intArrayFromString("unknown SDL-emscripten error"), 'i8', ALLOC_NORMAL);
+      SDL.errorMessage = allocate(intArrayFromString("unknown SDL-emscripten error"), ALLOC_NORMAL);
     }
     return SDL.errorMessage;
   },
@@ -3572,7 +3572,7 @@ var LibrarySDL = {
       if (SDL.joystickNamePool.hasOwnProperty(name)) {
         return SDL.joystickNamePool[name];
       }
-      return SDL.joystickNamePool[name] = allocate(intArrayFromString(name), 'i8', ALLOC_NORMAL);
+      return SDL.joystickNamePool[name] = allocate(intArrayFromString(name), ALLOC_NORMAL);
     }
     return 0;
   },
@@ -3705,7 +3705,7 @@ var LibrarySDL = {
 
   SDL_GetNumAudioDrivers: function() { return 1 },
   SDL_GetCurrentAudioDriver: function() {
-    return allocate(intArrayFromString('Emscripten Audio'), 'i8', ALLOC_NORMAL);
+    return allocate(intArrayFromString('Emscripten Audio'), ALLOC_NORMAL);
   },
 
   SDL_GetAudioDriver__deps: ['SDL_GetCurrentAudioDriver'],

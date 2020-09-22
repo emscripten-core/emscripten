@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $MEMFS__deps: ['$FS'],
+  $MEMFS__deps: ['$FS', '$mmapAlloc'],
   $MEMFS: {
     ops_table: null,
     mount: function(mount) {
@@ -373,7 +373,7 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
-          ptr = FS.mmapAlloc(length);
+          ptr = mmapAlloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }

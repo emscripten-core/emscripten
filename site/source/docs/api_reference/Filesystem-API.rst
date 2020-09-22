@@ -634,7 +634,7 @@ File system API
     FS.createLazyFile('/', 'bar', '/get_file.php?name=baz', true, true);
 
 
-  :param parent: The parent folder, either as a path (e.g. `'/usr/lib'`) or an object previously returned from a `FS.createFolder()` or `FS.createPath()` call.
+  :param parent: The parent folder, either as a path (e.g. `'/usr/lib'`) or an object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
   :type parent: string/object
   :param string name: The name of the new file.
   :param string url: In the browser, this is the URL whose contents will be returned when this file is accessed. In a command line engine like *node.js*, this will be the local (real) file system path from where the contents will be loaded. Note that writes to this file are virtual.
@@ -648,7 +648,7 @@ File system API
 
   Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``run()`` will be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
 
-  :param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.createFolder()` or `FS.createPath()` call.
+  :param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
   :type parent: string/object
   :param string name: The name of the new file.
   :param string url: In the browser, this is the URL whose contents will be returned when the file is accessed. In a command line engine, this will be the local (real) file system path the contents will be loaded from. Note that writes to this file are virtual.
