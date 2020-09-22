@@ -674,10 +674,10 @@ function createExportWrapper(name, fixedasm) {
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion 
+// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion
 // level of the wrapper function so that we only handle exceptions at the top level
 // letting the exception mechanics work uninterrupted at the inner level.
-// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that 
+// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that
 // we know to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
@@ -689,7 +689,7 @@ function instrumentWasmExportsWithAbort(exports) {
   // A cache for wrappers based on the original function reference so we don't end up
   // creating the same wrappers over and over again
   var wrapperCache = {};
-  
+
   // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
   var makeWrapper = (function(original) {
     var wrapper = wrapperCache[original];
@@ -699,7 +699,7 @@ function instrumentWasmExportsWithAbort(exports) {
         if (ABORT) {
           throw "program has already aborted!";
         }
-        
+
 #if DISABLE_EXCEPTION_CATCHING != 1
         abortWrapperDepth += 1;
 #endif
@@ -716,7 +716,7 @@ function instrumentWasmExportsWithAbort(exports) {
           ) {
             throw e;
           }
-          
+
           abort("unhandled exception: " + [e, e.stack]);
         }
 #if DISABLE_EXCEPTION_CATCHING != 1
@@ -730,11 +730,11 @@ function instrumentWasmExportsWithAbort(exports) {
   });
 
   // Override the wasmTable get function to return the wrappers
-  var realGet = wasmTable.get; 
-  wasmTable.get = function(i) { 
+  var realGet = wasmTable.get;
+  wasmTable.get = function(i) {
     return makeWrapper(realGet.call(wasmTable, i));
-  };  
-  
+  };
+
   // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
   for (var name in exports) {
