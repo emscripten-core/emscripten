@@ -3647,6 +3647,7 @@ window.close = function() {
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
 
   # Test that basic thread creation works.
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_create(self):
     def test(args):
