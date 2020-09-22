@@ -51,14 +51,12 @@ To build with Emscripten, you would instead use the following commands:
 .. note::
 
   The file output from *make* might have a different suffix: **.a** for a static
-  library archive, **.so** for a shared library, **.o** or **.bc** for object
-  files (these file extensions are the same as *gcc* would use for the different
-  types). Irrespective of the file extension, these files contain something that
-  *emcc* can compile into the final JavaScript + WebAssembly (typically the
-  contents will be wasm object files, but if you build with LTO then they will
-  contain LLVM bitcode). If the suffix is something else - like no suffix at all, or
-  something like **.so.1** - then you may need to rename the file before sending
-  it to *emcc*.
+  library archive, **.so** for a shared library, **.o** for object files (these
+  file extensions are the same as *gcc* would use for the different types).
+  Irrespective of the file extension, these files contain something that *emcc*
+  can compile into the final JavaScript + WebAssembly (typically the contents
+  will be wasm object files, but if you build with LTO then they will contain
+  LLVM bitcode).
 
 .. note::
 
@@ -81,8 +79,7 @@ Emscripten compiler output often consists of several files and not just one. The
 
  - `emcc ... -o output.html` builds a `output.html` file as an output, as well as an accompanying `output.js` launcher file, and a `output.wasm` WebAssembly file.
  - `emcc ... -o output.js` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, `output.js` and `output.wasm`. (that can be run in e.g. node.js shell)
- - `emcc ... -o output.bc` does not produce a final asm.js/wasm build, but stops at LLVM bitcode generation stage, and produces a single LLVM bitcode file `output.bc`. Likewise only one bitcode file is produced if output suffix is `.ll`, `.o`, '.obj', '.lo', `.lib`, `.dylib` or `.so`.
- - `emcc ... -o output.a` generates a single archive file `output.a`.
+ - `emcc ... -o output.wasm` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the `-s STANDALONE_WASM` settting had been used.
  - `emcc ... -o output.{html,js} -s WASM=0` causes the compiler to target asm.js, and therefore a `.wasm` file is not produced.
  - `emcc ... -o output.{html,js} --emit-symbol-map` produces a file `output.{html,js}.symbols` if WebAssembly is being targeted (`-s WASM=0` not specified), or if asm.js is being targeted and `-Os`, `-Oz` or `-O2` or higher is specified, but debug level setting is `-g1` or lower (i.e. if symbols minification did occur).
  - `emcc ... -o output.{html,js} -s WASM=0 --memory-init-file 1` causes the generation of `output.{html,js}.mem` memory initializer file. Pasing `-O2`, `-Os` or `-Oz` also implies `--memory-init-file 1`.
@@ -243,7 +240,7 @@ Dynamic linking
 
 Emscripten's goal is to generate the fastest and smallest possible code, and for that reason it focuses on generating a single JavaScript file for an entire project. For that reason, dynamic linking should be avoided when possible.
 
-By default, Emscripten ``.so`` files are the same as ``.bc`` or ``.o`` files, that is, they contain LLVM bitcode. Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. *Emcc* ignores commands to dynamically link libraries when linking together bitcode (i.e., not in the final build stage). This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages, which would result in duplicate symbol errors.
+By default, Emscripten ``.so`` files are the same as regular ``.o`` object files. Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. *Emcc* ignores commands to dynamically link libraries when linking together bitcode (i.e., not in the final build stage). This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages, which would result in duplicate symbol errors.
 
 There is `experimental support <https://github.com/emscripten-core/emscripten/wiki/Linking>`_ for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
 
@@ -261,12 +258,7 @@ Projects that use *configure*, *cmake*, or some other portable configuration met
 Archive (.a) files
 ------------------
 
-Emscripten supports **.a** archive files, which are bundles of object files. This is an old format for libraries, and it has special semantics - for example, the order of linking matters with **.a** files, but not with plain object files (in **.bc**, **.o** or **.so**). For the most part those special semantics should work in Emscripten, however, we support **.a** files using llvm's tools, which have a few limitations.
-
-The main limitation is that if you have multiple files in a single **.a** archive that have the same basename (for example, ``dir1/a.o, dir2/a.o``), then llvm-ar cannot access both of those files. Emscripten will attempt to work around this by adding a hash to the basename, but collisions are still possible in principle.
-
-Where possible it is better to generate shared library files (**.so**) rather than archives (**.a**) — this is generally a simple change in your project's build system. Shared libraries are simpler, and are more predictable with respect to linking.
-
+Emscripten supports **.a** archive files, which are bundles of object files. This is a simple format for libraries, that has special semantics - for example, the order of linking matters with **.a** files, but not with plain object files. For the most part those special semantics should work the same in Emscripten as elsewhere.
 
 Manually using emcc
 ===================
@@ -278,26 +270,30 @@ The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile sing
   # Generate a.out.js from C++. Can also take .ll (LLVM assembly) or .bc (LLVM bitcode) as input
   ./emcc src.cpp
 
-  # Generate src.o containing LLVM bitcode.
+  # Generate an object file called src.o.
   ./emcc src.cpp -c
 
   # Generate result.js containing JavaScript.
   ./emcc src.cpp -o result.js
 
-  # Generate result.o containing LLVM bitcode (the suffix matters).
+  # Generate an object file called result.o
   ./emcc src.cpp -c -o result.o
 
   # Generate a.out.js from two C++ sources.
   ./emcc src1.cpp src2.cpp
 
-  # Generate src1.o and src2.o, containing LLVM bitcode
+  # Generate object files src1.o and src2.o
   ./emcc src1.cpp src2.cpp -c
 
-  # Combine two LLVM bitcode files into a.out.js
+  # Combine two object files into a.out.js
   ./emcc src1.o src2.o
 
-  # Combine two LLVM bitcode files into another LLVM bitcode file
-  ./emcc src1.o src2.o -o combined.o
+  # Combine two object files into another object file (not normally needed)
+  ./emcc src1.o src2.o -r -o combined.o
+
+  # Combine two object files into library file
+  ./emar rcs libfoo.a src1.o src2.o 
+
 
 In addition to the capabilities it shares with *gcc*, *emcc* supports options to optimize code, control what debug information is emitted, generate HTML and other output formats, etc. These options are documented in the :ref:`emcc tool reference <emccdoc>` (``./emcc --help`` on the command line).
 
