@@ -421,8 +421,26 @@ You may need to quote things like this:
   # or you may need something like this in a Makefile
   emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
 
-The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
+The proper syntax depends on the OS and shell you are in, and if you are writing
+in a Makefile, etc. Things like spaces may also matter in some shells, for
+example you may need to avoid empty spaces between list items:
 
+::
+
+  # this works in the shell on most Linuxes and on macOS
+  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['foo','bar']"
+
+(note there is no space after the ``,``).
+
+For simplicity, you may want to use a **response file**, that is,
+
+::
+
+  # this works in the shell on most Linuxes and on macOS
+  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=@extra.txt"
+
+and then ``extra.txt`` can be a plain file that contains ``['foo','bar']``. This
+avoids any issues with the shell environment parsing the string.
 
 How do I specify ``-s`` options in a CMake project?
 ===================================================
