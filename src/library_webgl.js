@@ -148,6 +148,7 @@ var LibraryGL = {
 #endif
 #if MAX_WEBGL_VERSION >= 2
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+    '_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
     '_webgl_enable_WEBGL_multi_draw',
     ],
