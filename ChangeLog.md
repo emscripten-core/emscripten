@@ -21,6 +21,8 @@ Current Trunk
   `random_device`. This is more efficient, see #12240.
 - Fixed `ABORT_ON_WASM_EXCEPTIONS` to work with the recent dynCall changes where
   functions can be called via the WASM table directly, bypassing WASM exports.
+- Add `ASYNCIFY_ADVISE` to output which functions have been instrumented for
+  Asyncify mode, and why they need to be handled.
 
 2.0.4: 09/16/2020
 -----------------

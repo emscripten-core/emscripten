@@ -70,7 +70,7 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
 compiled code (everything else might be removed if it is not used), and
@@ -159,7 +159,7 @@ parameters to pass to the function:
      we did in this tutorial, then because of optimizations
      and minification you should export ccall from the runtime, using
      ``EXPORTED_RUNTIME_METHODS``, for example using
-     ``-s 'EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     ``-s 'EXPORTED_RUNTIME_METHODS=["ccall","cwrap"]'``,
      and call it on ``Module`` (which contains
      everything exported, in a safe way that is not influenced by minification
      or optimizations).

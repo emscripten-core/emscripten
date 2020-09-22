@@ -310,6 +310,13 @@ can provide a manual list of functions to Asyncify:
 * ``ASYNCIFY_ONLY_LIST`` is a list of the **only** functions that can unwind
   the stack. Asyncify will instrument exactly those and no others.
 
+You can enable the ``ASYNCIFY_ADVISE`` setting, which will tell the compiler to
+output which functions it is currently instrumenting and why. You can then
+determine whether you should add any functions to ``ASYNCIFY_REMOVE_LIST`` or
+whether it would be safe to enable ``ASYNCIFY_IGNORE_INDIRECT``. Note that this
+phase of the compiler happens after many optimization phases, and several
+functions maybe be inlined already. To be safe, run it with `-O0`.
+
 For more details see ``settings.js``. Note that the manual settings
 mentioned here are error-prone - if you don't get things exactly right,
 your application can break. If you don't absolutely need maximal performance,
