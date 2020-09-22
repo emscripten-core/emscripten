@@ -29,7 +29,9 @@ The settings file is created the first time a user runs :ref:`emcc <emccdoc>` (o
 	
 Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java).
 
-The file will probably not include the link to LLVM binaries (``LLVM_ROOT``) as a manual source build can create this anywhere.
+In most cases it is necessary to edit the generated file and modify at least the
+``LLVM_ROOT`` and ``BINARYEN_ROOT`` settings to point to the correct location of
+your local LLVM and Binaryen installations respectively.
 
 Locating the compiler configuration file (.emscripten)
 =======================================================
