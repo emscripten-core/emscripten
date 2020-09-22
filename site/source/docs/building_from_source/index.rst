@@ -29,8 +29,6 @@ Then point LLVM_ROOT in ``.emscripten`` to ``<llvm_src>/build/bin`` (no need to 
 
 Please refer to the upstream docs for more detail.
 
-For using the older fastcomp backend, see :ref:`the fastcomp docs <building-fastcomp-from-source>`.
-
 Building Binaryen
 -----------------
 
