@@ -383,7 +383,6 @@ for (var named in NAMED_GLOBALS) {
   })(named);
 }
 '''
-  named_globals += ''.join(["Module['%s'] = Module['%s'];\n" % (k, v) for k, v in metadata['aliases'].items()])
   return named_globals
 
 
@@ -892,7 +891,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     raise
 
   metadata = {
-    'aliases': {},
     'declares': [],
     'implementedFunctions': [],
     'externs': [],
