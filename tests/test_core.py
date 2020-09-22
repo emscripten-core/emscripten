@@ -8014,7 +8014,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'cpp': ['test_asan_no_error.cpp'],
   })
   def test_asan_no_error(self, name):
-    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.emcc_args.append('-fsanitize=address')
+    self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
     self.do_runf(path_from_root('tests', 'core', name), '', assert_returncode=NON_ZERO)
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
@@ -8081,7 +8083,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if not self.get_setting('WASM'):
       self.skipTest('wasm2js has no ASan support')
 
-    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.emcc_args.append('-fsanitize=address')
+    self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
     if cflags:
       self.emcc_args += cflags
     self.do_runf(path_from_root('tests', 'core', name),
@@ -8090,14 +8094,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_js_stack_op(self):
-    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.emcc_args.append('-fsanitize=address')
+    self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
     self.do_runf(path_from_root('tests', 'core', 'test_asan_js_stack_op.c'),
                  expected_output='Hello, World!')
 
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
-    self.set_setting('ALLOW_MEMORY_GROWTH')
+    self.set_setting('INITIAL_MEMORY', 314572800)
     self.do_run_in_out_file_test('tests', 'core', 'test_asan_api.c')
 
   @no_wasm2js('TODO: ASAN in wasm2js')
@@ -8107,6 +8113,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-sUSE_CLOSURE_COMPILER=1')
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
 
     def post(filename):
       with open(filename, 'a') as f:
