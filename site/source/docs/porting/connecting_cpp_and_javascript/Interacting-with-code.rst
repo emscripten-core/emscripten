@@ -631,7 +631,7 @@ added to the table. Otherwise by default the table has a fixed size.
 
    For example, if you add a function that takes an integer and does not return
    anything, you can do ``addFunction(your_function, 'vi');``. See
-   `tests/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/incoming/tests/interop/test_add_function_post.js>`_ for an example.
+   `tests/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/master/tests/interop/test_add_function_post.js>`_ for an example.
 
 
 .. _interacting-with-code-access-memory:

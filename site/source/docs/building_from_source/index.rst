@@ -40,7 +40,6 @@ See the `Binaryen build instructions <https://github.com/WebAssembly/binaryen#bu
    :maxdepth: 1
 
    toolchain_what_is_needed
-   building_fastcomp_manually_from_source
    configuring_emscripten_settings
    verify_emscripten_environment
 
