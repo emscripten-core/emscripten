@@ -323,7 +323,7 @@ function run(args) {
     doRun();
   }
 #if STACK_OVERFLOW_CHECK
-  checkStackCookie();
+  if (!ABORT) checkStackCookie();
 #endif
 }
 Module['run'] = run;

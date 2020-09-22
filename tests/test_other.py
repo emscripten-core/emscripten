@@ -2066,6 +2066,24 @@ int f() {
     out = self.expect_fail([EMCC, path_from_root('tests', 'embind', 'test_unsigned.cpp')])
     self.assertContained("undefined symbol: _embind_register_function", out)
 
+  def test_embind_asyncify(self):
+    create_test_file('post.js', '''
+      addOnPostRun(function() {
+        Module.sleep(10);
+        out('done');
+      });
+    ''')
+    create_test_file('main.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      using namespace emscripten;
+      EMSCRIPTEN_BINDINGS(asyncify) {
+          function("sleep", &emscripten_sleep);
+      }
+    ''')
+    self.run_process([EMCC, 'main.cpp', '--bind', '-s', 'ASYNCIFY=1', '--post-js', 'post.js'])
+    self.assertContained('done', self.run_js('a.out.js'))
+
   @is_slow_test
   def test_embind(self):
     environ = os.environ.copy()
@@ -8019,6 +8037,30 @@ test_module().then((test_module_instance) => {
         'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
         proc.stderr)
 
+  def test_asyncify_advise(self):
+    src = path_from_root('tests', 'other', 'asyncify_advise.c')
+
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCIFY_ADVISE', 1)
+    self.set_setting('ASYNCIFY_IMPORTS', ['async_func'])
+
+    out = self.run_process([EMCC, src, '-o', 'asyncify_advise.js'] + self.get_emcc_args(), stdout=PIPE).stdout
+    self.assertContained('[asyncify] main can', out)
+    self.assertContained('[asyncify] a can', out)
+    self.assertContained('[asyncify] c can', out)
+    self.assertContained('[asyncify] e can', out)
+    self.assertContained('[asyncify] g can', out)
+    self.assertContained('[asyncify] i can', out)
+
+    self.set_setting('ASYNCIFY_REMOVE', ['e'])
+    out = self.run_process([EMCC, src, '-o', 'asyncify_advise.js'] + self.get_emcc_args(), stdout=PIPE).stdout
+    self.assertContained('[asyncify] main can', out)
+    self.assertNotContained('[asyncify] a can', out)
+    self.assertNotContained('[asyncify] c can', out)
+    self.assertNotContained('[asyncify] e can', out)
+    self.assertContained('[asyncify] g can', out)
+    self.assertContained('[asyncify] i can', out)
+
   # Sockets and networking
 
   def test_inet(self):
@@ -9707,7 +9749,21 @@ int main () {
     self.assertContained('warning: EMMAKEN_COMPILER is deprecated', stderr)
 
   def test_llvm_option_dash_o(self):
-    # emcc used to interpret -mllvm's option value as the output file if it began with -o
-    self.run_process([EMCC, '-o', 'llvm_option_dash_o_output', '-mllvm', '-opt-bisect-limit=1', path_from_root('tests', 'hello_world.c')])
+    # emcc used to interpret -mllvm's option value as the output file if it
+    # began with -o
+    stderr = self.run_process(
+      [EMCC, '-v', '-o', 'llvm_option_dash_o_output', '-mllvm',
+       '-opt-bisect-limit=1', path_from_root('tests', 'hello_world.c')],
+      stderr=PIPE).stderr
+
     self.assertExists('llvm_option_dash_o_output')
     self.assertNotExists('pt-bisect-limit=1')
+    self.assertContained(' -mllvm -opt-bisect-limit=1 ', stderr)
+
+    # Regression test for #12236: the '-mllvm' argument was indexed instead of
+    # its value, and the index was out of bounds if the argument was sixth or
+    # further on the command line
+    self.run_process(
+      [EMCC, '-DFOO', '-DBAR', '-DFOOBAR', '-DBARFOO',
+       '-o', 'llvm_option_dash_o_output', '-mllvm', '-opt-bisect-limit=1',
+       path_from_root('tests', 'hello_world.c')])

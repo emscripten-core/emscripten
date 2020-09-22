@@ -2389,7 +2389,7 @@ LibraryManager.library = {
   },
 
   // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', 'gethostbyname', '_inet_ntop4_raw'],
+  gethostbyaddr__deps: ['$DNS', '$getHostByName', '_inet_ntop4_raw'],
   gethostbyaddr__proxy: 'sync',
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
@@ -2404,19 +2404,20 @@ LibraryManager.library = {
     if (lookup) {
       host = lookup;
     }
-    var hostp = allocate(intArrayFromString(host), 'i8', ALLOC_STACK);
-    return _gethostbyname(hostp);
+    return getHostByName(host);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', '$getHostByName'],
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
-    name = UTF8ToString(name);
+    return getHostByName(UTF8ToString(name));
+  },
 
+  $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = _malloc(name.length+1);
+    var nameBuf = {{{ makeMalloc('getHostByName', 'name.length+1') }}};
     stringToUTF8(name, nameBuf, name.length+1);
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', 'i8*') }}};
     var aliasesBuf = _malloc(4);
@@ -2845,6 +2846,47 @@ LibraryManager.library = {
   endgrent: function() { throw 'endgrent: TODO' },
   setgrent: function() { throw 'setgrent: TODO' },
 
+  // random.h
+
+  // TODO: consider allowing the API to get a parameter for the number of
+  // bytes.
+  $getRandomDevice: function() {
+    if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
+      // for modern web browsers
+      var randomBuffer = new Uint8Array(1);
+      return function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
+    } else
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      // for nodejs with or without crypto support included
+      try {
+        var crypto_module = require('crypto');
+        // nodejs has crypto support
+        return function() { return crypto_module['randomBytes'](1)[0]; };
+      } catch (e) {
+        // nodejs doesn't have crypto support
+      }
+    }
+#endif // ENVIRONMENT_MAY_BE_NODE
+    // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
+#if ASSERTIONS
+    return function() { abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
+#else
+    return function() { abort("randomDevice"); };
+#endif
+  },
+
+  getentropy__deps: ['$getRandomDevice'],
+  getentropy: function(buffer, size) {
+    if (!_getentropy.randomDevice) {
+      _getentropy.randomDevice = getRandomDevice();
+    }
+    for (var i = 0; i < size; i++) {
+      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}}
+    }
+    return 0;
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================
@@ -3155,7 +3197,7 @@ LibraryManager.library = {
     var fullname = name + '__str';
     var fullret = cache[fullname];
     if (fullret) return fullret;
-    return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
+    return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
   },
 
   emscripten_has_asyncify: function() {

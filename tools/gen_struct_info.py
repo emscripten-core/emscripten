@@ -106,7 +106,7 @@ try:
 except ImportError:
   # The import failed
 
-  def parse_header(path, cpp_opts):
+  def parse_header(path, cpp_opts): # noqa
     # Tell the user how to get pycparser, if he or she tries to parse a C file.
     sys.stderr.write('ERR: I need pycparser to process C files. \n')
     sys.stderr.write('   Use "pip install pycparser" to install or download it from "https://github.com/eliben/pycparser".\n')

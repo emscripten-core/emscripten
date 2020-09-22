@@ -205,96 +205,37 @@ function _free() {
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
-var ALLOC_NONE = 2; // Do not allocate
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
 //             for multiple syntaxes to save space in generated code. So you should
 //             normally not use allocate(), and instead allocate memory using _malloc(),
 //             initialize it with setValue(), and so forth.
-// @slab: An array of data, or a number. If a number, then the size of the block to allocate,
-//        in *bytes* (note that this is sometimes confusing: the next parameter does not
-//        affect this!)
-// @types: Either an array of types, one for each byte (or 0 if no type at that position),
-//         or a single type which is used for the entire block. This only matters if there
-//         is initial data - if @slab is a number, then this does not matter at all and is
-//         ignored.
+// @slab: An array of data.
 // @allocator: How to allocate memory, see ALLOC_*
 /** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
-function allocate(slab, types, allocator, ptr) {
-  var zeroinit, size;
-  if (typeof slab === 'number') {
-    zeroinit = true;
-    size = slab;
-  } else {
-    zeroinit = false;
-    size = slab.length;
-  }
-
-  var singleType = typeof types === 'string' ? types : null;
-
+function allocate(slab, allocator) {
   var ret;
-  if (allocator == ALLOC_NONE) {
-    ret = ptr;
-  } else {
-    ret = [{{{ ('_malloc' in IMPLEMENTED_FUNCTIONS) ? '_malloc' : 'null' }}},
-#if DECLARE_ASM_MODULE_EXPORTS
-    stackAlloc,
-#else
-    typeof stackAlloc !== 'undefined' ? stackAlloc : null,
-#endif
-    ][allocator](Math.max(size, singleType ? 1 : types.length));
-  }
-
-  if (zeroinit) {
-    var stop;
-    ptr = ret;
-    assert((ret & 3) == 0);
-    stop = ret + (size & ~3);
-    for (; ptr < stop; ptr += 4) {
-      {{{ makeSetValue('ptr', '0', '0', 'i32', null, true) }}};
-    }
-    stop = ret + size;
-    while (ptr < stop) {
-      {{{ makeSetValue('ptr++', '0', '0', 'i8', null, true) }}};
-    }
-    return ret;
-  }
-
-  if (singleType === 'i8') {
-    if (slab.subarray || slab.slice) {
-      HEAPU8.set(/** @type {!Uint8Array} */ (slab), ret);
-    } else {
-      HEAPU8.set(new Uint8Array(slab), ret);
-    }
-    return ret;
-  }
-
-  var i = 0, type, typeSize, previousType;
-  while (i < size) {
-    var curr = slab[i];
-
-    type = singleType || types[i];
-    if (type === 0) {
-      i++;
-      continue;
-    }
 #if ASSERTIONS
-    assert(type, 'Must know what type to store in allocate!');
+  assert(typeof allocator === 'number', 'allocate no longer takes a type argument')
+  assert(typeof slab !== 'number', 'allocate no longer takes a number as arg0')
 #endif
 
-    if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
-
-    setValue(ret+i, curr, type);
-
-    // no need to look up size unless type changes, so cache it
-    if (previousType !== type) {
-      typeSize = getNativeTypeSize(type);
-      previousType = type;
-    }
-    i += typeSize;
+  if (allocator == ALLOC_STACK) {
+#if DECLARE_ASM_MODULE_EXPORTS
+    ret = stackAlloc(slab.length);
+#else
+    ret = (typeof stackAlloc !== 'undefined' ? stackAlloc : null)(slab.length);
+#endif
+  } else {
+    ret = {{{ makeMalloc('allocate', 'slab.length') }}};
   }
 
+  if (slab.subarray || slab.slice) {
+    HEAPU8.set(/** @type {!Uint8Array} */slab, ret);
+  } else {
+    HEAPU8.set(new Uint8Array(slab), ret);
+  }
   return ret;
 }
 
@@ -347,12 +288,10 @@ function updateGlobalBufferAndViews(buf) {
 
 var STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
-    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
+    STACK_MAX = {{{ getQuoted('STACK_MAX') }}};
 
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
-assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if RELOCATABLE
@@ -361,7 +300,7 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 // initialize sbrk (the main module is relocatable itself, and so it does not
 // have __heap_base hardcoded into it - it receives it from JS as an extern
 // global, basically).
-Module['___heap_base'] = DYNAMIC_BASE;
+Module['___heap_base'] = {{{ getQuoted('HEAP_BASE') }}};
 #endif // RELOCATABLE
 
 #if USE_PTHREADS
@@ -373,7 +312,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
-  // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
 }
 #endif
 
@@ -736,10 +674,10 @@ function createExportWrapper(name, fixedasm) {
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion 
+// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion
 // level of the wrapper function so that we only handle exceptions at the top level
 // letting the exception mechanics work uninterrupted at the inner level.
-// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that 
+// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that
 // we know to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
@@ -748,49 +686,65 @@ var abortWrapperDepth = 0;
 // - throw an exception if someone tries to call them after the program has aborted
 // See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
 function instrumentWasmExportsWithAbort(exports) {
+  // A cache for wrappers based on the original function reference so we don't end up
+  // creating the same wrappers over and over again
+  var wrapperCache = {};
+
+  // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
+  var makeWrapper = (function(original) {
+    var wrapper = wrapperCache[original];
+    if (!wrapper) {
+      wrapper = wrapperCache[original] = function() {
+        // Don't allow this function to be called if we're aborted!
+        if (ABORT) {
+          throw "program has already aborted!";
+        }
+
+#if DISABLE_EXCEPTION_CATCHING != 1
+        abortWrapperDepth += 1;
+#endif
+        try {
+          return original.apply(null, arguments);
+        }
+        catch (e) {
+          if (
+            ABORT // rethrow exception if abort() was called in the original function call above
+            || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
+#if SUPPORT_LONGJMP
+            || e === 'longjmp' // rethrow longjmp if enabled
+#endif
+          ) {
+            throw e;
+          }
+
+          abort("unhandled exception: " + [e, e.stack]);
+        }
+#if DISABLE_EXCEPTION_CATCHING != 1
+        finally {
+          abortWrapperDepth -= 1;
+        }
+#endif
+      };
+    }
+    return wrapper;
+  });
+
+  // Override the wasmTable get function to return the wrappers
+  var realGet = wasmTable.get;
+  wasmTable.get = function(i) {
+    return makeWrapper(realGet.call(wasmTable, i));
+  };
+
+  // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
   for (var name in exports) {
-    (function(name) {
       var original = exports[name];
-      
-      // Wrap all functions, copy the other symbols.
       if (typeof original === 'function') {
-        instExports[name] = function() {
-          // Don't allow this function to be called if we're aborted!
-          if (ABORT) { 
-            throw "program has already aborted!";
-          }
-          
-#if DISABLE_EXCEPTION_CATCHING != 1
-          abortWrapperDepth += 1;
-#endif
-          try {
-            return original.apply(null, arguments);
-          }
-          catch (e) {
-            if (
-              ABORT // rethrow exception if abort() was called in the original function call above
-              || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
-#if SUPPORT_LONGJMP
-              || e === 'longjmp' // rethrow longjmp if enabled
-#endif
-            ) {
-              throw e;
-            }
-            
-            abort("unhandled exception: " + [e, e.stack]);
-          }
-#if DISABLE_EXCEPTION_CATCHING != 1
-          finally {
-            abortWrapperDepth -= 1;
-          }
-#endif
-        };
+        instExports[name] = makeWrapper(original);
       }
       else {
         instExports[name] = original;
       }
-    })(name);
   }
   return instExports;
 }
@@ -879,7 +833,7 @@ function createWasm() {
   function receiveInstance(instance, module) {
     var exports = instance.exports;
 #if RELOCATABLE
-    exports = relocateExports(exports, GLOBAL_BASE, 0);
+    exports = relocateExports(exports, GLOBAL_BASE);
 #endif
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);

@@ -418,7 +418,7 @@ def find_output_arg(args):
       # Explicitly skip over -mllvm arguments and their values because their
       # values could potentially start with -o and be confused for output file
       # specifiers.
-      outargs.append(arg[i + 1])
+      outargs.append(args[i + 1])
       i += 2
     else:
       i += 1
@@ -579,6 +579,8 @@ def backend_binaryen_passes():
     passes += ['--asyncify']
     if shared.Settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
+    if shared.Settings.ASYNCIFY_ADVISE:
+      passes += ['--pass-arg=asyncify-verbose']
     if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
       passes += ['--pass-arg=asyncify-ignore-indirect']
     else:
@@ -1264,6 +1266,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert not shared.Settings.SIDE_MODULE
       if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$preloadDylibs']
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
       # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
@@ -1283,7 +1286,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # shared modules need memory utilities to allocate their memory
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['allocate']
       shared.Settings.ALLOW_TABLE_GROWTH = 1
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDynamicLibrary', '$preloadDylibs']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$relocateExports']
 
     # various settings require sbrk() access
     if shared.Settings.DETERMINISTIC or \
@@ -1531,12 +1534,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # separately, and they need emcc's output to contain the support they need)
       if not shared.Settings.ASMFS:
         shared.Settings.EXPORTED_RUNTIME_METHODS += [
-          'FS_createFolder',
           'FS_createPath',
           'FS_createDataFile',
           'FS_createPreloadedFile',
           'FS_createLazyFile',
-          'FS_createLink',
           'FS_createDevice',
           'FS_unlink'
         ]
@@ -1746,6 +1747,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if 'address' in sanitize:
       shared.Settings.USE_ASAN = 1
+      if not shared.Settings.UBSAN_RUNTIME:
+        shared.Settings.UBSAN_RUNTIME = 2
 
       shared.Settings.EXPORTED_FUNCTIONS += [
         '_emscripten_builtin_memset',
@@ -1894,7 +1897,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return system_libs.process_args(cmd, shared.Settings)
 
       def get_clang_command_asm(src_file):
-        asflags = shared.get_asmflags(compile_args)
+        asflags = shared.get_asmflags()
         return [get_compiler(use_cxx(src_file))] + asflags + compile_args + [src_file]
 
       # preprocessor-only (-E) support
@@ -2063,7 +2066,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
           # TODO(sbc): Only set link_as_cxx when run_via_emxx
           link_as_cxx = '-nostdlib++' not in newargs
-          extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, link_as_cxx, forced=forced_stdlibs)
+          extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
         linker_inputs += extra_files_to_link
 
     # exit block 'calculate system libraries'
@@ -2199,8 +2202,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('memory initializer')
 
     with ToolchainProfiler.profile_block('binaryen'):
-      do_binaryen(target, options, memfile, wasm_target,
-                  wasm_source_map_target, misc_temp_files)
+      do_binaryen(target, options, wasm_target)
 
     log_time('binaryen')
     # If we are not emitting any JS then we are all done now
@@ -2600,13 +2602,11 @@ def emit_js_source_maps(target, js_transform_tempfiles):
                       '--offset', '0'])
 
 
-def do_binaryen(target, options, memfile, wasm_target,
-                wasm_source_map_target, misc_temp_files):
+def do_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
   if use_source_map() and not shared.Settings.SOURCE_MAP_BASE:
     logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
-  binaryen_bin = building.get_binaryen_bin()
   # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = shared.Settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
   # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
@@ -2642,7 +2642,7 @@ def do_binaryen(target, options, memfile, wasm_target,
 
   if shared.Settings.EVAL_CTORS:
     building.save_intermediate(wasm_target, 'pre-ctors.wasm')
-    building.eval_ctors(final_js, wasm_target, binaryen_bin, debug_info=intermediate_debug_info)
+    building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
 
@@ -2651,7 +2651,7 @@ def do_binaryen(target, options, memfile, wasm_target,
   #   webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
-    webassembly.add_emscripten_metadata(final_js, wasm_target)
+    webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
     # pthreads memory growth requires some additional JS fixups
@@ -2683,13 +2683,7 @@ def do_binaryen(target, options, memfile, wasm_target,
     building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   def preprocess_wasm2js_script():
-    wasm2js = read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'))
-    # We do not currently have a setup to preprocess {{{ }}} settings in user scripts, so manually
-    # expand the settings that wasm2js.js actually uses.
-    wasm2js = wasm2js.replace('{{{ WASM_PAGE_SIZE }}}', '65536')
-    for opt in ['WASM_TABLE_SIZE']:
-      wasm2js = wasm2js.replace("{{{ getQuoted('%s') }}}" % opt, str(shared.Settings.get(opt)))
-    return wasm2js
+    return read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'), expand_macros=True)
 
   def run_closure_compiler():
     global final_js
@@ -2959,7 +2953,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     f.write(asbytes(html_contents))
 
 
-def minify_html(filename, options):
+def minify_html(filename):
   if shared.Settings.DEBUG_LEVEL >= 2:
     return
 
@@ -3021,7 +3015,7 @@ def generate_html(target, options, js_target, target_basename,
                                       wasm_target, memfile)
 
   if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1):
-    minify_html(target, options)
+    minify_html(target)
 
 
 def generate_worker_js(target, js_target, target_basename):

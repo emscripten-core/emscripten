@@ -336,12 +336,10 @@ function isFSPrefixed(name) {
 
 // forcing the filesystem exports a few things by default
 function isExportedByForceFilesystem(name) {
-  return name === 'FS_createFolder' ||
-         name === 'FS_createPath' ||
+  return name === 'FS_createPath' ||
          name === 'FS_createDataFile' ||
          name === 'FS_createPreloadedFile' ||
          name === 'FS_createLazyFile' ||
-         name === 'FS_createLink' ||
          name === 'FS_createDevice' ||
          name === 'FS_unlink' ||
          name === 'addRunDependency' ||
@@ -489,9 +487,7 @@ function exportRuntime() {
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
     var threadExports = ['PThread', '_pthread_self'];
-    if (WASM) {
-      threadExports.push('wasmMemory');
-    }
+    threadExports.push('wasmMemory');
     if (!MINIMAL_RUNTIME) {
       threadExports.push('ExitStatus');
     }
@@ -518,7 +514,6 @@ function exportRuntime() {
   var runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
-    'ALLOC_NONE',
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos

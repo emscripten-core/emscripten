@@ -656,6 +656,9 @@ var ASYNCIFY_ADD = [];
 // See notes on ASYNCIFY_REMOVE about the names.
 var ASYNCIFY_ONLY = [];
 
+// If enabled will output which functions have been instrumented and why.
+var ASYNCIFY_ADVISE = 0;
+
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
 var ASYNCIFY_LAZY_LOAD_CODE = 0;

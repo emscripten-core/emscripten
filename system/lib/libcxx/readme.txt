@@ -20,3 +20,5 @@ Local modifications are marked with the comment: 'XXX EMSCRIPTEN'
 3. Define _LIBCPP_ELAST in libcxx/include/config_elast.h
 
 4. Set init_priority of __start_std_streams in libcxx/iostream.cpp
+
+5. Use _LIBCPP_USING_GETENTROPY (like wasi)

@@ -238,7 +238,7 @@ Strings in JavaScript must be converted to pointers for compiled
 code -- the relevant function is :js:func:`UTF8ToString`, which
 given a pointer returns a JavaScript string. Converting a JavaScript
 string ``someString`` to a pointer can be accomplished using ``ptr = ``
-allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>``.
+allocate(intArrayFromString(someString), ALLOC_NORMAL) <allocate>``.
 
 .. note:: The conversion to a pointer allocates memory, which needs to be
    freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
