@@ -76,7 +76,6 @@ this.onmessage = function(e) {
 #if !MINIMAL_RUNTIME
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
 #endif
-      Module['mainThreadFutex'] = e.data.mainThreadFutex;
 
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
@@ -119,6 +118,9 @@ this.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
+      // After the script has been fully loaded, initialize the worker's JS
+      // runtime.
+      Module['PThread']['initWorker']();
 #if MODULARIZE
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {

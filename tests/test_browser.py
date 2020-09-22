@@ -4912,7 +4912,7 @@ window.close = function() {
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
     self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[V8_ENGINE])
 
-  @unittest.skip("only run this manually, to test for race conditions")
+#  @unittest.skip("only run this manually, to test for race conditions")
   @requires_threads
   def test_manual_pthread_proxy_hammer(self):
     # the specific symptom of the hang that was fixed is that the test hangs
@@ -4921,7 +4921,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxy_hammer.cpp'),
                expected='0',
                args=['-s', 'USE_PTHREADS=1', '-O2', '-s', 'PROXY_TO_PTHREAD',
-                     '-DITERATIONS=1024'],
+                     '-DITERATIONS=1024', '-g1'],
                timeout=10000,
                # don't run this with the default extra_tries value, as this is
                # *meant* to notice something random, a race condition.
