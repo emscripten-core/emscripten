@@ -1174,7 +1174,16 @@ var LibraryPThread = {
 #endif
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
-        _emscripten_main_thread_process_queued_calls(); // We are performing a blocking loop here, so must pump any pthreads if they want to perform operations that are proxied.
+        // We are performing a blocking loop here, so must pump any pthreads if
+        // they want to perform operations that are proxied.
+        // Note that we have to do so carefully, as we may take a lock while
+        // doing so, which can recurse into this function; stop marking
+        // ourselves as waiting while we do so.
+        old = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, 0);
+#if ASSERTIONS
+        assert(old == addr || old == 0);
+#endif
+        _emscripten_main_thread_process_queued_calls();
         addr = Atomics.load(HEAP32, PThread.mainThreadFutex >> 2); // Look for a worker thread waking us up.
       }
 #if PTHREADS_PROFILING
