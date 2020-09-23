@@ -113,7 +113,9 @@ var LibraryPThread = {
     },
     initShared: function() {
       PThread.mainThreadFutex = Module['_main_thread_futex'];
+#if ASSERTIONS
       assert(PThread.mainThreadFutex > 0);
+#endif
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
