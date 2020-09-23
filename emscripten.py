@@ -146,12 +146,11 @@ def update_settings_glue(metadata, DEBUG):
   metadata['staticBump'] = align_memory(metadata['staticBump'])
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
-  shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
   if shared.Settings.RELOCATABLE:
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
     # size does not include the reserved slot at zero for the null pointer.
     # Instead we use __table_base to offset the elements by 1.
-    shared.Settings.WASM_TABLE_SIZE += 1
+    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize'] + 1
   shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
 
 
@@ -230,12 +229,6 @@ def apply_memory(js, metadata):
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
   shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
-
-  return js
-
-
-def apply_table(js):
-  js = js.replace('{{{ WASM_TABLE_SIZE }}}', str(shared.Settings.WASM_TABLE_SIZE))
 
   return js
 
@@ -383,7 +376,6 @@ for (var named in NAMED_GLOBALS) {
   })(named);
 }
 '''
-  named_globals += ''.join(["Module['%s'] = Module['%s'];\n" % (k, v) for k, v in metadata['aliases'].items()])
   return named_globals
 
 
@@ -460,7 +452,6 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
     '// === Body ===',
     ('// === Body ===\n\n' + asm_const_map +
      '\n'.join(em_js_funcs) + '\n'))
-  pre = apply_table(pre)
 
   with open(outfile_js, 'w') as out:
     out.write(pre)
@@ -518,7 +509,7 @@ def finalize_wasm(infile, memfile, DEBUG):
     modify_wasm = True
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.ASYNCIFY_ADD or shared.Settings.ASYNCIFY_ADVISE or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.PROFILING_FUNCS:
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
@@ -639,15 +630,16 @@ def add_standard_wasm_imports(send_items_map):
       # Module scope, so lookup via Module as well.
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
-    send_items_map['__indirect_function_table'] = 'wasmTable'
 
   # With the wasm backend __memory_base and __table_base are only needed for
   # relocatable output.
   if shared.Settings.RELOCATABLE:
-    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE) # tell the memory segments where to place themselves
+    # tell the memory segments where to place themselves
+    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE)
+    send_items_map['__indirect_function_table'] = 'wasmTable'
+
     # the wasm backend reserves slot 0 for the NULL function pointer
-    table_base = '1'
-    send_items_map['__table_base'] = table_base
+    send_items_map['__table_base'] = '1'
   if shared.Settings.RELOCATABLE:
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
@@ -892,7 +884,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     raise
 
   metadata = {
-    'aliases': {},
     'declares': [],
     'implementedFunctions': [],
     'externs': [],

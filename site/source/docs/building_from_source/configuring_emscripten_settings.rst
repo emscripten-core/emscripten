@@ -29,7 +29,9 @@ The settings file is created the first time a user runs :ref:`emcc <emccdoc>` (o
 	
 Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java).
 
-The file will probably not include the link to :term:`Fastcomp` (``LLVM_ROOT``) as a manual source build can create this anywhere.
+In most cases it is necessary to edit the generated file and modify at least the
+``LLVM_ROOT`` and ``BINARYEN_ROOT`` settings to point to the correct location of
+your local LLVM and Binaryen installations respectively.
 
 Locating the compiler configuration file (.emscripten)
 =======================================================
@@ -66,14 +68,14 @@ You can find out the other variable names from the default *.emscripten* file or
 Editing the compiler configuration file
 =======================================
 
-The compiler configuration file can be edited with the text editor of your choice. As stated above, most default settings are likely to be correct. If you're building manually from source, you are most likely to have to update the variable ``LLVM_ROOT`` (for :term:`Fastcomp`).
+The compiler configuration file can be edited with the text editor of your choice. As stated above, most default settings are likely to be correct. If you're building manually from source, you are most likely to have to update the variable ``LLVM_ROOT``
 
 		
-#. Edit the variable ``LLVM_ROOT`` to point to the directory where you :ref:`built Fastcomp <llvm-update-compiler-configuration-file>`. This path is likely to be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**, where ``<LLVM root>`` is the path to the directory where you cloned LLVM:
+#. Edit the variable ``LLVM_ROOT`` to point to the directory where you built the LLVM binaries, such as:
    
 	::
    
-		LLVM_ROOT = os.path.expanduser(os.getenv('LLVM', '/home/ubuntu/a-path/emscripten-fastcomp/build/bin'))
+		LLVM_ROOT = os.path.expanduser(os.getenv('LLVM', '/home/ubuntu/a-path/llvm/build/bin'))
 
 	.. note:: Use forward slashes!
 

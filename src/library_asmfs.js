@@ -7,7 +7,7 @@
 var asmFS = {
   $FS: {
     populate: function(path, mode) {
-      var pathCString = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
+      var pathCString = allocate(intArrayFromString(path), ALLOC_NORMAL);
       mode = (mode !== undefined) ? mode : 511 /* 0777 */;
       _emscripten_asmfs_populate(pathCString, mode);
       _free(pathCString);
@@ -15,7 +15,7 @@ var asmFS = {
 
     mkdir: function(path, mode) {
       mode = (mode !== undefined) ? mode : 511 /* 0777 */;
-      var pathCString = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
+      var pathCString = allocate(intArrayFromString(path), ALLOC_NORMAL);
       _emscripten_asmfs_mkdir(pathCString, mode);
       _free(pathCString);
     },
@@ -31,8 +31,8 @@ var asmFS = {
     },
 
     setRemoteUrl: function(path, remoteUrl) {
-      var pathCString = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
-      var remoteUrlCString = allocate(intArrayFromString(remoteUrl), 'i8', ALLOC_NORMAL);
+      var pathCString = allocate(intArrayFromString(path), ALLOC_NORMAL);
+      var remoteUrlCString = allocate(intArrayFromString(remoteUrl), ALLOC_NORMAL);
       _emscripten_asmfs_set_remote_url(pathCString, remoteUrlCString);
       _free(pathCString);
       _free(remoteUrlCString);
@@ -41,7 +41,7 @@ var asmFS = {
     setFileData: function(path, data) {
       var dataInHeap = _malloc(data.length);
       HEAPU8.set(data, dataInHeap);
-      var pathCString = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
+      var pathCString = allocate(intArrayFromString(path), ALLOC_NORMAL);
       _emscripten_asmfs_set_file_data(pathCString, dataInHeap, data.length);
       _free(pathCString);
     }

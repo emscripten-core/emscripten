@@ -648,10 +648,10 @@ var LibraryGLFW = {
             if (!GLFW.joys[joy]) {
               console.log('glfw joystick connected:',joy);
               GLFW.joys[joy] = {
-                id: allocate(intArrayFromString(gamepad.id), 'i8', ALLOC_NORMAL),
+                id: allocate(intArrayFromString(gamepad.id), ALLOC_NORMAL),
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
-                buttons: allocate(new Array(gamepad.buttons.length), 'i8', ALLOC_NORMAL),
+                buttons: allocate(new Array(gamepad.buttons.length), ALLOC_NORMAL),
                 axes: allocate(new Array(gamepad.axes.length*4), 'float', ALLOC_NORMAL)
               };
 
@@ -743,7 +743,7 @@ var LibraryGLFW = {
       event.preventDefault();
 
 #if FILESYSTEM
-      var filenames = allocate(new Array(event.dataTransfer.files.length*4), 'i8*', ALLOC_NORMAL);
+      var filenames = allocate(new Array(event.dataTransfer.files.length*4), ALLOC_NORMAL);
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
 
@@ -775,7 +775,7 @@ var LibraryGLFW = {
         };
         reader.readAsArrayBuffer(file);
 
-        var filename = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
+        var filename = allocate(intArrayFromString(path), ALLOC_NORMAL);
         filenamesArray.push(filename);
         setValue(filenames + i*4, filename, 'i8*');
       }
@@ -919,7 +919,7 @@ var LibraryGLFW = {
       if (x) {
         setValue(x, wx, 'i32');
       }
-      
+
       if (y) {
         setValue(y, wy, 'i32');
       }
@@ -945,7 +945,7 @@ var LibraryGLFW = {
       if (width) {
         setValue(width, ww, 'i32');
       }
-      
+
       if (height) {
         setValue(height, wh, 'i32');
       }
@@ -1210,7 +1210,7 @@ var LibraryGLFW = {
 #if USE_GLFW == 3
   glfwGetVersionString: function() {
     if (!GLFW.versionString) {
-      GLFW.versionString = allocate(intArrayFromString("3.2.1 JS WebGL Emscripten"), 'i8', ALLOC_NORMAL);
+      GLFW.versionString = allocate(intArrayFromString("3.2.1 JS WebGL Emscripten"), ALLOC_NORMAL);
     }
     return GLFW.versionString;
   },
@@ -1228,7 +1228,8 @@ var LibraryGLFW = {
   glfwGetMonitors: function(count) {
     setValue(count, 1, 'i32');
     if (!GLFW.monitors) {
-      GLFW.monitors = allocate([1, 0, 0, 0], 'i32', ALLOC_NORMAL);
+      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', Runtime.POINTER_SIZE) }}};
+      setValue(GLFW.monitors, 1, 'i32');
     }
     return GLFW.monitors;
   },
@@ -1253,7 +1254,7 @@ var LibraryGLFW = {
 
   glfwGetMonitorName: function(mon) {
     if (!GLFW.monitorString) {
-      GLFW.monitorString = allocate(intArrayFromString("HTML5 WebGL Canvas"), 'i8', ALLOC_NORMAL);
+      GLFW.monitorString = allocate(intArrayFromString("HTML5 WebGL Canvas"), ALLOC_NORMAL);
     }
     return GLFW.monitorString;
   },
@@ -1341,11 +1342,11 @@ var LibraryGLFW = {
       ww = win.width;
       wh = win.height;
     }
-    
+
     if (width) {
       setValue(width, ww, 'i32');
     }
-    
+
     if (height) {
       setValue(height, wh, 'i32');
     }

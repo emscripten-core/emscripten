@@ -2389,7 +2389,7 @@ LibraryManager.library = {
   },
 
   // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', 'gethostbyname', '_inet_ntop4_raw'],
+  gethostbyaddr__deps: ['$DNS', '$getHostByName', '_inet_ntop4_raw'],
   gethostbyaddr__proxy: 'sync',
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
@@ -2404,19 +2404,20 @@ LibraryManager.library = {
     if (lookup) {
       host = lookup;
     }
-    var hostp = allocate(intArrayFromString(host), 'i8', ALLOC_STACK);
-    return _gethostbyname(hostp);
+    return getHostByName(host);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', '$getHostByName'],
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
-    name = UTF8ToString(name);
+    return getHostByName(UTF8ToString(name));
+  },
 
+  $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = _malloc(name.length+1);
+    var nameBuf = {{{ makeMalloc('getHostByName', 'name.length+1') }}};
     stringToUTF8(name, nameBuf, name.length+1);
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', 'i8*') }}};
     var aliasesBuf = _malloc(4);
@@ -3196,7 +3197,7 @@ LibraryManager.library = {
     var fullname = name + '__str';
     var fullret = cache[fullname];
     if (fullret) return fullret;
-    return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
+    return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
   },
 
   emscripten_has_asyncify: function() {
@@ -3602,76 +3603,6 @@ LibraryManager.library = {
   // throws an exception.
   $jstoi_s: function(str) {
     return Number(str);
-  },
-
-  //============================
-  // i64 math
-  //============================
-
-  i64Add__asm: true,
-  i64Add__sig: 'iiiii',
-  i64Add: function(a, b, c, d) {
-    /*
-      x = a + b*2^32
-      y = c + d*2^32
-      result = l + h*2^32
-    */
-    a = a|0; b = b|0; c = c|0; d = d|0;
-    var l = 0, h = 0;
-    l = (a + c)>>>0;
-    h = (b + d + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
-    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
-  },
-
-  i64Subtract__asm: true,
-  i64Subtract__sig: 'iiiii',
-  i64Subtract: function(a, b, c, d) {
-    a = a|0; b = b|0; c = c|0; d = d|0;
-    var l = 0, h = 0;
-    l = (a - c)>>>0;
-    h = (b - d)>>>0;
-    h = (b - d - (((c>>>0) > (a>>>0))|0))>>>0; // Borrow one from high word to low word on underflow.
-    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
-  },
-
-  bitshift64Shl__asm: true,
-  bitshift64Shl__sig: 'iiii',
-  bitshift64Shl: function(low, high, bits) {
-    low = low|0; high = high|0; bits = bits|0;
-    var ander = 0;
-    if ((bits|0) < 32) {
-      ander = ((1 << bits) - 1)|0;
-      {{{ makeSetTempRet0('(high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))') }}};
-      return low << bits;
-    }
-    {{{ makeSetTempRet0('low << (bits - 32)') }}};
-    return 0;
-  },
-  bitshift64Ashr__asm: true,
-  bitshift64Ashr__sig: 'iiii',
-  bitshift64Ashr: function(low, high, bits) {
-    low = low|0; high = high|0; bits = bits|0;
-    var ander = 0;
-    if ((bits|0) < 32) {
-      ander = ((1 << bits) - 1)|0;
-      {{{ makeSetTempRet0('high >> bits') }}};
-      return (low >>> bits) | ((high&ander) << (32 - bits));
-    }
-    {{{ makeSetTempRet0('(high|0) < 0 ? -1 : 0') }}};
-    return (high >> (bits - 32))|0;
-  },
-  bitshift64Lshr__asm: true,
-  bitshift64Lshr__sig: 'iiii',
-  bitshift64Lshr: function(low, high, bits) {
-    low = low|0; high = high|0; bits = bits|0;
-    var ander = 0;
-    if ((bits|0) < 32) {
-      ander = ((1 << bits) - 1)|0;
-      {{{ makeSetTempRet0('high >>> bits') }}};
-      return (low >>> bits) | ((high&ander) << (32 - bits));
-    }
-    {{{ makeSetTempRet0('0') }}};
-    return (high >>> (bits - 32))|0;
   },
 
   // libunwind

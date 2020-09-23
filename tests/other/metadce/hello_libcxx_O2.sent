@@ -1,5 +1,4 @@
 __cxa_atexit
-__indirect_function_table
 abort
 emscripten_memcpy_big
 emscripten_resize_heap

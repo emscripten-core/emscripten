@@ -70,7 +70,7 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
 compiled code (everything else might be removed if it is not used), and
@@ -159,7 +159,7 @@ parameters to pass to the function:
      we did in this tutorial, then because of optimizations
      and minification you should export ccall from the runtime, using
      ``EXPORTED_RUNTIME_METHODS``, for example using
-     ``-s 'EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     ``-s 'EXPORTED_RUNTIME_METHODS=["ccall","cwrap"]'``,
      and call it on ``Module`` (which contains
      everything exported, in a safe way that is not influenced by minification
      or optimizations).
@@ -238,7 +238,7 @@ Strings in JavaScript must be converted to pointers for compiled
 code -- the relevant function is :js:func:`UTF8ToString`, which
 given a pointer returns a JavaScript string. Converting a JavaScript
 string ``someString`` to a pointer can be accomplished using ``ptr = ``
-allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>``.
+allocate(intArrayFromString(someString), ALLOC_NORMAL) <allocate>``.
 
 .. note:: The conversion to a pointer allocates memory, which needs to be
    freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
@@ -631,7 +631,7 @@ added to the table. Otherwise by default the table has a fixed size.
 
    For example, if you add a function that takes an integer and does not return
    anything, you can do ``addFunction(your_function, 'vi');``. See
-   `tests/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/incoming/tests/interop/test_add_function_post.js>`_ for an example.
+   `tests/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/master/tests/interop/test_add_function_post.js>`_ for an example.
 
 
 .. _interacting-with-code-access-memory:

@@ -23,7 +23,7 @@ from tools.shared import try_delete, PIPE
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, LLVM_ROOT
 from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
 from runner import NON_ZERO
 import clang_native
@@ -2089,7 +2089,6 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-Wno-almost-asm', '-s', 'MAXIMUM_MEMORY=18MB'] + args
     self.do_run_in_out_file_test('tests', 'core', 'test_aborting_new.cpp')
 
-  @no_asmjs()
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   def test_module_wasm_memory(self):
@@ -6532,12 +6531,13 @@ return malloc(size);
     print('with RESERVED_FUNCTION_POINTERS=0')
     self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
     expected = 'Unable to grow wasm table'
-    if self.is_wasm2js() and is_optimizing(self.emcc_args):
+    if self.is_wasm2js():
       # in wasm2js the error message doesn't come from the VM, but from our
       # emulation code. when ASSERTIONS are enabled we show a clear message, but
       # in optimized builds we don't waste code size on that, and the JS engine
       # shows a generic error.
       expected = 'table.grow is not a function'
+
     self.do_runf(src, expected, assert_returncode=NON_ZERO)
 
     print('- with table growth')

@@ -3932,7 +3932,6 @@ function copyLibEntry(lib, a, b) {
   lib[a + '__postset'] = lib[b + '__postset'];
   lib[a + '__proxy'] = lib[b + '__proxy'];
   lib[a + '__sig'] = lib[b + '__sig'];
-  lib[a + '__asm'] = lib[b + '__asm'];
   lib[a + '__deps'] = (lib[b + '__deps'] || []).slice(0);
 }
 

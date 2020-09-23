@@ -5,7 +5,7 @@
  */
 
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock(); else PThread.initWorker();',
+  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['$registerPthreadPtr',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
@@ -87,6 +87,18 @@ var LibraryPThread = {
       _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
     },
     initWorker: function() {
+#if EMBIND
+      // Embind must initialize itself on all threads, as it generates support JS.
+      Module['___embind_register_native_and_builtin_types']();
+#endif // EMBIND
+#if MODULARIZE
+      // The promise resolve function typically gets called as part of the execution
+      // of the Module `run`. The workers/pthreads don't execute `run` here, they
+      // call `run` in response to a message at a later time, so the creation
+      // promise can be resolved, marking the pthread-Module as initialized.
+      readyPromiseResolve(Module);
+#endif // MODULARIZE
+
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
       // things.
