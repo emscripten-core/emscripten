@@ -1161,16 +1161,11 @@ var LibraryPThread = {
       // We need to be careful of recursion here: If we wait on a futex, and
       // then call _emscripten_main_thread_process_queued_calls() below, that
       // will call code that takes the proxying mutex - which can once more
-      // reach this code in a nested call. In case of nesting, lastAddr will
-      // be nonzero, and to avoid needing to reason about a stack of futexes the
-      // main thread is waiting on, avoid using this mechanism in nested calls.
-      // That means that the main thread has no special priority for the second
-      // and any further futexes it waits on. TODO: a more complex stack of
-      // futexes, or marking a futex as "waited on by the main thread" may help
-      // achieve better responsiveness. However, as the second futex is likely
-      // the proxying mutex, that one tends to not be held for very short
-      // periods of time, so as long as the underlying locking mechanism is
-      // reasonably fair, we should be ok.
+      // reach this code in a nested call. To avoid interference between the
+      // two, unmark ourselves before calling the potentially-recursive call.
+      // See below for how we handle the case of our futex being notified
+      // during the time in between when we are not set as the value of
+      // mainThreadFutex.
 #if ASSERTIONS
       assert(PThread.mainThreadFutex > 0);
 #endif
