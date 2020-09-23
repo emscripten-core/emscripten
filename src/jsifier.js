@@ -14,7 +14,6 @@
 var STRUCT_LIST = set('struct', 'list');
 
 var addedLibraryItems = {};
-var asmLibraryFunctions = [];
 
 var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow',
   'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan',
@@ -91,22 +90,18 @@ function JSify(data, functionsOnly) {
     // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
     // make sure the endings are uniform.
     snippet = snippet.toString().replace(/\r\n/gm,"\n");
-    assert(snippet.indexOf('XXX missing C define') == -1,
-           'Trying to include a library function with missing C defines: ' + finalName + ' | ' + snippet);
 
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
-    // Apply special js library debug modes
-    if (!LibraryManager.library[ident + '__asm']) {
-      // apply LIBRARY_DEBUG if relevant
-      if (LIBRARY_DEBUG) {
-        snippet = modifyFunction(snippet, function(name, args, body) {
-          return 'function ' + name + '(' + args + ') {\n' +
-                 'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
-                  body +
-                  '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
-        });
-      }
+
+    // apply LIBRARY_DEBUG if relevant
+    if (LIBRARY_DEBUG) {
+      snippet = modifyFunction(snippet, function(name, args, body) {
+        return 'function ' + name + '(' + args + ') {\n' +
+               'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
+                body +
+                '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
+      });
     }
     return snippet;
   }
@@ -326,28 +321,10 @@ function JSify(data, functionsOnly) {
         contentText = 'var ' + finalName + '=' + snippet + ';';
       }
       var sig = LibraryManager.library[ident + '__sig'];
-      if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
-        // asm library function, add it as generated code alongside the generated code
-        Functions.implementedFunctions[finalName] = sig;
-        asmLibraryFunctions.push(contentText);
-        contentText = ' ';
-        Functions.libraryFunctions[finalName] = 2;
-        noExport = true; // if it needs to be exported, that will happen in emscripten.py
-      }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
-      }
-      if (!LibraryManager.library[ident + '__asm']) {
-        // If we are not an asm library func, and we have a dep that is, then we need to call
-        // into the asm module to reach that dep. so it must be exported from the asm module.
-        // We set EXPORTED_FUNCTIONS here to tell emscripten.py to do that.
-        deps.forEach(function(dep) {
-          if (LibraryManager.library[dep + '__asm']) {
-            EXPORTED_FUNCTIONS[mangleCSymbolName(dep)] = 0;
-          }
-        });
       }
 
       var commentText = '';
@@ -435,16 +412,6 @@ function JSify(data, functionsOnly) {
 
     if (SUPPORT_BASE64_EMBEDDING && !MINIMAL_RUNTIME) {
       print(preprocess(read('base64Utils.js')));
-    }
-
-    if (asmLibraryFunctions.length > 0) {
-      print('// ASM_LIBRARY FUNCTIONS');
-      function fix(f) { // fix indenting to not confuse js optimizer
-        f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
-        f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }  XXX assumes function has multiple lines
-        return f + '}'; // add unindented } to match function
-      }
-      print(asmLibraryFunctions.map(fix).join('\n'));
     }
 
     if (abortExecution) throw Error('Aborting compilation due to previous errors');
