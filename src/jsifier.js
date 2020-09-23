@@ -23,9 +23,6 @@ var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow',
   'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array',
   'Uint32Array', 'Float32Array', 'Float64Array'];
 
-// Specifies the set of referenced built-in primitives such as Math.max etc.
-var usedExternPrimitives = {};
-
 var SETJMP_LABEL = -1;
 
 var INDENTATION = ' ';
@@ -158,7 +155,6 @@ function JSify(data, functionsOnly) {
       var noExport = false;
 
       if (allExternPrimitives.indexOf(ident) != -1) {
-        usedExternPrimitives[ident] = 1;
         return;
       } else if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
@@ -439,11 +435,6 @@ function JSify(data, functionsOnly) {
 
     if (SUPPORT_BASE64_EMBEDDING && !MINIMAL_RUNTIME) {
       print(preprocess(read('base64Utils.js')));
-    }
-
-    var usedExternPrimitiveNames = Object.keys(usedExternPrimitives);
-    if (usedExternPrimitiveNames.length > 0) {
-      print('// ASM_LIBRARY EXTERN PRIMITIVES: ' + usedExternPrimitiveNames.join(',') + '\n');
     }
 
     if (asmLibraryFunctions.length > 0) {
