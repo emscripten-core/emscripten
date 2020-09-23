@@ -1128,7 +1128,8 @@ var LibraryPThread = {
   emscripten_futex_wait__deps: ['emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
-    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_WORKER) {
+    // We can do a normal blocking wait anywhere but on the main browser thread.
+    if (!ENVIRONMENT_IS_WEB) {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
@@ -1211,6 +1212,13 @@ var LibraryPThread = {
     var mainThreadWaitAddress = Atomics.load(HEAP32, PThread.mainThreadFutex >> 2);
     var mainThreadWoken = 0;
     if (mainThreadWaitAddress == addr) {
+#if ASSERTIONS
+      // We only use mainThreadFutex on the main browser thread, where we
+      // cannot block while we wait. Therefore we should only see it set from
+      // other threads, and not on the main thread itself. In other words, the
+      // main thread must never try to wake itself up!
+      assert(!ENVIRONMENT_IS_WEB);
+#endif
       var loadedAddr = Atomics.compareExchange(HEAP32, PThread.mainThreadFutex >> 2, mainThreadWaitAddress, 0);
       if (loadedAddr == mainThreadWaitAddress) {
         --count;
