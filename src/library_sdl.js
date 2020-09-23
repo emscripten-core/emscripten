@@ -3533,12 +3533,6 @@ var LibrarySDL = {
 
   SDL_ClearError: function() {},
 
-  SDL_getenv: 'getenv',
-  SDL_getenv__sig: 'ii',
-
-  SDL_putenv: 'putenv',
-  SDL_putenv__sig: 'ii',
-
   // TODO
 
   SDL_SetGamma: function(r, g, b) {

@@ -320,7 +320,6 @@ function JSify(data, functionsOnly) {
         if (typeof snippet === 'string' && snippet[0] == '=') snippet = snippet.substr(1);
         contentText = 'var ' + finalName + '=' + snippet + ';';
       }
-      var sig = LibraryManager.library[ident + '__sig'];
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {

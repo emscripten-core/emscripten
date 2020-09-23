@@ -248,6 +248,9 @@ var LibraryManager = {
           }
 
           var argCount = sig.length - 1;
+          if (argCount !== lib[target].length) {
+            error('incorrect number of arguments in signature of ' + x);
+          }
           var ret = sig == 'v' ? '' : 'return ';
           var args = genArgSequence(argCount).join(',');
           lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');
