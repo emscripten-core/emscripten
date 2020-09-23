@@ -64,7 +64,11 @@ function initRuntime(asm) {
   Module['registerPthreadPtr'] = registerPthreadPtr;
   Module['_pthread_self'] = _pthread_self;
 
-  if (ENVIRONMENT_IS_PTHREAD) return;
+  if (ENVIRONMENT_IS_PTHREAD) {
+    PThread.initWorker();
+    return;
+  }
+
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
   registerPthreadPtr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
   _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
