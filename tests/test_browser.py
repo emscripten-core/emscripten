@@ -4919,7 +4919,7 @@ window.close = function() {
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
     self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[V8_ENGINE])
 
-  #@unittest.skip("only run this manually, to test for race conditions")
+  @unittest.skip("only run this manually, to test for race conditions")
   @parameterized({
     'normal': ([],),
     'assertions': (['-s', 'ASSERTIONS'],)
