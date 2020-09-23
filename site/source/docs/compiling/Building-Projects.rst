@@ -72,22 +72,34 @@ To build with Emscripten, you would instead use the following commands:
 
 .. _building-projects-build-outputs:
 
-Emscripten build output files
-=============================
+Emscripten linker output files
+==============================
 
-Emscripten compiler output often consists of several files and not just one. The set of produced files changes depending on the final linker flags passed to `emcc/em++`. Here is a cheat sheet of which files are produced under which conditions:
+Unless run with certain specific flags (such as ``-c``, ``-S``, ``-r``, or
+``-shared``) ``emcc`` will run the link phase which can produce more than just
+one file. The set of produced files changes depending on the final flags passed
+to ``emcc`` and the name of the specified output file. Here is a cheat sheet of
+which files are produced under which conditions:
 
- - `emcc ... -o output.html` builds a `output.html` file as an output, as well as an accompanying `output.js` launcher file, and a `output.wasm` WebAssembly file.
- - `emcc ... -o output.js` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, `output.js` and `output.wasm`. (that can be run in e.g. node.js shell)
- - `emcc ... -o output.wasm` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the `-s STANDALONE_WASM` settting had been used.
- - `emcc ... -o output.{html,js} -s WASM=0` causes the compiler to target asm.js, and therefore a `.wasm` file is not produced.
- - `emcc ... -o output.{html,js} --emit-symbol-map` produces a file `output.{html,js}.symbols` if WebAssembly is being targeted (`-s WASM=0` not specified), or if asm.js is being targeted and `-Os`, `-Oz` or `-O2` or higher is specified, but debug level setting is `-g1` or lower (i.e. if symbols minification did occur).
- - `emcc ... -o output.{html,js} -s WASM=0 --memory-init-file 1` causes the generation of `output.{html,js}.mem` memory initializer file. Pasing `-O2`, `-Os` or `-Oz` also implies `--memory-init-file 1`.
- - `emcc ... -o output.{html,js} -g4` generates a source map file `output.wasm.map`. If targeting asm.js with `-s WASM=0`, the filename is `output.{html,js}.map`.
- - `emcc ... -o output.{html,js} --preload-file xxx` directive generates a preloaded MEMFS filesystem file `output.data`.
- - `emcc ... -o output.{html,js} -s WASM={0,1} -s SINGLE_FILE=1` merges JavaScript and WebAssembly code in the single output file `output.{html,js}` (in base64) to produce only one file for deployment. (If paired with `--preload-file`, the preloaded `.data` file still exists as a separate file)
+- ``emcc ... -o output.html`` builds a ``output.html`` file as an output, as well as an accompanying ``output.js`` launcher file, and a ``output.wasm`` WebAssembly file.
+- ``emcc ... -o output.js`` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, ``output.js`` and ``output.wasm``. (that can be run in e.g. node.js shell)
+- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-s STANDALONE_WASM`` settting had been used.
+- ``emcc ... -o output.{html,js} -s WASM=0`` causes the compiler to target asm.js, and therefore a ``.wasm`` file is not produced.
+- ``emcc ... -o output.{html,js} --emit-symbol-map`` produces a file ``output.{html,js}.symbols`` if WebAssembly is being targeted (``-s WASM=0`` not specified), or if asm.js is being targeted and ``-Os``, ``-Oz`` or ``-O2`` or higher is specified, but debug level setting is ``-g1`` or lower (i.e. if symbols minification did occur).
+- ``emcc ... -o output.{html,js} -s WASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Pasing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
+- ``emcc ... -o output.{html,js} -g4`` generates a source map file ``output.wasm.map``. If targeting asm.js with ``-s WASM=0``, the filename is ``output.{html,js}.map``.
+- ``emcc ... -o output.{html,js} --preload-file xxx`` directive generates a preloaded MEMFS filesystem file ``output.data``.
+- ``emcc ... -o output.{html,js} -s WASM={0,1} -s SINGLE_FILE=1`` merges JavaScript and WebAssembly code in the single output file ``output.{html,js}`` (in base64) to produce only one file for deployment. (If paired with ``--preload-file``, the preloaded ``.data`` file still exists as a separate file)
 
 This list is not exhaustive, but illustrates most commonly used combinations.
+
+.. note::
+   Regardless of the name of the output file ``emcc`` will always perform
+   linking and produce a final exectuable, unless a specific flags (e.g. ``-c``
+   direct it do something else).  This differs to previous beahvuiour where
+   ``emcc`` would default to combining object files (essentailly assuming
+   ``-r``) unless a spcific executable extansions (e.g. ``.js`` or ``.html``)
+   were used.
 
 .. _building-projects-optimizations:
 
