@@ -482,9 +482,6 @@ def lld_flags_for_executable(external_symbol_list):
   # wasm module arrives)
   if not Settings.STANDALONE_WASM:
     cmd.append('--import-memory')
-    cmd.append('--import-table')
-  else:
-    cmd.append('--export-table')
 
   if Settings.USE_PTHREADS:
     cmd.append('--shared-memory')
@@ -503,6 +500,10 @@ def lld_flags_for_executable(external_symbol_list):
     else:
       cmd.append('--no-gc-sections')
       cmd.append('--export-dynamic')
+  else:
+    cmd.append('--export-table')
+    if Settings.ALLOW_TABLE_GROWTH:
+      cmd.append('--growable-table')
 
   if Settings.LINKABLE:
     cmd.append('--export-all')
@@ -1144,6 +1145,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       'reaches': [],
       'root': True
     })
+  if not Settings.RELOCATABLE:
     graph.append({
       'export': '__indirect_function_table',
       'name': 'emcc$export$__indirect_function_table',

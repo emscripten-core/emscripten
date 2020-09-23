@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- The WebAssembly table is now created and exported by the generated wasm
+  module rather then constructed by the JS glue code.  This is an implemention
+  detail that should not affect most users. (#12296)
 - Add `getentropy` in `sys/random.h`, and use that from libc++'s
   `random_device`. This is more efficient, see #12240.
 - Fixed `ABORT_ON_WASM_EXCEPTIONS` to work with the recent dynCall changes where

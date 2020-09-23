@@ -189,6 +189,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #else
   /*** ASM_MODULE_EXPORTS ***/
 #endif
+  wasmTable = asm['__indirect_function_table'];
 
   initRuntime(asm);
 #if USE_PTHREADS && PTHREAD_POOL_SIZE
