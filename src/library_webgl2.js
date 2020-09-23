@@ -983,7 +983,7 @@ var LibraryWebGL2 = {
   glDrawArraysInstancedBaseInstance: 'glDrawArraysInstancedBaseInstanceWEBGL',
   glDrawArraysInstancedBaseInstanceANGLE: 'glDrawArraysInstancedBaseInstanceWEBGL',
 
-  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL_sig: 'viiiiii',
+  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL_sig: 'viiiiiii',
   glDrawElementsInstancedBaseVertexBaseInstanceWEBGL: function(mode, count, type, offset, instanceCount, baseVertex, baseinstance) {
     GLctx.dibvbi['drawElementsInstancedBaseVertexBaseInstanceWEBGL'](mode, count, type, offset, instanceCount, baseVertex, baseinstance);
   },
