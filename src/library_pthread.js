@@ -1168,7 +1168,9 @@ var LibraryPThread = {
           // Stop marking ourselves as waiting.
           old = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, 0);
 #if ASSERTIONS
-          assert(old == addr);
+          // The old value must have been our address, or perhaps in a race
+          // another thread just allowed us to run, after our timeout.
+          assert(old == addr || old == 0);
 #endif
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
