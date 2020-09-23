@@ -998,17 +998,24 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
-    // timezone is specified as seconds west of UTC ("The external variable
-    // `timezone` shall be set to the difference, in seconds, between
-    // Coordinated Universal Time (UTC) and local standard time."), the same
-    // as returned by getTimezoneOffset().
-    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
-
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
     var summer = new Date(currentYear, 6, 1);
-    {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
+    var winterOffset = winter.getTimezoneOffset();
+    var summerOffset = summer.getTimezoneOffset();
+
+    function stdTimezoneOffset() {
+        return Math.max(winterOffset, summerOffset);
+    }
+
+    // timezone is specified as seconds west of UTC ("The external variable
+    // `timezone` shall be set to the difference, in seconds, between
+    // Coordinated Universal Time (UTC) and local standard time."), the same
+    // as returned by stdTimezoneOffset().
+    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
+    {{{ makeSetValue('__get_timezone()', '0', 'stdTimezoneOffset() * 60', 'i32') }}};
+
+    {{{ makeSetValue('__get_daylight()', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
@@ -1018,7 +1025,7 @@ LibraryManager.library = {
     var summerName = extractZone(summer);
     var winterNamePtr = allocateUTF8(winterName);
     var summerNamePtr = allocateUTF8(summerName);
-    if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
+    if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
       {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
