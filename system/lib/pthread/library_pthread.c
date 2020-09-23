@@ -440,7 +440,7 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
   return res;
 }
 
-static pthread_t main_browser_thread_id_ = 0;
+static pthread_t main_browser_thread_id_;
 
 void EMSCRIPTEN_KEEPALIVE emscripten_register_main_browser_thread_id(
   pthread_t main_browser_thread_id) {
@@ -448,6 +448,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_register_main_browser_thread_id(
 }
 
 pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id() {
+  assert(main_browser_thread_id_);
   return main_browser_thread_id_;
 }
 

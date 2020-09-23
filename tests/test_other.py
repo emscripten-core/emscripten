@@ -6721,7 +6721,7 @@ int main() {
     'O3': (['-O3'], [], [],          62), # noqa
     'Os': (['-Os'], [], [],          62), # noqa
     'Oz': (['-Oz'], [], [],          62), # noqa
-    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 62), # noqa
+    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 74), # noqa
   })
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)

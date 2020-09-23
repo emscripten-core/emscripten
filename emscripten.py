@@ -536,10 +536,7 @@ def create_em_js(forwarded_json, metadata):
 
 
 def add_standard_wasm_imports(send_items_map):
-  # Normally we import these into the wasm (so that JS could use them even
-  # before the wasm loads), while in standalone mode we do not depend
-  # on JS to create them, but create them in the wasm and export them.
-  if not shared.Settings.STANDALONE_WASM:
+  if not shared.Settings.MEMORY_DEFINED_IN_WASM:
     memory_import = 'wasmMemory'
     if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
       # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the

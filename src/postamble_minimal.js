@@ -204,6 +204,25 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   /*** ASM_MODULE_EXPORTS ***/
 #endif
   wasmTable = asm['__indirect_function_table'];
+#if ASSERTIONS
+  assert(wasmTable);
+#endif
+
+#if !USE_PTHREADS
+  wasmMemory = asm['memory'];
+#if ASSERTIONS
+  assert(wasmMemory);
+  assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
+#endif
+  updateGlobalBufferAndViews(wasmMemory.buffer);
+#endif
+
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
+#if ASSERTIONS
+  if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
+#endif
+  HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
+#endif
 
   initRuntime(asm);
 #if USE_PTHREADS && PTHREAD_POOL_SIZE

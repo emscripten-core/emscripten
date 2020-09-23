@@ -140,12 +140,6 @@ var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? d
 // coincide.
 var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts === 'function';
 
-#if MODULARIZE
-if (ENVIRONMENT_IS_WORKER) {
-  var buffer = {{{EXPORT_NAME}}}.buffer;
-}
-#endif
-
 var currentScriptUrl = typeof _scriptDir !== 'undefined' ? _scriptDir : ((typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
 #endif // USE_PTHREADS
 

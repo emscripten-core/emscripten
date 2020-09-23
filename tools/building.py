@@ -478,10 +478,7 @@ def lld_flags_for_executable(external_symbol_list):
   else:
     cmd.append('--allow-undefined')
 
-  # wasi does not import the memory (but for JS it is efficient to do so,
-  # as it allows us to set up memory, preload files, etc. even before the
-  # wasm module arrives)
-  if not Settings.STANDALONE_WASM:
+  if not Settings.MEMORY_DEFINED_IN_WASM:
     cmd.append('--import-memory')
 
   if Settings.USE_PTHREADS:
