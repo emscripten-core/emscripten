@@ -1163,6 +1163,11 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
           PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
+          // Stop marking ourselves as waiting.
+          old = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, 0);
+#if ASSERTIONS
+          assert(old == addr);
+#endif
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
         _emscripten_main_thread_process_queued_calls(); // We are performing a blocking loop here, so must pump any pthreads if they want to perform operations that are proxied.
