@@ -1155,23 +1155,23 @@ var LibraryPThread = {
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
       // Register globally which address the main thread is simulating to be
-      // waiting on. When zero, main thread is not waiting on anything, and on
-      // nonzero, the contents of address pointed by PThread.mainThreadFutex
+      // waiting on. When zero, the main thread is not waiting on anything, and on
+      // nonzero, the contents of the address pointed by PThread.mainThreadFutex
       // tell which address the main thread is simulating its wait on.
       // We need to be careful of recursion here: If we wait on a futex, and
       // then call _emscripten_main_thread_process_queued_calls() below, that
       // will call code that takes the proxying mutex - which can once more
       // reach this code in a nested call. To avoid interference between the
-      // two, unmark ourselves before calling the potentially-recursive call.
-      // See below for how we handle the case of our futex being notified
-      // during the time in between when we are not set as the value of
-      // mainThreadFutex.
+      // two (there is just a single mainThreadFutex at a time), unmark
+      // ourselves before calling the potentially-recursive call. See below for
+      // how we handle the case of our futex being notified during the time in
+      // between when we are not set as the value of mainThreadFutex.
 #if ASSERTIONS
       assert(PThread.mainThreadFutex > 0);
 #endif
       var lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, addr);
 #if ASSERTIONS
-      // We must not have already been waiting, see comment above.
+      // We must not have already been waiting.
       assert(lastAddr == 0);
 #endif
 
@@ -1192,8 +1192,8 @@ var LibraryPThread = {
 #endif
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
-        // We are performing a blocking loop here, so must pump any pthreads if
-        // they want to perform operations that are proxied.
+        // We are performing a blocking loop here, so we must handle proxied
+        // events from pthreads, to avoid deadlocks.
         // Note that we have to do so carefully, as we may take a lock while
         // doing so, which can recurse into this function; stop marking
         // ourselves as waiting while we do so.
