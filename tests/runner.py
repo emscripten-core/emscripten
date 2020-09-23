@@ -171,14 +171,6 @@ def no_windows(note=''):
   return lambda f: f
 
 
-def no_asmjs(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm', note, negate=True)
-  return decorated
-
-
 def requires_native_clang(func):
   assert callable(func)
 
