@@ -249,7 +249,7 @@ var LibraryManager = {
 
           var argCount = sig.length - 1;
           if (argCount !== lib[target].length) {
-            error('incorrect number of arguments in signature of ' + x);
+            error(`incorrect number of arguments in signature of ${x} (declared: ${argCount}, expected: ${lib[target].length})`);
           }
           var ret = sig == 'v' ? '' : 'return ';
           var args = genArgSequence(argCount).join(',');
