@@ -316,11 +316,7 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
-
 #if ASSERTIONS
-assert(INITIAL_INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
-
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
        'JS engine does not provide full typed array support');
@@ -347,12 +343,13 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #endif
 #endif
 
-#if STANDALONE_WASM
 #if ASSERTIONS
-// In standalone mode, the wasm creates the memory, and the user can't provide it.
-assert(!Module['wasmMemory']);
+// These settings on the module use to be supported but are no longer
+assert(!Module['wasmMemory'], 'Setting wasmMemory at runtime is no longer supported. See #12315');
+assert(!Module['INITIAL_MEMORY'], 'Setting INITIAL_MEMORY at runtime is no longer supported. See #12315');
 #endif // ASSERTIONS
-#else // !STANDALONE_WASM
+
+#if !STANDALONE_WASM
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
 #include "runtime_init_table.js"

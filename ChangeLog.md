@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- It is no longer possible to set `wasmMemory` to `INITIAL_MEMORY` at runtime.
+  This change is lays the groundwork for a larger change there the the memory
+  is created and exported from the WebAssembly module rather than being craeted
+  in JavaScript. See #12315.
 - The WebAssembly table is now created and exported by the generated wasm
   module rather then constructed by the JS glue code.  This is an implemention
   detail that should not affect most users. (#12296)
