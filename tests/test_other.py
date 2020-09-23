@@ -2850,28 +2850,6 @@ int main() {
     self.run_process([EMCC, 'src.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslibfunc"]'])
     self.assertContained('c calling: 12\njs calling: 10.', self.run_js('a.out.js'))
 
-  def test_js_lib_primitive_dep(self):
-    # Verify that primitive dependencies aren't generated in the output JS.
-
-    create_test_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
-  foo__deps: ['Int8Array', 'NonPrimitive'],
-  foo: function() {},
-});
-''')
-    create_test_file('main.c', r'''
-void foo(void);
-
-int main(int argc, char** argv) {
-  foo();
-  return 0;
-}
-''')
-    self.run_process([EMCC, '-O0', 'main.c', '--js-library', 'lib.js', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
-    generated = open('a.out.js').read()
-    self.assertContained('missing function: NonPrimitive', generated)
-    self.assertNotContained('missing function: Int8Array', generated)
-
   def test_js_lib_using_asm_lib(self):
     create_test_file('lib.js', r'''
 mergeInto(LibraryManager.library, {

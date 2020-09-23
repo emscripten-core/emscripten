@@ -360,9 +360,9 @@ function splitI64(value, floatConversion) {
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
-  //  $1$1 = Math_abs($d) >= 1 ? (
-  //     $d > 0 ? Math.min(Math_floor(($d)/ 4294967296.0), 4294967295.0)
-  //            : Math_ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
+  //  $1$1 = Math.abs($d) >= 1 ? (
+  //     $d > 0 ? Math.min(Math.floor(($d)/ 4294967296.0), 4294967295.0)
+  //            : Math.ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
   //  ) : 0;
   //
   // We need to min on positive values here, since our input might be a double, and large values are rounded, so they can
@@ -375,10 +375,10 @@ function splitI64(value, floatConversion) {
   if (floatConversion) lowInput = asmFloatToInt(lowInput);
   var low = lowInput + '>>>0';
   var high = makeInlineCalculation(
-    asmCoercion('Math_abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
+    asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
       '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
-               asmCoercion('Math_min(' + asmCoercion('Math_floor((VALUE)/' + asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
-               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
+               asmCoercion('Math.min(' + asmCoercion('Math.floor((VALUE)/' + asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
+               ' : ' + asmFloatToInt(asmCoercion('Math.ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
       ')' +
     ' : 0',
     value,
@@ -435,10 +435,10 @@ function ensureDot(value) {
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!isNumber(value)) return value;
   if (type === 'float') {
-    // normally ok to just emit Math_fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
-    if (value == 0) return 'Math_fround(0)';
+    // normally ok to just emit Math.fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
+    if (value == 0) return 'Math.fround(0)';
     value = ensureDot(value);
-    return 'Math_fround(' + value + ')';
+    return 'Math.fround(' + value + ')';
   }
   if (type in Compiletime.FLOAT_TYPES) {
     return ensureDot(value);
@@ -462,7 +462,7 @@ function asmCoercion(value, type, signedness) {
         }
       }
       if (type === 'float') {
-        return 'Math_fround(' + value + ')';
+        return 'Math.fround(' + value + ')';
       } else {
         return '(+(' + value + '))';
       }
@@ -731,7 +731,7 @@ function getFastValue(a, op, b, type) {
     if (a === '2' && isIntImplemented(type)) {
       return '(1 << (' + b + '))';
     }
-    return 'Math_pow(' + a + ', ' + b + ')';
+    return 'Math.pow(' + a + ', ' + b + ')';
   }
   if ((op === '+' || op === '*') && aNumber !== null) { // if one of them is a number, keep it last
     var c = b;
@@ -763,7 +763,7 @@ function getFastValue(a, op, b, type) {
       if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY)) {
         return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
       }
-      return '(Math_imul(' + a + ',' + b + ')|0)';
+      return '(Math.imul(' + a + ',' + b + ')|0)';
     }
   } else if (op === '/') {
     if (a === '0' && !(type in Compiletime.FLOAT_TYPES)) { // careful on floats, since 0*NaN is not 0
