@@ -1195,7 +1195,6 @@ var LibraryPThread = {
           // us to run, but (tragically) that happened just a bit too late.
           assert(lastAddr == addr || lastAddr == 0);
 #endif
-          }
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
         // We are performing a blocking loop here, so must pump any pthreads if
