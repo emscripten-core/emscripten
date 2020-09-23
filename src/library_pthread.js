@@ -1241,8 +1241,10 @@ var LibraryPThread = {
         // that we may have caused side effects in that "delay" time. But the
         // only side effects we can have are to call
         // emscripten_main_thread_process_queued_calls(). That is always ok to
-        // do on the main thread. So in effect, what happened on the main thread
-        // is the same as calling emscripten_main_thread_process_queued_calls()
+        // do on the main thread (it's why it is ok for us to call it in the
+        // middle of this function, and elsewhere). So if we check the value
+        // here and return, it's the same is if what happened on the main thread
+        // was the same as calling emscripten_main_thread_process_queued_calls()
         // a few times times before calling emscripten_futex_wait().
         if (Atomics.load(HEAP32, addr >> 2) != val) {
           return -{{{ cDefine('EWOULDBLOCK') }}};
