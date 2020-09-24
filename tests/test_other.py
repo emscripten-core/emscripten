@@ -5906,22 +5906,6 @@ int main() {
                             '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stderr=PIPE).stderr
     self.assertNotContained('function requested to be exported, but not implemented: "_alGetError"', err)
 
-  @no_wasm_backend()
-  def test_almost_asm_warning(self):
-    def run(args, expected):
-      print(args, expected)
-      err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0'] + args, stderr=PIPE).stderr
-      if expected:
-        self.assertContained('[-Walmost-asm]', err)
-      else:
-        self.assertEqual(err, '')
-
-    run(['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True),  # default
-    # suppress almost-asm warning manually
-    run(['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-Wno-almost-asm'], False),
-    # last warning flag should "win"
-    run(['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-Wno-almost-asm', '-Walmost-asm'], True)
-
   def test_musl_syscalls(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
     src = open('a.out.js').read()
