@@ -357,14 +357,6 @@ var LibraryExceptions = {
     return __ZSt18uncaught_exceptionv.uncaught_exceptions;
   },
 
-  __cxa_call_unexpected: function(exception) {
-    err('Unexpected exception thrown, this is not properly supported - aborting');
-#if !MINIMAL_RUNTIME
-    ABORT = true;
-#endif
-    throw exception;
-  },
-
   __cxa_current_primary_exception__deps: ['$exceptionCaught', '$exception_addRef', '$CatchInfo'],
   __cxa_current_primary_exception: function() {
     if (!exceptionCaught.length) {
