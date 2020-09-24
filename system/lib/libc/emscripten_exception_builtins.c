@@ -15,8 +15,10 @@
   that way atm.
 */
 
-int _Thread_local __THREW__ = 0;
-int _Thread_local __threwValue = 0;
+#include <threads.h>
+
+thread_local int __THREW__ = 0;
+thread_local int __threwValue = 0;
 
 void setThrew(int threw, int value) {
   if (__THREW__ == 0) {
