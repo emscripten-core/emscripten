@@ -222,12 +222,6 @@ var ALLOW_TABLE_GROWTH = 0;
 // default, any other value will be used as an override
 var GLOBAL_BASE = -1;
 
-// Warn at compile time about instructions that LLVM tells us are not fully
-// aligned.  This is useful to find places in your code where you might refactor
-// to ensure proper alignment.  This is currently only supported in asm.js, not
-// wasm.
-var WARN_UNALIGNED = 0;
-
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
 
@@ -1698,4 +1692,5 @@ var LEGACY_SETTINGS = [
   ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
   ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
+  ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
 ];
