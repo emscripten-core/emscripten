@@ -3613,10 +3613,8 @@ window.close = function() {
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_fetch_and_op(self):
-    # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
-    # Therefore perform very extensive testing of different codegen modes to catch any problems.
     for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os']]:
-      for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
+      for debug in [[], ['-g']]:
         args = opt + debug
         print(args)
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
