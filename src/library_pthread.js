@@ -9,7 +9,6 @@ var LibraryPThread = {
   $PThread__deps: ['$registerPthreadPtr',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
-                   '_main_thread_futex_wait_address'
 #if USE_ASAN || USE_LSAN
                    , '$withBuiltinMalloc'
 #endif
@@ -28,6 +27,9 @@ var LibraryPThread = {
     runningWorkers: [],
     // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
     // mainThreadBlock: undefined,
+    // Stores the memory address that the main thread is waiting on, if any. If
+    // the main thread is waiting, we wake it up before waking up any workers.
+    // mainThreadFutex: undefined,
     initMainThreadBlock: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
@@ -69,7 +71,7 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, {{{ PROCINFO.pid }}}); // Process ID.
 
-      __main_thread_futex_wait_address = _malloc(4);
+      PThread.initShared();
 
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(PThread.mainThreadBlock);
@@ -87,6 +89,7 @@ var LibraryPThread = {
       _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
     },
     initWorker: function() {
+      PThread.initShared();
 #if EMBIND
       // Embind must initialize itself on all threads, as it generates support JS.
       Module['___embind_register_native_and_builtin_types']();
@@ -106,6 +109,12 @@ var LibraryPThread = {
       PThread['setThreadStatus'] = PThread.setThreadStatus;
       PThread['threadCancel'] = PThread.threadCancel;
       PThread['threadExit'] = PThread.threadExit;
+#endif
+    },
+    initShared: function() {
+      PThread.mainThreadFutex = Module['_main_thread_futex'];
+#if ASSERTIONS
+      assert(PThread.mainThreadFutex > 0);
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -1115,14 +1124,12 @@ var LibraryPThread = {
     return 0;
   },
 
-  // Stores the memory address that the main thread is waiting on, if any.
-  _main_thread_futex_wait_address: '0',
-
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
-  emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
+  emscripten_futex_wait__deps: ['emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
-    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_WORKER) {
+    // We can do a normal blocking wait anywhere but on the main browser thread.
+    if (!ENVIRONMENT_IS_WEB) {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
@@ -1135,31 +1142,114 @@ var LibraryPThread = {
       if (ret === 'ok') return 0;
       throw 'Atomics.wait returned an unexpected value ' + ret;
     } else {
-      // Atomics.wait is not available in the main browser thread, so simulate it via busy spinning.
-      var loadedVal = Atomics.load(HEAP32, addr >> 2);
-      if (val != loadedVal) return -{{{ cDefine('EWOULDBLOCK') }}};
+      // First, check if the value is correct for us to wait on.
+      if (Atomics.load(HEAP32, addr >> 2) != val) {
+        return -{{{ cDefine('EWOULDBLOCK') }}};
+      }
 
+      // Atomics.wait is not available in the main browser thread, so simulate it via busy spinning.
       var tNow = performance.now();
       var tEnd = tNow + timeout;
 
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
+      // Register globally which address the main thread is simulating to be
+      // waiting on. When zero, the main thread is not waiting on anything, and on
+      // nonzero, the contents of the address pointed by PThread.mainThreadFutex
+      // tell which address the main thread is simulating its wait on.
+      // We need to be careful of recursion here: If we wait on a futex, and
+      // then call _emscripten_main_thread_process_queued_calls() below, that
+      // will call code that takes the proxying mutex - which can once more
+      // reach this code in a nested call. To avoid interference between the
+      // two (there is just a single mainThreadFutex at a time), unmark
+      // ourselves before calling the potentially-recursive call. See below for
+      // how we handle the case of our futex being notified during the time in
+      // between when we are not set as the value of mainThreadFutex.
+#if ASSERTIONS
+      assert(PThread.mainThreadFutex > 0);
+#endif
+      var lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, addr);
+#if ASSERTIONS
+      // We must not have already been waiting.
+      assert(lastAddr == 0);
+#endif
 
-      // Register globally which address the main thread is simulating to be waiting on. When zero, main thread is not waiting on anything,
-      // and on nonzero, the contents of address pointed by __main_thread_futex_wait_address tell which address the main thread is simulating its wait on.
-      Atomics.store(HEAP32, __main_thread_futex_wait_address >> 2, addr);
-      var ourWaitAddress = addr; // We may recursively re-enter this function while processing queued calls, in which case we'll do a spurious wakeup of the older wait operation.
-      while (addr == ourWaitAddress) {
+      while (1) {
+        // Check for a timeout.
         tNow = performance.now();
         if (tNow > tEnd) {
 #if PTHREADS_PROFILING
           PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
+          // We timed out, so stop marking ourselves as waiting.
+          lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, 0);
+#if ASSERTIONS
+          // The current value must have been our address which we set, or
+          // in a race it was set to 0 which means another thread just allowed
+          // us to run, but (tragically) that happened just a bit too late.
+          assert(lastAddr == addr || lastAddr == 0);
+#endif
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
-        _emscripten_main_thread_process_queued_calls(); // We are performing a blocking loop here, so must pump any pthreads if they want to perform operations that are proxied.
-        addr = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2); // Look for a worker thread waking us up.
+        // We are performing a blocking loop here, so we must handle proxied
+        // events from pthreads, to avoid deadlocks.
+        // Note that we have to do so carefully, as we may take a lock while
+        // doing so, which can recurse into this function; stop marking
+        // ourselves as waiting while we do so.
+        lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, 0);
+#if ASSERTIONS
+        assert(lastAddr == addr || lastAddr == 0);
+#endif
+        if (lastAddr == 0) {
+          // We were told to stop waiting, so stop.
+          break;
+        }
+        _emscripten_main_thread_process_queued_calls();
+
+        // Check the value, as if we were starting the futex all over again.
+        // This handles the following case:
+        //
+        //  * wait on futex A
+        //  * recurse into emscripten_main_thread_process_queued_calls(),
+        //    which waits on futex B. that sets the mainThreadFutex address to
+        //    futex B, and there is no longer any mention of futex A.
+        //  * a worker is done with futex A. it checks mainThreadFutex but does
+        //    not see A, so it does nothing special for the main thread.
+        //  * a worker is done with futex B. it flips mainThreadMutex from B
+        //    to 0, ending the wait on futex B.
+        //  * we return to the wait on futex A. mainThreadFutex is 0, but that
+        //    is because of futex B being done - we can't tell from
+        //    mainThreadFutex whether A is done or not. therefore, check the
+        //    memory value of the futex.
+        //
+        // That case motivates the design here. Given that, checking the memory
+        // address is also necessary for other reasons: we unset and re-set our
+        // address in mainThreadFutex around calls to
+        // emscripten_main_thread_process_queued_calls(), and a worker could
+        // attempt to wake us up right before/after such times.
+        //
+        // Note that checking the memory value of the futex is valid to do: we
+        // could easily have been delayed (relative to the worker holding on
+        // to futex A), which means we could be starting all of our work at the
+        // later time when there is no need to block. The only "odd" thing is
+        // that we may have caused side effects in that "delay" time. But the
+        // only side effects we can have are to call
+        // emscripten_main_thread_process_queued_calls(). That is always ok to
+        // do on the main thread (it's why it is ok for us to call it in the
+        // middle of this function, and elsewhere). So if we check the value
+        // here and return, it's the same is if what happened on the main thread
+        // was the same as calling emscripten_main_thread_process_queued_calls()
+        // a few times times before calling emscripten_futex_wait().
+        if (Atomics.load(HEAP32, addr >> 2) != val) {
+          return -{{{ cDefine('EWOULDBLOCK') }}};
+        }
+
+        // Mark us as waiting once more, and continue the loop.
+        lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, addr);
+#if ASSERTIONS
+        assert(lastAddr == 0);
+#endif
       }
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
@@ -1170,7 +1260,6 @@ var LibraryPThread = {
 
   // Returns the number of threads (>= 0) woken up, or the value -EINVAL on error.
   // Pass count == INT_MAX to wake up all threads.
-  emscripten_futex_wake__deps: ['_main_thread_futex_wait_address'],
   emscripten_futex_wake: function(addr, count) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0 || count < 0) return -{{{ cDefine('EINVAL') }}};
     if (count == 0) return 0;
@@ -1181,10 +1270,20 @@ var LibraryPThread = {
     // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
     // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
     // this scheme does not adhere to real queue-based waiting.
-    var mainThreadWaitAddress = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2);
+#if ASSERTIONS
+    assert(PThread.mainThreadFutex > 0);
+#endif
+    var mainThreadWaitAddress = Atomics.load(HEAP32, PThread.mainThreadFutex >> 2);
     var mainThreadWoken = 0;
     if (mainThreadWaitAddress == addr) {
-      var loadedAddr = Atomics.compareExchange(HEAP32, __main_thread_futex_wait_address >> 2, mainThreadWaitAddress, 0);
+#if ASSERTIONS
+      // We only use mainThreadFutex on the main browser thread, where we
+      // cannot block while we wait. Therefore we should only see it set from
+      // other threads, and not on the main thread itself. In other words, the
+      // main thread must never try to wake itself up!
+      assert(!ENVIRONMENT_IS_WEB);
+#endif
+      var loadedAddr = Atomics.compareExchange(HEAP32, PThread.mainThreadFutex >> 2, mainThreadWaitAddress, 0);
       if (loadedAddr == mainThreadWaitAddress) {
         --count;
         mainThreadWoken = 1;
