@@ -90,16 +90,11 @@ Advanced File System API
 
 
 .. js:function:: FS.getMode(canRead, canWrite)
-  FS.joinPath(parts, forceRelative)
-  FS.absolutePath(relative, base)
-  FS.standardizePath(path)
   FS.findObject(path, dontResolveLastLink)
-  FS.createFolder(parent, name, canRead, canWrite)
   FS.createPath(parent, path, canRead, canWrite)
   FS.createFile(parent, name, properties, canRead, canWrite)
   FS.createDataFile(parent, name, data, canRead, canWrite, canOwn)
   FS.createDevice(parent, name, input, output)
-  FS.createLink(parent, name, target, canRead, canWrite)
   FS.forceLoadFile(obj)
 
   Legacy v1 compatibility functions.

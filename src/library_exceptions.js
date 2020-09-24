@@ -7,7 +7,6 @@
 var LibraryExceptions = {
   $exceptionLast: '0',
   $exceptionCaught: ' []',
-  $exceptionThrowBuf: '0',
 
   // Static fields for ExceptionInfo class.
   $ExceptionInfoAttrs: {
@@ -195,7 +194,7 @@ var LibraryExceptions = {
       var destructor = info.get_destructor();
       if (destructor) {
         // In Wasm, destructors return 'this' as in ARM
-        {{{ makeDynCall('ii') }}}(destructor, info.excPtr);
+        {{{ makeDynCall('ii', 'destructor') }}}(info.excPtr);
       }
       ___cxa_free_exception(info.excPtr);
 #if EXCEPTION_DEBUG
@@ -396,7 +395,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '$CatchInfo', '__resumeException', '$exceptionThrowBuf'],
+  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '$CatchInfo', '__resumeException'],
   __cxa_find_matching_catch: function() {
     var thrown = exceptionLast;
     if (!thrown) {
@@ -417,9 +416,8 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-    if (!exceptionThrowBuf) {
-      exceptionThrowBuf = _malloc(4);
-    }
+    var stackTop = stackSave();
+    var exceptionThrowBuf = stackAlloc(4);
     {{{ makeSetValue('exceptionThrowBuf', '0', 'thrown', '*') }}};
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
@@ -442,6 +440,7 @@ var LibraryExceptions = {
         {{{ makeStructuralReturn(['catchInfo.ptr', 'caughtType']) }}};
       }
     }
+    stackRestore(stackTop);
     {{{ makeStructuralReturn(['catchInfo.ptr', 'thrownType']) }}};
   },
 

@@ -10,7 +10,7 @@ var funs = {
 
   signal__deps: ['_sigalrm_handler'],
   signal: function(sig, func) {
-    if (sig == 14 /*SIGALRM*/) {
+    if (sig == {{{ cDefine('SIGALRM') }}}) {
       __sigalrm_handler = func;
     } else {
 #if ASSERTIONS
@@ -108,7 +108,7 @@ var funs = {
   alarm__deps: ['_sigalrm_handler'],
   alarm: function(seconds) {
     setTimeout(function() {
-      if (__sigalrm_handler) {{{ makeDynCall('vi') }}}(__sigalrm_handler, 0);
+      if (__sigalrm_handler) {{{ makeDynCall('vi', '__sigalrm_handler') }}}(0);
     }, seconds*1000);
   },
   ualarm: function() {

@@ -51,7 +51,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-O1:
 
 ``-O1``
-  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this removes various runtime assertions in JS and also runs the Binaryen optimizer (that makes link slower, so even if you compiled with a higher optimization level, you may want to link with ``-O0`` for fast incremental builds).
+  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this does not include various runtime assertions in JS that `-O0` would do.
 
 .. _emcc-O2:
 
@@ -451,9 +451,6 @@ Options that are modified or new in *emcc* are listed below:
 ``-c``
   Tells *emcc* to generate LLVM bitcode (which can then be linked with other bitcode files), instead of compiling all the way to JavaScript.
 
-``--separate-asm``
-  Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
-
 ``--output_eol windows|linux``
   Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
 
@@ -468,7 +465,6 @@ Environment variables
 *emcc* is affected by several environment variables, as listed below:
 
   - ``EMMAKEN_JUST_CONFIGURE``
-  - ``EMMAKEN_COMPILER``
   - ``EMMAKEN_CFLAGS``
   - ``EMCC_DEBUG``
   - ``EMCC_CLOSURE_ARGS`` : arguments to be passed to *Closure Compiler*

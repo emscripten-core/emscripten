@@ -18,7 +18,7 @@ executors:
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
     macos:
-      xcode: "9.0"
+      xcode: "12.2.0"
 
 commands:
   emsdk-env:
@@ -330,7 +330,7 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: pip3 install flake8==3.7.8
+      - run: pip3 install -r requirements-dev.txt
       - run: python3 -m flake8 --show-source --statistics
   test-sanity:
     executor: bionic
@@ -377,13 +377,14 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm2 asan.test_embind*"
+          # also add a few asan tests
+          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer"
   test-wasm3:
     executor: bionic
     steps:
       - run-tests:
-          # TODO: test wasms
-          test_targets: "wasm3"
+          # also add a little select testing for wasm2js in -O3
+          test_targets: "wasm3 wasm2js3.test_memorygrowth_2"
   test-wasm2js1:
     executor: bionic
     steps:

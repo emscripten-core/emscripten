@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$Browser', '$runAndAbortIfError'],
+  $Asyncify__deps: ['$runAndAbortIfError'],
   $Asyncify: {
     State: {
       Normal: 0,
@@ -40,10 +40,7 @@ mergeInto(LibraryManager.library, {
     // which is where we must call to rewind it.
     exportCallStack: [],
     callStackNameToId: {},
-    callStackIdToFunc: {},
-#if ASYNCIFY_LAZY_LOAD_CODE
     callStackIdToName: {},
-#endif
     callStackId: 0,
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
@@ -54,11 +51,7 @@ mergeInto(LibraryManager.library, {
       if (id === undefined) {
         id = Asyncify.callStackId++;
         Asyncify.callStackNameToId[funcName] = id;
-#if ASYNCIFY_LAZY_LOAD_CODE
         Asyncify.callStackIdToName[id] = funcName;
-#else
-        Asyncify.callStackIdToFunc[id] = Module['asm'][funcName];
-#endif
       }
       return id;
     },
@@ -100,36 +93,20 @@ mergeInto(LibraryManager.library, {
           var original = exports[x];
           if (typeof original === 'function') {
             ret[x] = function() {
-              Asyncify.exportCallStack.push(x);
 #if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', x);
+              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
 #endif
+              Asyncify.exportCallStack.push(x);
               try {
                 return original.apply(null, arguments);
               } finally {
                 if (ABORT) return;
-                var y = Asyncify.exportCallStack.pop(x);
+                var y = Asyncify.exportCallStack.pop();
                 assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);
+                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
 #endif
-                if (Asyncify.currData &&
-                    Asyncify.state === Asyncify.State.Unwinding &&
-                    Asyncify.exportCallStack.length === 0) {
-                  // We just finished unwinding.
-#if ASYNCIFY_DEBUG
-                  err('ASYNCIFY: stop unwind');
-#endif
-                  Asyncify.state = Asyncify.State.Normal;
-                  runAndAbortIfError(Module['_asyncify_stop_unwind']);
-                  if (typeof Fibers !== 'undefined') {
-                    Fibers.trampoline();
-                  }
-                  if (Asyncify.afterUnwind) {
-                    Asyncify.afterUnwind();
-                    Asyncify.afterUnwind = null;
-                  }
-                }
+                Asyncify.maybeStopUnwind();
               }
             };
           } else {
@@ -140,11 +117,34 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
 
+    maybeStopUnwind: function() {
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY: maybe stop unwind', Asyncify.exportCallStack);
+#endif
+      if (Asyncify.currData &&
+          Asyncify.state === Asyncify.State.Unwinding &&
+          Asyncify.exportCallStack.length === 0) {
+        // We just finished unwinding.
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY: stop unwind');
+#endif
+        Asyncify.state = Asyncify.State.Normal;
+        runAndAbortIfError(Module['_asyncify_stop_unwind']);
+        if (typeof Fibers !== 'undefined') {
+          Fibers.trampoline();
+        }
+        if (Asyncify.afterUnwind) {
+          Asyncify.afterUnwind();
+          Asyncify.afterUnwind = null;
+        }
+      }
+    },
+
     allocateData: function() {
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
-      //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
+      //  8  id of function at bottom of the call stack (callStackIdToName[id] == name of js function)
       //
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
@@ -171,15 +171,8 @@ mergeInto(LibraryManager.library, {
 
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
-      var func = Asyncify.callStackIdToFunc[id];
-
-#if ASYNCIFY_LAZY_LOAD_CODE
-      if (func === undefined) {
-        func = Module['asm'][Asyncify.callStackIdToName[id]];
-        Asyncify.callStackIdToFunc[id] = func;
-      }
-#endif
-
+      var name = Asyncify.callStackIdToName[id];
+      var func = Module['asm'][name];
       return func;
     },
 
@@ -220,7 +213,7 @@ mergeInto(LibraryManager.library, {
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
-          if (Browser.mainLoop.func) {
+          if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
           var start = Asyncify.getDataRewindFunc(Asyncify.currData);
@@ -258,7 +251,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
           runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
-          if (Browser.mainLoop.func) {
+          if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
         }
@@ -294,13 +287,14 @@ mergeInto(LibraryManager.library, {
     },
   },
 
+  emscripten_sleep__deps: ['$Browser'],
   emscripten_sleep: function(ms) {
     Asyncify.handleSleep(function(wakeUp) {
       Browser.safeSetTimeout(wakeUp, ms);
     });
   },
 
-  emscripten_wget__deps: ['$PATH_FS', '$FS'],
+  emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget: function(url, file) {
     Asyncify.handleSleep(function(wakeUp) {
       var _url = UTF8ToString(url);
@@ -323,18 +317,19 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_wget_data__deps: ['$Browser'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
-        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
-        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValue('perror',  0, '0', 'i32') }}};
         wakeUp();
       }, function() {
-        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        {{{ makeSetValue('perror',  0, '1', 'i32') }}};
         wakeUp();
       }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
     });
@@ -347,7 +342,7 @@ mergeInto(LibraryManager.library, {
       Asyncify.afterUnwind = function() {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
         var stackEnd = HEAP32[Asyncify.currData >> 2];
-        {{{ makeDynCall('vii') }}}(func, stackBegin, stackEnd);
+        {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
         wakeUp();
       };
     });
@@ -408,7 +403,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
 
         var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
-        {{{ makeDynCall('vi') }}}(entryPoint, userData);
+        {{{ makeDynCall('vi', 'entryPoint') }}}(userData);
       } else {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;

@@ -706,7 +706,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_current_thread_process_queued_calls() {
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls() {
-  if (!emscripten_is_main_browser_thread())
+  if (!emscripten_is_main_runtime_thread())
     return;
 
   emscripten_current_thread_process_queued_calls();
@@ -912,6 +912,11 @@ void llvm_memory_barrier() { emscripten_atomic_fence(); }
 int llvm_atomic_load_add_i32_p0i32(int* ptr, int delta) {
   return emscripten_atomic_add_u32(ptr, delta);
 }
+
+// Stores the memory address that the main thread is waiting on, if any. If
+// the main thread is waiting, we wake it up before waking up any workers.
+EMSCRIPTEN_KEEPALIVE
+void* main_thread_futex;
 
 typedef struct main_args {
   int argc;

@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
+  $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
@@ -302,7 +302,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
 
-        var ptr = FS.mmapAlloc(length);
+        var ptr = mmapAlloc(length);
 
         NODEFS.stream_ops.read(stream, HEAP8, ptr, length, position);
         return { ptr: ptr, allocated: true };

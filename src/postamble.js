@@ -189,8 +189,9 @@ function callMain(args) {
     var start = Date.now();
 #endif
 
-#if STACK_OVERFLOW_CHECK >= 2
-    Module['___set_stack_limit'](STACK_MAX);
+#if ABORT_ON_WASM_EXCEPTIONS
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth += 2; 
 #endif
 
 #if PROXY_TO_PTHREAD
@@ -246,6 +247,11 @@ function callMain(args) {
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
+
+#if ABORT_ON_WASM_EXCEPTIONS
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth -= 2; 
+#endif
   }
 }
 #endif // HAS_MAIN
@@ -317,7 +323,7 @@ function run(args) {
     doRun();
   }
 #if STACK_OVERFLOW_CHECK
-  checkStackCookie();
+  if (!ABORT) checkStackCookie();
 #endif
 }
 Module['run'] = run;
@@ -416,7 +422,6 @@ function exit(status, implicit) {
     PThread.terminateAllThreads();
 #endif
 
-    ABORT = true;
     EXITSTATUS = status;
 
     exitRuntime();
@@ -424,6 +429,8 @@ function exit(status, implicit) {
 #if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](status);
 #endif
+
+    ABORT = true;
   }
 
   quit_(status, new ExitStatus(status));
@@ -463,17 +470,7 @@ if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior 
 if (!ENVIRONMENT_IS_PTHREAD) {
   run();
 } else {
-#if EMBIND
-  // Embind must initialize itself on all threads, as it generates support JS.
-  Module['___embind_register_native_and_builtin_types']();
-#endif // EMBIND
-#if MODULARIZE
-  // The promise resolve function typically gets called as part of the execution 
-  // of the Module `run`. The workers/pthreads don't execute `run` here, they
-  // call `run` in response to a message at a later time, so the creation
-  // promise can be resolved, marking the pthread-Module as initialized.
-  readyPromiseResolve(Module);
-#endif // MODULARIZE
+  PThread.initWorker();
 }
 #else
 run();

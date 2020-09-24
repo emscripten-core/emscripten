@@ -9,25 +9,30 @@
 
 void __attribute__((noinline)) InteropString(char *staticBuffer)
 {
-	char *string = (char*)EM_ASM_INT({
-		var str = "hello, this is a string! ";
-		for(var i = 0; i < 15; ++i)
-			str = str + str;
-		var stringOnTheStack = allocate(intArrayFromString(str), 'i8', ALLOC_STACK);
-		return stringOnTheStack;
-	});
-
-	int stringLength = strlen(string);
-	printf("Got string: %s\n", string);
-	printf("Received a string of length %d.\n", stringLength);
-	strcpy(staticBuffer, string);
+  char *string = (char*)EM_ASM_INT({
+    var str = "hello, this is a string! ";
+#if ONE_BIG_STRING
+    // double it until it is bigger than the stack
+    for (var i = 0; i < 15; ++i) {
+      str = str + str;
+    }
+    allocate(intArrayFromString(str), ALLOC_STACK);
+#else
+    // allocate as many times as we need to overflow
+    for (var i = 0; i < 1024 * 1024; i++) {
+      allocate(intArrayFromString(str), ALLOC_STACK);
+    }
+    abort("we should never get here!");
+#endif
+  });
 }
 
 int main()
 {
-	char staticBuffer[512288] = {}; // Make asm.js side consume a large portion of the stack, before bumping the rest with C++<->JS interop.
-	InteropString(staticBuffer);
-	int stringLength = strlen(staticBuffer);
-	printf("Got string: %s\n", staticBuffer);
-	printf("Received a string of length %d.\n", stringLength);
+  // Make C side consume a large portion of the stack, before bumping the rest with C++<->JS interop.
+  char staticBuffer[512288] = {};
+  InteropString(staticBuffer);
+  int stringLength = strlen(staticBuffer);
+  printf("Got string: %s\n", staticBuffer);
+  printf("Received a string of length %d.\n", stringLength);
 }

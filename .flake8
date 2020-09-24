@@ -10,8 +10,13 @@ exclude =
  ./tools/emdump.py,
  ./tools/webidl_binder.py,
  ./tools/create_dom_pk_codes.py,
- ./tools/asm_module.py,
  ./tools/ffdb.py,
  ./system/lib/, # system libraries
  ./cache/, # download/built content
  .git
+# The ports plugins have a lot of unused imports becuase
+# they need to implement the specific plugin APIs
+per-file-ignores =
+  ./tools/ports/*.py: U100
+  ./tests/*.py: U100
+  ./tools/toolchain_profiler.py: U100

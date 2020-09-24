@@ -171,14 +171,6 @@ def no_windows(note=''):
   return lambda f: f
 
 
-def no_asmjs(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm', note, negate=True)
-  return decorated
-
-
 def requires_native_clang(func):
   assert callable(func)
 
@@ -438,6 +430,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args = ['-Werror']
     self.env = {}
     self.temp_files_before_run = []
+    self.uses_es6 = False
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -562,6 +555,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       args = [arg for arg in args if arg is not None]
     return args
 
+  def verify_es5(self, filename):
+    es_check = shared.get_npm_cmd('es-check')
+    # use --quiet once its available
+    # See: https://github.com/dollarshaveclub/es-check/pull/126/
+    try:
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE)
+    except subprocess.CalledProcessError as e:
+      print(e.stderr)
+      self.fail('es-check failed to verify ES5 output compliance')
+
   # Build JavaScript code from source code
   def build(self, filename, libraries=[], includes=[], force_c=False,
             post_build=None, js_outfile=True):
@@ -580,6 +583,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
+    if js_outfile and not self.uses_es6:
+      self.verify_es5(output)
 
     if post_build:
       post_build(output)
@@ -1041,7 +1046,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         f.write(src)
     self._build_and_run(filename, expected_output, **kwargs)
 
-  def do_runf(self, filename, expected_output, **kwargs):
+  def do_runf(self, filename, expected_output=None, **kwargs):
     self._build_and_run(filename, expected_output, **kwargs)
 
   ## Just like `do_run` but with filename of expected output
@@ -1351,12 +1356,12 @@ class BrowserCore(RunnerCore):
         self.harness_out_queue.get()
       raise Exception('excessive responses from %s' % who)
 
-  # @param tries_left: how many more times to try this test, if it fails. browser tests have
-  #                    many more causes of flakiness (in particular, they do not run
-  #                    synchronously, so we have a timeout, which can be hit if the VM
-  #                    we run on stalls temporarily), so we let each test try more than
-  #                    once by default
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None, tries_left=1):
+  # @param extra_tries: how many more times to try this test, if it fails. browser tests have
+  #                     many more causes of flakiness (in particular, they do not run
+  #                     synchronously, so we have a timeout, which can be hit if the VM
+  #                     we run on stalls temporarily), so we let each test try more than
+  #                     once by default
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -1395,10 +1400,10 @@ class BrowserCore(RunnerCore):
           try:
             self.assertIdenticalUrlEncoded(expectedResult, output)
           except Exception as e:
-            if tries_left > 0:
+            if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
-              return self.run_browser(html_file, message, expectedResult, timeout, tries_left - 1)
+              return self.run_browser(html_file, message, expectedResult, timeout, extra_tries - 1)
             else:
               raise e
       finally:
@@ -1536,22 +1541,19 @@ class BrowserCore(RunnerCore):
             reference_slack=0, manual_reference=False, post_build=None,
             args=[], outfile='test.html', message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
-            manually_trigger_reftest=False):
+            manually_trigger_reftest=False, extra_tries=1):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'WASM=0' not in args:
-      # Filter out separate-asm, which is implied by wasm
-      args = [a for a in args if a != '--separate-asm']
     # add in support for reporting results. this adds as an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
-             '-include', path_from_root('tests', 'report_result.h'),
-             path_from_root('tests', 'report_result.cpp')]
+    args = args + ['-DEMTEST_PORT_NUMBER=%d' % self.port,
+                   '-include', path_from_root('tests', 'report_result.h'),
+                   path_from_root('tests', 'report_result.cpp')]
     if filename_is_src:
       filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
       with open(filepath, 'w') as f:
@@ -1563,7 +1565,7 @@ class BrowserCore(RunnerCore):
       expected = [str(i) for i in range(0, reference_slack + 1)]
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
-        args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
@@ -1573,7 +1575,7 @@ class BrowserCore(RunnerCore):
       post_build()
     if not isinstance(expected, list):
       expected = [expected]
-    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
+    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):

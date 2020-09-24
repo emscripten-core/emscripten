@@ -21,14 +21,7 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$dlfree
-$dlmalloc
-$dynCall_ii
-$dynCall_iidiiii
-$dynCall_iiii
 $dynCall_jiji
-$dynCall_vii
-$emscripten_get_sbrk_ptr
 $fflush
 $fmt_fp
 $fmt_o
@@ -49,7 +42,6 @@ $pop_arg_long_double
 $printf
 $printf_core
 $pthread_self
-$sbrk
 $stackAlloc
 $stackRestore
 $stackSave

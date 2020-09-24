@@ -113,48 +113,6 @@ static jmp_buf setjmp_stack[MAX_SETJMP_STACK];
 
 static u32 next_setjmp = 0;
 
-#define VOID_INVOKE_IMPL(name, typed_args, types, args, dyncall) \
-IMPORT_IMPL(void, name, typed_args, { \
-  VERBOSE_LOG("invoke " #name "  " #dyncall "\n"); \
-  u32 sp = Z_stackSaveZ_iv(); \
-  if (next_setjmp >= MAX_SETJMP_STACK) { \
-    abort_with_message("too many nested setjmps"); \
-  } \
-  u32 id = next_setjmp++; \
-  int result = setjmp(setjmp_stack[id]); \
-  if (result == 0) { \
-    (* dyncall) args; \
-    /* if we got here, no longjmp or exception happened, we returned normally */ \
-  } else { \
-    /* A longjmp or an exception took us here. */ \
-    Z_stackRestoreZ_vi(sp); \
-    Z_setThrewZ_vii(1, 0); \
-  } \
-  next_setjmp--; \
-});
-
-#define RETURNING_INVOKE_IMPL(ret, name, typed_args, types, args, dyncall) \
-IMPORT_IMPL(ret, name, typed_args, { \
-  VERBOSE_LOG("invoke " #name "  " #dyncall "\n"); \
-  u32 sp = Z_stackSaveZ_iv(); \
-  if (next_setjmp >= MAX_SETJMP_STACK) { \
-    abort_with_message("too many nested setjmps"); \
-  } \
-  u32 id = next_setjmp++; \
-  int result = setjmp(setjmp_stack[id]); \
-  ret returned_value = 0; \
-  if (result == 0) { \
-    returned_value = (* dyncall) args; \
-    /* if we got here, no longjmp or exception happened, we returned normally */ \
-  } else { \
-    /* A longjmp or an exception took us here. */ \
-    Z_stackRestoreZ_vi(sp); \
-    Z_setThrewZ_vii(1, 0); \
-  } \
-  next_setjmp--; \
-  return returned_value; \
-});
-
 // Declare an export that may be needed and may not be. For example if longjmp
 // is included then we need setThrew, but we must declare setThrew so that
 // the C compiler can build us without error if longjmp is not actually used.
@@ -171,6 +129,10 @@ IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
   }
   Z_setThrewZ_vii(buf, value ? value : 1);
   longjmp(setjmp_stack[next_setjmp - 1], 1);
+});
+
+IMPORT_IMPL(void, Z_envZ_emscripten_longjmp_jmpbufZ_vii, (u32 buf, u32 value), {
+  return Z_envZ_emscripten_longjmpZ_vii(buf, value);
 });
 
 IMPORT_IMPL(void, Z_envZ_emscripten_notify_memory_growthZ_vi, (u32 size), {});

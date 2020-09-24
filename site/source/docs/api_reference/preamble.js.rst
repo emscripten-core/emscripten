@@ -404,7 +404,7 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 .. COMMENT (not rendered) : The following methods are explicitly not part of the public API and not documented. Note that in some case referred to by function name, other cases by Module assignment.
 
   function allocate(slab, types, allocator, ptr) — Internal and use is discouraged. Documentation can remain in source code but not here.
-    associated constants ALLOC_NORMAL, ALLOC_STACK, ALLOC_DYNAMIC, ALLOC_NONE
+    associated constants ALLOC_NORMAL, ALLOC_STACK
 
   function addOnPreRun
   function addOnInit
@@ -413,8 +413,6 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   function addOnPostRun
   Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
   Module['ALLOC_STACK'] = ALLOC_STACK;
-  Module['ALLOC_DYNAMIC'] = ALLOC_DYNAMIC;
-  Module['ALLOC_NONE'] = ALLOC_NONE;
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
   function alignUp(x, multiple)

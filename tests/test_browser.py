@@ -2637,6 +2637,13 @@ Module["preRun"].push(function () {
     self.btest(path_from_root('tests', 'webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'], expected='0')
 
   @requires_graphics_hardware
+  def test_webgl2_runtime_no_context(self):
+    # tests that if we support WebGL1 and 2, and WebGL2RenderingContext exists,
+    # but context creation fails, that we can then manually try to create a
+    # WebGL1 context and succeed.
+    self.btest(path_from_root('tests', 'test_webgl2_runtime_no_context.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'], expected='1')
+
+  @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
     self.btest(path_from_root('tests', 'webgl2_invalid_teximage2d_type.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'], expected='0')
 
@@ -3603,6 +3610,7 @@ window.close = function() {
       self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
@@ -3614,21 +3622,25 @@ window.close = function() {
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # 64 bit version of the above test.
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
@@ -3640,6 +3652,7 @@ window.close = function() {
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
 
   # Test that basic thread creation works.
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_create(self):
     def test(args):
@@ -3733,6 +3746,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_spawns(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--closure', '1', '-s', 'ENVIRONMENT=web,worker'])
@@ -3867,7 +3881,7 @@ window.close = function() {
   def test_pthread_call_sync_on_main_thread(self):
     self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
     self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
-    self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
+    self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js'), '-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]'])
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
@@ -4128,7 +4142,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5600), 100)
+    self.assertLess(abs(size - 5496), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4904,3 +4918,22 @@ window.close = function() {
     # 4GB.
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
     self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[V8_ENGINE])
+
+  @unittest.skip("only run this manually, to test for race conditions")
+  @parameterized({
+    'normal': ([],),
+    'assertions': (['-s', 'ASSERTIONS'],)
+  })
+  @requires_threads
+  def test_manual_pthread_proxy_hammer(self, args):
+    # the specific symptom of the hang that was fixed is that the test hangs
+    # at some point, using 0% CPU. often that occured in 0-200 iterations, but
+    # you may want to adjust "ITERATIONS".
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxy_hammer.cpp'),
+               expected='0',
+               args=['-s', 'USE_PTHREADS=1', '-O2', '-s', 'PROXY_TO_PTHREAD',
+                     '-DITERATIONS=1024', '-g1'] + args,
+               timeout=10000,
+               # don't run this with the default extra_tries value, as this is
+               # *meant* to notice something random, a race condition.
+               extra_tries=0)

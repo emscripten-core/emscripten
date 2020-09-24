@@ -166,7 +166,7 @@ int main()
     DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS);
     GLint indices[16] = {};
     glGetActiveUniformBlockiv(program, i, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, indices);
-    for(size_t i = 0; i < param; ++i)
+    for(GLint i = 0; i < param; ++i)
       printf("offset for index %d: %d\n", i, indices[i]);
   }
 

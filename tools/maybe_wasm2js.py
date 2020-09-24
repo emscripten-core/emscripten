@@ -43,8 +43,15 @@ cmd = [os.path.join(building.get_binaryen_bin(), 'wasm2js'), '--emscripten', was
 cmd += opts
 js = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
 # assign the instantiate function to where it will be used
-js = js.replace('function instantiate(asmLibraryArg, wasmMemory, wasmTable) {',
-                "Module['__wasm2jsInstantiate__'] = function(asmLibraryArg, wasmMemory, wasmTable) {")
+if 'function instantiate(asmLibraryArg, wasmMemory)' in js:
+  js = js.replace('function instantiate(asmLibraryArg, wasmMemory) {',
+                  "Module['__wasm2jsInstantiate__'] = function(asmLibraryArg, wasmMemory) {")
+elif 'function instantiate(asmLibraryArg, wasmMemory, wasmTable)' in js:
+  js = js.replace('function instantiate(asmLibraryArg, wasmMemory, wasmTable) {',
+                  "Module['__wasm2jsInstantiate__'] = function(asmLibraryArg, wasmMemory, wasmTable) {")
+else:
+  assert False, 'failed to find expected signature in wasm2js output'
+
 # create the combined js to run in wasm2js mode
 print('var Module = { doWasm2JS: true };\n')
 print('\n')
