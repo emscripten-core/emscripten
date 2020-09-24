@@ -7,13 +7,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 
-#include <webgl/webgl1_ext.h>
 #include <webgl/webgl2_ext.h>
 
-#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 
 GLuint compile_shader(GLenum shaderType, const char *src)
 {
@@ -48,23 +48,33 @@ GLuint create_program(GLuint vertexShader, GLuint fragmentShader)
    return program;
 }
 
-int main()
-{
-  EmscriptenWebGLContextAttributes attr;
-  emscripten_webgl_init_context_attributes(&attr);
-#ifdef EXPLICIT_SWAP
-  attr.explicitSwapControl = 1;
+#ifndef WEBGL_CONTEXT_VERSION
+#define WEBGL_CONTEXT_VERSION 2
 #endif
 
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
-  emscripten_webgl_make_context_current(ctx);
+int main()
+{
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx;
+  EMSCRIPTEN_RESULT res;
+  EmscriptenWebGLContextAttributes attrs;
+  emscripten_webgl_init_context_attributes(&attrs);
+  attrs.majorVersion = WEBGL_CONTEXT_VERSION;
+  ctx = emscripten_webgl_create_context("#canvas", &attrs);
+  assert(ctx > 0); // Must have received a valid context.
+  res = emscripten_webgl_make_context_current(ctx);
+  assert(res == EMSCRIPTEN_RESULT_SUCCESS);
 
-  GLboolean extAvailable = emscripten_webgl_enable_WEBGL_multi_draw(ctx);
+#ifdef EXPLICIT_SWAP
+  attrs.explicitSwapControl = 1;
+#endif
+  
+  GLboolean extAvailable = emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(ctx);
+  extAvailable &= emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(ctx);
 
   if (!extAvailable) {
     EM_ASM({
       xhr = new XMLHttpRequest();
-      xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20WEBGL_multi_draw%20is%20not%20supported!');
+      xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20WEBGL_draw_instanced_base_vertex_base_instance%20is%20not%20supported!');
       xhr.send();
       setTimeout(function() { window.close() }, 2000);
     });
@@ -72,20 +82,25 @@ int main()
   }
 
   static const char vertex_shader[] =
-    "attribute vec4 apos;"
-    "attribute vec4 acolor;"
-    "varying vec4 color;"
+    "#version 300 es\n"
+    "layout(location=0) in vec4 apos;"
+    "layout(location=1) in vec4 acolor;"
+    "layout(location=2) in float icolor;"
+    "out vec4 color;"
     "void main() {"
       "color = acolor;"
+      "color.b = icolor;"
       "gl_Position = apos;"
     "}";
   GLuint vs = compile_shader(GL_VERTEX_SHADER, vertex_shader);
 
   static const char fragment_shader[] =
+    "#version 300 es\n"
     "precision lowp float;"
-    "varying vec4 color;"
+    "in vec4 color;"
+    "out vec4 o_color;"
     "void main() {"
-      "gl_FragColor = color;"
+      "o_color = color;"
     "}";
   GLuint fs = compile_shader(GL_FRAGMENT_SHADER, fragment_shader);
 
@@ -94,12 +109,12 @@ int main()
 
   static const float pos_and_color[] = {
   //     x,     y, r, g, b
-     -0.5f, -0.5f, 1, 0, 0,
-      0.5f, -0.5f, 0, 1, 0,
-     -0.5f,   0.5f, 0, 0, 1,
-      0.5f, 0.5f, 1, 1, 1,
-     -0.5f,   0.5f, 0, 0, 1,
-      0.5f, -0.5f, 0, 1, 0,
+     -0.5f, -0.5f, 1, 1, 0,
+      0.5f, -0.5f, 1, 0, 0,
+     -0.5f,   0.5f, 0, 1, 0,
+      0.5f, 0.5f, 0, 0, 0,
+     -0.5f,   0.5f, 0, 1, 0,
+      0.5f, -0.5f, 1, 0, 0
   };
 
   // 2 -- 3
@@ -108,7 +123,11 @@ int main()
   // 0 -- 1
   static const GLushort indices[] = {
     0, 1, 2,
-    3, 2, 1
+    2, 1, 0
+  };
+
+  static const float instance_color[] = {
+    0, 1
   };
 
   GLuint vbo;
@@ -117,9 +136,16 @@ int main()
   glBufferData(GL_ARRAY_BUFFER, sizeof(pos_and_color), pos_and_color, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 20, 0);
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 20, (void*)8);
-
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
+
+  GLuint ibo;
+  glGenBuffers(1, &ibo);
+  glBindBuffer(GL_ARRAY_BUFFER, ibo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(instance_color), instance_color, GL_STATIC_DRAW);
+  glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, 0);
+  glVertexAttribDivisor(2, 1);
+  glEnableVertexAttribArray(2);
 
   // use element array buffer
   GLuint elementBuffer;
@@ -133,26 +159,28 @@ int main()
   GLsizei counts[] = {3, 3};
   GLsizei instanceCounts[] = {1, 1};
   const GLvoid* const offsets[] = {(GLvoid*)0, (GLvoid*)(3 * sizeof(GLushort))};
+  GLint baseVertices[] = {0, 1};
+  GLuint baseInstances[] = {0, 1};
   GLsizei drawcount = 2;
 
-#ifdef MULTI_DRAW_ARRAYS
   glClear(GL_COLOR_BUFFER_BIT);
-  glMultiDrawArraysWEBGL(GL_TRIANGLES, firsts, counts, drawcount);
-#endif
 
-#ifdef MULTI_DRAW_ARRAYS_INSTANCED
-  glClear(GL_COLOR_BUFFER_BIT);
-  glMultiDrawArraysInstancedWEBGL(GL_TRIANGLES, firsts, counts, instanceCounts, drawcount);
+#if MULTI_DRAW
+#if DRAW_ELEMENTS
+  glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL(GL_TRIANGLES, counts, GL_UNSIGNED_SHORT, offsets, instanceCounts, baseVertices, baseInstances, drawcount);
+#else
+  glMultiDrawArraysInstancedBaseInstanceWEBGL(GL_TRIANGLES, firsts, counts, instanceCounts, baseInstances, drawcount);
 #endif
-
-#ifdef MULTI_DRAW_ELEMENTS
-  glClear(GL_COLOR_BUFFER_BIT);
-  glMultiDrawElementsWEBGL(GL_TRIANGLES, counts, GL_UNSIGNED_SHORT, offsets, drawcount);
+#else
+#if DRAW_ELEMENTS
+  for (GLsizei i = 0; i < drawcount; i++) {
+    glDrawElementsInstancedBaseVertexBaseInstanceWEBGL(GL_TRIANGLES, counts[i], GL_UNSIGNED_SHORT, offsets[i], instanceCounts[i], baseVertices[i], baseInstances[i]);
+  }
+#else
+  for (GLsizei i = 0; i < drawcount; i++) {
+    glDrawArraysInstancedBaseInstanceWEBGL(GL_TRIANGLES, firsts[i], counts[i], instanceCounts[i], baseInstances[i]);
+  }
 #endif
-
-#ifdef MULTI_DRAW_ELEMENTS_INSTANCED
-  glClear(GL_COLOR_BUFFER_BIT);
-  glMultiDrawElementsInstancedWEBGL(GL_TRIANGLES, counts, GL_UNSIGNED_SHORT, offsets, instanceCounts, drawcount);
 #endif
 
 #ifdef EXPLICIT_SWAP

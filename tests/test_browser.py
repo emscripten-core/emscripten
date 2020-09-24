@@ -4161,6 +4161,24 @@ window.close = function() {
     self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
                args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
 
+  # Tests for base_vertex/base_instance extension
+  # For testing WebGL draft extensions like this, if using chrome as the browser,
+  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
+  # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
+  # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
+  @requires_graphics_hardware
+  def test_webgl_draw_base_vertex_base_instance(self):
+    for multiDraw in [0, 1]:
+      for drawElements in [0, 1]:
+        self.btest('webgl_draw_base_vertex_base_instance_test.c', reference='webgl_draw_instanced_base_vertex_base_instance.png',
+                   args=['-lGL',
+                         '-s', 'MAX_WEBGL_VERSION=2',
+                         '-s', 'OFFSCREEN_FRAMEBUFFER=1',
+                         '-DMULTI_DRAW=' + str(multiDraw),
+                         '-DDRAW_ELEMENTS=' + str(drawElements),
+                         '-DEXPLICIT_SWAP=1',
+                         '-DWEBGL_CONTEXT_VERSION=2'])
+
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
