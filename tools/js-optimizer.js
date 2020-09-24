@@ -4490,107 +4490,99 @@ function minifyGlobals(ast) {
   // The input is in form
   //
   //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var helper..
   //      function asmFunc(global, env, buffer) {
   //        var memory = env.memory;
   //        var HEAP8 = new global.Int8Array(buffer);
   //
   // We want to minify the interior of the inner function.
   assert(ast[0] === 'toplevel');
-  ast = ast[1][0];
-  assert(ast[0] === 'defun');
-  assert(ast[1] === 'instantiate');
-  ast = ast[3];
-  var asmFunc;
-  for (var i = 0; i < ast.length; i++) {
-    var curr = ast[i];
-    if (curr[0] === 'defun' && curr[1] === 'asmFunc') {
-      asmFunc = curr;
-      break;
-    }
-  }
-  assert(asmFunc, 'must find the asmFunc');
+  var instantiateFunc = ast[1][0];
+  assert(instantiateFunc[0] === 'defun');
+  assert(instantiateFunc[1] === 'instantiate');
 
-  var minified = {};
+  var minified = new Map();
   var next = 0;
   function getMinified(name) {
-    if (minified.hasOwnProperty(name)) return minified[name];
+    assert(name);
+    if (minified.has(name)) return minified.get(name);
     ensureMinifiedNames(next);
-    return minified[name] = minifiedNames[next++];
+    var m = minifiedNames[next++];
+    minified.set(name, m);
+    return m;
   }
-  var thingsToMinify = [];
-  // process the body of the asmFunc.
-  asmFunc[3].forEach(function(ast) {
-    var namesToIgnore = new Set();
-    var scoping = [];
-    var namesToIgnore = new Map();
 
+  // name nodes, ['name', name]
+  var allNames = [];
+  // functions, whose element func[1] is the name
+  var allNamedFunctions = [];
+  // name arrays, as in func[2], [name1, name2] which are the arguments
+  var allNameArrays = [];
+  // var arrays, as in [[name, init], ..] in a var or const
+  var allVarArrays = [];
+
+  // Add instantiate's parameters, but *not* its own name, which is used
+  // externally.
+  allNameArrays.push(instantiateFunc[2]);
+
+  // First, find all the other things to minify.
+  instantiateFunc[3].forEach(function(ast) {
     traverse(ast, function(node, type) {
-      function getPossiblyMinified(name) {
-        if (scope) {
-          // We are in an inner scope. We can ignore these, and do not
-          // minify them.
-          scope.add(name);
-          if (!namesToIgnore.has(name)) {
-            namesToIgnore.set(name, 1);
-          } else {
-            namesToIgnore.set(name, namesToIgnore.get(name) + 1);
-          }
-          return name;
-        } else {
-          return getMinified(name);
-        }
-      }
-      var scope = scoping.length > 0 ? scoping[scoping.length - 1] : null;
       if (type === 'defun') {
-        var name = node[1];
-        node[1] = getPossiblyMinified(name);
-      }
-      if (type === 'defun' || type === 'function') {
-        scoping.push(new Set());
-      }
-      if (type === 'var' || type === 'const') {
-        var vars = node[1];
-        for (var i = 0; i < vars.length; i++) {
-          var name = vars[i][0];
-          vars[i][0] = getPossiblyMinified(name);
-        }
+        allNamedFunctions.push(node);
+        allNameArrays.push(node[2]);
+      } else if (type === 'function') {
+        allNameArrays.push(node[2]);
+      } else if (type === 'var' || type === 'const') {
+        allVarArrays.push(node[1]);
       } else if (type === 'name') {
-        var name = node[1];
-        // Prepare to minify it, if we should.
-        if (!namesToIgnore.has(name)) {
-          thingsToMinify.push(node);
-        }
-      }
-    }, function(node, type) {
-      if (type === 'defun' || type === 'function') {
-        scoping.pop().forEach(function(name) {
-          assert(namesToIgnore.has(name));
-          if (namesToIgnore.get(name) === 1) {
-            namesToIgnore.delete(name);
-          } else {
-            namesToIgnore.set(name, namesToIgnore.get(name) - 1);
-          }
-        });
+        allNames.push(node);
       }
     });
-    assert(namesToIgnore.size == 0);
+  });
+
+  // All the things that are valid to minify: names declared in vars, or
+  // params, etc.
+  var validNames = new Set();
+
+  // TODO: sort to find the optimal minification
+  allVarArrays.forEach(function(array) {
+    for (var i = 0; i < array.length; i++) {
+      var name = array[i][0];
+      validNames.add(name);
+      array[i][0] = getMinified(name);
+    }
   });
   // add all globals in function chunks, i.e. not here but passed to us
   for (var i = 0; i < extraInfo.globals.length; i++) {
-    name = extraInfo.globals[i];
-    minified[name] = getMinified(name);
+    var name = extraInfo.globals[i];
+    validNames.add(name);
+    getMinified(name);
   }
-  // apply minification
-  thingsToMinify.forEach(function(node) {
-    assert(node[0] === 'name');
+  allNamedFunctions.forEach(function(node) {
     var name = node[1];
-    if (name in minified) {
-      node[1] = minified[name];
+    validNames.add(name);
+    node[1] = getMinified(name);
+  });
+  allNameArrays.forEach(function(array) {
+    for (var i = 0; i < array.length; i++) {
+      var name = array[i];
+      validNames.add(name);
+      array[i] = getMinified(name);
     }
   });
-  suffix = '// EXTRA_INFO:' + JSON.stringify(minified);
+  allNames.forEach(function(node) {
+    var name = node[1];
+    // A name may refer to a true global like Int8Array, which is not a valid
+    // name to minify, as we didn't see it declared.
+    if (validNames.has(name)) {
+      node[1] = getMinified(name);
+    }
+  });
+  var json = {};
+  for (var x of minified.entries()) json[x[0]] = x[1];
+  suffix = '// EXTRA_INFO:' + JSON.stringify(json);
 }
-
 
 function minifyLocals(ast) {
   assert(extraInfo && extraInfo.globals);
