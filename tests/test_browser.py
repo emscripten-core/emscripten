@@ -3998,31 +3998,6 @@ window.close = function() {
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'])
 
-  @no_wasm_backend('mem init file')
-  def test_meminit_pairs(self):
-    d = 'const char *data[] = {\n  "'
-    d += '",\n  "'.join(''.join('\\x{:02x}\\x{:02x}'.format(i, j)
-                                for j in range(256)) for i in range(256))
-    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
-      d += '"\n};\n' + f.read()
-    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1", '-s', 'WASM=0']
-    self.btest(d, expected='0', args=args + ["--closure", "0"])
-    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
-    self.btest(d, expected='0', args=args + ["--closure", "1"])
-
-  @no_wasm_backend('mem init file')
-  def test_meminit_big(self):
-    d = 'const char *data[] = {\n  "'
-    d += '",\n  "'.join([''.join('\\x{:02x}\\x{:02x}'.format(i, j)
-                                 for j in range(256)) for i in range(256)] * 256)
-    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
-      d += '"\n};\n' + f.read()
-    assert len(d) > (1 << 27) # more than 32M memory initializer
-    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1", '-s', 'WASM=0']
-    self.btest(d, expected='0', args=args + ["--closure", "0"])
-    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
-    self.btest(d, expected='0', args=args + ["--closure", "1"])
-
   def test_canvas_style_proxy(self):
     self.btest('canvas_style_proxy.c', expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests/canvas_style_proxy_shell.html'), '--pre-js', path_from_root('tests/canvas_style_proxy_pre.js')])
 

@@ -5801,23 +5801,6 @@ int main() {
     self.run_process([EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify', '0', '-g4', '-Oz'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-  @no_wasm_backend('MEM_INIT_METHOD not supported under wasm')
-  def test_meminit_crc(self):
-    create_test_file('src.c', r'''
-#include <stdio.h>
-int main() { printf("Mary had a little lamb.\n"); }
-''')
-
-    self.run_process([EMCC, 'src.c', '--memory-init-file', '0', '-s', 'MEM_INIT_METHOD=2', '-s', 'ASSERTIONS=1', '-s', 'WASM=0'])
-    with open('a.out.js') as f:
-      d = f.read()
-    return
-    self.assertContained('Mary had', d)
-    d = d.replace('Mary had', 'Paul had')
-    create_test_file('a.out.js', d)
-    out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Assertion failed: memory initializer checksum', out)
-
   def test_emscripten_print_double(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
