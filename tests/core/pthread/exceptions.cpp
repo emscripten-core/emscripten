@@ -44,13 +44,8 @@ pthread_t thread[NUM_THREADS];
 
 void CreateThread(int i)
 {
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-  static int counter = 1;
-  int rc = pthread_create(&thread[i], &attr, ThreadMain, (void*)i);
+  int rc = pthread_create(&thread[i], nullptr, ThreadMain, (void*)i);
   assert(rc == 0);
-  pthread_attr_destroy(&attr);
 }
 
 void loop() {

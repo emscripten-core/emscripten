@@ -8,11 +8,6 @@
 /*
   References to these longjmp- and exceptions-supporting things are generated
   in the llvm backend.
-
-  Note that these might make more sense in compiler-rt, but they need to be
-  built with multithreading support when relevant (to avoid races between
-  threads that throw at the same time etc.), and compiler-rt is not built
-  that way atm.
 */
 
 #include <threads.h>
