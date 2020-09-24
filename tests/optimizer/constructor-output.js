@@ -1,46 +1,46 @@
 // EMSCRIPTEN_START_ASM
-function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
- var scratchBuffer = new ArrayBuffer(16);
- var i32ScratchView = new Int32Array(scratchBuffer);
- var f32ScratchView = new Float32Array(scratchBuffer);
- function wasm2js_scratch_load_i32(index) {
-  return i32ScratchView[index];
+function instantiate(o, p, q) {
+ var a = new ArrayBuffer(16);
+ var b = new Int32Array(a);
+ var c = new Float32Array(a);
+ function j(r) {
+  return b[r];
  }
- function wasm2js_scratch_store_i32(index, value) {
-  i32ScratchView[index] = value;
+ function k(r, s) {
+  b[r] = s;
  }
- function wasm2js_scratch_store_f32(value) {
-  f32ScratchView[2] = value;
+ function l(s) {
+  c[2] = s;
  }
- function wasm2js_scratch_load_f32() {
-  return f32ScratchView[2];
+ function m() {
+  return c[2];
  }
- function asmFunc(global, env, buffer) {
-  var a = new global.Int8Array(buffer);
-  var b = env.emscripten_glVertexAttrib4fv;
-  var c = 6191184;
+ function n(t, u, v) {
+  var d = new t.Int8Array(v);
+  var e = u.emscripten_glVertexAttrib4fv;
+  var f = 6191184;
   
 // EMSCRIPTEN_START_FUNCS
-function f() {
- return d(10, 20) + e(30);
+function i() {
+ return g(10, 20) + h(30);
 }
 
 
 
-function d(a, b) {
- return e(a + b);
+function g(a, b) {
+ return h(a + b);
 }
-function e(a) {
+function h(a) {
  return a + 1;
 }
 
 // EMSCRIPTEN_END_FUNCS
 
   return {
-   "main": f
+   "main": i
   };
  }
- return asmFunc({
+ return n({
   "Int8Array": Int8Array,
   "Int16Array": Int16Array,
   "Int32Array": Int32Array,
@@ -52,7 +52,7 @@ function e(a) {
   "NaN": NaN,
   "Infinity": Infinity,
   "Math": Math
- }, asmLibraryArg, wasmMemory.buffer);
+ }, o, p.buffer);
 }
 
 
