@@ -82,6 +82,7 @@ var wasmMemory = new WebAssembly.Memory({
 #endif
   });
 
+var wasmTable;
 var buffer = wasmMemory.buffer;
 
 #if USE_PTHREADS
@@ -90,8 +91,6 @@ var buffer = wasmMemory.buffer;
 assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
 #endif
-
-#include "runtime_init_table.js"
 
 #if ASSERTIONS
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};

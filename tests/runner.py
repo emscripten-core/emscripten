@@ -171,14 +171,6 @@ def no_windows(note=''):
   return lambda f: f
 
 
-def no_asmjs(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm', note, negate=True)
-  return decorated
-
-
 def requires_native_clang(func):
   assert callable(func)
 
@@ -1364,12 +1356,12 @@ class BrowserCore(RunnerCore):
         self.harness_out_queue.get()
       raise Exception('excessive responses from %s' % who)
 
-  # @param tries_left: how many more times to try this test, if it fails. browser tests have
-  #                    many more causes of flakiness (in particular, they do not run
-  #                    synchronously, so we have a timeout, which can be hit if the VM
-  #                    we run on stalls temporarily), so we let each test try more than
-  #                    once by default
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None, tries_left=1):
+  # @param extra_tries: how many more times to try this test, if it fails. browser tests have
+  #                     many more causes of flakiness (in particular, they do not run
+  #                     synchronously, so we have a timeout, which can be hit if the VM
+  #                     we run on stalls temporarily), so we let each test try more than
+  #                     once by default
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -1408,10 +1400,10 @@ class BrowserCore(RunnerCore):
           try:
             self.assertIdenticalUrlEncoded(expectedResult, output)
           except Exception as e:
-            if tries_left > 0:
+            if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
-              return self.run_browser(html_file, message, expectedResult, timeout, tries_left - 1)
+              return self.run_browser(html_file, message, expectedResult, timeout, extra_tries - 1)
             else:
               raise e
       finally:
@@ -1549,7 +1541,7 @@ class BrowserCore(RunnerCore):
             reference_slack=0, manual_reference=False, post_build=None,
             args=[], outfile='test.html', message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
-            manually_trigger_reftest=False):
+            manually_trigger_reftest=False, extra_tries=1):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
@@ -1583,7 +1575,7 @@ class BrowserCore(RunnerCore):
       post_build()
     if not isinstance(expected, list):
       expected = [expected]
-    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
+    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):

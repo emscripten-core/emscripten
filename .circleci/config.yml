@@ -18,7 +18,7 @@ executors:
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
     macos:
-      xcode: "9.0"
+      xcode: "12.2.0"
 
 commands:
   emsdk-env:

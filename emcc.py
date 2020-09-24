@@ -579,6 +579,8 @@ def backend_binaryen_passes():
     passes += ['--asyncify']
     if shared.Settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
+    if shared.Settings.ASYNCIFY_ADVISE:
+      passes += ['--pass-arg=asyncify-verbose']
     if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
       passes += ['--pass-arg=asyncify-ignore-indirect']
     else:
@@ -2681,13 +2683,7 @@ def do_binaryen(target, options, wasm_target):
     building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   def preprocess_wasm2js_script():
-    wasm2js = read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'))
-    # We do not currently have a setup to preprocess {{{ }}} settings in user scripts, so manually
-    # expand the settings that wasm2js.js actually uses.
-    wasm2js = wasm2js.replace('{{{ WASM_PAGE_SIZE }}}', '65536')
-    for opt in ['WASM_TABLE_SIZE']:
-      wasm2js = wasm2js.replace("{{{ getQuoted('%s') }}}" % opt, str(shared.Settings.get(opt)))
-    return wasm2js
+    return read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'), expand_macros=True)
 
   def run_closure_compiler():
     global final_js

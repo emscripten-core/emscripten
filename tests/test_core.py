@@ -23,7 +23,7 @@ from tools.shared import try_delete, PIPE
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, LLVM_ROOT
 from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
 from runner import NON_ZERO
 import clang_native
@@ -1858,7 +1858,6 @@ int main() {
     if self.is_wasm():
       self.skipTest('wasm requires a proper asm module')
 
-    self.emcc_args.append('-Wno-almost-asm')
     src = path_from_root('tests', 'core', 'test_inlinejs3.c')
     output = shared.unsuffixed(src) + '.out'
 
@@ -1971,7 +1970,7 @@ int main(int argc, char **argv) {
       expect_fail = True
     self.do_run(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
     # Win with it
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth(self):
@@ -1989,7 +1988,7 @@ int main(int argc, char **argv) {
     fail = open('src.js').read()
 
     # Win with it
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.js').read()
 
@@ -2025,7 +2024,7 @@ int main(int argc, char **argv) {
     fail = open('src.js').read()
 
     # Win with it
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.js').read()
 
@@ -2075,7 +2074,7 @@ int main(int argc, char **argv) {
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
 
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3.c')
 
   @parameterized({
@@ -2086,10 +2085,9 @@ int main(int argc, char **argv) {
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'MAXIMUM_MEMORY=18MB'] + args
+    self.emcc_args += ['-s', 'MAXIMUM_MEMORY=18MB'] + args
     self.do_run_in_out_file_test('tests', 'core', 'test_aborting_new.cpp')
 
-  @no_asmjs()
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   def test_module_wasm_memory(self):
@@ -4838,7 +4836,7 @@ Pass: 0.000012 0.000012''')
       self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
     elif '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
-      self.emcc_args += ['--closure', '2', '-Wno-almost-asm'] # Use closure 2 here for some additional coverage
+      self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
       return self.skipTest('TODO: currently skipped because CI runs out of memory running Closure in this test!')
 
     self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1', '--pre-js', 'pre.js']
@@ -6532,12 +6530,13 @@ return malloc(size);
     print('with RESERVED_FUNCTION_POINTERS=0')
     self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
     expected = 'Unable to grow wasm table'
-    if self.is_wasm2js() and is_optimizing(self.emcc_args):
+    if self.is_wasm2js():
       # in wasm2js the error message doesn't come from the VM, but from our
       # emulation code. when ASSERTIONS are enabled we show a clear message, but
       # in optimized builds we don't waste code size on that, and the JS engine
       # shows a generic error.
       expected = 'table.grow is not a function'
+
     self.do_runf(src, expected, assert_returncode=NON_ZERO)
 
     print('- with table growth')
@@ -6974,7 +6973,7 @@ someweirdtext
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc","_free"]', '--post-js', 'glue.js']
     if allow_memory_growth:
-      self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-Wno-almost-asm']
+      self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
 
     def post(filename):
       with open(filename, 'a') as f:

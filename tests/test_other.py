@@ -5906,22 +5906,6 @@ int main() {
                             '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stderr=PIPE).stderr
     self.assertNotContained('function requested to be exported, but not implemented: "_alGetError"', err)
 
-  @no_wasm_backend()
-  def test_almost_asm_warning(self):
-    def run(args, expected):
-      print(args, expected)
-      err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0'] + args, stderr=PIPE).stderr
-      if expected:
-        self.assertContained('[-Walmost-asm]', err)
-      else:
-        self.assertEqual(err, '')
-
-    run(['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True),  # default
-    # suppress almost-asm warning manually
-    run(['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-Wno-almost-asm'], False),
-    # last warning flag should "win"
-    run(['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-Wno-almost-asm', '-Walmost-asm'], True)
-
   def test_musl_syscalls(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
     src = open('a.out.js').read()
@@ -6987,12 +6971,12 @@ int main() {
   @parameterized({
     'O0': ([],      [], ['waka'],   977), # noqa
     'O1': (['-O1'], [], ['waka'],   467), # noqa
-    'O2': (['-O2'], [], ['waka'],   384), # noqa
+    'O2': (['-O2'], [], ['waka'],   419), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'], [], [],          85), # noqa
-    'Os': (['-Os'], [], [],          85), # noqa
-    'Oz': (['-Oz'], [], [],          85), # noqa
-    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 85), # noqa
+    'O3': (['-O3'], [], [],          96), # noqa
+    'Os': (['-Os'], [], [],          96), # noqa
+    'Oz': (['-Oz'], [], [],          96), # noqa
+    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 96), # noqa
   })
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
@@ -7020,7 +7004,7 @@ int main() {
     'Oz': (['-Oz'], [], [],        2004), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
-          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     61), # noqa
+          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     72), # noqa
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
@@ -8037,6 +8021,30 @@ test_module().then((test_module_instance) => {
         'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
         proc.stderr)
 
+  def test_asyncify_advise(self):
+    src = path_from_root('tests', 'other', 'asyncify_advise.c')
+
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCIFY_ADVISE', 1)
+    self.set_setting('ASYNCIFY_IMPORTS', ['async_func'])
+
+    out = self.run_process([EMCC, src, '-o', 'asyncify_advise.js'] + self.get_emcc_args(), stdout=PIPE).stdout
+    self.assertContained('[asyncify] main can', out)
+    self.assertContained('[asyncify] a can', out)
+    self.assertContained('[asyncify] c can', out)
+    self.assertContained('[asyncify] e can', out)
+    self.assertContained('[asyncify] g can', out)
+    self.assertContained('[asyncify] i can', out)
+
+    self.set_setting('ASYNCIFY_REMOVE', ['e'])
+    out = self.run_process([EMCC, src, '-o', 'asyncify_advise.js'] + self.get_emcc_args(), stdout=PIPE).stdout
+    self.assertContained('[asyncify] main can', out)
+    self.assertNotContained('[asyncify] a can', out)
+    self.assertNotContained('[asyncify] c can', out)
+    self.assertNotContained('[asyncify] e can', out)
+    self.assertContained('[asyncify] g can', out)
+    self.assertContained('[asyncify] i can', out)
+
   # Sockets and networking
 
   def test_inet(self):
@@ -8907,7 +8915,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5795), 150)
+    self.assertLess(abs(changed - 5627), 150)
 
   def test_llvm_includes(self):
     create_test_file('atomics.c', '#include <stdatomic.h>')
