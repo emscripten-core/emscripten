@@ -21,6 +21,7 @@ localtime matches daylight: yes
 localtime gmtoff matches DST: yes
 localtime tm_zone matches tzname (winter): yes
 localtime tm_zone matches tzname (summer): yes
+localtime equals std: true
 localtime <-> mktime: 1
 mktime guesses DST (winter): 1
 mktime guesses DST (summer): 1

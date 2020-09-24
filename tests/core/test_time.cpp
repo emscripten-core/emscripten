@@ -22,7 +22,6 @@ int main() {
   tzset();
   printf("tzname[0] set: %d\n", strlen(tzname[0]) >= 3);
   printf("tzname[1] set: %d\n", strlen(tzname[1]) >= 3);
-  printf("timezone=%ld, daylight=%d\n", timezone, daylight);
   
   // Verify gmtime() creates correct struct.
   tm_ptr = gmtime(&xmas2002);
@@ -64,8 +63,8 @@ int main() {
   struct tm tm_winter, tm_summer;
   if (localtime_r(&xmas2002, &tm_winter) != &tm_winter) printf("localtime_r failed\n");
   if (localtime_r(&summer2002, &tm_summer) != &tm_summer) printf("localtime_r failed\n");
-  printf("localtime found DST data (summer): %s\n", tm_summer.tm_isdst <= 0 ? "no" : "yes");
-  printf("localtime found DST data (winter): %s\n", tm_winter.tm_isdst <= 0 ? "no" : "yes");
+  printf("localtime found DST data (summer): %s\n", tm_summer.tm_isdst < 0 ? "no" : "yes");
+  printf("localtime found DST data (winter): %s\n", tm_winter.tm_isdst < 0 ? "no" : "yes");
   int localeHasDst = tm_winter.tm_isdst == 1 || tm_summer.tm_isdst == 1; // DST is in December in south
   printf("localtime matches daylight: %s\n", localeHasDst == _daylight ? "yes" : "no");
   int goodGmtOff = (tm_winter.tm_gmtoff != tm_summer.tm_gmtoff) == localeHasDst;
@@ -81,18 +80,15 @@ int main() {
   int inv_winter = tm_winter.tm_gmtoff * -1;
 
   if (tm_winter.tm_isdst) {
-    printf("localtime has dst in winter. timezone should not equal dst - %s\n", inv_winter != timezone ? "true" : "false");
-    printf("localtime has dst in winter. timezone should be equal to std - %s\n", inv_summer == timezone ? "true" : "false");
+    printf("localtime equals std: %s\n", inv_summer == timezone ? "true" : "false");
     assert(inv_winter != timezone);
     assert(inv_summer == timezone);
   } else if (tm_summer.tm_isdst) {
-    printf("localtime has dst in summer. timezone should not equal dst - %s\n", inv_summer != timezone ? "true" : "false");
-    printf("localtime has dst in summer. timezone should be equal to std - %s\n", inv_winter == timezone ? "true" : "false");
+    printf("localtime equals std: %s\n", inv_winter == timezone ? "true" : "false");
     assert(inv_summer != timezone);
     assert(inv_winter == timezone);
   } else {
-    printf("localtime does not have dst. timezone should be equal to winter time - %s\n", inv_winter == timezone ? "true" : "false");
-    printf("localtime does not have dst. timezone should be equal to summer time - %s\n", inv_summer == timezone ? "true" : "false");
+    printf("localtime equals std: %s\n", (inv_summer == timezone && inv_winter == timezone) ? "true" : "false");
     assert(inv_summer == timezone);
     assert(inv_winter == timezone);
   }
