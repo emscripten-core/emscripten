@@ -4495,7 +4495,25 @@ function minifyGlobals(ast) {
   //        var memory = env.memory;
   //        var HEAP8 = new global.Int8Array(buffer);
   //
-  // We want to minify the interior of the inner function.
+  // We want to minify the interior instantiate, basically everything but
+  // the name instantiate itself, which is used externally to call it.
+  //
+  // This is *not* a complete minification algorithm. It does not have a full
+  // understanding of nested scopes. Instead it assumes the code is fairly
+  // simple - as wasm2js output is - and looks at all the minifiable names as
+  // a whole. A possible bug here is something like
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var x = foo;
+  //      function asmFunc(global, env, buffer) {
+  //        var foo = 10;
+  //
+  // Here foo is declared in an inner scope, and the outer use of foo looks
+  // to the global scope. The analysis here only thinks something is from the
+  // global scope if it is not in any var or function declaration. In practice,
+  // the globals used from wasm2js output are things like Int8Array that we
+  // don't declare as locals, but we should probably have a fully scope-aware
+  // analysis here. FIXME
   assert(ast[0] === 'toplevel');
   var instantiateFunc = ast[1][0];
   assert(instantiateFunc[0] === 'defun');
