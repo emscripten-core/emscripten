@@ -1612,7 +1612,7 @@ for (var x in SyscallsLibrary) {
   if (!SYSCALLS_REQUIRE_FILESYSTEM && t.indexOf('FS.') >= 0) {
     t = modifyFunction(t, function(name, args, body) {
       return 'function ' + name + '(' + args + ') {\n' +
-             (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM')" : '') +
+             (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +
              '}';
     });
   }
@@ -1628,7 +1628,7 @@ for (var x in SyscallsLibrary) {
       post += 'SYSCALLS.varargs = undefined;\n';
     }
   }
-  pre += "err('syscall! " + x + "');\n";
+  pre += "err('syscall! " + x + " ' + Array.prototype.slice.call(arguments));\n";
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";

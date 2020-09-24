@@ -9751,3 +9751,11 @@ int main () {
       [EMCC, '-DFOO', '-DBAR', '-DFOOBAR', '-DBARFOO',
        '-o', 'llvm_option_dash_o_output', '-mllvm', '-opt-bisect-limit=1',
        path_from_root('tests', 'hello_world.c')])
+
+  def test_SYSCALL_DEBUG(self):
+    self.set_setting('SYSCALL_DEBUG')
+    self.do_runf(path_from_root('tests', 'hello_world.c'), 'syscall! fd_write 1')
+
+  def test_LIBRARY_DEBUG(self):
+    self.set_setting('LIBRARY_DEBUG')
+    self.do_runf(path_from_root('tests', 'hello_world.c'), '[library call:_fd_write: 0x1')
