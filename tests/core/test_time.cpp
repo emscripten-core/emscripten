@@ -82,12 +82,12 @@ int main() {
 
   if (tm_winter.tm_isdst) {
     printf("localtime has dst in winter. timezone should not equal dst - %s\n", inv_winter != timezone ? "true" : "false");
-    printf("localtime has dst in winter. timezone should be equal to dst - %s\n", inv_summer == timezone ? "true" : "false");
+    printf("localtime has dst in winter. timezone should be equal to std - %s\n", inv_summer == timezone ? "true" : "false");
     assert(inv_winter != timezone);
     assert(inv_summer == timezone);
   } else if (tm_summer.tm_isdst) {
     printf("localtime has dst in summer. timezone should not equal dst - %s\n", inv_summer != timezone ? "true" : "false");
-    printf("localtime has dst in summer. timezone should be equal to dst - %s\n", inv_winter == timezone ? "true" : "false");
+    printf("localtime has dst in summer. timezone should be equal to std - %s\n", inv_winter == timezone ? "true" : "false");
     assert(inv_summer != timezone);
     assert(inv_winter == timezone);
   } else {
