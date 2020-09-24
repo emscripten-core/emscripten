@@ -180,9 +180,6 @@ var runtimeExited = false;
 #endif
 
 #include "runtime_math.js"
-
-var memoryInitializer = null;
-
 #include "memoryprofiler.js"
 #include "runtime_debug.js"
 
