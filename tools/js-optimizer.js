@@ -32,6 +32,10 @@ function print(x) {
   process.stdout.write(x + '\n');
 }
 
+function assert(x, msg) {
+  if (!x) throw 'assertion failed (' + msg + ') : ' + new Error().stack;
+}
+
 function read(filename) {
   return fs.readFileSync(filename).toString();
 }
@@ -4483,6 +4487,29 @@ function eliminateMemSafe(ast) {
 }
 
 function minifyGlobals(ast) {
+  // The input is in form
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      function asmFunc(global, env, buffer) {
+  //        var memory = env.memory;
+  //        var HEAP8 = new global.Int8Array(buffer);
+  //
+  // We want to minify the interior of the inner function.
+  assert(ast[0] === 'toplevel');
+  ast = ast[1][0];
+  assert(ast[0] === 'defun');
+  assert(ast[1] === 'instantiate');
+  ast = ast[3];
+  var asmFunc;
+  for (var i = 0; i < ast.length; i++) {
+    var curr = ast[i];
+    if (curr[0] === 'defun' && curr[1] === 'asmFunc') {
+      asmFunc = curr;
+      break;
+    }
+  }
+  assert(asmFunc, 'must find the asmFunc');
+
   var minified = {};
   var next = 0;
   function getMinified(name) {
@@ -4490,23 +4517,63 @@ function minifyGlobals(ast) {
     ensureMinifiedNames(next);
     return minified[name] = minifiedNames[next++];
   }
-  var first = true; // do not minify initial 'var asm ='
-  // find the globals
-  traverse(ast, function(node, type) {
-    if (type === 'var' || type === 'const') {
-      if (first) {
-        first = false;
-        return;
+  var thingsToMinify = [];
+  // process the body of the asmFunc.
+  asmFunc[3].forEach(function(ast) {
+    var namesToIgnore = new Set();
+    var scoping = [];
+    var namesToIgnore = new Map();
+
+    traverse(ast, function(node, type) {
+      function getPossiblyMinified(name) {
+        if (scope) {
+          // We are in an inner scope. We can ignore these, and do not
+          // minify them.
+          scope.add(name);
+          if (!namesToIgnore.has(name)) {
+            namesToIgnore.set(name, 1);
+          } else {
+            namesToIgnore.set(name, namesToIgnore.get(name) + 1);
+          }
+          return name;
+        } else {
+          return getMinified(name);
+        }
       }
-      var vars = node[1];
-      for (var i = 0; i < vars.length; i++) {
-        var name = vars[i][0];
-        vars[i][0] = getMinified(name);
+      var scope = scoping.length > 0 ? scoping[scoping.length - 1] : null;
+      if (type === 'defun') {
+        var name = node[1];
+        node[1] = getPossiblyMinified(name);
       }
-    } else if (type === 'defun') {
-      var name = node[1];
-      node[1] = getMinified(name);
-    }
+      if (type === 'defun' || type === 'function') {
+        scoping.push(new Set());
+      }
+      if (type === 'var' || type === 'const') {
+        var vars = node[1];
+        for (var i = 0; i < vars.length; i++) {
+          var name = vars[i][0];
+          vars[i][0] = getPossiblyMinified(name);
+        }
+      } else if (type === 'name') {
+        var name = node[1];
+        // Prepare to minify it, if we should.
+        if (!namesToIgnore.has(name)) {
+          thingsToMinify.push(node);
+        }
+      }
+    }, function(node, type) {
+      if (type === 'defun' || type === 'function') {
+        scoping.pop().forEach(function(name) {
+          assert(namesToIgnore.has(name));
+          if (namesToIgnore.get(name) === 1) {
+            namesToIgnore.delete(name);
+          } else {
+            namesToIgnore.set(name, namesToIgnore.get(name) - 1);
+          }
+        });
+      }
+    });
+    assert(namesToIgnore.size == 0);
   });
   // add all globals in function chunks, i.e. not here but passed to us
   for (var i = 0; i < extraInfo.globals.length; i++) {
@@ -4514,12 +4581,11 @@ function minifyGlobals(ast) {
     minified[name] = getMinified(name);
   }
   // apply minification
-  traverse(ast, function(node, type) {
-    if (type === 'name') {
-      var name = node[1];
-      if (name in minified) {
-        node[1] = minified[name];
-      }
+  thingsToMinify.forEach(function(node) {
+    assert(node[0] === 'name');
+    var name = node[1];
+    if (name in minified) {
+      node[1] = minified[name];
     }
   });
   suffix = '// EXTRA_INFO:' + JSON.stringify(minified);
