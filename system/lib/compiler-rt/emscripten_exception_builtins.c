@@ -3,12 +3,11 @@
  * Emscripten is available under two separate licenses, the MIT license and the
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
+ *
+ * Support functions for emscripten setjmp/longjmp and exception handling
+ * support. References to the things below are generated in the LLVM backend.
+ * See: https://llvm.org/doxygen/WebAssemblyLowerEmscriptenEHSjLj_8cpp.html
  */
-
-/*
-  References to these longjmp- and exceptions-supporting things are generated
-  in the llvm backend.
-*/
 
 #include <threads.h>
 
