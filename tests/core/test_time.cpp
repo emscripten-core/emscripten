@@ -94,7 +94,9 @@ int main() {
 
   // Verify that mktime updates the tm struct to the correct date if its values are
   // out of range by matching against the return value of localtime.
-  struct tm tm2{ 1000 }, tm_local;
+  struct tm tm2, tm_local;
+  tm2.tm_sec = tm2.tm_min = tm2.tm_hour = tm2.tm_mday = tm2.tm_mon = tm2.tm_wday =
+    tm2.tm_yday = 1000;
   time_t t2 = mktime(&tm2); localtime_r(&t2, &tm_local);
   mktimeOk = !(
     tm2.tm_sec < 0 || tm2.tm_sec > 60 || tm2.tm_min < 0 || tm2.tm_min > 59 ||
