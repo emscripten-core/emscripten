@@ -2565,6 +2565,7 @@ int main()
       out = self.run_js('a.out.js', engine=engine)
       self.assertContained('File size: 724', out)
 
+  @unittest.skip('let llvm roll in')
   def test_node_emscripten_num_logical_cores(self):
     # Test with node.js that the emscripten_num_logical_cores method is working
     create_test_file('src.cpp', r'''
@@ -7891,6 +7892,7 @@ T6:(else) !ASSERTIONS""", output)
     self.assertContained('hello, world!', ret)
 
   # Tests that a pthreads + modularize build can be run in node js
+  @unittest.skip('let llvm roll in')
   def test_node_js_pthread_module(self):
     # create module loader script
     moduleLoader = 'moduleLoader.js'
@@ -8816,6 +8818,7 @@ int main(void) {
   def test_asan_pthread_stubs(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
 
+  @unittest.skip('let llvm roll in')
   def test_proxy_to_pthread_stack(self):
     with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
       self.do_smart_test(path_from_root('tests', 'other', 'test_proxy_to_pthread_stack.c'),
@@ -9211,6 +9214,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.run_process([EMCC, 'empty.c', '-la', '-L.'])
     self.assertContained('success', self.run_js('a.out.js'))
 
+  @unittest.skip('let llvm roll in')
   def test_warning_flags(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')])
     cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure', '1']
