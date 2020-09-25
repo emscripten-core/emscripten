@@ -635,7 +635,7 @@ class AsanInstrumentedLibrary(Library):
     return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
 
 
-class libcompiler_rt(MuslInternalLibrary, MTLibrary):
+class libcompiler_rt(MTLibrary):
   name = 'libcompiler_rt'
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
@@ -1086,7 +1086,7 @@ class libwebgpu_cpp(MTLibrary):
   src_files = ['webgpu_cpp.cpp']
 
 
-class libembind(Library):
+class libembind(MTLibrary):
   name = 'libembind'
   never_force = True
 
@@ -1268,7 +1268,7 @@ class libasan_rt(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
-class libasan_js(Library):
+class libasan_js(MTLibrary):
   name = 'libasan_js'
 
   cflags = ['-fsanitize=address']
