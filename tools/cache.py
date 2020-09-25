@@ -36,6 +36,8 @@ class Cache(object):
         subdir += '-lto'
       if shared.Settings.RELOCATABLE:
         subdir += '-pic'
+      if shared.Settings.USE_PTHREADS:
+        subdir += '-mt'
       dirname = os.path.join(dirname, subdir)
 
     self.dirname = dirname

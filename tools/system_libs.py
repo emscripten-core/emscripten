@@ -62,6 +62,8 @@ def get_cflags(force_object_files=False):
     flags += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
+  if shared.Settings.USE_PTHREADS:
+    flags += ['-s', 'USE_PTHREADS']
   return flags
 
 
@@ -635,7 +637,7 @@ class AsanInstrumentedLibrary(Library):
     return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
 
 
-class libcompiler_rt(MTLibrary):
+class libcompiler_rt(Library):
   name = 'libcompiler_rt'
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
@@ -649,7 +651,7 @@ class libcompiler_rt(MTLibrary):
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'))
 
 
-class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
+class libc(AsanInstrumentedLibrary, MuslInternalLibrary):
   name = 'libc'
 
   # Without -fno-builtin, LLVM can optimize away or convert calls to library
@@ -760,7 +762,7 @@ class libprintf_long_double(libc):
         filenames=['vfprintf.c'])
 
 
-class libsockets(MuslInternalLibrary, MTLibrary):
+class libsockets(MuslInternalLibrary):
   name = 'libsockets'
 
   cflags = ['-Os', '-fno-builtin']
@@ -770,7 +772,7 @@ class libsockets(MuslInternalLibrary, MTLibrary):
     return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
 
 
-class libsockets_proxy(MuslInternalLibrary, MTLibrary):
+class libsockets_proxy(MuslInternalLibrary):
   name = 'libsockets_proxy'
 
   cflags = ['-Os']
@@ -810,7 +812,7 @@ class crt1_reactor(MuslInternalLibrary):
     return super(crt1_reactor, self).can_use() and shared.Settings.STANDALONE_WASM
 
 
-class libcxxabi(NoExceptLibrary, MTLibrary):
+class libcxxabi(NoExceptLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
@@ -823,7 +825,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super(libcxxabi, self).get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt:
+    if shared.Settings.USE_PTHREADS == 0:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     if self.eh_mode == exceptions.none:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
@@ -863,7 +865,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
         filenames=filenames)
 
 
-class libcxx(NoExceptLibrary, MTLibrary):
+class libcxx(NoExceptLibrary):
   name = 'libc++'
 
   cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
@@ -910,7 +912,7 @@ class libcxx(NoExceptLibrary, MTLibrary):
   ]
 
 
-class libunwind(NoExceptLibrary, MTLibrary):
+class libunwind(NoExceptLibrary):
   name = 'libunwind'
   cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
   src_dir = ['system', 'lib', 'libunwind', 'src']
@@ -925,7 +927,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super(libunwind, self).get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt:
+    if shared.Settings.USE_PTHREADS == 0:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
     if self.eh_mode == exceptions.none:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
@@ -936,7 +938,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
     return cflags
 
 
-class libmalloc(MTLibrary):
+class libmalloc(Library):
   name = 'libmalloc'
 
   cflags = ['-O2', '-fno-builtin']
@@ -1024,7 +1026,7 @@ class libal(Library):
   src_files = ['al.c']
 
 
-class libgl(MTLibrary):
+class libgl(Library):
   name = 'libgl'
 
   src_dir = ['system', 'lib', 'gl']
@@ -1078,7 +1080,7 @@ class libgl(MTLibrary):
     )
 
 
-class libwebgpu_cpp(MTLibrary):
+class libwebgpu_cpp(Library):
   name = 'libwebgpu_cpp'
 
   cflags = ['-std=c++11', '-O2']
@@ -1086,7 +1088,7 @@ class libwebgpu_cpp(MTLibrary):
   src_files = ['webgpu_cpp.cpp']
 
 
-class libembind(MTLibrary):
+class libembind(Library):
   name = 'libembind'
   never_force = True
 
@@ -1118,7 +1120,7 @@ class libembind(MTLibrary):
     return super(libembind, cls).get_default_variation(with_rtti=shared.Settings.USE_RTTI, **kwargs)
 
 
-class libfetch(MTLibrary):
+class libfetch(Library):
   name = 'libfetch'
   never_force = True
 
@@ -1126,7 +1128,7 @@ class libfetch(MTLibrary):
     return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
 
 
-class libasmfs(MTLibrary):
+class libasmfs(Library):
   name = 'libasmfs'
   never_force = True
 
@@ -1147,12 +1149,12 @@ class libhtml5(Library):
   src_glob = '*.c'
 
 
-class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
+class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary):
   name = 'libpthread'
   cflags = ['-O2']
 
   def get_files(self):
-    if self.is_mt:
+    if shared.Settings.USE_PTHREADS:
       files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
         filenames=[
@@ -1196,7 +1198,7 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       return [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
   def get_base_name_prefix(self):
-    return 'libpthread' if self.is_mt else 'libpthread_stub'
+    return 'libpthread' if shared.Settings.USE_PTHREADS else 'libpthread_stub'
 
 
 class CompilerRTLibrary(Library):
@@ -1206,14 +1208,14 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary, MTLibrary):
+class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary):
   name = 'libc_rt_wasm'
 
   def get_files(self):
     return get_wasm_libc_rt_files()
 
 
-class libubsan_minimal_rt_wasm(CompilerRTLibrary, MTLibrary):
+class libubsan_minimal_rt_wasm(CompilerRTLibrary):
   name = 'libubsan_minimal_rt_wasm'
   never_force = True
 
@@ -1222,7 +1224,7 @@ class libubsan_minimal_rt_wasm(CompilerRTLibrary, MTLibrary):
   src_files = ['ubsan_minimal_handlers.cpp']
 
 
-class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
+class libsanitizer_common_rt(CompilerRTLibrary):
   name = 'libsanitizer_common_rt'
   includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal'],
               ['system', 'lib', 'compiler-rt', 'lib']]
@@ -1233,7 +1235,7 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   src_glob_exclude = ['sanitizer_common_nolibc.cpp']
 
 
-class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
+class SanitizerLibrary(CompilerRTLibrary):
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
@@ -1268,7 +1270,7 @@ class libasan_rt(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
-class libasan_js(MTLibrary):
+class libasan_js(Library):
   name = 'libasan_js'
 
   cflags = ['-fsanitize=address']
