@@ -32,6 +32,10 @@ function print(x) {
   process.stdout.write(x + '\n');
 }
 
+function assert(x, msg) {
+  if (!x) throw 'assertion failed (' + msg + ') : ' + new Error().stack;
+}
+
 function read(filename) {
   return fs.readFileSync(filename).toString();
 }
@@ -4483,48 +4487,120 @@ function eliminateMemSafe(ast) {
 }
 
 function minifyGlobals(ast) {
-  var minified = {};
+  // The input is in form
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var helper..
+  //      function asmFunc(global, env, buffer) {
+  //        var memory = env.memory;
+  //        var HEAP8 = new global.Int8Array(buffer);
+  //
+  // We want to minify the interior instantiate, basically everything but
+  // the name instantiate itself, which is used externally to call it.
+  //
+  // This is *not* a complete minification algorithm. It does not have a full
+  // understanding of nested scopes. Instead it assumes the code is fairly
+  // simple - as wasm2js output is - and looks at all the minifiable names as
+  // a whole. A possible bug here is something like
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var x = foo;
+  //      function asmFunc(global, env, buffer) {
+  //        var foo = 10;
+  //
+  // Here foo is declared in an inner scope, and the outer use of foo looks
+  // to the global scope. The analysis here only thinks something is from the
+  // global scope if it is not in any var or function declaration. In practice,
+  // the globals used from wasm2js output are things like Int8Array that we
+  // don't declare as locals, but we should probably have a fully scope-aware
+  // analysis here. FIXME
+  assert(ast[0] === 'toplevel');
+  var instantiateFunc = ast[1][0];
+  assert(instantiateFunc[0] === 'defun');
+  assert(instantiateFunc[1] === 'instantiate');
+
+  var minified = new Map();
   var next = 0;
   function getMinified(name) {
-    if (minified.hasOwnProperty(name)) return minified[name];
+    assert(name);
+    if (minified.has(name)) return minified.get(name);
     ensureMinifiedNames(next);
-    return minified[name] = minifiedNames[next++];
+    var m = minifiedNames[next++];
+    minified.set(name, m);
+    return m;
   }
-  var first = true; // do not minify initial 'var asm ='
-  // find the globals
-  traverse(ast, function(node, type) {
-    if (type === 'var' || type === 'const') {
-      if (first) {
-        first = false;
-        return;
+
+  // name nodes, ['name', name]
+  var allNames = [];
+  // functions, whose element func[1] is the name
+  var allNamedFunctions = [];
+  // name arrays, as in func[2], [name1, name2] which are the arguments
+  var allNameArrays = [];
+  // var arrays, as in [[name, init], ..] in a var or const
+  var allVarArrays = [];
+
+  // Add instantiate's parameters, but *not* its own name, which is used
+  // externally.
+  allNameArrays.push(instantiateFunc[2]);
+
+  // First, find all the other things to minify.
+  instantiateFunc[3].forEach(function(ast) {
+    traverse(ast, function(node, type) {
+      if (type === 'defun') {
+        allNamedFunctions.push(node);
+        allNameArrays.push(node[2]);
+      } else if (type === 'function') {
+        allNameArrays.push(node[2]);
+      } else if (type === 'var' || type === 'const') {
+        allVarArrays.push(node[1]);
+      } else if (type === 'name') {
+        allNames.push(node);
       }
-      var vars = node[1];
-      for (var i = 0; i < vars.length; i++) {
-        var name = vars[i][0];
-        vars[i][0] = getMinified(name);
-      }
-    } else if (type === 'defun') {
-      var name = node[1];
-      node[1] = getMinified(name);
+    });
+  });
+
+  // All the things that are valid to minify: names declared in vars, or
+  // params, etc.
+  var validNames = new Set();
+
+  // TODO: sort to find the optimal minification
+  allVarArrays.forEach(function(array) {
+    for (var i = 0; i < array.length; i++) {
+      var name = array[i][0];
+      validNames.add(name);
+      array[i][0] = getMinified(name);
     }
   });
   // add all globals in function chunks, i.e. not here but passed to us
   for (var i = 0; i < extraInfo.globals.length; i++) {
-    name = extraInfo.globals[i];
-    minified[name] = getMinified(name);
+    var name = extraInfo.globals[i];
+    validNames.add(name);
+    getMinified(name);
   }
-  // apply minification
-  traverse(ast, function(node, type) {
-    if (type === 'name') {
-      var name = node[1];
-      if (name in minified) {
-        node[1] = minified[name];
-      }
+  allNamedFunctions.forEach(function(node) {
+    var name = node[1];
+    validNames.add(name);
+    node[1] = getMinified(name);
+  });
+  allNameArrays.forEach(function(array) {
+    for (var i = 0; i < array.length; i++) {
+      var name = array[i];
+      validNames.add(name);
+      array[i] = getMinified(name);
     }
   });
-  suffix = '// EXTRA_INFO:' + JSON.stringify(minified);
+  allNames.forEach(function(node) {
+    var name = node[1];
+    // A name may refer to a true global like Int8Array, which is not a valid
+    // name to minify, as we didn't see it declared.
+    if (validNames.has(name)) {
+      node[1] = getMinified(name);
+    }
+  });
+  var json = {};
+  for (var x of minified.entries()) json[x[0]] = x[1];
+  suffix = '// EXTRA_INFO:' + JSON.stringify(json);
 }
-
 
 function minifyLocals(ast) {
   assert(extraInfo && extraInfo.globals);

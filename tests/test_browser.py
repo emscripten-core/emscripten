@@ -3613,10 +3613,8 @@ window.close = function() {
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_fetch_and_op(self):
-    # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
-    # Therefore perform very extensive testing of different codegen modes to catch any problems.
     for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os']]:
-      for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
+      for debug in [[], ['-g']]:
         args = opt + debug
         print(args)
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
@@ -3998,31 +3996,6 @@ window.close = function() {
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'])
 
-  @no_wasm_backend('mem init file')
-  def test_meminit_pairs(self):
-    d = 'const char *data[] = {\n  "'
-    d += '",\n  "'.join(''.join('\\x{:02x}\\x{:02x}'.format(i, j)
-                                for j in range(256)) for i in range(256))
-    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
-      d += '"\n};\n' + f.read()
-    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1", '-s', 'WASM=0']
-    self.btest(d, expected='0', args=args + ["--closure", "0"])
-    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
-    self.btest(d, expected='0', args=args + ["--closure", "1"])
-
-  @no_wasm_backend('mem init file')
-  def test_meminit_big(self):
-    d = 'const char *data[] = {\n  "'
-    d += '",\n  "'.join([''.join('\\x{:02x}\\x{:02x}'.format(i, j)
-                                 for j in range(256)) for i in range(256)] * 256)
-    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
-      d += '"\n};\n' + f.read()
-    assert len(d) > (1 << 27) # more than 32M memory initializer
-    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1", '-s', 'WASM=0']
-    self.btest(d, expected='0', args=args + ["--closure", "0"])
-    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
-    self.btest(d, expected='0', args=args + ["--closure", "1"])
-
   def test_canvas_style_proxy(self):
     self.btest('canvas_style_proxy.c', expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests/canvas_style_proxy_shell.html'), '--pre-js', path_from_root('tests/canvas_style_proxy_pre.js')])
 
@@ -4185,6 +4158,24 @@ window.close = function() {
                args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
     self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
                args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+
+  # Tests for base_vertex/base_instance extension
+  # For testing WebGL draft extensions like this, if using chrome as the browser,
+  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
+  # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
+  # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
+  @requires_graphics_hardware
+  def test_webgl_draw_base_vertex_base_instance(self):
+    for multiDraw in [0, 1]:
+      for drawElements in [0, 1]:
+        self.btest('webgl_draw_base_vertex_base_instance_test.c', reference='webgl_draw_instanced_base_vertex_base_instance.png',
+                   args=['-lGL',
+                         '-s', 'MAX_WEBGL_VERSION=2',
+                         '-s', 'OFFSCREEN_FRAMEBUFFER=1',
+                         '-DMULTI_DRAW=' + str(multiDraw),
+                         '-DDRAW_ELEMENTS=' + str(drawElements),
+                         '-DEXPLICIT_SWAP=1',
+                         '-DWEBGL_CONTEXT_VERSION=2'])
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
