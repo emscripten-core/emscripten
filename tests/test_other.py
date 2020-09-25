@@ -1855,8 +1855,6 @@ int f() {
        ['unsignPointers']),
       (path_from_root('tests', 'optimizer', 'test-asanify.js'), open(path_from_root('tests', 'optimizer', 'test-asanify-output.js')).read(),
        ['asanify']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals-output.js')).read(),
-       ['minifyGlobals']),
     ]:
       print(input, passes)
 

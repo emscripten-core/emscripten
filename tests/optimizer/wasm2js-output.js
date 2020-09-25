@@ -1,35 +1,39 @@
 // EMSCRIPTEN_START_ASM
-function a(asmLibraryArg, wasmMemory, wasmTable) {
- function b(global, env, buffer) {
-  var memory = env.memory;
-  var c = wasmTable;
-  var d = new global.Int8Array(buffer);
-  var e = new global.Int16Array(buffer);
-  var f = new global.Int32Array(buffer);
-  var g = new global.Uint8Array(buffer);
-  var h = new global.Uint16Array(buffer);
-  var i = new global.Uint32Array(buffer);
-  var j = new global.Float32Array(buffer);
-  var k = new global.Float64Array(buffer);
-  var l = global.Math.imul;
-  var m = global.Math.fround;
-  var n = global.Math.abs;
-  var o = global.Math.clz32;
-  var p = global.Math.min;
-  var q = global.Math.max;
-  var r = global.Math.floor;
-  var s = global.Math.ceil;
-  var t = global.Math.sqrt;
-  var u = env.abort;
-  var v = global.NaN;
-  var w = global.Infinity;
-  var x = env.fd_write;
-  var y = env.emscripten_memcpy_big;
+function instantiate(S, T, U) {
+ var a = 12;
+ function P() {
+  return a;
+ }
+ function Q(V, W, X) {
+  var b = W.memory;
+  var c = U;
+  var d = new V.Int8Array(X);
+  var e = new V.Int16Array(X);
+  var f = new V.Int32Array(X);
+  var g = new V.Uint8Array(X);
+  var h = new V.Uint16Array(X);
+  var i = new V.Uint32Array(X);
+  var j = new V.Float32Array(X);
+  var k = new V.Float64Array(X);
+  var l = V.Math.imul;
+  var m = V.Math.fround;
+  var n = V.Math.abs;
+  var o = V.Math.clz32;
+  var p = V.Math.min;
+  var q = V.Math.max;
+  var r = V.Math.floor;
+  var s = V.Math.ceil;
+  var t = V.Math.sqrt;
+  var u = W.abort;
+  var v = V.NaN;
+  var w = V.Infinity;
+  var x = W.fd_write;
+  var y = W.emscripten_memcpy_big;
   var z = 5245632;
   var A = 0;
   
 // EMSCRIPTEN_START_FUNCS
-function F(a, b, c) {
+function E(a, b, c) {
  var e = 0, h = 0;
  if (c >>> 0 >= 512) {
   y(a | 0, b | 0, c | 0) | 0;
@@ -144,7 +148,7 @@ function F(a, b, c) {
   }
  }
 }
-function I(a, b, c) {
+function H(a, b, c) {
  a = a | 0;
  b = b | 0;
  c = c | 0;
@@ -164,7 +168,7 @@ function I(a, b, c) {
  a : {
   b : {
    c : {
-    if (!E(x(f[a + 60 >> 2], d + 16 | 0, 2, d + 12 | 0) | 0)) {
+    if (!D(x(f[a + 60 >> 2], d + 16 | 0, 2, d + 12 | 0) | 0)) {
      while (1) {
       g = f[d + 12 >> 2];
       if ((g | 0) == (e | 0)) {
@@ -181,7 +185,7 @@ function I(a, b, c) {
       f[b + 4 >> 2] = f[b + 4 >> 2] - h;
       e = e - g | 0;
       i = i - j | 0;
-      if (!E(x(f[a + 60 >> 2], b | 0, i | 0, d + 12 | 0) | 0)) {
+      if (!D(x(f[a + 60 >> 2], b | 0, i | 0, d + 12 | 0) | 0)) {
        continue;
       }
       break;
@@ -212,13 +216,14 @@ function I(a, b, c) {
  z = d + 32 | 0;
  return a | 0;
 }
-function C(a, b) {
+function B(a, b) {
  var e = 0, h = 0, i = 0, j = 0, k = 0;
+ P();
  j = 1024;
  e = f[b + 16 >> 2];
  a : {
   if (!e) {
-   if (D(b)) {
+   if (C(b)) {
     break a;
    }
    e = f[b + 16 >> 2];
@@ -252,13 +257,13 @@ function C(a, b) {
    i = f[b + 20 >> 2];
    k = e;
   }
-  F(i, j, a);
+  E(i, j, a);
   f[b + 20 >> 2] = f[b + 20 >> 2] + a;
   h = a + k | 0;
  }
  return h;
 }
-function M(a) {
+function L(a) {
  var b = 0, e = 0, g = 0;
  b = z - 16 | 0;
  z = b;
@@ -266,7 +271,7 @@ function M(a) {
  e = f[a + 16 >> 2];
  a : {
   if (!e) {
-   if (D(a)) {
+   if (C(a)) {
     break a;
    }
    e = f[a + 16 >> 2];
@@ -283,7 +288,7 @@ function M(a) {
  }
  z = b + 16 | 0;
 }
-function K() {
+function J() {
  var a = 0, b = 0, c = 0;
  b = 1024;
  while (1) {
@@ -309,13 +314,13 @@ function K() {
  }
  return b - 1024 | 0;
 }
-function L() {
+function K() {
  var a = 0, b = 0;
  a = f[260];
  a;
- b = K();
+ b = J();
  a : {
-  if ((((N(b, a) | 0) != (b | 0) ? -1 : 0) | 0) < 0) {
+  if ((((M(b, a) | 0) != (b | 0) ? -1 : 0) | 0) < 0) {
    break a;
   }
   b : {
@@ -330,10 +335,10 @@ function L() {
    d[b | 0] = 10;
    break a;
   }
-  M(a);
+  L(a);
  }
 }
-function D(a) {
+function C(a) {
  var b = 0;
  b = g[a + 74 | 0];
  d[a + 74 | 0] = b + -1 | b;
@@ -350,23 +355,23 @@ function D(a) {
  f[a + 16 >> 2] = b + f[a + 48 >> 2];
  return 0;
 }
-function N(a, b) {
+function M(a, b) {
  var c = 0, d = 0;
  c = a;
  d = c;
  a : {
   if (f[b + 76 >> 2] <= -1) {
-   b = C(c, b);
+   b = B(c, b);
    break a;
   }
-  b = C(c, b);
+  b = B(c, b);
  }
  if ((d | 0) == (b | 0)) {
   return a;
  }
  return b;
 }
-function G(a, b, c, d) {
+function F(a, b, c, d) {
  a = a | 0;
  b = b | 0;
  c = c | 0;
@@ -374,47 +379,47 @@ function G(a, b, c, d) {
  A = 0;
  return 0;
 }
-function E(a) {
+function D(a) {
  if (!a) {
   return 0;
  }
  f[300] = a;
  return -1;
 }
-function O(a, b) {
+function N(a, b) {
  a = a | 0;
  b = b | 0;
- L();
+ K();
  return 0;
 }
-function J(a) {
+function I(a) {
  a = a | 0;
  return u() | 0;
 }
-function H(a) {
+function G(a) {
  a = a | 0;
  return 0;
 }
-function P() {}
+function O() {}
 
 
 
 
 // EMSCRIPTEN_END_FUNCS
 
-  c[1] = H;
-  c[2] = I;
-  c[3] = G;
-  function B() {
-   return buffer.byteLength / 65536 | 0;
+  c[1] = G;
+  c[2] = H;
+  c[3] = F;
+  function R() {
+   return X.byteLength / 65536 | 0;
   }
   return {
-   "__wasm_call_ctors": P,
-   "main": O,
-   "__growWasmMemory": J
+   "__wasm_call_ctors": O,
+   "main": N,
+   "__growWasmMemory": I
   };
  }
- return b({
+ return Q({
   "Int8Array": Int8Array,
   "Int16Array": Int16Array,
   "Int32Array": Int32Array,
@@ -426,7 +431,7 @@ function P() {}
   "NaN": NaN,
   "Infinity": Infinity,
   "Math": Math
- }, asmLibraryArg, wasmMemory.buffer);
+ }, S, T.buffer);
 }
 
 
