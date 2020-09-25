@@ -1206,7 +1206,7 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary, MTLibrary):
+class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary):
   name = 'libc_rt_wasm'
 
   def get_files(self):
