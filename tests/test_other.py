@@ -9257,6 +9257,8 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.assertContained('error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]', stderr)
 
     # check that `-Wno-pthreads-mem` disables USE_PTHREADS + ALLOW_GROWTH_MEMORY warning
+    # (note that we must build the .o file with atomics support now)
+    self.run_process([EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c'), '-pthread'])
     stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-s', 'USE_PTHREADS=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], stderr=PIPE).stderr
     self.assertNotContained('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
 
