@@ -7750,7 +7750,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DONE_BIG_STRING']
     self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
 
-  @unittest.skip('let llvm roll in')
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
     self.emcc_args += ['-s', 'USE_PTHREADS=1']
@@ -8163,7 +8162,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fPIC')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
 
-  @unittest.skip('let llvm roll in')
   @node_pthreads
   def test_pthread_create(self):
     self.set_setting('-lbrowser.js')
@@ -8184,7 +8182,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-fexceptions']
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'exceptions.cpp')
 
-  @unittest.skip('let llvm roll in')
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
@@ -8194,7 +8191,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS', '1')
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
-  @unittest.skip('let llvm roll in')
   @no_asan('incompatibility with atomics')
   @node_pthreads
   def test_emscripten_futexes(self):
