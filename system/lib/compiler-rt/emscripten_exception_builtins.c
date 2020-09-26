@@ -5,14 +5,14 @@
  * found in the LICENSE file.
  *
  * Support functions for emscripten setjmp/longjmp and exception handling
- * support.
+ * support. References to the things below are generated in the LLVM backend.
  * See: https://llvm.org/doxygen/WebAssemblyLowerEmscriptenEHSjLj_8cpp.html
  */
 
-/* References to these globals are generated in the llvm backend so they
- * cannot be static */
-int __THREW__ = 0;
-int __threwValue = 0;
+#include <threads.h>
+
+thread_local int __THREW__ = 0;
+thread_local int __threwValue = 0;
 
 void setThrew(int threw, int value) {
   if (__THREW__ == 0) {
