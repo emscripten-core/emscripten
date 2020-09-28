@@ -2625,22 +2625,20 @@ Module["noInitialRun"]=true;
 noExitRuntime=true;
 ''')
 
-    create_test_file('proxyfs_embed.txt', r'''test
-''')
+    create_test_file('proxyfs_embed.txt', 'test\n')
 
     create_test_file('proxyfs_test.c', r'''
 #include <stdio.h>
+#include <emscripten/emscripten.h>
 
-int
-mywrite1(){
+EMSCRIPTEN_KEEPALIVE int mywrite1() {
   FILE* out = fopen("/working/hoge.txt","w");
   fprintf(out,"test1\n");
   fclose(out);
   return 0;
 }
 
-int
-myread1(){
+EMSCRIPTEN_KEEPALIVE int myread1() {
   FILE* in = fopen("/working/hoge.txt","r");
   char buf[1024];
   int len;
@@ -2655,76 +2653,66 @@ myread1(){
   fclose(in);
   return 0;
 }
-int
-mywrite2(){
+
+EMSCRIPTEN_KEEPALIVE int mywrite2() {
   FILE* out = fopen("/working2/hoge.txt","w");
   fprintf(out,"test2\n");
   fclose(out);
   return 0;
 }
 
-int
-myread2(){
-  {
-    FILE* in = fopen("/working2/hoge.txt","r");
-    char buf[1024];
-    int len;
-    if(in==NULL)
-      printf("open failed\n");
+EMSCRIPTEN_KEEPALIVE int myread2() {
+  FILE* in = fopen("/working2/hoge.txt","r");
+  char buf[1024];
+  int len;
+  if(in==NULL)
+    printf("open failed\n");
 
-    while(! feof(in)){
-      if(fgets(buf,sizeof(buf),in)==buf){
-        printf("%s",buf);
-      }
+  while(! feof(in)){
+    if(fgets(buf,sizeof(buf),in)==buf){
+      printf("%s",buf);
     }
-    fclose(in);
   }
+  fclose(in);
   return 0;
 }
 
-int
-mywrite0(int i){
+EMSCRIPTEN_KEEPALIVE int mywrite0(int i) {
   FILE* out = fopen("hoge.txt","w");
   fprintf(out,"test0_%d\n",i);
   fclose(out);
   return 0;
 }
 
-int
-myread0(){
-  {
-    FILE* in = fopen("hoge.txt","r");
-    char buf[1024];
-    int len;
-    if(in==NULL)
-      printf("open failed\n");
+EMSCRIPTEN_KEEPALIVE int myread0() {
+  FILE* in = fopen("hoge.txt","r");
+  char buf[1024];
+  int len;
+  if(in==NULL)
+    printf("open failed\n");
 
-    while(! feof(in)){
-      if(fgets(buf,sizeof(buf),in)==buf){
-        printf("%s",buf);
-      }
+  while(! feof(in)){
+    if(fgets(buf,sizeof(buf),in)==buf){
+      printf("%s",buf);
     }
-    fclose(in);
   }
+  fclose(in);
   return 0;
 }
 
-int
-myreade(){
-  {
-    FILE* in = fopen("proxyfs_embed.txt","r");
-    char buf[1024];
-    int len;
-    if(in==NULL)
-      printf("open failed\n");
+EMSCRIPTEN_KEEPALIVE int myreade() {
+  FILE* in = fopen("proxyfs_embed.txt","r");
+  char buf[1024];
+  int len;
+  if(in==NULL)
+    printf("open failed\n");
 
-    while(! feof(in)){
-      if(fgets(buf,sizeof(buf),in)==buf){
-        printf("%s",buf);
-      }
+  while(! feof(in)){
+    if(fgets(buf,sizeof(buf),in)==buf){
+      printf("%s",buf);
     }
-    fclose(in);
   }
+  fclose(in);
   return 0;
 }
 ''')
@@ -2732,11 +2720,9 @@ myreade(){
     self.run_process([EMCC,
                       '-o', 'proxyfs_test.js', 'proxyfs_test.c',
                       '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
-                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap", "FS", "PROXYFS"]',
                       '-lproxyfs.js',
-                      '-s', 'WASM_ASYNC_COMPILATION=0',
-                      '-s', 'MAIN_MODULE=1',
-                      '-s', 'EXPORT_ALL=1'])
+                      '-s', 'WASM_ASYNC_COMPILATION=0'])
     # Following shutil.copyfile just prevent 'require' of node.js from caching js-object.
     # See https://nodejs.org/api/modules.html
     shutil.copyfile('proxyfs_test.js', 'proxyfs_test1.js')
