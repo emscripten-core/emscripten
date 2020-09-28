@@ -458,11 +458,6 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
     pre = None
 
     invoke_funcs = metadata['invokeFuncs']
-    try:
-      del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
-    except KeyError:
-      pass
-
     sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports, metadata['initializers'])
 
