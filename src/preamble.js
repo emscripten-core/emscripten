@@ -209,7 +209,7 @@ var ALLOC_STACK = 1; // Lives for the duration of the current function call
 //             initialize it with setValue(), and so forth.
 // @slab: An array of data.
 // @allocator: How to allocate memory, see ALLOC_*
-/** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
+/** @type {function((Uint8Array|Array<number>), number)} */
 function allocate(slab, allocator) {
   var ret;
 #if ASSERTIONS
@@ -228,7 +228,7 @@ function allocate(slab, allocator) {
   }
 
   if (slab.subarray || slab.slice) {
-    HEAPU8.set(/** @type {!Uint8Array} */slab, ret);
+    HEAPU8.set(/** @type {!Uint8Array} */(slab), ret);
   } else {
     HEAPU8.set(new Uint8Array(slab), ret);
   }
