@@ -1711,6 +1711,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # pthreads we must keep the memory segments in the wasm as they will be
       # passive segments which the .mem format cannot handle.
       shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE or shared.Settings.USE_PTHREADS
+      shared.Settings.EXPORTED_FUNCTIONS += ['_wasm2js_memory_grow']
     else:
       # wasm includes the mem init in the wasm binary. The exception is
       # wasm2js, which behaves more like js.

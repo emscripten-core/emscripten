@@ -1,6 +1,5 @@
 $__errno_location
 $__fflush_unlocked
-$__growWasmMemory
 $__lock
 $__lockfile
 $__ofl_lock

@@ -2017,16 +2017,16 @@ int main(int argc, char **argv) {
 
     # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
-    src = open(path_from_root('tests', 'core', 'test_memorygrowth_2.c')).read()
+    src = path_from_root('tests', 'core', 'test_memorygrowth_2.c')
 
     # Fail without memory growth
-    self.do_run(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('src.js').read()
+    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
+    fail = open('test_memorygrowth_2.js').read()
 
     # Win with it
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('src.js').read()
+    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    win = open('test_memorygrowth_2.js').read()
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)

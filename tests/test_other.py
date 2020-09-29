@@ -6652,8 +6652,8 @@ int main() {
 
   @parameterized({
     'O0': ([],      [], ['waka'],   743), # noqa
-    'O1': (['-O1'], [], ['waka'],   330), # noqa
-    'O2': (['-O2'], [], ['waka'],   312), # noqa
+    'O1': (['-O1'], [], ['waka'],   302), # noqa
+    'O2': (['-O2'], [], ['waka'],   265), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'], [], [],          62), # noqa
     'Os': (['-Os'], [], [],          62), # noqa

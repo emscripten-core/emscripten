@@ -647,6 +647,7 @@ class libcompiler_rt(MTLibrary):
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'))
+  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'wasm2js_memory_grow.c'))
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):

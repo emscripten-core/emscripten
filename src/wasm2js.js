@@ -27,7 +27,7 @@ WebAssembly = {
 #if ASSERTIONS
       var oldBuffer = this.buffer;
 #endif
-      var ret = __growWasmMemory(amount);
+      var ret = _wasm2js_memory_grow(amount);
 #if ASSERTIONS
       assert(this.buffer !== oldBuffer); // the call should have updated us
 #endif
