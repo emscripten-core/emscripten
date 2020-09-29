@@ -223,8 +223,6 @@ var LibraryManager = {
         while (typeof lib[target] === 'string') {
           // ignore code and variable assignments, aliases are just simple names
           if (lib[target].search(/[=({; ]/) >= 0) continue libloop;
-          // ignore trivial pass-throughs to Math.*
-          if (lib[target].indexOf('Math_') == 0) continue libloop;
           target = lib[target];
         }
         if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.

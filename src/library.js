@@ -678,9 +678,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-  abs: 'Math_abs',
-  labs: 'Math_abs',
-
   _ZSt9terminatev__deps: ['exit'],
   _ZSt9terminatev: function() {
     _exit(-1234);
