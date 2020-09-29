@@ -834,7 +834,7 @@ function createWasm() {
     var exports = instance.exports;
 
 #if RELOCATABLE
-    exports = relocateExports(exports, GLOBAL_BASE);
+    exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
 #endif
 
 #if ASYNCIFY
