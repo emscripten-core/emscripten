@@ -41,7 +41,7 @@ Compiling SIMD code targeting x86 SSE instruction set
 
 Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
 
-Currently only the SSE1 and SSE2 instruction sets are supported.
+SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and 128-bit AVX instruction sets are also supported via their respective native flags and headers.
 
 The following table highlights the availability and expected performance of different SSE1 intrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
