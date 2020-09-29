@@ -9024,9 +9024,8 @@ int main() {
       self.run_process([EMCC, path_from_root('tests', filename)] + args)
       self.assertContained(expected, self.run_js('a.out.js'))
 
-    # -O0 with BigInt support (to avoid the need for legalization) and without
-    # longjmp
-    required_flags = ['-sWASM_BIGINT', '-sSUPPORT_LONGJMP=0']
+    # -O0 with BigInt support (to avoid the need for legalization)
+    required_flags = ['-sWASM_BIGINT']
     ok(required_flags)
     # Same with DWARF
     ok(required_flags + ['-g'])
@@ -9045,9 +9044,7 @@ int main() {
 
     # plain -O0
     legalization_message = 'to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
-    longjmp_message = 'to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
     fail([], legalization_message)
-    fail(['-sWASM_BIGINT'], longjmp_message)
     fail(['-sSUPPORT_LONGJMP=0'], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
