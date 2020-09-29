@@ -8486,21 +8486,21 @@ int main(void) {
 
   def test_asan_null_deref(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_null_deref.c'),
-                       emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'],
                        assert_returncode=NON_ZERO, literals=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_no_stack_trace(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
+                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1',  '-sINITIAL_MEMORY=314572800', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+    self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
 
   def test_proxy_to_pthread_stack(self):
     with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
@@ -8601,7 +8601,7 @@ int main(void) {
     self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM'])
 
   def test_mmap_and_munmap_anonymous_asan(self):
-    self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+    self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
 
   def test_mmap_memorygrowth(self):
     self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
