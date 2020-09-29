@@ -8177,6 +8177,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     test()
 
   @node_pthreads
+  def test_pthread_stack_overflow_check(self):
+    # test pthreads with STACK_OVERFLOW_CHECK==2 and embind (https://github.com/emscripten-core/emscripten/issues/12356)
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.emcc_args += ['--bind']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'stack_overflow_check.c')
+
+  @node_pthreads
   def test_pthread_exceptions(self):
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.emcc_args += ['-fexceptions']
