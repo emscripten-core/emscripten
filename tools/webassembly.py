@@ -6,7 +6,6 @@
 """Utilties for manipulating WebAssembly binaries from python.
 """
 
-import math
 import logging
 
 from . import shared
@@ -111,19 +110,29 @@ def add_emscripten_metadata(wasm_file):
 
 
 def add_dylink_section(wasm_file, needed_dynlibs):
-  # a wasm shared library has a special "dylink" section, see tools-conventions repo
-  # TODO: use this in the wasm backend
-  assert False
-  # TODO read mem_align from existing "dylink" section.
-  mem_align = 1
-  mem_size = shared.Settings.STATIC_BUMP
-  table_size = 0
-  mem_align = int(math.log(mem_align, 2))
+  # A wasm shared library has a special "dylink" section, see tools-conventions repo.
+  # This function adds this section to the beginning on the given file.
+
+  wasm = open(wasm_file, 'rb').read()
+  section_name = b'\06dylink' # section name, including prefixed size
+  file_header = wasm[:8]
+
+  # Read the existing section data
+  offset = 8
+  assert wasm[offset] == 0
+  offset += 1
+  size, offset = readLEB(wasm, offset)
+  section = wasm[offset:offset + size]
+  # section name
+  assert section.startswith(section_name)
+  offset = len(section_name)
+  mem_size, offset = readLEB(section, offset)
+  mem_align, offset = readLEB(section, offset)
+  table_size, offset = readLEB(section, offset)
+  table_align, offset = readLEB(section, offset)
+
   logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
 
-  # Write new wasm binary with 'dylink' section
-  wasm = open(wasm_file, 'rb').read()
-  section_name = b"\06dylink" # section name, including prefixed size
   contents = (toLEB(mem_size) + toLEB(mem_align) +
               toLEB(table_size) + toLEB(0))
 
@@ -157,7 +166,7 @@ def add_dylink_section(wasm_file, needed_dynlibs):
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'wb') as f:
     # copy magic number and version
-    f.write(wasm[0:8])
+    f.write(file_header)
     # write the special section
     f.write(b'\0') # user section is code 0
     f.write(toLEB(section_size))

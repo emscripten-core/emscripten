@@ -551,21 +551,6 @@ LibraryManager.library = {
       return false;
 #endif
     }
-#if USE_ASAN
-    // One byte of ASan's shadow memory shadows 8 bytes of real memory. Shadow memory area has a fixed size,
-    // so do not allow resizing past that limit.
-    maxHeapSize = Math.min(maxHeapSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
-    if (requestedSize > maxHeapSize) {
-#if ASSERTIONS
-      err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
-#endif
-#if ABORTING_MALLOC
-      abortOnCannotGrowMemory(requestedSize);
-#else
-      return false;
-#endif
-    }
-#endif
 
     var minHeapSize = 16777216;
 
@@ -677,9 +662,6 @@ LibraryManager.library = {
   // ==========================================================================
   // stdlib.h
   // ==========================================================================
-
-  abs: 'Math_abs',
-  labs: 'Math_abs',
 
   _ZSt9terminatev__deps: ['exit'],
   _ZSt9terminatev: function() {

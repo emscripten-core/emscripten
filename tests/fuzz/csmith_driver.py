@@ -152,8 +152,6 @@ while 1:
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
     if random.random() < 0.5:
-      js_args += ["--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2"]
-    if random.random() < 0.5:
       js_args += ['-s', 'ASSERTIONS=1']
     print('(compile)', ' '.join(js_args))
     short_args = [shared.EMCC, fail_output_name] + js_args[5:]

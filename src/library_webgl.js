@@ -148,6 +148,7 @@ var LibraryGL = {
 #endif
 #if MAX_WEBGL_VERSION >= 2
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+    '_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
     '_webgl_enable_WEBGL_multi_draw',
     ],
@@ -1068,6 +1069,7 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
       // Extensions that are available from WebGL >= 2 (no-op if called on a WebGL 1 context active)
       __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
+      __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");

@@ -635,7 +635,7 @@ class AsanInstrumentedLibrary(Library):
     return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
 
 
-class libcompiler_rt(Library):
+class libcompiler_rt(MTLibrary):
   name = 'libcompiler_rt'
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
@@ -644,9 +644,9 @@ class libcompiler_rt(Library):
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = glob_in_path(src_dir, '*.c')
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))
+  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'))
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):

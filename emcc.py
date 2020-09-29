@@ -1204,7 +1204,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return [f for f in inputs if check(f[1])]
       return inputs
 
+    def filter_out_duplicate_dynamic_libs(inputs):
+      # Filter out duplicate shared libraries.
+      # See test_core.py:test_redundant_link
+      seen = set()
+      rtn = []
+      for i in inputs:
+        if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS and os.path.exists(i[1]):
+          abspath = os.path.abspath(i[1])
+          if abspath in seen:
+            continue
+          seen.add(abspath)
+        rtn.append(i)
+      return rtn
+
     input_files = filter_out_dynamic_libs(input_files)
+    input_files = filter_out_duplicate_dynamic_libs(input_files)
 
     if not input_files and not link_flags:
       exit_with_error('no input files')
@@ -1483,12 +1498,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # so setErrNo JS library function can report errno back to C
       shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
-    if shared.Settings.GLOBAL_BASE < 0:
-      # default if nothing else sets it
-      # a higher global base is useful for optimizing load/store offsets, as it
-      # enables the --post-emscripten pass
-      shared.Settings.GLOBAL_BASE = 1024
-
     if shared.Settings.SAFE_HEAP:
       # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr']
@@ -1762,9 +1771,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '_asan_c_store_f', '_asan_c_store_d',
       ]
 
-      shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
-      shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
-      assert shared.Settings.INITIAL_MEMORY < 2**32
+      if shared.Settings.ASAN_SHADOW_SIZE != -1:
+        diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
+
+      if shared.Settings.GLOBAL_BASE != -1:
+        exit_with_error("ASan does not support custom GLOBAL_BASE")
+
+      max_mem = shared.Settings.INITIAL_MEMORY
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        max_mem = shared.Settings.MAXIMUM_MEMORY
+        if max_mem == -1:
+          exit_with_error('ASan requires a finite MAXIMUM_MEMORY')
+
+      shadow_size = max_mem // 8
+      shared.Settings.GLOBAL_BASE = shadow_size
 
       if shared.Settings.SAFE_HEAP:
         # SAFE_HEAP instruments ASan's shadow memory accesses.
@@ -1777,6 +1797,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if sanitize and '-g4' in args:
       shared.Settings.LOAD_SOURCE_MAP = 1
+
+    if shared.Settings.GLOBAL_BASE == -1:
+      # default if nothing else sets it
+      # a higher global base is useful for optimizing load/store offsets, as it
+      # enables the --post-emscripten pass
+      shared.Settings.GLOBAL_BASE = 1024
 
     # various settings require malloc/free support from JS
     if shared.Settings.RELOCATABLE or \
@@ -2645,10 +2671,8 @@ def do_binaryen(target, options, wasm_target):
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-
-  # TODO: do this with upstream
-  # if shared.Settings.SIDE_MODULE:
-  #   webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
+  if shared.Settings.SIDE_MODULE:
+    webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
     webassembly.add_emscripten_metadata(wasm_target)
