@@ -9,7 +9,7 @@
 
 // Emit "var WebAssembly" if definitely using wasm2js. Otherwise, in MAYBE_WASM2JS
 // mode, we can't use a "var" since it would prevent normal wasm from working.
-/** @suppress{const} */
+/** @suppress{duplicate, const} */
 #if WASM2JS || WASM == 2
 var
 #endif
@@ -35,6 +35,9 @@ WebAssembly = {
     };
   },
 
+#if RELOCATABLE
+  // Only needed in RELOCATABLE builds since normal builds export the table
+  // from the wasm module.
   // Table is not a normal constructor and instead returns the array object.
   // That lets us use the length property automatically, which is simpler and
   // smaller (but instanceof will not report that an instance of Table is an
@@ -60,6 +63,7 @@ WebAssembly = {
     };
     return ret;
   },
+#endif
 
   Module: function(binary) {
     // TODO: use the binary and info somehow - right now the wasm2js output is embedded in
@@ -70,7 +74,7 @@ WebAssembly = {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // This will be replaced by the actual wasm2js code.
-    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
+    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory);
   },
 
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {

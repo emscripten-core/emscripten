@@ -43,11 +43,7 @@ if (typeof WebAssembly !== 'object') {
 // Wasm globals
 
 var wasmMemory;
-
-// In fastcomp asm.js, we don't need a wasm Table at all.
-// In the wasm backend, we polyfill the WebAssembly object,
-// so this creates a (non-native-wasm) table for us.
-#include "runtime_init_table.js"
+var wasmTable;
 
 #if USE_PTHREADS
 // For sending to workers.
@@ -213,7 +209,7 @@ var ALLOC_STACK = 1; // Lives for the duration of the current function call
 //             initialize it with setValue(), and so forth.
 // @slab: An array of data.
 // @allocator: How to allocate memory, see ALLOC_*
-/** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
+/** @type {function((Uint8Array|Array<number>), number)} */
 function allocate(slab, allocator) {
   var ret;
 #if ASSERTIONS
@@ -232,7 +228,7 @@ function allocate(slab, allocator) {
   }
 
   if (slab.subarray || slab.slice) {
-    HEAPU8.set(/** @type {!Uint8Array} */slab, ret);
+    HEAPU8.set(/** @type {!Uint8Array} */(slab), ret);
   } else {
     HEAPU8.set(new Uint8Array(slab), ret);
   }
@@ -359,6 +355,7 @@ assert(!Module['wasmMemory']);
 #else // !STANDALONE_WASM
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
+#include "runtime_init_table.js"
 #endif // !STANDALONE_WASM
 
 #include "runtime_stack_check.js"
@@ -681,59 +678,54 @@ function createExportWrapper(name, fixedasm) {
 // we know to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
+// A cache for wrappers based on the original function reference so we don't end up
+// creating the same wrappers over and over again
+var abortWrapperCache = {};
+
+// Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
+function makeWrapper(original) {
+  var wrapper = abortWrapperCache[original];
+  if (!wrapper) {
+    wrapper = abortWrapperCache[original] = function() {
+      // Don't allow this function to be called if we're aborted!
+      if (ABORT) {
+        throw "program has already aborted!";
+      }
+
+#if DISABLE_EXCEPTION_CATCHING != 1
+      abortWrapperDepth += 1;
+#endif
+      try {
+        return original.apply(null, arguments);
+      }
+      catch (e) {
+        if (
+          ABORT // rethrow exception if abort() was called in the original function call above
+          || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
+#if SUPPORT_LONGJMP
+          || e === 'longjmp' // rethrow longjmp if enabled
+#endif
+        ) {
+          throw e;
+        }
+
+        abort("unhandled exception: " + [e, e.stack]);
+      }
+#if DISABLE_EXCEPTION_CATCHING != 1
+      finally {
+        abortWrapperDepth -= 1;
+      }
+#endif
+    };
+  }
+  return wrapper;
+}
+
 // Instrument all the exported functions to:
 // - abort if an unhandled exception occurs
 // - throw an exception if someone tries to call them after the program has aborted
 // See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
 function instrumentWasmExportsWithAbort(exports) {
-  // A cache for wrappers based on the original function reference so we don't end up
-  // creating the same wrappers over and over again
-  var wrapperCache = {};
-
-  // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
-  var makeWrapper = (function(original) {
-    var wrapper = wrapperCache[original];
-    if (!wrapper) {
-      wrapper = wrapperCache[original] = function() {
-        // Don't allow this function to be called if we're aborted!
-        if (ABORT) {
-          throw "program has already aborted!";
-        }
-
-#if DISABLE_EXCEPTION_CATCHING != 1
-        abortWrapperDepth += 1;
-#endif
-        try {
-          return original.apply(null, arguments);
-        }
-        catch (e) {
-          if (
-            ABORT // rethrow exception if abort() was called in the original function call above
-            || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
-#if SUPPORT_LONGJMP
-            || e === 'longjmp' // rethrow longjmp if enabled
-#endif
-          ) {
-            throw e;
-          }
-
-          abort("unhandled exception: " + [e, e.stack]);
-        }
-#if DISABLE_EXCEPTION_CATCHING != 1
-        finally {
-          abortWrapperDepth -= 1;
-        }
-#endif
-      };
-    }
-    return wrapper;
-  });
-
-  // Override the wasmTable get function to return the wrappers
-  var realGet = wasmTable.get;
-  wasmTable.get = function(i) {
-    return makeWrapper(realGet.call(wasmTable, i));
-  };
 
   // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
@@ -741,12 +733,20 @@ function instrumentWasmExportsWithAbort(exports) {
       var original = exports[name];
       if (typeof original === 'function') {
         instExports[name] = makeWrapper(original);
-      }
-      else {
+      } else {
         instExports[name] = original;
       }
   }
+
   return instExports;
+}
+
+function instrumentWasmTableWithAbort() {
+  // Override the wasmTable get function to return the wrappers
+  var realGet = wasmTable.get;
+  wasmTable.get = function(i) {
+    return makeWrapper(realGet.call(wasmTable, i));
+  };
 }
 #endif
 
@@ -832,16 +832,32 @@ function createWasm() {
   /** @param {WebAssembly.Module=} module*/
   function receiveInstance(instance, module) {
     var exports = instance.exports;
+
 #if RELOCATABLE
     exports = relocateExports(exports, GLOBAL_BASE);
 #endif
+
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
+
 #if ABORT_ON_WASM_EXCEPTIONS
     exports = instrumentWasmExportsWithAbort(exports);
 #endif
+
     Module['asm'] = exports;
+
+#if !RELOCATABLE
+    wasmTable = Module['asm']['__indirect_function_table'];
+#if ASSERTIONS
+    assert(wasmTable, "table not found in wasm exports");
+#endif
+#endif
+
+#if ABORT_ON_WASM_EXCEPTIONS
+    instrumentWasmTableWithAbort();
+#endif
+
 #if !DECLARE_ASM_MODULE_EXPORTS
     // If we didn't declare the asm exports as top level enties this function
     // is in charge of programatically exporting them on the global object.
@@ -852,7 +868,9 @@ function createWasm() {
     // then exported.
     // TODO: do not create a Memory earlier in JS
     wasmMemory = exports['memory'];
-    wasmTable = exports['__indirect_function_table'];
+#if ASSERTIONS
+    assert(wasmMemory, "memory not found in wasm exports");
+#endif
     updateGlobalBufferAndViews(wasmMemory.buffer);
 #if ASSERTIONS
     writeStackCookie();

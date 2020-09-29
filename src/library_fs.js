@@ -18,6 +18,9 @@ mergeInto(LibraryManager.library, {
 #if LibraryManager.has('library_noderawfs.js')
     '$NODERAWFS',
 #endif
+#if LibraryManager.has('library_proxyfs.js')
+    '$PROXYFS',
+#endif
 #if ASSERTIONS
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
@@ -1474,6 +1477,9 @@ FS.staticInit();` +
 #endif
 #if LibraryManager.has('library_workerfs.js')
         'WORKERFS': WORKERFS,
+#endif
+#if LibraryManager.has('library_proxyfs.js')
+        'PROXYFS': PROXYFS,
 #endif
       };
     },

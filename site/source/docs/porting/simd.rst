@@ -480,7 +480,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_load_pd
      - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
    * - _mm_load1_pd (_mm_load_pd1)
-     - 🟡 Virtual. v64x2.load_splat, VM must guess type.
+     - 🟡 Virtual. wasm_v64x2_load_splat, VM must guess type.
    * - _mm_load_sd
      - ❌ emulated with wasm_f64x2_make
    * - _mm_load_si128
@@ -546,11 +546,11 @@ The following table highlights the availability and expected performance of diff
    * - _mm_or_si128
      - 🟡 wasm_v128_or. VM must guess type.
    * - _mm_packs_epi16
-     - ❌ scalarized
+     - ✅ wasm_i8x16_narrow_i16x8
    * - _mm_packs_epi32
-     - ❌ scalarized
+     - ✅ wasm_i16x8_narrow_i32x4
    * - _mm_packus_epi16
-     - ❌ scalarized
+     - ✅ wasm_u8x16_narrow_i16x8
    * - _mm_pause
      - 💭 No-op.
    * - _mm_sad_epu8
@@ -762,7 +762,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_hsub_pd
      - ⚠️ emulated with a SIMD add+two shuffles
    * - _mm_loaddup_pd
-     - 🟡 Scalar load + splat.
+     - 🟡 Virtual. wasm_v64x2_load_splat, VM must guess type.
    * - _mm_movedup_pd
      - 💡 emulated with a general shuffle
    * - _MM_GET_DENORMALS_ZERO_MODE

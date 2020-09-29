@@ -146,12 +146,11 @@ def update_settings_glue(metadata, DEBUG):
   metadata['staticBump'] = align_memory(metadata['staticBump'])
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
-  shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
   if shared.Settings.RELOCATABLE:
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
     # size does not include the reserved slot at zero for the null pointer.
     # Instead we use __table_base to offset the elements by 1.
-    shared.Settings.WASM_TABLE_SIZE += 1
+    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize'] + 1
   shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
 
 
@@ -230,12 +229,6 @@ def apply_memory(js, metadata):
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
   shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
-
-  return js
-
-
-def apply_table(js):
-  js = js.replace('{{{ WASM_TABLE_SIZE }}}', str(shared.Settings.WASM_TABLE_SIZE))
 
   return js
 
@@ -459,18 +452,12 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
     '// === Body ===',
     ('// === Body ===\n\n' + asm_const_map +
      '\n'.join(em_js_funcs) + '\n'))
-  pre = apply_table(pre)
 
   with open(outfile_js, 'w') as out:
     out.write(pre)
     pre = None
 
     invoke_funcs = metadata['invokeFuncs']
-    try:
-      del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
-    except KeyError:
-      pass
-
     sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports, metadata['initializers'])
 
@@ -638,15 +625,16 @@ def add_standard_wasm_imports(send_items_map):
       # Module scope, so lookup via Module as well.
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
-    send_items_map['__indirect_function_table'] = 'wasmTable'
 
   # With the wasm backend __memory_base and __table_base are only needed for
   # relocatable output.
   if shared.Settings.RELOCATABLE:
-    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE) # tell the memory segments where to place themselves
+    # tell the memory segments where to place themselves
+    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE)
+    send_items_map['__indirect_function_table'] = 'wasmTable'
+
     # the wasm backend reserves slot 0 for the NULL function pointer
-    table_base = '1'
-    send_items_map['__table_base'] = table_base
+    send_items_map['__table_base'] = '1'
   if shared.Settings.RELOCATABLE:
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
@@ -763,8 +751,6 @@ def create_sending(invoke_funcs, metadata):
   send_items = set(basic_funcs + invoke_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
-    if g.startswith('Math_'):
-      return g.split('_')[1]
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
     # symbols.  Emscripten currently expects symbols to start with '_' so we
     # artificially add them to the output of emscripten-wasm-finalize and them

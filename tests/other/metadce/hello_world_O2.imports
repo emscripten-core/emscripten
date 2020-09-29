@@ -1,4 +1,3 @@
-__indirect_function_table
 emscripten_memcpy_big
 fd_write
 memory

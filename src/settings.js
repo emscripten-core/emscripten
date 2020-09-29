@@ -97,7 +97,6 @@ var EXIT_RUNTIME = 0;
 // 1: create a *.mem file containing the binary data of the initial memory;
 
 //    use the --memory-init-file command line switch to select this method
-// 2: embed a string literal representing that initial memory data
 var MEM_INIT_METHOD = 0;
 
 // The total stack size. There is no way to enlarge the stack, so this
@@ -222,12 +221,6 @@ var ALLOW_TABLE_GROWTH = 0;
 // where global data begins; the start of static memory. -1 means use the
 // default, any other value will be used as an override
 var GLOBAL_BASE = -1;
-
-// Warn at compile time about instructions that LLVM tells us are not fully
-// aligned.  This is useful to find places in your code where you might refactor
-// to ensure proper alignment.  This is currently only supported in asm.js, not
-// wasm.
-var WARN_UNALIGNED = 0;
 
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
@@ -388,7 +381,8 @@ var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
 // enable any WebGL extension. If false, to save code size,
 // emscripten_webgl_enable_extension() cannot be called to enable any of extensions
 // 'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers',
-// 'WEBGL_multi_draw', or 'WEBGL_draw_instanced_base_vertex_base_instance',
+// 'WEBGL_multi_draw', 'WEBGL_draw_instanced_base_vertex_base_instance',
+// or 'WEBGL_multi_draw_instanced_base_vertex_base_instance',
 // but the dedicated functions emscripten_webgl_enable_*()
 // found in html5.h are used to enable each of those extensions.
 // This way code size is increased only for the extensions that are actually used.
@@ -1699,4 +1693,5 @@ var LEGACY_SETTINGS = [
   ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
   ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
+  ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
 ];

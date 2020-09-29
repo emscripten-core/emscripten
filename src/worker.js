@@ -244,7 +244,7 @@ this.onmessage = function(e) {
     }
   } catch(ex) {
     err('worker.js onmessage() captured an uncaught exception: ' + ex);
-    if (ex.stack) err(ex.stack);
+    if (ex && ex.stack) err(ex.stack);
     throw ex;
   }
 };

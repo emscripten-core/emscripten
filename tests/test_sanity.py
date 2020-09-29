@@ -14,7 +14,7 @@ import zipfile
 from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, chdir
-from runner import create_test_file, no_wasm_backend, ensure_dir
+from runner import create_test_file, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import try_delete
@@ -533,7 +533,6 @@ fi
     os.remove(custom_config_filename)
     shutil.rmtree(temp_dir)
 
-  @no_wasm_backend('depends on WASM=0 working')
   def test_emcc_ports(self):
     restore_and_set_up()
 
@@ -568,7 +567,7 @@ fi
       assert not os.path.exists(PORTS_DIR)
 
       def first_use():
-        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
+        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
         self.assertExists(PORTS_DIR)
@@ -576,7 +575,7 @@ fi
 
       def second_use():
         # Using it again avoids retrieve and build
-        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
+        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE not in output, output
         assert BUILDING_MESSAGE not in output, output
 

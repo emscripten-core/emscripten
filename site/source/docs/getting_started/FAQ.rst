@@ -421,8 +421,26 @@ You may need to quote things like this:
   # or you may need something like this in a Makefile
   emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
 
-The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
+The proper syntax depends on the OS and shell you are in, and if you are writing
+in a Makefile, etc. Things like spaces may also matter in some shells, for
+example you may need to avoid empty spaces between list items:
 
+::
+
+  # this works in the shell on most Linuxes and on macOS
+  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['foo','bar']"
+
+(note there is no space after the ``,``).
+
+For simplicity, you may want to use a **response file**, that is,
+
+::
+
+  # this works in the shell on most Linuxes and on macOS
+  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=@extra.txt"
+
+and then ``extra.txt`` can be a plain file that contains ``['foo','bar']``. This
+avoids any issues with the shell environment parsing the string.
 
 How do I specify ``-s`` options in a CMake project?
 ===================================================
@@ -492,14 +510,6 @@ Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and 
 ==================================================================================================================================================================
 
 This is a limitation of the asm.js target in :term:`Clang`. This code is not currently supported.
-
-
-Why does building from source fail during linking (at 100%)?
-============================================================
-
-Building :ref:`Fastcomp from source <building-fastcomp-from-source>` (and hence the SDK) can fail at 100% progress. This is due to out of memory in the linking stage, and is reported as an error: ``collect2: error: ld terminated with signal 9 [Killed]``.
-
-The solution is to ensure the system has sufficient memory. On Ubuntu 14.04.1 LTS 64bit, you should use at least 6Gb.
 
 
 How do I pass int64_t and uint64_t values from js into wasm functions?

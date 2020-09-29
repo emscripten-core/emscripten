@@ -1204,7 +1204,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return [f for f in inputs if check(f[1])]
       return inputs
 
+    def filter_out_duplicate_dynamic_libs(inputs):
+      # Filter out duplicate shared libraries.
+      # See test_core.py:test_redundant_link
+      seen = set()
+      rtn = []
+      for i in inputs:
+        if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS and os.path.exists(i[1]):
+          abspath = os.path.abspath(i[1])
+          if abspath in seen:
+            continue
+          seen.add(abspath)
+        rtn.append(i)
+      return rtn
+
     input_files = filter_out_dynamic_libs(input_files)
+    input_files = filter_out_duplicate_dynamic_libs(input_files)
 
     if not input_files and not link_flags:
       exit_with_error('no input files')
@@ -2656,10 +2671,8 @@ def do_binaryen(target, options, wasm_target):
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-
-  # TODO: do this with upstream
-  # if shared.Settings.SIDE_MODULE:
-  #   webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
+  if shared.Settings.SIDE_MODULE:
+    webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
     webassembly.add_emscripten_metadata(wasm_target)
