@@ -354,15 +354,16 @@ def create_named_globals(metadata):
         named_globals.append("Module['_%s'] = %s;" % (k, v))
     return '\n'.join(named_globals)
 
+  elements = ',\n  '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
   named_globals = '''
 var NAMED_GLOBALS = {
   %s
 };
 for (var named in NAMED_GLOBALS) {
-  Module['_' + named] = gb + NAMED_GLOBALS[named];
+  Module['_' + named] = %s + NAMED_GLOBALS[named];
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % ',\n  '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
+''' % (elements, shared.Settings.GLOBAL_BASE)
 
   # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
   # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
@@ -426,9 +427,6 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
   pre = apply_memory(pre, metadata)
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
-
-  if shared.Settings.RELOCATABLE and not shared.Settings.SIDE_MODULE:
-    pre += 'var gb = GLOBAL_BASE, fb = 0;\n'
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
