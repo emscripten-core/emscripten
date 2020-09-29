@@ -1971,9 +1971,13 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom(self):
     self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
 
+  @parameterized({
+    'normal': ([],),
+    'tracing': (['-sTRACE_WEBGL_CALLS'],),
+  })
   @requires_graphics_hardware
-  def test_cubegeom_regal(self):
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
+  def test_cubegeom_regal(self, args):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'] + args, also_proxied=True)
 
   @requires_threads
   @requires_graphics_hardware
