@@ -187,6 +187,13 @@ class other(RunnerCore):
     # any tests for EXPORT_ES6 but once we do this should be enabled.
     # self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
+  def test_emcc_output_worker_mjs(self):
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread', '-O1', path_from_root('tests', 'hello_world.c')])
+    with open('hello_world.mjs') as f:
+      self.assertContained('export default Module;', f.read())
+    with open('hello_world.worker.js') as f:
+      self.assertContained('import(', f.read())
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', path_from_root('tests', 'hello_world.c')])
