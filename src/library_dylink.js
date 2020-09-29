@@ -248,10 +248,8 @@ var LibraryDylink = {
           // symbols that should be local to this module
           switch (prop) {
             case '__memory_base':
-            case 'gb':
               return memoryBase;
             case '__table_base':
-            case 'fb':
               return tableBase;
           }
 
