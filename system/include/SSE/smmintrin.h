@@ -43,21 +43,21 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_blendv_epi8(__m128i __a, __m128i __b, __m128i __mask)
 {
   v128_t __M = wasm_i8x16_shr((v128_t)__mask, 7);
-  return (__m128i)wasm_v128_or(wasm_v128_and((v128_t)__b, __M), wasm_v128_andnot((v128_t)__a, __M));
+  return (__m128i)wasm_v128_bitselect((v128_t)__b, (v128_t)__a, __M);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_blendv_pd(__m128d __a, __m128d __b, __m128d __mask)
 {
   v128_t __M = wasm_i64x2_shr((v128_t)__mask, 63);
-  return (__m128d)wasm_v128_or(wasm_v128_and((v128_t)__b, __M), wasm_v128_andnot((v128_t)__a, __M));
+  return (__m128d)wasm_v128_bitselect((v128_t)__b, (v128_t)__a, __M);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_blendv_ps(__m128 __a, __m128 __b, __m128 __mask)
 {
   v128_t __M = wasm_i32x4_shr((v128_t)__mask, 31);
-  return (__m128)wasm_v128_or(wasm_v128_and((v128_t)__b, __M), wasm_v128_andnot((v128_t)__a, __M));
+  return (__m128)wasm_v128_bitselect((v128_t)__b, (v128_t)__a, __M);
 }
 
 #define _MM_FROUND_TO_NEAREST_INT    0x00
