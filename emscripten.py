@@ -205,10 +205,9 @@ class Memory():
 
     # Memory layout:
     #  * first the static globals
-    self.global_base = shared.Settings.GLOBAL_BASE
     self.static_bump = metadata['staticBump']
     #  * then the stack (up on fastcomp, down on upstream)
-    self.stack_low = align_memory(self.global_base + self.static_bump)
+    self.stack_low = align_memory(shared.Settings.GLOBAL_BASE + self.static_bump)
     self.stack_high = align_memory(self.stack_low + shared.Settings.TOTAL_STACK)
     self.stack_base = self.stack_high
     self.stack_max = self.stack_low
@@ -226,7 +225,7 @@ def apply_memory(js, metadata):
   if shared.Settings.RELOCATABLE:
     js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
 
-  logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
+  logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
   shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
 
