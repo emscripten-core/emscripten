@@ -3047,21 +3047,18 @@ Var: 42
     # this if this issues is fixed.
     self.emcc_args.append('-nostdlib++')
 
-    def post(filename):
-      js = open(filename).read()
-      start = js.find('var NAMED_GLOBALS')
-      first = js.find('{', start)
-      last = js.find('}', start)
-      exports = js[first + 1:last]
-      exports = exports.split(',')
-      # ensure there aren't too many globals; we don't want unnamed_addr
-      exports = [e.split(':')[0].strip('"') for e in exports]
-      exports.sort()
-      self.assertGreater(len(exports), 20)
-      # wasm backend includes alias in NAMED_GLOBALS
-      self.assertLess(len(exports), 56)
+    def get_data_export_count(wasm):
+      wat = self.get_wasm_text(wasm)
+      lines = wat.splitlines()
+      exports = [l for l in lines if l.strip().startswith('(export ')]
+      data_exports = [l for l in exports if '(global ' in l]
+      return len(data_exports)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self.c', post_build=post)
+    self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self.c')
+    export_count = get_data_export_count('test_dlfcn_self.wasm')
+    # ensure there aren't too many globals; we don't want unnamed_addr
+    self.assertGreater(export_count, 20)
+    self.assertLess(export_count, 56)
 
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):

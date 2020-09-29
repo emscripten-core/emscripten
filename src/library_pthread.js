@@ -112,7 +112,7 @@ var LibraryPThread = {
 #endif
     },
     initShared: function() {
-      PThread.mainThreadFutex = Module['_main_thread_futex'];
+      PThread.mainThreadFutex = _main_thread_futex;
 #if ASSERTIONS
       assert(PThread.mainThreadFutex > 0);
 #endif
