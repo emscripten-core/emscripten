@@ -17,7 +17,7 @@ Compiling with pthreads enabled
 
 By default, support for pthreads is not enabled. To enable code generation for pthreads, the following command line flags exist:
 
-- Pass the compiler flag ``-s USE_PTHREADS=1`` when compiling any .c/.cpp files, AND when linking to generate the final output .js file.
+- Pass the compiler flag ``-pthread`` when compiling any .c/.cpp files, AND when linking to generate the final output .js file.
 - Optionally, pass the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` to specify a predefined pool of web workers to populate at page preRun time before application main() is called. This is important because if the workers do not already exist then we may need to wait for the next browser event iteration for certain things, see below.
 
 There should be no other changes required. In C/C++ code, the preprocessor check ``#ifdef __EMSCRIPTEN_PTHREADS__`` can be used to detect whether Emscripten is currently targeting pthreads.

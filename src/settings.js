@@ -1233,7 +1233,8 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 var IN_TEST_HARNESS = 0;
 
 // If true, enables support for pthreads.
-// [compile+link] - affects user code at compile and system libraries at link
+// [compile+link] - affects user code at compile and system libraries at link.
+// This setting is equivalent to `-pthread`, which should be preferred.
 var USE_PTHREADS = 0;
 
 // In web browsers, Workers cannot be created while the main browser thread
