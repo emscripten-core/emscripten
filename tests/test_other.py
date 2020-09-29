@@ -48,6 +48,7 @@ emconfigure = shared.bat_suffix(path_from_root('emconfigure'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+wasm_opt = os.path.join(building.get_binaryen_bin(), 'wasm-opt')
 
 
 class temp_directory():
@@ -6604,8 +6605,10 @@ int main() {
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
 
-    wasm_size = os.path.getsize('a.out.wasm')
     if expected_size is not None:
+      # measure the wasm size without the name section
+      self.run_process([wasm_opt, 'a.out.wasm', '--strip-debug', '-o', 'a.out.nodebug.wasm'])
+      wasm_size = os.path.getsize('a.out.nodebug.wasm')
       ratio = abs(wasm_size - expected_size) / float(expected_size)
       print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
     self.assertLess(ratio, size_slack)
@@ -6648,25 +6651,25 @@ int main() {
       self.assertFileContents(filename, data)
 
   @parameterized({
-    'O0': ([],      [], ['waka'],   977), # noqa
-    'O1': (['-O1'], [], ['waka'],   467), # noqa
-    'O2': (['-O2'], [], ['waka'],   419), # noqa
+    'O0': ([],      [], ['waka'],   743), # noqa
+    'O1': (['-O1'], [], ['waka'],   330), # noqa
+    'O2': (['-O2'], [], ['waka'],   312), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'], [], [],          96), # noqa
-    'Os': (['-Os'], [], [],          96), # noqa
-    'Oz': (['-Oz'], [], [],          96), # noqa
-    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 96), # noqa
+    'O3': (['-O3'], [], [],          62), # noqa
+    'Os': (['-Os'], [], [],          62), # noqa
+    'Oz': (['-Oz'], [], [],          62), # noqa
+    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 62), # noqa
   })
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
+    'noexcept': (['-O2'],                    [], ['waka'], 127740), # noqa
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],    [], ['waka'], 279827), # noqa
+    'except':   (['-O2', '-fexceptions'],    [], ['waka'], 170231), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 408028), # noqa
+                  '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 230258), # noqa
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
@@ -6675,15 +6678,15 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
 
   @parameterized({
-    'O0': ([],      [], ['waka'], 13768), # noqa
-    'O1': (['-O1'], [], ['waka'],  3954), # noqa
-    'O2': (['-O2'], [], ['waka'],  2511), # noqa
-    'O3': (['-O3'], [], [],        1999), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'], [], [],        2010), # noqa
-    'Oz': (['-Oz'], [], [],        2004), # noqa
+    'O0': ([],      [], ['waka'], 12726), # noqa
+    'O1': (['-O1'], [], ['waka'],  3511), # noqa
+    'O2': (['-O2'], [], ['waka'],  2106), # noqa
+    'O3': (['-O3'], [], [],        1792), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'], [], [],        1783), # noqa
+    'Oz': (['-Oz'], [], [],        1777), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
-          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     72), # noqa
+          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     43), # noqa
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
@@ -6721,10 +6724,10 @@ int main() {
 
   @parameterized({
     'O3':                 ('libcxxabi_message.cpp', ['-O3'],
-                           [], [], 128), # noqa
+                           [], [], 99), # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 242), # noqa
+                           [], [], 178), # noqa
   })
   def test_metadce_libcxxabi_message(self, filename, *args):
     self.run_metadce_test(filename, *args)
