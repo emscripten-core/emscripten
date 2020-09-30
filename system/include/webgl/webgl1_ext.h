@@ -161,13 +161,11 @@ WEBGL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint d
 #define GL_MAX_EXT 0x8008
 #endif /* EMSCRIPTEN_EXT_blend_minmax */
 
-// 12. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_atc/
-#ifndef EMSCRIPTEN_WEBGL_compressed_texture_atc
-#define EMSCRIPTEN_WEBGL_compressed_texture_atc 1
-#define GL_COMPRESSED_RGB_ATC_WEBGL 0x8C92
-#define GL_COMPRESSED_RGBA_ATC_EXPLICIT_ALPHA_WEBGL 0x8C93
-#define GL_COMPRESSED_RGBA_ATC_INTERPOLATED_ALPHA_WEBGL 0x87EE
-#endif /* EMSCRIPTEN_WEBGL_compressed_texture_atc */
+// 27. https://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
+// <no symbols exposed>
+#ifndef EMSCRIPTEN_EXT_shader_texture_lod
+#define EMSCRIPTEN_EXT_shader_texture_lod 1
+#endif /* EMSCRIPTEN_EXT_shader_texture_lod */
 
 // 13. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_pvrtc/
 #ifndef EMSCRIPTEN_WEBGL_compressed_texture_pvrtc
@@ -243,7 +241,6 @@ WEBGL_APICALL void GL_APIENTRY glGetQueryObjectuivEXT(GLuint id, GLenum pname, G
 WEBGL_APICALL void GL_APIENTRY glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 *params);
 WEBGL_APICALL void GL_APIENTRY glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 *params);
 #endif /* EMSCRIPTEN_EXT_disjoint_timer_query */
-
 
 // 29. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_etc/
 #ifndef EMSCRIPTEN_WEBGL_compressed_texture_etc
