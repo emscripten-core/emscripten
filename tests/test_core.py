@@ -6997,7 +6997,7 @@ someweirdtext
     'minimal_runtime': (['-s', 'MINIMAL_RUNTIME'],),
   })
   def test_source_map(self, args):
-    if args and '-fsanitize=address' in self.emcc_args:
+    if 'MINIMAL_RUNTIME' in args and '-fsanitize=address' in self.emcc_args:
       self.skipTest('MINIMAL_RUNTIME does not support ASan')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
