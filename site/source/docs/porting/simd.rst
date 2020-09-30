@@ -783,11 +783,11 @@ The following table highlights the availability and expected performance of diff
    * - Intrinsic name
      - WebAssembly SIMD support
    * - _mm_abs_epi8
-     - ⚠️ emulated with a SIMD shift+xor+add
+     - ✅ wasm_i8x16_abs
    * - _mm_abs_epi16
-     - ⚠️ emulated with a SIMD shift+xor+add
+     - ✅ wasm_i16x8_abs
    * - _mm_abs_epi32
-     - ⚠️ emulated with a SIMD shift+xor+add
+     - ✅ wasm_i32x4_abs
    * - _mm_alignr_epi8
      - ⚠️ emulated with a SIMD or+two shifts
    * - _mm_hadd_epi16

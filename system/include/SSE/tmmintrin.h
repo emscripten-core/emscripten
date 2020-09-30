@@ -16,22 +16,19 @@
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_abs_epi8(__m128i __a)
 {
-  __m128i __mask = (__m128i)wasm_i8x16_shr((v128_t)__a, 7);
-  return _mm_xor_si128(_mm_add_epi8(__a, __mask), __mask);
+  return (__m128i)wasm_i8x16_abs((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_abs_epi16(__m128i __a)
 {
-  __m128i __mask = _mm_srai_epi16(__a, 15);
-  return _mm_xor_si128(_mm_add_epi16(__a, __mask), __mask);
+  return (__m128i)wasm_i16x8_abs((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_abs_epi32(__m128i __a)
 {
-  __m128i __mask = _mm_srai_epi32(__a, 31);
-  return _mm_xor_si128(_mm_add_epi32(__a, __mask), __mask);
+  return (__m128i)wasm_i32x4_abs((v128_t)__a);
 }
 
 #define _mm_alignr_epi8(__a, __b, __count) \
