@@ -3655,11 +3655,16 @@ window.close = function() {
   def test_pthread_create(self):
     def test(args):
       print(args)
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
+                 expected='0',
+                 args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args,
+                 extra_tries=0) # this should be 100% deterministic
     print() # new line
     test([])
     test(['-O3'])
-    test(['-s', 'MINIMAL_RUNTIME=1'])
+    # TODO: re-enable minimal runtime once the flakiness is figure out,
+    # https://github.com/emscripten-core/emscripten/issues/12368
+    # test(['-s', 'MINIMAL_RUNTIME=1'])
 
   # Test that preallocating worker threads work.
   @requires_threads
