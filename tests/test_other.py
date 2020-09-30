@@ -9411,7 +9411,7 @@ int main () {
     stderr = self.run_process([EMCC, '-c', path_from_root('tests', 'core', 'test_hello_world.c')], stderr=PIPE).stderr
     self.assertContained('warning: EMMAKEN_COMPILER is deprecated', stderr)
 
-  @no_windows('relies of shell script')
+  @no_windows('relies on a shell script')
   def test_compiler_wrapper(self):
     create_test_file('wrapper.sh', '''\
 #!/bin/sh
