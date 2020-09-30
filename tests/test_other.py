@@ -9409,7 +9409,7 @@ int main () {
   @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
   def test_emmaken_compiler(self):
     stderr = self.run_process([EMCC, '-c', path_from_root('tests', 'core', 'test_hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('warning: EMMAKEN_COMPILER is deprecated', stderr)
+    self.assertContained('warning: `EMMAKEN_COMPILER` is deprecated', stderr)
 
   @no_windows('relies on a shell script')
   def test_compiler_wrapper(self):

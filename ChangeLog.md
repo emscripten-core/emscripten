@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add new `COMPILER_WRAPPER` settings (with corresponding `EM_COMPILER_WRAPPER`
+  environment variable.  This replaces the existing `EMMAKEN_COMPILER`
+  environment variable which is deprecated, but still works for the time being.
+  The main differences is that `EM_COMPILER_WRAPPER` only wrapps the configured
+  version of clang rather than replacing it.
 - ASAN_SHADOW_SIZE is deprecated. When using AddressSanitizer, the correct
   amount of shadow memory will now be calculated automatically.
 

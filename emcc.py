@@ -732,14 +732,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     CXX.insert(0, shared.COMPILER_WRAPPER)
     CC.insert(0, shared.COMPILER_WRAPPER)
 
+  if run_via_emxx:
+    clang = shared.CLANG_CXX
+  else:
+    clang = shared.CLANG_CC
+
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    if run_via_emxx:
-      clang = CXX
-    else:
-      clang = CC
-    code = shared.check_call(clang + ['-v'], check=False).returncode
+    code = shared.check_call([clang, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -861,10 +862,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                           'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
                           'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
       CXX = [os.environ['EMMAKEN_COMPILER']]
-      CC = [cxx_to_c_compiler(CXX)]
+      CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     if '-print-search-dirs' in newargs:
-      return run_process([CC, '-print-search-dirs'], check=False).returncode
+      return run_process(CC + ['-print-search-dirs'], check=False).returncode
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
