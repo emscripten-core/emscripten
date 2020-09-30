@@ -1121,8 +1121,15 @@ def win_get_default_browser():
   except WindowsError:
     logv("Unable to find default browser key in Windows registry. Trying fallback.")
 
-  # Fall back to 'start %1', which we have to treat as if user passed --serve_forever, since
+  # Fall back to 'start "" %1', which we have to treat as if user passed --serve_forever, since
   # for some reason, we are not able to detect when the browser closes when this is passed.
+  #
+  # If the first argument to 'start' is quoted, then 'start' will create a new cmd.exe window with
+  # that quoted string as the title. If the URL contained spaces, it would be quoted by subprocess,
+  # and if we did 'start %1', it would create a new cmd.exe window with the URL as title instead of
+  # actually launching the browser. Therefore, we must pass a dummy quoted first argument for start
+  # to interpret as the title. For this purpose, we use the empty string, which will be quoted
+  # as "". See #9253 for details.
   return ['cmd', '/C', 'start', '']
 
 
