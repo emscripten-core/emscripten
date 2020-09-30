@@ -4,9 +4,9 @@
 #include <emscripten/html5.h>
 
 // 1. https://www.khronos.org/registry/webgl/extensions/OES_texture_float/
-// <no symbols exposed>
 #ifndef EMSCRIPTEN_OES_texture_float
 #define EMSCRIPTEN_OES_texture_float 1
+// <no symbols exposed>
 #endif /* EMSCRIPTEN_OES_texture_float */
 
 // 2. https://www.khronos.org/registry/webgl/extensions/OES_texture_half_float/
@@ -71,9 +71,9 @@ WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getTranslatedShaderSource(GLuint
 #endif /* EMSCRIPTEN_WEBGL_depth_texture */
 
 // 10. https://www.khronos.org/registry/webgl/extensions/OES_element_index_uint/
-// <no symbols exposed>
 #ifndef EMSCRIPTEN_OES_element_index_uint
 #define EMSCRIPTEN_OES_element_index_uint 1
+// <no symbols exposed>
 #endif /* EMSCRIPTEN_OES_element_index_uint */
 
 // 11. https://www.khronos.org/registry/webgl/extensions/EXT_texture_filter_anisotropic/
@@ -84,9 +84,9 @@ WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getTranslatedShaderSource(GLuint
 #endif /* EMSCRIPTEN_EXT_texture_filter_anisotropic */
 
 // 16. https://www.khronos.org/registry/webgl/extensions/EXT_frag_depth/
-// <no symbols exposed>
 #ifndef EMSCRIPTEN_EXT_frag_depth
 #define EMSCRIPTEN_EXT_frag_depth 1
+// <no symbols exposed>
 #endif /* EMSCRIPTEN_EXT_frag_depth */
 
 // 18. https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_buffers/
@@ -143,15 +143,15 @@ WEBGL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint d
 #endif /* EMSCRIPTEN_ANGLE_instanced_arrays */
 
 // 20. https://www.khronos.org/registry/webgl/extensions/OES_texture_float_linear/
-// <no symbols exposed>
 #ifndef EMSCRIPTEN_OES_texture_float_linear
 #define EMSCRIPTEN_OES_texture_float_linear 1
+// <no symbols exposed>
 #endif /* EMSCRIPTEN_OES_texture_float_linear */
 
 // 21. https://www.khronos.org/registry/webgl/extensions/OES_texture_half_float_linear/
-// <no symbols exposed>
 #ifndef EMSCRIPTEN_OES_texture_half_float_linear
 #define EMSCRIPTEN_OES_texture_half_float_linear 1
+// <no symbols exposed>
 #endif /* EMSCRIPTEN_OES_texture_half_float_linear */
 
 // 25. https://www.khronos.org/registry/webgl/extensions/EXT_blend_minmax/
@@ -160,12 +160,6 @@ WEBGL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint d
 #define GL_MIN_EXT 0x8007
 #define GL_MAX_EXT 0x8008
 #endif /* EMSCRIPTEN_EXT_blend_minmax */
-
-// 27. https://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
-// <no symbols exposed>
-#ifndef EMSCRIPTEN_EXT_shader_texture_lod
-#define EMSCRIPTEN_EXT_shader_texture_lod 1
-#endif /* EMSCRIPTEN_EXT_shader_texture_lod */
 
 // 12. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_atc/
 #ifndef EMSCRIPTEN_WEBGL_compressed_texture_atc
@@ -301,9 +295,9 @@ WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getSupportedAstcProfiles(GLsizei
 #endif /* EMSCRIPTEN_WEBGL_compressed_texture_astc */
 
 // 31. https://www.khronos.org/registry/webgl/extensions/EXT_color_buffer_float/
-// <no symbols exposed>
 #ifndef EMSCRIPTEN_EXT_color_buffer_float
 #define EMSCRIPTEN_EXT_color_buffer_float 1
+// <no symbols exposed>
 #endif /* EMSCRIPTEN_EXT_color_buffer_float */
 
 // 32. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_s3tc_srgb/
