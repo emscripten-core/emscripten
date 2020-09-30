@@ -362,6 +362,7 @@ def parse_config_file():
     'FROZEN_CACHE',
     'CACHE',
     'PORTS',
+    'COMPILER_WRAPPER',
   )
 
   # Only propagate certain settings from the config file.
@@ -1473,6 +1474,7 @@ WASM_ENGINES = []
 CACHE = None
 PORTS = None
 FROZEN_CACHE = False
+COMPILER_WRAPPER = None
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
 # make sure that those child processes get the same configuration file by
