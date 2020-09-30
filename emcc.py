@@ -1784,6 +1784,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.GLOBAL_BASE != -1:
         exit_with_error("ASan does not support custom GLOBAL_BASE")
 
+      if shared.Settings.MINIMAL_RUNTIME:
+        exit_with_error("MINIMAL_RUNTIME does not support ASan")
+
       max_mem = shared.Settings.INITIAL_MEMORY
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         max_mem = shared.Settings.MAXIMUM_MEMORY
