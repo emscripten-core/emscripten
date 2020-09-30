@@ -725,6 +725,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
+  CXX = [shared.CLANG_CXX]
+  CC = [shared.CLANG_CC]
+  if shared.COMPILER_WRAPPER:
+    logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
+    CXX.insert(0, shared.COMPILER_WRAPPER)
+    CC.insert(0, shared.COMPILER_WRAPPER)
+
   if run_via_emxx:
     clang = shared.CLANG_CXX
   else:
@@ -733,7 +740,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = run_process([clang, '-v'], check=False).returncode
+    code = shared.check_call([clang, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -850,15 +857,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
-    CXX = shared.CLANG_CXX
-    CC = shared.CLANG_CC
     if 'EMMAKEN_COMPILER' in os.environ:
-      diagnostics.warning('deprecated', 'EMMAKEN_COMPILER is deprecated.  Please set LLVM_ROOT in config file or EM_LLVM_ROOT in the environment')
-      CXX = os.environ['EMMAKEN_COMPILER']
-      CC = cxx_to_c_compiler(CXX)
+      diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
+                          'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
+                          'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
+      CXX = [os.environ['EMMAKEN_COMPILER']]
+      CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     if '-print-search-dirs' in newargs:
-      return run_process([CC, '-print-search-dirs'], check=False).returncode
+      return run_process(CC + ['-print-search-dirs'], check=False).returncode
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -1919,12 +1926,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       def get_clang_command(src_file):
         cxx = use_cxx(src_file)
         base_cflags = shared.get_cflags(args, cxx)
-        cmd = [get_compiler(cxx)] + base_cflags + cflags + compile_args + [src_file]
+        cmd = get_compiler(cxx) + base_cflags + cflags + compile_args + [src_file]
         return system_libs.process_args(cmd, shared.Settings)
 
       def get_clang_command_asm(src_file):
         asflags = shared.get_asmflags()
-        return [get_compiler(use_cxx(src_file))] + asflags + compile_args + [src_file]
+        return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
 
       # preprocessor-only (-E) support
       if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
@@ -1949,9 +1956,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if not header.endswith(HEADER_ENDINGS):
             exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
           cxx = use_cxx(header)
-          compiler = get_compiler(cxx)
           base_cflags = shared.get_cflags(args, cxx)
-          cmd = [compiler] + base_cflags + cflags + compile_args + [header]
+          cmd = get_compiler(cxx) + base_cflags + cflags + compile_args + [header]
           if specified_target:
             cmd += ['-o', specified_target]
           cmd = system_libs.process_args(cmd, shared.Settings)

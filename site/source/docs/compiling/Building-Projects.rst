@@ -327,14 +327,27 @@ Emscripten provides the following preprocessor macros that can be used to identi
  * If targeting the pthreads multithreading support with the compiler & linker flag ``-s USE_PTHREADS=1``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
 
 
+Using a compiler wrapper
+========================
+
+Sometimes it can be useful to use a compiler wrapper in order to do things like
+``ccache``, ``distcc`` or ``gomacc``.  For ``ccache`` the normal method of
+simply wrapping the entire compiler should work, e.g. ``ccache emcc``.  For
+distributed builds it can be beneficial to run the emscripten driver locally and
+distribute only the underlying clang commands.  If this is desirable, the
+``COMPILER_WRAPPER`` setting in the config file can be used to add a wrapper
+around the internal calls to clang.  Like other config settings this can also be
+set via an environment variable.  e.g::
+
+  EM_COMPILER_WRAPPER=gomacc emcc -c hello.c
+
+
 Examples / test code
 ====================
 
 The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/master/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/master/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/master/tests/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/master/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/master/tests/poppler>`_.
 
 It is also worth looking at the build scripts in the `ammo.js <https://github.com/kripken/ammo.js/blob/master/make.py>`_ project.
-
-
 
 
 Troubleshooting

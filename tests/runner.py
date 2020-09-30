@@ -44,7 +44,7 @@ import shlex
 import shutil
 import string
 import subprocess
-import sys
+import stat
 import tempfile
 import time
 import unittest
@@ -271,6 +271,10 @@ def create_test_file(name, contents, binary=False):
   mode = 'wb' if binary else 'w'
   with open(name, mode) as f:
     f.write(contents)
+
+
+def make_executable(name):
+  os.chmod(name, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
 
 # The core test modes

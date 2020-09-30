@@ -32,7 +32,7 @@ from tools.shared import try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, JS_ENGINES, WASM_ENGINES, V8_ENGINE
-from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled
+from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from runner import env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
 from runner import js_engines_modify, NON_ZERO
 from tools import shared, building
@@ -9409,7 +9409,20 @@ int main () {
   @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
   def test_emmaken_compiler(self):
     stderr = self.run_process([EMCC, '-c', path_from_root('tests', 'core', 'test_hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('warning: EMMAKEN_COMPILER is deprecated', stderr)
+    self.assertContained('warning: `EMMAKEN_COMPILER` is deprecated', stderr)
+
+  @no_windows('relies on a shell script')
+  def test_compiler_wrapper(self):
+    create_test_file('wrapper.sh', '''\
+#!/bin/sh
+echo "wrapping compiler call: $@"
+exec "$@"
+    ''')
+    make_executable('wrapper.sh')
+    with env_modify({'EM_COMPILER_WRAPPER': './wrapper.sh'}):
+      stdout = self.run_process([EMCC, '-c', path_from_root('tests', 'core', 'test_hello_world.c')], stdout=PIPE).stdout
+    self.assertContained('wrapping compiler call: ', stdout)
+    self.assertExists('test_hello_world.o')
 
   def test_llvm_option_dash_o(self):
     # emcc used to interpret -mllvm's option value as the output file if it
