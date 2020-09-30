@@ -1123,7 +1123,7 @@ def win_get_default_browser():
 
   # Fall back to 'start %1', which we have to treat as if user passed --serve_forever, since
   # for some reason, we are not able to detect when the browser closes when this is passed.
-  return ['cmd', '/C', 'start']
+  return ['cmd', '/C', 'start', '']
 
 
 def find_browser(name):
