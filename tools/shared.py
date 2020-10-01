@@ -1042,7 +1042,7 @@ def is_c_symbol(name):
 def treat_as_user_function(name):
   if name.startswith('dynCall_'):
     return False
-  if name in Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED:
+  if name in Settings.WASM_SYSTEM_EXPORTS:
     return False
   return True
 
