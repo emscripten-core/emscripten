@@ -19,13 +19,16 @@ var LibraryPThread = {
       schedPolicy: 0/*SCHED_OTHER*/,
       schedPrio: 0
     },
-    // Contains all Workers that are idle/unused and not currently hosting an executing pthread.
-    // Unused Workers can either be pooled up before page startup, but also when a pthread quits, its hosting
-    // Worker is not terminated, but is returned to this pool as an optimization so that starting the next thread is faster.
+    // Contains all Workers that are idle/unused and not currently hosting an
+    // executing pthread.  Unused Workers can either be pooled up before page
+    // startup, but also when a pthread quits, its hosting Worker is not
+    // terminated, but is returned to this pool as an optimization so that
+    // starting the next thread is faster.
     unusedWorkers: [],
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
-    // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
+    // Points to a pthread_t structure in the Emscripten main heap, allocated on
+    // demand if/when first needed.
     // mainThreadBlock: undefined,
     // Stores the memory address that the main thread is waiting on, if any. If
     // the main thread is waiting, we wake it up before waking up any workers.
@@ -56,8 +59,8 @@ var LibraryPThread = {
 
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
 
-      // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
-      // structure is 'alive'.
+      // The pthread struct has a field that points to itself - this is used as
+        // a magic ID to detect whether the pthread_t structure is 'alive'.
       {{{ makeSetValue('PThread.mainThreadBlock', C_STRUCTS.pthread.self, 'PThread.mainThreadBlock', 'i32') }}};
 
       // pthread struct robust_list head should point to itself.
@@ -83,8 +86,9 @@ var LibraryPThread = {
       });
 #endif
 
-      // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      // Global constructors trying to access this value will read the wrong value, but that is UB anyway.
+      // Pass the thread address inside the asm.js scope to store it for fast
+      // access that avoids the need for a FFI out.  Global constructors trying
+      // to access this value will read the wrong value, but that is UB anyway.
       registerPthreadPtr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
       _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
     },
@@ -198,8 +202,8 @@ var LibraryPThread = {
       if (ENVIRONMENT_IS_PTHREAD && threadInfoStruct) ___pthread_tsd_run_dtors();
     },
 
-    // Called when we are performing a pthread_exit(), either explicitly called by programmer,
-    // or implicitly when leaving the thread main function.
+    // Called when we are performing a pthread_exit(), either explicitly called
+    // by programmer, or implicitly when leaving the thread main function.
     threadExit: function(exitCode) {
       var tb = _pthread_self();
       if (tb) { // If we haven't yet exited?
@@ -291,7 +295,8 @@ var LibraryPThread = {
       PThread.unusedWorkers.push(worker);
       PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore
       PThread.freeThreadData(worker.pthread);
-      worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+      // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+      worker.pthread = undefined;
     },
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
@@ -308,13 +313,17 @@ var LibraryPThread = {
     },
 
     // Loads the WebAssembly module into the given list of Workers.
-    // onFinishedLoading: A callback function that will be called once all of the workers have been initialized and are
+    // onFinishedLoading: A callback function that will be called once all of
+    //                    the workers have been initialized and are
     //                    ready to host pthreads.
     loadWasmModuleToWorker: function(worker, onFinishedLoading) {
       worker.onmessage = function(e) {
         var d = e['data'];
         var cmd = d['cmd'];
-        // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
+        // Sometimes we need to backproxy events to the calling thread (e.g.
+        // HTML5 DOM events handlers such as
+        // emscripten_set_mousemove_callback()), so keep track in a globally
+        // accessible variable about the thread that initiated the proxying.
         if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
 
         // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
@@ -514,13 +523,15 @@ var LibraryPThread = {
 
     var stackHigh = threadParams.stackBase + threadParams.stackSize;
 
-    var pthread = PThread.pthreads[threadParams.pthread_ptr] = { // Create a pthread info object to represent this thread.
+    // Create a pthread info object to represent this thread.
+    var pthread = PThread.pthreads[threadParams.pthread_ptr] = {
       worker: worker,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
       allocatedOwnStack: threadParams.allocatedOwnStack,
       thread: threadParams.pthread_ptr,
-      threadInfoStruct: threadParams.pthread_ptr // Info area for this thread in Emscripten HEAP (shared)
+      // Info area for this thread in Emscripten HEAP (shared)
+      threadInfoStruct: threadParams.pthread_ptr
     };
     var tis = pthread.threadInfoStruct >> 2;
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.threadStatus }}} >> 2), 0); // threadStatus <- 0, meaning not yet exited.
@@ -560,7 +571,8 @@ var LibraryPThread = {
         'stackSize': threadParams.stackSize
     };
 #if OFFSCREENCANVAS_SUPPORT
-    // Note that we do not need to quote these names because they are only used in this file, and not from the external worker.js.
+    // Note that we do not need to quote these names because they are only used
+    // in this file, and not from the external worker.js.
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
@@ -597,7 +609,8 @@ var LibraryPThread = {
       return {{{ cDefine('EINVAL') }}};
     }
 
-    var transferList = []; // List of JS objects that will transfer ownership to the Worker hosting the thread
+    // List of JS objects that will transfer ownership to the Worker hosting the thread
+    var transferList = [];
     var error = 0;
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -606,8 +619,9 @@ var LibraryPThread = {
     // Comma-delimited list of CSS selectors that must identify canvases by IDs: "#canvas1, #canvas2, ..."
     var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 36, 'i32') }}} : 0;
 #if OFFSCREENCANVASES_TO_PTHREAD
-    // Proxied canvases string pointer -1 is used as a special token to fetch whatever canvases were passed to build
-    // in -s OFFSCREENCANVASES_TO_PTHREAD= command line.
+    // Proxied canvases string pointer -1 is used as a special token to fetch
+    // whatever canvases were passed to build in -s
+    // OFFSCREENCANVASES_TO_PTHREAD= command line.
     if (transferredCanvasNames == -1) transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
     else
 #endif
@@ -654,7 +668,8 @@ var LibraryPThread = {
 #if GL_DEBUG
             Module['printErr']('pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "' + name + '" (DOM id="' + canvas.id + '") from main thread to pthread');
 #endif
-            // Create a shared information block in heap so that we can control the canvas size from any thread.
+            // Create a shared information block in heap so that we can control
+            // the canvas size from any thread.
             if (!canvas.canvasSharedPtr) {
               canvas.canvasSharedPtr = _malloc(12);
               {{{ makeSetValue('canvas.canvasSharedPtr', 0, 'canvas.width', 'i32') }}};
@@ -666,12 +681,18 @@ var LibraryPThread = {
               canvasSharedPtr: canvas.canvasSharedPtr,
               id: canvas.id
             }
-            // After calling canvas.transferControlToOffscreen(), it is no longer possible to access certain operations on the canvas, such as resizing it or obtaining GL contexts via it.
-            // Use this field to remember that we have permanently converted this Canvas to be controlled via an OffscreenCanvas (there is no way to undo this in the spec)
+            // After calling canvas.transferControlToOffscreen(), it is no
+            // longer possible to access certain operations on the canvas, such
+            // as resizing it or obtaining GL contexts via it.
+            // Use this field to remember that we have permanently converted
+            // this Canvas to be controlled via an OffscreenCanvas (there is no
+            // way to undo this in the spec)
             canvas.controlTransferredOffscreen = true;
           } else {
             err('pthread_create: cannot transfer control of canvas "' + name + '" to pthread, because current browser does not support OffscreenCanvas!');
-            // If building with OFFSCREEN_FRAMEBUFFER=1 mode, we don't need to be able to transfer control to offscreen, but WebGL can be proxied from worker to main thread.
+            // If building with OFFSCREEN_FRAMEBUFFER=1 mode, we don't need to
+            // be able to transfer control to offscreen, but WebGL can be
+            // proxied from worker to main thread.
 #if !OFFSCREEN_FRAMEBUFFER
             Module['printErr']('pthread_create: Build with -s OFFSCREEN_FRAMEBUFFER=1 to enable fallback proxying of GL commands from pthread to main thread.');
             return {{{ cDefine('ENOSYS') }}}; // Function not implemented, browser doesn't have support for this.
@@ -689,26 +710,33 @@ var LibraryPThread = {
     }
 #endif
 
-    // Synchronously proxy the thread creation to main thread if possible. If we need to transfer ownership of objects, then
-    // proxy asynchronously via postMessage.
+    // Synchronously proxy the thread creation to main thread if possible. If we
+    // need to transfer ownership of objects, then proxy asynchronously via
+    // postMessage.
     if (ENVIRONMENT_IS_PTHREAD && (transferList.length === 0 || error)) {
       return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_PTHREAD_CREATE') }}}, pthread_ptr, attr, start_routine, arg);
     }
 
-    // If on the main thread, and accessing Canvas/OffscreenCanvas failed, abort with the detected error.
+    // If on the main thread, and accessing Canvas/OffscreenCanvas failed, abort
+    // with the detected error.
     if (error) return error;
 
     var stackSize = 0;
     var stackBase = 0;
-    var detached = 0; // Default thread attr is PTHREAD_CREATE_JOINABLE, i.e. start as not detached.
+    // Default thread attr is PTHREAD_CREATE_JOINABLE, i.e. start as not detached.
+    var detached = 0;
     var schedPolicy = 0; /*SCHED_OTHER*/
     var schedPrio = 0;
     if (attr) {
       stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
-      // Musl has a convention that the stack size that is stored to the pthread attribute structure is always musl's #define DEFAULT_STACK_SIZE
-      // smaller than the actual created stack size. That is, stored stack size of 0 would mean a stack of DEFAULT_STACK_SIZE in size. All musl
-      // functions hide this impl detail, and offset the size transparently, so pthread_*() API user does not see this offset when operating with
-      // the pthread API. When reading the structure directly on JS side however, we need to offset the size manually here.
+      // Musl has a convention that the stack size that is stored to the pthread
+      // attribute structure is always musl's #define DEFAULT_STACK_SIZE
+      // smaller than the actual created stack size. That is, stored stack size
+      // of 0 would mean a stack of DEFAULT_STACK_SIZE in size. All musl
+      // functions hide this impl detail, and offset the size transparently, so
+      // pthread_*() API user does not see this offset when operating with
+      // the pthread API. When reading the structure directly on JS side
+      // however, we need to offset the size manually here.
       stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
       stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
       detached = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} !== 0/*PTHREAD_CREATE_JOINABLE*/;
@@ -716,8 +744,11 @@ var LibraryPThread = {
       if (inheritSched) {
         var prevSchedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
         var prevSchedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
-        // If we are inheriting the scheduling properties from the parent thread, we need to identify the parent thread properly - this function call may
-        // be getting proxied, in which case _pthread_self() will point to the thread performing the proxying, not the thread that initiated the call.
+        // If we are inheriting the scheduling properties from the parent
+        // thread, we need to identify the parent thread properly - this
+        // function call may be getting proxied, in which case _pthread_self()
+        // will point to the thread performing the proxying, not the thread that
+        // initiated the call.
         var parentThreadPtr = PThread.currentProxiedOperationCallerThread ? PThread.currentProxiedOperationCallerThread : _pthread_self();
         _pthread_getschedparam(parentThreadPtr, attr + 20, attr + 24);
         schedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
@@ -729,14 +760,20 @@ var LibraryPThread = {
         schedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
       }
     } else {
-      // According to http://man7.org/linux/man-pages/man3/pthread_create.3.html, default stack size if not specified is 2 MB, so follow that convention.
+      // According to
+      // http://man7.org/linux/man-pages/man3/pthread_create.3.html, default
+      // stack size if not specified is 2 MB, so follow that convention.
       stackSize = {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
     }
-    var allocatedOwnStack = stackBase == 0; // If allocatedOwnStack == true, then the pthread impl maintains the stack allocation.
+    // If allocatedOwnStack == true, then the pthread impl maintains the stack allocation.
+    var allocatedOwnStack = stackBase == 0;
     if (allocatedOwnStack) {
-      stackBase = _memalign({{{ STACK_ALIGN }}}, stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
+      // Allocate a stack if the user doesn't want to place the stack in a
+      // custom memory area.
+      stackBase = _memalign({{{ STACK_ALIGN }}}, stackSize);
     } else {
-      // Musl stores the stack base address assuming stack grows downwards, so adjust it to Emscripten convention that the
+      // Musl stores the stack base address assuming stack grows downwards, so
+      // adjust it to Emscripten convention that the
       // stack grows upwards instead.
       stackBase -= stackSize;
       assert(stackBase > 0);
@@ -744,11 +781,12 @@ var LibraryPThread = {
 
     // Allocate thread block (pthread_t structure).
     var threadInfoStruct = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-    for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadInfoStruct>>2) + i] = 0; // zero-initialize thread structure.
+    // zero-initialize thread structure.
+    for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadInfoStruct>>2) + i] = 0;
     {{{ makeSetValue('pthread_ptr', 0, 'threadInfoStruct', 'i32') }}};
 
-    // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
-    // structure is 'alive'.
+    // The pthread struct has a field that points to itself - this is used as a
+    // magic ID to detect whether the pthread_t structure is 'alive'.
     {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
 
     // pthread struct robust_list head should point to itself.
@@ -756,9 +794,11 @@ var LibraryPThread = {
     {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
 
 #if OFFSCREENCANVAS_SUPPORT
-    // Register for each of the transferred canvases that the new thread now owns the OffscreenCanvas.
+    // Register for each of the transferred canvases that the new thread now
+    // owns the OffscreenCanvas.
     for (var i in offscreenCanvases) {
-      {{{ makeSetValue('offscreenCanvases[i].canvasSharedPtr', 8, 'threadInfoStruct', 'i32') }}}; // pthread ptr to the thread that owns this canvas.
+      // pthread ptr to the thread that owns this canvas.
+      {{{ makeSetValue('offscreenCanvases[i].canvasSharedPtr', 8, 'threadInfoStruct', 'i32') }}};
     }
 #endif
 
@@ -781,21 +821,23 @@ var LibraryPThread = {
     };
 
     if (ENVIRONMENT_IS_PTHREAD) {
-      // The prepopulated pool of web workers that can host pthreads is stored in the main JS thread. Therefore if a
-      // pthread is attempting to spawn a new thread, the thread creation must be deferred to the main JS thread.
+      // The prepopulated pool of web workers that can host pthreads is stored
+      // in the main JS thread. Therefore if a pthread is attempting to spawn a
+      // new thread, the thread creation must be deferred to the main JS thread.
       threadParams.cmd = 'spawnThread';
       postMessage(threadParams, transferList);
     } else {
-      // We are the main thread, so we have the pthread warmup pool in this thread and can fire off JS thread creation
-      // directly ourselves.
+      // We are the main thread, so we have the pthread warmup pool in this
+      // thread and can fire off JS thread creation directly ourselves.
       spawnThread(threadParams);
     }
 
     return 0;
   },
 
-  // TODO HACK! Remove this function, it is a JS side copy of the function pthread_testcancel() in library_pthread.c.
-  // Just call pthread_testcancel() everywhere.
+  // TODO HACK! Remove this function, it is a JS side copy of the function
+  // pthread_testcancel() in library_pthread.c.  Just call pthread_testcancel()
+  // everywhere.
   _pthread_testcancel_js: function() {
     if (!ENVIRONMENT_IS_PTHREAD) return;
     if (!threadInfoStruct) return;
@@ -877,7 +919,8 @@ var LibraryPThread = {
       // TODO HACK! Replace the _js variant with just _pthread_testcancel:
       //_pthread_testcancel();
       __pthread_testcancel_js();
-      // In main runtime thread (the thread that initialized the Emscripten C runtime and launched main()), assist pthreads in performing operations
+      // In main runtime thread (the thread that initialized the Emscripten C
+      // runtime and launched main()), assist pthreads in performing operations
       // that they need to access the Emscripten main runtime for.
       if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
       _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
@@ -950,7 +993,9 @@ var LibraryPThread = {
       return ERRNO_CODES.ESRCH;
     }
     var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
-    // Follow musl convention: detached:0 means not detached, 1 means the thread was created as detached, and 2 means that the thread was detached via pthread_detach.
+    // Follow musl convention: detached:0 means not detached, 1 means the thread
+    // was created as detached, and 2 means that the thread was detached via
+    // pthread_detach.
     var wasDetached = Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
 
     return wasDetached ? ERRNO_CODES.EINVAL : 0;
@@ -997,14 +1042,16 @@ var LibraryPThread = {
   emscripten_is_main_runtime_thread__sig: 'i',
   emscripten_is_main_runtime_thread__deps: ['_pthread_is_main_runtime_thread'],
   emscripten_is_main_runtime_thread: function() {
-    return __pthread_is_main_runtime_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" outside the asm.js scope
+    // Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" outside the asm.js scope
+    return __pthread_is_main_runtime_thread|0;
   },
 
   emscripten_is_main_browser_thread__asm: true,
   emscripten_is_main_browser_thread__sig: 'i',
   emscripten_is_main_browser_thread__deps: ['_pthread_is_main_browser_thread'],
   emscripten_is_main_browser_thread: function() {
-    return __pthread_is_main_browser_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_WORKER" outside the asm.js scope
+    // Semantically the same as testing "!ENVIRONMENT_IS_WORKER" outside the asm.js scope
+    return __pthread_is_main_browser_thread|0;
   },
 
   pthread_getschedparam: function(thread, policy, schedparam) {
