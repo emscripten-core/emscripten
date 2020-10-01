@@ -9045,7 +9045,6 @@ int main() {
     # plain -O0
     legalization_message = 'to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
     fail([], legalization_message)
-    fail(['-sSUPPORT_LONGJMP=0'], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(required_flags + ['-O2'], optimization_message)
