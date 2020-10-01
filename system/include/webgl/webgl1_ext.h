@@ -181,6 +181,8 @@ WEBGL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint d
 #define EMSCRIPTEN_GL_EXT_color_buffer_half_float 1
 #define GL_RGBA16F_EXT 0x881A
 #define GL_RGB16F_EXT 0x881B
+#define GL_RG16F_EXT 0x822F
+#define GL_R16F_EXT 0x822D
 #define GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE_EXT 0x8211
 #define GL_UNSIGNED_NORMALIZED_EXT 0x8C17
 #endif /* EMSCRIPTEN_GL_EXT_color_buffer_half_float */
