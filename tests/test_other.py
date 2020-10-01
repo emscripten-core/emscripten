@@ -9247,7 +9247,12 @@ int main() {
     self.emcc_args.append('foo.o')
     self.do_run_from_file(src, output)
 
-  def test_export_global_address(self):
+  @parameterized({
+    '': ([],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_export_global_address(self, args):
+    self.emcc_args += args
     src = path_from_root('tests', 'other', 'test_export_global_address.c')
     output = path_from_root('tests', 'other', 'test_export_global_address.out')
     self.do_run_from_file(src, output)
