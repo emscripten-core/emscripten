@@ -162,9 +162,9 @@ WEBGL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint d
 #endif /* EMSCRIPTEN_GL_EXT_blend_minmax */
 
 // 27. https://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
-// <no symbols exposed>
 #ifndef EMSCRIPTEN_GL_EXT_shader_texture_lod
 #define EMSCRIPTEN_GL_EXT_shader_texture_lod 1
+// <no symbols exposed>
 #endif /* EMSCRIPTEN_GL_EXT_shader_texture_lod */
 
 // 13. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_pvrtc/
