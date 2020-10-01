@@ -42,10 +42,7 @@ int main()
 	}
 
 	pthread_t thread;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-	int rc = pthread_create(&thread, &attr, ThreadMain, 0);
+	int rc = pthread_create(&thread, NULL, ThreadMain, 0);
 	assert(rc == 0);
 	rc = emscripten_futex_wait(&main_thread_wait_val, 1, 15 * 1000);
 	// An rc of 0 means no error, and of EWOULDBLOCK means that the value is
@@ -60,7 +57,6 @@ int main()
 #endif
 		exit(1);
 	}
-	pthread_attr_destroy(&attr);
 	pthread_join(thread, 0);		
 
 #ifdef REPORT_RESULT

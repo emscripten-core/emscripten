@@ -52,14 +52,10 @@ int main()
 	}
 
 	pthread_t thread;
-	pthread_attr_t attr;
 	int rc, result;
 
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-	rc = pthread_create(&thread, &attr, ThreadMain, NULL);
+	rc = pthread_create(&thread, NULL, ThreadMain, NULL);
 	assert(rc == 0);
-	pthread_attr_destroy(&attr);
 
 	rc = pthread_join(thread, (void**)&result);
 	assert(rc == 0);
