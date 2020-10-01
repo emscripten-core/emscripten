@@ -8219,8 +8219,7 @@ int main () {
           # compiler).
           # TODO: identify what is causing this. meanwhile allow some amount of slop
           if js:
-            # TODO: restore this to 30 after roll
-            slop = 60
+            slop = 30
           else:
             slop = 20
           if size <= expected_size + slop and size >= expected_size - slop:
