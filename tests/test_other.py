@@ -6650,11 +6650,10 @@ int main() {
       data = '\n'.join(funcs) + '\n'
       self.assertFileContents(filename, data)
 
-  @disabled("disabled to allow https://github.com/WebAssembly/binaryen/pull/3180 to roll")
   @parameterized({
     'O0': ([],      [], ['waka'],   743), # noqa
-    'O1': (['-O1'], [], ['waka'],   330), # noqa
-    'O2': (['-O2'], [], ['waka'],   312), # noqa
+    'O1': (['-O1'], [], ['waka'],   303), # noqa
+    'O2': (['-O2'], [], ['waka'],   265), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'], [], [],          62), # noqa
     'Os': (['-Os'], [], [],          62), # noqa
@@ -6664,7 +6663,6 @@ int main() {
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
-  @disabled("disabled to allow https://github.com/WebAssembly/binaryen/pull/3180 to roll")
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka'], 127740), # noqa
     # exceptions increases code size significantly
@@ -6679,7 +6677,6 @@ int main() {
     # lead to different inlining decisions which add or remove a function
     self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
 
-  @disabled("disabled to allow https://github.com/WebAssembly/binaryen/pull/3180 to roll")
   @parameterized({
     'O0': ([],      [], ['waka'], 12726), # noqa
     'O1': (['-O1'], [], ['waka'],  3511), # noqa
