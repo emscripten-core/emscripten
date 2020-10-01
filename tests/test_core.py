@@ -38,9 +38,9 @@ logger = logging.getLogger("test_core")
 
 def wasm_simd(f):
   def decorated(self):
-    if os.getenv('EMTEST_NO_D8'):
-      unittest.skip('Skipped because EMTEST_NO_D8 is set')
-    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
+    if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
+      if os.getenv('EMTEST_NO_D8') is None:
+        raise Exception('d8 is needed to run SIMD tests, set EMTEST_NO_D8 if you want to skip them')
       self.skipTest('wasm simd only supported in d8 for now')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
@@ -56,11 +56,7 @@ def wasm_simd(f):
 
 def bleeding_edge_wasm_backend(f):
   def decorated(self):
-    if os.getenv('EMTEST_NO_D8'):
-      unittest.skip('Skipped because EMTEST_NO_D8 is set')
-    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-      self.skipTest('only works in d8 for now')
-    if not self.is_wasm():
+    if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm2js only supports MVP for now')
     self.js_engines = [config.V8_ENGINE]
     f(self)
