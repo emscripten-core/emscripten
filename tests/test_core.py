@@ -5858,6 +5858,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @no_safe_heap('has unaligned 64-bit operations in wasm')
   def test_sse1(self):
     src = path_from_root('tests', 'sse', 'test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6625,6 +6626,7 @@ return malloc(size);
           if '\n' + short_aborter + '@' not in output and '\n' + full_aborter + '@' not in output:
             self.assertContained(' ' + short_aborter + ' ' + '\n' + ' ' + full_aborter + ' ', output)
 
+  @no_safe_heap('tracing from sbrk into JS leads to an infinite loop')
   def test_tracing(self):
     self.emcc_args += ['--tracing']
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing.c')
