@@ -1228,11 +1228,23 @@ function asanify(ast) {
   });
 }
 
+function multiply(value, by) {
+  return createNode({
+    type: 'BinaryExpression',
+    left: value,
+    operator: '*',
+    right: createLiteral(by)
+  });
+}
+
 // Replace direct heap access with SAFE_HEAP* calls.
 function safeHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
-      if (node.id.type === 'Identifier' && node.id.name.startsWith('SAFE_HEAP')) {
+      if (node.id.type === 'Identifier' &&
+          (node.id.name.startsWith('SAFE_HEAP') ||
+           node.id.name === 'setValue' ||
+           node.id.name === 'getValue')) {
         // do not recurse into this js impl function, which we use during
         // startup before the wasm is ready
       } else {
@@ -1254,20 +1266,20 @@ function safeHeap(ast) {
           }
           case 'HEAP16':
           case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [ptr, value, createLiteral(2)]);
+            makeCallExpression(node, 'SAFE_HEAP_STORE', [multiply(ptr, 2), value, createLiteral(2)]);
             break;
           }
           case 'HEAP32':
           case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [ptr, value, createLiteral(4)]);
+            makeCallExpression(node, 'SAFE_HEAP_STORE', [multiply(ptr, 4), value, createLiteral(4)]);
             break;
           }
           case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [ptr, value, createLiteral(4)]);
+            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [multiply(ptr, 4), value, createLiteral(4)]);
             break;
           }
           case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [ptr, value, createLiteral(8)]);
+            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [multiply(ptr, 8), value, createLiteral(8)]);
             break;
           }
         }
@@ -1292,27 +1304,27 @@ function safeHeap(ast) {
             break;
           }
           case 'HEAP16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(2), createLiteral(0)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 2), createLiteral(2), createLiteral(0)]);
             break;
           }
           case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(2), createLiteral(1)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 2), createLiteral(2), createLiteral(1)]);
             break;
           }
           case 'HEAP32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(4), createLiteral(0)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 4), createLiteral(4), createLiteral(0)]);
             break;
           }
           case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(4), createLiteral(1)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 4), createLiteral(4), createLiteral(1)]);
             break;
           }
           case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [ptr, createLiteral(4), createLiteral(0)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [multiply(ptr, 4), createLiteral(4), createLiteral(0)]);
             break;
           }
           case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [ptr, createLiteral(8), createLiteral(0)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [multiply(ptr, 8), createLiteral(8), createLiteral(0)]);
             break;
           }
           default: {}
