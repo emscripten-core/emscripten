@@ -991,6 +991,8 @@ function createWasm() {
         Promise.all([response.clone().arrayBuffer(), result]).then(function (results) {
           wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(results[0]), results[1].module);
           {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+        }, function(reason) {
+          err('failed to initialize offset-converter: ' + reason);
         });
 #endif
         return result.then(receiveInstantiatedSource, function(reason) {
