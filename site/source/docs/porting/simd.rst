@@ -807,7 +807,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_mulhrs_epi16
      - 💣 scalarized (TODO: emulatable in SIMD?)
    * - _mm_shuffle_epi8
-     - 💣 scalarized (TODO: use wasm_v8x16_swizzle when available)
+     - ⚠️ emulated with a SIMD swizzle+and+const
    * - _mm_sign_epi8
      - ⚠️ emulated with a SIMD complex shuffle+cmp+xor+andnot
    * - _mm_sign_epi16
