@@ -809,11 +809,11 @@ The following table highlights the availability and expected performance of diff
    * - _mm_shuffle_epi8
      - 💣 scalarized (TODO: use wasm_v8x16_swizzle when available)
    * - _mm_sign_epi8
-     - ⚠️ emulated with a SIMD complex shuffle+cmp+xor+andnot
+     - ⚠️ emulated with SIMD two cmp+two logical+add
    * - _mm_sign_epi16
-     - ⚠️ emulated with a SIMD shr+cmp+xor+andnot
+     - ⚠️ emulated with SIMD two cmp+two logical+add
    * - _mm_sign_epi32
-     - ⚠️ emulated with a SIMD shr+cmp+xor+andnot
+     - ⚠️ emulated with SIMD two cmp+two logical+add
 
 ⚫ The SSSE3 functions that deal with 64-bit wide MMX registers are not available:
  -  _mm_abs_pi8, _mm_abs_pi16, _mm_abs_pi32, _mm_alignr_pi8, _mm_hadd_pi16, _mm_hadd_pi32, _mm_hadds_pi16, _mm_hsub_pi16, _mm_hsub_pi32, _mm_hsubs_pi16, _mm_maddubs_pi16, _mm_mulhrs_pi16, _mm_shuffle_pi8, _mm_sign_pi8, _mm_sign_pi16 and _mm_sign_pi32
