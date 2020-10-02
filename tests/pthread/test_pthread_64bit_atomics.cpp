@@ -91,7 +91,6 @@ void RunTest(int test)
 {	
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
 	printf("Main thread has thread ID %d\n", (int)pthread_self());

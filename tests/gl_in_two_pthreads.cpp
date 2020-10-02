@@ -51,7 +51,6 @@ void run_thread(int param)
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   pthread_t thread;
   int rc = pthread_create(&thread, &attr, thread_main, (void*)param);
   assert(rc == 0);

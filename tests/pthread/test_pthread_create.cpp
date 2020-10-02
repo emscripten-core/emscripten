@@ -61,15 +61,11 @@ int numThreadsToCreate = 1000;
 
 void CreateThread(int i)
 {
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	static int counter = 1;
 	global_shared_data[i] = (counter++ * 12141231) & 0x7FFFFFFF; // Arbitrary random'ish data for perturbing the sort for this thread task.
 //	EM_ASM(out('Main: Creating thread idx ' + $0 + ' (param ' + $1 + ')'), i, global_shared_data[i]);
-	int rc = pthread_create(&thread[i], &attr, ThreadMain, (void*)i);
+	int rc = pthread_create(&thread[i], NULL, ThreadMain, (void*)i);
 	assert(rc == 0);
-	pthread_attr_destroy(&attr);
 }
 
 int main()
