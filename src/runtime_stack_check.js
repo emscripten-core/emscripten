@@ -20,6 +20,9 @@ function writeStackCookie() {
 }
 
 function checkStackCookie() {
+#if !MINIMAL_RUNTIME
+  if (ABORT) return;
+#endif
   var cookie1 = HEAPU32[(STACK_MAX >> 2)+1];
   var cookie2 = HEAPU32[(STACK_MAX >> 2)+2];
   if (cookie1 != 0x2135467 || cookie2 != 0x89BACDFE) {
