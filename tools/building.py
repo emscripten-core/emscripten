@@ -1404,6 +1404,11 @@ def instrument_js_for_asan(js_file):
   return acorn_optimizer(js_file, ['asanify'])
 
 
+def instrument_js_for_safe_heap(js_file):
+  logger.debug('instrumenting JS memory accesses for SAFE_HEAP')
+  return acorn_optimizer(js_file, ['safeHeap'])
+
+
 def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   logger.debug('handle_final_wasm_symbols')
   args = []
