@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- IDBFS now persists files whenever their timestamp changes; previously it acted
+  on sync only if the timestamp increased and ignored the file changes otherwise.
 
 2.0.6: 10/02/2020
 -----------------
