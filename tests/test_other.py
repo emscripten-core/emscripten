@@ -1806,6 +1806,8 @@ int f() {
        ['unsignPointers']),
       (path_from_root('tests', 'optimizer', 'test-asanify.js'), open(path_from_root('tests', 'optimizer', 'test-asanify-output.js')).read(),
        ['asanify']),
+      (path_from_root('tests', 'optimizer', 'test-safeHeap.js'), open(path_from_root('tests', 'optimizer', 'test-safeHeap-output.js')).read(),
+       ['safeHeap']),
     ]:
       print(input, passes)
 
