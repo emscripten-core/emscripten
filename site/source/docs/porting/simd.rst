@@ -536,9 +536,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_mul_sd
      - ⚠️ emulated with a shuffle
    * - _mm_mulhi_epi16
-     - ❌ scalarized
+     - ⚠️ emulated with a SIMD four widen+two mul+generic shuffle
    * - _mm_mulhi_epu16
-     - ❌ scalarized
+     - ⚠️ emulated with a SIMD four widen+two mul+generic shuffle
    * - _mm_mullo_epi16
      - ✅ wasm_i16x8_mul
    * - _mm_or_pd
