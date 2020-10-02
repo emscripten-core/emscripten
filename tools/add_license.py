@@ -58,7 +58,6 @@ exclude_filenames = [
     'tests/box2d/',
     'tests/glbook/',
     'tests/lzma/lzma/',
-    'tests/nbody-java/',
     'tests/cube2hash/',
     'tests/optimizer/',
     'tests/sqlite/sqlite3.c',
