@@ -3347,10 +3347,9 @@ window.close = function() {
         self.run_browser('a.html', '...', '/report_result?0')
 
   def test_modularize_network_error(self):
-    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-    create_test_file('test.c', src)
+    test_c_path = path_from_root('tests', 'browser_test_hello_world.c')
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest([test_c_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3366,6 +3365,29 @@ window.close = function() {
     print('Deleting a.out.wasm to cause a download error')
     os.remove('a.out.wasm')
     self.run_browser('a.html', '...', '/report_result?abort(both async and sync fetching of the wasm failed)')
+
+  def test_modularize_init_error(self):
+    test_cpp_path = path_from_root('tests', 'browser', 'test_modularize_init_error.cpp')
+    browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
+    self.compile_btest([test_cpp_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    create_test_file('a.html', '''
+      <script src="a.out.js"></script>
+      <script>
+        if (typeof window === 'object') {
+          window.addEventListener('unhandledrejection', function(event) {
+            reportResultToServer("Unhandled promise rejection: " + event.reason.message);
+          });
+        }
+        createModule()
+          .then(() => {
+            reportResultToServer("Module creation succeeded when it should have failed");
+          })
+          .catch(err => {
+            reportResultToServer(err);
+          });
+      </script>
+    ''')
+    self.run_browser('a.html', '...', '/report_result?intentional error to test rejection')
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
