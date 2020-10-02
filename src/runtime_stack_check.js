@@ -8,6 +8,7 @@
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
 #if ASSERTIONS
+  assert(STACK_MAX > 0);
   assert((STACK_MAX & 3) == 0);
 #endif
   // The stack grows downwards
