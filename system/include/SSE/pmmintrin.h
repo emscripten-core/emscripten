@@ -22,7 +22,7 @@ _mm_lddqu_si128(__m128i const *__p)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_addsub_ps(__m128 __a, __m128 __b)
 {
-  return _mm_add_ps(__a, _mm_mul_ps(__b, _mm_set_ps(1.f, -1.f, 1.f, -1.f)));
+  return _mm_add_ps(__a, _mm_xor_ps(__b, _mm_set_ps(+0.0f, -0.0f, +0.0f, -0.0f)));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -52,7 +52,7 @@ _mm_moveldup_ps(__m128 __a)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_addsub_pd(__m128d __a, __m128d __b)
 {
-  return _mm_add_pd(__a, _mm_mul_pd(__b, _mm_set_pd(1.0, -1.0)));
+  return _mm_add_pd(__a, _mm_xor_pd(__b, _mm_set_pd(+0.0, -0.0)));
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
