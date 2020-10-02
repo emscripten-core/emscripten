@@ -240,19 +240,25 @@ def no_lsan(note):
   return decorator
 
 
-def no_minimal_runtime(note):
-  assert not callable(note)
+def make_no_decorator_for_setting(name):
+  def outer_decorator(note):
+    assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+    def decorator(f):
+      assert callable(f)
 
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      if 'MINIMAL_RUNTIME=1' in self.emcc_args or self.get_setting('MINIMAL_RUNTIME'):
-        self.skipTest(note)
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
+      @wraps(f)
+      def decorated(self, *args, **kwargs):
+        if (name + '=1') in self.emcc_args or self.get_setting(name):
+          self.skipTest(note)
+        f(self, *args, **kwargs)
+      return decorated
+    return decorator
+  return outer_decorator
+
+
+no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
+no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 
 
 class TestCoreBase(RunnerCore):
@@ -5866,6 +5872,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @no_safe_heap('has unaligned 64-bit operations in wasm')
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
