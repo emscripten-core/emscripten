@@ -853,27 +853,27 @@ The following table highlights the availability and expected performance of diff
    * - _mm_cvtepi16_epi32
      - ✅ wasm_i32x4_widen_low_i16x8
    * - _mm_cvtepi16_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with a SIMD widen+const+cmp+shuffle
    * - _mm_cvtepi32_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with SIMD const+cmp+shuffle
    * - _mm_cvtepi8_epi16
      - ✅ wasm_i16x8_widen_low_i8x16
    * - _mm_cvtepi8_epi32
-     - ❌ scalarized
+     - ⚠️ emulated with two SIMD widens
    * - _mm_cvtepi8_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with two SIMD widens+const+cmp+shuffle
    * - _mm_cvtepu16_epi32
      - ✅ wasm_i32x4_widen_low_u16x8
    * - _mm_cvtepu16_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with SIMD const+two shuffles
    * - _mm_cvtepu32_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with SIMD const+shuffle
    * - _mm_cvtepu8_epi16
      - ✅ wasm_i16x8_widen_low_u8x16
    * - _mm_cvtepu8_epi32
-     - ❌ scalarized
+     - ⚠️ emulated with two SIMD widens
    * - _mm_cvtepu8_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with SIMD const+three shuffles
    * - _mm_dp_pd
      - ⚠️ emulated with SIMD mul+add+setzero+2xblend
    * - _mm_dp_ps
