@@ -8164,17 +8164,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_create(self):
-    self.set_setting('-lbrowser.js')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
-    def test():
-      self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
-    test()
-
-    print('with pool')
+  @node_pthreads
+  def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', '2')
-    self.emcc_args += ['-DPOOL']
-    test()
+    self.emcc_args += ['-DALLOW_SYNC']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
+
+  @node_pthreads
+  def test_pthread_create_proxy(self):
+    # with PROXY_TO_PTHREAD, we can synchronously depend on workers being available
+    self.set_setting('PROXY_TO_PTHREAD', '1')
+    self.emcc_args += ['-DALLOW_SYNC']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
   @node_pthreads
   def test_pthread_exceptions(self):
