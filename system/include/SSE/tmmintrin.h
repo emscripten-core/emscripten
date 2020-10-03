@@ -79,25 +79,14 @@ _mm_hsubs_epi16(__m128i __a, __m128i __b)
                         (__m128i)wasm_v16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
 }
 
-static __inline__ short __attribute__((__always_inline__, __nodebug__))
-__Saturate_To_Int16(int __x)
-{
-    return __x <= -32768 ? -32768 : (__x >= 32767 ? 32767 : __x);
-}
-
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_maddubs_epi16(__m128i __a, __m128i __b)
 {
-  union {
-    char __x[16];
-    short __s[8];
-    __m128i __m;
-  } __src, __src2, __dst;
-  __src.__m = __a;
-  __src2.__m = __b;
-  for(int __i = 0; __i < 16; __i += 2)
-      __dst.__s[__i>>1] = __Saturate_To_Int16((unsigned char)__src.__x[__i+1] * __src2.__x[__i+1] + (unsigned char)__src.__x[__i] * __src2.__x[__i]);
-  return __dst.__m;
+  return _mm_adds_epi16(
+    _mm_mullo_epi16(
+      _mm_and_si128(__a, _mm_set1_epi16(0x00FF)),
+      _mm_srai_epi16(_mm_slli_epi16(__b, 8), 8)),
+    _mm_mullo_epi16(_mm_srli_epi16(__a, 8), _mm_srai_epi16(__b, 8)));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

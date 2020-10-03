@@ -803,7 +803,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_hsubs_epi16
      - ⚠️ emulated with a SIMD subs+two shuffles
    * - _mm_maddubs_epi16
-     - 💣 scalarized
+     - ⚠️ emulated with SIMD saturated add+four shifts+two muls+and+const
    * - _mm_mulhrs_epi16
      - 💣 scalarized (TODO: emulatable in SIMD?)
    * - _mm_shuffle_epi8
