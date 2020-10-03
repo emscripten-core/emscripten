@@ -22,7 +22,9 @@ function setValue(ptr, value, type, noSafe) {
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
       case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
       case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, undefined, undefined, '1') }}}; break;
+#if WASM_BIGINT
       case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, undefined, undefined, '1') }}}; break;
+#endif
       case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, undefined, undefined, '1') }}}; break;
       case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, undefined, '1') }}}; break;
       default: abort('invalid type for setValue: ' + type);
@@ -34,7 +36,9 @@ function setValue(ptr, value, type, noSafe) {
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
       case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
       case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
+#if WASM_BIGINT
       case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
+#endif
       case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
       case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
       default: abort('invalid type for setValue: ' + type);
@@ -127,10 +131,9 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
 #endif
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + brk);
   if (runtimeInitialized) {
     var brk = _sbrk() >>> 0;
-    if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + brk);
+    if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + brk);
     assert(brk >= STACK_BASE); // sbrk-managed memory must be above the stack
     assert(brk <= HEAP8.length);
   }
