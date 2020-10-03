@@ -2014,9 +2014,11 @@ int main(int argc, char **argv) {
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     # Tracing of memory growths should work
-    self.set_setting('EMSCRIPTEN_TRACING', 1)
-    self.emcc_args += ['--tracing']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    # (SAFE_HEAP would instrument the tracing code itself, leading to recursion)
+    if not self.get_setting('SAFE_HEAP'):
+      self.set_setting('EMSCRIPTEN_TRACING', 1)
+      self.emcc_args += ['--tracing']
+      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -8369,7 +8371,7 @@ simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 
 # wasm
-wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
+wasm2s = make_run('wasm2s', emcc_args=['-O2', '-g1', '--profiling'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
