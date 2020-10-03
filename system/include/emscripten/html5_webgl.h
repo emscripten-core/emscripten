@@ -47,6 +47,7 @@ typedef struct EmscriptenWebGLContextAttributes {
 extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes);
 
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
+extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context_ext(const char *target, const EmscriptenWebGLContextAttributes *attributes, EMSCRIPTEN_RESULT *resultCodePtr);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 

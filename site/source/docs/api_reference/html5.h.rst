@@ -2061,9 +2061,9 @@ Functions
 
 
 
-.. c:function:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes)
+.. c:function:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context_ext(const char *target, const EmscriptenWebGLContextAttributes *attributes, EMSCRIPTEN_RESULT *resultCodePtr)
 
-  Creates and returns a new `WebGL context <http://www.khronos.org/registry/webgl/specs/latest/1.0/#2.1>`_.
+  Creates and returns a new `WebGL context <http://www.khronos.org/registry/webgl/specs/latest/1.0/#2.1>`_, and populates resultCodePtr with the result code for the operation.
 
   .. note::
 
@@ -2077,6 +2077,9 @@ Functions
   :returns: On success, a strictly positive value that represents a handle to the created context. On failure, a negative number that can be cast to an |EMSCRIPTEN_RESULT| field to get the reason why the context creation failed.
   :rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 
+.. c:function:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes)
+
+see ``emscripten_webgl_create_context_ext`` for description.
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
 

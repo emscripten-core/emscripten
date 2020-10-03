@@ -11,6 +11,7 @@
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
+extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_create_context_ext(const char *target, const EmscriptenWebGLContextAttributes *attributes, EMSCRIPTEN_RESULT *resultCodePtr);
 extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current_calling_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 extern EMSCRIPTEN_RESULT emscripten_webgl_do_commit_frame(void);
 extern EM_BOOL emscripten_supports_offscreencanvas(void);
@@ -29,6 +30,12 @@ static void InitWebGLTls()
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes)
 {
+  return emscripten_webgl_create_context_ext(target, attributes, NULL);
+}
+
+EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context_ext(
+  const char* target, const EmscriptenWebGLContextAttributes* attributes, EMSCRIPTEN_RESULT* resultCodePtr)
+{
   GL_FUNCTION_TRACE(__func__);
   if (!attributes)
   {
@@ -42,11 +49,12 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
   {
     EmscriptenWebGLContextAttributes attrs = *attributes;
     attrs.renderViaOffscreenBackBuffer = EM_TRUE;
-    return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_III, &emscripten_webgl_do_create_context, target, &attrs);
+    return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread(
+      EM_FUNC_SIG_III, &emscripten_webgl_do_create_context_ext, target, &attrs, &resultCodePtr);
   }
   else
   {
-    return emscripten_webgl_do_create_context(target, attributes);
+    return emscripten_webgl_do_create_context_ext(target, attributes, resultCodePtr);
   }
 }
 
