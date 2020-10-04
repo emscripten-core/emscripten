@@ -38,7 +38,7 @@ preamble.js
 
 The following advanced APIs are documented in `preamble.js <https://github.com/emscripten-core/emscripten/blob/master/src/preamble.js>`_.
 
-.. js:function:: allocate(slab, types, allocator, ptr)
+.. js:function:: allocate(slab, allocator, ptr)
 
   This is marked as *internal* because it is difficult to use (it has been optimized for multiple syntaxes to save space in generated code). Normally developers should instead allocate memory using ``_malloc()``, initialize it with :js:func:`setValue`, etc., but this function may be useful for advanced developers in certain cases.
 
