@@ -2697,8 +2697,8 @@ def do_binaryen(target, options, wasm_target):
     if shared.Settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)
 
-    #if shared.Settings.SAFE_HEAP:
-    #  final_js = building.instrument_js_for_safe_heap(final_js)
+    if shared.Settings.SAFE_HEAP:
+      final_js = building.instrument_js_for_safe_heap(final_js)
 
     if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
       # minify the JS

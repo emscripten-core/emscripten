@@ -119,9 +119,10 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
     assert(brk <= HEAP8.length);
   }
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
+  return value;
 }
 function SAFE_HEAP_STORE_D(dest, value, bytes) {
-  SAFE_HEAP_STORE(dest, value, bytes, true);
+  return SAFE_HEAP_STORE(dest, value, bytes, true);
 }
 
 /** @param {number|boolean=} isFloat */
