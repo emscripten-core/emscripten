@@ -425,6 +425,9 @@ jobs:
           name: Install packages
           command: choco install make cmake.portable python3
       - run:
+          name: Refresh environment to update path
+          command: refreshenv
+      - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - build
@@ -445,12 +448,6 @@ jobs:
       name: win/vs2019
       shell: bash.exe -eo pipefail
     steps:
-      - run:
-          name: Install packages
-          command: choco install make cmake.portable python3
-      - run:
-          name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
       - run-tests:
           test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null"
   build-mac:
