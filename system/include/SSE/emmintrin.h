@@ -712,31 +712,21 @@ _mm_min_epu8(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mulhi_epi16(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  union {
-    signed short x[8];
-    __m128i m;
-  } src, src2, dst;
-  src.m = __a;
-  src2.m = __b;
-  for(int i = 0; i < 8; ++i)
-    dst.x[i] = (signed short)(((int)src.x[i] * (int)src2.x[i]) >> 16);
-  return dst.m;
+  const v128_t lo = wasm_i32x4_mul(wasm_i32x4_widen_low_i16x8((v128_t)__a),
+                                   wasm_i32x4_widen_low_i16x8((v128_t)__b));
+  const v128_t hi = wasm_i32x4_mul(wasm_i32x4_widen_high_i16x8((v128_t)__a),
+                                   wasm_i32x4_widen_high_i16x8((v128_t)__b));
+  return (__m128i)wasm_v16x8_shuffle(lo, hi, 1, 3, 5, 7, 9, 11, 13, 15);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mulhi_epu16(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  union {
-    unsigned short x[8];
-    __m128i m;
-  } src, src2, dst;
-  src.m = __a;
-  src2.m = __b;
-  for(int i = 0; i < 8; ++i)
-    dst.x[i] = (unsigned short)(((int)src.x[i] * (int)src2.x[i]) >> 16);
-  return dst.m;
+  const v128_t lo = wasm_i32x4_mul(wasm_i32x4_widen_low_u16x8((v128_t)__a),
+                                   wasm_i32x4_widen_low_u16x8((v128_t)__b));
+  const v128_t hi = wasm_i32x4_mul(wasm_i32x4_widen_high_u16x8((v128_t)__a),
+                                   wasm_i32x4_widen_high_u16x8((v128_t)__b));
+  return (__m128i)wasm_v16x8_shuffle(lo, hi, 1, 3, 5, 7, 9, 11, 13, 15);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
