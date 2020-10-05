@@ -5070,6 +5070,7 @@ main( int argv, char ** argc ) {
   def test_stat_mknod(self):
     self.do_runf(path_from_root('tests', 'stat', 'test_mknod.c'), 'success')
 
+  @no_safe_heap('https://github.com/emscripten-core/emscripten/issues/12433')
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl.c')
@@ -8016,6 +8017,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-std=c++17']
     self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction.cpp')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @parameterized({
     'c': ['test_asan_no_error.c'],
     'cpp': ['test_asan_no_error.cpp'],
@@ -8030,6 +8032,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # clang optimizing things away. for example, a memset might be optimized into
   # stores, and then the stores identified as dead, which leaves nothing for
   # asan to test. here we want to test asan itself, so we work around that.
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',
@@ -8099,6 +8102,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  expected_output=expected_output, assert_all=True,
                  check_for_error=False, assert_returncode=NON_ZERO)
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_js_stack_op(self):
     self.emcc_args.append('-fsanitize=address')
@@ -8107,12 +8111,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(path_from_root('tests', 'core', 'test_asan_js_stack_op.c'),
                  expected_output='Hello, World!')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('INITIAL_MEMORY', 314572800)
     self.do_run_in_out_file_test('tests', 'core', 'test_asan_api.c')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_modularized_with_closure(self):
     self.emcc_args.append('-sMODULARIZE=1')
@@ -8371,7 +8377,7 @@ simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 
 # wasm
-wasm2s = make_run('wasm2s', emcc_args=['-O2', '-g1', '--profiling'], settings={'SAFE_HEAP': 1})
+wasm2s = make_run('wasm2s', emcc_args=['-O2', '-g1', '--profiling', '-sWASM=0'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
