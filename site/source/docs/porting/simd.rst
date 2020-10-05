@@ -536,9 +536,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_mul_sd
      - ⚠️ emulated with a shuffle
    * - _mm_mulhi_epi16
-     - ❌ scalarized
+     - ⚠️ emulated with a SIMD four widen+two mul+generic shuffle
    * - _mm_mulhi_epu16
-     - ❌ scalarized
+     - ⚠️ emulated with a SIMD four widen+two mul+generic shuffle
    * - _mm_mullo_epi16
      - ✅ wasm_i16x8_mul
    * - _mm_or_pd
@@ -807,7 +807,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_mulhrs_epi16
      - 💣 scalarized (TODO: emulatable in SIMD?)
    * - _mm_shuffle_epi8
-     - 💣 scalarized (TODO: use wasm_v8x16_swizzle when available)
+     - ⚠️ emulated with a SIMD swizzle+and+const
    * - _mm_sign_epi8
      - ⚠️ emulated with a SIMD complex shuffle+cmp+xor+andnot
    * - _mm_sign_epi16
@@ -853,27 +853,27 @@ The following table highlights the availability and expected performance of diff
    * - _mm_cvtepi16_epi32
      - ✅ wasm_i32x4_widen_low_i16x8
    * - _mm_cvtepi16_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with a SIMD widen+const+cmp+shuffle
    * - _mm_cvtepi32_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with SIMD const+cmp+shuffle
    * - _mm_cvtepi8_epi16
      - ✅ wasm_i16x8_widen_low_i8x16
    * - _mm_cvtepi8_epi32
-     - ❌ scalarized
+     - ⚠️ emulated with two SIMD widens
    * - _mm_cvtepi8_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with two SIMD widens+const+cmp+shuffle
    * - _mm_cvtepu16_epi32
      - ✅ wasm_i32x4_widen_low_u16x8
    * - _mm_cvtepu16_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with SIMD const+two shuffles
    * - _mm_cvtepu32_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with SIMD const+shuffle
    * - _mm_cvtepu8_epi16
      - ✅ wasm_i16x8_widen_low_u8x16
    * - _mm_cvtepu8_epi32
-     - ❌ scalarized
+     - ⚠️ emulated with two SIMD widens
    * - _mm_cvtepu8_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with SIMD const+three shuffles
    * - _mm_dp_pd
      - ⚠️ emulated with SIMD mul+add+setzero+2xblend
    * - _mm_dp_ps

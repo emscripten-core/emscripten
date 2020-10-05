@@ -6429,7 +6429,7 @@ int main() {
         (['-s', 'INITIAL_MEMORY=20971520',                                '-s', 'MAXIMUM_MEMORY=41943040'], 320, 640),
         (['-s', 'INITIAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=41943040'], 320, 640),
       ]:
-      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-O2'] + args
+      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-O2'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
       wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
@@ -6484,7 +6484,7 @@ int main() {
     correct = self.run_js('a.out.js')
     for args in [[], ['-s', 'RELOCATABLE=1']]:
       print(args)
-      self.run_process([EMCC, 'src.cpp', '-s', 'WASM=1', '-o', 'b.out.js'] + args)
+      self.run_process([EMCC, 'src.cpp', '-o', 'b.out.js'] + args)
       seen = self.run_js('b.out.js')
       assert correct == seen, correct + '\n vs \n' + seen
 
@@ -6522,7 +6522,7 @@ int main() {
           (['-s', 'BINARYEN_IGNORE_IMPLICIT_TRAPS=1'], True),
         ]:
         print(args, expect)
-        cmd = [EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-O3'] + args
+        cmd = [EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O3'] + args
         print(' '.join(cmd))
         err = self.run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
         self.assertContainedIf('--ignore-implicit-traps ', err, expect)
@@ -6652,8 +6652,8 @@ int main() {
 
   @parameterized({
     'O0': ([],      [], ['waka'],   743), # noqa
-    'O1': (['-O1'], [], ['waka'],   330), # noqa
-    'O2': (['-O2'], [], ['waka'],   312), # noqa
+    'O1': (['-O1'], [], ['waka'],   303), # noqa
+    'O2': (['-O2'], [], ['waka'],   265), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'], [], [],          62), # noqa
     'Os': (['-Os'], [], [],          62), # noqa
@@ -6735,7 +6735,7 @@ int main() {
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
     exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-Os', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=%s' % str(exports)])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Os', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=%s' % str(exports)])
     js = open('a.out.js').read()
     for export in exports:
       assert ('Module["%s"]' % export) in js, export
@@ -7154,14 +7154,11 @@ end
 
   def test_archive_non_objects(self):
     create_test_file('file.txt', 'test file')
-    # llvm-nm has issues with files that start with two or more null bytes since it thinks they
-    # are COFF files.  Ensure that we correctly ignore such files when we process them.
-    create_test_file('zeros.bin', '\0\0\0\0')
     self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c')])
     # No index added.
     # --format=darwin (the default on OSX has a strange issue where it add extra
     # newlines to files: https://bugs.llvm.org/show_bug.cgi?id=42562
-    self.run_process([EMAR, 'crS', '--format=gnu', 'libfoo.a', 'file.txt', 'zeros.bin', 'hello_world.o'])
+    self.run_process([EMAR, 'crS', '--format=gnu', 'libfoo.a', 'file.txt', 'hello_world.o'])
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), 'libfoo.a'])
 
   def test_flag_aliases(self):
@@ -7993,7 +7990,7 @@ int main () {
       self.assertLess(obtained_size, expected_size)
 
     self.run_process([PYTHON, path_from_root('tests', 'gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
-    for wasm in [['-s', 'WASM=1'], ['-s', 'WASM=0']]:
+    for wasm in [[], ['-s', 'WASM=0']]:
       # Currently we rely on Closure for full minification of every appearance of JS function names.
       # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
       for closure in [['--closure', '1']]:
@@ -8064,8 +8061,8 @@ int main () {
   # access from calling code, and should not have the unminified name exist more than once, that
   # would be wasteful for size)
   def test_function_exports_are_small(self):
-    def test(wasm, closure, opt):
-      extra_args = wasm + opt + closure
+    def test(args, closure, opt):
+      extra_args = args + opt + closure
       print(extra_args)
       args = [EMCC, path_from_root('tests', 'long_function_name_in_export.c'), '-o', 'a.html', '-s', 'ENVIRONMENT=web', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-Werror'] + extra_args
       self.run_process(args)
@@ -8076,14 +8073,14 @@ int main () {
 
       # TODO: Add stricter testing when Wasm side is also optimized: (currently Wasm does still need
       # to reference exports multiple times)
-      if 'WASM=1' not in wasm:
+      if 'WASM=0' in args:
         num_times_export_is_referenced = output.count('thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction')
         self.assertEqual(num_times_export_is_referenced, 1)
 
     for closure in [[], ['--closure', '1']]:
       for opt in [['-O2'], ['-O3'], ['-Os']]:
         test(['-s', 'WASM=0'], closure, opt)
-        test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
+        test(['-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
@@ -8219,8 +8216,7 @@ int main () {
           # compiler).
           # TODO: identify what is causing this. meanwhile allow some amount of slop
           if js:
-            # TODO: restore this to 30 after roll
-            slop = 60
+            slop = 30
           else:
             slop = 20
           if size <= expected_size + slop and size >= expected_size - slop:
@@ -9248,7 +9244,12 @@ int main() {
     self.emcc_args.append('foo.o')
     self.do_run_from_file(src, output)
 
-  def test_export_global_address(self):
+  @parameterized({
+    '': ([],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+  })
+  def test_export_global_address(self, args):
+    self.emcc_args += args
     src = path_from_root('tests', 'other', 'test_export_global_address.c')
     output = path_from_root('tests', 'other', 'test_export_global_address.out')
     self.do_run_from_file(src, output)

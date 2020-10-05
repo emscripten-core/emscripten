@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.6: 10/02/2020
+-----------------
 - Add new `COMPILER_WRAPPER` settings (with corresponding `EM_COMPILER_WRAPPER`
   environment variable.  This replaces the existing `EMMAKEN_COMPILER`
   environment variable which is deprecated, but still works for the time being.

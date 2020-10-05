@@ -147,11 +147,8 @@ int main()
 		test_sync();
 		test_async_waitable();
 
-		pthread_attr_t attr;
-		pthread_attr_init(&attr);
-		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 		pthread_t thread;
-		int rc = pthread_create(&thread, &attr, thread_main, 0);
+		int rc = pthread_create(&thread, NULL, thread_main, NULL);
 		assert(rc == 0);
 		rc = pthread_join(thread, 0);
 		assert(rc == 0);

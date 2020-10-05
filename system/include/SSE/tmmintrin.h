@@ -141,16 +141,7 @@ _mm_mulhrs_epi16(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_shuffle_epi8(__m128i __a, __m128i __b)
 {
-  // TODO: use wasm_v8x16_swizzle() when it becomes available.
-  union {
-    unsigned char __x[16];
-    __m128i __m;
-  } __src, __src2, __dst;
-  __src.__m = __a;
-  __src2.__m = __b;
-  for(int __i = 0; __i < 16; ++__i)
-      __dst.__x[__i] = (__src2.__x[__i] & 0x80) ? 0 : __src.__x[__src2.__x[__i]&15];
-  return __dst.__m;
+  return (__m128i)wasm_v8x16_swizzle((v128_t)__a, (v128_t)_mm_and_si128(__b, _mm_set1_epi8(0x8F)));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

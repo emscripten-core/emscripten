@@ -343,39 +343,38 @@ Module['%(full)s'] = function() {
 
 
 def create_named_globals(metadata):
-  if not shared.Settings.RELOCATABLE:
-    named_globals = []
-    for k, v in metadata['namedGlobals'].items():
+  named_globals = []
+  for k, v in metadata['namedGlobals'].items():
+    v = int(v)
+    if shared.Settings.RELOCATABLE:
+      v += shared.Settings.GLOBAL_BASE
+    elif k == '__data_end':
       # We keep __data_end alive internally so that wasm-emscripten-finalize knows where the
       # static data region ends.  Don't export this to JS like other user-exported global
       # address.
-      if k not in ['__data_end']:
-        named_globals.append("Module['_%s'] = %s;" % (k, v))
-    return '\n'.join(named_globals)
+      continue
+    mangled = asmjs_mangle(k)
+    if shared.Settings.MINIMAL_RUNTIME:
+      named_globals.append("var %s = %s;" % (mangled, v))
+    else:
+      named_globals.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
 
-  elements = ',\n  '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
-  named_globals = '''
-var NAMED_GLOBALS = {
-  %s
-};
-for (var named in NAMED_GLOBALS) {
-  Module['_' + named] = %s + NAMED_GLOBALS[named];
-}
-Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % (elements, shared.Settings.GLOBAL_BASE)
+  named_globals = '\n'.join(named_globals)
 
-  # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
-  # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
-  #       we'll need another solution for that. one option is to scan the module imports, if/when
-  #       wasm supports that, then the loader can do this.
-  named_globals += '''
-for (var named in NAMED_GLOBALS) {
-  (function(named) {
-    var addr = Module['_' + named];
-    Module['g$_' + named] = function() { return addr };
-  })(named);
+  if shared.Settings.RELOCATABLE:
+    # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+    # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+    #       we'll need another solution for that. one option is to scan the module imports, if/when
+    #       wasm supports that, then the loader can do this.
+    names = ["'%s'" % n for n in metadata['namedGlobals']]
+    named_globals += '''
+for (var name in [%s]) {
+  (function(name) {
+    Module['g$' + name] = function() { return Module[name]; };
+  })(name);
 }
-'''
+''' % ','.join(names)
+
   return named_globals
 
 
