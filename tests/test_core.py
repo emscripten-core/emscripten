@@ -3601,6 +3601,8 @@ ok
     if auto_load:
       self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
       self.emcc_args += main_emcc_args
+      if force_c:
+        self.emcc_args.append('-nostdlib++')
 
     if isinstance(main, list):
       # main is just a library
@@ -3632,7 +3634,7 @@ ok
       int sidey() {
         return 11;
       }
-    ''', 'other says 11.', 'extern "C" int sidey();', need_reverse=need_reverse)
+    ''', 'other says 11.', 'int sidey();', force_c=True, need_reverse=need_reverse)
 
   @needs_dlfcn
   def test_dylink_basics(self):
@@ -3678,7 +3680,7 @@ ok
       void* get_address() {
         return (void*)&puts;
       }
-    ''', 'success', header='extern "C" void* get_address();')
+    ''', 'success', header='void* get_address();', force_c=True)
 
   @needs_dlfcn
   def test_dylink_floats(self):
@@ -3691,13 +3693,13 @@ ok
       }
     ''', '''
       float sidey() { return 11.5; }
-    ''', 'other says 12.50')
+    ''', 'other says 12.50', force_c=True)
 
   @needs_dlfcn
   def test_dylink_printfs(self):
     self.dylink_test(r'''
       #include <stdio.h>
-      extern "C" void sidey();
+     void sidey();
       int main() {
         printf("hello from main\n");
         sidey();
@@ -3705,10 +3707,10 @@ ok
       }
     ''', r'''
       #include <stdio.h>
-      extern "C" void sidey() {
+      void sidey() {
         printf("hello from side\n");
       }
-    ''', 'hello from main\nhello from side\n')
+    ''', 'hello from main\nhello from side\n', force_c=True)
 
   # Verify that a function pointer can be passed back and forth and invoked
   # on both sides.
@@ -3733,7 +3735,7 @@ ok
       intfunc sidey(intfunc f) { f(1); return f; }
       ''',
       expected='hello from funcptr: 1\nhello from funcptr: 0\n',
-      header='typedef void (*intfunc)(int );')
+      header='typedef void (*intfunc)(int );', force_c=True)
 
   @needs_dlfcn
   # test dynamic linking of a module with multiple function pointers, stored
@@ -3759,7 +3761,7 @@ ok
       void sidey(voidfunc f) { f(); }
       ''',
       expected='hello 0\nhello 1\nhello 2\n',
-      header='typedef void (*voidfunc)(); void sidey(voidfunc f);')
+      header='typedef void (*voidfunc)(); void sidey(voidfunc f);', force_c=True)
 
   @no_wasm('uses function tables in an asm.js specific way')
   @needs_dlfcn
@@ -3829,7 +3831,7 @@ ok
       voidfunc getright1();
       voidfunc getright2();
       void second();
-      ''', need_reverse=False, auto_load=False)
+      ''', need_reverse=False, auto_load=False, force_c=True)
 
   @needs_dlfcn
   def test_dylink_funcpointers_wrapper(self):
@@ -3856,7 +3858,7 @@ ok
       #include <emscripten.h>
       typedef void (*charfunc)(const char*);
       extern charfunc get();
-      ''')
+      ''', force_c=True)
 
   @needs_dlfcn
   def test_dylink_static_funcpointer_float(self):
@@ -3878,7 +3880,7 @@ ok
       int sidey(floatfunc f) { f(56.78); return 1; }
       ''',
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
-      header='typedef float (*floatfunc)(float);')
+      header='typedef float (*floatfunc)(float);', force_c=True)
 
   @needs_dlfcn
   def test_dylink_global_init(self):
@@ -3952,7 +3954,7 @@ ok
         x += y;
         return x;
       }
-    ''', 'other says 175a1ddee82b8c31.')
+    ''', 'other says 175a1ddee82b8c31.', force_c=True)
 
   @all_engines
   @needs_dlfcn
@@ -3986,14 +3988,14 @@ ok
         x = 18 - x;
         return x;
       }
-    ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
+    ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
   @needs_dlfcn
   @also_with_wasm_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
-      #include <cstdio>
-      #include <cinttypes>
+      #include <stdio.h>
+      #include <inttypes.h>
       #include "header.h"
 
       typedef int32_t (*fp_type_32)(int32_t, int32_t, int32_t);
@@ -4035,10 +4037,10 @@ res32 - external 32
 res64 - internal 64
 res64 - external 64\n''', header='''
       #include <emscripten.h>
-      #include <cstdint>
+      #include <stdint.h>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''')
+    ''', force_c=True)
 
   @needs_dlfcn
   @also_with_wasm_bigint
@@ -4105,7 +4107,7 @@ res64 - external 64\n''', header='''
       }
     ''', side=r'''
       int x = 123;
-    ''', expected=['extern is 123.\n'])
+    ''', expected=['extern is 123.\n'], force_c=True)
 
   @needs_dlfcn
   def test_dylink_global_var_modded(self):
@@ -4141,7 +4143,7 @@ res64 - external 64\n''', header='''
         strcpy(ret, temp);
         temp[1] = 'x';
         puts(ret);
-        printf("pow_two: %d.\n", int(pow_two(5.9)));
+        printf("pow_two: %d.\n", (int)pow_two(5.9));
         return 0;
       }
     ''', side=r'''
@@ -4154,7 +4156,7 @@ res64 - external 64\n''', header='''
       double pow_two(double x) {
         return pow(2, x);
       }
-    ''', expected=['hello through side\n\npow_two: 59.'])
+    ''', expected=['hello through side\n\npow_two: 59.'], force_c=True)
 
   @needs_dlfcn
   def test_dylink_jslib(self):
@@ -4166,7 +4168,7 @@ res64 - external 64\n''', header='''
       });
     ''')
     self.dylink_test(header=r'''
-      extern "C" { extern double test_lib_func(int input); }
+      extern double test_lib_func(int input);
     ''', main=r'''
       #include <stdio.h>
       #include "header.h"
@@ -4189,7 +4191,7 @@ res64 - external 64\n''', header='''
         printf("main2 sed: %u, %c\n", temp, temp/2);
         return test_lib_func(temp);
       }
-    ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'])
+    ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'], force_c=True)
 
   @needs_dlfcn
   def test_dylink_many_postsets(self):
@@ -4220,7 +4222,7 @@ res64 - external 64\n''', header='''
       void more() {
         test();
       }
-    ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
+    ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'], force_c=True)
 
   @needs_dlfcn
   def test_dylink_postsets_chunking(self):
@@ -4254,7 +4256,7 @@ res64 - external 64\n''', header='''
       #include "header.h"
 
       int global_var = 12345;
-    ''', expected=['12345\n'])
+    ''', expected=['12345\n'], force_c=True)
 
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
@@ -4477,25 +4479,25 @@ res64 - external 64\n''', header='''
   @needs_dlfcn
   def test_dylink_dot_a(self):
     # .a linking must force all .o files inside it, when in a shared module
-    create_test_file('third.cpp', 'extern "C" int sidef() { return 36; }')
-    create_test_file('fourth.cpp', 'extern "C" int sideg() { return 17; }')
+    create_test_file('third.c', 'int sidef() { return 36; }')
+    create_test_file('fourth.c', 'int sideg() { return 17; }')
 
-    self.run_process([EMCC, '-fPIC', '-c', 'third.cpp', '-o', 'third.o'] + self.get_emcc_args())
-    self.run_process([EMCC, '-fPIC', '-c', 'fourth.cpp', '-o', 'fourth.o'] + self.get_emcc_args())
+    self.run_process([EMCC, '-fPIC', '-c', 'third.c', '-o', 'third.o'] + self.get_emcc_args())
+    self.run_process([EMCC, '-fPIC', '-c', 'fourth.c', '-o', 'fourth.o'] + self.get_emcc_args())
     self.run_process([EMAR, 'rc', 'libfourth.a', 'fourth.o'])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
       #include <emscripten.h>
-      extern "C" int sidef();
-      extern "C" int sideg();
+      int sidef();
+      int sideg();
       int main() {
         printf("sidef: %d, sideg: %d.\n", sidef(), sideg());
       }
     ''',
                      # contents of libfourth.a must be included, even if they aren't referred to!
                      side=['libfourth.a', 'third.o'],
-                     expected=['sidef: 36, sideg: 17.\n'])
+                     expected=['sidef: 36, sideg: 17.\n'], force_c=True)
 
   @needs_dlfcn
   def test_dylink_spaghetti(self):
@@ -8174,7 +8176,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         int a[2048];
         f(a);
       }
-    ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
+    ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
 
   def test_fpic_static(self):
     self.emcc_args.append('-fPIC')
