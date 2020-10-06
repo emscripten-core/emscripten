@@ -581,7 +581,7 @@ namespace emscripten {
     }
 
     template <typename T>
-    std::vector<T> vecFromJSArray(const val & v) {
+    std::vector<T> vecFromJSArray(const val& v) {
         const size_t l = v["length"].as<size_t>();
 
         std::vector<T> rv;
@@ -594,7 +594,7 @@ namespace emscripten {
     }
 
     template <typename T>
-    std::vector<T> convertJSArrayToNumberVector(const val & v) {
+    std::vector<T> convertJSArrayToNumberVector(const val& v) {
         const size_t l = v["length"].as<size_t>();
 
         std::vector<T> rv;
