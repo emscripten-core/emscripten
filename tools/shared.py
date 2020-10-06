@@ -1129,47 +1129,6 @@ class JS(object):
       return os.path.basename(path)
 
   @staticmethod
-  def make_initializer(sig, settings=None):
-    settings = settings or Settings
-    if sig == 'i':
-      return '0'
-    elif sig == 'f':
-      return 'Math_fround(0)'
-    elif sig == 'j':
-      if settings:
-        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64(0)'
-    else:
-      return '+0'
-
-  FLOAT_SIGS = ['f', 'd']
-
-  @staticmethod
-  def make_coercion(value, sig, settings=None, ffi_arg=False, ffi_result=False, convert_from=None):
-    settings = settings or Settings
-    if sig == 'i':
-      if convert_from in JS.FLOAT_SIGS:
-        value = '(~~' + value + ')'
-      return value + '|0'
-    if sig in JS.FLOAT_SIGS and convert_from == 'i':
-      value = '(' + value + '|0)'
-    if sig == 'f':
-      if ffi_arg:
-        return '+Math_fround(' + value + ')'
-      elif ffi_result:
-        return 'Math_fround(+(' + value + '))'
-      else:
-        return 'Math_fround(' + value + ')'
-    elif sig == 'd' or sig == 'f':
-      return '+' + value
-    elif sig == 'j':
-      if settings:
-        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64(' + value + ')'
-    else:
-      return value
-
-  @staticmethod
   def legalize_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
     if Settings.WASM_BIGINT:
@@ -1194,16 +1153,6 @@ class JS(object):
     if Settings.WASM_BIGINT:
       return True
     return sig == JS.legalize_sig(sig)
-
-  @staticmethod
-  def make_jscall(sig):
-    fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
-    args = (',' if fnargs else '') + fnargs
-    ret = '''\
-function jsCall_%s(index%s) {
-    %sfunctionPointers[index](%s);
-}''' % (sig, args, 'return ' if sig[0] != 'v' else '', fnargs)
-    return ret
 
   @staticmethod
   def make_dynCall(sig, args):
@@ -1245,48 +1194,6 @@ function%s(%s) {
 }''' % (name, ','.join(args), body, rethrow)
 
     return ret
-
-  @staticmethod
-  def align(x, by):
-    while x % by != 0:
-      x += 1
-    return x
-
-  @staticmethod
-  def generate_string_initializer(s):
-    if Settings.ASSERTIONS:
-      # append checksum of length and content
-      crcTable = []
-      for i in range(256):
-        crc = i
-        for bit in range(8):
-          crc = (crc >> 1) ^ ((crc & 1) * 0xedb88320)
-        crcTable.append(crc)
-      crc = 0xffffffff
-      n = len(s)
-      crc = crcTable[(crc ^ n) & 0xff] ^ (crc >> 8)
-      crc = crcTable[(crc ^ (n >> 8)) & 0xff] ^ (crc >> 8)
-      for i in s:
-        crc = crcTable[(crc ^ i) & 0xff] ^ (crc >> 8)
-      for i in range(4):
-        s.append((crc >> (8 * i)) & 0xff)
-    s = ''.join(map(chr, s))
-    s = s.replace('\\', '\\\\').replace("'", "\\'")
-    s = s.replace('\n', '\\n').replace('\r', '\\r')
-
-    # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
-    def escape(x):
-      return '\\x{:02x}'.format(ord(x.group()))
-
-    return re.sub('[\x1a\x80-\xff]', escape, s)
-
-  @staticmethod
-  def is_dyn_call(func):
-    return func.startswith('dynCall_')
-
-  @staticmethod
-  def is_function_table(name):
-    return name.startswith('FUNCTION_TABLE_')
 
 
 # Python 2-3 compatibility helper function:
