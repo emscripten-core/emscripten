@@ -137,6 +137,7 @@ def can_do_standalone(self):
   return self.get_setting('WASM') and \
       self.get_setting('STACK_OVERFLOW_CHECK') < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
+      not self.get_setting('SAFE_HEAP') and \
       '-fsanitize=address' not in self.emcc_args
 
 
@@ -239,19 +240,25 @@ def no_lsan(note):
   return decorator
 
 
-def no_minimal_runtime(note):
-  assert not callable(note)
+def make_no_decorator_for_setting(name):
+  def outer_decorator(note):
+    assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+    def decorator(f):
+      assert callable(f)
 
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      if 'MINIMAL_RUNTIME=1' in self.emcc_args or self.get_setting('MINIMAL_RUNTIME'):
-        self.skipTest(note)
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
+      @wraps(f)
+      def decorated(self, *args, **kwargs):
+        if (name + '=1') in self.emcc_args or self.get_setting(name):
+          self.skipTest(note)
+        f(self, *args, **kwargs)
+      return decorated
+    return decorator
+  return outer_decorator
+
+
+no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
+no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 
 
 class TestCoreBase(RunnerCore):
@@ -2007,9 +2014,11 @@ int main(int argc, char **argv) {
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     # Tracing of memory growths should work
-    self.set_setting('EMSCRIPTEN_TRACING', 1)
-    self.emcc_args += ['--tracing']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    # (SAFE_HEAP would instrument the tracing code itself, leading to recursion)
+    if not self.get_setting('SAFE_HEAP'):
+      self.set_setting('EMSCRIPTEN_TRACING', 1)
+      self.emcc_args += ['--tracing']
+      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -5061,6 +5070,7 @@ main( int argv, char ** argc ) {
   def test_stat_mknod(self):
     self.do_runf(path_from_root('tests', 'stat', 'test_mknod.c'), 'success')
 
+  @no_safe_heap('https://github.com/emscripten-core/emscripten/issues/12433')
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl.c')
@@ -5851,6 +5861,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @no_safe_heap('has unaligned 64-bit operations in wasm')
   def test_sse1(self):
     src = path_from_root('tests', 'sse', 'test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -5865,6 +5876,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @no_safe_heap('has unaligned 64-bit operations in wasm')
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6617,6 +6629,7 @@ return malloc(size);
           if '\n' + short_aborter + '@' not in output and '\n' + full_aborter + '@' not in output:
             self.assertContained(' ' + short_aborter + ' ' + '\n' + ' ' + full_aborter + ' ', output)
 
+  @no_safe_heap('tracing from sbrk into JS leads to an infinite loop')
   def test_tracing(self):
     self.emcc_args += ['--tracing']
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing.c')
@@ -8004,6 +8017,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-std=c++17']
     self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction.cpp')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @parameterized({
     'c': ['test_asan_no_error.c'],
     'cpp': ['test_asan_no_error.cpp'],
@@ -8018,6 +8032,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # clang optimizing things away. for example, a memset might be optimized into
   # stores, and then the stores identified as dead, which leaves nothing for
   # asan to test. here we want to test asan itself, so we work around that.
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',
@@ -8087,6 +8102,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  expected_output=expected_output, assert_all=True,
                  check_for_error=False, assert_returncode=NON_ZERO)
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_js_stack_op(self):
     self.emcc_args.append('-fsanitize=address')
@@ -8095,12 +8111,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(path_from_root('tests', 'core', 'test_asan_js_stack_op.c'),
                  expected_output='Hello, World!')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('INITIAL_MEMORY', 314572800)
     self.do_run_in_out_file_test('tests', 'core', 'test_asan_api.c')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_modularized_with_closure(self):
     self.emcc_args.append('-sMODULARIZE=1')
@@ -8164,16 +8182,25 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_create(self):
-    self.set_setting('-lbrowser.js')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
-    def test():
-      self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
-    test()
-
-    print('with pool')
+  @node_pthreads
+  def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', '2')
-    self.emcc_args += ['-DPOOL']
+    self.emcc_args += ['-DALLOW_SYNC']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
+
+  @node_pthreads
+  def test_pthread_create_proxy(self):
+    # with PROXY_TO_PTHREAD, we can synchronously depend on workers being available
+    self.set_setting('PROXY_TO_PTHREAD', '1')
+    self.emcc_args += ['-DALLOW_SYNC']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
+
+    print('with embind and stack overflow checks (see #12356)')
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.emcc_args += ['--bind']
     test()
 
   @node_pthreads

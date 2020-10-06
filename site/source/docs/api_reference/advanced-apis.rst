@@ -38,12 +38,11 @@ preamble.js
 
 The following advanced APIs are documented in `preamble.js <https://github.com/emscripten-core/emscripten/blob/master/src/preamble.js>`_.
 
-.. js:function:: allocate(slab, types, allocator, ptr)
+.. js:function:: allocate(slab, allocator)
 
   This is marked as *internal* because it is difficult to use (it has been optimized for multiple syntaxes to save space in generated code). Normally developers should instead allocate memory using ``_malloc()``, initialize it with :js:func:`setValue`, etc., but this function may be useful for advanced developers in certain cases.
 
   :param slab: An array of data, or a number. If a number, then the size of the block to allocate, in *bytes*.
-  :param types: Either an array of types, one for each byte (or 0 if no type at that position), or a single type which is used for the entire block. This only matters if there is initial data - if ``slab`` is a number, then this value does not matter at all and is ignored.
   :param allocator: How to allocate memory, see ALLOC_*
 
 

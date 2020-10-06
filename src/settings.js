@@ -1497,6 +1497,9 @@ var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 // not available.  If you are using C++ exceptions, but do not need
 // setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
 // code size and performance when catching exceptions.
+// [compile+link] - at compile time this enables the transformations needed for
+// longjmp support at codegen time, while at link it allows linking in the
+// library support.
 var SUPPORT_LONGJMP = 1;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.

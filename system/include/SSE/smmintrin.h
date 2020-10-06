@@ -379,79 +379,88 @@ _mm_test_mix_ones_zeros(__m128i __a, __m128i __mask)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cmpeq_epi64(__m128i __a, __m128i __b)
 {
-  return (__m128i)((__i64x2)__a == (__i64x2)__b);
+  const __m128i __mask = _mm_cmpeq_epi32(__a, __b);
+  return _mm_and_si128(__mask, _mm_shuffle_epi32(__mask, _MM_SHUFFLE(2, 3, 0, 1)));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi8_epi16(__m128i __a)
 {
-  return (__m128i)wasm_i16x8_widen_low_i8x16(__a);
+  return (__m128i)wasm_i16x8_widen_low_i8x16((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi8_epi32(__m128i __a)
 {
-  return (__m128i)__builtin_convertvector(__builtin_shufflevector((__i8x16)__a, (__i8x16)__a, 0, 1, 2, 3), __i32x4);
+  return (__m128i)wasm_i32x4_widen_low_i16x8(wasm_i16x8_widen_low_i8x16((v128_t)__a));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi8_epi64(__m128i __a)
 {
-  return (__m128i)__builtin_convertvector(__builtin_shufflevector((__i8x16)__a, (__i8x16)__a, 0, 1), __i64x2);
+  const __m128i __exta = _mm_cvtepi8_epi32(__a);
+  const __m128i __sign = _mm_cmpgt_epi32(_mm_setzero_si128(), __exta);
+  return _mm_unpacklo_epi32(__exta, __sign);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi16_epi32(__m128i __a)
 {
-  return (__m128i)wasm_i32x4_widen_low_i16x8(__a);
+  return (__m128i)wasm_i32x4_widen_low_i16x8((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi16_epi64(__m128i __a)
 {
-  return (__m128i)__builtin_convertvector(__builtin_shufflevector((__i16x8)__a, (__i16x8)__a, 0, 1), __i64x2);
+  const __m128i __exta = _mm_cvtepi16_epi32(__a);
+  const __m128i __sign = _mm_cmpgt_epi32(_mm_setzero_si128(), __exta);
+  return _mm_unpacklo_epi32(__exta, __sign);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi32_epi64(__m128i __a)
 {
-  return (__m128i)__builtin_convertvector(__builtin_shufflevector((__i32x4)__a, (__i32x4)__a, 0, 1), __i64x2);
+  const __m128i __sign = _mm_cmpgt_epi32(_mm_setzero_si128(), __a);
+  return _mm_unpacklo_epi32(__a, __sign);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu8_epi16(__m128i __a)
 {
-  return (__m128i)wasm_i16x8_widen_low_u8x16(__a);
+  return (__m128i)wasm_i16x8_widen_low_u8x16((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu8_epi32(__m128i __a)
 {
-  return (__m128i)__builtin_convertvector(__builtin_shufflevector((__u8x16)__a, (__u8x16)__a, 0, 1, 2, 3), __i32x4);
+  return (__m128i)wasm_i32x4_widen_low_u16x8(wasm_i16x8_widen_low_u8x16((v128_t)__a));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu8_epi64(__m128i __a)
 {
-  return (__m128i)__builtin_convertvector(__builtin_shufflevector((__u8x16)__a, (__u8x16)__a, 0, 1), __i64x2);
+  const __m128i __zero = _mm_setzero_si128();
+  return _mm_unpacklo_epi32(_mm_unpacklo_epi16(_mm_unpacklo_epi8(__a, __zero), __zero), __zero);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu16_epi32(__m128i __a)
 {
-  return (__m128i)wasm_i32x4_widen_low_u16x8(__a);
+  return (__m128i)wasm_i32x4_widen_low_u16x8((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu16_epi64(__m128i __a)
 {
-  return (__m128i)__builtin_convertvector(__builtin_shufflevector((__u16x8)__a, (__u16x8)__a, 0, 1), __i64x2);
+  const __m128i __zero = _mm_setzero_si128();
+  return _mm_unpacklo_epi32(_mm_unpacklo_epi16(__a, __zero), __zero);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu32_epi64(__m128i __a)
 {
-  return (__m128i)__builtin_convertvector(__builtin_shufflevector((__u32x4)__a, (__u32x4)__a, 0, 1), __i64x2);
+  const __m128i __zero = _mm_setzero_si128();
+  return _mm_unpacklo_epi32(__a, __zero);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

@@ -438,8 +438,9 @@ def llvm_backend_args():
     allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
-  # asm.js-style setjmp/longjmp handling
-  args += ['-enable-emscripten-sjlj']
+  if Settings.SUPPORT_LONGJMP:
+    # asm.js-style setjmp/longjmp handling
+    args += ['-enable-emscripten-sjlj']
 
   # better (smaller, sometimes faster) codegen, see binaryen#1054
   # and https://bugs.llvm.org/show_bug.cgi?id=39488
@@ -1288,12 +1289,6 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   # JS optimizations
   if opt_level >= 2:
     passes = []
-    # it may be useful to also run: simplifyIfs, registerize, asmLastOpts
-    # passes += ['simplifyExpressions'] # XXX fails on wasm3js.test_sqlite
-    # TODO: enable name minification with pthreads. atm wasm2js emits pthread
-    # helper functions outside of the asmFunc(), and they mix up minifyGlobals
-    # (which assumes any vars in that area are global, like var HEAP8, but
-    # those helpers have internal vars in a scope it doesn't understand yet)
     if not debug_info and not Settings.USE_PTHREADS:
       passes += ['minifyNames']
     if minify_whitespace:

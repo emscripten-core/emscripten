@@ -17,6 +17,13 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- IDBFS now persists files whenever their timestamp changes; previously it acted
+  on sync only if the timestamp increased and ignored the file changes otherwise.
+- When `-s SUPPORT_LONGJMP=0` is passed to disable longjmp, do not run the LLVM
+  wasm backend path that handles longjmp. Before this only affected linking, and
+  now the flag gives you the ability to affect codegen at compile time too. This
+  is necessary if one does not want any invokes generated for longjmp at all.
+  (#12394)
 
 2.0.6: 10/02/2020
 -----------------
