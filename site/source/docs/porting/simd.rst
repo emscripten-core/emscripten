@@ -849,7 +849,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_ceil_ss
      - ❌ scalarized
    * - _mm_cmpeq_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with a SIMD cmp+and+shuffle
    * - _mm_cvtepi16_epi32
      - ✅ wasm_i32x4_widen_low_i16x8
    * - _mm_cvtepi16_epi64
