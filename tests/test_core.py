@@ -8176,6 +8176,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DPOOL']
     test()
 
+    print('with embind and stack overflow checks (see #12356)')
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.emcc_args += ['--bind']
+    test()
+
   @node_pthreads
   def test_pthread_exceptions(self):
     self.set_setting('PTHREAD_POOL_SIZE', '2')
