@@ -1003,17 +1003,16 @@ LibraryManager.library = {
     var summer = new Date(currentYear, 6, 1);
     var winterOffset = winter.getTimezoneOffset();
     var summerOffset = summer.getTimezoneOffset();
-
-    function stdTimezoneOffset() {
-        return Math.max(winterOffset, summerOffset);
-    }
+    // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
+    // Using Math.max we can get retrieve the local standard time for the timezone.
+    var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
 
     // timezone is specified as seconds west of UTC ("The external variable
     // `timezone` shall be set to the difference, in seconds, between
     // Coordinated Universal Time (UTC) and local standard time."), the same
-    // as returned by stdTimezoneOffset().
+    // as returned by stdTimezoneOffset.
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('__get_timezone()', '0', 'stdTimezoneOffset() * 60', 'i32') }}};
+    {{{ makeSetValue('__get_timezone()', '0', 'stdTimezoneOffset * 60', 'i32') }}};
 
     {{{ makeSetValue('__get_daylight()', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
