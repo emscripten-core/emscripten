@@ -8200,7 +8200,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_create_embind_stack_check(self):
-    print('with embind and stack overflow checks (see #12356)')
+    # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
