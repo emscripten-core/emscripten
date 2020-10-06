@@ -35,7 +35,7 @@ def wasm_simd(f):
   def decorated(self):
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       if os.getenv('EMTEST_NO_D8'):
-        raise Exception(' Set EMTEST_NO_D8 if you want to skip them ')
+        self.skipTest('SIMD supported only in D8')      
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     self.emcc_args.append('-msimd128')
@@ -49,7 +49,7 @@ def bleeding_edge_wasm_backend(f):
   def decorated(self):
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       if os.getenv('EMTEST_NO_D8'):
-        raise Exception(' Set EMTEST_NO_D8 if you want to skip them')
+        self.skipTest('SIMD supported only in D8')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     with js_engines_modify([V8_ENGINE]):
