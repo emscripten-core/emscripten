@@ -1562,7 +1562,7 @@ keydown(100);keyup(100); // trigger the end
   def test_egl_createcontext_error(self):
     self.btest('test_egl_createcontext_error.c', '1', args=['-lEGL', '-lGL'])
 
-  def do_test_worker(self, args=[]):
+  def test_worker(self):
     # Test running in a web worker
     create_test_file('file.dat', 'data for worker')
     html_file = open('main.html', 'w')
@@ -1585,14 +1585,12 @@ keydown(100);keyup(100); // trigger the end
     html_file.close()
 
     for file_data in [1, 0]:
-      cmd = [EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + args
+      cmd = [EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else [])
       print(cmd)
       subprocess.check_call(cmd)
       self.assertExists('worker.js')
       self.run_browser('main.html', '', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
-  def test_worker(self):
-    self.do_test_worker()
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
@@ -2000,7 +1998,7 @@ void *getBindBuffer() {
 }
 ''')
     # also test -Os in wasm, which uses meta-dce, which should not break legacy gl emulation hacks
-    for opts in [[], ['-O1'], ['-Os', '-s', 'WASM=1']]:
+    for opts in [[], ['-O1'], ['-Os']]:
       self.btest('cubegeom_proc.c', reference='cubegeom.png', args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
@@ -2404,7 +2402,7 @@ void *getBindBuffer() {
         return 42;
       }
     ''')
-    self.compile_btest(['library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
+    self.compile_btest(['library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'EXPORT_ALL=1'])
     os.rename('library.wasm', 'library.so')
     main = r'''
       #include <dlfcn.h>
@@ -2435,7 +2433,7 @@ void *getBindBuffer() {
     '''
     self.btest(
       main,
-      args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '-s', 'WASM=1', '--use-preload-plugins', '-s', 'EXPORT_ALL=1'],
+      args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL=1'],
       expected='0')
 
   def test_mmap_file(self):
@@ -3349,7 +3347,7 @@ window.close = function() {
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     create_test_file('test.c', src)
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3460,8 +3458,8 @@ window.close = function() {
     create_test_file('pre.js', '''
       var Module = { dynamicLibraries: ['side.wasm'] };
   ''')
-    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
 
     print('wasm (will auto-preload since no sync binary reading)')
 
@@ -3469,7 +3467,7 @@ window.close = function() {
       Module.dynamicLibraries = ['side.wasm'];
   ''')
     # same wasm side module works
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
@@ -3661,11 +3659,16 @@ window.close = function() {
   def test_pthread_create(self):
     def test(args):
       print(args)
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
+                 expected='0',
+                 args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args,
+                 extra_tries=0) # this should be 100% deterministic
     print() # new line
     test([])
     test(['-O3'])
-    test(['-s', 'MINIMAL_RUNTIME=1'])
+    # TODO: re-enable minimal runtime once the flakiness is figure out,
+    # https://github.com/emscripten-core/emscripten/issues/12368
+    # test(['-s', 'MINIMAL_RUNTIME=1'])
 
   # Test that preallocating worker threads work.
   @requires_threads
@@ -4087,15 +4090,12 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
 
-  def test_binaryen_worker(self):
-    self.do_test_worker(['-s', 'WASM=1'])
-
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     ensure_dir('cdn')
     create_test_file('shell2.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    self.compile_btest(['src.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=1', '-o', 'test.html'])
+    self.compile_btest(['src.cpp', '--shell-file', 'shell2.html', '-o', 'test.html'])
     shutil.move('test.wasm', os.path.join('cdn', 'test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
 
@@ -4526,7 +4526,6 @@ window.close = function() {
 
   # Tests that base64 utils work in browser with no native atob function
   def test_base64_atob_fallback(self):
-    opts = ['-s', 'SINGLE_FILE=1', '-s', 'WASM=1']
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -4539,7 +4538,7 @@ window.close = function() {
     # generate a dummy file
     create_test_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts)
+    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-s', 'SINGLE_FILE=1'])
     create_test_file('a.html', '''
       <script>
         atob = undefined;
@@ -4554,7 +4553,7 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
-    self.btest('single_file_static_initializer.cpp', '19', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
+    self.btest('single_file_static_initializer.cpp', '19', args=['-s', 'SINGLE_FILE=1'], also_proxied=True)
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
@@ -4585,8 +4584,8 @@ window.close = function() {
     for wasm_enabled in [True, False]:
       args = ['src.cpp', '-o', 'test.js', '-s', 'SINGLE_FILE=1']
 
-      if wasm_enabled:
-        args += ['-s', 'WASM=1']
+      if not wasm_enabled:
+        args += ['-s', 'WASM=0']
 
       self.compile_btest(args)
 
@@ -4610,7 +4609,7 @@ window.close = function() {
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    self.compile_btest(['src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1'])
+    self.compile_btest(['src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1'])
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     self.assertExists('test.js')
@@ -4634,12 +4633,12 @@ window.close = function() {
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')
     create_test_file('page.c', self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
-    self.compile_btest(['page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
+    self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
     # with separate file packager invocation
     self.run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'])
-    self.compile_btest(['page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
+    self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
   def test_unicode_html_shell(self):

@@ -1265,7 +1265,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.use_closure_compiler = False
 
     if shared.Settings.WASM == 2 and shared.Settings.SINGLE_FILE:
-      exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time (pick either JS to target with -s WASM=0 or Wasm to target with -s WASM=1)')
+      exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
     if shared.Settings.SEPARATE_DWARF and shared.Settings.WASM2JS:
       exit_with_error('cannot have both SEPARATE_DWARF and WASM2JS at the same time (as there is no wasm file)')

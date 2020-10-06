@@ -17,6 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- When `-s SUPPORT_LONGJMP=0` is passed to disable longjmp, do not run the LLVM
+  wasm backend path that handles longjmp. Before this only affected linking, and
+  now the flag gives you the ability to affect codegen at compile time too. This
+  is necessary if one does not want any invokes generated for longjmp at all.
+  (#12394)
+
+2.0.6: 10/02/2020
+-----------------
 - Add new `COMPILER_WRAPPER` settings (with corresponding `EM_COMPILER_WRAPPER`
   environment variable.  This replaces the existing `EMMAKEN_COMPILER`
   environment variable which is deprecated, but still works for the time being.

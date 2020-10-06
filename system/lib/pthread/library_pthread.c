@@ -938,7 +938,6 @@ int proxy_main(int argc, char** argv) {
   if (emscripten_has_threading_support()) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     // Use TOTAL_STACK for the stack size, which is the normal size of the stack
     // that main() would have without PROXY_TO_PTHREAD.
     pthread_attr_setstacksize(&attr, EM_ASM_INT({ return TOTAL_STACK }));
