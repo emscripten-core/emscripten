@@ -8198,10 +8198,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DALLOW_SYNC']
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
+  @node_pthreads
+  def test_pthread_create_embind_stack_check(self):
     print('with embind and stack overflow checks (see #12356)')
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.emcc_args += ['--bind']
-    test()
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
   @node_pthreads
   def test_pthread_exceptions(self):
