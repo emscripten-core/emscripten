@@ -246,26 +246,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   @parameterized({
     'c': [EMCC, '.c'],
     'cxx': [EMXX, '.cpp']})
-  def test_emcc_2(self, compiler, suffix):
-    # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-    for args in [[], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so']]:
-      print('args:', args)
-      target = args[1] if len(args) == 2 else 'hello_world.o'
-      self.clear()
-      self.run_process([compiler, '-c', path_from_root('tests', 'hello_world' + suffix)] + args)
-      syms = building.llvm_nm(target)
-      self.assertIn('main', syms.defs)
-      # wasm backend will also have '__original_main' or such
-      self.assertEqual(len(syms.defs), 2)
-      if target == 'js': # make sure emcc can recognize the target as a bitcode file
-        shutil.move(target, target + '.bc')
-        target += '.bc'
-      self.run_process([compiler, target, '-o', target + '.js'])
-      self.assertContained('hello, world!', self.run_js(target + '.js'))
-
-  @parameterized({
-    'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']})
   def test_emcc_3(self, compiler, suffix):
     # handle singleton archives
     self.run_process([compiler, '-c', path_from_root('tests', 'hello_world' + suffix), '-o', 'a.o'])
@@ -6352,7 +6332,7 @@ int main() {
       print(args, expect_names)
       try_delete('a.out.js')
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"', '-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]'])
+      self.run_process([EMCC, path_from_root('tests', 'hello_world.c')] + args + ['-s', 'MALLOC="dlmalloc"', '-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]'])
       code = open('a.out.wasm', 'rb').read()
       if expect_names:
         # name section adds the name of malloc (there is also another one for the export)
@@ -8317,6 +8297,12 @@ int main () {
     self.assertContained('ReferenceError: SPLIT_MEMORY is not defined', self.expect_fail(cmd + ['-s', 'STRICT=1']))
     with env_modify({'EMCC_STRICT': '1'}):
       self.assertContained('ReferenceError: SPLIT_MEMORY is not defined', self.expect_fail(cmd))
+
+  def test_strict_mode_link_cxx(self):
+    # In strict mode C++ programs fail to link unless run with `em++`.
+    self.run_process([EMXX, '-sSTRICT', path_from_root('tests', 'hello_world.cpp')])
+    err = self.expect_fail([EMCC, '-sSTRICT', path_from_root('tests', 'hello_world.cpp')])
+    self.assertContained('error: undefined symbol:', err)
 
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')
