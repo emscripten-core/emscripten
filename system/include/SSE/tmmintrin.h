@@ -103,39 +103,14 @@ _mm_maddubs_epi16(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mulhrs_epi16(__m128i __a, __m128i __b)
 {
-  // TODO: the following sequence oughta work, but something is not quite right,
-  // runtime test fails with
-
-// Expected: _mm_mulhrs_epi16([0x9ABCDEF1,0x80000000,0x80808080,0x7F7F7F7F], [0xF9301AB9,0x80000000,0x40200000,0xC0200000]) = [0x0564F919,0x80000000,0xC0200000,0xC0600000]
-//   Actual: _mm_mulhrs_epi16([0x9ABCDEF1,0x80000000,0x80808080,0x7F7F7F7F], [0xF9301AB9,0x80000000,0x40200000,0xC0200000]) = [0x0564F919,0x7FFF0000,0xC0200000,0xC0600000]
-
-// Expected: _mm_mulhrs_epi16([0x9ABCDEF1,0x80000000,0x80808080,0x7F7F7F7F], [0xF9301AB9,0x80000000,0x40200000,0xC0200000]) = [0x0564F919,0x80000000,0xC0200000,0xC0600000]
-//   Actual: _mm_mulhrs_epi16([0x9ABCDEF1,0x80000000,0x80808080,0x7F7F7F7F], [0xF9301AB9,0x80000000,0x40200000,0xC0200000]) = [0x0564F919,0x7FFF0000,0xC0200000,0xC0600000]
-
-#if 0
-  v128_t __lo = wasm_i32x4_mul(wasm_i32x4_widen_low_i16x8((v128_t)__a),
-                               wasm_i32x4_widen_low_i16x8((v128_t)__b));
-
-  v128_t __hi = wasm_i32x4_mul(wasm_i32x4_widen_high_i16x8((v128_t)__a),
-                               wasm_i32x4_widen_high_i16x8((v128_t)__b));
-
-  v128_t __one = wasm_i32x4_const(1, 1, 1, 1);
-
-  __lo = wasm_i32x4_shr(wasm_i32x4_add(wasm_i32x4_shr(__lo, 14), __one), 1);
-  __hi = wasm_i32x4_shr(wasm_i32x4_add(wasm_i32x4_shr(__hi, 14), __one), 1);
-
-  return (__m128i)wasm_i16x8_narrow_i32x4((v128_t)__lo, (v128_t)__hi);
-#else
-  union {
-    short __x[8];
-    __m128i __m;
-  } __src, __src2, __dst;
-  __src.__m = __a;
-  __src2.__m = __b;
-  for(int __i = 0; __i < 8; ++__i)
-      __dst.__x[__i] = (((__src.__x[__i] * __src2.__x[__i]) >> 14) + 1) >> 1;
-  return __dst.__m;
-#endif
+  v128_t __lo = wasm_i32x4_mul(wasm_i32x4_widen_low_i16x8((v128_t)__a), wasm_i32x4_widen_low_i16x8((v128_t)__b));
+  v128_t __hi = wasm_i32x4_mul(wasm_i32x4_widen_high_i16x8((v128_t)__a), wasm_i32x4_widen_high_i16x8((v128_t)__b));
+  const v128_t __inc = wasm_i32x4_splat(0x4000);
+  __lo = wasm_i32x4_add(__lo, __inc);
+  __hi = wasm_i32x4_add(__hi, __inc);
+  __lo = wasm_i32x4_add(__lo, __lo);
+  __hi = wasm_i32x4_add(__hi, __hi);
+  return (__m128i)wasm_v16x8_shuffle(__lo, __hi, 1, 3, 5, 7, 9, 11, 13, 15);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
