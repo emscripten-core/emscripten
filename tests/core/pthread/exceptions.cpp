@@ -12,16 +12,30 @@
 #include <atomic>
 
 #define NUM_THREADS 2
-#define TOTAL 100
+#define TOTAL 1000
+#define THREAD_ADDS 750
+#define MAIN_ADDS 5
 
 static std::atomic<int> sum;
+static std::atomic<int> total;
 
 void *ThreadMain(void *arg) {
   for (int i = 0; i < TOTAL; i++) {
-    sum++;
-    // wait for a change, so we see interleaved processing.
-    int last = sum.load();
-    while (sum.load() == last) {}
+    try {
+      // Throw two different types, to make sure we check throwing and landing
+      // pad behavior.
+      if (i & 3) {
+        throw 3.14159f;
+      }
+      throw i;
+    } catch (int x) {
+      total += x;
+    } catch (float f) {
+      sum++;
+      // wait for a change, so we see interleaved processing.
+      int last = sum.load();
+      while (sum.load() == last) {}
+    }
   }
   pthread_exit((void*)TOTAL);
 }
@@ -30,37 +44,30 @@ pthread_t thread[NUM_THREADS];
 
 void CreateThread(int i)
 {
-  static int counter = 1;
   int rc = pthread_create(&thread[i], nullptr, ThreadMain, (void*)i);
   assert(rc == 0);
 }
 
-void mainn() {
+void loop() {
   static int main_adds = 0;
   int worker_adds = sum.load() - main_adds;
   sum++;
   main_adds++;
   printf("main iter %d : %d\n", main_adds, worker_adds);
-  if (worker_adds == NUM_THREADS * TOTAL) {
-    printf("done!\n");
-#ifndef POOL
-  emscripten_cancel_main_loop();
-#else
-  exit(0);
-#endif
+  if (worker_adds == NUM_THREADS * THREAD_ADDS &&
+      main_adds >= MAIN_ADDS) {
+    printf("done: %d.\n", total.load());
+    emscripten_cancel_main_loop();
+    exit(0);
   }
 }
 
 int main() {
   // Create initial threads.
   for(int i = 0; i < NUM_THREADS; ++i) {
+    printf("maek\n");
     CreateThread(i);
   }
 
-  // Without a pool, the event loop must be reached for the worker to start up.
-#ifndef POOL
-  emscripten_set_main_loop(mainn, 0, 0);
-#else
-  while (1) mainn();
-#endif
+  emscripten_set_main_loop(loop, 0, 0);
 }

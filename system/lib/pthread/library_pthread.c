@@ -913,6 +913,11 @@ int llvm_atomic_load_add_i32_p0i32(int* ptr, int delta) {
   return emscripten_atomic_add_u32(ptr, delta);
 }
 
+// Stores the memory address that the main thread is waiting on, if any. If
+// the main thread is waiting, we wake it up before waking up any workers.
+EMSCRIPTEN_KEEPALIVE
+void* main_thread_futex;
+
 typedef struct main_args {
   int argc;
   char** argv;
@@ -933,7 +938,6 @@ int proxy_main(int argc, char** argv) {
   if (emscripten_has_threading_support()) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     // Use TOTAL_STACK for the stack size, which is the normal size of the stack
     // that main() would have without PROXY_TO_PTHREAD.
     pthread_attr_setstacksize(&attr, EM_ASM_INT({ return TOTAL_STACK }));

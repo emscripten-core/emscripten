@@ -18,7 +18,7 @@ executors:
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
     macos:
-      xcode: "9.0"
+      xcode: "12.2.0"
 
 commands:
   emsdk-env:
@@ -423,7 +423,9 @@ jobs:
       - checkout
       - run:
           name: Install packages
-          command: choco install make cmake.portable python3
+          command: |
+            choco install make cmake.portable
+            choco install python --version 3.8.0
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
@@ -445,9 +447,12 @@ jobs:
       name: win/vs2019
       shell: bash.exe -eo pipefail
     steps:
+      # while these two steps are also done in build-windows, they are needed
       - run:
           name: Install packages
-          command: choco install make cmake.portable python3
+          command: |
+            choco install make cmake.portable
+            choco install python --version 3.8.0
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV

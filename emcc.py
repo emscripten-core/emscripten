@@ -725,6 +725,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
+  CXX = [shared.CLANG_CXX]
+  CC = [shared.CLANG_CC]
+  if shared.COMPILER_WRAPPER:
+    logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
+    CXX.insert(0, shared.COMPILER_WRAPPER)
+    CC.insert(0, shared.COMPILER_WRAPPER)
+
   if run_via_emxx:
     clang = shared.CLANG_CXX
   else:
@@ -733,7 +740,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = run_process([clang, '-v'], check=False).returncode
+    code = shared.check_call([clang, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -850,15 +857,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
-    CXX = shared.CLANG_CXX
-    CC = shared.CLANG_CC
     if 'EMMAKEN_COMPILER' in os.environ:
-      diagnostics.warning('deprecated', 'EMMAKEN_COMPILER is deprecated.  Please set LLVM_ROOT in config file or EM_LLVM_ROOT in the environment')
-      CXX = os.environ['EMMAKEN_COMPILER']
-      CC = cxx_to_c_compiler(CXX)
+      diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
+                          'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
+                          'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
+      CXX = [os.environ['EMMAKEN_COMPILER']]
+      CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     if '-print-search-dirs' in newargs:
-      return run_process([CC, '-print-search-dirs'], check=False).returncode
+      return run_process(CC + ['-print-search-dirs'], check=False).returncode
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -1204,7 +1211,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return [f for f in inputs if check(f[1])]
       return inputs
 
+    def filter_out_duplicate_dynamic_libs(inputs):
+      # Filter out duplicate shared libraries.
+      # See test_core.py:test_redundant_link
+      seen = set()
+      rtn = []
+      for i in inputs:
+        if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS and os.path.exists(i[1]):
+          abspath = os.path.abspath(i[1])
+          if abspath in seen:
+            continue
+          seen.add(abspath)
+        rtn.append(i)
+      return rtn
+
     input_files = filter_out_dynamic_libs(input_files)
+    input_files = filter_out_duplicate_dynamic_libs(input_files)
 
     if not input_files and not link_flags:
       exit_with_error('no input files')
@@ -1243,7 +1265,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.use_closure_compiler = False
 
     if shared.Settings.WASM == 2 and shared.Settings.SINGLE_FILE:
-      exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time (pick either JS to target with -s WASM=0 or Wasm to target with -s WASM=1)')
+      exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
     if shared.Settings.SEPARATE_DWARF and shared.Settings.WASM2JS:
       exit_with_error('cannot have both SEPARATE_DWARF and WASM2JS at the same time (as there is no wasm file)')
@@ -1482,12 +1504,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.SUPPORT_ERRNO:
       # so setErrNo JS library function can report errno back to C
       shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location']
-
-    if shared.Settings.GLOBAL_BASE < 0:
-      # default if nothing else sets it
-      # a higher global base is useful for optimizing load/store offsets, as it
-      # enables the --post-emscripten pass
-      shared.Settings.GLOBAL_BASE = 1024
 
     if shared.Settings.SAFE_HEAP:
       # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
@@ -1762,9 +1778,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '_asan_c_store_f', '_asan_c_store_d',
       ]
 
-      shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
-      shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
-      assert shared.Settings.INITIAL_MEMORY < 2**32
+      if shared.Settings.ASAN_SHADOW_SIZE != -1:
+        diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
+
+      if shared.Settings.GLOBAL_BASE != -1:
+        exit_with_error("ASan does not support custom GLOBAL_BASE")
+
+      max_mem = shared.Settings.INITIAL_MEMORY
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        max_mem = shared.Settings.MAXIMUM_MEMORY
+        if max_mem == -1:
+          exit_with_error('ASan requires a finite MAXIMUM_MEMORY')
+
+      shadow_size = max_mem // 8
+      shared.Settings.GLOBAL_BASE = shadow_size
 
       if shared.Settings.SAFE_HEAP:
         # SAFE_HEAP instruments ASan's shadow memory accesses.
@@ -1777,6 +1804,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if sanitize and '-g4' in args:
       shared.Settings.LOAD_SOURCE_MAP = 1
+
+    if shared.Settings.GLOBAL_BASE == -1:
+      # default if nothing else sets it
+      # a higher global base is useful for optimizing load/store offsets, as it
+      # enables the --post-emscripten pass
+      shared.Settings.GLOBAL_BASE = 1024
 
     # various settings require malloc/free support from JS
     if shared.Settings.RELOCATABLE or \
@@ -1893,12 +1926,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       def get_clang_command(src_file):
         cxx = use_cxx(src_file)
         base_cflags = shared.get_cflags(args, cxx)
-        cmd = [get_compiler(cxx)] + base_cflags + cflags + compile_args + [src_file]
+        cmd = get_compiler(cxx) + base_cflags + cflags + compile_args + [src_file]
         return system_libs.process_args(cmd, shared.Settings)
 
       def get_clang_command_asm(src_file):
         asflags = shared.get_asmflags()
-        return [get_compiler(use_cxx(src_file))] + asflags + compile_args + [src_file]
+        return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
 
       # preprocessor-only (-E) support
       if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
@@ -1923,9 +1956,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if not header.endswith(HEADER_ENDINGS):
             exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
           cxx = use_cxx(header)
-          compiler = get_compiler(cxx)
           base_cflags = shared.get_cflags(args, cxx)
-          cmd = [compiler] + base_cflags + cflags + compile_args + [header]
+          cmd = get_compiler(cxx) + base_cflags + cflags + compile_args + [header]
           if specified_target:
             cmd += ['-o', specified_target]
           cmd = system_libs.process_args(cmd, shared.Settings)
@@ -2645,10 +2677,8 @@ def do_binaryen(target, options, wasm_target):
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-
-  # TODO: do this with upstream
-  # if shared.Settings.SIDE_MODULE:
-  #   webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
+  if shared.Settings.SIDE_MODULE:
+    webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
     webassembly.add_emscripten_metadata(wasm_target)

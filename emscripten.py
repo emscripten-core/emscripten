@@ -205,10 +205,9 @@ class Memory():
 
     # Memory layout:
     #  * first the static globals
-    self.global_base = shared.Settings.GLOBAL_BASE
     self.static_bump = metadata['staticBump']
     #  * then the stack (up on fastcomp, down on upstream)
-    self.stack_low = align_memory(self.global_base + self.static_bump)
+    self.stack_low = align_memory(shared.Settings.GLOBAL_BASE + self.static_bump)
     self.stack_high = align_memory(self.stack_low + shared.Settings.TOTAL_STACK)
     self.stack_base = self.stack_high
     self.stack_max = self.stack_low
@@ -226,7 +225,7 @@ def apply_memory(js, metadata):
   if shared.Settings.RELOCATABLE:
     js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
 
-  logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
+  logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
   shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
 
@@ -344,38 +343,38 @@ Module['%(full)s'] = function() {
 
 
 def create_named_globals(metadata):
-  if not shared.Settings.RELOCATABLE:
-    named_globals = []
-    for k, v in metadata['namedGlobals'].items():
+  named_globals = []
+  for k, v in metadata['namedGlobals'].items():
+    v = int(v)
+    if shared.Settings.RELOCATABLE:
+      v += shared.Settings.GLOBAL_BASE
+    elif k == '__data_end':
       # We keep __data_end alive internally so that wasm-emscripten-finalize knows where the
       # static data region ends.  Don't export this to JS like other user-exported global
       # address.
-      if k not in ['__data_end']:
-        named_globals.append("Module['_%s'] = %s;" % (k, v))
-    return '\n'.join(named_globals)
+      continue
+    mangled = asmjs_mangle(k)
+    if shared.Settings.MINIMAL_RUNTIME:
+      named_globals.append("var %s = %s;" % (mangled, v))
+    else:
+      named_globals.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
 
-  named_globals = '''
-var NAMED_GLOBALS = {
-  %s
-};
-for (var named in NAMED_GLOBALS) {
-  Module['_' + named] = gb + NAMED_GLOBALS[named];
-}
-Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % ',\n  '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
+  named_globals = '\n'.join(named_globals)
 
-  # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
-  # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
-  #       we'll need another solution for that. one option is to scan the module imports, if/when
-  #       wasm supports that, then the loader can do this.
-  named_globals += '''
-for (var named in NAMED_GLOBALS) {
-  (function(named) {
-    var addr = Module['_' + named];
-    Module['g$_' + named] = function() { return addr };
-  })(named);
+  if shared.Settings.RELOCATABLE:
+    # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+    # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+    #       we'll need another solution for that. one option is to scan the module imports, if/when
+    #       wasm supports that, then the loader can do this.
+    names = ["'%s'" % n for n in metadata['namedGlobals']]
+    named_globals += '''
+for (var name in [%s]) {
+  (function(name) {
+    Module['g$' + name] = function() { return Module[name]; };
+  })(name);
 }
-'''
+''' % ','.join(names)
+
   return named_globals
 
 
@@ -427,9 +426,6 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
 
-  if shared.Settings.RELOCATABLE and not shared.Settings.SIDE_MODULE:
-    pre += 'var gb = GLOBAL_BASE, fb = 0;\n'
-
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
@@ -458,11 +454,6 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
     pre = None
 
     invoke_funcs = metadata['invokeFuncs']
-    try:
-      del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
-    except KeyError:
-      pass
-
     sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports, metadata['initializers'])
 
@@ -756,8 +747,6 @@ def create_sending(invoke_funcs, metadata):
   send_items = set(basic_funcs + invoke_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
-    if g.startswith('Math_'):
-      return g.split('_')[1]
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
     # symbols.  Emscripten currently expects symbols to start with '_' so we
     # artificially add them to the output of emscripten-wasm-finalize and them

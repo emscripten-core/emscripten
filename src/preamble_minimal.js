@@ -59,8 +59,7 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
-var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
-    TOTAL_STACK = {{{ TOTAL_STACK }}},
+var TOTAL_STACK = {{{ TOTAL_STACK }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
@@ -148,7 +147,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS
 if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
-HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
+HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
 
 #endif
 

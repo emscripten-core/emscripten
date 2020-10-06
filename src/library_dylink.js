@@ -110,7 +110,7 @@ var LibraryDylink = {
   },
 
   $asmjsMangle: function(x) {
-    var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   },
 
@@ -248,10 +248,8 @@ var LibraryDylink = {
           // symbols that should be local to this module
           switch (prop) {
             case '__memory_base':
-            case 'gb':
               return memoryBase;
             case '__table_base':
-            case 'fb':
               return tableBase;
           }
 

@@ -937,13 +937,6 @@ class benchmark(runner.RunnerCore):
       return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
     self.do_benchmark('matrix_multiply', open(path_from_root('tests', 'matrix_multiply.cpp')).read(), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + path_from_root('tests')])
 
-  @non_core
-  def test_zzz_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
-    args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
-           ['-I' + path_from_root('tests', 'nbody-java')]
-    self.do_benchmark('nbody_java', '', '''Time(s)''',
-                      force_c=True, emcc_args=args + ['-flto'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
-
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     self.emcc_args.remove('-Werror')
     shutil.copyfile(path_from_root('tests', 'third_party', 'lua', benchmark + '.lua'), benchmark + '.lua')

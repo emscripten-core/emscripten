@@ -16,22 +16,19 @@
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_abs_epi8(__m128i __a)
 {
-  __m128i __mask = (__m128i)wasm_i8x16_shr((v128_t)__a, 7);
-  return _mm_xor_si128(_mm_add_epi8(__a, __mask), __mask);
+  return (__m128i)wasm_i8x16_abs((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_abs_epi16(__m128i __a)
 {
-  __m128i __mask = _mm_srai_epi16(__a, 15);
-  return _mm_xor_si128(_mm_add_epi16(__a, __mask), __mask);
+  return (__m128i)wasm_i16x8_abs((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_abs_epi32(__m128i __a)
 {
-  __m128i __mask = _mm_srai_epi32(__a, 31);
-  return _mm_xor_si128(_mm_add_epi32(__a, __mask), __mask);
+  return (__m128i)wasm_i32x4_abs((v128_t)__a);
 }
 
 #define _mm_alignr_epi8(__a, __b, __count) \
@@ -144,40 +141,34 @@ _mm_mulhrs_epi16(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_shuffle_epi8(__m128i __a, __m128i __b)
 {
-  // TODO: use wasm_v8x16_swizzle() when it becomes available.
-  union {
-    unsigned char __x[16];
-    __m128i __m;
-  } __src, __src2, __dst;
-  __src.__m = __a;
-  __src2.__m = __b;
-  for(int __i = 0; __i < 16; ++__i)
-      __dst.__x[__i] = (__src2.__x[__i] & 0x80) ? 0 : __src.__x[__src2.__x[__i]&15];
-  return __dst.__m;
+  return (__m128i)wasm_v8x16_swizzle((v128_t)__a, (v128_t)_mm_and_si128(__b, _mm_set1_epi8(0x8F)));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sign_epi8(__m128i __a, __m128i __b)
 {
-  __m128i __mask = (__m128i)wasm_i8x16_shr((v128_t)__b, 7);
-  __m128i __zeromask = _mm_cmpeq_epi8(__b, _mm_setzero_si128());
-  return _mm_andnot_si128(__zeromask, _mm_xor_si128(_mm_add_epi8(__a, __mask), __mask));
+  const __m128i __zero = _mm_setzero_si128();
+  __a = _mm_andnot_si128(_mm_cmpeq_epi8(__b, __zero), __a);
+  const __m128i __mask = _mm_cmpgt_epi8(__zero, __b);
+  return _mm_xor_si128(_mm_add_epi8(__a, __mask), __mask);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sign_epi16(__m128i __a, __m128i __b)
 {
-  __m128i __mask = _mm_srai_epi16(__b, 15);
-  __m128i __zeromask = _mm_cmpeq_epi16(__b, _mm_setzero_si128());
-  return _mm_andnot_si128(__zeromask, _mm_xor_si128(_mm_add_epi16(__a, __mask), __mask));
+  const __m128i __zero = _mm_setzero_si128();
+  __a = _mm_andnot_si128(_mm_cmpeq_epi16(__b, __zero), __a);
+  const __m128i __mask = _mm_cmpgt_epi16(__zero, __b);
+  return _mm_xor_si128(_mm_add_epi16(__a, __mask), __mask);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sign_epi32(__m128i __a, __m128i __b)
 {
-  __m128i __mask = _mm_srai_epi32(__b, 31);
-  __m128i __zeromask = _mm_cmpeq_epi32(__b, _mm_setzero_si128());
-  return _mm_andnot_si128(__zeromask, _mm_xor_si128(_mm_add_epi32(__a, __mask), __mask));
+  const __m128i __zero = _mm_setzero_si128();
+  __a = _mm_andnot_si128(_mm_cmpeq_epi32(__b, __zero), __a);
+  const __m128i __mask = _mm_cmpgt_epi32(__zero, __b);
+  return _mm_xor_si128(_mm_add_epi32(__a, __mask), __mask);
 }
 
 // Unavailable functions:

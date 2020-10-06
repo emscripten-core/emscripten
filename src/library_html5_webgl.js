@@ -323,6 +323,7 @@ var LibraryHtml5WebGL = {
 #endif
 #if MAX_WEBGL_VERSION >= 2
     '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+    '_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
     '_webgl_enable_WEBGL_multi_draw',
 #endif
@@ -349,6 +350,7 @@ var LibraryHtml5WebGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
+    if (extString == 'WEBGL_multi_draw_instanced_base_vertex_base_instance') __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
     if (extString == 'WEBGL_multi_draw') __webgl_enable_WEBGL_multi_draw(GLctx);
@@ -360,7 +362,8 @@ var LibraryHtml5WebGL = {
          'OES_vertex_array_object',
          'WEBGL_draw_buffers',
          'WEBGL_multi_draw',
-         'WEBGL_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
+         'WEBGL_draw_instanced_base_vertex_base_instance',
+         'WEBGL_multi_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
       console.error('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
     }
