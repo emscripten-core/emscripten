@@ -753,32 +753,6 @@ _mm_mul_epu32(__m128i __a, __m128i __b)
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
-_mm_sad_epu8(__m128i __a, __m128i __b)
-{
-  // TODO: optimize
-  union {
-    unsigned char x[16];
-    __m128i m;
-  } src, src2;
-  src.m = __a;
-  src2.m = __b;
-  union {
-    unsigned short x[8];
-    __m128i m;
-  } dst;
-#define __ABS(__a) ((__a) < 0 ? -(__a) : (__a))
-  for(int i = 0; i < 8; ++i)
-    dst.x[i] = 0;
-  for(int i = 0; i < 8; ++i)
-  {
-    dst.x[0] += __ABS(src.x[i] - src2.x[i]);
-    dst.x[4] += __ABS(src.x[8+i] - src2.x[8+i]);
-  }
-  return dst.m;
-#undef __ABS
-}
-
-static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sub_epi8(__m128i __a, __m128i __b)
 {
   return (__m128i)wasm_i8x16_sub((v128_t)__a, (v128_t)__b);
@@ -1546,6 +1520,19 @@ _mm_undefined_si128()
 {
   __m128i val;
   return val;
+}
+
+// Must be in the very end as it uses other SSE2 intrinsics
+static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
+_mm_sad_epu8(__m128i __a, __m128i __b)
+{
+  __m128i __diff = _mm_or_si128(_mm_subs_epu8(__a, __b),
+                                _mm_subs_epu8(__b, __a));
+  __diff = _mm_add_epi16(_mm_srli_epi16(__diff, 8),
+                         _mm_and_si128(__diff, _mm_set1_epi16(0x00FF)));
+  __diff = _mm_add_epi16(__diff, _mm_slli_epi32(__diff, 16));
+  __diff = _mm_add_epi16(__diff, _mm_slli_epi64(__diff, 32));
+  return _mm_srli_epi64(__diff, 48);
 }
 
 #define _MM_SHUFFLE2(x, y) (((x) << 1) | (y))

@@ -554,7 +554,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_pause
      - 💭 No-op.
    * - _mm_sad_epu8
-     - ❌ scalarized
+     - ⚠️ emulated with eleven SIMD instructions+const
    * - _mm_set_epi16
      - ✅ wasm_i16x8_make
    * - _mm_set_epi32
