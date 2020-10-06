@@ -22,9 +22,7 @@ function setValue(ptr, value, type, noSafe) {
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
       case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
       case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, undefined, undefined, '1') }}}; break;
-#if WASM_BIGINT
       case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, undefined, undefined, '1') }}}; break;
-#endif
       case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, undefined, undefined, '1') }}}; break;
       case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, undefined, '1') }}}; break;
       default: abort('invalid type for setValue: ' + type);
@@ -36,9 +34,7 @@ function setValue(ptr, value, type, noSafe) {
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
       case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
       case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
-#if WASM_BIGINT
       case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
-#endif
       case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
       case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
       default: abort('invalid type for setValue: ' + type);
