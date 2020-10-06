@@ -423,7 +423,9 @@ jobs:
       - checkout
       - run:
           name: Install packages
-          command: choco install make cmake.portable python3 && refreshenv
+          command: |
+            choco install make cmake.portable
+            choco install python --version 3.8.0
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
