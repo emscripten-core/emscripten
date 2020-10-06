@@ -379,7 +379,8 @@ _mm_test_mix_ones_zeros(__m128i __a, __m128i __mask)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cmpeq_epi64(__m128i __a, __m128i __b)
 {
-  return (__m128i)((__i64x2)__a == (__i64x2)__b);
+  const __m128i __mask = _mm_cmpeq_epi32(__a, __b);
+  return _mm_and_si128(__mask, _mm_shuffle_epi32(__mask, _MM_SHUFFLE(2, 3, 0, 1)));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

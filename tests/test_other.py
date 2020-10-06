@@ -9409,3 +9409,15 @@ exec "$@"
   def test_LIBRARY_DEBUG(self):
     self.set_setting('LIBRARY_DEBUG')
     self.do_runf(path_from_root('tests', 'hello_world.c'), '[library call:_fd_write: 0x1')
+
+  def test_SUPPORT_LONGJMP_executable(self):
+    stderr = self.run_process([EMCC, path_from_root('tests', 'core', 'test_longjmp.c'), '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
+    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
+                         stderr)
+
+  def test_SUPPORT_LONGJMP_object(self):
+    # compile the object *with* support, but link without
+    self.run_process([EMCC, path_from_root('tests', 'core', 'test_longjmp.c'), '-c', '-s', 'SUPPORT_LONGJMP=1', '-o', 'a.o'])
+    stderr = self.run_process([EMCC, 'a.o', '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
+    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
+                         stderr)

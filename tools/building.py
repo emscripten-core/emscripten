@@ -438,8 +438,9 @@ def llvm_backend_args():
     allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
-  # asm.js-style setjmp/longjmp handling
-  args += ['-enable-emscripten-sjlj']
+  if Settings.SUPPORT_LONGJMP:
+    # asm.js-style setjmp/longjmp handling
+    args += ['-enable-emscripten-sjlj']
 
   # better (smaller, sometimes faster) codegen, see binaryen#1054
   # and https://bugs.llvm.org/show_bug.cgi?id=39488

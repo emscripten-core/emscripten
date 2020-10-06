@@ -94,10 +94,6 @@ var LibraryPThread = {
     },
     initWorker: function() {
       PThread.initShared();
-#if EMBIND
-      // Embind must initialize itself on all threads, as it generates support JS.
-      Module['___embind_register_native_and_builtin_types']();
-#endif // EMBIND
 #if MODULARIZE
       // The promise resolve function typically gets called as part of the execution
       // of the Module `run`. The workers/pthreads don't execute `run` here, they
