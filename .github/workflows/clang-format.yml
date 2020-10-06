@@ -1,0 +1,17 @@
+name: clang-format
+
+on: [pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      # Fetch all history for all tags and branches
+      with:
+        fetch-depth: 0
+    - name: Install clang-format
+      run: |
+        sudo apt-get install clang-format-10
+        sudo update-alternatives --install /usr/bin/git-clang-format git-clang-format /usr/bin/git-clang-format-10 100
+    - run: tests/clang-format-diff.sh origin/$GITHUB_BASE_REF

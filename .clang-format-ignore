@@ -1,0 +1,4 @@
+# ignore third_party code from clang-format checks
+third_party/*
+tests/third_party/*
+tests/*
