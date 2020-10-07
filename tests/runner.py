@@ -1766,13 +1766,11 @@ def skip_requested_tests(args, modules):
         print('will skip "%s"' % test, file=sys.stderr)
         suite_name, test_name = test.split('.')
         for m in modules:
-          try:
-            suite = getattr(m, suite_name)
+          suite = getattr(m, suite_name, None)
+          if suite:
             setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
             skipped = True
             break
-          except AttributeError:
-            pass
       assert skipped, "Not able to skip test " + test
       args[i] = None
   return [a for a in args if a is not None]
