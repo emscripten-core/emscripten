@@ -3059,10 +3059,6 @@ Var: 42
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
-    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-    # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
-    # this if this issues is fixed.
-    self.emcc_args.append('-nostdlib++')
 
     def get_data_export_count(wasm):
       wat = self.get_wasm_text(wasm)
@@ -3615,7 +3611,7 @@ ok
     if isinstance(main, list):
       # main is just a library
       try_delete('src.js')
-      self.run_process([EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', 'src.js'])
+      self.run_process([EMCC] + main + self.get_emcc_args() + ['-o', 'src.js'])
       self.do_run('src.js', expected, no_build=True, **kwargs)
     else:
       self.do_run(main, expected, force_c=force_c, **kwargs)
@@ -7043,9 +7039,7 @@ someweirdtext
     no_maps_filename = 'no-maps.out.js'
 
     assert '-g4' not in self.emcc_args
-    building.emcc('src.cpp',
-                  self.serialize_settings() + self.emcc_args + self.emcc_args,
-                  out_filename)
+    building.emcc('src.cpp', self.get_emcc_args(), out_filename)
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
@@ -7055,7 +7049,7 @@ someweirdtext
     self.emcc_args.append('-g4')
 
     building.emcc(os.path.abspath('src.cpp'),
-                  self.serialize_settings() + self.emcc_args + self.emcc_args,
+                  self.get_emcc_args(),
                   out_filename,
                   stderr=PIPE)
     map_referent = out_filename if not self.get_setting('WASM') else wasm_filename
@@ -7133,9 +7127,7 @@ someweirdtext
     js_filename = 'a.out.js'
     wasm_filename = 'a.out.wasm'
 
-    building.emcc('src.cpp',
-                  self.serialize_settings() + self.emcc_args,
-                  js_filename)
+    building.emcc('src.cpp', self.get_emcc_args(), js_filename)
 
     LLVM_DWARFDUMP = os.path.join(LLVM_ROOT, 'llvm-dwarfdump')
     out = self.run_process([LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout

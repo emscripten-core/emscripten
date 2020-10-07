@@ -579,13 +579,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             post_build=None, js_outfile=True):
     suffix = '.js' if js_outfile else '.wasm'
     if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
-      compiler = EMXX
+      compiler = [EMXX]
     else:
-      compiler = EMCC
+      # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+      # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
+      # this if this issues is fixed.
+      compiler = [EMCC, '-nostdlib++']
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = [compiler, filename, '-o', output] + self.get_emcc_args(main_file=True) + \
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + \
         ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
         ['-I' + include for include in includes] + \
         libraries
