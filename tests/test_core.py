@@ -8147,6 +8147,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  post_build=post,
                  expected_output='hello, world!')
 
+  def test_safe_heap_user_js(self):
+    self.set_setting('SAFE_HEAP', 1)
+    self.do_runf(path_from_root('tests', 'core', 'test_safe_heap_user_js.c'),
+                 expected_output=['abort(segmentation fault storing 1 bytes to address 0)'], assert_returncode=NON_ZERO)
+
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)

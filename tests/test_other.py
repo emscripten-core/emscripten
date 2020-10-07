@@ -1716,7 +1716,17 @@ int f() {
       self.assertGreater(len(js), 100 * SLACK)
 
   def test_js_optimizer(self):
-    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers', 'asanify']
+    ACORN_PASSES = [
+      'JSDCE',
+      'AJSDCE',
+      'applyImportAndExportNameChanges',
+      'emitDCEGraph',
+      'applyDCEGraphRemovals',
+      'growableHeap',
+      'unsignPointers',
+      'asanify',
+      'safeHeap'
+    ]
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyLocals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyLocals-output.js')).read(),
        ['minifyLocals']),
@@ -1760,6 +1770,8 @@ int f() {
        ['unsignPointers']),
       (path_from_root('tests', 'optimizer', 'test-asanify.js'), open(path_from_root('tests', 'optimizer', 'test-asanify-output.js')).read(),
        ['asanify']),
+      (path_from_root('tests', 'optimizer', 'test-safeHeap.js'), open(path_from_root('tests', 'optimizer', 'test-safeHeap-output.js')).read(),
+       ['safeHeap']),
     ]:
       print(input, passes)
 
