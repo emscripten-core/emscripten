@@ -8318,6 +8318,12 @@ int main () {
     with env_modify({'EMCC_STRICT': '1'}):
       self.assertContained('ReferenceError: SPLIT_MEMORY is not defined', self.expect_fail(cmd))
 
+  def test_strict_mode_link_cxx(self):
+    # In strict mode C++ programs fail to link unless run with `em++`.
+    self.run_process([EMXX, '-sSTRICT', path_from_root('tests', 'hello_libcxx.cpp')])
+    err = self.expect_fail([EMCC, '-sSTRICT', path_from_root('tests', 'hello_libcxx.cpp')])
+    self.assertContained('error: undefined symbol:', err)
+
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')
     self.set_setting('SAFE_HEAP_LOG')
