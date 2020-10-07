@@ -1,4 +1,4 @@
-args_get
-args_sizes_get
-emscripten_notify_memory_growth
-proc_exit
+env.emscripten_notify_memory_growth
+wasi_snapshot_preview1.args_get
+wasi_snapshot_preview1.args_sizes_get
+wasi_snapshot_preview1.proc_exit
