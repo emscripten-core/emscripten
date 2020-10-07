@@ -83,17 +83,25 @@ def all_engines(f):
 # Tests exception handling in emscripten exception handling mode, and if
 # possible, new wasm EH mode.
 def with_both_exception_handling(f):
-  def decorated(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    f(self)
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    # Wasm EH is currently supported only in wasm backend and V8
-    if V8_ENGINE and \
-       V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):
+  assert callable(f)
+
+  def metafunc(self, native_exceptions):
+    if native_exceptions:
+      # Wasm EH is currently supported only in wasm backend and V8
+      if not self.get_setting('WASM'):
+        self.skipTest('wasm2js does not support wasm exceptions')
+      if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
+        self.skipTest('d8 required to run wasm eh tests')
       self.emcc_args.append('-fwasm-exceptions')
       with js_engines_modify([V8_ENGINE + ['--experimental-wasm-eh']]):
         f(self)
-  return decorated
+    else:
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm_eh': (True,)}
+  return metafunc
 
 
 def no_wasm(note=''):
@@ -4363,8 +4371,8 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
-  @needs_dlfcn
   @with_both_exception_handling
+  @needs_dlfcn
   def test_dylink_raii_exceptions(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
