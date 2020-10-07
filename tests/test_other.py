@@ -100,8 +100,10 @@ def parse_wasm(filename):
     line = line.strip()
     if line.startswith('(import '):
       line = line.strip('()')
-      name = line.split()[2].strip('"')
-      imports.append(name)
+      parts = line.split()
+      module = parts[1].strip('"')
+      name = parts[2].strip('"')
+      imports.append('%s.%s' % (module, name))
     if line.startswith('(export '):
       line = line.strip('()')
       name = line.split()[1].strip('"')
