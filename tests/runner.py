@@ -1761,13 +1761,19 @@ def skip_requested_tests(args, modules):
       which = [arg.split('skip:')[1]]
 
       print(','.join(which), file=sys.stderr)
+      skipped = False
       for test in which:
         print('will skip "%s"' % test, file=sys.stderr)
         suite_name, test_name = test.split('.')
         for m in modules:
-          suite = getattr(m, suite_name)
-          setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
-          break
+          try:
+            suite = getattr(m, suite_name)
+            setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
+            skipped = True
+            break
+          except AttributeError:
+            pass
+      assert skipped, "Not able to skip test " + test
       args[i] = None
   return [a for a in args if a is not None]
 
