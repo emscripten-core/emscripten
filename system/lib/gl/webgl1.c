@@ -50,7 +50,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context_ext(
     EmscriptenWebGLContextAttributes attrs = *attributes;
     attrs.renderViaOffscreenBackBuffer = EM_TRUE;
     return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread(
-      EM_FUNC_SIG_III, &emscripten_webgl_do_create_context_ext, target, &attrs, &resultCodePtr);
+      EM_FUNC_SIG_IIII, &emscripten_webgl_do_create_context_ext, target, &attrs, &resultCodePtr);
   }
   else
   {

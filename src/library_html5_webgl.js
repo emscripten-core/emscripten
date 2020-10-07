@@ -119,10 +119,15 @@ var LibraryHtml5WebGL = {
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i32') }}}
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i32') }}}
         }
+        result = _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_CREATE_CONTEXT') }}}, target, attributes);
         if (resultCodePtr) {
-          HEAP32[resultCodePtr >> 2] = {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+          if (result) {
+            HEAP32[resultCodePtr >> 2] = {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+          } else {
+            HEAP32[resultCodePtr >> 2] = {{{ cDefine('EMSCRIPTEN_RESULT_FAILED') }}};
+          }
         }
-        return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_CREATE_CONTEXT') }}}, target, attributes);
+        return result;
       }
     }
 #endif
@@ -222,9 +227,9 @@ var LibraryHtml5WebGL = {
     }
     return contextHandle;
   },
-
+  emscripten_webgl_do_create_context__deps: ['emscripten_webgl_do_create_context_ext'],
   emscripten_webgl_do_create_context:function(target, attributes) {
-    return LibraryHtml5WebGL.emscripten_webgl_do_create_context_ext(target, attributes, 0);
+    return _emscripten_webgl_do_create_context_ext(target, attributes, 0);
   },
 #if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
