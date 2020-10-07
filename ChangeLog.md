@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- In STRICT mode we no longer link in C++ mode by default.  This means if you
+  are building a C++ program in STRICT mode you need to link via `em++` rather
+  than `emcc`.  This matches the behaviour of gcc and clang.
 - IDBFS now persists files whenever their timestamp changes; previously it acted
   on sync only if the timestamp increased and ignored the file changes otherwise.
 - When `-s SUPPORT_LONGJMP=0` is passed to disable longjmp, do not run the LLVM
