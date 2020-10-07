@@ -17,8 +17,40 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- IDBFS now persists files whenever their timestamp changes; previously it acted
+  on sync only if the timestamp increased and ignored the file changes otherwise.
+- When `-s SUPPORT_LONGJMP=0` is passed to disable longjmp, do not run the LLVM
+  wasm backend path that handles longjmp. Before this only affected linking, and
+  now the flag gives you the ability to affect codegen at compile time too. This
+  is necessary if one does not want any invokes generated for longjmp at all.
+  (#12394)
+
+2.0.6: 10/02/2020
+-----------------
+- Add new `COMPILER_WRAPPER` settings (with corresponding `EM_COMPILER_WRAPPER`
+  environment variable.  This replaces the existing `EMMAKEN_COMPILER`
+  environment variable which is deprecated, but still works for the time being.
+  The main differences is that `EM_COMPILER_WRAPPER` only wrapps the configured
+  version of clang rather than replacing it.
+- ASAN_SHADOW_SIZE is deprecated. When using AddressSanitizer, the correct
+  amount of shadow memory will now be calculated automatically.
+
+2.0.5: 09/28/2020
+-----------------
+- Fix a rare pthreads + exceptions/longjmp race condition (#12056).
+- Add `WEBGL_multi_draw_instanced_base_vertex_base_instance` bindings (#12282).
+- Fix a rare pthreads main thread deadlock (that worsened in 2.0.2, but existed
+  before). (#12318)
+- The WebAssembly table is now created and exported by the generated wasm
+  module rather then constructed by the JS glue code.  This is an implemention
+  detail that should not affect most users, but reduces code size. (#12296)
 - Add `getentropy` in `sys/random.h`, and use that from libc++'s
   `random_device`. This is more efficient, see #12240.
+- Fixed `ABORT_ON_WASM_EXCEPTIONS` to work with the recent dynCall changes where
+  functions can be called via the WASM table directly, bypassing WASM exports
+  (#12269).
+- Add `ASYNCIFY_ADVISE` to output which functions have been instrumented for
+  Asyncify mode, and why they need to be handled. (#12146)
 
 2.0.4: 09/16/2020
 -----------------
@@ -42,7 +74,7 @@ Current Trunk
   asmjs/fastcomp backend).
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
   removes the internal `DYNAMICTOP_PTR` API.)
-- Add `ABORT_ON_EXCEPTIONS` which will abort when an unhandled WASM exception
+- Add `ABORT_ON_WASM_EXCEPTIONS` which will abort when an unhandled WASM exception
   is encountered. This makes the Emscripten program behave more like a native
   program where the OS would terminate the process and no further code can be
   executed when an unhandled exception (e.g. out-of-bounds memory access) happens.

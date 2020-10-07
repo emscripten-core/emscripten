@@ -1302,7 +1302,7 @@ var ast;
 try {
   ast = acorn.parse(input, {
     // Keep in sync with --language_in that we pass to closure in building.py
-    ecmaVersion: 2018,
+    ecmaVersion: 2020,
     preserveParens: closureFriendly,
     onComment: closureFriendly ? sourceComments : undefined
   });

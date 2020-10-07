@@ -309,6 +309,8 @@ int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
 }
 
 int pthread_key_delete(pthread_key_t key) {
+  if (key == 0)
+    return EINVAL;
   uintptr_t* tls = (uintptr_t*)key;
   if (tls[1] != PTHREAD_TLS_MAGIC_ID)
     return EINVAL;
@@ -318,6 +320,8 @@ int pthread_key_delete(pthread_key_t key) {
 }
 
 void* pthread_getspecific(pthread_key_t key) {
+  if (key == 0)
+    return NULL;
   uintptr_t* tls = (uintptr_t*)key;
   if (tls[1] != PTHREAD_TLS_MAGIC_ID)
     return NULL;
@@ -325,6 +329,8 @@ void* pthread_getspecific(pthread_key_t key) {
 }
 
 int pthread_setspecific(pthread_key_t key, const void* value) {
+  if (key == 0)
+    return EINVAL;
   uintptr_t* tls = (uintptr_t*)key;
   if (tls[1] != PTHREAD_TLS_MAGIC_ID)
     return EINVAL;

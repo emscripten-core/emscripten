@@ -9,34 +9,6 @@
 {{{ exportRuntime() }}}
 
 #if MEM_INIT_IN_WASM == 0
-#if MEM_INIT_METHOD == 2
-#if USE_PTHREADS
-if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
-#else
-if (memoryInitializer) (function(s) {
-#endif
-  var i, n = s.length;
-#if ASSERTIONS
-  n -= 4;
-  var crc, bit, table = new Int32Array(256);
-  for (i = 0; i < 256; ++i) {
-    for (crc = i, bit = 0; bit < 8; ++bit)
-      crc = (crc >>> 1) ^ ((crc & 1) * 0xedb88320);
-    table[i] = crc >>> 0;
-  }
-  crc = -1;
-  crc = table[(crc ^ n) & 0xff] ^ (crc >>> 8);
-  crc = table[(crc ^ (n >>> 8)) & 0xff] ^ (crc >>> 8);
-  for (i = 0; i < s.length; ++i) {
-    crc = table[(crc ^ s.charCodeAt(i)) & 0xff] ^ (crc >>> 8);
-  }
-  assert(crc === 0, "memory initializer checksum");
-#endif
-  for (i = 0; i < n; ++i) {
-    HEAPU8[GLOBAL_BASE + i] = s.charCodeAt(i);
-  }
-})(memoryInitializer);
-#else
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
@@ -47,17 +19,17 @@ if (memoryInitializer) {
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = readBinary(memoryInitializer);
-    HEAPU8.set(data, GLOBAL_BASE);
+    HEAPU8.set(data, {{{ GLOBAL_BASE }}});
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
-        assert(HEAPU8[GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+        assert(HEAPU8[{{{ GLOBAL_BASE }}} + i] === 0, "area for memory initializer should not have been touched before it's loaded");
       }
 #endif
-      HEAPU8.set(data, GLOBAL_BASE);
+      HEAPU8.set(data, {{{ GLOBAL_BASE }}});
       // Delete the typed array that contains the large blob of the memory initializer request response so that
       // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
       // its .status field can still be accessed later.
@@ -115,7 +87,6 @@ if (memoryInitializer) {
     }
   }
 }
-#endif
 #endif // MEM_INIT_IN_WASM == 0
 
 var calledRun;
@@ -323,7 +294,7 @@ function run(args) {
     doRun();
   }
 #if STACK_OVERFLOW_CHECK
-  if (!ABORT) checkStackCookie();
+  checkStackCookie();
 #endif
 }
 Module['run'] = run;
@@ -470,17 +441,7 @@ if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior 
 if (!ENVIRONMENT_IS_PTHREAD) {
   run();
 } else {
-#if EMBIND
-  // Embind must initialize itself on all threads, as it generates support JS.
-  Module['___embind_register_native_and_builtin_types']();
-#endif // EMBIND
-#if MODULARIZE
-  // The promise resolve function typically gets called as part of the execution 
-  // of the Module `run`. The workers/pthreads don't execute `run` here, they
-  // call `run` in response to a message at a later time, so the creation
-  // promise can be resolved, marking the pthread-Module as initialized.
-  readyPromiseResolve(Module);
-#endif // MODULARIZE
+  PThread.initWorker();
 }
 #else
 run();

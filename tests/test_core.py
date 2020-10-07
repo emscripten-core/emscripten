@@ -23,7 +23,7 @@ from tools.shared import try_delete, PIPE
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, LLVM_ROOT
 from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, no_asmjs, is_slow_test, create_test_file, parameterized
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
 from runner import NON_ZERO
 import clang_native
@@ -137,6 +137,7 @@ def can_do_standalone(self):
   return self.get_setting('WASM') and \
       self.get_setting('STACK_OVERFLOW_CHECK') < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
+      not self.get_setting('SAFE_HEAP') and \
       '-fsanitize=address' not in self.emcc_args
 
 
@@ -239,19 +240,25 @@ def no_lsan(note):
   return decorator
 
 
-def no_minimal_runtime(note):
-  assert not callable(note)
+def make_no_decorator_for_setting(name):
+  def outer_decorator(note):
+    assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+    def decorator(f):
+      assert callable(f)
 
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      if 'MINIMAL_RUNTIME=1' in self.emcc_args or self.get_setting('MINIMAL_RUNTIME'):
-        self.skipTest(note)
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
+      @wraps(f)
+      def decorated(self, *args, **kwargs):
+        if (name + '=1') in self.emcc_args or self.get_setting(name):
+          self.skipTest(note)
+        f(self, *args, **kwargs)
+      return decorated
+    return decorator
+  return outer_decorator
+
+
+no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
+no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 
 
 class TestCoreBase(RunnerCore):
@@ -1858,7 +1865,6 @@ int main() {
     if self.is_wasm():
       self.skipTest('wasm requires a proper asm module')
 
-    self.emcc_args.append('-Wno-almost-asm')
     src = path_from_root('tests', 'core', 'test_inlinejs3.c')
     output = shared.unsuffixed(src) + '.out'
 
@@ -1971,7 +1977,7 @@ int main(int argc, char **argv) {
       expect_fail = True
     self.do_run(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
     # Win with it
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth(self):
@@ -1989,7 +1995,7 @@ int main(int argc, char **argv) {
     fail = open('src.js').read()
 
     # Win with it
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.js').read()
 
@@ -2008,9 +2014,11 @@ int main(int argc, char **argv) {
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     # Tracing of memory growths should work
-    self.set_setting('EMSCRIPTEN_TRACING', 1)
-    self.emcc_args += ['--tracing']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    # (SAFE_HEAP would instrument the tracing code itself, leading to recursion)
+    if not self.get_setting('SAFE_HEAP'):
+      self.set_setting('EMSCRIPTEN_TRACING', 1)
+      self.emcc_args += ['--tracing']
+      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -2025,7 +2033,7 @@ int main(int argc, char **argv) {
     fail = open('src.js').read()
 
     # Win with it
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.js').read()
 
@@ -2075,7 +2083,7 @@ int main(int argc, char **argv) {
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
 
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3.c')
 
   @parameterized({
@@ -2086,10 +2094,9 @@ int main(int argc, char **argv) {
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
-    self.emcc_args += ['-Wno-almost-asm', '-s', 'MAXIMUM_MEMORY=18MB'] + args
+    self.emcc_args += ['-s', 'MAXIMUM_MEMORY=18MB'] + args
     self.do_run_in_out_file_test('tests', 'core', 'test_aborting_new.cpp')
 
-  @no_asmjs()
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   def test_module_wasm_memory(self):
@@ -3049,21 +3056,18 @@ Var: 42
     # this if this issues is fixed.
     self.emcc_args.append('-nostdlib++')
 
-    def post(filename):
-      js = open(filename).read()
-      start = js.find('var NAMED_GLOBALS')
-      first = js.find('{', start)
-      last = js.find('}', start)
-      exports = js[first + 1:last]
-      exports = exports.split(',')
-      # ensure there aren't too many globals; we don't want unnamed_addr
-      exports = [e.split(':')[0].strip('"') for e in exports]
-      exports.sort()
-      self.assertGreater(len(exports), 20)
-      # wasm backend includes alias in NAMED_GLOBALS
-      self.assertLess(len(exports), 56)
+    def get_data_export_count(wasm):
+      wat = self.get_wasm_text(wasm)
+      lines = wat.splitlines()
+      exports = [l for l in lines if l.strip().startswith('(export ')]
+      data_exports = [l for l in exports if '(global ' in l]
+      return len(data_exports)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self.c', post_build=post)
+    self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self.c')
+    export_count = get_data_export_count('test_dlfcn_self.wasm')
+    # ensure there aren't too many globals; we don't want unnamed_addr
+    self.assertGreater(export_count, 20)
+    self.assertLess(export_count, 56)
 
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):
@@ -4465,7 +4469,6 @@ res64 - external 64\n''', header='''
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dlfcn
-  @no_wasm_backend('possible https://github.com/emscripten-core/emscripten/issues/9038')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
       self.do_run(src + 'int main() { return test_main(); }', expected_output)
@@ -4838,7 +4841,7 @@ Pass: 0.000012 0.000012''')
       self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
     elif '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
-      self.emcc_args += ['--closure', '2', '-Wno-almost-asm'] # Use closure 2 here for some additional coverage
+      self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
       return self.skipTest('TODO: currently skipped because CI runs out of memory running Closure in this test!')
 
     self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1', '--pre-js', 'pre.js']
@@ -5067,6 +5070,7 @@ main( int argv, char ** argc ) {
   def test_stat_mknod(self):
     self.do_runf(path_from_root('tests', 'stat', 'test_mknod.c'), 'success')
 
+  @no_safe_heap('https://github.com/emscripten-core/emscripten/issues/12433')
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl.c')
@@ -5777,7 +5781,10 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_fakestat.c')
 
   def test_mmap(self):
-    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+    # ASan needs more memory, but that is set up separately
+    if '-fsanitize=address' not in self.emcc_args:
+      self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_mmap.c')
@@ -5854,6 +5861,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @no_safe_heap('has unaligned 64-bit operations in wasm')
   def test_sse1(self):
     src = path_from_root('tests', 'sse', 'test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -5868,6 +5876,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @no_safe_heap('has unaligned 64-bit operations in wasm')
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6281,12 +6290,6 @@ return malloc(size);
   @no_asan('autodebug logging interferes with asan')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
-    # Autodebug does not work with too much shadow memory.
-    # Memory consumed by autodebug depends on the size of the WASM linear memory.
-    # With a large shadow memory, the JS engine runs out of memory.
-    if '-fsanitize=address' in self.emcc_args:
-      self.set_setting('ASAN_SHADOW_SIZE', 16 * 1024 * 1024)
-
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
     # used and so forth, which will change between opt modes and updates of
@@ -6532,12 +6535,13 @@ return malloc(size);
     print('with RESERVED_FUNCTION_POINTERS=0')
     self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
     expected = 'Unable to grow wasm table'
-    if self.is_wasm2js() and is_optimizing(self.emcc_args):
+    if self.is_wasm2js():
       # in wasm2js the error message doesn't come from the VM, but from our
       # emulation code. when ASSERTIONS are enabled we show a clear message, but
       # in optimized builds we don't waste code size on that, and the JS engine
       # shows a generic error.
       expected = 'table.grow is not a function'
+
     self.do_runf(src, expected, assert_returncode=NON_ZERO)
 
     print('- with table growth')
@@ -6625,6 +6629,7 @@ return malloc(size);
           if '\n' + short_aborter + '@' not in output and '\n' + full_aborter + '@' not in output:
             self.assertContained(' ' + short_aborter + ' ' + '\n' + ' ' + full_aborter + ' ', output)
 
+  @no_safe_heap('tracing from sbrk into JS leads to an infinite loop')
   def test_tracing(self):
     self.emcc_args += ['--tracing']
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing.c')
@@ -6974,7 +6979,7 @@ someweirdtext
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc","_free"]', '--post-js', 'glue.js']
     if allow_memory_growth:
-      self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-Wno-almost-asm']
+      self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
 
     def post(filename):
       with open(filename, 'a') as f:
@@ -8012,18 +8017,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-std=c++17']
     self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction.cpp')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @parameterized({
     'c': ['test_asan_no_error.c'],
     'cpp': ['test_asan_no_error.cpp'],
   })
   def test_asan_no_error(self, name):
-    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.emcc_args.append('-fsanitize=address')
+    self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
     self.do_runf(path_from_root('tests', 'core', name), '', assert_returncode=NON_ZERO)
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
   # clang optimizing things away. for example, a memset might be optimized into
   # stores, and then the stores identified as dead, which leaves nothing for
   # asan to test. here we want to test asan itself, so we work around that.
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',
@@ -8084,25 +8093,32 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if not self.get_setting('WASM'):
       self.skipTest('wasm2js has no ASan support')
 
-    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.emcc_args.append('-fsanitize=address')
+    self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
     if cflags:
       self.emcc_args += cflags
     self.do_runf(path_from_root('tests', 'core', name),
                  expected_output=expected_output, assert_all=True,
                  check_for_error=False, assert_returncode=NON_ZERO)
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_js_stack_op(self):
-    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.emcc_args.append('-fsanitize=address')
+    self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
     self.do_runf(path_from_root('tests', 'core', 'test_asan_js_stack_op.c'),
                  expected_output='Hello, World!')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
-    self.set_setting('ALLOW_MEMORY_GROWTH')
+    self.set_setting('INITIAL_MEMORY', 314572800)
     self.do_run_in_out_file_test('tests', 'core', 'test_asan_api.c')
 
+  @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_modularized_with_closure(self):
     self.emcc_args.append('-sMODULARIZE=1')
@@ -8110,6 +8126,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-sUSE_CLOSURE_COMPILER=1')
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
+    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
 
     def post(filename):
       with open(filename, 'a') as f:
@@ -8165,17 +8182,34 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_create(self):
-    self.set_setting('-lbrowser.js')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
-    def test():
-      self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
-    test()
-
-    print('with pool')
+  @node_pthreads
+  def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', '2')
-    self.emcc_args += ['-DPOOL']
-    test()
+    self.emcc_args += ['-DALLOW_SYNC']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
+
+  @node_pthreads
+  def test_pthread_create_proxy(self):
+    # with PROXY_TO_PTHREAD, we can synchronously depend on workers being available
+    self.set_setting('PROXY_TO_PTHREAD', '1')
+    self.emcc_args += ['-DALLOW_SYNC']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
+
+  @node_pthreads
+  def test_pthread_create_embind_stack_check(self):
+    # embind should work with stack overflow checks (see #12356)
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.emcc_args += ['--bind']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
+
+  @node_pthreads
+  def test_pthread_exceptions(self):
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.emcc_args += ['-fexceptions']
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'exceptions.cpp')
 
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
@@ -8268,31 +8302,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests Settings.ABORT_ON_WASM_EXCEPTIONS
   def test_abort_on_exceptions(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS', 1)
-    self.emcc_args += ['--bind', '--post-js', 'post.js']
-    create_test_file('post.js', '''
-      addOnPostRun(function() {
-        try {
-          // Crash the program
-          _crash();
-        }
-        catch(e) {
-          // Catch the abort
-          out(true);
-        }
-
-        out("again");
-
-        try {
-          // Try executing some function again
-          _crash();
-        }
-        catch(e) {
-          // Make sure it failed with the expected exception
-          out(e === "program has already aborted!");
-        }
-      });
-    ''')
-    self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.c')
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
+    self.emcc_args += ['--bind', '--post-js', path_from_root('tests', 'core', 'test_abort_on_exception_post.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.cpp')
 
 
 # Generate tests for everything
@@ -8376,10 +8388,10 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
-lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
-asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                 settings={'ALLOW_MEMORY_GROWTH': 1})
+lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
+asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': 314572800})
+asani = make_run('asani', emcc_args=['-fsanitize=address', '-O2', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+                 settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': 314572800})
 
 # Experimental modes (not tested by CI)
 lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})

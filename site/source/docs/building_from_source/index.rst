@@ -29,8 +29,6 @@ Then point LLVM_ROOT in ``.emscripten`` to ``<llvm_src>/build/bin`` (no need to 
 
 Please refer to the upstream docs for more detail.
 
-For using the older fastcomp backend, see :ref:`the fastcomp docs <building-fastcomp-from-source>`.
-
 Building Binaryen
 -----------------
 
@@ -40,7 +38,6 @@ See the `Binaryen build instructions <https://github.com/WebAssembly/binaryen#bu
    :maxdepth: 1
 
    toolchain_what_is_needed
-   building_fastcomp_manually_from_source
    configuring_emscripten_settings
    verify_emscripten_environment
 

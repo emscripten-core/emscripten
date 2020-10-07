@@ -438,8 +438,9 @@ def llvm_backend_args():
     allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
-  # asm.js-style setjmp/longjmp handling
-  args += ['-enable-emscripten-sjlj']
+  if Settings.SUPPORT_LONGJMP:
+    # asm.js-style setjmp/longjmp handling
+    args += ['-enable-emscripten-sjlj']
 
   # better (smaller, sometimes faster) codegen, see binaryen#1054
   # and https://bugs.llvm.org/show_bug.cgi?id=39488
@@ -482,9 +483,6 @@ def lld_flags_for_executable(external_symbol_list):
   # wasm module arrives)
   if not Settings.STANDALONE_WASM:
     cmd.append('--import-memory')
-    cmd.append('--import-table')
-  else:
-    cmd.append('--export-table')
 
   if Settings.USE_PTHREADS:
     cmd.append('--shared-memory')
@@ -503,6 +501,10 @@ def lld_flags_for_executable(external_symbol_list):
     else:
       cmd.append('--no-gc-sections')
       cmd.append('--export-dynamic')
+  else:
+    cmd.append('--export-table')
+    if Settings.ALLOW_TABLE_GROWTH:
+      cmd.append('--growable-table')
 
   if Settings.LINKABLE:
     cmd.append('--export-all')
@@ -1002,7 +1004,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
 
     args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
     # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
-    args += ['--language_in', 'ECMASCRIPT_2018']
+    args += ['--language_in', 'ECMASCRIPT_2020']
     # Tell closure not to do any transpiling or inject any polyfills.
     # At some point we may want to look into using this as way to convert to ES5 but
     # babel is perhaps a better tool for that.
@@ -1144,6 +1146,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       'reaches': [],
       'root': True
     })
+  if not Settings.RELOCATABLE:
     graph.append({
       'export': '__indirect_function_table',
       'name': 'emcc$export$__indirect_function_table',
@@ -1286,12 +1289,6 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   # JS optimizations
   if opt_level >= 2:
     passes = []
-    # it may be useful to also run: simplifyIfs, registerize, asmLastOpts
-    # passes += ['simplifyExpressions'] # XXX fails on wasm3js.test_sqlite
-    # TODO: enable name minification with pthreads. atm wasm2js emits pthread
-    # helper functions outside of the asmFunc(), and they mix up minifyGlobals
-    # (which assumes any vars in that area are global, like var HEAP8, but
-    # those helpers have internal vars in a scope it doesn't understand yet)
     if not debug_info and not Settings.USE_PTHREADS:
       passes += ['minifyNames']
     if minify_whitespace:

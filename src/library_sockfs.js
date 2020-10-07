@@ -737,7 +737,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (event === 'error') {
           var sp = stackSave();
-          var msg = allocate(intArrayFromString(data[2]), 'i8', ALLOC_STACK);
+          var msg = allocate(intArrayFromString(data[2]), ALLOC_STACK);
           {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
           stackRestore(sp);
         } else {

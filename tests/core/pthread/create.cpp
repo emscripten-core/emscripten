@@ -30,13 +30,9 @@ pthread_t thread[NUM_THREADS];
 
 void CreateThread(int i)
 {
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   static int counter = 1;
-  int rc = pthread_create(&thread[i], &attr, ThreadMain, (void*)i);
+  int rc = pthread_create(&thread[i], nullptr, ThreadMain, (void*)i);
   assert(rc == 0);
-  pthread_attr_destroy(&attr);
 }
 
 void mainn() {
@@ -47,7 +43,7 @@ void mainn() {
   printf("main iter %d : %d\n", main_adds, worker_adds);
   if (worker_adds == NUM_THREADS * TOTAL) {
     printf("done!\n");
-#ifndef POOL
+#ifndef ALLOW_SYNC
   emscripten_cancel_main_loop();
 #else
   exit(0);
@@ -61,8 +57,9 @@ int main() {
     CreateThread(i);
   }
 
-  // Without a pool, the event loop must be reached for the worker to start up.
-#ifndef POOL
+  // if we don't allow sync pthread creation, the event loop must be reached for
+  // the worker to start up.
+#ifndef ALLOW_SYNC
   emscripten_set_main_loop(mainn, 0, 0);
 #else
   while (1) mainn();

@@ -231,7 +231,7 @@ mergeInto(LibraryManager.library, {
       Object.keys(src.entries).forEach(function (key) {
         var e = src.entries[key];
         var e2 = dst.entries[key];
-        if (!e2 || e['timestamp'] > e2['timestamp']) {
+        if (!e2 || e['timestamp'] != e2['timestamp']) {
           create.push(key);
           total++;
         }

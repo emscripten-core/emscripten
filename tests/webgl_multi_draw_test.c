@@ -27,8 +27,8 @@ GLuint compile_shader(GLenum shaderType, const char *src)
   {
     GLint maxLength = 0;
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
-    char *buf = (char*)malloc(maxLength+1);
-    glGetShaderInfoLog(shader, maxLength, &maxLength, buf);
+    char *buf = (char*)malloc(maxLength);
+    glGetShaderInfoLog(shader, maxLength, NULL, buf);
     printf("%s\n", buf);
     free(buf);
     return 0;
@@ -132,7 +132,7 @@ int main()
   GLint firsts[] = {0, 3};
   GLsizei counts[] = {3, 3};
   GLsizei instanceCounts[] = {1, 1};
-  GLint offsets[] = {0, 3 * sizeof(GLushort)};
+  const GLvoid* const offsets[] = {(GLvoid*)0, (GLvoid*)(3 * sizeof(GLushort))};
   GLsizei drawcount = 2;
 
 #ifdef MULTI_DRAW_ARRAYS

@@ -18,7 +18,7 @@ executors:
       EMSDK_NOTTY: "1"
       PYTHON_BIN: "python3"
     macos:
-      xcode: "9.0"
+      xcode: "12.2.0"
 
 commands:
   emsdk-env:
@@ -67,15 +67,8 @@ commands:
       - emsdk-env
       - npm-install
       - run:
-          name: gen_struct_info
+          name: clear cache
           command: |
-            # We've had issues in the past with building struct info when the
-            # cache is completely empty.  So specific test creating struct
-            # info first.
-            # For some reason this seems to deadlock while accessing the
-            # cache direcotry on windows.  Adding EMCC_DEBUG makes it work so
-            # debugging the issue is tricky.
-            [ "$CIRCLE_JOB" != "build-windows" ] && $PYTHON_BIN ./tools/gen_struct_info.py > out.json
             $PYTHON_BIN ./emcc.py --clear-cache
   build-libs-and-freeze:
     description: "Build all libraries, and freeze the cache"
@@ -330,7 +323,7 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: pip3 install flake8==3.7.8 flake8-unused-arguments==0.0.6
+      - run: pip3 install -r requirements-dev.txt
       - run: python3 -m flake8 --show-source --statistics
   test-sanity:
     executor: bionic
@@ -409,29 +402,12 @@ jobs:
     executor: bionic
     steps:
       - test-sockets-chrome
-  build-windows:
+  # windows and mac do not have separate build and test jobs, as they only run
+  # a limited set of tests; it is simpler and faster to do it all in one job.
+  test-windows:
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail
-    environment:
-      # on windows the python binary is always called python.exe and never
-      # python3.exe
-      PYTHON_BIN: "python"
-      PYTHONUNBUFFERED: "1"
-      EMSDK_NOTTY: "1"
-    steps:
-      - checkout
-      - run:
-          name: Install packages
-          command: choco install make cmake.portable python3
-      - run:
-          name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
-      - build
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
-      - persist
-  test-minimal-windows:
     environment:
       # on windows the python binary is always called python.exe and never
       # python3.exe
@@ -441,19 +417,22 @@ jobs:
       # clang can compile but not link in the current setup, see
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
-    executor:
-      name: win/vs2019
-      shell: bash.exe -eo pipefail
     steps:
+      - checkout
       - run:
           name: Install packages
-          command: choco install make cmake.portable python3
+          command: |
+            choco install make cmake.portable
+            choco install python --version 3.8.0
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
+      - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
       - run-tests:
           test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null"
-  build-mac:
+  test-mac:
     executor: mac
     steps:
       - run:
@@ -465,10 +444,6 @@ jobs:
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - persist
-  test-other-mac:
-    executor: mac
-    steps:
       - run-tests-mac:
           test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message"
 
@@ -505,11 +480,5 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      - build-windows
-      - test-minimal-windows:
-          requires:
-            - build-windows
-      - build-mac
-      - test-other-mac:
-          requires:
-            - build-mac
+      - test-windows
+      - test-mac

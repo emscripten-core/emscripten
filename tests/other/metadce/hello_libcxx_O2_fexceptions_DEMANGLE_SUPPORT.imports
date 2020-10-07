@@ -7,7 +7,6 @@ __cxa_free_exception
 __cxa_rethrow
 __cxa_throw
 __cxa_uncaught_exceptions
-__indirect_function_table
 __resumeException
 abort
 emscripten_memcpy_big

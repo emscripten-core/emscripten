@@ -829,7 +829,7 @@ var LibraryBrowser = {
     function doCallback(callback) {
       if (callback) {
         var stack = stackSave();
-        {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
+        {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
         stackRestore(stack);
       }
     }
@@ -934,7 +934,7 @@ var LibraryBrowser = {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
           var stack = stackSave();
-          {{{ makeDynCall('viii', 'onload') }}}(handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
+          {{{ makeDynCall('viii', 'onload') }}}(handle, arg, allocate(intArrayFromString(_file), ALLOC_STACK));
           stackRestore(stack);
         }
       } else {

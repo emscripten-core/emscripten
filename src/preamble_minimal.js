@@ -59,8 +59,7 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
-var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
-    TOTAL_STACK = {{{ TOTAL_STACK }}},
+var TOTAL_STACK = {{{ TOTAL_STACK }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
@@ -82,6 +81,7 @@ var wasmMemory = new WebAssembly.Memory({
 #endif
   });
 
+var wasmTable;
 var buffer = wasmMemory.buffer;
 
 #if USE_PTHREADS
@@ -90,8 +90,6 @@ var buffer = wasmMemory.buffer;
 assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
 #endif
-
-#include "runtime_init_table.js"
 
 #if ASSERTIONS
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
@@ -149,7 +147,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS
 if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
-HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
+HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
 
 #endif
 
@@ -174,7 +172,7 @@ var wasmOffsetConverter;
 var __ATEXIT__    = []; // functions called during shutdown
 #endif
 
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP
 var runtimeInitialized = false;
 
 // This is always false in minimal_runtime - the runtime does not have a concept of exiting (keeping this variable here for now since it is referenced from generated code)
