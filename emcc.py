@@ -1595,6 +1595,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         include_and_export('getNoExitRuntime')
 
       if shared.Settings.MODULARIZE:
+        # MODULARIZE+USE_PTHREADS mode requires EXPORT_NAME to be customized
+        # becauase of how the external worker.js file communicates with the
+        # Module.
+        if shared.Settings.EXPORT_NAME == 'Module':
+          exit_with_error('pthreads + MODULARIZE currently require you to set -s EXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work')
+
         # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
         # can access them:
 
