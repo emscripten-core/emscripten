@@ -194,12 +194,9 @@ If manually bisecting:
   through and see the print (best to run with EMTEST_SAVE_DIR=1 for the reload).
 ''')
 
-  @no_wasm_backend('wasm source maps')
   def test_emscripten_log(self):
-    # TODO: wasm support for source maps. emscripten_loadSourceMap looks at $HTML.map but it should be $NAME.wasm.map.
-    src = 'src.cpp'
-    create_test_file(src, self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
+    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
+    self.compile_btest(['src.cpp', '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1'])
     self.run_browser('page.html', None, '/report_result?1')
 
   def test_preload_file(self):
