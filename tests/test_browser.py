@@ -196,7 +196,7 @@ If manually bisecting:
 
   def test_emscripten_log(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    self.compile_btest(['src.cpp', '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1'])
+    self.compile_btest(['src.cpp', '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html'])
     self.run_browser('page.html', None, '/report_result?1')
 
   def test_preload_file(self):

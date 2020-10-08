@@ -3024,7 +3024,7 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$demangle'
+  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace',
 #if MINIMAL_RUNTIME
     , '$warnOnce'
 #endif
@@ -3038,6 +3038,10 @@ LibraryManager.library = {
     var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
+
+    if (flags & 32/*EM_LOG_DEMANGLE*/) {
+      warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
+    }
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
     if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
@@ -3064,14 +3068,14 @@ LibraryManager.library = {
     for (var l in lines) {
       var line = lines[l];
 
-      var jsSymbolName = '';
+      var symbolName = '';
       var file = '';
       var lineno = 0;
       var column = 0;
 
       var parts = chromeRe.exec(line);
       if (parts && parts.length == 5) {
-        jsSymbolName = parts[1];
+        symbolName = parts[1];
         file = parts[2];
         lineno = parts[3];
         column = parts[4];
@@ -3079,7 +3083,7 @@ LibraryManager.library = {
         parts = newFirefoxRe.exec(line);
         if (!parts) parts = firefoxRe.exec(line);
         if (parts && parts.length >= 4) {
-          jsSymbolName = parts[1];
+          symbolName = parts[1];
           file = parts[2];
           lineno = parts[3];
           column = parts[4]|0; // Old Firefox doesn't carry column information, but in new FF30, it is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
@@ -3088,12 +3092,6 @@ LibraryManager.library = {
           callstack += line + '\n';
           continue;
         }
-      }
-
-      // Try to demangle the symbol, but fall back to showing the original JS symbol name if not available.
-      var cSymbolName = (flags & 32/*EM_LOG_DEMANGLE*/) ? demangle(jsSymbolName) : jsSymbolName;
-      if (!cSymbolName) {
-        cSymbolName = jsSymbolName;
       }
 
       var haveSourceMap = false;
@@ -3105,19 +3103,19 @@ LibraryManager.library = {
           if (flags & 64/*EM_LOG_NO_PATHS*/) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
           }
-          callstack += '    at ' + cSymbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
+          callstack += '    at ' + symbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
         }
       }
       if ((flags & 16/*EM_LOG_JS_STACK*/) || !haveSourceMap) {
         if (flags & 64/*EM_LOG_NO_PATHS*/) {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
-        callstack += (haveSourceMap ? ('     = '+jsSymbolName) : ('    at '+cSymbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
+        callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
 
       // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
       if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
-        if (stack_args[1] == jsSymbolName && stack_args[2].length > 0) {
+        if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
         }

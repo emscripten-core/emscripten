@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- EM_LOG_DEMANGLE is now deprecated.  Function names shown in wasm backtraces
+  are never mangled (they are either missing or demangled already) so demangled
+  is not possible anymore.
 - In STRICT mode we no longer link in C++ mode by default.  This means if you
   are building a C++ program in STRICT mode you need to link via `em++` rather
   than `emcc`.  This matches the behaviour of gcc and clang.

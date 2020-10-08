@@ -37,13 +37,13 @@ void __attribute__((noinline)) kitten()
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_DEBUG, "Debug message to console.");
 
 	// Log to with full callstack information (both original C source and JS callstacks):
-	emscripten_log(EM_LOG_C_STACK | EM_LOG_JS_STACK | EM_LOG_DEMANGLE, "A message with as full call stack information as possible:");
+	emscripten_log(EM_LOG_C_STACK | EM_LOG_JS_STACK, "A message with as full call stack information as possible:");
 
 	// Log with just mangled JS callstacks:
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_JS_STACK, "This is a message with a mangled JS callstack:");
 
 	// Log only clean C callstack:
-	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_C_STACK | EM_LOG_DEMANGLE, "This message should have a clean C callstack:");
+	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_C_STACK, "This message should have a clean C callstack:");
 }
 
 void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary function signature to add some content to callstack.
@@ -53,7 +53,7 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	else
 		MYASSERT(1 == 1, "");
 
-	int flags = EM_LOG_NO_PATHS | EM_LOG_JS_STACK | EM_LOG_DEMANGLE | EM_LOG_FUNC_PARAMS;
+	int flags = EM_LOG_NO_PATHS | EM_LOG_JS_STACK | EM_LOG_FUNC_PARAMS;
 #ifndef RUN_FROM_JS_SHELL
 	flags |= EM_LOG_C_STACK;
 #endif
@@ -97,7 +97,7 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	// Test that obtaining a truncated callstack works. (https://github.com/emscripten-core/emscripten/issues/2171)
 	char *buffer = new char[21];
 	buffer[20] = 0x01; // Magic sentinel that should not change its value.
-	emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_DEMANGLE | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 20);
+	emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 20);
 	MYASSERT(!!strstr(buffer, "at bar(int,"), "Truncated callstack was %s!", buffer);
 	MYASSERT(buffer[20] == 0x01, "");
 	delete[] buffer;
@@ -157,7 +157,7 @@ void DoubleTest() {
 int main()
 {
 	int test = 123;
-	emscripten_log(EM_LOG_FUNC_PARAMS | EM_LOG_DEMANGLE | EM_LOG_CONSOLE, "test print %d\n", test);
+	emscripten_log(EM_LOG_FUNC_PARAMS | EM_LOG_CONSOLE, "test print %d\n", test);
 
 	Foo<int>();
 

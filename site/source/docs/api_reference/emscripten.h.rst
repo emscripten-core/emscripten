@@ -1011,10 +1011,6 @@ Defines
 
   If specified, prints a call stack that contains file names referring to lines in the built .js/.html file along with the message. The flags :c:data:`EM_LOG_C_STACK` and :c:data:`EM_LOG_JS_STACK` can be combined to output both untranslated and translated file and line information.
 
-.. c:macro:: EM_LOG_DEMANGLE
-
-  If specified, C/C++ function names are de-mangled before printing. Otherwise, the mangled post-compilation JavaScript function names are displayed.
-
 .. c:macro:: EM_LOG_NO_PATHS
 
   If specified, the pathnames of the file information in the call stack will be omitted.
