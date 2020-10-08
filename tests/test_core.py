@@ -7264,7 +7264,6 @@ someweirdtext
 
     self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre.c', post_build=post)
 
-  @no_wasm('wasmifying destroys debug info and stack tracability')
   @no_wasm2js('source maps support')
   def test_emscripten_log(self):
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
@@ -7274,10 +7273,9 @@ someweirdtext
     self.emcc_args += ['-DRUN_FROM_JS_SHELL']
     self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log.cpp')
     # test closure compiler as well
-    if self.run_name == 'asm2':
-      print('closure')
-      self.emcc_args += ['--closure', '1', '-g1'] # extra testing
-      self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log_with_closure')
+    print('closure')
+    self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+    self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log_with_closure.cpp')
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('tests', 'test_float_literals.cpp')

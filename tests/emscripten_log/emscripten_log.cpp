@@ -94,10 +94,6 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	// 5. Clean up.
 	delete[] callstack;
 
-	// Or alternatively use a fixed-size buffer for the callstack (and get a truncated output if it was too small).
-	char str[1024];
-	emscripten_get_callstack(EM_LOG_NO_PATHS | EM_LOG_JS_STACK, str, 1024);
-
 	// Test that obtaining a truncated callstack works. (https://github.com/emscripten-core/emscripten/issues/2171)
 	char *buffer = new char[21];
 	buffer[20] = 0x01; // Magic sentinel that should not change its value.
@@ -106,6 +102,13 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	MYASSERT(buffer[20] == 0x01, "");
 	delete[] buffer;
 
+	// Or alternatively use a fixed-size buffer for the callstack (and get a truncated output if it was too small).
+	char str[1024];
+	emscripten_get_callstack(EM_LOG_NO_PATHS | EM_LOG_JS_STACK, str, 1024);
+
+	// TODO(sbc): should we try to revive these checks? The callstacks don't look quite like
+	// this in the wasm world and we already have coverage above I think?
+#if 0
 	/* With EM_LOG_JS_STACK, the callstack will be
 		at __Z3bariPcd (src.cpp.o.js:5394:12)
 		at __Z3FooIiEvv (src.cpp.o.js:5417:4)
@@ -121,6 +124,7 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 #else
 	MYASSERT(!!strstr(str, "at __Z3bariPcd (page.js"), "Callstack was %s!", str);
 	MYASSERT(!!strstr(str, "at __Z3FooIiEvv (page.js"), "Callstack was %s!", str);
+#endif
 #endif
 }
 
