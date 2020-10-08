@@ -985,8 +985,10 @@ LibraryManager.library = {
     var summer = new Date(currentYear, 6, 1);
     var winterOffset = winter.getTimezoneOffset();
     var summerOffset = summer.getTimezoneOffset();
+
     // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
-    // Using Math.max we can get retrieve the local standard time for the timezone.
+    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST). 
+    // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
     var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
 
     // timezone is specified as seconds west of UTC ("The external variable
