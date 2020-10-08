@@ -24,7 +24,7 @@ from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PY
 from tools import shared, building
 from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
-from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify
+from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify, disabled
 from runner import NON_ZERO
 import clang_native
 
@@ -102,14 +102,6 @@ def with_both_exception_handling(f):
   metafunc._parameterize = {'': (False,),
                             'wasm_eh': (True,)}
   return metafunc
-
-
-def no_wasm(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm', note)
-  return decorated
 
 
 def no_wasm2js(note=''):
@@ -2721,7 +2713,7 @@ The current type of b is: 9
     self.do_run(src, '|65830|')
 
   @needs_dlfcn
-  @no_wasm('EM_ASM in shared wasm modules, stored inside the wasm somehow')
+  @disabled('EM_ASM in not yet supported in SIDE_MODULE')
   def test_dlfcn_em_asm(self):
     self.prep_dlfcn_lib()
     create_test_file('liblib.cpp', '''
@@ -3766,76 +3758,6 @@ ok
       ''',
       expected='hello 0\nhello 1\nhello 2\n',
       header='typedef void (*voidfunc)(); void sidey(voidfunc f);', force_c=True)
-
-  @no_wasm('uses function tables in an asm.js specific way')
-  @needs_dlfcn
-  def test_dylink_asmjs_funcpointers(self):
-    self.dylink_test(
-      main=r'''
-      #include "header.h"
-      #include <emscripten.h>
-      void left1() { printf("left1\n"); }
-      void left2() { printf("left2\n"); }
-      voidfunc getleft1() { return left1; }
-      voidfunc getleft2() { return left2; }
-      int main(int argc, char **argv) {
-        printf("main\n");
-        EM_ASM({
-          // make the function table sizes a non-power-of-two
-          var newSize = alignFunctionTables();
-          //out('old size of function tables: ' + newSize);
-          while ((newSize & 3) !== 3) {
-            Module['FUNCTION_TABLE_v'].push(0);
-            newSize = alignFunctionTables();
-          }
-          //out('new size of function tables: ' + newSize);
-          // when masked, the two function pointers 1 and 2 should not happen to fall back to the right place
-          assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
-          loadDynamicLibrary('liblib.so');
-        });
-        volatilevoidfunc f;
-        f = (volatilevoidfunc)left1;
-        f();
-        f = (volatilevoidfunc)left2;
-        f();
-        f = (volatilevoidfunc)getright1();
-        f();
-        f = (volatilevoidfunc)getright2();
-        f();
-        second();
-        return 0;
-      }
-      ''',
-      side=r'''
-      #include "header.h"
-      void right1() { printf("right1\n"); }
-      void right2() { printf("right2\n"); }
-      voidfunc getright1() { return right1; }
-      voidfunc getright2() { return right2; }
-      void second() {
-        printf("second\n");
-        volatilevoidfunc f;
-        f = (volatilevoidfunc)getleft1();
-        f();
-        f = (volatilevoidfunc)getleft2();
-        f();
-        f = (volatilevoidfunc)right1;
-        f();
-        f = (volatilevoidfunc)right2;
-        f();
-      }
-      ''',
-      expected='main\nleft1\nleft2\nright1\nright2\nsecond\nleft1\nleft2\nright1\nright2\n',
-      header='''
-      #include <stdio.h>
-      typedef void (*voidfunc)();
-      typedef volatile voidfunc volatilevoidfunc;
-      voidfunc getleft1();
-      voidfunc getleft2();
-      voidfunc getright1();
-      voidfunc getright2();
-      void second();
-      ''', need_reverse=False, auto_load=False, force_c=True)
 
   @needs_dlfcn
   def test_dylink_funcpointers_wrapper(self):
@@ -7264,7 +7186,7 @@ someweirdtext
 
     self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre.c', post_build=post)
 
-  @no_wasm2js('source maps support')
+  @no_wasm2js('symbol names look different wasm2js backtraces')
   def test_emscripten_log(self):
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
