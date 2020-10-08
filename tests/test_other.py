@@ -191,9 +191,11 @@ class other(RunnerCore):
     # self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_worker_mjs(self):
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread', '-O1', path_from_root('tests', 'hello_world.c')])
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread', '-O1',
+                      path_from_root('tests', 'hello_world.c'),
+                      '-s', 'EXPORT_NAME=FooModule'])
     with open('hello_world.mjs') as f:
-      self.assertContained('export default Module;', f.read())
+      self.assertContained('export default FooModule;', f.read())
     with open('hello_world.worker.js') as f:
       self.assertContained('import(', f.read())
 
@@ -9442,4 +9444,9 @@ exec "$@"
     self.run_process([EMCC, path_from_root('tests', 'core', 'test_longjmp.c'), '-c', '-s', 'SUPPORT_LONGJMP=1', '-o', 'a.o'])
     stderr = self.run_process([EMCC, 'a.o', '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
     self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
+                         stderr)
+
+  def test_pthread_MODULARIZE(self):
+    stderr = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-pthread', '-sMODULARIZE'], stderr=PIPE, check=False).stderr
+    self.assertContained('pthreads + MODULARIZE currently require you to set -s EXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work',
                          stderr)
