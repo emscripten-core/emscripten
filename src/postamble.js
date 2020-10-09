@@ -227,8 +227,6 @@ function callMain(args) {
 }
 #endif // HAS_MAIN
 
-{{GLOBAL_VARS}}
-
 /** @type {function(Array=)} */
 function run(args) {
   args = args || arguments_;
