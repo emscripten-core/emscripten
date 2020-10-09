@@ -169,6 +169,13 @@ def disabled(note=''):
   return unittest.skip(note)
 
 
+def no_mac(note=''):
+  assert not callable(note)
+  if MAC:
+    return unittest.skip(note)
+  return lambda f: f
+
+
 def no_windows(note=''):
   assert not callable(note)
   if WINDOWS:
