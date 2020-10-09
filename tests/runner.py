@@ -171,7 +171,7 @@ def disabled(note=''):
 
 def no_mac(note=''):
   assert not callable(note)
-  if MAC:
+  if MACOS:
     return unittest.skip(note)
   return lambda f: f
 
