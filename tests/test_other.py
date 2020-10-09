@@ -8053,8 +8053,8 @@ int main () {
 
   # TODO: Debug why the code size is different on Windows and Mac. Also, for
   # some unknown reason (at time of writing), this test is not skipped on the
-  # Windows autoroller, despite the bot being correctly configured to skip this
-  # test. The no_windows decorator also solves that problem.
+  # autoroller, despite the bot being correctly configured to skip this test.
+  # The no_windows decorator also solves that problem.
   @no_windows("Code size is slightly different on Windows")
   @no_mac("Code size is slightly different on Mac")
   def test_minimal_runtime_code_size(self):
