@@ -33,7 +33,7 @@ from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WIND
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, JS_ENGINES, WASM_ENGINES, V8_ENGINE
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
-from runner import env_modify, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
+from runner import env_modify, no_mac, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
 from runner import js_engines_modify, NON_ZERO
 from tools import shared, building
 import jsrun
@@ -8051,11 +8051,13 @@ int main () {
         test(['-s', 'WASM=0'], closure, opt)
         test(['-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  # TODO: Debug why the code size is different on Windows. Also, for some
-  # unknown reason (at time of writing), this test is not skipped on the Windows
-  # autoroller, despite the bot being correctly configured to skip this test.
-  # The no_windows decorator also solves that problem.
+  # TODO: Debug why the code size is different on Windows and Mac. Also, for
+  # some unknown reason (at time of writing), this test is not skipped on the
+  # Windows and Mac autorollers, despite the bot being correctly configured to
+  # skip this test in all three platforms (Linux, Mac, and Windows).
+  # The no_windows/no_mac decorators also solve that problem.
   @no_windows("Code size is slightly different on Windows")
+  @no_mac("Code size is slightly different on Mac")
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'ENVIRONMENT=web',

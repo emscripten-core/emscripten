@@ -63,7 +63,7 @@ import parallel_testsuite
 from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import WINDOWS
+from tools.shared import MACOS, WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
 from tools.shared import asbytes, Settings
@@ -167,6 +167,13 @@ def no_wasm_backend(note=''):
 def disabled(note=''):
   assert not callable(note)
   return unittest.skip(note)
+
+
+def no_mac(note=''):
+  assert not callable(note)
+  if MACOS:
+    return unittest.skip(note)
+  return lambda f: f
 
 
 def no_windows(note=''):
