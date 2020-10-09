@@ -430,10 +430,8 @@ function JSify(data, functionsOnly) {
     }
 
     var postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
-    print(postParts[0]);
-
-    print(postParts[1]);
+    var post = processMacros(preprocess(read(postFile), postFile));
+    print(post);
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));

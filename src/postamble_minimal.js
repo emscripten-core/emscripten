@@ -236,6 +236,3 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 })
 #endif // ASSERTIONS || WASM == 2
 ;
-
-{{GLOBAL_VARS}}
-
