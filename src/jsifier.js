@@ -9,26 +9,11 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-// Handy sets
-
-var STRUCT_LIST = set('struct', 'list');
-
 var addedLibraryItems = {};
-
-var SETJMP_LABEL = -1;
-
-var INDENTATION = ' ';
-
-var functionStubSigs = {};
 
 // Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
 var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
-
-// proxiedFunctionInvokers contains bodies of the functions that will perform the proxying. These
-// are generated in a map to keep track which ones have already been emitted, to avoid outputting duplicates.
-// map: pair(sig, syncOrAsync) -> function body
-var proxiedFunctionInvokers = {};
 
 // Used internally. set when there is a main() function.
 // Also set when in a linkable module, as the main() function might
@@ -360,7 +345,6 @@ function JSify(data, functionsOnly) {
     if (!mainPass) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
-      print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
       return;
     }
 

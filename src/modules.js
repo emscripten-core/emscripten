@@ -489,11 +489,10 @@ function exportRuntime() {
       }
     }
   }
-  return runtimeElements.map(function(name) {
-    return maybeExport(name);
-  }).join('\n') + runtimeNumbers.map(function(name) {
-    return maybeExportNumber(name);
-  }).join('\n');
+  var exports = runtimeElements.map(function(name) { return maybeExport(name); });
+  exports = exports.concat(runtimeNumbers.map(function(name) { return maybeExportNumber(name); }));
+  exports = exports.filter(function(name) { return name != '' });
+  return exports.join('\n');
 }
 
 var PassManager = {

@@ -767,7 +767,7 @@ def create_sending(invoke_funcs, metadata):
   add_standard_wasm_imports(send_items_map)
 
   sorted_keys = sorted(send_items_map.keys())
-  return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
+  return '{\n  ' + ',\n  '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + '\n}'
 
 
 def make_export_wrappers(exports, delay_assignment):
