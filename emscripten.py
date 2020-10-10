@@ -45,7 +45,7 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
   exports_that_are_not_initializers = [x for x in exports if x not in initializers]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
-  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(exports_that_are_not_initializers) + ';')
+  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
 
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
   post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
@@ -844,7 +844,10 @@ def create_receiving(exports, initializers):
   else:
     receiving += make_export_wrappers(exports, delay_assignment)
 
-  return '\n'.join(receiving) + '\n'
+  if shared.Settings.MINIMAL_RUNTIME:
+    return '\n  '.join(receiving) + '\n'
+  else:
+    return '\n'.join(receiving) + '\n'
 
 
 def create_module(sending, receiving, invoke_funcs, metadata):
