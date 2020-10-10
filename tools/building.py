@@ -1589,8 +1589,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   print_compiler_stage(cmd)
   # if we are emitting a source map, every time we load and save the wasm
   # we must tell binaryen to update it
-  emit_source_map = Settings.DEBUG_LEVEL == 4 and outfile
-  if emit_source_map:
+  if Settings.GENERATE_SOURCE_MAP and outfile:
     cmd += ['--input-source-map=' + infile + '.map']
     cmd += ['--output-source-map=' + outfile + '.map']
   ret = check_call(cmd, stdout=stdout).stdout

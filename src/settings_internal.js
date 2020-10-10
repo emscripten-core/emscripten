@@ -192,3 +192,5 @@ var STRUCT_INFO = '';
 
 // If true, building against Emscripten's asm.js/wasm heap memory profiler.
 var MEMORYPROFILER = 0;
+
+var GENERATE_SOURCE_MAP = 0;

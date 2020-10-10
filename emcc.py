@@ -257,10 +257,6 @@ class EmccOptions(object):
     self.relocatable = False
 
 
-def use_source_map():
-  return shared.Settings.DEBUG_LEVEL >= 4
-
-
 def will_metadce():
   # The metadce JS parsing code does not currently support the JS that gets generated
   # when assertions are enabled.
@@ -305,7 +301,7 @@ def embed_memfile():
           (shared.Settings.MEM_INIT_METHOD == 0 and
            (not shared.Settings.MAIN_MODULE and
             not shared.Settings.SIDE_MODULE and
-            not use_source_map())))
+            not shared.Settings.GENERATE_SOURCE_MAP)))
 
 
 def expand_byte_size_suffixes(value):
@@ -891,7 +887,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
 
     # TODO: support source maps with js_transform
-    if options.js_transform and use_source_map():
+    if options.js_transform and shared.Settings.GENERATE_SOURCE_MAP:
       logger.warning('disabling source maps because a js transform is being done')
       shared.Settings.DEBUG_LEVEL = 3
 
@@ -1707,6 +1703,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       # set file locations, so that JS glue can find what it needs
       shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_target))
+      shared.Settings.GENERATE_SOURCE_MAP = shared.Settings.DEBUG_LEVEL >= 4
 
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
@@ -1839,7 +1836,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options.binaryen_passes += backend_binaryen_passes()
 
-    if shared.Settings.WASM2JS and use_source_map():
+    if shared.Settings.WASM2JS and shared.Settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
 
     if shared.Settings.NODE_CODE_CACHING:
@@ -2179,7 +2176,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # we also received the wasm at this stage
       safe_move(tmp_wasm, wasm_target)
-      if use_source_map():
+      if shared.Settings.GENERATE_SOURCE_MAP:
         safe_move(tmp_wasm + '.map', wasm_source_map_target)
 
     # exit block 'emscript'
@@ -2650,7 +2647,7 @@ def emit_js_source_maps(target, js_transform_tempfiles):
 def do_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
-  if use_source_map() and not shared.Settings.SOURCE_MAP_BASE:
+  if shared.Settings.GENERATE_SOURCE_MAP and not shared.Settings.SOURCE_MAP_BASE:
     logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = shared.Settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
@@ -2665,7 +2662,7 @@ def do_binaryen(target, options, wasm_target):
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  if options.binaryen_passes or use_source_map():
+  if options.binaryen_passes or shared.Settings.GENERATE_SOURCE_MAP:
     # if we need to strip certain sections, and we have wasm-opt passes
     # to run anyhow, do it with them.
     if strip_debug:

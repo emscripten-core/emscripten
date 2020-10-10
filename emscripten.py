@@ -488,8 +488,7 @@ def finalize_wasm(infile, memfile, DEBUG):
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
     modify_wasm = True
-  write_source_map = shared.Settings.DEBUG_LEVEL >= 4
-  if write_source_map:
+  if shared.Settings.GENERATE_SOURCE_MAP:
     building.emit_wasm_source_map(infile, infile + '.map')
     building.save_intermediate(infile + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
@@ -553,7 +552,7 @@ def finalize_wasm(infile, memfile, DEBUG):
                                          stdout=subprocess.PIPE)
   if modify_wasm:
     building.save_intermediate(infile, 'post_finalize.wasm')
-  if write_source_map:
+  if shared.Settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(infile + '.map', 'post_finalize.map')
 
   if memfile:
