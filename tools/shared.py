@@ -1064,11 +1064,6 @@ def reconfigure_cache():
   Cache = cache.Cache(CACHE)
 
 
-# Placeholder strings used for SINGLE_FILE
-class FilenameReplacementStrings:
-  WASM_BINARY_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE }}}'
-
-
 class JS(object):
   emscripten_license = '''\
 /**
