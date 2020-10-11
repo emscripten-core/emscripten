@@ -473,7 +473,8 @@
             "F_SETFD",
             "O_EXCL",
             "F_GETFL",
-            "O_LARGEFILE"
+            "O_LARGEFILE",
+            "O_NOCTTY"
         ],
         "structs": {}
     },
