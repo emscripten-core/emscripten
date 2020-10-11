@@ -9009,9 +9009,9 @@ int main() {
     ok(required_flags, filename='hello_world_main_loop.cpp')
     # -O1 is ok as we don't run wasm-opt there (but no higher, see below)
     ok(required_flags + ['-O1'])
-    # exception support shouldn't require change after linking
+    # Exception support shouldn't require changes after linking
     ok(required_flags + ['-fexceptions'])
-    # longjmp support shouldn't require change after linking
+    # longjmp support shouldn't require changes after linking
     ok(required_flags + ['-sSUPPORT_LONGJMP=1'])
 
     # other builds fail with a standard message + extra details
