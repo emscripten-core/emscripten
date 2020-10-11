@@ -9011,8 +9011,6 @@ int main() {
     ok(required_flags + ['-O1'])
     # Exception support shouldn't require changes after linking
     ok(required_flags + ['-fexceptions'])
-    # longjmp support shouldn't require changes after linking
-    ok(required_flags + ['-sSUPPORT_LONGJMP=1'])
 
     # other builds fail with a standard message + extra details
     def fail(args, details):
