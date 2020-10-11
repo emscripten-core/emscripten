@@ -484,10 +484,6 @@ def finalize_wasm(infile, memfile, DEBUG):
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
 
-  # C++ exceptions and longjmp require invoke processing,
-  # https://github.com/WebAssembly/binaryen/issues/3081
-  if shared.Settings.SUPPORT_LONGJMP or shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
-    modify_wasm = True
   if shared.Settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)

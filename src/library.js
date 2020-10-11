@@ -1794,7 +1794,6 @@ LibraryManager.library = {
   // they each have a different signature - it is only at the wasm level that
   // they become identical).
   emscripten_longjmp: 'longjmp',
-  emscripten_longjmp_jmpbuf: 'longjmp',
 
   // ==========================================================================
   // sys/wait.h

@@ -124,7 +124,6 @@
   "longjmp": ["setThrew", "realloc", "testSetjmp", "saveSetjmp"],
   "siglongjmp": ["setThrew", "realloc", "testSetjmp", "saveSetjmp"],
   "emscripten_longjmp": ["setThrew", "realloc", "testSetjmp", "saveSetjmp"],
-  "emscripten_longjmp_jmpbuf": ["setThrew", "realloc", "testSetjmp", "saveSetjmp"],
   "emscripten_websocket_new": ["malloc", "free"],
   "emscripten_websocket_set_onmessage_callback_on_thread": ["malloc", "free"],
   "emscripten_websocket_set_onclose_callback_on_thread": ["malloc", "free"],
