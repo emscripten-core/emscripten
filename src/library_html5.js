@@ -733,12 +733,16 @@ var LibraryJSEvents = {
         // causing a new scroll, etc..
         return;
       }
+      var b = document.body; // Take document.body to a variable, Closure compiler does not outline access to it on its own.
+      if (!b) {
+        // During a page unload 'body' can be null, with "Cannot read property 'clientWidth' of null" being thrown
+        return;
+      }
 #if USE_PTHREADS
       var uiEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}} ) : JSEvents.uiEvent;
 #else
       var uiEvent = JSEvents.uiEvent;
 #endif
-      var b = document.body; // Take document.body to a variable, Closure compiler does not outline access to it on its own.
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'b.clientWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'b.clientHeight', 'i32') }}};

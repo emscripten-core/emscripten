@@ -154,5 +154,3 @@ var currentScriptUrl = typeof _scriptDir !== 'undefined' ? _scriptDir : ((typeof
 #endif // USE_PTHREADS
 
 {{BODY}}
-
-// {{MODULE_ADDITIONS}}

@@ -17,6 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- EM_LOG_DEMANGLE is now deprecated.  Function names shown in wasm backtraces
+  are never mangled (they are either missing or demangled already) so demangled
+  is not possible anymore.
+- In STRICT mode we no longer link in C++ mode by default.  This means if you
+  are building a C++ program in STRICT mode you need to link via `em++` rather
+  than `emcc`.  This matches the behaviour of gcc and clang.
+- IDBFS now persists files whenever their timestamp changes; previously it acted
+  on sync only if the timestamp increased and ignored the file changes otherwise.
 - When `-s SUPPORT_LONGJMP=0` is passed to disable longjmp, do not run the LLVM
   wasm backend path that handles longjmp. Before this only affected linking, and
   now the flag gives you the ability to affect codegen at compile time too. This

@@ -63,7 +63,7 @@ import parallel_testsuite
 from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import WINDOWS
+from tools.shared import MACOS, WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
 from tools.shared import asbytes, Settings
@@ -167,6 +167,13 @@ def no_wasm_backend(note=''):
 def disabled(note=''):
   assert not callable(note)
   return unittest.skip(note)
+
+
+def no_mac(note=''):
+  assert not callable(note)
+  if MACOS:
+    return unittest.skip(note)
+  return lambda f: f
 
 
 def no_windows(note=''):
@@ -579,13 +586,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             post_build=None, js_outfile=True):
     suffix = '.js' if js_outfile else '.wasm'
     if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
-      compiler = EMXX
+      compiler = [EMXX]
     else:
-      compiler = EMCC
+      # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+      # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
+      # this if this issues is fixed.
+      compiler = [EMCC, '-nostdlib++']
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = [compiler, filename, '-o', output] + self.get_emcc_args(main_file=True) + \
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + \
         ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
         ['-I' + include for include in includes] + \
         libraries
@@ -1761,16 +1771,17 @@ def skip_requested_tests(args, modules):
       which = [arg.split('skip:')[1]]
 
       print(','.join(which), file=sys.stderr)
+      skipped = False
       for test in which:
         print('will skip "%s"' % test, file=sys.stderr)
         suite_name, test_name = test.split('.')
         for m in modules:
-          try:
-            suite = getattr(m, suite_name)
+          suite = getattr(m, suite_name, None)
+          if suite:
             setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
+            skipped = True
             break
-          except AttributeError:
-            pass
+      assert skipped, "Not able to skip test " + test
       args[i] = None
   return [a for a in args if a is not None]
 

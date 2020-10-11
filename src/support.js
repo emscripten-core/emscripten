@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// {{PREAMBLE_ADDITIONS}}
-
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
 
 {{{ alignMemory }}}
