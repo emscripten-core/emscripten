@@ -9025,8 +9025,6 @@ int main() {
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(required_flags + ['-O2'], optimization_message)
     fail(required_flags + ['-O3'], optimization_message)
-    # exceptions fails until invokes are fixed
-    fail(required_flags + ['-fexceptions'], 'C++ exceptions always require changes')
 
   def test_output_to_nowhere(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', os.devnull, '-c'])
