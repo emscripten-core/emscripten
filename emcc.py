@@ -2876,7 +2876,7 @@ def module_export_name_substitution():
     # For Node.js and other shell environments, create an unminified Module object so that
     # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
     if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
-      src = 'if(typeof Module==="undefined"){var Module={};}' + src
+      src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
     f.write(src)
   save_intermediate('module_export_name_substitution')
 

@@ -143,12 +143,10 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
-
 #if ASSERTIONS
 if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
 HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
-
 #endif
 
 #if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
@@ -175,7 +173,9 @@ var __ATEXIT__    = []; // functions called during shutdown
 #if ASSERTIONS || SAFE_HEAP
 var runtimeInitialized = false;
 
-// This is always false in minimal_runtime - the runtime does not have a concept of exiting (keeping this variable here for now since it is referenced from generated code)
+// This is always false in minimal_runtime - the runtime does not have a concept
+// of exiting (keeping this variable here for now since it is referenced from
+// generated code)
 var runtimeExited = false;
 #endif
 
@@ -184,7 +184,6 @@ var runtimeExited = false;
 var memoryInitializer = null;
 
 #include "memoryprofiler.js"
-
 #include "runtime_debug.js"
 
 // === Body ===
