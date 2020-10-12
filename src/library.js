@@ -3659,36 +3659,7 @@ LibraryManager.library = {
     {{{ makeDynCall('vii', 'func') }}}(Math.min(base, end), Math.max(base, end));
   },
 
-  // misc definitions to avoid unnecessary unresolved symbols being reported
-  // by fastcomp or wasm-ld
-#if SUPPORT_LONGJMP
-  emscripten_prep_setjmp: function() {},
-  emscripten_cleanup_setjmp: function() {},
-  emscripten_check_longjmp: function() {},
-  emscripten_get_longjmp_result: function() {},
-  emscripten_setjmp: function() {},
-#endif
-  emscripten_preinvoke: function() {},
-  emscripten_postinvoke: function() {},
-  emscripten_resume: function() {},
-  emscripten_landingpad: function() {},
-  getHigh32: function() {},
-  setHigh32: function() {},
-  FtoILow: function() {},
-  FtoIHigh: function() {},
-  DtoILow: function() {},
-  DtoIHigh: function() {},
-  BDtoILow: function() {},
-  BDtoIHigh: function() {},
-  SItoF: function() {},
-  UItoF: function() {},
-  SItoD: function() {},
-  UItoD: function() {},
-  BItoD: function() {},
-  llvm_dbg_value: function() {},
-  llvm_debugtrap: function() {},
-  llvm_ctlz_i32: function() {},
-
+  // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow: function() {
     abort('stack overflow')
   },
