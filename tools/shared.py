@@ -1066,7 +1066,6 @@ def reconfigure_cache():
 
 # Placeholder strings used for SINGLE_FILE
 class FilenameReplacementStrings:
-  WASM_TEXT_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_TEXT_FILE }}}'
   WASM_BINARY_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE }}}'
 
 
