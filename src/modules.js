@@ -182,8 +182,7 @@ var LibraryManager = {
     // Save the list for has() queries later.
     this.libraries = libraries;
 
-    for (var i = 0; i < libraries.length; i++) {
-      var filename = libraries[i];
+    for (var filename of libraries) {
       var src = read(filename);
       var processed = undefined;
       try {
