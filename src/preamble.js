@@ -624,7 +624,7 @@ function abort(what) {
   throw e;
 }
 
-var memoryInitializer = null;
+// {{MEM_INITIALIZER}}
 
 #include "memoryprofiler.js"
 

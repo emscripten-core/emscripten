@@ -514,7 +514,7 @@ def finalize_wasm(infile, memfile, DEBUG):
     args.append('--no-legalize-javascript-ffi')
   else:
     modify_wasm = True
-  if not shared.Settings.MEM_INIT_IN_WASM:
+  if memfile:
     args.append('--separate-data-segments=' + memfile)
     modify_wasm = True
   if shared.Settings.SIDE_MODULE:
@@ -556,7 +556,7 @@ def finalize_wasm(infile, memfile, DEBUG):
   if write_source_map:
     building.save_intermediate(infile + '.map', 'post_finalize.map')
 
-  if not shared.Settings.MEM_INIT_IN_WASM:
+  if memfile:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,
     # because it's an ABI question as to whether it is valid to do so or not.
     # we can do so here, since we make sure to zero out that memory (even in

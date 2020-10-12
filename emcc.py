@@ -1291,7 +1291,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$preloadDylibs']
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
-      # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
       options.memory_init_file = False
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
@@ -1707,10 +1707,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       # set file locations, so that JS glue can find what it needs
       shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_target))
+
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
+
     if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
       exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
+
     if shared.Settings.WASM2JS:
       shared.Settings.MAYBE_WASM2JS = 1
       # when using wasm2js, if the memory segments are in the wasm then they
@@ -2150,6 +2153,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     wasm_only = shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS
 
+    if shared.Settings.MEM_INIT_IN_WASM:
+      memfile = None
+    else:
+      memfile = shared.replace_or_append_suffix(target, '.mem')
+
     with ToolchainProfiler.profile_block('emscript'):
       # Emscripten
       logger.debug('LLVM => JS')
@@ -2165,7 +2173,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final_js = None
       else:
         final_js = tmp_wasm + '.js'
-      emscripten.run(tmp_wasm, final_js, shared.replace_or_append_suffix(target, '.mem'))
+      emscripten.run(tmp_wasm, final_js, memfile)
 
       save_intermediate('original')
 
@@ -2225,19 +2233,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # exit block 'source transforms'
     log_time('source transforms')
 
-    with ToolchainProfiler.profile_block('memory initializer'):
-      memfile = None
-      if not shared.Settings.MEM_INIT_IN_WASM:
-         memfile = shared.replace_or_append_suffix(target, '.mem')
-      if memfile:
+    if memfile and not shared.Settings.MINIMAL_RUNTIME:
+      # MINIMAL_RUNTIME doesn't use `var memoryInitializer` but instead expects Module['mem'] to
+      # be loaded before the module.  See src/postamble_minimal.js.
+      with ToolchainProfiler.profile_block('memory initializer'):
         # For the wasm backend, we don't have any memory info in JS. All we need to do
         # is set the memory initializer url.
         src = open(final_js).read()
-        src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
+        src = src.replace('// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
         open(final_js + '.mem.js', 'w').write(src)
         final_js += '.mem.js'
 
-    log_time('memory initializer')
+      log_time('memory initializer')
 
     with ToolchainProfiler.profile_block('binaryen'):
       do_binaryen(target, options, wasm_target)
@@ -2914,7 +2921,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     script.src = base_js_target
 
   if not shared.Settings.SINGLE_FILE:
-    if options.memory_init_file and not shared.Settings.MEM_INIT_IN_WASM:
+    if memfile and not shared.Settings.MINIMAL_RUNTIME:
       # start to load the memory init file in the HTML, in parallel with the JS
       script.un_src()
       script.inline = ('''
