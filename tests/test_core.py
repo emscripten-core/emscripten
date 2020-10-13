@@ -5273,10 +5273,8 @@ main( int argv, char ** argc ) {
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
   def test_unistd_truncate_noderawfs(self):
-    # FIXME
-    self.skipTest('fails on some node versions and OSes, e.g. 10.13.0 on linux')
-
-    self.emcc_args += ['-s', 'NODERAWFS=1']
+    self.uses_es6 = True
+    self.set_setting('NODERAWFS')
     self.do_run_in_out_file_test('tests', 'unistd', 'truncate.c', js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
