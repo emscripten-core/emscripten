@@ -9460,5 +9460,5 @@ exec "$@"
       ''')
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
                       '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[foo]',
-                      '--js-library', 'lib1.js',
-                      '--js-library', 'lib2.js'])
+                      '--js-library=lib1.js',
+                      '--js-library=lib2.js'])
