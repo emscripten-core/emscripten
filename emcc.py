@@ -656,6 +656,12 @@ def make_js_executable(script):
     pass # can fail if e.g. writing the executable to /dev/null
 
 
+def do_replace(input_, pattern, replacement):
+  if pattern not in input_:
+    exit_with_error('expected to find pattern in input JS: %s' % pattern)
+  return input_.replace(pattern, replacement)
+
+
 run_via_emxx = False
 
 
@@ -1703,7 +1709,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.SINGLE_FILE:
       # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-      shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
+      shared.Settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
     else:
       # set file locations, so that JS glue can find what it needs
       shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_target))
@@ -2216,7 +2222,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         with open(final_js, 'w') as f:
           # pre-js code goes right after the Module integration code (so it
           # can use Module), we have a marker for it
-          f.write(src.replace('// {{PRE_JSES}}', fix_windows_newlines(options.pre_js)))
+          f.write(do_replace(src, '// {{PRE_JSES}}', fix_windows_newlines(options.pre_js)))
           f.write(fix_windows_newlines(options.post_js))
         options.pre_js = src = options.post_js = None
         save_intermediate('pre-post')
@@ -2240,7 +2246,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # For the wasm backend, we don't have any memory info in JS. All we need to do
         # is set the memory initializer url.
         src = open(final_js).read()
-        src = src.replace('// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
+        src = do_replace(src, '// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
         open(final_js + '.mem.js', 'w').write(src)
         final_js += '.mem.js'
 
@@ -2782,13 +2788,13 @@ def do_binaryen(target, options, wasm_target):
     wasm2c.do_wasm2c(wasm_target)
 
   # replace placeholder strings with correct subresource locations
-  if final_js and shared.Settings.SINGLE_FILE:
+  if final_js and shared.Settings.SINGLE_FILE and not shared.Settings.WASM2JS:
     js = open(final_js).read()
 
-    if '{{{ WASM_BINARY_DATA }}}' in js:
-      js = js.replace('{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_target, 'rb').read()))
-
-    js = js.replace(shared.FilenameReplacementStrings.WASM_BINARY_FILE, shared.JS.get_subresource_location(wasm_target))
+    if shared.Settings.MINIMAL_RUNTIME:
+      js = do_replace(js, '{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_target, 'rb').read()))
+    else:
+      js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)
     with open(final_js, 'w') as f:
       f.write(js)
@@ -2993,7 +2999,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     script.src = None
     script.inline = js_contents
 
-  html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
+  html_contents = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
   with open(target, 'wb') as f:
     f.write(asbytes(html_contents))
@@ -3082,12 +3088,9 @@ def generate_worker_js(target, js_target, target_basename):
 def worker_js_script(proxy_worker_filename):
   web_gl_client_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
   idb_store_src = open(shared.path_from_root('src', 'IDBStore.js')).read()
-  proxy_client_src = (
-    open(shared.path_from_root('src', 'proxyClient.js')).read()
-    .replace('{{{ filename }}}', proxy_worker_filename)
-    .replace('{{{ IDBStore.js }}}', idb_store_src)
-  )
-
+  proxy_client_src = open(shared.path_from_root('src', 'proxyClient.js')).read()
+  proxy_client_src = do_replace(proxy_client_src, '{{{ filename }}}', proxy_worker_filename)
+  proxy_client_src = do_replace(proxy_client_src, '{{{ IDBStore.js }}}', idb_store_src)
   return web_gl_client_src + '\n' + proxy_client_src
 
 
