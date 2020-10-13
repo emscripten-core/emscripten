@@ -2359,6 +2359,13 @@ def parse_args(newargs):
     newargs[i] = newargs[i].strip()
     arg = newargs[i]
 
+    def check_flag(value):
+      # Check for and consume a flag
+      if arg == value:
+        newargs[i] = ''
+        return True
+      return False
+
     def check_arg(value):
       if arg.startswith(value) and '=' in arg:
         exit_with_error('Invalid parameter (do not use "=" with "--" options)')
@@ -2454,10 +2461,10 @@ def parse_args(newargs):
         # debug info during link (during compile, this does not make a
         # difference).
         shared.Settings.DEBUG_LEVEL = 3
-    elif check_arg('-profiling') or check_arg('--profiling'):
+    elif check_flag('-profiling') or check_flag('--profiling'):
       shared.Settings.DEBUG_LEVEL = max(shared.Settings.DEBUG_LEVEL, 2)
       options.profiling = True
-    elif check_arg('-profiling-funcs') or check_arg('--profiling-funcs'):
+    elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
       options.profiling_funcs = True
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
       if newargs[i] == '--memoryprofiler':
@@ -2466,10 +2473,10 @@ def parse_args(newargs):
       newargs[i] = ''
       settings_changes.append("EMSCRIPTEN_TRACING=1")
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_trace.js')))
-    elif check_arg('--emit-symbol-map'):
+    elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       shared.Settings.EMIT_SYMBOL_MAP = 1
-    elif check_arg('--bind'):
+    elif check_flag('--bind'):
       shared.Settings.EMBIND = 1
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'embind', 'emval.js')))
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'embind', 'embind.js')))
@@ -2479,13 +2486,13 @@ def parse_args(newargs):
       options.preload_files.append(consume_arg())
     elif check_arg('--exclude-file'):
       options.exclude_files.append(consume_arg())
-    elif check_arg('--use-preload-cache'):
+    elif check_flag('--use-preload-cache'):
       options.use_preload_cache = True
-    elif check_arg('--no-heap-copy'):
+    elif check_flag('--no-heap-copy'):
       diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
-    elif check_arg('--use-preload-plugins'):
+    elif check_flag('--use-preload-plugins'):
       options.use_preload_plugins = True
-    elif check_arg('--ignore-dynamic-linking'):
+    elif check_flag('--ignore-dynamic-linking'):
       options.ignore_dynamic_linking = True
     elif arg == '-v':
       shared.PRINT_STAGES = True
@@ -2494,35 +2501,35 @@ def parse_args(newargs):
       options.shell_path = consume_arg()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
-    elif check_arg('--no-entry'):
+    elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
       shared.Settings.SYSTEM_JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg())))
-    elif check_arg('--remove-duplicates'):
+    elif check_flag('--remove-duplicates'):
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
-    elif check_arg('--jcache'):
+    elif check_flag('--jcache'):
       logger.error('jcache is no longer supported')
-    elif check_arg('--clear-cache'):
+    elif check_flag('--clear-cache'):
       logger.info('clearing cache as requested by --clear-cache')
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
       should_exit = True
-    elif check_arg('--clear-ports'):
+    elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
       system_libs.Ports.erase()
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
       should_exit = True
-    elif check_arg('--show-ports'):
+    elif check_flag('--show-ports'):
       system_libs.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
       options.memory_init_file = int(consume_arg())
-    elif check_arg('--proxy-to-worker'):
+    elif check_flag('--proxy-to-worker'):
       options.proxy_to_worker = True
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
-    elif check_arg('--separate-asm'):
+    elif check_flag('--separate-asm'):
       exit_with_error('cannot --separate-asm with the wasm backend, since not emitting asm.js')
     elif arg.startswith(('-I', '-L')):
       path_name = arg[2:]
@@ -2536,11 +2543,11 @@ def parse_args(newargs):
             '" encountered. If this is to a local system header/library, it may '
             'cause problems (local system files make sense for compiling natively '
             'on your system, but not necessarily to JavaScript).')
-    elif check_arg('--emrun'):
+    elif check_flag('--emrun'):
       options.emrun = True
-    elif check_arg('--cpuprofiler'):
+    elif check_flag('--cpuprofiler'):
       options.cpu_profiler = True
-    elif check_arg('--threadprofiler'):
+    elif check_flag('--threadprofiler'):
       options.thread_profiler = True
       settings_changes.append('PTHREADS_PROFILING=1')
     elif arg == '-fno-exceptions':
@@ -2595,9 +2602,9 @@ def parse_args(newargs):
         exit_with_error(arg + ': cannot change built-in settings values with a -jsD directive. Pass -s ' + key + '=' + value + ' instead!')
       user_js_defines += [(key, value)]
       newargs[i] = ''
-    elif check_arg('-shared'):
+    elif check_flag('-shared'):
       options.shared = True
-    elif check_arg('-r'):
+    elif check_flag('-r'):
       options.relocatable = True
 
   if should_exit:
