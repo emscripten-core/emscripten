@@ -1,6 +1,5 @@
 __assign_got_enties
 __errno_location
-__stdio_write
 __wasm_call_ctors
 dynCall_jiji
 main
