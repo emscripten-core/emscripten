@@ -6054,6 +6054,9 @@ return malloc(size);
   @is_slow_test
   def test_openjpeg(self):
     if '-fsanitize=address' in self.emcc_args:
+      # In ASan mode we need a large initial memory (or else wasm-ld fails).
+      # The OpenJPEG CMake will build several executables, so we must enable
+      # the flag for them all.
       os.environ['EMMAKEN_CFLAGS'] = '-sINITIAL_MEMORY=300MB'
 
     def line_splitter(data):
