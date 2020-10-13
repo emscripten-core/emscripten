@@ -17,6 +17,13 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.7: 10/13/2020
+-----------------
+- Don't run Binaryen postprocessing for Emscripten EH/SjLj. This lets us avoid
+  running `wasm-emscripten-finalize` just for C++ exceptions or longjmp (#12399).
+- Run `SAFE_HEAP` on user JS code using a new Acorn pass, increasing the
+  coverage of those tests to all JS in the output (#12450).
 - EM_LOG_DEMANGLE is now deprecated.  Function names shown in wasm backtraces
   are never mangled (they are either missing or demangled already) so demangled
   is not possible anymore.
