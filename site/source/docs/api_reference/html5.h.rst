@@ -2077,9 +2077,9 @@ Functions
   :returns: On success, a strictly positive value that represents a handle to the created context. On failure, a negative number that can be cast to an |EMSCRIPTEN_RESULT| field to get the reason why the context creation failed.
   :rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 
-.. c:function:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context_ext(const char *target, const EmscriptenWebGLContextAttributes *attributes, EMSCRIPTEN_RESULT *resultCodePtr)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_create_context_ptr(const char *target, const EmscriptenWebGLContextAttributes *attributes, EMSCRIPTEN_WEBGL_CONTEXT_HANDLE *outHandle);
 
-see ``emscripten_webgl_create_context`` for description. Uses ``resultCodePtr`` as on out parameter for the result code of the operation.
+see ``emscripten_webgl_create_context`` for details. Returns the result of the operation. If it's ``EMSCRIPTEN_RESULT_SUCCESS``, ``outHandle`` will be populated with the resulting context handle.
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
 

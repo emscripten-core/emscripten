@@ -61,8 +61,7 @@ void loop()
       Module['canvas'] = canvas2;
     );
     assert(emscripten_webgl_get_current_context() == 0);
-    int errorCode = EMSCRIPTEN_RESULT_TIMED_OUT;
-    context = emscripten_webgl_create_context_ext("#canvas", &attrs, &errorCode);
+    int errorCode = emscripten_webgl_create_context_ptr("#canvas", &attrs, &context);
 
     assert(context > 0); // Must have received a valid context.
     assert(errorCode == EMSCRIPTEN_RESULT_SUCCESS);
@@ -111,7 +110,7 @@ int main()
     assert(emscripten_webgl_get_current_context() == 0);
 
     int errorCode = EMSCRIPTEN_RESULT_TIMED_OUT;
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context_ext("#customCanvas", &attrs, &errorCode);
+    EMSCRIPTEN_RESULT emscripten_webgl_create_context_ptr(const char *target, const EmscriptenWebGLContextAttributes *attributes, EMSCRIPTEN_WEBGL_CONTEXT_HANDLE *outHandle);
 
     assert(context > 0); // Must have received a valid context.
     assert(errorCode == EMSCRIPTEN_RESULT_SUCCESS);
