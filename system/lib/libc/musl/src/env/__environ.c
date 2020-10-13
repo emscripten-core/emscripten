@@ -26,7 +26,7 @@ void __emscripten_environ_constructor(void) {
         return;
     }
     char *environ_buf = malloc(sizeof(char) * environ_buf_size);
-    if (__environ == 0 || environ_buf == 0) {
+    if (environ_buf == 0) {
         __environ = 0;
         return;
     }
