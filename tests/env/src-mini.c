@@ -13,6 +13,10 @@ extern char **environ;
 int main(int argc, char *argv[])
 {
   int i;
+  if (!environ) {
+    puts("environ is NULL - not enough memory?");
+    return 1;
+  }
   for(i=0; environ[i] != NULL; i ++ ) {
     printf("%s\n", environ[i]);
   }
