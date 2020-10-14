@@ -77,9 +77,23 @@ the wasm backend):
     * wasm-as
     * wasm2js
     * wasm-metadce
-\
+
 (If you are packaging the older fastcomp backend instead of the wasm backend,
 you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
+
+Node modules
+------------
+
+In addition to the dependencies listed above, emscripten also has node module
+dependencies specified in `package.json`.  These should be be installed by
+running `npm install` inside the emscripten directory.
+
+This will crate a `node_modules` subdirectory containing the required
+dependencies.  This directory should be packaged along with emscripten.  We
+don't currently support these modules being installed in other locations but
+supporting system-wide node modules is something that could be added if its
+deemed useful.
+
 
 Configuration
 -------------
