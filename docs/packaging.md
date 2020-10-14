@@ -35,7 +35,7 @@ corresponding to that release.  It has lines like these:
 ```
 
 These linses specify git hashes of the various repositories that make up the
-ralease.
+release.
 
 In principle you can build any git hash in that repo because all updates get
 fully tested before they are committed. You can look at the
@@ -111,7 +111,7 @@ Prebuilt libraries
 ------------------
 
 Ideally a packaged installation can include a fully populated cache directory
-containing pre-built libraries.   If you want to do this you can use
+containing pre-built libraries.  If you want to do this you can use
 `./embuilder build ALL` to populate the cache directory.  You can them ship the
 `cache` directory inside the emscripten directory.  When shipping the cache
 directory on a multi-user system where users cannot modify the `cache` you need
@@ -128,7 +128,7 @@ embuilder build ALL --pic --lto
 Existing Packages
 -----------------
 
-The following is a partial list of downstream emscripten packages.  While there
+The following is a partial list of downstream emscripten packages.  While their
 packages are not officially supported by the emscripten developers we try to
 work with downstream packagers to ensure everything works as expected.
 
