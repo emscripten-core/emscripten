@@ -128,7 +128,7 @@ embuilder build ALL --pic --lto
 Existing Packages
 -----------------
 
-The following is a partial list of downstream emscripten packages.  While their
+The following is a partial list of downstream emscripten packages.  While these
 packages are not officially supported by the emscripten developers we try to
 work with downstream packagers to ensure everything works as expected.
 
