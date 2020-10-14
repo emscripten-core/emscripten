@@ -1186,7 +1186,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if '_main' not in shared.Settings.USER_EXPORTED_FUNCTIONS:
           shared.Settings.EXPECT_MAIN = 0
       else:
-        assert(not shared.Settings.EXPORTED_FUNCTIONS)
+        assert not shared.Settings.EXPORTED_FUNCTIONS
         shared.Settings.EXPORTED_FUNCTIONS = ['_main']
 
     if shared.Settings.STANDALONE_WASM:
@@ -2006,7 +2006,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.print_compiler_stage(cmd)
         shared.check_call(cmd)
         if output_file not in ('-', os.devnull):
-          assert(os.path.exists(output_file))
+          assert os.path.exists(output_file)
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
@@ -2358,6 +2358,7 @@ def parse_args(newargs):
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     newargs[i] = newargs[i].strip()
     arg = newargs[i]
+    arg_value = None
 
     def check_flag(value):
       # Check for and consume a flag
@@ -2367,18 +2368,26 @@ def parse_args(newargs):
       return False
 
     def check_arg(value):
+      nonlocal arg_value
       if arg.startswith(value) and '=' in arg:
-        exit_with_error('Invalid parameter (do not use "=" with "--" options)')
-      return arg == value
+        arg_value = arg.split('=', 1)[1]
+        newargs[i] = ''
+        return True
+      if arg == value:
+        if len(newargs) <= i + 1:
+          exit_with_error("option '%s' requires an argument" % arg)
+        arg_value = newargs[i + 1]
+        newargs[i] = ''
+        newargs[i + 1] = ''
+        return True
+      return False
 
     def consume_arg():
-      # Consume that option and its argument
-      if len(newargs) <= i + 1:
-        exit_with_error("option '%s' requires an argument" % arg)
-      ret = newargs[i + 1]
-      newargs[i] = ''
-      newargs[i + 1] = ''
-      return ret
+      nonlocal arg_value
+      assert arg_value is not None
+      rtn = arg_value
+      arg_value = None
+      return rtn
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
