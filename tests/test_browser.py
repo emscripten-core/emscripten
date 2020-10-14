@@ -2488,7 +2488,7 @@ void *getBindBuffer() {
         args_base,
         args_base + ['--private_browsing', '--port', '6941']
     ]:
-      args += [self.in_dir('hello_world.html'), '1', '2', '--3']
+      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)

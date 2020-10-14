@@ -29,6 +29,12 @@ Current Trunk
 - Reject promises returned from the factory function created by using the
   MODULARIZE build option if initialization of the module instance fails
   (#12396).
+- emrun: Passing command line flags (arguments that start with `-`) to the
+  program bring run now requires a `--` on the command line to signal the
+  end of `emrun` arguments. e.g:
+    `emrun filename.html -- --arg-for-page`
+  This is standard behaviour for command line parsing and simplifies the
+  emrun logic.
 
 2.0.7: 10/13/2020
 -----------------
