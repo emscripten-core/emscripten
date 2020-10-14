@@ -167,8 +167,8 @@ def logv(msg):
   Only shown if run with --verbose.
   """
   global last_message_time
-  with http_mutex:
-    if emrun_options.verbose:
+  if emrun_options.verbose:
+    with http_mutex:
       if emrun_options.log_html:
         sys.stdout.write(format_html(msg))
       else:
@@ -481,6 +481,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       now = tick()
       # Did user close browser?
       if not emrun_options.no_browser and not is_browser_process_alive():
+        logv("Shutting down because browser is no longer alive")
         delete_emrun_safe_firefox_profile()
         if not emrun_options.serve_after_close:
           self.is_running = False
@@ -665,35 +666,34 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       data = data.replace("+", " ")
       data = unquote_u(data)
 
-      # The user page sent a message with POST. Parse the message and log it to stdout/stderr.
-      is_stdout = False
-      is_stderr = False
-      seq_num = -1
-      # The html shell is expected to send messages of form ^out^(number)^(message) or ^err^(number)^(message).
-      if data.startswith('^err^'):
-        is_stderr = True
-      elif data.startswith('^out^'):
-        is_stdout = True
-      if is_stderr or is_stdout:
-        try:
-          i = data.index('^', 5)
-          seq_num = int(data[5:i])
-          data = data[i + 1:]
-        except ValueError:
-          pass
-
-      is_exit = data.startswith('^exit^')
-
       if data == '^pageload^': # Browser is just notifying that it has successfully launched the page.
         have_received_messages = True
-      elif not is_exit:
+      elif data.startswith('^exit^'):
+        if not emrun_options.serve_after_exit:
+          page_exit_code = int(data[6:])
+          logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve_after_exit to keep serving even after the page terminates with exit().')
+          self.server.shutdown()
+          return
+      else:
+        # The user page sent a message with POST. Parse the message and log it to stdout/stderr.
+        is_stdout = False
+        is_stderr = False
+        seq_num = -1
+        # The html shell is expected to send messages of form ^out^(number)^(message) or ^err^(number)^(message).
+        if data.startswith('^err^'):
+          is_stderr = True
+        elif data.startswith('^out^'):
+          is_stdout = True
+        if is_stderr or is_stdout:
+          try:
+            i = data.index('^', 5)
+            seq_num = int(data[5:i])
+            data = data[i + 1:]
+          except ValueError:
+            pass
+
         log = browser_loge if is_stderr else browser_logi
         self.server.handle_incoming_message(seq_num, log, data)
-      elif not emrun_options.serve_after_exit:
-        page_exit_code = int(data[6:])
-        logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve_after_exit to keep serving even after the page terminates with exit().')
-        self.server.shutdown()
-        return
 
     self.send_response(200)
     self.send_header('Content-type', 'text/plain')
