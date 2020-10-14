@@ -18,6 +18,9 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+- emcc now accepts `--arg=foo` as well as `--arg foo`.  For example
+  `--js-library=file.js`.
+
 2.0.7: 10/13/2020
 -----------------
 - Don't run Binaryen postprocessing for Emscripten EH/SjLj. This lets us avoid
