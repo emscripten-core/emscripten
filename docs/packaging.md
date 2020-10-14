@@ -9,8 +9,8 @@ just the end-user parts of emscripten to be installed.  For example this avoids
 including the `tests/third_party` directory which is of that biggest parts 
 of the source tree.
 
-If you prefer you can use can use `make install` or `make dist` which
-to invokes `tools/install.py`.
+If you prefer, you can use `make install` or `make dist` which invokes
+`tools/install.py`.
 
 Dependencies
 ------------
@@ -23,9 +23,9 @@ is unlikely to work.
 The core
 [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
 file in the `emscripten-releases` repository contains all the information about
-about the various repositories that go into an emscripten release. This is the
-repo used by our CI to build and test emscripten.  To find out which revisions
-went into a given release you need to check out the DEPS file that the revision
+the various repositories that go into an emscripten release. This is the repo
+used by our CI to build and test emscripten.  To find out which revisions went
+into a given release you need to check out the DEPS file that the revision
 corresponding to that release.  It has lines like these:
 
 ```
