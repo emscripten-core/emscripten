@@ -3759,7 +3759,9 @@ LibraryManager.library = {
       return dynCallLegacy(sig, ptr, args);
     }
 #endif
-
+#if ASSERTIONS
+    assert(wasmTable.get(ptr), 'missing table entry in dynCall: ' + ptr);
+#endif
     return wasmTable.get(ptr).apply(null, args)
 #endif
   },

@@ -154,7 +154,7 @@ function addFunctionWasm(func, sig) {
       throw err;
     }
 #if ASSERTIONS
-    assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction');
+    assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction: ' + func);
 #endif
     var wrapped = convertJsFunctionToWasm(func, sig);
     wasmTable.set(ret, wrapped);

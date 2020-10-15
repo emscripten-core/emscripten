@@ -43,7 +43,6 @@ if (typeof WebAssembly !== 'object') {
 // Wasm globals
 
 var wasmMemory;
-var wasmTable;
 
 #if USE_PTHREADS
 // For sending to workers.
@@ -355,9 +354,9 @@ assert(!Module['wasmMemory']);
 #else // !STANDALONE_WASM
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#include "runtime_init_table.js"
 #endif // !STANDALONE_WASM
 
+#include "runtime_init_table.js"
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
 
