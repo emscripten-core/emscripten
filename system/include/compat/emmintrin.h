@@ -1145,25 +1145,50 @@ _mm_load_si128(__m128i const *__p)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_loadu_si128(__m128i const *__p)
 {
-  struct __loadu_si128 {
+  // UB-free unaligned access copied from wasm_simd128.h
+  struct __mm_loadu_si128_struct {
     __m128i __v;
   } __attribute__((__packed__, __may_alias__));
-  return ((struct __loadu_si128*)__p)->__v;
+  return ((struct __mm_loadu_si128_struct*)__p)->__v;
+}
+
+static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
+_mm_loadu_si16(void const *__p)
+{
+  // UB-free unaligned access copied from wasm_simd128.h
+  struct __mm_loadu_si16_struct {
+    unsigned short __v;
+  } __attribute__((__packed__, __may_alias__));
+  return (__m128i)wasm_i16x8_replace_lane(wasm_i64x2_const(0, 0), 0,
+    ((const struct __mm_loadu_si16_struct *)__p)->__v);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_loadu_si32(void const *__p)
 {
-  return (__m128i)wasm_i32x4_make(*(unsigned int*)__p, 0, 0, 0);
+  // UB-free unaligned access copied from wasm_simd128.h
+  struct __mm_loadu_si32_struct {
+    float __v;
+  } __attribute__((__packed__, __may_alias__));
+  return (__m128i)wasm_f32x4_replace_lane(wasm_f64x2_const(0.0, 0.0), 0,
+    ((const struct __mm_loadu_si32_struct *)__p)->__v);
+}
+
+static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
+_mm_loadu_si64(void const *__p)
+{
+  // UB-free unaligned access copied from wasm_simd128.h
+  struct __mm_loadu_si64_struct {
+    double __v;
+  } __attribute__((__packed__, __may_alias__));
+  return (__m128i)wasm_f64x2_replace_lane(wasm_f64x2_const(0.0, 0.0), 0,
+    ((const struct __mm_loadu_si64_struct *)__p)->__v);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_loadl_epi64(__m128i const *__p)
 {
-  struct __mm_loadl_epi64_struct {
-    int __u[2];
-  } __attribute__((__packed__, __may_alias__));
-  return (__m128i) { ((struct __mm_loadl_epi64_struct*)__p)->__u[0], ((struct __mm_loadl_epi64_struct*)__p)->__u[1], 0, 0};
+  return _mm_loadu_si64(__p);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -1245,18 +1270,43 @@ _mm_store_si128(__m128i *__p, __m128i __b)
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
-_mm_storeu_si32(void *__p, __m128i __a)
+_mm_storeu_si16(void *__p, __m128i __a)
 {
-  *(unsigned int *)__p = wasm_i32x4_extract_lane((v128_t)__a, 0);
+  // UB-free unaligned access copied from wasm_simd128.h
+  struct __mm_storeu_si16_struct {
+    unsigned short __v;
+  } __attribute__((__packed__, __may_alias__));
+  ((struct __mm_storeu_si16_struct *)__p)->__v = wasm_i16x8_extract_lane((v128_t)__a, 0);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
-_mm_storeu_si128(__m128i *__p, __m128i __b)
+_mm_storeu_si32(void *__p, __m128i __a)
 {
-  struct __unaligned {
+  // UB-free unaligned access copied from wasm_simd128.h
+  struct __mm_storeu_si32_struct {
+    float __v;
+  } __attribute__((__packed__, __may_alias__));
+  ((struct __mm_storeu_si32_struct *)__p)->__v = wasm_f32x4_extract_lane((v128_t)__a, 0);
+}
+
+static __inline__ void __attribute__((__always_inline__, __nodebug__))
+_mm_storeu_si64(void *__p, __m128i __a)
+{
+  // UB-free unaligned access copied from wasm_simd128.h
+  struct __mm_storeu_si64_struct {
+    double __v;
+  } __attribute__((__packed__, __may_alias__));
+  ((struct __mm_storeu_si64_struct *)__p)->__v = wasm_f64x2_extract_lane((v128_t)__a, 0);
+}
+
+static __inline__ void __attribute__((__always_inline__, __nodebug__))
+_mm_storeu_si128(__m128i *__p, __m128i __a)
+{
+  // UB-free unaligned access copied from wasm_simd128.h
+  struct __mm_storeu_si128_struct {
     __m128i __v;
   } __attribute__((__packed__, __may_alias__));
-  ((struct __unaligned *)__p)->__v = __b;
+  ((struct __mm_storeu_si128_struct *)__p)->__v = __a;
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
@@ -1277,7 +1327,7 @@ _mm_maskmoveu_si128(__m128i __d, __m128i __n, char *__p)
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_storel_epi64(__m128i *__p, __m128i __a)
 {
-  *(long long *)__p = wasm_i64x2_extract_lane((v128_t)__a, 0);
+  _mm_storeu_si64(__p, __a);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
