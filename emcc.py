@@ -1641,7 +1641,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
-      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+      # EXPORT_ES6 requires output to be a module
+      shared.Settings.MODULARIZE = 1
 
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       # When MODULARIZE option is used, currently requires declaring all module exports
