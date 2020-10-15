@@ -484,6 +484,11 @@ def finalize_wasm(infile, memfile, DEBUG):
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
 
+  if shared.Settings.RELOCATABLE:
+    # In relocatable mode we transform the PIC ABI from what llvm outputs
+    # to emscripten's PIC ABI that uses `fp$` and `g$` accessor functions.
+    modify_wasm = True
+
   if shared.Settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
@@ -509,16 +514,20 @@ def finalize_wasm(infile, memfile, DEBUG):
       args.append('--dyncalls-i64')
       # we need to add some dyncalls to the wasm
       modify_wasm = True
-  if not shared.Settings.LEGALIZE_JS_FFI:
-    args.append('--no-legalize-javascript-ffi')
-  else:
+  if shared.Settings.LEGALIZE_JS_FFI:
+    # When we dynamically link our JS loader adds functions from wasm modules to
+    # the table. It must add the original versions of them, not legalized ones,
+    # so that indirect calls have the right type, so export those.
+    if shared.Settings.RELOCATABLE:
+      args.append('--pass-arg=legalize-js-interface-export-originals')
     modify_wasm = True
+  else:
+    args.append('--no-legalize-javascript-ffi')
   if memfile:
     args.append('--separate-data-segments=' + memfile)
     modify_wasm = True
   if shared.Settings.SIDE_MODULE:
     args.append('--side-module')
-    modify_wasm = True
   else:
     # --global-base is used by wasm-emscripten-finalize to calculate the size
     # of the static data used.  The argument we supply here needs to match the
@@ -537,12 +546,7 @@ def finalize_wasm(infile, memfile, DEBUG):
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
     modify_wasm = True
-  # When we dynamically link our JS loader adds functions from wasm modules to
-  # the table. It must add the original versions of them, not legalized ones,
-  # so that indirect calls have the right type, so export those.
-  if shared.Settings.RELOCATABLE:
-    args.append('--pass-arg=legalize-js-interface-export-originals')
-    modify_wasm = True
+
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
