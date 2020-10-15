@@ -693,6 +693,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         page_exit_code = int(data[6:])
         logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve_after_exit to keep serving even after the page terminates with exit().')
         self.server.shutdown()
+        return
 
     self.send_response(200)
     self.send_header('Content-type', 'text/plain')
