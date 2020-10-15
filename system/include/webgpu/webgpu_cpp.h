@@ -159,8 +159,9 @@ namespace wgpu {
         Sampler = 0x00000003,
         ComparisonSampler = 0x00000004,
         SampledTexture = 0x00000005,
-        ReadonlyStorageTexture = 0x00000006,
-        WriteonlyStorageTexture = 0x00000007,
+        MultisampledTexture = 0x00000006,
+        ReadonlyStorageTexture = 0x00000007,
+        WriteonlyStorageTexture = 0x00000008,
     };
 
     enum class BlendFactor : uint32_t {
@@ -244,8 +245,9 @@ namespace wgpu {
     };
 
     enum class IndexFormat : uint32_t {
-        Uint16 = 0x00000000,
-        Uint32 = 0x00000001,
+        Undefined = 0x00000000,
+        Uint16 = 0x00000001,
+        Uint32 = 0x00000002,
     };
 
     enum class InputStepMode : uint32_t {
@@ -322,6 +324,7 @@ namespace wgpu {
         Float = 0x00000000,
         Sint = 0x00000001,
         Uint = 0x00000002,
+        DepthComparison = 0x00000003,
     };
 
     enum class TextureDimension : uint32_t {
@@ -357,33 +360,34 @@ namespace wgpu {
         BGRA8Unorm = 0x00000017,
         BGRA8UnormSrgb = 0x00000018,
         RGB10A2Unorm = 0x00000019,
-        RG11B10Float = 0x0000001A,
-        RG32Float = 0x0000001B,
-        RG32Uint = 0x0000001C,
-        RG32Sint = 0x0000001D,
-        RGBA16Uint = 0x0000001E,
-        RGBA16Sint = 0x0000001F,
-        RGBA16Float = 0x00000020,
-        RGBA32Float = 0x00000021,
-        RGBA32Uint = 0x00000022,
-        RGBA32Sint = 0x00000023,
-        Depth32Float = 0x00000024,
-        Depth24Plus = 0x00000025,
-        Depth24PlusStencil8 = 0x00000026,
-        BC1RGBAUnorm = 0x00000027,
-        BC1RGBAUnormSrgb = 0x00000028,
-        BC2RGBAUnorm = 0x00000029,
-        BC2RGBAUnormSrgb = 0x0000002A,
-        BC3RGBAUnorm = 0x0000002B,
-        BC3RGBAUnormSrgb = 0x0000002C,
-        BC4RUnorm = 0x0000002D,
-        BC4RSnorm = 0x0000002E,
-        BC5RGUnorm = 0x0000002F,
-        BC5RGSnorm = 0x00000030,
-        BC6HRGBUfloat = 0x00000031,
-        BC6HRGBSfloat = 0x00000032,
-        BC7RGBAUnorm = 0x00000033,
-        BC7RGBAUnormSrgb = 0x00000034,
+        RG11B10Ufloat = 0x0000001A,
+        RGB9E5Ufloat = 0x0000001B,
+        RG32Float = 0x0000001C,
+        RG32Uint = 0x0000001D,
+        RG32Sint = 0x0000001E,
+        RGBA16Uint = 0x0000001F,
+        RGBA16Sint = 0x00000020,
+        RGBA16Float = 0x00000021,
+        RGBA32Float = 0x00000022,
+        RGBA32Uint = 0x00000023,
+        RGBA32Sint = 0x00000024,
+        Depth32Float = 0x00000025,
+        Depth24Plus = 0x00000026,
+        Depth24PlusStencil8 = 0x00000027,
+        BC1RGBAUnorm = 0x00000028,
+        BC1RGBAUnormSrgb = 0x00000029,
+        BC2RGBAUnorm = 0x0000002A,
+        BC2RGBAUnormSrgb = 0x0000002B,
+        BC3RGBAUnorm = 0x0000002C,
+        BC3RGBAUnormSrgb = 0x0000002D,
+        BC4RUnorm = 0x0000002E,
+        BC4RSnorm = 0x0000002F,
+        BC5RGUnorm = 0x00000030,
+        BC5RGSnorm = 0x00000031,
+        BC6HRGBUfloat = 0x00000032,
+        BC6HRGBFloat = 0x00000033,
+        BC7RGBAUnorm = 0x00000034,
+        BC7RGBAUnormSrgb = 0x00000035,
     };
 
     enum class TextureViewDimension : uint32_t {
@@ -895,7 +899,7 @@ namespace wgpu {
         void PopDebugGroup() const;
         void PushDebugGroup(char const * groupLabel) const;
         void SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount = 0, uint32_t const * dynamicOffsets = nullptr) const;
-        void SetIndexBuffer(Buffer const& buffer, uint64_t offset = 0, uint64_t size = 0) const;
+        void SetIndexBufferWithFormat(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = 0) const;
         void SetPipeline(RenderPipeline const& pipeline) const;
         void SetVertexBuffer(uint32_t slot, Buffer const& buffer, uint64_t offset = 0, uint64_t size = 0) const;
 
@@ -921,7 +925,7 @@ namespace wgpu {
         void PushDebugGroup(char const * groupLabel) const;
         void SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount = 0, uint32_t const * dynamicOffsets = nullptr) const;
         void SetBlendColor(Color const * color) const;
-        void SetIndexBuffer(Buffer const& buffer, uint64_t offset = 0, uint64_t size = 0) const;
+        void SetIndexBufferWithFormat(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = 0) const;
         void SetPipeline(RenderPipeline const& pipeline) const;
         void SetScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height) const;
         void SetStencilReference(uint32_t reference) const;
@@ -1057,7 +1061,6 @@ namespace wgpu {
         BindingType type;
         bool hasDynamicOffset = false;
         uint64_t minBufferBindingSize = 0;
-        bool multisampled = false;
         TextureViewDimension viewDimension = TextureViewDimension::Undefined;
         TextureComponentType textureComponentType = TextureComponentType::Float;
         TextureFormat storageTextureFormat = TextureFormat::Undefined;
@@ -1393,7 +1396,7 @@ namespace wgpu {
 
     struct VertexStateDescriptor {
         ChainedStruct const * nextInChain = nullptr;
-        IndexFormat indexFormat = IndexFormat::Uint32;
+        IndexFormat indexFormat = IndexFormat::Undefined;
         uint32_t vertexBufferCount = 0;
         VertexBufferLayoutDescriptor const * vertexBuffers;
     };

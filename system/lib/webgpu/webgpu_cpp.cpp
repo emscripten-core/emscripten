@@ -45,6 +45,7 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(BindingType::Sampler) == WGPUBindingType_Sampler, "value mismatch for BindingType::Sampler");
     static_assert(static_cast<uint32_t>(BindingType::ComparisonSampler) == WGPUBindingType_ComparisonSampler, "value mismatch for BindingType::ComparisonSampler");
     static_assert(static_cast<uint32_t>(BindingType::SampledTexture) == WGPUBindingType_SampledTexture, "value mismatch for BindingType::SampledTexture");
+    static_assert(static_cast<uint32_t>(BindingType::MultisampledTexture) == WGPUBindingType_MultisampledTexture, "value mismatch for BindingType::MultisampledTexture");
     static_assert(static_cast<uint32_t>(BindingType::ReadonlyStorageTexture) == WGPUBindingType_ReadonlyStorageTexture, "value mismatch for BindingType::ReadonlyStorageTexture");
     static_assert(static_cast<uint32_t>(BindingType::WriteonlyStorageTexture) == WGPUBindingType_WriteonlyStorageTexture, "value mismatch for BindingType::WriteonlyStorageTexture");
 
@@ -163,6 +164,7 @@ namespace wgpu {
     static_assert(sizeof(IndexFormat) == sizeof(WGPUIndexFormat), "sizeof mismatch for IndexFormat");
     static_assert(alignof(IndexFormat) == alignof(WGPUIndexFormat), "alignof mismatch for IndexFormat");
 
+    static_assert(static_cast<uint32_t>(IndexFormat::Undefined) == WGPUIndexFormat_Undefined, "value mismatch for IndexFormat::Undefined");
     static_assert(static_cast<uint32_t>(IndexFormat::Uint16) == WGPUIndexFormat_Uint16, "value mismatch for IndexFormat::Uint16");
     static_assert(static_cast<uint32_t>(IndexFormat::Uint32) == WGPUIndexFormat_Uint32, "value mismatch for IndexFormat::Uint32");
 
@@ -274,6 +276,7 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(TextureComponentType::Float) == WGPUTextureComponentType_Float, "value mismatch for TextureComponentType::Float");
     static_assert(static_cast<uint32_t>(TextureComponentType::Sint) == WGPUTextureComponentType_Sint, "value mismatch for TextureComponentType::Sint");
     static_assert(static_cast<uint32_t>(TextureComponentType::Uint) == WGPUTextureComponentType_Uint, "value mismatch for TextureComponentType::Uint");
+    static_assert(static_cast<uint32_t>(TextureComponentType::DepthComparison) == WGPUTextureComponentType_DepthComparison, "value mismatch for TextureComponentType::DepthComparison");
 
     // TextureDimension
 
@@ -315,7 +318,8 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(TextureFormat::BGRA8Unorm) == WGPUTextureFormat_BGRA8Unorm, "value mismatch for TextureFormat::BGRA8Unorm");
     static_assert(static_cast<uint32_t>(TextureFormat::BGRA8UnormSrgb) == WGPUTextureFormat_BGRA8UnormSrgb, "value mismatch for TextureFormat::BGRA8UnormSrgb");
     static_assert(static_cast<uint32_t>(TextureFormat::RGB10A2Unorm) == WGPUTextureFormat_RGB10A2Unorm, "value mismatch for TextureFormat::RGB10A2Unorm");
-    static_assert(static_cast<uint32_t>(TextureFormat::RG11B10Float) == WGPUTextureFormat_RG11B10Float, "value mismatch for TextureFormat::RG11B10Float");
+    static_assert(static_cast<uint32_t>(TextureFormat::RG11B10Ufloat) == WGPUTextureFormat_RG11B10Ufloat, "value mismatch for TextureFormat::RG11B10Ufloat");
+    static_assert(static_cast<uint32_t>(TextureFormat::RGB9E5Ufloat) == WGPUTextureFormat_RGB9E5Ufloat, "value mismatch for TextureFormat::RGB9E5Ufloat");
     static_assert(static_cast<uint32_t>(TextureFormat::RG32Float) == WGPUTextureFormat_RG32Float, "value mismatch for TextureFormat::RG32Float");
     static_assert(static_cast<uint32_t>(TextureFormat::RG32Uint) == WGPUTextureFormat_RG32Uint, "value mismatch for TextureFormat::RG32Uint");
     static_assert(static_cast<uint32_t>(TextureFormat::RG32Sint) == WGPUTextureFormat_RG32Sint, "value mismatch for TextureFormat::RG32Sint");
@@ -339,7 +343,7 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(TextureFormat::BC5RGUnorm) == WGPUTextureFormat_BC5RGUnorm, "value mismatch for TextureFormat::BC5RGUnorm");
     static_assert(static_cast<uint32_t>(TextureFormat::BC5RGSnorm) == WGPUTextureFormat_BC5RGSnorm, "value mismatch for TextureFormat::BC5RGSnorm");
     static_assert(static_cast<uint32_t>(TextureFormat::BC6HRGBUfloat) == WGPUTextureFormat_BC6HRGBUfloat, "value mismatch for TextureFormat::BC6HRGBUfloat");
-    static_assert(static_cast<uint32_t>(TextureFormat::BC6HRGBSfloat) == WGPUTextureFormat_BC6HRGBSfloat, "value mismatch for TextureFormat::BC6HRGBSfloat");
+    static_assert(static_cast<uint32_t>(TextureFormat::BC6HRGBFloat) == WGPUTextureFormat_BC6HRGBFloat, "value mismatch for TextureFormat::BC6HRGBFloat");
     static_assert(static_cast<uint32_t>(TextureFormat::BC7RGBAUnorm) == WGPUTextureFormat_BC7RGBAUnorm, "value mismatch for TextureFormat::BC7RGBAUnorm");
     static_assert(static_cast<uint32_t>(TextureFormat::BC7RGBAUnormSrgb) == WGPUTextureFormat_BC7RGBAUnormSrgb, "value mismatch for TextureFormat::BC7RGBAUnormSrgb");
 
@@ -513,8 +517,6 @@ namespace wgpu {
             "offsetof mismatch for BindGroupLayoutEntry::hasDynamicOffset");
     static_assert(offsetof(BindGroupLayoutEntry, minBufferBindingSize) == offsetof(WGPUBindGroupLayoutEntry, minBufferBindingSize),
             "offsetof mismatch for BindGroupLayoutEntry::minBufferBindingSize");
-    static_assert(offsetof(BindGroupLayoutEntry, multisampled) == offsetof(WGPUBindGroupLayoutEntry, multisampled),
-            "offsetof mismatch for BindGroupLayoutEntry::multisampled");
     static_assert(offsetof(BindGroupLayoutEntry, viewDimension) == offsetof(WGPUBindGroupLayoutEntry, viewDimension),
             "offsetof mismatch for BindGroupLayoutEntry::viewDimension");
     static_assert(offsetof(BindGroupLayoutEntry, textureComponentType) == offsetof(WGPUBindGroupLayoutEntry, textureComponentType),
@@ -1605,8 +1607,8 @@ namespace wgpu {
     void RenderBundleEncoder::SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) const {
         wgpuRenderBundleEncoderSetBindGroup(Get(), groupIndex, group.Get(), dynamicOffsetCount, reinterpret_cast<uint32_t const * >(dynamicOffsets));
     }
-    void RenderBundleEncoder::SetIndexBuffer(Buffer const& buffer, uint64_t offset, uint64_t size) const {
-        wgpuRenderBundleEncoderSetIndexBuffer(Get(), buffer.Get(), offset, size);
+    void RenderBundleEncoder::SetIndexBufferWithFormat(Buffer const& buffer, IndexFormat format, uint64_t offset, uint64_t size) const {
+        wgpuRenderBundleEncoderSetIndexBufferWithFormat(Get(), buffer.Get(), static_cast<WGPUIndexFormat>(format), offset, size);
     }
     void RenderBundleEncoder::SetPipeline(RenderPipeline const& pipeline) const {
         wgpuRenderBundleEncoderSetPipeline(Get(), pipeline.Get());
@@ -1663,8 +1665,8 @@ namespace wgpu {
     void RenderPassEncoder::SetBlendColor(Color const * color) const {
         wgpuRenderPassEncoderSetBlendColor(Get(), reinterpret_cast<WGPUColor const * >(color));
     }
-    void RenderPassEncoder::SetIndexBuffer(Buffer const& buffer, uint64_t offset, uint64_t size) const {
-        wgpuRenderPassEncoderSetIndexBuffer(Get(), buffer.Get(), offset, size);
+    void RenderPassEncoder::SetIndexBufferWithFormat(Buffer const& buffer, IndexFormat format, uint64_t offset, uint64_t size) const {
+        wgpuRenderPassEncoderSetIndexBufferWithFormat(Get(), buffer.Get(), static_cast<WGPUIndexFormat>(format), offset, size);
     }
     void RenderPassEncoder::SetPipeline(RenderPipeline const& pipeline) const {
         wgpuRenderPassEncoderSetPipeline(Get(), pipeline.Get());
