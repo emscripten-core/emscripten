@@ -1642,6 +1642,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
       # EXPORT_ES6 requires output to be a module
+      if 'MODULARIZE' in settings_key_changes:
+        exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
       shared.Settings.MODULARIZE = 1
 
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
