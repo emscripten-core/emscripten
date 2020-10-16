@@ -479,7 +479,7 @@ def remove_trailing_zeros(memfile):
 
 def finalize_wasm(infile, memfile, DEBUG):
   building.save_intermediate(infile, 'base.wasm')
-  args = ['--detect-features', '--minimize-wasm-changes']
+  args = ['--mutable-sp', '--detect-features', '--minimize-wasm-changes']
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
@@ -631,7 +631,7 @@ def add_standard_wasm_imports(send_items_map):
     # the wasm backend reserves slot 0 for the NULL function pointer
     send_items_map['__table_base'] = '1'
   if shared.Settings.RELOCATABLE:
-    send_items_map['__stack_pointer'] = 'STACK_BASE'
+    send_items_map['__stack_pointer'] = "__stack_pointer"
 
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
     # legalization of i64 support code may require these in some modes

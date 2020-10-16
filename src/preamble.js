@@ -285,11 +285,14 @@ var STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}};
 
+
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 #endif
 
 #if RELOCATABLE
+__stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STACK_BASE);
+
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
 // initialize sbrk (the main module is relocatable itself, and so it does not
