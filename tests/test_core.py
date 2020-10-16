@@ -1439,6 +1439,10 @@ int main(int argc, char **argv)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow.cpp')
 
   @with_both_exception_handling
+  def test_exceptions_uncaught_count(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_uncaught_count.cpp')
+
+  @with_both_exception_handling
   def test_exceptions_resume(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume.cpp')
