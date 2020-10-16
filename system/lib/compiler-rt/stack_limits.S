@@ -4,22 +4,32 @@
 .globl emscripten_stack_get_base
 .globl emscripten_stack_get_end
 
-.globaltype __stack_pointer, i32
+#ifdef __wasm64__
+#define PTR i64
+#define ALIGN 3
+#define PTRSTORE .int64
+#else
+#define PTR i32
+#define ALIGN 2
+#define PTRSTORE .int32
+#endif
+
+.globaltype __stack_pointer, PTR
 
 # TODO(sbc): It would be nice if these we initialized directly
-# using i32.const rather than using the `emscripten_stack_init`
-.globaltype __stack_end, i32
+# using PTR.const rather than using the `emscripten_stack_init`
+.globaltype __stack_end, PTR
 __stack_end:
-.globaltype __stack_base, i32
+.globaltype __stack_base, PTR
 __stack_base:
 
 emscripten_stack_get_base:
-  .functype emscripten_stack_get_base () -> (i32)
+  .functype emscripten_stack_get_base () -> (PTR)
   global.get __stack_base
   end_function
 
 emscripten_stack_get_end:
-  .functype emscripten_stack_get_end () -> (i32)
+  .functype emscripten_stack_get_end () -> (PTR)
   global.get __stack_end
   end_function
 
@@ -33,7 +43,7 @@ emscripten_stack_init:
 #ifdef __PIC__
   global.get __heap_base@GOT
 #else
-  i32.const __heap_base
+  PTR.const __heap_base
 #endif
   global.set __stack_base
 
@@ -41,19 +51,19 @@ emscripten_stack_init:
 #ifdef __PIC__
   global.get __data_end@GOT
 #else
-  i32.const __data_end
+  PTR.const __data_end
 #endif
   # Align up to 16 bytes
-  i32.const 0xf
-  i32.add
-  i32.const -0x10
-  i32.and
+  PTR.const 0xf
+  PTR.add
+  PTR.const -0x10
+  PTR.and
   global.set __stack_end
 
   end_function
 
 emscripten_stack_set_limits:
-  .functype emscripten_stack_set_limits (i32, i32) -> ()
+  .functype emscripten_stack_set_limits (PTR, PTR) -> ()
   local.get 0
   global.set __stack_base
   local.get 1
@@ -61,13 +71,13 @@ emscripten_stack_set_limits:
   end_function
 
 emscripten_stack_get_free:
-  .functype emscripten_stack_get_free () -> (i32)
+  .functype emscripten_stack_get_free () -> (PTR)
   global.get __stack_pointer
   global.get __stack_end
-  i32.sub
+  PTR.sub
   end_function
 
 # Add emscripten_stack_init to static ctors
 .section .init_array.1,"",@
-.p2align 2
-.int32 emscripten_stack_init
+.p2align ALIGN
+PTRSTORE emscripten_stack_init

@@ -8207,6 +8207,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXPORTED_FUNCTIONS', ['__start'])
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
 
+  @unittest.skip("memory64 functionality only partially working")
+  def test_memory64_hello_world(self):
+    self.set_setting('MEMORY64', 2)
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
+
   # Tests the operation of API found in #include <emscripten/math.h>
   def test_emscripten_math(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_math.c')
