@@ -272,6 +272,8 @@ var LibraryExceptions = {
     } else {
       catchInfo.free();
     }
+    info.set_caught(false); 
+    __ZSt18uncaught_exceptionv.uncaught_exceptions++;
 #if EXCEPTION_DEBUG
     err('Compiled code RE-throwing an exception, popped ' +
       [ptr, exceptionLast, 'stack', exceptionCaught]);
