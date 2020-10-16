@@ -18,6 +18,9 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+- Dynamic linking (MAIN_MODULE + SIDE_MODULE) now produces wasm binaries that
+  depend on mutable globals.  Specifically the stack pointer global is mutable
+  and shared between the modules (#12536).
 - emcc now accepts `--arg=foo` as well as `--arg foo`.  For example
   `--js-library=file.js`.
 
