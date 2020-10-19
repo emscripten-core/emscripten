@@ -7456,8 +7456,8 @@ int main() {
     # assumes the debug file is alongside the main one
     os.mkdir('subdir')
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
-                     '-gseparate-dwarf',
-                     '-o', os.path.join('subdir', 'output.js')])
+                      '-gseparate-dwarf',
+                      '-o', os.path.join('subdir', 'output.js')])
     with open(os.path.join('subdir', 'output.wasm'), 'rb') as f:
       wasm = f.read()
       self.assertIn(b'output.wasm.debug.wasm', wasm)
