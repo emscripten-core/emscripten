@@ -7452,6 +7452,20 @@ int main() {
       self.assertIn(b'external_debug_info', wasm)
       self.assertIn(b'a.out.wasm.debug.wasm', wasm)
 
+    # building to a subdirectory should still leave a relative path, which
+    # assumes the debug file is alongside the main one
+    os.mkdir('subdir')
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
+                     '-gseparate-dwarf',
+                     '-o', os.path.join('subdir', 'output.js')])
+    with open(os.path.join('subdir', 'output.wasm'), 'rb') as f:
+      wasm = f.read()
+      self.assertIn(b'output.wasm.debug.wasm', wasm)
+      # check both unix-style slashes and the system's slashes, so that we don't
+      # assume the encoding of the section in this test
+      self.assertNotIn(b'subdir/output.wasm.debug.wasm', wasm)
+      self.assertNotIn(bytes(os.path.join('subdir', 'output.wasm.debug.wasm'), 'ascii'), wasm)
+
   def test_separate_dwarf_with_filename(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
     self.assertNotExists('a.out.wasm.debug.wasm')

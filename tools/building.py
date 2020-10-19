@@ -1360,6 +1360,9 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   wasm_file_with_dwarf = shared.Settings.SEPARATE_DWARF
   if wasm_file_with_dwarf is True:
     wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+    # assume by default that the debug file is adjacent to the main one; to
+    # override that SEPARATE_DWARF_URL can be used
+    wasm_file_with_dwarf = os.path.basename(wasm_file_with_dwarf)
   embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
