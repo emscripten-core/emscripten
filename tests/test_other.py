@@ -4929,7 +4929,7 @@ print(os.environ.get('NM'))
 
   def test_sdl2_config(self):
     for args, expected in [
-      [['--version'], '2.0.0'],
+      [['--version'], '2.0.10'],
       [['--cflags'], '-s USE_SDL=2'],
       [['--libs'], '-s USE_SDL=2'],
       [['--cflags', '--libs'], '-s USE_SDL=2'],
