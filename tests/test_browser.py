@@ -23,6 +23,7 @@ from urllib.request import urlopen
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
+from tools import shared
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
 from tools.shared import try_delete
@@ -2453,14 +2454,19 @@ void *getBindBuffer() {
   # by opening a new window and possibly not closing it.
   def test_zzz_emrun(self):
     self.compile_btest([path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
-    outdir = os.getcwd()
     if not has_browser():
       self.skipTest('need a browser')
-    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the browser that is launched will have that directory as startup directory,
-    # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
-    # before launching.
+
+    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the
+    # browser that is launched will have that directory as startup directory, and the browser will
+    # not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to
+    # delete it. Therefore switch away from that directory before launching.
+
     os.chdir(path_from_root())
-    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
+                 '--kill_exit', '--port', '6939', '--verbose',
+                 '--log_stdout', self.in_dir('stdout.txt'),
+                 '--log_stderr', self.in_dir('stderr.txt')]
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
@@ -2482,18 +2488,18 @@ void *getBindBuffer() {
         args_base,
         args_base + ['--private_browsing', '--port', '6941']
     ]:
-      args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
-      print(' '.join(args))
+      args += [self.in_dir('hello_world.html'), '1', '2', '--3']
+      print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
-      stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
-      stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
-      assert proc.returncode == 100
-      assert 'argc: 4' in stdout
-      assert 'argv[3]: --3' in stdout
-      assert 'hello, world!' in stdout
-      assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
-      assert 'Testing char sequences: %20%21 &auml;' in stdout
-      assert 'hello, error stream!' in stderr
+      self.assertEqual(proc.returncode, 100)
+      stdout = open(self.in_dir('stdout.txt'), 'r').read()
+      stderr = open(self.in_dir('stderr.txt'), 'r').read()
+      self.assertContained('argc: 4', stdout)
+      self.assertContained('argv[3]: --3', stdout)
+      self.assertContained('hello, world!', stdout)
+      self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
+      self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
+      self.assertContained('hello, error stream!', stderr)
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.

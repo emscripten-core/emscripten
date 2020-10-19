@@ -44,16 +44,17 @@ def get(ports, settings, shared):
       '-DHB_HAVE_FREETYPE=ON'
     ]
 
-    extra_cxx_flags = []
+    extra_cflags = []
 
     if settings.RELOCATABLE:
-      extra_cxx_flags.append('-fPIC')
+      extra_cflags.append('-fPIC')
 
     if settings.USE_PTHREADS:
-      extra_cxx_flags.append('-pthread')
+      extra_cflags.append('-pthread')
 
-    if len(extra_cxx_flags):
-      configure_args += ['-DCMAKE_CXX_FLAGS="{}"'.format(' '.join(extra_cxx_flags))]
+    if len(extra_cflags):
+      configure_args += ['-DCMAKE_CXX_FLAGS="{}"'.format(' '.join(extra_cflags))]
+      configure_args += ['-DCMAKE_C_FLAGS="{}"'.format(' '.join(extra_cflags))]
 
     building.configure(configure_args)
     building.make(['make', '-j%d' % building.get_num_cores(), '-C' + dest_path, 'install'])
