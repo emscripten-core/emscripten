@@ -101,8 +101,15 @@ Otherwise, to debug this, look for an error reported on the page itself, or in t
 What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead" or "no native wasm support detected"?
 ===============================================================================================================================
 
-Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
+Those errors indicate that WebAssembly support is not present in the VM you are
+trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly
+(and emit equivalent JS instead), if you want your code to run in such
+environments. Note that all modern browsers support WebAssembly, so this should
+only matter if you need to target legacy browsers.
 
+``-s WASM=0`` output should run exactly the same as a WebAssembly build, but may
+be larger, start up slower, and run slower, so it's better to ship WebAssembly
+whenever you can.
 
 Why do I get ``machine type must be wasm32`` or ``is not a valid input file`` during linking?
 =============================================================================================
