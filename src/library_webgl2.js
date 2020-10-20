@@ -85,7 +85,11 @@ var LibraryWebGL2 = {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, imageSize, data);
     } else {
-      if (imageSize) GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
+      if (imageSize) {
+        GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
+      } else {
+        GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, new Uint8Array);
+      }
     }
   },
 
