@@ -7480,10 +7480,11 @@ int main() {
     os.mkdir('subdir')
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
                       '-o', os.path.join('subdir', 'output.js'),
-                      '-gseparate-dwarf=with_dwarf.wasm'])
+                      '-gseparate-dwarf=with_dwarf2.wasm'])
+    self.assertExists('with_dwarf2.wasm')
     with open(os.path.join('subdir', 'output.wasm'), 'rb') as f:
       wasm = f.read()
-      self.assertIn(b'../with_dwarf.wasm', wasm)
+      self.assertIn(b'../with_dwarf2.wasm', wasm)
 
   def test_separate_dwarf_with_filename_and_path(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
