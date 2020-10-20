@@ -479,7 +479,7 @@ def remove_trailing_zeros(memfile):
 
 def finalize_wasm(infile, memfile, DEBUG):
   building.save_intermediate(infile, 'base.wasm')
-  args = ['--mutable-sp', '--detect-features', '--minimize-wasm-changes']
+  args = ['--detect-features', '--minimize-wasm-changes']
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
