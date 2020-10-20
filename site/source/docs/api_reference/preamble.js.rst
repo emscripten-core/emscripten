@@ -180,6 +180,17 @@ Conversion functions — strings, pointers and arrays
   :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite > 0``.
 
 
+
+.. js:function:: UTF8ToStringNBytes(ptr, lengthInBytes)
+
+  Given a pointer ``ptr`` to a UTF8-encoded string in the emscripten HEAP, returns a copy of that string as a Javascript String object.
+
+  :param ptr: A pointer to a UTF8-encoded string in the Emscripten HEAP.
+  :param lengthInBytes: Specifies the number of bytes to read. The string at [ptr, ptr + lengthInBytes) will be decoded using utf8 encoding, and any ``\0`` in between will be decoded as-is.
+  :returns: A JavaScript ``String`` object
+
+
+
 .. js:function:: UTF16ToString(ptr)
 
   Given a pointer ``ptr`` to a null-terminated UTF16LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
@@ -202,6 +213,16 @@ Conversion functions — strings, pointers and arrays
 
 
 
+.. js:function:: UTF16ToStringNBytes(ptr, lengthInBytes)
+
+  Given a pointer ``ptr`` to a UTF16LE-encoded string in the emscripten HEAP, returns a copy of that string as a Javascript String object.
+
+  :param ptr: A pointer to a UTF16LE-encoded string in the Emscripten HEAP.
+  :param lengthInBytes: Specifies the number of bytes to read. The string at [ptr, ptr + lengthInBytes) will be decoded using utf8 encoding, and any ``\0`` in between will be decoded as-is.
+  :returns: A JavaScript ``String`` object
+
+
+
 .. js:function:: UTF32ToString(ptr)
 
   Given a pointer ``ptr`` to a null-terminated UTF32LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
@@ -220,6 +241,16 @@ Conversion functions — strings, pointers and arrays
   :type str: String
   :param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF32LE format and null-terminated.
   :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as `maxBytesToWrite >= 4`` so that there is space for the null terminator.
+
+
+
+.. js:function:: UTF32ToStringNBytes(ptr, lengthInBytes)
+
+  Given a pointer ``ptr`` to a UTF32LE-encoded string in the emscripten HEAP, returns a copy of that string as a Javascript String object.
+
+  :param ptr: A pointer to a UTF32LE-encoded string in the Emscripten HEAP.
+  :param lengthInBytes: Specifies the number of bytes to read. The string at [ptr, ptr + lengthInBytes) will be decoded using utf8 encoding, and any ``\0`` in between will be decoded as-is.
+  :returns: A JavaScript ``String`` object
 
 
 

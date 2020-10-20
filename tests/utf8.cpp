@@ -8,6 +8,8 @@
 #include <wchar.h>
 #include <iostream>
 #include <cassert>
+#include <string>
+#include <string_view>
 #include <emscripten.h>
 
 // This code tests that Unicode std::wstrings can be marshalled between C++ and JS.
@@ -49,6 +51,37 @@ int main() {
     if (utf8String[i] != utf8String2[i])
       printf("i=%d:%u,%u\n", i, (unsigned int)(unsigned char)utf8String[i], (unsigned int)(unsigned char)utf8String2[i]);
   assert(!strcmp(utf8String, utf8String2));
+
+  // UTF8ToStringNBytes decode string with no null-terminate.
+  std::string utf8StringObject(utf8String);
+  std::string_view utf8SubString = std::string_view(utf8StringObject)
+                                     .substr(0, utf8StringObject.find('-') + 1);
+  char utf8String3[128] = {};
+  EM_ASM({
+    var str = UTF8ToStringNBytes($0, $1);
+    out(str);
+    var expectBytesWritten = $1;
+    var numBytesWritten = stringToUTF8(str, $2, $3);
+    if (numBytesWritten != expectBytesWritten) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten + " != " + expectBytesWritten;
+  }, utf8SubString.data(), utf8SubString.length(), utf8String3, 128);
+  assert(utf8SubString.length() == strlen(utf8String3));
+  assert(utf8SubString == utf8String3);
+
+  // UTF8ToStringNBytes decode string which contains '\0' inside.
+  std::string utf8StringObject1(utf8String);
+  // change the '-' to '\0'
+  utf8StringObject1[utf8StringObject.find('-')] = '\0';
+  char utf8String4[128] = {};
+  int outLength = EM_ASM_INT({
+   var str = UTF8ToStringNBytes($0, $1);
+   out(str);
+   var expectBytesWritten = $1;
+   var numBytesWritten = stringToUTF8(str, $2, $3);
+   if (numBytesWritten != expectBytesWritten) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten + " != " + expectBytesWritten;
+   return numBytesWritten;
+  }, utf8StringObject1.c_str(), utf8StringObject1.length(), utf8String4, 128);
+  assert(utf8StringObject1.length() == outLength);
+  assert(utf8StringObject1 == std::string_view(utf8String4, outLength));
 
   // Test that text gets properly cut off if output buffer is too small.
   EM_ASM({

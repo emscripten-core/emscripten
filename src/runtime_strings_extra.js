@@ -77,6 +77,37 @@ function UTF16ToString(ptr, maxBytesToRead) {
 #endif // TEXTDECODER
 }
 
+function UTF16ToStringNBytes(ptr, lengthInBytes) {
+#if ASSERTIONS
+  assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
+  assert(lengthInBytes % 2 == 0, 'Length passed to UTF16ToString must be a even number!');
+#endif
+#if TEXTDECODER
+  var endPtr = ptr + lengthInBytes;
+
+#if TEXTDECODER != 2
+  if (endPtr - ptr > 32 && UTF16Decoder) {
+#endif // TEXTDECODER != 2
+    return UTF16Decoder.decode(HEAPU8.subarray(ptr, endPtr));
+#if TEXTDECODER != 2
+  } else {
+#endif // TEXTDECODER != 2
+#endif // TEXTDECODER
+    var i = 0;
+
+    var lengthInCodeUnit = lengthInBytes / 2;
+    var str = '';
+    while (i < lengthInCodeUnit) {
+      var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
+      ++i;
+      // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
+      str += String.fromCharCode(codeUnit);
+    }
+#if TEXTDECODER && TEXTDECODER != 2
+  }
+#endif // TEXTDECODER
+}
+
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF16 form. The copy will require at most str.length*4+2 bytes of space in the HEAP.
 // Use the function lengthBytesUTF16() to compute the exact number of bytes (excluding null terminator) that this function will write.
@@ -132,6 +163,30 @@ function UTF32ToString(ptr, maxBytesToRead) {
   while (!(i >= maxBytesToRead / 4)) {
     var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
     if (utf32 == 0) break;
+    ++i;
+    // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    if (utf32 >= 0x10000) {
+      var ch = utf32 - 0x10000;
+      str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
+    } else {
+      str += String.fromCharCode(utf32);
+    }
+  }
+  return str;
+}
+
+function UTF32ToStringNBytes(ptr, lengthInBytes) {
+#if ASSERTIONS
+  assert(ptr % 4 == 0, 'Pointer passed to UTF32ToString must be aligned to four bytes!');
+  assert(lengthInBytes % 4 == 0, 'Length passed to UTF32ToString must be multiple of 4!');
+#endif
+  var i = 0;
+
+  var lengthInCodePoint = lengthInBytes / 4;
+  var str = '';
+  while (i < lengthInCodePoint) {
+    var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
     ++i;
     // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
