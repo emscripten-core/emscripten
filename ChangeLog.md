@@ -1,28 +1,106 @@
 This document describes changes between tagged Emscripten SDK versions.
 
-Note that in the compiler, version numbering is used as the mechanism to
-invalidate internal compiler caches, so version numbers do not necessarily
-reflect the amount of changes between versions.
+Note that version numbers do not necessarily reflect the amount of changes
+between versions. A version number reflects a release that is known to pass all
+tests, and versions may be tagged more or less frequently at different times.
 
-To browse or download snapshots of old tagged versions, visit
-https://github.com/emscripten-core/emscripten/releases.
+Note that there is *no* ABI compatibility guarantee between versions - the ABI
+may change, so that we can keep improving and optimizing it. The compiler will
+automatically invalidate system caches when the version number updates, so that
+libc etc. are rebuilt for you. You should also rebuild object files and
+libraries in your project when you upgrade emscripten.
 
 Not all changes are documented here. In particular, new features, user-oriented
-fixes, options, command-line parameters, usage changes, deprecations,
+fixes, options, command-line parameters, breaking ABI changes, deprecations,
 significant internal modifications and optimizations etc. generally deserve a
-mention. To examine the full set of changes between versions, visit the link to
-full changeset diff at the end of each section.
+mention. To examine the full set of changes between versions, you can use git
+to browse the changes between the tags.
 
-See docs/process.md for how version tagging works.
+See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Dynamic linking (MAIN_MODULE + SIDE_MODULE) now produces wasm binaries that
+  depend on mutable globals.  Specifically the stack pointer global is mutable
+  and shared between the modules. This is an ABI change for dynamic linking.
+  (#12536)
+- emcc now accepts `--arg=foo` as well as `--arg foo`.  For example
+  `--js-library=file.js`.
+- Reject promises returned from the factory function created by using the
+  MODULARIZE build option if initialization of the module instance fails
+  (#12396).
+
+2.0.7: 10/13/2020
+-----------------
+- Don't run Binaryen postprocessing for Emscripten EH/SjLj. This lets us avoid
+  running `wasm-emscripten-finalize` just for C++ exceptions or longjmp. This
+  is an ABI change. (#12399)
+- Run `SAFE_HEAP` on user JS code using a new Acorn pass, increasing the
+  coverage of those tests to all JS in the output (#12450).
+- `EM_LOG_DEMANGLE` is now deprecated.  Function names shown in wasm backtraces
+  are never mangled (they are either missing or demangled already) so demangled
+  is not possible anymore.
+- In STRICT mode we no longer link in C++ mode by default.  This means if you
+  are building a C++ program in STRICT mode you need to link via `em++` rather
+  than `emcc`.  This matches the behaviour of gcc and clang.
+- IDBFS now persists files whenever their timestamp changes; previously it acted
+  on sync only if the timestamp increased and ignored the file changes otherwise.
+- When `-s SUPPORT_LONGJMP=0` is passed to disable longjmp, do not run the LLVM
+  wasm backend path that handles longjmp. Before this only affected linking, and
+  now the flag gives you the ability to affect codegen at compile time too. This
+  is necessary if one does not want any invokes generated for longjmp at all.
+  (#12394)
+
+2.0.6: 10/02/2020
+-----------------
+- Add new `COMPILER_WRAPPER` settings (with corresponding `EM_COMPILER_WRAPPER`
+  environment variable.  This replaces the existing `EMMAKEN_COMPILER`
+  environment variable which is deprecated, but still works for the time being.
+  The main differences is that `EM_COMPILER_WRAPPER` only wrapps the configured
+  version of clang rather than replacing it.
+- ASAN_SHADOW_SIZE is deprecated. When using AddressSanitizer, the correct
+  amount of shadow memory will now be calculated automatically.
+
+2.0.5: 09/28/2020
+-----------------
+- Fix a rare pthreads + exceptions/longjmp race condition (#12056).
+- Add `WEBGL_multi_draw_instanced_base_vertex_base_instance` bindings (#12282).
+- Fix a rare pthreads main thread deadlock (that worsened in 2.0.2, but existed
+  before). (#12318)
+- The WebAssembly table is now created and exported by the generated wasm
+  module rather then constructed by the JS glue code.  This is an implemention
+  detail that should not affect most users, but reduces code size. (#12296)
+- Add `getentropy` in `sys/random.h`, and use that from libc++'s
+  `random_device`. This is more efficient, see #12240.
+- Fixed `ABORT_ON_WASM_EXCEPTIONS` to work with the recent dynCall changes where
+  functions can be called via the WASM table directly, bypassing WASM exports
+  (#12269).
+- Add `ASYNCIFY_ADVISE` to output which functions have been instrumented for
+  Asyncify mode, and why they need to be handled. (#12146)
+
+2.0.4: 09/16/2020
+-----------------
+- First release with Bazel support.
+- Stop including `malloc` and `free` by default. If you need access to them from
+  JS, you must export them manually using
+  `-s EXPORTED_FUNCTIONS=['_malloc', ..]`.
+- Stop running Binaryen optimizations in `-O1`. This makes `-O1` builds a little
+  larger but they compile a lot faster, which makes more sense in a "compromise"
+  build (in between `-O0` and higher optimization levels suitable for release
+  builds). (#12178)
+- Add `ERROR_ON_WASM_CHANGES_AFTER_LINK` option that errors if we need to do
+  any work in `wasm-emscripten-finalize` or `wasm-opt` after linking. This
+  can verify the link is maximally fast and also does no DWARF rewriting.
+  (#12173)
+
+2.0.3: 09/10/2020
+-----------------
 - The native optimizer and the corresponding config setting
   (`EMSCRIPTEN_NATIVE_OPTIMIZER`) have been removed (it was only relevant to
   asmjs/fastcomp backend).
 - Remove `ALLOC_DYNAMIC` and deprecate `dynamicAlloc`. (#12057, which also
   removes the internal `DYNAMICTOP_PTR` API.)
-- Add `ABORT_ON_EXCEPTIONS` which will abort when an unhandled WASM exception
+- Add `ABORT_ON_WASM_EXCEPTIONS` which will abort when an unhandled WASM exception
   is encountered. This makes the Emscripten program behave more like a native
   program where the OS would terminate the process and no further code can be
   executed when an unhandled exception (e.g. out-of-bounds memory access) happens.
@@ -31,6 +109,15 @@ Current Trunk
   corrupted program state.
 - Use `__indirect_function_table` as the import name for the table, which is
   what LLVM does.
+- Remove `BINARYEN_SCRIPTS` setting.
+- The default output format is now executable JavaScript.  Previously we would
+  default to output objecting files unless, for example, the output name ended
+  in `.js`.  This is contrary to behaviour of clang and gcc.  Now emscripten
+  will always produce and executable unless the `-c`, `-r` or `-shared` flags
+  are given.  This is true even when the name of the output file ends in `.o`.
+  e.g, `emcc foo.c -o foo.o` will produce a JavaScript file called `foo.o`.
+  This might surprise some users (although it matches the behavior of existing
+  toolchains) so we now produce a warning in this case.
 
 2.0.2: 09/02/2020
 -----------------
@@ -81,7 +168,7 @@ Current Trunk
   (#11319)
 - Python2 is no longer supported by Emscripten.  Emsdk now includes a bundled
   copy of Python3 on both macOS and Windows.  This means that only non-emsdk
-  users and linux users should be effected by this change.
+  users and linux users should be affected by this change.
 - Store exceptions metadata in wasm memory instead of JS. This makes exception
   handling almost 100% thread-safe. (#11518)
 

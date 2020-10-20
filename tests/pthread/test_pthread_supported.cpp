@@ -13,18 +13,14 @@
 
 void *ThreadMain(void *arg)
 {
-	pthread_exit(0);
+	pthread_exit(NULL);
 }
 
 int main()
 {
 	pthread_t thread;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-	int rc = pthread_create(&thread, &attr, ThreadMain, 0);
-	pthread_attr_destroy(&attr);
-	pthread_join(thread, 0);
+	int rc = pthread_create(&thread, NULL, ThreadMain, NULL);
+	pthread_join(thread, NULL);
 
 	if (emscripten_has_threading_support()) assert(rc == 0);
 	else assert(rc == EAGAIN);

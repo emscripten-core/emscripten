@@ -101,8 +101,15 @@ Otherwise, to debug this, look for an error reported on the page itself, or in t
 What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead" or "no native wasm support detected"?
 ===============================================================================================================================
 
-Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
+Those errors indicate that WebAssembly support is not present in the VM you are
+trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly
+(and emit equivalent JS instead), if you want your code to run in such
+environments. Note that all modern browsers support WebAssembly, so this should
+only matter if you need to target legacy browsers.
 
+``-s WASM=0`` output should run exactly the same as a WebAssembly build, but may
+be larger, start up slower, and run slower, so it's better to ship WebAssembly
+whenever you can.
 
 Why do I get ``machine type must be wasm32`` or ``is not a valid input file`` during linking?
 =============================================================================================
@@ -421,8 +428,26 @@ You may need to quote things like this:
   # or you may need something like this in a Makefile
   emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
 
-The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
+The proper syntax depends on the OS and shell you are in, and if you are writing
+in a Makefile, etc. Things like spaces may also matter in some shells, for
+example you may need to avoid empty spaces between list items:
 
+::
+
+  # this works in the shell on most Linuxes and on macOS
+  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['foo','bar']"
+
+(note there is no space after the ``,``).
+
+For simplicity, you may want to use a **response file**, that is,
+
+::
+
+  # this works in the shell on most Linuxes and on macOS
+  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=@extra.txt"
+
+and then ``extra.txt`` can be a plain file that contains ``['foo','bar']``. This
+avoids any issues with the shell environment parsing the string.
 
 How do I specify ``-s`` options in a CMake project?
 ===================================================
@@ -492,14 +517,6 @@ Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and 
 ==================================================================================================================================================================
 
 This is a limitation of the asm.js target in :term:`Clang`. This code is not currently supported.
-
-
-Why does building from source fail during linking (at 100%)?
-============================================================
-
-Building :ref:`Fastcomp from source <building-fastcomp-from-source>` (and hence the SDK) can fail at 100% progress. This is due to out of memory in the linking stage, and is reported as an error: ``collect2: error: ld terminated with signal 9 [Killed]``.
-
-The solution is to ensure the system has sufficient memory. On Ubuntu 14.04.1 LTS 64bit, you should use at least 6Gb.
 
 
 How do I pass int64_t and uint64_t values from js into wasm functions?

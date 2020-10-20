@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2017 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -21,9 +21,7 @@ import os
 import platform
 import re
 import shlex
-import shutil
 import socket
-import stat
 import struct
 import subprocess
 import sys
@@ -31,6 +29,8 @@ import tempfile
 import threading
 import time
 from operator import itemgetter
+
+from tools import shared
 
 if sys.version_info.major == 2:
   import SocketServer as socketserver
@@ -234,7 +234,7 @@ def delete_emrun_safe_firefox_profile():
   global temp_firefox_profile_dir
   if temp_firefox_profile_dir is not None:
     logv('remove_tree("' + temp_firefox_profile_dir + '")')
-    remove_tree(temp_firefox_profile_dir)
+    shared.try_delete(temp_firefox_profile_dir)
     temp_firefox_profile_dir = None
 
 
@@ -693,6 +693,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         page_exit_code = int(data[6:])
         logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve_after_exit to keep serving even after the page terminates with exit().')
         self.server.shutdown()
+        return
 
     self.send_response(200)
     self.send_header('Content-type', 'text/plain')
@@ -1121,9 +1122,16 @@ def win_get_default_browser():
   except WindowsError:
     logv("Unable to find default browser key in Windows registry. Trying fallback.")
 
-  # Fall back to 'start %1', which we have to treat as if user passed --serve_forever, since
+  # Fall back to 'start "" %1', which we have to treat as if user passed --serve_forever, since
   # for some reason, we are not able to detect when the browser closes when this is passed.
-  return ['cmd', '/C', 'start']
+  #
+  # If the first argument to 'start' is quoted, then 'start' will create a new cmd.exe window with
+  # that quoted string as the title. If the URL contained spaces, it would be quoted by subprocess,
+  # and if we did 'start %1', it would create a new cmd.exe window with the URL as title instead of
+  # actually launching the browser. Therefore, we must pass a dummy quoted first argument for start
+  # to interpret as the title. For this purpose, we use the empty string, which will be quoted
+  # as "". See #9253 for details.
+  return ['cmd', '/C', 'start', '']
 
 
 def find_browser(name):
@@ -1295,21 +1303,6 @@ def subprocess_env():
   e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
   e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
   return e
-
-
-# Removes a directory tree even if it was readonly, and doesn't throw exception on failure.
-def remove_tree(d):
-  os.chmod(d, stat.S_IWRITE)
-  try:
-    def remove_readonly_and_try_again(func, path, exc_info):
-      if not (os.stat(path).st_mode & stat.S_IWRITE):
-        os.chmod(path, stat.S_IWRITE)
-        func(path)
-      else:
-        raise
-    shutil.rmtree(d, onerror=remove_readonly_and_try_again)
-  except Exception:
-    pass
 
 
 def get_system_info(format_json):

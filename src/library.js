@@ -20,9 +20,6 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-// Memory allocated during startup, in postsets, should only be static
-// (using makeStaticAlloc)
-
 LibraryManager.library = {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
@@ -554,21 +551,6 @@ LibraryManager.library = {
       return false;
 #endif
     }
-#if USE_ASAN
-    // One byte of ASan's shadow memory shadows 8 bytes of real memory. Shadow memory area has a fixed size,
-    // so do not allow resizing past that limit.
-    maxHeapSize = Math.min(maxHeapSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
-    if (requestedSize > maxHeapSize) {
-#if ASSERTIONS
-      err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
-#endif
-#if ABORTING_MALLOC
-      abortOnCannotGrowMemory(requestedSize);
-#else
-      return false;
-#endif
-    }
-#endif
 
     var minHeapSize = 16777216;
 
@@ -681,9 +663,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-  abs: 'Math_abs',
-  labs: 'Math_abs',
-
   _ZSt9terminatev__deps: ['exit'],
   _ZSt9terminatev: function() {
     _exit(-1234);
@@ -795,196 +774,6 @@ LibraryManager.library = {
 
   __gcc_personality_v0: function() {
   },
-
-  // ==========================================================================
-  // dlfcn.h - Dynamic library loading
-  //
-  // Some limitations:
-  //
-  //  * Minification on each file separately may not work, as they will
-  //    have different shortened names. You can in theory combine them, then
-  //    minify, then split... perhaps.
-  //
-  //  * LLVM optimizations may fail. If the child wants to access a function
-  //    in the parent, LLVM opts may remove it from the parent when it is
-  //    being compiled. Not sure how to tell LLVM to not do so.
-  // ==========================================================================
-
-#if MAIN_MODULE == 0
-  dlopen: function(filename, flag) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dlclose: function(handle) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dlsym: function(handle, symbol) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dlerror: function() {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dladdr: function(address, info) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-#else // MAIN_MODULE != 0
-
-  $DLFCN: {
-    error: null,
-    errorMsg: null,
-  },
-
-  // void* dlopen(const char* filename, int flag);
-  dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
-  dlopen__proxy: 'sync',
-  dlopen__sig: 'iii',
-  dlopen: function(filenameAddr, flag) {
-    // void *dlopen(const char *file, int mode);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
-    var searchpaths = [];
-    var filename;
-    if (filenameAddr === 0) {
-      filename = '__self__';
-    } else {
-      filename = UTF8ToString(filenameAddr);
-
-      var isValidFile = function (filename) {
-        var target = FS.findObject(filename);
-        return target && !target.isFolder && !target.isDevice;
-      };
-
-      if (!isValidFile(filename)) {
-        if (ENV['LD_LIBRARY_PATH']) {
-          searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
-        }
-
-        for (var ident in searchpaths) {
-          var searchfile = PATH.join2(searchpaths[ident], filename);
-          if (isValidFile(searchfile)) {
-            filename = searchfile;
-            break;
-          }
-        }
-      }
-    }
-
-    // We don't care about RTLD_NOW and RTLD_LAZY.
-    var flags = {
-      global:   Boolean(flag & 256),  // RTLD_GLOBAL
-      nodelete: Boolean(flag & 4096), // RTLD_NODELETE
-
-      fs: FS, // load libraries from provided filesystem
-    }
-
-    try {
-      return loadDynamicLibrary(filename, flags)
-    } catch (e) {
-#if ASSERTIONS
-      err('Error in loading dynamic library ' + filename + ": " + e);
-#endif
-      DLFCN.errorMsg = 'Could not load dynamic lib: ' + filename + '\n' + e;
-      return 0;
-    }
-  },
-
-  // int dlclose(void* handle);
-  dlclose__deps: ['$DLFCN'],
-  dlclose__proxy: 'sync',
-  dlclose__sig: 'ii',
-  dlclose: function(handle) {
-    // int dlclose(void *handle);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
-    var lib = LDSO.loadedLibs[handle];
-    if (!lib) {
-      DLFCN.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
-      return 1;
-    }
-    if (--lib.refcount == 0) {
-      delete LDSO.loadedLibNames[lib.name];
-      delete LDSO.loadedLibs[handle];
-    }
-    return 0;
-  },
-
-  // void* dlsym(void* handle, const char* symbol);
-  dlsym__deps: ['$DLFCN'],
-  dlsym__proxy: 'sync',
-  dlsym__sig: 'iii',
-  dlsym: function(handle, symbol) {
-    // void *dlsym(void *restrict handle, const char *restrict name);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
-    symbol = UTF8ToString(symbol);
-
-    var lib = LDSO.loadedLibs[handle];
-    if (!lib) {
-      DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
-      return 0;
-    }
-
-    if (!lib.module.hasOwnProperty(symbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                             '" in dynamic lib: ' + lib.name);
-      return 0;
-    }
-
-    var result = lib.module[symbol];
-    if (typeof result !== 'function') {
-      return result;
-    }
-
-#if EMULATE_FUNCTION_POINTER_CASTS
-    // for wasm with emulated function pointers, the i64 ABI is used for all
-    // function calls, so we can't just call addFunction on something JS
-    // can call (which does not use that ABI), as the function pointer would
-    // not be usable from wasm. instead, the wasm has exported function pointers
-    // for everything we need, with prefix fp$, use those
-    result = lib.module['fp$' + symbol];
-    if (typeof result === 'object') {
-      // a breaking change in the wasm spec, globals are now objects
-      // https://github.com/WebAssembly/mutable-global/issues/1
-      result = result.value;
-    }
-#if ASSERTIONS
-    assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
-#endif // ASSERTIONS
-    return result;
-#else // WASM && EMULATE_FUNCTION_POINTER_CASTS
-
-    // Insert the function into the wasm table.  Since we know the function
-    // comes directly from the loaded wasm module we can insert it directly
-    // into the table, avoiding any JS interaction.
-    return addFunctionWasm(result);
-#endif // WASM && EMULATE_FUNCTION_POINTER_CASTS
-  },
-
-  // char* dlerror(void);
-  dlerror__deps: ['$DLFCN', '$stringToNewUTF8'],
-  dlerror__proxy: 'sync',
-  dlerror__sig: 'i',
-  dlerror: function() {
-    // char *dlerror(void);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
-    if (DLFCN.errorMsg === null) {
-      return 0;
-    }
-    if (DLFCN.error) _free(DLFCN.error);
-    DLFCN.error = stringToNewUTF8(DLFCN.errorMsg);
-    DLFCN.errorMsg = null;
-    return DLFCN.error;
-  },
-
-  dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],
-  dladdr__proxy: 'sync',
-  dladdr__sig: 'iii',
-  dladdr: function(addr, info) {
-    // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(getExecutableName()); // XXX leak
-    {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*3, '0', 'i32') }}};
-    return 1;
-  },
-#endif // MAIN_MODULE != 0
 
   // ==========================================================================
   // pwd.h
@@ -1191,17 +980,25 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
-    // timezone is specified as seconds west of UTC ("The external variable
-    // `timezone` shall be set to the difference, in seconds, between
-    // Coordinated Universal Time (UTC) and local standard time."), the same
-    // as returned by getTimezoneOffset().
-    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
-
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
     var summer = new Date(currentYear, 6, 1);
-    {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
+    var winterOffset = winter.getTimezoneOffset();
+    var summerOffset = summer.getTimezoneOffset();
+
+    // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
+    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST). 
+    // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
+    var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
+
+    // timezone is specified as seconds west of UTC ("The external variable
+    // `timezone` shall be set to the difference, in seconds, between
+    // Coordinated Universal Time (UTC) and local standard time."), the same
+    // as returned by stdTimezoneOffset.
+    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
+    {{{ makeSetValue('__get_timezone()', '0', 'stdTimezoneOffset * 60', 'i32') }}};
+
+    {{{ makeSetValue('__get_daylight()', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
@@ -1211,7 +1008,7 @@ LibraryManager.library = {
     var summerName = extractZone(summer);
     var winterNamePtr = allocateUTF8(winterName);
     var summerNamePtr = allocateUTF8(summerName);
-    if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
+    if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
       {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
@@ -1977,16 +1774,26 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
+  longjmp__sig: 'vii',
 #if SUPPORT_LONGJMP
   longjmp: function(env, value) {
     _setThrew(env, value || 1);
     throw 'longjmp';
   },
-  emscripten_longjmp__deps: ['longjmp'],
-  emscripten_longjmp: function(env, value) {
-    _longjmp(env, value);
+#else
+  longjmp__deps: [function() {
+    error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
+  }],
+  // will never be emitted, as the dep errors at compile time
+  longjmp: function() {
+    abort('longjmp not supported');
   },
 #endif
+  // TODO: remove these aliases if/when the LLVM backend can stop emitting them
+  // (it emits them atm as they are generated by an IR pass, at at that time
+  // they each have a different signature - it is only at the wasm level that
+  // they become identical).
+  emscripten_longjmp: 'longjmp',
 
   // ==========================================================================
   // sys/wait.h
@@ -2579,7 +2386,7 @@ LibraryManager.library = {
   },
 
   // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', 'gethostbyname', '_inet_ntop4_raw'],
+  gethostbyaddr__deps: ['$DNS', '$getHostByName', '_inet_ntop4_raw'],
   gethostbyaddr__proxy: 'sync',
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
@@ -2594,19 +2401,20 @@ LibraryManager.library = {
     if (lookup) {
       host = lookup;
     }
-    var hostp = allocate(intArrayFromString(host), 'i8', ALLOC_STACK);
-    return _gethostbyname(hostp);
+    return getHostByName(host);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', '$getHostByName'],
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
-    name = UTF8ToString(name);
+    return getHostByName(UTF8ToString(name));
+  },
 
+  $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = _malloc(name.length+1);
+    var nameBuf = {{{ makeMalloc('getHostByName', 'name.length+1') }}};
     stringToUTF8(name, nameBuf, name.length+1);
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', 'i8*') }}};
     var aliasesBuf = _malloc(4);
@@ -3035,6 +2843,47 @@ LibraryManager.library = {
   endgrent: function() { throw 'endgrent: TODO' },
   setgrent: function() { throw 'setgrent: TODO' },
 
+  // random.h
+
+  // TODO: consider allowing the API to get a parameter for the number of
+  // bytes.
+  $getRandomDevice: function() {
+    if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
+      // for modern web browsers
+      var randomBuffer = new Uint8Array(1);
+      return function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
+    } else
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      // for nodejs with or without crypto support included
+      try {
+        var crypto_module = require('crypto');
+        // nodejs has crypto support
+        return function() { return crypto_module['randomBytes'](1)[0]; };
+      } catch (e) {
+        // nodejs doesn't have crypto support
+      }
+    }
+#endif // ENVIRONMENT_MAY_BE_NODE
+    // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
+#if ASSERTIONS
+    return function() { abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
+#else
+    return function() { abort("randomDevice"); };
+#endif
+  },
+
+  getentropy__deps: ['$getRandomDevice'],
+  getentropy: function(buffer, size) {
+    if (!_getentropy.randomDevice) {
+      _getentropy.randomDevice = getRandomDevice();
+    }
+    for (var i = 0; i < size; i++) {
+      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}}
+    }
+    return 0;
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================
@@ -3182,7 +3031,7 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$demangle'
+  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace',
 #if MINIMAL_RUNTIME
     , '$warnOnce'
 #endif
@@ -3196,6 +3045,10 @@ LibraryManager.library = {
     var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
+
+    if (flags & 32/*EM_LOG_DEMANGLE*/) {
+      warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
+    }
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
     if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
@@ -3222,14 +3075,14 @@ LibraryManager.library = {
     for (var l in lines) {
       var line = lines[l];
 
-      var jsSymbolName = '';
+      var symbolName = '';
       var file = '';
       var lineno = 0;
       var column = 0;
 
       var parts = chromeRe.exec(line);
       if (parts && parts.length == 5) {
-        jsSymbolName = parts[1];
+        symbolName = parts[1];
         file = parts[2];
         lineno = parts[3];
         column = parts[4];
@@ -3237,7 +3090,7 @@ LibraryManager.library = {
         parts = newFirefoxRe.exec(line);
         if (!parts) parts = firefoxRe.exec(line);
         if (parts && parts.length >= 4) {
-          jsSymbolName = parts[1];
+          symbolName = parts[1];
           file = parts[2];
           lineno = parts[3];
           column = parts[4]|0; // Old Firefox doesn't carry column information, but in new FF30, it is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
@@ -3246,12 +3099,6 @@ LibraryManager.library = {
           callstack += line + '\n';
           continue;
         }
-      }
-
-      // Try to demangle the symbol, but fall back to showing the original JS symbol name if not available.
-      var cSymbolName = (flags & 32/*EM_LOG_DEMANGLE*/) ? demangle(jsSymbolName) : jsSymbolName;
-      if (!cSymbolName) {
-        cSymbolName = jsSymbolName;
       }
 
       var haveSourceMap = false;
@@ -3263,19 +3110,19 @@ LibraryManager.library = {
           if (flags & 64/*EM_LOG_NO_PATHS*/) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
           }
-          callstack += '    at ' + cSymbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
+          callstack += '    at ' + symbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
         }
       }
       if ((flags & 16/*EM_LOG_JS_STACK*/) || !haveSourceMap) {
         if (flags & 64/*EM_LOG_NO_PATHS*/) {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
-        callstack += (haveSourceMap ? ('     = '+jsSymbolName) : ('    at '+cSymbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
+        callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
 
       // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
       if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
-        if (stack_args[1] == jsSymbolName && stack_args[2].length > 0) {
+        if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
         }
@@ -3345,7 +3192,7 @@ LibraryManager.library = {
     var fullname = name + '__str';
     var fullret = cache[fullname];
     if (fullret) return fullret;
-    return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
+    return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
   },
 
   emscripten_has_asyncify: function() {
@@ -3711,7 +3558,7 @@ LibraryManager.library = {
   // at runtime rather than statically in JS code.
   $exportAsmFunctions: function(asm) {
     var asmjsMangle = function(x) {
-      var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+      var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
       return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
     };
 
@@ -3751,76 +3598,6 @@ LibraryManager.library = {
   // throws an exception.
   $jstoi_s: function(str) {
     return Number(str);
-  },
-
-  //============================
-  // i64 math
-  //============================
-
-  i64Add__asm: true,
-  i64Add__sig: 'iiiii',
-  i64Add: function(a, b, c, d) {
-    /*
-      x = a + b*2^32
-      y = c + d*2^32
-      result = l + h*2^32
-    */
-    a = a|0; b = b|0; c = c|0; d = d|0;
-    var l = 0, h = 0;
-    l = (a + c)>>>0;
-    h = (b + d + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
-    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
-  },
-
-  i64Subtract__asm: true,
-  i64Subtract__sig: 'iiiii',
-  i64Subtract: function(a, b, c, d) {
-    a = a|0; b = b|0; c = c|0; d = d|0;
-    var l = 0, h = 0;
-    l = (a - c)>>>0;
-    h = (b - d)>>>0;
-    h = (b - d - (((c>>>0) > (a>>>0))|0))>>>0; // Borrow one from high word to low word on underflow.
-    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
-  },
-
-  bitshift64Shl__asm: true,
-  bitshift64Shl__sig: 'iiii',
-  bitshift64Shl: function(low, high, bits) {
-    low = low|0; high = high|0; bits = bits|0;
-    var ander = 0;
-    if ((bits|0) < 32) {
-      ander = ((1 << bits) - 1)|0;
-      {{{ makeSetTempRet0('(high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))') }}};
-      return low << bits;
-    }
-    {{{ makeSetTempRet0('low << (bits - 32)') }}};
-    return 0;
-  },
-  bitshift64Ashr__asm: true,
-  bitshift64Ashr__sig: 'iiii',
-  bitshift64Ashr: function(low, high, bits) {
-    low = low|0; high = high|0; bits = bits|0;
-    var ander = 0;
-    if ((bits|0) < 32) {
-      ander = ((1 << bits) - 1)|0;
-      {{{ makeSetTempRet0('high >> bits') }}};
-      return (low >>> bits) | ((high&ander) << (32 - bits));
-    }
-    {{{ makeSetTempRet0('(high|0) < 0 ? -1 : 0') }}};
-    return (high >> (bits - 32))|0;
-  },
-  bitshift64Lshr__asm: true,
-  bitshift64Lshr__sig: 'iiii',
-  bitshift64Lshr: function(low, high, bits) {
-    low = low|0; high = high|0; bits = bits|0;
-    var ander = 0;
-    if ((bits|0) < 32) {
-      ander = ((1 << bits) - 1)|0;
-      {{{ makeSetTempRet0('high >>> bits') }}};
-      return (low >>> bits) | ((high&ander) << (32 - bits));
-    }
-    {{{ makeSetTempRet0('0') }}};
-    return (high >>> (bits - 32))|0;
   },
 
   // libunwind
@@ -3882,36 +3659,7 @@ LibraryManager.library = {
     {{{ makeDynCall('vii', 'func') }}}(Math.min(base, end), Math.max(base, end));
   },
 
-  // misc definitions to avoid unnecessary unresolved symbols being reported
-  // by fastcomp or wasm-ld
-#if SUPPORT_LONGJMP
-  emscripten_prep_setjmp: function() {},
-  emscripten_cleanup_setjmp: function() {},
-  emscripten_check_longjmp: function() {},
-  emscripten_get_longjmp_result: function() {},
-  emscripten_setjmp: function() {},
-#endif
-  emscripten_preinvoke: function() {},
-  emscripten_postinvoke: function() {},
-  emscripten_resume: function() {},
-  emscripten_landingpad: function() {},
-  getHigh32: function() {},
-  setHigh32: function() {},
-  FtoILow: function() {},
-  FtoIHigh: function() {},
-  DtoILow: function() {},
-  DtoIHigh: function() {},
-  BDtoILow: function() {},
-  BDtoIHigh: function() {},
-  SItoF: function() {},
-  UItoF: function() {},
-  SItoD: function() {},
-  UItoD: function() {},
-  BItoD: function() {},
-  llvm_dbg_value: function() {},
-  llvm_debugtrap: function() {},
-  llvm_ctlz_i32: function() {},
-
+  // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow: function() {
     abort('stack overflow')
   },
@@ -4011,7 +3759,9 @@ LibraryManager.library = {
       return dynCallLegacy(sig, ptr, args);
     }
 #endif
-
+#if ASSERTIONS
+    assert(wasmTable.get(ptr), 'missing table entry in dynCall: ' + ptr);
+#endif
     return wasmTable.get(ptr).apply(null, args)
 #endif
   },

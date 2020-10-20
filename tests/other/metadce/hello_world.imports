@@ -1,6 +1,4 @@
-__indirect_function_table
-emscripten_memcpy_big
-emscripten_resize_heap
-fd_write
-memory
-setTempRet0
+env.emscripten_memcpy_big
+env.memory
+env.setTempRet0
+wasi_snapshot_preview1.fd_write

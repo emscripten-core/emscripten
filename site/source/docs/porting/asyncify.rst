@@ -22,12 +22,6 @@ See the
 for general background and details of how it works internally. The following
 expands on the Emscripten examples from that post.
 
-.. note:: This post talks about Asyncify using the new LLVM wasm backend.
-          There was an older Asyncify implementation for the old fastcomp
-          backend. The two algorithms and implementations are entirely separate,
-          so if you are using fastcomp, these docs may not be accurate - you
-          should upgrade to the wasm backend and new Asyncify!
-
 .. _yielding_to_main_loop:
 
 Sleeping / yielding to the event loop
@@ -309,6 +303,13 @@ can provide a manual list of functions to Asyncify:
   functions that need to unwind.
 * ``ASYNCIFY_ONLY_LIST`` is a list of the **only** functions that can unwind
   the stack. Asyncify will instrument exactly those and no others.
+
+You can enable the ``ASYNCIFY_ADVISE`` setting, which will tell the compiler to
+output which functions it is currently instrumenting and why. You can then
+determine whether you should add any functions to ``ASYNCIFY_REMOVE_LIST`` or
+whether it would be safe to enable ``ASYNCIFY_IGNORE_INDIRECT``. Note that this
+phase of the compiler happens after many optimization phases, and several
+functions maybe be inlined already. To be safe, run it with `-O0`.
 
 For more details see ``settings.js``. Note that the manual settings
 mentioned here are error-prone - if you don't get things exactly right,

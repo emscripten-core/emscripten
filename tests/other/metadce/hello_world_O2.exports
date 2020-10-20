@@ -1,11 +1,9 @@
 __data_end
 __errno_location
-__growWasmMemory
+__indirect_function_table
 __wasm_call_ctors
 dynCall_jiji
-free
 main
-malloc
 stackAlloc
 stackRestore
 stackSave

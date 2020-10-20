@@ -1062,17 +1062,25 @@ var LibraryEmbind = {
 #endif
   },
 
-  $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError', '$getDynCaller'],
+  $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
+#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+    , '$getDynCaller'
+#endif
+  ],
   $embind__requireFunction: function(signature, rawFunction) {
     signature = readLatin1String(signature);
 
     function makeDynCaller() {
-#if !USE_LEGACY_DYNCALLS
-      if (signature.indexOf('j') == -1) {
-        return wasmTable.get(rawFunction);
+#if USE_LEGACY_DYNCALLS
+      return getDynCaller(signature, rawFunction);
+#else
+#if !WASM_BIGINT
+      if (signature.indexOf('j') != -1) {
+        return getDynCaller(signature, rawFunction);
       }
 #endif
-      return getDynCaller(signature, rawFunction);
+      return wasmTable.get(rawFunction);
+#endif
     }
 
     var fp = makeDynCaller();

@@ -9,37 +9,11 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-// Handy sets
-
-var STRUCT_LIST = set('struct', 'list');
-
 var addedLibraryItems = {};
-var asmLibraryFunctions = [];
-
-var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow',
-  'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan',
-  'Math_atan2', 'Math_exp', 'Math_log', 'Math_ceil', 'Math_imul', 'Math_min',
-  'Math_max', 'Math_clz32', 'Math_fround',
-  'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array',
-  'Uint32Array', 'Float32Array', 'Float64Array'];
-
-// Specifies the set of referenced built-in primitives such as Math.max etc.
-var usedExternPrimitives = {};
-
-var SETJMP_LABEL = -1;
-
-var INDENTATION = ' ';
-
-var functionStubSigs = {};
 
 // Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
 var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
-
-// proxiedFunctionInvokers contains bodies of the functions that will perform the proxying. These
-// are generated in a map to keep track which ones have already been emitted, to avoid outputting duplicates.
-// map: pair(sig, syncOrAsync) -> function body
-var proxiedFunctionInvokers = {};
 
 // Used internally. set when there is a main() function.
 // Also set when in a linkable module, as the main() function might
@@ -94,22 +68,18 @@ function JSify(data, functionsOnly) {
     // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
     // make sure the endings are uniform.
     snippet = snippet.toString().replace(/\r\n/gm,"\n");
-    assert(snippet.indexOf('XXX missing C define') == -1,
-           'Trying to include a library function with missing C defines: ' + finalName + ' | ' + snippet);
 
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
-    // Apply special js library debug modes
-    if (!LibraryManager.library[ident + '__asm']) {
-      // apply LIBRARY_DEBUG if relevant
-      if (LIBRARY_DEBUG) {
-        snippet = modifyFunction(snippet, function(name, args, body) {
-          return 'function ' + name + '(' + args + ') {\n' +
-                 'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
-                  body +
-                  '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
-        });
-      }
+
+    // apply LIBRARY_DEBUG if relevant
+    if (LIBRARY_DEBUG) {
+      snippet = modifyFunction(snippet, function(name, args, body) {
+        return 'function ' + name + '(' + args + ') {\n' +
+               'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
+                body +
+                '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
+      });
     }
     return snippet;
   }
@@ -157,10 +127,7 @@ function JSify(data, functionsOnly) {
 
       var noExport = false;
 
-      if (allExternPrimitives.indexOf(ident) != -1) {
-        usedExternPrimitives[ident] = 1;
-        return;
-      } else if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
+      if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
@@ -238,7 +205,7 @@ function JSify(data, functionsOnly) {
           }
           // In asm, we need to know about library functions. If there is a target, though, then no
           // need to consider this a library function - we will call directly to it anyhow
-          if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
+          if (!redirectedIdent && (typeof target == 'function')) {
             Functions.libraryFunctions[finalName] = 1;
           }
         }
@@ -295,7 +262,7 @@ function JSify(data, functionsOnly) {
       function addDependency(dep) {
         return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
       }
-      var depsText = (deps ? '\n' + deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') : '');
+      var depsText = (deps ? deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') + '\n' : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -330,28 +297,10 @@ function JSify(data, functionsOnly) {
         contentText = 'var ' + finalName + '=' + snippet + ';';
       }
       var sig = LibraryManager.library[ident + '__sig'];
-      if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
-        // asm library function, add it as generated code alongside the generated code
-        Functions.implementedFunctions[finalName] = sig;
-        asmLibraryFunctions.push(contentText);
-        contentText = ' ';
-        Functions.libraryFunctions[finalName] = 2;
-        noExport = true; // if it needs to be exported, that will happen in emscripten.py
-      }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
-      }
-      if (!LibraryManager.library[ident + '__asm']) {
-        // If we are not an asm library func, and we have a dep that is, then we need to call
-        // into the asm module to reach that dep. so it must be exported from the asm module.
-        // We set EXPORTED_FUNCTIONS here to tell emscripten.py to do that.
-        deps.forEach(function(dep) {
-          if (LibraryManager.library[dep + '__asm']) {
-            EXPORTED_FUNCTIONS[mangleCSymbolName(dep)] = 0;
-          }
-        });
       }
 
       var commentText = '';
@@ -394,49 +343,8 @@ function JSify(data, functionsOnly) {
     //
 
     if (!mainPass) {
-      if (!Variables.generatedGlobalBase) {
-        Variables.generatedGlobalBase = true;
-        // Globals are done, here is the rest of static memory
-        // emit "metadata" in a comment. FIXME make this nicer
-        print('// STATICTOP = STATIC_BASE + ' + alignMemory(Variables.nextIndexedOffset) + ';\n');
-      }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
-
-      if (memoryInitialization.length > 0) {
-        // apply postsets directly into the big memory initialization
-        itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
-          var m;
-          if (m = /^HEAP([\dFU]+)\[([()>\d]+)\] *= *([()|\d{}\w_' ]+);?$/.exec(item.JS)) {
-            var type = getTypeFromHeap(m[1]);
-            var bytes = Runtime.getNativeTypeSize(type);
-            var target = eval(m[2]) << log2(bytes);
-            var value = m[3];
-            try {
-              value = eval(value);
-            } catch(e) {
-              // possibly function table {{{ FT_* }}} etc.
-              if (value.indexOf('{{ ') < 0) return true;
-            }
-            writeInt8s(memoryInitialization, target - Runtime.GLOBAL_BASE, value, type);
-            return false;
-          }
-          return true;
-        });
-        // write out the singleton big memory initialization value
-        if (USE_PTHREADS) {
-          print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
-        }
-        print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'GLOBAL_BASE', true));
-        if (USE_PTHREADS) {
-          print('}')
-        }
-      } else {
-        print('/* no memory initializer */'); // test purposes
-      }
-
-      print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
-
       return;
     }
 
@@ -481,21 +389,6 @@ function JSify(data, functionsOnly) {
       print(preprocess(read('base64Utils.js')));
     }
 
-    var usedExternPrimitiveNames = Object.keys(usedExternPrimitives);
-    if (usedExternPrimitiveNames.length > 0) {
-      print('// ASM_LIBRARY EXTERN PRIMITIVES: ' + usedExternPrimitiveNames.join(',') + '\n');
-    }
-
-    if (asmLibraryFunctions.length > 0) {
-      print('// ASM_LIBRARY FUNCTIONS');
-      function fix(f) { // fix indenting to not confuse js optimizer
-        f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
-        f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }  XXX assumes function has multiple lines
-        return f + '}'; // add unindented } to match function
-      }
-      print(asmLibraryFunctions.map(fix).join('\n'));
-    }
-
     if (abortExecution) throw Error('Aborting compilation due to previous errors');
 
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
@@ -521,10 +414,8 @@ function JSify(data, functionsOnly) {
     }
 
     var postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
-    print(postParts[0]);
-
-    print(postParts[1]);
+    var post = processMacros(preprocess(read(postFile), postFile));
+    print(post);
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));

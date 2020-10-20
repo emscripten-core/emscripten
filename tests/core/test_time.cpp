@@ -74,6 +74,25 @@ int main() {
   printf("localtime tm_zone matches tzname (summer): %s\n",
          strcmp(tzname[tm_summer.tm_isdst], tm_summer.tm_zone) ? "no" : "yes");
 
+  // Verify that timezone is always equal to std time
+  // Need to invert these since timezone is positive in the east and negative in the west
+  int inv_summer = tm_summer.tm_gmtoff * -1;
+  int inv_winter = tm_winter.tm_gmtoff * -1;
+
+  if (tm_winter.tm_isdst) {
+    printf("localtime equals std: %s\n", inv_summer == timezone ? "true" : "false");
+    assert(inv_winter != timezone);
+    assert(inv_summer == timezone);
+  } else if (tm_summer.tm_isdst) {
+    printf("localtime equals std: %s\n", inv_winter == timezone ? "true" : "false");
+    assert(inv_summer != timezone);
+    assert(inv_winter == timezone);
+  } else {
+    printf("localtime equals std: %s\n", (inv_summer == timezone && inv_winter == timezone) ? "true" : "false");
+    assert(inv_summer == timezone);
+    assert(inv_winter == timezone);
+  }
+
   // Verify localtime() and mktime() reverse each other; run through an entire year
   // in half hours (the two hours where the time jumps forward and back are the
   // ones to watch, but we don't where they are since the zoneinfo could be US or

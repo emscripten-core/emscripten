@@ -97,7 +97,6 @@ var EXIT_RUNTIME = 0;
 // 1: create a *.mem file containing the binary data of the initial memory;
 
 //    use the --memory-init-file command line switch to select this method
-// 2: embed a string literal representing that initial memory data
 var MEM_INIT_METHOD = 0;
 
 // The total stack size. There is no way to enlarge the stack, so this
@@ -222,12 +221,6 @@ var ALLOW_TABLE_GROWTH = 0;
 // where global data begins; the start of static memory. -1 means use the
 // default, any other value will be used as an override
 var GLOBAL_BASE = -1;
-
-// Warn at compile time about instructions that LLVM tells us are not fully
-// aligned.  This is useful to find places in your code where you might refactor
-// to ensure proper alignment.  This is currently only supported in asm.js, not
-// wasm.
-var WARN_UNALIGNED = 0;
 
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
@@ -388,7 +381,8 @@ var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
 // enable any WebGL extension. If false, to save code size,
 // emscripten_webgl_enable_extension() cannot be called to enable any of extensions
 // 'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers',
-// 'WEBGL_multi_draw', or 'WEBGL_draw_instanced_base_vertex_base_instance',
+// 'WEBGL_multi_draw', 'WEBGL_draw_instanced_base_vertex_base_instance',
+// or 'WEBGL_multi_draw_instanced_base_vertex_base_instance',
 // but the dedicated functions emscripten_webgl_enable_*()
 // found in html5.h are used to enable each of those extensions.
 // This way code size is increased only for the extensions that are actually used.
@@ -656,6 +650,9 @@ var ASYNCIFY_ADD = [];
 // See notes on ASYNCIFY_REMOVE about the names.
 var ASYNCIFY_ONLY = [];
 
+// If enabled will output which functions have been instrumented and why.
+var ASYNCIFY_ADVISE = 0;
+
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
 var ASYNCIFY_LAZY_LOAD_CODE = 0;
@@ -823,7 +820,7 @@ var SHELL_FILE = 0;
 var RELOCATABLE = 0;
 
 // A main module is a file compiled in a way that allows us to link it to
-// a side module using emlink.py.
+// a side module at runtime.
 //  1: Normal main module.
 //  2: DCE'd main module. We eliminate dead code normally. If a side
 //     module needs something from main, it is up to you to make sure
@@ -861,7 +858,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 // PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
 // the same amount of stack.
 //
-// This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
+// This proxies Module['canvas'], if present, and if OFFSCREENCANVAS_SUPPORT
 // is enabled. This has to happen because this is the only chance - this browser
 // main thread does the only pthread_create call that happens on
 // that thread, so it's the only chance to transfer the canvas from there.
@@ -1105,10 +1102,6 @@ var WASM = 1;
 // or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
 var STANDALONE_WASM = 0;
 
-// An optional comma-separated list of script hooks to run after binaryen,
-// in binaryen's /scripts dir.
-var BINARYEN_SCRIPTS = "";
-
 // Whether to ignore implicit traps when optimizing in binaryen.  Implicit
 // traps are the traps that happen in a load that is out of bounds, or
 // div/rem of 0, etc. With this option set, the optimizer assumes that loads
@@ -1240,7 +1233,8 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 var IN_TEST_HARNESS = 0;
 
 // If true, enables support for pthreads.
-// [compile+link] - affects user code at compile and system libraries at link
+// [compile+link] - affects user code at compile and system libraries at link.
+// This setting is equivalent to `-pthread`, which should be preferred.
 var USE_PTHREADS = 0;
 
 // In web browsers, Workers cannot be created while the main browser thread
@@ -1304,9 +1298,6 @@ var ALLOW_BLOCKING_ON_MAIN_THREAD = 1;
 
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
-
-// If true, building against Emscripten's asm.js/wasm heap memory profiler.
-var MEMORYPROFILER = 0;
 
 // This tries to evaluate global ctors at compile-time, applying their effects
 // into the mem init file. This saves running code during startup, and also
@@ -1506,6 +1497,9 @@ var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 // not available.  If you are using C++ exceptions, but do not need
 // setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
 // code size and performance when catching exceptions.
+// [compile+link] - at compile time this enables the transformations needed for
+// longjmp support at codegen time, while at link it allows linking in the
+// library support.
 var SUPPORT_LONGJMP = 1;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
@@ -1540,9 +1534,10 @@ var MINIFY_HTML = 1;
 // bisecting.
 var MAYBE_WASM2JS = 0;
 
-// The size of our shadow memory.
-// By default, we have 32 MiB. This supports 256 MiB of real memory.
-var ASAN_SHADOW_SIZE = 33554432;
+// This option is no longer used. The appropriate shadow memory size is now
+// calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
+// future release.
+var ASAN_SHADOW_SIZE = -1
 
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
 // 'throw') support library. This does not need to be set directly, but pass
@@ -1594,6 +1589,17 @@ var WASM2C = 0;
 // file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
 // in a custom location.
 var SEPARATE_DWARF_URL = '';
+
+// Emscripten runs wasm-ld to link, and in some cases will do further changes to
+// the wasm afterwards, like running wasm-opt to optimize the binary in
+// optimized builds. However, in some builds no wasm changes are necessary after
+// link. This can make the entire link step faster, and can also be important
+// for other reasons, like in debugging if the wasm is not modified then the
+// DWARF info from LLVM is preserved (wasm-opt can rewrite it in some cases, but
+// not in others like split-dwarf).
+// When this flag is turned on, we error at link time if the build requires any
+// changes to the wasm after link. This can be useful in testing, for example.
+var ERROR_ON_WASM_CHANGES_AFTER_LINK = 0;
 
 // Whether the program should abort when an unhandled WASM exception is encountered.
 // This makes the Emscripten program behave more like a native program where the OS
@@ -1690,4 +1696,6 @@ var LEGACY_SETTINGS = [
   ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
   ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
+  ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
+  ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
 ];

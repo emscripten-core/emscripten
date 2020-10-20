@@ -79,7 +79,7 @@ class Minifier(object):
     self.symbols_file = None
     self.profiling_funcs = False
 
-  def minify_shell(self, shell, minify_whitespace, source_map=False):
+  def minify_shell(self, shell, minify_whitespace):
     # Run through js-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
@@ -105,8 +105,6 @@ class Minifier(object):
       cmd = shared.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
-      if source_map:
-        cmd.append('--debug')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
 
     assert len(output) and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
@@ -163,7 +161,31 @@ def run_on_chunk(command):
     raise Exception()
 
 
-def run_on_js(filename, passes, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
+# Given a set of functions of form (ident, text), and a preferred chunk size,
+# generates a set of chunks for parallel processing and caching.
+def chunkify(funcs, chunk_size):
+  with ToolchainProfiler.profile_block('chunkify'):
+    chunks = []
+    # initialize reasonably, the rest of the funcs we need to split out
+    curr = []
+    total_size = 0
+    for i in range(len(funcs)):
+      func = funcs[i]
+      curr_size = len(func[1])
+      if total_size + curr_size < chunk_size:
+        curr.append(func)
+        total_size += curr_size
+      else:
+        chunks.append(curr)
+        curr = [func]
+        total_size = curr_size
+    if curr:
+      chunks.append(curr)
+      curr = None
+    return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
+
+
+def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=False):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -245,7 +267,7 @@ EMSCRIPTEN_FUNCS();
         return True
 
       passes = list(filter(check_symbol_mapping, passes))
-      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();')
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes).split('EMSCRIPTEN_FUNCS();')
       asm_shell_post = asm_shell_post.replace('});', '})')
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -274,12 +296,12 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
-    cores = 1 if source_map else building.get_num_cores()
+    cores = building.get_num_cores()
 
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
       chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
-      chunks = shared.chunkify(funcs, chunk_size)
+      chunks = chunkify(funcs, chunk_size)
     else:
       # keep same chunks as before
       chunks = [f[1] for f in funcs]
@@ -308,8 +330,7 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
-      commands = [shared.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] +
-                  (['--debug'] if source_map else []) + passes for f in filenames]
+      commands = [shared.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] + passes for f in filenames]
 
       cores = min(cores, len(filenames))
       if len(chunks) > 1 and cores >= 2:
@@ -348,8 +369,7 @@ EMSCRIPTEN_FUNCS();
         if closure:
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)
-          cld = building.closure_compiler(cld, pretty='minifyWhitespace' not in passes,
-                                          extra_closure_args=extra_closure_args)
+          cld = building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
           temp_files.note(cld)
         elif cleanup:
           if DEBUG:
@@ -419,13 +439,11 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 
-def run(filename, passes, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
-  if 'receiveJSON' in passes:
-    just_split = True
-  if 'emitJSON' in passes:
-    just_concat = True
+def run(filename, passes, extra_info=None):
+  just_split = 'receiveJSON' in passes
+  just_concat = 'emitJSON' in passes
   with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
-    return run_on_js(filename, passes, source_map, extra_info, just_split, just_concat, extra_closure_args)
+    return run_on_js(filename, passes, extra_info=extra_info, just_split=just_split, just_concat=just_concat)
 
 
 def main():

@@ -2,7 +2,6 @@ $__emscripten_stdout_close
 $__emscripten_stdout_seek
 $__errno_location
 $__fwritex
-$__growWasmMemory
 $__lockfile
 $__original_main
 $__overflow
@@ -11,8 +10,6 @@ $__towrite
 $__unlockfile
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$dlfree
-$dlmalloc
 $dynCall_jiji
 $fputs
 $fwrite
@@ -20,7 +17,6 @@ $legalstub$dynCall_jiji
 $main
 $memcpy
 $puts
-$sbrk
 $stackAlloc
 $stackRestore
 $stackSave

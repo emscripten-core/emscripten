@@ -48,11 +48,8 @@ Options that are modified or new in *emcc* are listed below:
 
 "-O1"
    Simple optimizations. During the compile step these include LLVM
-   "-O1" optimizations. During the link step this removes various
-   runtime assertions in JS and also runs the Binaryen optimizer (that
-   makes link slower, so even if you compiled with a higher
-   optimization level, you may want to link with "-O0" for fast
-   incremental builds).
+   "-O1" optimizations. During the link step this does not include
+   various runtime assertions in JS that *-O0* would do.
 
 "-O2"
    Like "-O1", but enables more optimizations. During link this will
@@ -568,9 +565,8 @@ Options that are modified or new in *emcc* are listed below:
 
       * <name> **.bc** : LLVM bitcode.
 
-      * <name> **.o** : WebAssembly object file (unless fastcomp or
-        -flto is used in which case it will be in LLVM bitcode
-        format).
+      * <name> **.o** : WebAssembly object file (unless -flto is used
+        in which case it will be in LLVM bitcode format).
 
       * <name> **.wasm** : WebAssembly without JavaScript support code
         ("standalone wasm"; this enables "STANDALONE_WASM").
@@ -584,12 +580,6 @@ Options that are modified or new in *emcc* are listed below:
    Tells *emcc* to generate LLVM bitcode (which can then be linked
    with other bitcode files), instead of compiling all the way to
    JavaScript.
-
-"--separate-asm"
-   Emits asm.js in one file, and the rest of the code in another, and
-   emits HTML that loads the asm.js first, in order to reduce memory
-   load during startup. See Avoid memory spikes by separating out
-   asm.js.
 
 "--output_eol windows|linux"
    Specifies the line ending to generate for the text files that are
@@ -611,8 +601,6 @@ Environment variables
 *emcc* is affected by several environment variables, as listed below:
 
    * "EMMAKEN_JUST_CONFIGURE"
-
-   * "EMMAKEN_COMPILER"
 
    * "EMMAKEN_CFLAGS"
 

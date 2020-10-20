@@ -5,8 +5,9 @@
  */
 
 var SyscallsLibrary = {
-  $SYSCALLS__deps: ['$PATH',
+  $SYSCALLS__deps: [
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+                   '$PATH',
                    '$FS',
 #endif
 #if SYSCALL_DEBUG
@@ -1612,7 +1613,7 @@ for (var x in SyscallsLibrary) {
   if (!SYSCALLS_REQUIRE_FILESYSTEM && t.indexOf('FS.') >= 0) {
     t = modifyFunction(t, function(name, args, body) {
       return 'function ' + name + '(' + args + ') {\n' +
-             (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM')" : '') +
+             (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +
              '}';
     });
   }

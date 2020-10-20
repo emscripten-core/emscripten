@@ -12,6 +12,9 @@
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
+#if EMBIND
+var initializedJS = false; // Guard variable for one-time init of the JS state (currently only embind types registration)
+#endif
 
 var Module = {};
 
@@ -70,11 +73,6 @@ this.onmessage = function(e) {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if MINIMAL_RUNTIME
       var imports = {};
-#endif
-
-      // Initialize the global "process"-wide fields:
-#if !MINIMAL_RUNTIME
-      Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
 #endif
 
       // Module and memory were sent from main thread
@@ -183,6 +181,15 @@ this.onmessage = function(e) {
       Module['PThread'].receiveObjectTransfer(e.data);
       Module['PThread'].setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
 
+#if EMBIND
+      // Embind must initialize itself on all threads, as it generates support JS.
+      // We only do this once per worker since they get reused
+      if (!initializedJS) {
+        Module['___embind_register_native_and_builtin_types']();
+        initializedJS = true;
+      }
+#endif // EMBIND
+
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
         // Native codebases sometimes spawn threads with other thread entry point signatures,
@@ -249,7 +256,7 @@ this.onmessage = function(e) {
     }
   } catch(ex) {
     err('worker.js onmessage() captured an uncaught exception: ' + ex);
-    if (ex.stack) err(ex.stack);
+    if (ex && ex.stack) err(ex.stack);
     throw ex;
   }
 };

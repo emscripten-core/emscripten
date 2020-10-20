@@ -51,14 +51,12 @@ To build with Emscripten, you would instead use the following commands:
 .. note::
 
   The file output from *make* might have a different suffix: **.a** for a static
-  library archive, **.so** for a shared library, **.o** or **.bc** for object
-  files (these file extensions are the same as *gcc* would use for the different
-  types). Irrespective of the file extension, these files contain something that
-  *emcc* can compile into the final JavaScript + WebAssembly (typically the
-  contents will be wasm object files, but if you build with LTO then they will
-  contain LLVM bitcode). If the suffix is something else - like no suffix at all, or
-  something like **.so.1** - then you may need to rename the file before sending
-  it to *emcc*.
+  library archive, **.so** for a shared library, **.o** for object files (these
+  file extensions are the same as *gcc* would use for the different types).
+  Irrespective of the file extension, these files contain something that *emcc*
+  can compile into the final JavaScript + WebAssembly (typically the contents
+  will be wasm object files, but if you build with LTO then they will contain
+  LLVM bitcode).
 
 .. note::
 
@@ -74,24 +72,34 @@ To build with Emscripten, you would instead use the following commands:
 
 .. _building-projects-build-outputs:
 
-Emscripten build output files
-=============================
+Emscripten linker output files
+==============================
 
-Emscripten compiler output often consists of several files and not just one. The set of produced files changes depending on the final linker flags passed to `emcc/em++`. Here is a cheat sheet of which files are produced under which conditions:
+Unless run with certain specific flags (such as ``-c``, ``-S``, ``-r``, or
+``-shared``) ``emcc`` will run the link phase which can produce more than just
+one file. The set of produced files changes depending on the final flags passed
+to ``emcc`` and the name of the specified output file. Here is a cheat sheet of
+which files are produced under which conditions:
 
- - `emcc ... -o output.html` builds a `output.html` file as an output, as well as an accompanying `output.js` launcher file, and a `output.wasm` WebAssembly file.
- - `emcc ... -o output.js` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, `output.js` and `output.wasm`. (that can be run in e.g. node.js shell)
- - `emcc ... -o output.bc` does not produce a final asm.js/wasm build, but stops at LLVM bitcode generation stage, and produces a single LLVM bitcode file `output.bc`. Likewise only one bitcode file is produced if output suffix is `.ll`, `.o`, '.obj', '.lo', `.lib`, `.dylib` or `.so`.
- - `emcc ... -o output.a` generates a single archive file `output.a`.
- - `emcc ... -o output.{html,js} -s WASM=0` causes the compiler to target asm.js, and therefore a `.wasm` file is not produced.
- - `emcc ... -o output.{html,js} -s WASM=0 --separate-asm` likewise targets asm.js, but splits up the generated code to two files, `output.js` and `output.asm.js`.
- - `emcc ... -o output.{html,js} --emit-symbol-map` produces a file `output.{html,js}.symbols` if WebAssembly is being targeted (`-s WASM=0` not specified), or if asm.js is being targeted and `-Os`, `-Oz` or `-O2` or higher is specified, but debug level setting is `-g1` or lower (i.e. if symbols minification did occur).
- - `emcc ... -o output.{html,js} -s WASM=0 --memory-init-file 1` causes the generation of `output.{html,js}.mem` memory initializer file. Pasing `-O2`, `-Os` or `-Oz` also implies `--memory-init-file 1`.
- - `emcc ... -o output.{html,js} -g4` generates a source map file `output.wasm.map`. If targeting asm.js with `-s WASM=0`, the filename is `output.{html,js}.map`.
- - `emcc ... -o output.{html,js} --preload-file xxx` directive generates a preloaded MEMFS filesystem file `output.data`.
- - `emcc ... -o output.{html,js} -s WASM={0,1} -s SINGLE_FILE=1` merges JavaScript and WebAssembly code in the single output file `output.{html,js}` (in base64) to produce only one file for deployment. (If paired with `--preload-file`, the preloaded `.data` file still exists as a separate file)
+- ``emcc ... -o output.html`` builds a ``output.html`` file as an output, as well as an accompanying ``output.js`` launcher file, and a ``output.wasm`` WebAssembly file.
+- ``emcc ... -o output.js`` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, ``output.js`` and ``output.wasm``. (that can be run in e.g. node.js shell)
+- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-s STANDALONE_WASM`` settting had been used.
+- ``emcc ... -o output.{html,js} -s WASM=0`` causes the compiler to target JavaScript, and therefore a ``.wasm`` file is not produced.
+- ``emcc ... -o output.{html,js} --emit-symbol-map`` produces a file ``output.{html,js}.symbols`` if WebAssembly is being targeted (``-s WASM=0`` not specified), or if JavaScript is being targeted and ``-Os``, ``-Oz`` or ``-O2`` or higher is specified, but debug level setting is ``-g1`` or lower (i.e. if symbols minification did occur).
+- ``emcc ... -o output.{html,js} -s WASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Pasing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
+- ``emcc ... -o output.{html,js} -g4`` generates a source map file ``output.wasm.map``. If targeting JavaScript with ``-s WASM=0``, the filename is ``output.{html,js}.map``.
+- ``emcc ... -o output.{html,js} --preload-file xxx`` directive generates a preloaded MEMFS filesystem file ``output.data``.
+- ``emcc ... -o output.{html,js} -s WASM={0,1} -s SINGLE_FILE=1`` merges JavaScript and WebAssembly code in the single output file ``output.{html,js}`` (in base64) to produce only one file for deployment. (If paired with ``--preload-file``, the preloaded ``.data`` file still exists as a separate file)
 
 This list is not exhaustive, but illustrates most commonly used combinations.
+
+.. note::
+   Regardless of the name of the output file ``emcc`` will always perform
+   linking and produce a final exectuable, unless a specific flags (e.g. ``-c``)
+   direct it do something else.  This differs to previous behaviour where
+   ``emcc`` would default to combining object files (essentially assuming
+   ``-r``) unless given a specific executable extension (e.g. ``.js`` or
+   ``.html``).
 
 .. _building-projects-optimizations:
 
@@ -208,6 +216,13 @@ You should see some notifications about SDL2 being used, and built if it wasn't 
 
 .. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/master/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
 
+.. note:: You can also build a library from ports in a manual way if you prefer
+    that, but then you will need to also apply the python logic that ports does.
+    That code (under ``tools/ports/``) may do things like ensure necessary JS
+    functions are included in the build, add exports, and so forth. In general,
+    it's better to use the ports version as it is what is tested and known to
+    work.
+
 Adding more ports
 -----------------
 
@@ -237,7 +252,7 @@ Dynamic linking
 
 Emscripten's goal is to generate the fastest and smallest possible code, and for that reason it focuses on generating a single JavaScript file for an entire project. For that reason, dynamic linking should be avoided when possible.
 
-By default, Emscripten ``.so`` files are the same as ``.bc`` or ``.o`` files, that is, they contain LLVM bitcode. Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. *Emcc* ignores commands to dynamically link libraries when linking together bitcode (i.e., not in the final build stage). This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages, which would result in duplicate symbol errors.
+By default, Emscripten ``.so`` files are the same as regular ``.o`` object files. Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. *Emcc* ignores commands to dynamically link libraries when linking together bitcode (i.e., not in the final build stage). This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages, which would result in duplicate symbol errors.
 
 There is `experimental support <https://github.com/emscripten-core/emscripten/wiki/Linking>`_ for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
 
@@ -255,12 +270,7 @@ Projects that use *configure*, *cmake*, or some other portable configuration met
 Archive (.a) files
 ------------------
 
-Emscripten supports **.a** archive files, which are bundles of object files. This is an old format for libraries, and it has special semantics - for example, the order of linking matters with **.a** files, but not with plain object files (in **.bc**, **.o** or **.so**). For the most part those special semantics should work in Emscripten, however, we support **.a** files using llvm's tools, which have a few limitations.
-
-The main limitation is that if you have multiple files in a single **.a** archive that have the same basename (for example, ``dir1/a.o, dir2/a.o``), then llvm-ar cannot access both of those files. Emscripten will attempt to work around this by adding a hash to the basename, but collisions are still possible in principle.
-
-Where possible it is better to generate shared library files (**.so**) rather than archives (**.a**) — this is generally a simple change in your project's build system. Shared libraries are simpler, and are more predictable with respect to linking.
-
+Emscripten supports **.a** archive files, which are bundles of object files. This is a simple format for libraries, that has special semantics - for example, the order of linking matters with **.a** files, but not with plain object files. For the most part those special semantics should work the same in Emscripten as elsewhere.
 
 Manually using emcc
 ===================
@@ -272,26 +282,30 @@ The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile sing
   # Generate a.out.js from C++. Can also take .ll (LLVM assembly) or .bc (LLVM bitcode) as input
   ./emcc src.cpp
 
-  # Generate src.o containing LLVM bitcode.
+  # Generate an object file called src.o.
   ./emcc src.cpp -c
 
   # Generate result.js containing JavaScript.
   ./emcc src.cpp -o result.js
 
-  # Generate result.o containing LLVM bitcode (the suffix matters).
+  # Generate an object file called result.o
   ./emcc src.cpp -c -o result.o
 
   # Generate a.out.js from two C++ sources.
   ./emcc src1.cpp src2.cpp
 
-  # Generate src1.o and src2.o, containing LLVM bitcode
+  # Generate object files src1.o and src2.o
   ./emcc src1.cpp src2.cpp -c
 
-  # Combine two LLVM bitcode files into a.out.js
+  # Combine two object files into a.out.js
   ./emcc src1.o src2.o
 
-  # Combine two LLVM bitcode files into another LLVM bitcode file
-  ./emcc src1.o src2.o -o combined.o
+  # Combine two object files into another object file (not normally needed)
+  ./emcc src1.o src2.o -r -o combined.o
+
+  # Combine two object files into library file
+  ./emar rcs libfoo.a src1.o src2.o 
+
 
 In addition to the capabilities it shares with *gcc*, *emcc* supports options to optimize code, control what debug information is emitted, generate HTML and other output formats, etc. These options are documented in the :ref:`emcc tool reference <emccdoc>` (``./emcc --help`` on the command line).
 
@@ -309,9 +323,23 @@ Emscripten provides the following preprocessor macros that can be used to identi
  * The preprocessor string ``__VERSION__`` indicates the GCC compatible version, which is expanded to also show Emscripten version information.
  * Likewise, ``__clang_version__`` is present and indicates both Emscripten and LLVM version information.
  * Emscripten is a 32-bit platform, so ``size_t`` is a 32-bit unsigned integer, ``__POINTER_WIDTH__=32``, ``__SIZEOF_LONG__=4`` and ``__LONG_MAX__`` equals ``2147483647L``.
- * When targeting asm.js, the preprocessor defines ``__asmjs`` and ``__asmjs__`` are present.
  * When targeting SSEx SIMD APIs using one of the command line compiler flags ``-msse``, ``-msse2``, ``-msse3``, ``-mssse3``, or ``-msse4.1``, one or more of the preprocessor flags ``__SSE__``, ``__SSE2__``, ``__SSE3__``, ``__SSSE3__``, ``__SSE4_1__`` will be present to indicate available support for these instruction sets.
  * If targeting the pthreads multithreading support with the compiler & linker flag ``-s USE_PTHREADS=1``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
+
+
+Using a compiler wrapper
+========================
+
+Sometimes it can be useful to use a compiler wrapper in order to do things like
+``ccache``, ``distcc`` or ``gomacc``.  For ``ccache`` the normal method of
+simply wrapping the entire compiler should work, e.g. ``ccache emcc``.  For
+distributed builds it can be beneficial to run the emscripten driver locally and
+distribute only the underlying clang commands.  If this is desirable, the
+``COMPILER_WRAPPER`` setting in the config file can be used to add a wrapper
+around the internal calls to clang.  Like other config settings this can also be
+set via an environment variable.  e.g::
+
+  EM_COMPILER_WRAPPER=gomacc emcc -c hello.c
 
 
 Examples / test code
@@ -320,8 +348,6 @@ Examples / test code
 The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/master/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/master/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/master/tests/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/master/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/master/tests/poppler>`_.
 
 It is also worth looking at the build scripts in the `ammo.js <https://github.com/kripken/ammo.js/blob/master/make.py>`_ project.
-
-
 
 
 Troubleshooting

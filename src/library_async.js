@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$Browser', '$runAndAbortIfError'],
+  $Asyncify__deps: ['$runAndAbortIfError'],
   $Asyncify: {
     State: {
       Normal: 0,
@@ -213,7 +213,7 @@ mergeInto(LibraryManager.library, {
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
-          if (Browser.mainLoop.func) {
+          if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
           var start = Asyncify.getDataRewindFunc(Asyncify.currData);
@@ -251,7 +251,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
           runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
-          if (Browser.mainLoop.func) {
+          if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
         }
@@ -287,13 +287,14 @@ mergeInto(LibraryManager.library, {
     },
   },
 
+  emscripten_sleep__deps: ['$Browser'],
   emscripten_sleep: function(ms) {
     Asyncify.handleSleep(function(wakeUp) {
       Browser.safeSetTimeout(wakeUp, ms);
     });
   },
 
-  emscripten_wget__deps: ['$PATH_FS', '$FS'],
+  emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget: function(url, file) {
     Asyncify.handleSleep(function(wakeUp) {
       var _url = UTF8ToString(url);
@@ -316,18 +317,19 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_wget_data__deps: ['$Browser'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
-        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
-        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValue('perror',  0, '0', 'i32') }}};
         wakeUp();
       }, function() {
-        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        {{{ makeSetValue('perror',  0, '1', 'i32') }}};
         wakeUp();
       }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
     });

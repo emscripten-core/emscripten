@@ -5,7 +5,6 @@ $__emscripten_stdout_seek
 $__errno_location
 $__fflush_unlocked
 $__fwritex
-$__growWasmMemory
 $__lock
 $__lockfile
 $__lshrti3
@@ -21,8 +20,6 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$dlfree
-$dlmalloc
 $dynCall_jiji
 $fflush
 $fmt_fp
@@ -44,7 +41,6 @@ $pop_arg_long_double
 $printf
 $printf_core
 $pthread_self
-$sbrk
 $stackAlloc
 $stackRestore
 $stackSave

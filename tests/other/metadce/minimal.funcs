@@ -1,6 +1,5 @@
 $__errno_location
 $__fflush_unlocked
-$__growWasmMemory
 $__lock
 $__lockfile
 $__ofl_lock
@@ -9,10 +8,7 @@ $__unlock
 $__unlockfile
 $__wasm_call_ctors
 $add
-$dlfree
-$dlmalloc
 $fflush
-$sbrk
 $stackAlloc
 $stackRestore
 $stackSave

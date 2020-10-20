@@ -585,12 +585,8 @@ int main(int argc, char** argv)
   maxThreadsRunning = emscripten_num_logical_cores() < MAX_NUM_THREADS ? emscripten_num_logical_cores() : MAX_NUM_THREADS;
   for(int i = 0; i < maxThreadsRunning; ++i)
   {
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    int rc = pthread_create(&thread[i], &attr, mandelbrot_thread, (void*)i);
+    int rc = pthread_create(&thread[i], NULL, mandelbrot_thread, (void*)i);
     assert(rc == 0);
-    pthread_attr_destroy(&attr);
   }
 #endif
 

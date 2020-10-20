@@ -14,7 +14,6 @@
 #include <xmmintrin.h>
 #include <emscripten/emscripten.h>
 
-#define __SATURATE(x, Min, Max) ((x) >= Min ? ((x) <= Max ? (x) : Max) : Min)
 #define __MIN(x, y) ((x) <= (y) ? (x) : (y))
 #define __MAX(x, y) ((x) >= (y) ? (x) : (y))
 
@@ -713,31 +712,21 @@ _mm_min_epu8(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mulhi_epi16(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  union {
-    signed short x[8];
-    __m128i m;
-  } src, src2, dst;
-  src.m = __a;
-  src2.m = __b;
-  for(int i = 0; i < 8; ++i)
-    dst.x[i] = (signed short)(((int)src.x[i] * (int)src2.x[i]) >> 16);
-  return dst.m;
+  const v128_t lo = wasm_i32x4_mul(wasm_i32x4_widen_low_i16x8((v128_t)__a),
+                                   wasm_i32x4_widen_low_i16x8((v128_t)__b));
+  const v128_t hi = wasm_i32x4_mul(wasm_i32x4_widen_high_i16x8((v128_t)__a),
+                                   wasm_i32x4_widen_high_i16x8((v128_t)__b));
+  return (__m128i)wasm_v16x8_shuffle(lo, hi, 1, 3, 5, 7, 9, 11, 13, 15);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mulhi_epu16(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  union {
-    unsigned short x[8];
-    __m128i m;
-  } src, src2, dst;
-  src.m = __a;
-  src2.m = __b;
-  for(int i = 0; i < 8; ++i)
-    dst.x[i] = (unsigned short)(((int)src.x[i] * (int)src2.x[i]) >> 16);
-  return dst.m;
+  const v128_t lo = wasm_i32x4_mul(wasm_i32x4_widen_low_u16x8((v128_t)__a),
+                                   wasm_i32x4_widen_low_u16x8((v128_t)__b));
+  const v128_t hi = wasm_i32x4_mul(wasm_i32x4_widen_high_u16x8((v128_t)__a),
+                                   wasm_i32x4_widen_high_u16x8((v128_t)__b));
+  return (__m128i)wasm_v16x8_shuffle(lo, hi, 1, 3, 5, 7, 9, 11, 13, 15);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -761,32 +750,6 @@ _mm_mul_epu32(__m128i __a, __m128i __b)
   u.x[0] = a0*b0;
   u.x[1] = a2*b2;
   return u.m;
-}
-
-static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
-_mm_sad_epu8(__m128i __a, __m128i __b)
-{
-  // TODO: optimize
-  union {
-    unsigned char x[16];
-    __m128i m;
-  } src, src2;
-  src.m = __a;
-  src2.m = __b;
-  union {
-    unsigned short x[8];
-    __m128i m;
-  } dst;
-#define __ABS(__a) ((__a) < 0 ? -(__a) : (__a))
-  for(int i = 0; i < 8; ++i)
-    dst.x[i] = 0;
-  for(int i = 0; i < 8; ++i)
-  {
-    dst.x[0] += __ABS(src.x[i] - src2.x[i]);
-    dst.x[4] += __ABS(src.x[8+i] - src2.x[8+i]);
-  }
-  return dst.m;
-#undef __ABS
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -1366,67 +1329,19 @@ _mm_mfence(void)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packs_epi16(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  union {
-    signed short x[8];
-    __m128i m;
-  } src, src2;
-  union {
-    signed char x[16];
-    __m128i m;
-  } dst;
-  src.m = __a;
-  src2.m = __b;
-  for(int i = 0; i < 8; ++i)
-  {
-    dst.x[i] = __SATURATE(src.x[i], -128, 127);
-    dst.x[8+i] = __SATURATE(src2.x[i], -128, 127);
-  }
-  return dst.m;
+  return (__m128i)wasm_i8x16_narrow_i16x8(__a, __b);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packs_epi32(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  union {
-    signed int x[4];
-    __m128i m;
-  } src, src2;
-  union {
-    signed short x[8];
-    __m128i m;
-  } dst;
-  src.m = __a;
-  src2.m = __b;
-  for(int i = 0; i < 4; ++i)
-  {
-    dst.x[i] = __SATURATE(src.x[i], -32768, 32767);
-    dst.x[4+i] = __SATURATE(src2.x[i], -32768, 32767);
-  }
-  return dst.m;
+  return (__m128i)wasm_i16x8_narrow_i32x4(__a, __b);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packus_epi16(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  union {
-    signed short x[8];
-    __m128i m;
-  } src, src2;
-  union {
-    unsigned char x[16];
-    __m128i m;
-  } dst;
-  src.m = __a;
-  src2.m = __b;
-  for(int i = 0; i < 8; ++i)
-  {
-    dst.x[i] = __SATURATE(src.x[i], 0, 255);
-    dst.x[8+i] = __SATURATE(src2.x[i], 0, 255);
-  }
-  return dst.m;
+  return (__m128i)wasm_u8x16_narrow_i16x8(__a, __b);
 }
 
 #define _mm_extract_epi16(__a, __imm) wasm_u16x8_extract_lane((v128_t)(__a), (__imm) & 7)
@@ -1605,6 +1520,19 @@ _mm_undefined_si128()
 {
   __m128i val;
   return val;
+}
+
+// Must be in the very end as it uses other SSE2 intrinsics
+static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
+_mm_sad_epu8(__m128i __a, __m128i __b)
+{
+  __m128i __diff = _mm_or_si128(_mm_subs_epu8(__a, __b),
+                                _mm_subs_epu8(__b, __a));
+  __diff = _mm_add_epi16(_mm_srli_epi16(__diff, 8),
+                         _mm_and_si128(__diff, _mm_set1_epi16(0x00FF)));
+  __diff = _mm_add_epi16(__diff, _mm_slli_epi32(__diff, 16));
+  __diff = _mm_add_epi16(__diff, _mm_slli_epi64(__diff, 32));
+  return _mm_srli_epi64(__diff, 48);
 }
 
 #define _MM_SHUFFLE2(x, y) (((x) << 1) | (y))

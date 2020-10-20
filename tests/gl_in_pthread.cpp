@@ -67,7 +67,6 @@ void CreateThread()
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   int rc = pthread_create(&thread, &attr, ThreadMain, 0);
   if (rc == ENOSYS)
   {

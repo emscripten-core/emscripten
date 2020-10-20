@@ -22,7 +22,7 @@ def generate(env, emscripten_path=None, **kw):
   # by Emscripten to the child.
   for var in ['EM_CACHE', 'EMCC_DEBUG', 'EMTEST_BROWSER',
               'EMMAKEN_JUST_CONFIGURE', 'EMCC_CFLAGS', 'EMCC_TEMP_DIR',
-              'EMCC_AUTODEBUG',
+              'EMCC_AUTODEBUG', 'EM_COMPILER_WRAPPER',
               'EMMAKEN_COMPILER', 'EMMAKEN_CFLAGS', 'EMCC_JSOPT_BLACKLIST',
               'MOZ_DISABLE_AUTO_SAFE_MODE', 'EMCC_STDERR_FILE',
               'EMSCRIPTEN_SUPPRESS_USAGE_WARNING', 'NODE_PATH', 'EMCC_JSOPT_MIN_CHUNK_SIZE',

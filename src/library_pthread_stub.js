@@ -71,24 +71,21 @@ var LibraryPThreadStub = {
   pthread_setcancelstate: function() { return 0; },
   pthread_setcanceltype: function() { return 0; },
 
-  pthread_cleanup_push__deps: ['$makeDynCaller'],
   pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) })
+    __ATEXIT__.push({ func: routine, arg: arg });
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
-  pthread_cleanup_pop: function() {
+  pthread_cleanup_pop__sig: 'vi',
+  pthread_cleanup_pop: function(execute) {
     assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
-    __ATEXIT__.pop();
+    callback = __ATEXIT__.pop();
+    if (execute) {
+      {{{ makeDynCall('vi', 'callback.func') }}}(callback.arg)
+    }
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
-
-  _pthread_cleanup_push__sig: 'vii',
-  _pthread_cleanup_push: 'pthread_cleanup_push',
-
-  _pthread_cleanup_pop__sig: 'v',
-  _pthread_cleanup_pop: 'pthread_cleanup_pop',
 
   // pthread_sigmask - examine and change mask of blocked signals
   pthread_sigmask: function(how, set, oldset) {
@@ -181,6 +178,34 @@ var LibraryPThreadStub = {
     var ret = {{{ makeGetValue('ptr', '0', 'i32') }}};
     {{{ makeSetValue('ptr', '0', 'ret+delta', 'i32') }}};
     return ret;
+  },
+
+  // TODO(sbc): Remove these helpers and move them and thier callers into
+  // native code instream.
+  i64Add__asm: true,
+  i64Add__sig: 'iiiii',
+  i64Add: function(a, b, c, d) {
+    /*
+      x = a + b*2^32
+      y = c + d*2^32
+      result = l + h*2^32
+    */
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0;
+    l = (a + c)>>>0;
+    h = (b + d + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
+    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+  },
+
+  i64Subtract__asm: true,
+  i64Subtract__sig: 'iiiii',
+  i64Subtract: function(a, b, c, d) {
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0;
+    l = (a - c)>>>0;
+    h = (b - d)>>>0;
+    h = (b - d - (((c>>>0) > (a>>>0))|0))>>>0; // Borrow one from high word to low word on underflow.
+    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
 
   // gnu atomics

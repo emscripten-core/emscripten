@@ -23,7 +23,6 @@ from tools import building
 from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
-from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
 
@@ -38,7 +37,7 @@ if STDERR_FILE:
 
 def compute_minimal_runtime_initializer_and_exports(post, initializers, exports, receiving):
   # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
-  post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(initializers)]))
+  post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in initializers]))
 
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
@@ -46,18 +45,11 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
   exports_that_are_not_initializers = [x for x in exports if x not in initializers]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
-  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(exports_that_are_not_initializers) + ';')
+  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
 
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
   post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
   return post
-
-
-def global_initializer_funcs(initializers):
-  # If we have at most one global ctor, no need to group global initializers.
-  # Also in EVAL_CTORS mode, we want to try to evaluate the individual ctor functions, so in that mode,
-  # do not group ctors into one.
-  return ['globalCtors'] if (len(initializers) > 1 and not shared.Settings.EVAL_CTORS) else initializers
 
 
 def write_output_file(outfile, post, module):
@@ -116,12 +108,6 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def align_static_bump(metadata):
-  # TODO: remove static bump entirely
-  metadata['staticBump'] = align_memory(metadata['staticBump'])
-  return metadata['staticBump']
-
-
 def update_settings_glue(metadata, DEBUG):
   optimize_syscalls(metadata['declares'], DEBUG)
 
@@ -135,8 +121,6 @@ def update_settings_glue(metadata, DEBUG):
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(implemented_funcs))
 
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
-
-  shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
 
   if metadata['asmConsts']:
@@ -159,15 +143,14 @@ def update_settings_glue(metadata, DEBUG):
 
     shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
-  shared.Settings.STATIC_BUMP = align_static_bump(metadata)
+  metadata['staticBump'] = align_memory(metadata['staticBump'])
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
-  shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
   if shared.Settings.RELOCATABLE:
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
     # size does not include the reserved slot at zero for the null pointer.
     # Instead we use __table_base to offset the elements by 1.
-    shared.Settings.WASM_TABLE_SIZE += 1
+    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize'] + 1
   shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
 
 
@@ -188,7 +171,6 @@ def apply_static_code_hooks(code):
 def apply_forwarded_data(forwarded_data):
   forwarded_json = json.loads(forwarded_data)
   # Be aware of JS static allocations
-  shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
   # Be aware of JS static code hooks
   StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
   StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
@@ -216,47 +198,36 @@ def compile_settings(temp_files):
 
 
 class Memory():
-  def __init__(self):
+  def __init__(self, metadata):
     # Note: if RELOCATABLE, then only relative sizes can be computed, and we don't
     #       actually write out any absolute memory locations ({{{ STACK_BASE }}}
     #       does not exist, etc.)
 
     # Memory layout:
     #  * first the static globals
-    self.global_base = shared.Settings.GLOBAL_BASE
-    self.static_bump = shared.Settings.STATIC_BUMP
+    self.static_bump = metadata['staticBump']
     #  * then the stack (up on fastcomp, down on upstream)
-    self.stack_low = align_memory(self.global_base + self.static_bump)
+    self.stack_low = align_memory(shared.Settings.GLOBAL_BASE + self.static_bump)
     self.stack_high = align_memory(self.stack_low + shared.Settings.TOTAL_STACK)
     self.stack_base = self.stack_high
     self.stack_max = self.stack_low
     #  * then dynamic memory begins
     self.dynamic_base = align_memory(self.stack_high)
 
-    if self.dynamic_base >= shared.Settings.INITIAL_MEMORY:
-     exit_with_error('Memory is not large enough for static data (%d) plus the stack (%d), please increase INITIAL_MEMORY (%d) to at least %d' % (self.static_bump, shared.Settings.TOTAL_STACK, shared.Settings.INITIAL_MEMORY, self.dynamic_base))
 
-
-def apply_memory(js):
+def apply_memory(js, metadata):
   # Apply the statically-at-compile-time computed memory locations.
-  memory = Memory()
+  memory = Memory(metadata)
 
   # Write it all out
-  js = js.replace('{{{ STATIC_BUMP }}}', str(memory.static_bump))
   js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
   js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
-  js = js.replace('{{{ DYNAMIC_BASE }}}', str(memory.dynamic_base))
+  if shared.Settings.RELOCATABLE:
+    js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
 
-  logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
+  logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
-  shared.Settings.DYNAMIC_BASE = memory.dynamic_base
-  shared.Settings.STACK_BASE = memory.stack_base
-
-  return js
-
-
-def apply_table(js):
-  js = js.replace('{{{ WASM_TABLE_SIZE }}}', str(shared.Settings.WASM_TABLE_SIZE))
+  shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
 
   return js
 
@@ -268,10 +239,6 @@ def report_missing_symbols(all_implemented, pre):
 
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
-      continue
-    # special-case malloc, EXPORTED by default for internal use, but we bake in a
-    # trivial allocator and warn at runtime if used in ASSERTIONS
-    if missing == '_malloc':
       continue
     diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
 
@@ -376,53 +343,53 @@ Module['%(full)s'] = function() {
 
 
 def create_named_globals(metadata):
-  if not shared.Settings.RELOCATABLE:
-    named_globals = []
-    for k, v in metadata['namedGlobals'].items():
+  named_globals = []
+  for k, v in metadata['namedGlobals'].items():
+    v = int(v)
+    if shared.Settings.RELOCATABLE:
+      v += shared.Settings.GLOBAL_BASE
+    elif k == '__data_end':
       # We keep __data_end alive internally so that wasm-emscripten-finalize knows where the
       # static data region ends.  Don't export this to JS like other user-exported global
       # address.
-      if k not in ['__data_end']:
-        named_globals.append("Module['_%s'] = %s;" % (k, v))
-    return '\n'.join(named_globals)
+      continue
+    mangled = asmjs_mangle(k)
+    if shared.Settings.MINIMAL_RUNTIME:
+      named_globals.append("var %s = %s;" % (mangled, v))
+    else:
+      named_globals.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
 
-  named_globals = '''
-var NAMED_GLOBALS = {
-  %s
-};
-for (var named in NAMED_GLOBALS) {
-  Module['_' + named] = gb + NAMED_GLOBALS[named];
-}
-Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % ',\n  '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
+  named_globals = '\n'.join(named_globals)
 
-  # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
-  # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
-  #       we'll need another solution for that. one option is to scan the module imports, if/when
-  #       wasm supports that, then the loader can do this.
-  named_globals += '''
-for (var named in NAMED_GLOBALS) {
-  (function(named) {
-    var addr = Module['_' + named];
-    Module['g$_' + named] = function() { return addr };
-  })(named);
+  if shared.Settings.RELOCATABLE:
+    # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+    # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+    #       we'll need another solution for that. one option is to scan the module imports, if/when
+    #       wasm supports that, then the loader can do this.
+    names = ["'%s'" % n for n in metadata['namedGlobals']]
+    named_globals += '''
+for (var name in [%s]) {
+  (function(name) {
+    Module['g$' + name] = function() { return Module[name]; };
+  })(name);
 }
-'''
-  named_globals += ''.join(["Module['%s'] = Module['%s'];\n" % (k, v) for k, v in metadata['aliases'].items()])
+''' % ','.join(names)
+
   return named_globals
 
 
-def emscript(infile, outfile, memfile, temp_files, DEBUG):
+def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
 
-  metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG)
+  metadata = finalize_wasm(infile, memfile, DEBUG)
 
   update_settings_glue(metadata, DEBUG)
 
-  if shared.Settings.SIDE_MODULE:
+  if not outfile_js:
+    logger.debug('emscript: skipping js compiler glue')
     return
 
   if DEBUG:
@@ -445,29 +412,19 @@ def emscript(infile, outfile, memfile, temp_files, DEBUG):
 
   # memory and global initializers
 
-  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
-
-  staticbump = shared.Settings.STATIC_BUMP
-
-  if shared.Settings.MINIMAL_RUNTIME:
-    # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
-    global_initializers = ''
-  else:
+  # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
+  if not shared.Settings.MINIMAL_RUNTIME:
+    global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
     # In regular runtime, global initializers are recorded in an __ATINIT__ array.
-    global_initializers = '''/* global initializers */ %s __ATINIT__.push(%s);
-''' % ('if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
-       global_initializers)
+    global_initializers = '__ATINIT__.push(%s);' % global_initializers
+    if shared.Settings.USE_PTHREADS:
+      global_initializers = 'if (!ENVIRONMENT_IS_PTHREAD) ' + global_initializers
 
-  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
-%s
-''' % (staticbump, global_initializers))
+    pre += '\n' + global_initializers + '\n'
 
-  pre = apply_memory(pre)
+  pre = apply_memory(pre, metadata)
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
-
-  if shared.Settings.RELOCATABLE and not shared.Settings.SIDE_MODULE:
-    pre += 'var gb = GLOBAL_BASE, fb = 0;\n'
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
@@ -483,7 +440,7 @@ def emscript(infile, outfile, memfile, temp_files, DEBUG):
 
   report_missing_symbols(set([asmjs_mangle(f) for f in exports]), pre)
 
-  asm_consts = create_asm_consts_wasm(forwarded_json, metadata)
+  asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
@@ -491,29 +448,23 @@ def emscript(infile, outfile, memfile, temp_files, DEBUG):
     '// === Body ===',
     ('// === Body ===\n\n' + asm_const_map +
      '\n'.join(em_js_funcs) + '\n'))
-  pre = apply_table(pre)
-  outfile.write(pre)
-  pre = None
 
-  invoke_funcs = metadata['invokeFuncs']
-  try:
-    del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
-  except KeyError:
-    pass
+  with open(outfile_js, 'w') as out:
+    out.write(pre)
+    pre = None
 
-  sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
-  receiving = create_receiving_wasm(exports, metadata['initializers'])
+    invoke_funcs = metadata['invokeFuncs']
+    sending = create_sending(invoke_funcs, metadata)
+    receiving = create_receiving(exports, metadata['initializers'])
 
-  if shared.Settings.MINIMAL_RUNTIME:
-    post = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
-    receiving = ''
+    if shared.Settings.MINIMAL_RUNTIME:
+      post = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
+      receiving = ''
 
-  module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
+    module = create_module(sending, receiving, invoke_funcs, metadata)
 
-  write_output_file(outfile, post, module)
-  module = None
-
-  outfile.close()
+    write_output_file(out, post, module)
+    module = None
 
 
 def remove_trailing_zeros(memfile):
@@ -526,37 +477,55 @@ def remove_trailing_zeros(memfile):
     f.write(mem_data[:end])
 
 
-def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
-  basename = shared.unsuffixed(outfile.name)
-  wasm = basename + '.wasm'
-  base_wasm = infile
+def finalize_wasm(infile, memfile, DEBUG):
   building.save_intermediate(infile, 'base.wasm')
-
   args = ['--detect-features', '--minimize-wasm-changes']
 
-  write_source_map = shared.Settings.DEBUG_LEVEL >= 4
-  if write_source_map:
-    building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
-    building.save_intermediate(base_wasm + '.map', 'base_wasm.map')
-    args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
+  # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
+  modify_wasm = False
 
+  if shared.Settings.RELOCATABLE:
+    # In relocatable mode we transform the PIC ABI from what llvm outputs
+    # to emscripten's PIC ABI that uses `fp$` and `g$` accessor functions.
+    modify_wasm = True
+
+  if shared.Settings.WASM2JS:
+    # wasm2js requires full legalization (and will do extra wasm binary
+    # later processing later anyhow)
+    modify_wasm = True
+  if shared.Settings.GENERATE_SOURCE_MAP:
+    building.emit_wasm_source_map(infile, infile + '.map')
+    building.save_intermediate(infile + '.map', 'base_wasm.map')
+    args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
+    modify_wasm = True
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.ASYNCIFY_ADD:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.ASYNCIFY_ADD or shared.Settings.ASYNCIFY_ADVISE or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.PROFILING_FUNCS:
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
-
-  if not shared.Settings.USE_LEGACY_DYNCALLS:
+  if shared.Settings.USE_LEGACY_DYNCALLS:
+    # we need to add all dyncalls to the wasm
+    modify_wasm = True
+  else:
     if shared.Settings.WASM_BIGINT:
       args.append('--no-dyncalls')
     else:
       args.append('--dyncalls-i64')
-
-  if shared.Settings.LEGALIZE_JS_FFI != 1:
+      # we need to add some dyncalls to the wasm
+      modify_wasm = True
+  if shared.Settings.LEGALIZE_JS_FFI:
+    # When we dynamically link our JS loader adds functions from wasm modules to
+    # the table. It must add the original versions of them, not legalized ones,
+    # so that indirect calls have the right type, so export those.
+    if shared.Settings.RELOCATABLE:
+      args.append('--pass-arg=legalize-js-interface-export-originals')
+    modify_wasm = True
+  else:
     args.append('--no-legalize-javascript-ffi')
-  if not shared.Settings.MEM_INIT_IN_WASM:
+  if memfile:
     args.append('--separate-data-segments=' + memfile)
+    modify_wasm = True
   if shared.Settings.SIDE_MODULE:
     args.append('--side-module')
   else:
@@ -573,25 +542,24 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
   if shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
+    modify_wasm = True
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
-  # When we dynamically link our JS loader adds functions from wasm modules to
-  # the table. It must add the original versions of them, not legalized ones,
-  # so that indirect calls have the right type, so export those.
-  if shared.Settings.RELOCATABLE:
-    args.append('--pass-arg=legalize-js-interface-export-originals')
+    modify_wasm = True
+
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
-                                         infile=base_wasm,
-                                         outfile=wasm,
+                                         infile=infile,
+                                         outfile=infile if modify_wasm else None,
                                          args=args,
                                          stdout=subprocess.PIPE)
-  if write_source_map:
-    building.save_intermediate(wasm + '.map', 'post_finalize.map')
-  building.save_intermediate(wasm, 'post_finalize.wasm')
+  if modify_wasm:
+    building.save_intermediate(infile, 'post_finalize.wasm')
+  if shared.Settings.GENERATE_SOURCE_MAP:
+    building.save_intermediate(infile + '.map', 'post_finalize.map')
 
-  if not shared.Settings.MEM_INIT_IN_WASM:
+  if memfile:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,
     # because it's an ABI question as to whether it is valid to do so or not.
     # we can do so here, since we make sure to zero out that memory (even in
@@ -601,7 +569,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   return load_metadata_wasm(stdout, DEBUG)
 
 
-def create_asm_consts_wasm(forwarded_json, metadata):
+def create_asm_consts(metadata):
   asm_consts = {}
   for k, v in metadata['asmConsts'].items():
     const, sigs, call_types = v
@@ -652,17 +620,18 @@ def add_standard_wasm_imports(send_items_map):
       # Module scope, so lookup via Module as well.
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
-    send_items_map['__indirect_function_table'] = 'wasmTable'
 
   # With the wasm backend __memory_base and __table_base are only needed for
   # relocatable output.
   if shared.Settings.RELOCATABLE:
-    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE) # tell the memory segments where to place themselves
+    # tell the memory segments where to place themselves
+    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE)
+    send_items_map['__indirect_function_table'] = 'wasmTable'
+
     # the wasm backend reserves slot 0 for the NULL function pointer
-    table_base = '1'
-    send_items_map['__table_base'] = table_base
+    send_items_map['__table_base'] = '1'
   if shared.Settings.RELOCATABLE:
-    send_items_map['__stack_pointer'] = 'STACK_BASE'
+    send_items_map['__stack_pointer'] = "__stack_pointer"
 
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
@@ -767,7 +736,7 @@ def add_standard_wasm_imports(send_items_map):
     }'''
 
 
-def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
+def create_sending(invoke_funcs, metadata):
   basic_funcs = []
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
@@ -777,8 +746,6 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   send_items = set(basic_funcs + invoke_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
-    if g.startswith('Math_'):
-      return g.split('_')[1]
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
     # symbols.  Emscripten currently expects symbols to start with '_' so we
     # artificially add them to the output of emscripten-wasm-finalize and them
@@ -799,7 +766,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   add_standard_wasm_imports(send_items_map)
 
   sorted_keys = sorted(send_items_map.keys())
-  return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
+  return '{\n  ' + ',\n  '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + '\n}'
 
 
 def make_export_wrappers(exports, delay_assignment):
@@ -836,7 +803,7 @@ var %(mangled)s = Module["%(mangled)s"] = asm["%(name)s"]
   return wrappers
 
 
-def create_receiving_wasm(exports, initializers):
+def create_receiving(exports, initializers):
   # When not declaring asm exports this section is empty and we instead programatically export
   # symbols on the global object by calling exportAsmFunctions after initialization
   if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -876,10 +843,13 @@ def create_receiving_wasm(exports, initializers):
   else:
     receiving += make_export_wrappers(exports, delay_assignment)
 
-  return '\n'.join(receiving) + '\n'
+  if shared.Settings.MINIMAL_RUNTIME:
+    return '\n  '.join(receiving) + '\n'
+  else:
+    return '\n'.join(receiving) + '\n'
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, metadata):
+def create_module(sending, receiving, invoke_funcs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   receiving += create_named_globals(metadata)
   receiving += create_fp_accessors(metadata)
@@ -905,12 +875,10 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     raise
 
   metadata = {
-    'aliases': {},
     'declares': [],
     'implementedFunctions': [],
     'externs': [],
     'simd': False, # Obsolete, always False
-    'maxGlobalAlign': 0,
     'staticBump': 0,
     'tableSize': 0,
     'initializers': [],
@@ -991,14 +959,11 @@ def generate_struct_info():
   shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
 
 
-def run(infile, outfile, memfile):
+def run(infile, outfile_js, memfile):
   temp_files = shared.configuration.get_temp_files()
-  infile, outfile = substitute_response_files([infile, outfile])
   if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
     generate_struct_info()
 
-  outfile_obj = open(outfile, 'w')
-
   return temp_files.run_and_clean(lambda: emscript(
-      infile, outfile_obj, memfile, temp_files, shared.DEBUG)
+      infile, outfile_js, memfile, temp_files, shared.DEBUG)
   )

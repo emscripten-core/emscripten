@@ -12,7 +12,6 @@ import base64
 import difflib
 import json
 import logging
-import math
 import os
 import re
 import shutil
@@ -37,7 +36,7 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 95
+EXPECTED_BINARYEN_VERSION = 98
 EXPECTED_LLVM_VERSION = "12.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -53,7 +52,7 @@ if sys.version_info < (2, 7, 12):
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
-diagnostics.add_warning('separate-asm')
+# unused diagnositic flags.  TODO(sbc): remove at some point
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('invalid-input')
 # Don't show legacy settings warnings by default
@@ -66,6 +65,7 @@ diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
+diagnostics.add_warning('pthreads-mem-growth')
 
 
 def exit_with_error(msg, *args):
@@ -362,6 +362,7 @@ def parse_config_file():
     'FROZEN_CACHE',
     'CACHE',
     'PORTS',
+    'COMPILER_WRAPPER',
   )
 
   # Only propagate certain settings from the config file.
@@ -398,8 +399,18 @@ def fix_js_engine(old, new):
   return new
 
 
+def get_npm_cmd(name):
+  if WINDOWS:
+    cmd = [path_from_root('node_modules', '.bin', name + '.cmd')]
+  else:
+    cmd = NODE_JS + [path_from_root('node_modules', '.bin', name)]
+  if not os.path.exists(cmd[-1]):
+    exit_with_error('%s was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies' % name)
+  return cmd
+
+
 def normalize_config_settings():
-  global CACHE, PORTS, JAVA, CLOSURE_COMPILER
+  global CACHE, PORTS, JAVA
   global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
@@ -432,14 +443,6 @@ def normalize_config_settings():
       CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
-
-  if CLOSURE_COMPILER is None:
-    if WINDOWS:
-      CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
-    else:
-      # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-     # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
-      CLOSURE_COMPILER = NODE_JS + ['--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
     logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
@@ -558,7 +561,7 @@ def perform_sanify_checks():
       exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', NODE_JS, config_file_location, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG_CC, LLVM_AR, LLVM_AS, LLVM_NM]:
+    for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
 
@@ -816,7 +819,7 @@ def emsdk_cflags(user_args, cxx):
   return c_opts + include_directive(c_include_paths)
 
 
-def get_asmflags(user_args):
+def get_asmflags():
   return ['-target', get_llvm_target()]
 
 
@@ -1039,7 +1042,7 @@ def is_c_symbol(name):
 def treat_as_user_function(name):
   if name.startswith('dynCall_'):
     return False
-  if name in Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED:
+  if name in Settings.WASM_SYSTEM_EXPORTS:
     return False
   return True
 
@@ -1061,21 +1064,7 @@ def reconfigure_cache():
   Cache = cache.Cache(CACHE)
 
 
-# Placeholder strings used for SINGLE_FILE
-class FilenameReplacementStrings:
-  WASM_TEXT_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_TEXT_FILE }}}'
-  WASM_BINARY_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE }}}'
-  ASMJS_CODE_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE }}}'
-
-
 class JS(object):
-  memory_initializer_pattern = r'/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
-  no_memory_initializer_pattern = r'/\* no memory initializer \*/'
-
-  memory_staticbump_pattern = r'STATICTOP = STATIC_BASE \+ (\d+);'
-
-  global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
-
   emscripten_license = '''\
 /**
  * @license
@@ -1134,47 +1123,6 @@ class JS(object):
       return os.path.basename(path)
 
   @staticmethod
-  def make_initializer(sig, settings=None):
-    settings = settings or Settings
-    if sig == 'i':
-      return '0'
-    elif sig == 'f':
-      return 'Math_fround(0)'
-    elif sig == 'j':
-      if settings:
-        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64(0)'
-    else:
-      return '+0'
-
-  FLOAT_SIGS = ['f', 'd']
-
-  @staticmethod
-  def make_coercion(value, sig, settings=None, ffi_arg=False, ffi_result=False, convert_from=None):
-    settings = settings or Settings
-    if sig == 'i':
-      if convert_from in JS.FLOAT_SIGS:
-        value = '(~~' + value + ')'
-      return value + '|0'
-    if sig in JS.FLOAT_SIGS and convert_from == 'i':
-      value = '(' + value + '|0)'
-    if sig == 'f':
-      if ffi_arg:
-        return '+Math_fround(' + value + ')'
-      elif ffi_result:
-        return 'Math_fround(+(' + value + '))'
-      else:
-        return 'Math_fround(' + value + ')'
-    elif sig == 'd' or sig == 'f':
-      return '+' + value
-    elif sig == 'j':
-      if settings:
-        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64(' + value + ')'
-    else:
-      return value
-
-  @staticmethod
   def legalize_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
     if Settings.WASM_BIGINT:
@@ -1199,16 +1147,6 @@ class JS(object):
     if Settings.WASM_BIGINT:
       return True
     return sig == JS.legalize_sig(sig)
-
-  @staticmethod
-  def make_jscall(sig):
-    fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
-    args = (',' if fnargs else '') + fnargs
-    ret = '''\
-function jsCall_%s(index%s) {
-    %sfunctionPointers[index](%s);
-}''' % (sig, args, 'return ' if sig[0] != 'v' else '', fnargs)
-    return ret
 
   @staticmethod
   def make_dynCall(sig, args):
@@ -1250,190 +1188,6 @@ function%s(%s) {
 }''' % (name, ','.join(args), body, rethrow)
 
     return ret
-
-  @staticmethod
-  def align(x, by):
-    while x % by != 0:
-      x += 1
-    return x
-
-  @staticmethod
-  def generate_string_initializer(s):
-    if Settings.ASSERTIONS:
-      # append checksum of length and content
-      crcTable = []
-      for i in range(256):
-        crc = i
-        for bit in range(8):
-          crc = (crc >> 1) ^ ((crc & 1) * 0xedb88320)
-        crcTable.append(crc)
-      crc = 0xffffffff
-      n = len(s)
-      crc = crcTable[(crc ^ n) & 0xff] ^ (crc >> 8)
-      crc = crcTable[(crc ^ (n >> 8)) & 0xff] ^ (crc >> 8)
-      for i in s:
-        crc = crcTable[(crc ^ i) & 0xff] ^ (crc >> 8)
-      for i in range(4):
-        s.append((crc >> (8 * i)) & 0xff)
-    s = ''.join(map(chr, s))
-    s = s.replace('\\', '\\\\').replace("'", "\\'")
-    s = s.replace('\n', '\\n').replace('\r', '\\r')
-
-    # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
-    def escape(x):
-      return '\\x{:02x}'.format(ord(x.group()))
-
-    return re.sub('[\x1a\x80-\xff]', escape, s)
-
-  @staticmethod
-  def is_dyn_call(func):
-    return func.startswith('dynCall_')
-
-  @staticmethod
-  def is_function_table(name):
-    return name.startswith('FUNCTION_TABLE_')
-
-
-class WebAssembly(object):
-  @staticmethod
-  def toLEB(x):
-    assert x >= 0, 'TODO: signed'
-    ret = []
-    while 1:
-      byte = x & 127
-      x >>= 7
-      more = x != 0
-      if more:
-        byte = byte | 128
-      ret.append(byte)
-      if not more:
-        break
-    return bytearray(ret)
-
-  @staticmethod
-  def readLEB(buf, offset):
-    result = 0
-    shift = 0
-    while True:
-      byte = bytearray(buf[offset:offset + 1])[0]
-      offset += 1
-      result |= (byte & 0x7f) << shift
-      if not (byte & 0x80):
-        break
-      shift += 7
-    return (result, offset)
-
-  @staticmethod
-  def add_emscripten_metadata(js_file, wasm_file):
-    WASM_PAGE_SIZE = 65536
-
-    mem_size = Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
-    table_size = Settings.WASM_TABLE_SIZE
-    global_base = Settings.GLOBAL_BASE
-
-    js = open(js_file).read()
-    m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
-    dynamic_base = int(m.group(2))
-
-    logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
-    name = b'\x13emscripten_metadata' # section name, including prefixed size
-    contents = (
-      # metadata section version
-      WebAssembly.toLEB(EMSCRIPTEN_METADATA_MAJOR) +
-      WebAssembly.toLEB(EMSCRIPTEN_METADATA_MINOR) +
-
-      # NB: The structure of the following should only be changed
-      #     if EMSCRIPTEN_METADATA_MAJOR is incremented
-      # Minimum ABI version
-      WebAssembly.toLEB(EMSCRIPTEN_ABI_MAJOR) +
-      WebAssembly.toLEB(EMSCRIPTEN_ABI_MINOR) +
-
-      # Wasm backend, always 1 now
-      WebAssembly.toLEB(1) +
-
-      WebAssembly.toLEB(mem_size) +
-      WebAssembly.toLEB(table_size) +
-      WebAssembly.toLEB(global_base) +
-      WebAssembly.toLEB(dynamic_base) +
-      # dynamictopPtr, always 0 now
-      WebAssembly.toLEB(0) +
-
-      # tempDoublePtr, always 0 in wasm backend
-      WebAssembly.toLEB(0) +
-
-      WebAssembly.toLEB(int(Settings.STANDALONE_WASM))
-
-      # NB: more data can be appended here as long as you increase
-      #     the EMSCRIPTEN_METADATA_MINOR
-    )
-
-    orig = open(wasm_file, 'rb').read()
-    with open(wasm_file, 'wb') as f:
-      f.write(orig[0:8]) # copy magic number and version
-      # write the special section
-      f.write(b'\0') # user section is code 0
-      # need to find the size of this section
-      size = len(name) + len(contents)
-      f.write(WebAssembly.toLEB(size))
-      f.write(name)
-      f.write(contents)
-      f.write(orig[8:])
-
-  @staticmethod
-  def add_dylink_section(wasm_file, needed_dynlibs):
-    # a wasm shared library has a special "dylink" section, see tools-conventions repo
-    # TODO: use this in the wasm backend
-    assert False
-    mem_align = Settings.MAX_GLOBAL_ALIGN
-    mem_size = Settings.STATIC_BUMP
-    table_size = Settings.WASM_TABLE_SIZE
-    mem_align = int(math.log(mem_align, 2))
-    logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
-
-    # Write new wasm binary with 'dylink' section
-    wasm = open(wasm_file, 'rb').read()
-    section_name = b"\06dylink" # section name, including prefixed size
-    contents = (WebAssembly.toLEB(mem_size) + WebAssembly.toLEB(mem_align) +
-                WebAssembly.toLEB(table_size) + WebAssembly.toLEB(0))
-
-    # we extend "dylink" section with information about which shared libraries
-    # our shared library needs. This is similar to DT_NEEDED entries in ELF.
-    #
-    # In theory we could avoid doing this, since every import in wasm has
-    # "module" and "name" attributes, but currently emscripten almost always
-    # uses just "env" for "module". This way we have to embed information about
-    # required libraries for the dynamic linker somewhere, and "dylink" section
-    # seems to be the most relevant place.
-    #
-    # Binary format of the extension:
-    #
-    #   needed_dynlibs_count        varuint32       ; number of needed shared libraries
-    #   needed_dynlibs_entries      dynlib_entry*   ; repeated dynamic library entries as described below
-    #
-    # dynlib_entry:
-    #
-    #   dynlib_name_len             varuint32       ; length of dynlib_name_str in bytes
-    #   dynlib_name_str             bytes           ; name of a needed dynamic library: valid UTF-8 byte sequence
-    #
-    # a proposal has been filed to include the extension into "dylink" specification:
-    # https://github.com/WebAssembly/tool-conventions/pull/77
-    contents += WebAssembly.toLEB(len(needed_dynlibs))
-    for dyn_needed in needed_dynlibs:
-      dyn_needed = bytes(asbytes(dyn_needed))
-      contents += WebAssembly.toLEB(len(dyn_needed))
-      contents += dyn_needed
-
-    section_size = len(section_name) + len(contents)
-    with open(wasm_file, 'wb') as f:
-      # copy magic number and version
-      f.write(wasm[0:8])
-      # write the special section
-      f.write(b'\0') # user section is code 0
-      f.write(WebAssembly.toLEB(section_size))
-      f.write(section_name)
-      f.write(contents)
-      # copy rest of binary
-      f.write(wasm[8:])
 
 
 # Python 2-3 compatibility helper function:
@@ -1621,6 +1375,7 @@ WASM_ENGINES = []
 CACHE = None
 PORTS = None
 FROZEN_CACHE = False
+COMPILER_WRAPPER = None
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
 # make sure that those child processes get the same configuration file by
@@ -1662,22 +1417,6 @@ TRACK_PROCESS_SPAWNS = EM_BUILD_VERBOSE >= 3
 
 set_version_globals()
 
-# For the Emscripten-specific WASM metadata section, follows semver, changes
-# whenever metadata section changes structure.
-# NB: major version 0 implies no compatibility
-# NB: when changing the metadata format, we should only append new fields, not
-#     reorder, modify, or remove existing ones.
-EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
-# For the JS/WASM ABI, specifies the minimum ABI version required of
-# the WASM runtime implementation by the generated WASM binary. It follows
-# semver and changes whenever C types change size/signedness or
-# syscalls change signature. By semver, the maximum ABI version is
-# implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
-# change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
-# or the ABI change is backwards compatible, otherwise increment
-# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 27)
-
 # Tools/paths
 if LLVM_ADD_VERSION is None:
   LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
@@ -1691,8 +1430,6 @@ LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
 LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
-LLVM_AS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
-LLVM_DIS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
@@ -1704,7 +1441,6 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
-AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 apply_configuration()
@@ -1717,6 +1453,3 @@ verify_settings()
 Cache = cache.Cache(CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
-
-# compatibility with existing emcc, etc. scripts
-chunkify = cache.chunkify

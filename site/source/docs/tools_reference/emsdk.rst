@@ -4,7 +4,7 @@
 Emscripten SDK (emsdk)
 ======================
 
-** Emscripten SDK (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
+**Emscripten SDK (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
 
 With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on GitHub. To access the *emsdk* on Windows, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
 
@@ -89,7 +89,8 @@ won't conflict with any config file the user might have in their home directory.
 
 The file should generally not be updated directly unless you're :ref:`building Emscripten from source <installing-from-source>`. Instead use the *emsdk* to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
 
-Below are typical **.emscripten** files created by *emsdk*. Note the variable names used to point to the different tools::
+Below are examples of possible **.emscripten** files created by *emsdk*. Note
+the variable names used to point to the different tools::
 
   # .emscripten file from Windows SDK
 
@@ -104,7 +105,7 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
 
   import os
   NODE_JS = 'nodejs'
-  LLVM_ROOT='/home/ubuntu/emsdk_portable/clang/fastcomp/build_incoming_64/bin'
+  LLVM_ROOT='/home/ubuntu/emsdk/upstream/bin'
 
 .. _emsdk_howto:
 
