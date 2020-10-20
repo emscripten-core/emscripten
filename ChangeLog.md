@@ -26,6 +26,9 @@ Current Trunk
   (#12536)
 - emcc now accepts `--arg=foo` as well as `--arg foo`.  For example
   `--js-library=file.js`.
+- Reject promises returned from the factory function created by using the
+  MODULARIZE build option if initialization of the module instance fails
+  (#12396).
 
 2.0.7: 10/13/2020
 -----------------
