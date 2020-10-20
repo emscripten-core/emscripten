@@ -30,7 +30,7 @@ Backends
 
 Emscripten emits WebAssembly using the **upstream LLVM wasm backend**, since
 version ``1.39.0`` (October 2019). Previously emscripten also supported the
-old **fastcomp** backend which has been removed.
+old **fastcomp** backend which was removed in ``2.0.0`` (August 2020).
 
 There are some differences you may notice between the two backends, if you
 upgrade from fastcomp to upstream:
