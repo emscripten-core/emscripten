@@ -5393,6 +5393,36 @@ main(int argc,char** argv)
     self.assertContained('hello1_val by hello1:3', out)
     self.assertContained('hello1_val by hello2:3', out)
 
+  def test_dlsym_rtld_default(self):
+    create_test_file('main.c', r'''
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dlfcn.h>
+#include <emscripten.h>
+
+EMSCRIPTEN_KEEPALIVE int foo() {
+  return 42;
+}
+
+int main(int argc, char** argv) {
+  int (*f)();
+  f = dlsym(RTLD_DEFAULT, "foo");
+  if (!f) {
+    printf("dlsym failed: %s\n", dlerror());
+    return 1;
+  }
+  printf("foo -> %d\n", f());
+  f = dlsym(RTLD_DEFAULT, "bar");
+  printf("bar -> %p\n", f);
+  return 0;
+}
+''')
+    self.run_process([EMCC, 'main.c', '-s', 'MAIN_MODULE'])
+    out = self.run_js('a.out.js')
+    self.assertContained('foo -> 42', out)
+    self.assertContained('bar -> 0', out)
+
   def test_main_module_without_exceptions_message(self):
     # A side module that needs exceptions needs a main module with that
     # support enabled; show a clear message in that case.

@@ -917,6 +917,7 @@
     {
         "file": "dlfcn.h",
         "defines": [
+            "RTLD_DEFAULT",
             "RTLD_GLOBAL",
             "RTLD_NODELETE"
         ],
