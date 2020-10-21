@@ -964,9 +964,36 @@ int getnameinfo(const struct sockaddr *addr, socklen_t addrlen, char *host, sock
   return -1;
 }
 
-// TODO:
-// const char *gai_strerror(int);
-
+const char *gai_strerror(int errcode)
+{
+  switch(errcode) 
+  {
+    case 0:
+        return "Success";
+    case EAI_AGAIN:
+      return "Temporary failure in name resolution"; 
+    case EAI_BADFLAGS:
+      return "Invalid value for 'ai_flags' field";
+    case EAI_FAIL:
+      return "Non-recoverable failure in name res"; 
+    case EAI_FAMILY:
+      return "'ai_family' not supported";
+    case EAI_MEMORY:
+      return "Memory allocation failure";
+    case EAI_NONAME:
+      return "NAME or SERVICE is unknown";
+    case EAI_OVERFLOW:
+      return "Argument buffer overflow";
+    case EAI_SERVICE:
+      return "SERVICE not supported for 'ai_socktype'";
+    case EAI_SOCKTYPE:
+      return "'ai_socktype' not supported";
+    case EAI_SYSTEM:
+      return "System error returned in 'errno'";
+    default:
+      return "Unknown error";
+  }
+}
 
 
 } // ~extern "C"
