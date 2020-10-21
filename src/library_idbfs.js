@@ -173,8 +173,6 @@ mergeInto(LibraryManager.library, {
             FS.mkdir(path, entry['mode']);
           } catch (e) {
             if (e.errno != {{{ cDefine('EEXIST') }}}) throw e;
-            FS.rmdir(path);
-            FS.mkdir(path, entry['mode']);
           }
         } else if (FS.isFile(entry['mode'])) {
           FS.writeFile(path, entry['contents'], { canOwn: true });
