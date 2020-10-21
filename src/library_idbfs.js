@@ -172,8 +172,8 @@ mergeInto(LibraryManager.library, {
           try {
             FS.mkdir(path, entry['mode']);
           } catch (e) {
-            if (e.errno != {{{ cDefine('EEXIST') }}}) throw e
-            FS.rmdir(path)
+            if (e.errno != {{{ cDefine('EEXIST') }}}) throw e;
+            FS.rmdir(path);
             FS.mkdir(path, entry['mode']);
           }
         } else if (FS.isFile(entry['mode'])) {
