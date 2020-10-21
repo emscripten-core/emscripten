@@ -21,7 +21,7 @@ var LibraryDylink = {
       }
       relocated[e] = value;
       if (moduleLocal) {
-        moduleLocal['_' + e] = value;
+        moduleLocal[e] = value;
       }
     }
     return relocated;
@@ -114,9 +114,10 @@ var LibraryDylink = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   },
 
-  // Loads a side module from binary data
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle'],
-  $loadWebAssemblyModule: function(binary, flags) {
+  // Loads a side module from binary data. Returns the module's exports or a
+  // progise that resolves to its exports if the loadAsync flag is set.
+  $loadSideModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle'],
+  $loadSideModule: function(binary, flags) {
     var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
     assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
     // we should see the dylink section right after the magic number and wasm version
@@ -199,21 +200,13 @@ var LibraryDylink = {
       // b) Symbols from loaded modules are not always added to the global Module.
       var moduleLocal = {};
 
-      var resolveSymbol = function(sym, type, legalized) {
-#if WASM_BIGINT
-        assert(!legalized);
-#else
-        if (legalized) {
-          sym = 'orig$' + sym;
-        }
-#endif
-
+      var resolveSymbol = function(sym, type) {
         var resolved = Module["asm"][sym];
         if (!resolved) {
           var mangled = asmjsMangle(sym);
           resolved = Module[mangled];
           if (!resolved) {
-            resolved = moduleLocal[mangled];
+            resolved = moduleLocal[sym];
           }
           if (!resolved && sym.startsWith('invoke_')) {
             resolved = createInvokeFunction(sym.split('_')[1]);
@@ -269,15 +262,17 @@ var LibraryDylink = {
             assert(parts.length == 3)
             var name = parts[1];
             var sig = parts[2];
-#if WASM_BIGINT
-            var legalized = false;
-#else
-            var legalized = sig.indexOf('j') >= 0; // check for i64s
+#if !WASM_BIGINT
+            // If the export was legalized we look for the original
+            // function when adding it ot the table
+            if (sig.indexOf('j') >= 0) {
+              name = 'orig$' + name;
+            }
 #endif
             var fp = 0;
             return obj[prop] = function() {
               if (!fp) {
-                var f = resolveSymbol(name, 'function', legalized);
+                var f = resolveSymbol(name, 'function');
                 fp = addFunction(f, sig);
               }
               return fp;
@@ -338,10 +333,10 @@ var LibraryDylink = {
         return WebAssembly.instantiate(binary, info).then(function(result) {
           return postInstantiation(result.instance, moduleLocal);
         });
-      } else {
-        var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
-        return postInstantiation(instance, moduleLocal);
       }
+
+      var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+      return postInstantiation(instance, moduleLocal);
     }
 
     // now load needed libraries and the module itself.
@@ -379,7 +374,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadSideModule', '$asmjsMangle', '$fetchBinary'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__self__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
@@ -446,11 +441,6 @@ var LibraryDylink = {
       return readBinary(libFile);
     }
 
-    // libModule <- libData
-    function createLibModule(libData) {
-      return loadWebAssemblyModule(libData, flags)
-    }
-
     // libModule <- lib
     function getLibModule() {
       // lookup preloaded cache first
@@ -463,11 +453,11 @@ var LibraryDylink = {
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
         return loadLibData(lib).then(function(libData) {
-          return createLibModule(libData);
+          return loadSideModule(libData, flags);
         });
       }
 
-      return createLibModule(loadLibData(lib));
+      return loadSideModule(loadLibData(lib), flags);
     }
 
     // Module.symbols <- libModule.symbols (flags.global handler)
