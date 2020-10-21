@@ -240,7 +240,7 @@ def report_missing_symbols(all_implemented, pre):
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
       continue
-    diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
+    diagnostics.warning('undefined', 'undefined exported symbol: "%s"', requested)
 
   # Special hanlding for the `_main` symbol
 
@@ -438,7 +438,9 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  report_missing_symbols(set([asmjs_mangle(f) for f in exports]), pre)
+  all_exports = exports + list(metadata['namedGlobals'].keys())
+  all_exports = set([asmjs_mangle(e) for e in all_exports])
+  report_missing_symbols(all_exports, pre)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)

@@ -1533,7 +1533,7 @@ int f() {
     # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
     cmd += ['-s', "EXPORTED_FUNCTIONS=['foobar']"]
     err = self.expect_fail(cmd)
-    self.assertContained('undefined exported function: "foobar"', err)
+    self.assertContained('undefined exported symbol: "foobar"', err)
 
     # setting `-Wno-undefined` should suppress error
     cmd += ['-Wno-undefined']
@@ -3472,7 +3472,7 @@ int main() {
       print(cmd)
       stderr = self.run_process(cmd, stderr=PIPE, check=False).stderr
       if m:
-        self.assertContained('undefined exported function: " _main"', stderr)
+        self.assertContained('undefined exported symbol: " _main"', stderr)
       else:
         self.assertContained('hello, world!', self.run_js('a.out.js'))
 
@@ -5966,7 +5966,7 @@ high = 1234
   def test_dash_s_no_space(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-sEXPORT_ALL=1'])
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp'), '-sEXPORTED_FUNCTIONS=["foo"]'])
-    self.assertContained('error: undefined exported function: "foo"', err)
+    self.assertContained('error: undefined exported symbol: "foo"', err)
 
   def test_zeroinit(self):
     create_test_file('src.c', r'''
@@ -7626,15 +7626,15 @@ test_module().then((test_module_instance) => {
       # extra newline in response file - should be ignored
       ("EXPORTED_FUNCTIONS=@response", ''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''undefined exported function: "\\\\'_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''undefined exported symbol: "\\\\'_c'"'''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", '''undefined exported function: "\\\\ '_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", '''undefined exported symbol: "\\\\ '_c'"'''),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'undefined exported function: "\\\\"_c""'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'undefined exported symbol: "\\\\"_c""'),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'undefined exported function: "\\\\ "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'undefined exported symbol: "\\\\ "_c"'),
       # missing comma
-      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'undefined exported function: "_b" "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'undefined exported symbol: "_b" "_c"'),
     ]:
       print(export_arg)
       proc = self.run_process([EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE, check=not expected)
@@ -9220,14 +9220,13 @@ int main() {
     self.do_run_from_file(src, output)
 
   @parameterized({
-    '': ([],),
-    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+    '': (['-DUSE_KEEPALIVE'],),
+    'minimal': (['-DUSE_KEEPALIVE', '-s', 'MINIMAL_RUNTIME'],),
+    'command_line': (['-s', 'EXPORTED_FUNCTIONS=[_g_foo,_main]'],),
   })
   def test_export_global_address(self, args):
     self.emcc_args += args
-    src = path_from_root('tests', 'other', 'test_export_global_address.c')
-    output = path_from_root('tests', 'other', 'test_export_global_address.out')
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'other', 'test_export_global_address.c')
 
   def test_linker_version(self):
     out = self.run_process([EMCC, '-Wl,--version'], stdout=PIPE).stdout
