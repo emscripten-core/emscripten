@@ -169,10 +169,12 @@ mergeInto(LibraryManager.library, {
     storeLocalEntry: function(path, entry, callback) {
       try {
         if (FS.isDir(entry['mode'])) {
-          try{
+          try {
             FS.mkdir(path, entry['mode']);
           } catch (e) {
             if (e.errno != {{{ cDefine('EEXIST') }}}) throw e
+            FS.rmdir(path)
+            FS.mkdir(path, entry['mode']);
           }
         } else if (FS.isFile(entry['mode'])) {
           FS.writeFile(path, entry['contents'], { canOwn: true });
