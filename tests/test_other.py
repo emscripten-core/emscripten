@@ -7264,8 +7264,7 @@ end
 
   def test_extern_weak(self):
     self.do_other_test(os.path.join('other', 'extern_weak'))
-    # TODO: wasm backend main module
-    # self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
+    self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
 
   def test_main_module_without_main(self):
     create_test_file('pre.js', r'''
