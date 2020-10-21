@@ -5133,92 +5133,90 @@ int main(int argc, char** argv) {
     # we can strip out almost all of libcxx when just using vector
     self.assertLess(2.25 * vector, iostream)
 
-  def test_minimal_dynamic(self):
-    def run(wasm):
-      print('wasm?', wasm)
-      library_file = 'library.wasm' if wasm else 'library.js'
+  @parameterized({
+    '': (True,),
+    # TODO(sbc): make dynamic linking work with wasm2js
+    # 'wasm2js': (False,)
+  })
+  def test_minimal_dynamic(self, wasm):
+    library_file = 'library.wasm' if wasm else 'library.js'
 
-      def test(main_args, library_args=[], expected='hello from main\nhello from library', assert_returncode=0):
-        print('testing', main_args, library_args)
-        self.clear()
-        create_test_file('library.c', r'''
-          #include <stdio.h>
-          void library_func() {
-          #ifdef USE_PRINTF
-            printf("hello from library: %p\n", &library_func);
-          #else
-            puts("hello from library");
-          #endif
+    def test(main_args, library_args=[], expected='hello from main\nhello from library', assert_returncode=0):
+      print('testing', main_args, library_args)
+      self.clear()
+      create_test_file('library.c', r'''
+        #include <stdio.h>
+        void library_func() {
+        #ifdef USE_PRINTF
+          printf("hello from library: %p\n", &library_func);
+        #else
+          puts("hello from library");
+        #endif
+        }
+      ''')
+      # -fno-builtin to prevent printf -> iprintf optimization
+      self.run_process([EMCC, 'library.c', '-fno-builtin', '-s', 'SIDE_MODULE=1', '-O2', '-o', library_file, '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ALL'] + library_args)
+      create_test_file('main.c', r'''
+        #include <dlfcn.h>
+        #include <stdio.h>
+        int main() {
+          puts("hello from main");
+          void *lib_handle = dlopen("%s", 0);
+          if (!lib_handle) {
+            puts("cannot load side module");
+            return 1;
           }
-        ''')
-        # -fno-builtin to prevent printf -> iprintf optimization
-        self.run_process([EMCC, 'library.c', '-fno-builtin', '-s', 'SIDE_MODULE=1', '-O2', '-o', library_file, '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ALL'] + library_args)
-        create_test_file('main.c', r'''
-          #include <dlfcn.h>
-          #include <stdio.h>
-          int main() {
-            puts("hello from main");
-            void *lib_handle = dlopen("%s", 0);
-            if (!lib_handle) {
-              puts("cannot load side module");
-              return 1;
-            }
-            typedef void (*voidfunc)();
-            voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-            if (!x) puts("cannot find side function");
-            else x();
-          }
-        ''' % library_file)
-        self.run_process([EMCC, 'main.c', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
-        self.assertContained(expected, self.run_js('a.out.js', assert_returncode=assert_returncode))
-        size = os.path.getsize('a.out.js')
-        if wasm:
-          size += os.path.getsize('a.out.wasm')
-        side_size = os.path.getsize(library_file)
-        print('  sizes:', size, side_size)
-        return (size, side_size)
+          typedef void (*voidfunc)();
+          voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+          if (!x) puts("cannot find side function");
+          else x();
+        }
+      ''' % library_file)
+      self.run_process([EMCC, 'main.c', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
+      self.assertContained(expected, self.run_js('a.out.js', assert_returncode=assert_returncode))
+      size = os.path.getsize('a.out.js')
+      if wasm:
+        size += os.path.getsize('a.out.wasm')
+      side_size = os.path.getsize(library_file)
+      print('  sizes:', size, side_size)
+      return (size, side_size)
 
-      def percent_diff(x, y):
-        small = min(x, y)
-        large = max(x, y)
-        return float(100 * large) / small - 100
+    def percent_diff(x, y):
+      small = min(x, y)
+      large = max(x, y)
+      return float(100 * large) / small - 100
 
-      full = test(main_args=['-s', 'MAIN_MODULE=1'])
-      # printf is not used in main, but libc was linked in, so it's there
-      printf = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-DUSE_PRINTF'])
+    full = test(main_args=['-s', 'MAIN_MODULE=1'])
+    # printf is not used in main, but libc was linked in, so it's there
+    printf = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-DUSE_PRINTF'])
 
-      # main module tests
+    # main module tests
 
-      # dce in main, and it fails since puts is not exported
-      dce = test(main_args=['-s', 'MAIN_MODULE=2'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    # dce in main, and it fails since puts is not exported
+    dce = test(main_args=['-s', 'MAIN_MODULE=2'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
 
-      # with exporting, it works
-      dce = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts"]'])
+    # with exporting, it works
+    dce = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts"]'])
 
-      # printf is not used in main, and we dce, so we failz
-      dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    # printf is not used in main, and we dce, so we failz
+    dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
 
-      # exporting printf in main keeps it alive for the library
-      dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf", "_puts"]'], library_args=['-DUSE_PRINTF'])
+    # exporting printf in main keeps it alive for the library
+    dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf", "_puts"]'], library_args=['-DUSE_PRINTF'])
 
-      self.assertLess(percent_diff(full[0], printf[0]), 4)
-      self.assertLess(percent_diff(dce[0], dce_fail[0]), 4)
-      self.assertLess(dce[0], 0.2 * full[0]) # big effect, 80%+ is gone
-      self.assertGreater(dce_save[0], 1.05 * dce[0]) # save exported all of printf
+    self.assertLess(percent_diff(full[0], printf[0]), 4)
+    self.assertLess(percent_diff(dce[0], dce_fail[0]), 4)
+    self.assertLess(dce[0], 0.2 * full[0]) # big effect, 80%+ is gone
+    self.assertGreater(dce_save[0], 1.05 * dce[0]) # save exported all of printf
 
-      # side module tests
+    # side module tests
 
-      # mode 2, so dce in side, but library_func is not exported, so it is dce'd
-      side_dce_fail = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
-      # mode 2, so dce in side, and library_func is not exported
-      side_dce_work = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library')
+    # mode 2, so dce in side, but library_func is not exported, so it is dce'd
+    side_dce_fail = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
+    # mode 2, so dce in side, and library_func is not exported
+    side_dce_work = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library')
 
-      self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
-
-    run(wasm=1)
-    # TODO(sbc): We used to run this with fastcomp and wasm=0.  Should we make
-    # it work with wasm2js
-    # run(wasm=0)
+    self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
 
   def test_ld_library_path(self):
     create_test_file('hello1.c', r'''
@@ -9462,3 +9460,8 @@ exec "$@"
                       '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[foo]',
                       '--js-library=lib1.js',
                       '--js-library=lib2.js'])
+
+  def test_wasm2js_no_dynamic_linking(self):
+    for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
+      err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-sMAIN_MODULE', '-sWASM=0'])
+      self.assertContained('WASM2JS is not compatible with relocatable output', err)
