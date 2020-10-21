@@ -582,8 +582,8 @@ var LibraryDylink = {
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var flags = {
-      global:   Boolean(flag & 256),  // RTLD_GLOBAL
-      nodelete: Boolean(flag & 4096), // RTLD_NODELETE
+      global:   Boolean(flag & {{{ cDefine('RTLD_GLOBAL') }}}),
+      nodelete: Boolean(flag & {{{ cDefine('RTLD_NODELETE') }}}),
 
       fs: FS, // load libraries from provided filesystem
     }
