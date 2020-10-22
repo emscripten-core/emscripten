@@ -35,6 +35,7 @@ function preprocess(text, filenameHint) {
   var lines = text.split('\n');
   var ret = '';
   var showStack = [];
+  var emptyLine = false;
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     try {
@@ -61,7 +62,12 @@ function preprocess(text, filenameHint) {
               filename = filename.substr(1, filename.length - 2);
             }
             var included = read(filename);
-            ret += '\n' + preprocess(included, filename) + '\n';
+            var result = preprocess(included, filename);
+            if (result) {
+              ret += "// include: " + filename + "\n";
+              ret += result;
+              ret += "// end include: " + filename + "\n";
+            }
           }
         } else if (line.indexOf('#else') === 0) {
           assert(showStack.length > 0);
@@ -74,7 +80,16 @@ function preprocess(text, filenameHint) {
             throw "Unclear preprocessor command on line " + i + ': ' + line;
           }
           if (showStack.indexOf(false) === -1) {
+            // Never emit more than one empty line at a time.
+            if (emptyLine && !line) {
+              continue;
+            }
             ret += line + '\n';
+            if (!line) {
+              emptyLine = true;
+            } else {
+              emptyLine = false;
+            }
           }
         }
       } else { // !inStyle
