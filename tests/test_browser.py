@@ -2198,10 +2198,54 @@ void *getBindBuffer() {
     self.btest('openal_capture_sanity.c', expected='0')
 
   def test_runtimelink(self):
-    main, supp = self.setup_runtimelink_test()
-    create_test_file('supp.cpp', supp)
-    self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE=1', '-O2', '-s', 'EXPORT_ALL=1'])
-    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL=1'], expected='76')
+    create_test_file('header.h', r'''
+      struct point
+      {
+        int x, y;
+      };
+    ''')
+
+    create_test_file('supp.cpp', r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      extern void mainFunc(int x);
+      extern int mainInt;
+
+      void suppFunc(struct point &p) {
+        printf("supp: %d,%d\n", p.x, p.y);
+        mainFunc(p.x + p.y);
+        printf("supp see: %d\n", mainInt);
+      }
+
+      int suppInt = 76;
+    ''')
+
+    main = r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      extern void suppFunc(struct point &p);
+      extern int suppInt;
+
+      void mainFunc(int x) {
+        printf("main: %d\n", x);
+      }
+
+      int mainInt = 543;
+
+      int main( int argc, const char *argv[] ) {
+        struct point p = { 54, 2 };
+        suppFunc(p);
+        printf("main see: %d\nok.\n", suppInt);
+        #ifdef BROWSER
+          REPORT_RESULT(suppInt);
+        #endif
+        return 0;
+      }
+    '''
+    self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
+    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL=1'], expected='76')
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
