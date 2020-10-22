@@ -1097,9 +1097,8 @@ var WASM = 1;
 // means we don't need to legalize for JS (but this requires a new enough JS
 // VM).
 //
-// Standlone builds by default require a `main` entry point.  If you want to
-// build a library (also known as a reactor) instead you can pass `--no-entry`
-// or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
+// Standlone builds require a `main` entry point by default.  If you want to
+// build a library (also known as a reactor) instead you can pass `--no-entry`.
 var STANDALONE_WASM = 0;
 
 // Whether to ignore implicit traps when optimizing in binaryen.  Implicit
