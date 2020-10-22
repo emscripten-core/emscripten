@@ -269,8 +269,6 @@ var LibraryExceptions = {
       // Only pop if the corresponding push was through rethrow_primary_exception
       exceptionCaught.push(catchInfo);
       info.set_rethrown(true);
-    info.set_caught(false);
-      __ZSt18uncaught_exceptionv.uncaught_exceptions++;
     } else {
       catchInfo.free();
     }
