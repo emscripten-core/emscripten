@@ -6,7 +6,7 @@
 var LibraryDylink = {
 #if RELOCATABLE
   // Applies relocations to exported things.
-  $relocateExports: function(exports, memoryBase, moduleLocal) {
+  $relocateExports: function(exports, memoryBase) {
     var relocated = {};
 
     for (var e in exports) {
@@ -20,9 +20,6 @@ var LibraryDylink = {
         value += memoryBase;
       }
       relocated[e] = value;
-      if (moduleLocal) {
-        moduleLocal[e] = value;
-      }
     }
     return relocated;
   },
@@ -194,19 +191,21 @@ var LibraryDylink = {
         table.set(i, null);
       }
 
-      // We resolve symbols against the global Module but failing that also
-      // against the local symbols exported a side module.  This is because
-      // a) Module sometime need to import their own symbols
-      // b) Symbols from loaded modules are not always added to the global Module.
-      var moduleLocal = {};
+      // This is the export map that we ultimately return.  We declare it here
+      // so it can be used within resolveSymbol.  We resolve symbols against
+      // this local symbol map in the case there they are not present on the
+      // global Module object.  We need this fallback because:
+      // a) Modules sometime need to import their own symbols
+      // b) Symbols from side modules are not always added to the global namespace.
+      var moduleExports;
 
-      var resolveSymbol = function(sym, type) {
+      function resolveSymbol(sym, type) {
         var resolved = Module["asm"][sym];
         if (!resolved) {
           var mangled = asmjsMangle(sym);
           resolved = Module[mangled];
           if (!resolved) {
-            resolved = moduleLocal[sym];
+            resolved = moduleExports[sym];
           }
           if (!resolved && sym.startsWith('invoke_')) {
             resolved = createInvokeFunction(sym.split('_')[1]);
@@ -301,7 +300,7 @@ var LibraryDylink = {
       }
 #endif
 
-      function postInstantiation(instance, moduleLocal) {
+      function postInstantiation(instance) {
 #if ASSERTIONS
         // the table should be unchanged
         assert(table === originalTable);
@@ -315,9 +314,9 @@ var LibraryDylink = {
           assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
         }
 #endif
-        var exports = relocateExports(instance.exports, memoryBase, moduleLocal);
+        moduleExports = relocateExports(instance.exports, memoryBase);
         // initialize the module
-        var init = exports['__post_instantiate'];
+        var init = moduleExports['__post_instantiate'];
         if (init) {
           if (runtimeInitialized) {
             init();
@@ -326,17 +325,17 @@ var LibraryDylink = {
             __ATINIT__.push(init);
           }
         }
-        return exports;
+        return moduleExports;
       }
 
       if (flags.loadAsync) {
         return WebAssembly.instantiate(binary, info).then(function(result) {
-          return postInstantiation(result.instance, moduleLocal);
+          return postInstantiation(result.instance);
         });
       }
 
       var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
-      return postInstantiation(instance, moduleLocal);
+      return postInstantiation(instance);
     }
 
     // now load needed libraries and the module itself.
