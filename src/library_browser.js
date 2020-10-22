@@ -242,12 +242,12 @@ var LibraryBrowser = {
         return !Module.noWasmDecoding && name.endsWith('.so');
       };
       wasmPlugin['handle'] = function(byteArray, name, onload, onerror) {
-        // loadWebAssemblyModule can not load modules out-of-order, so rather
+        // loadSideModule can not load modules out-of-order, so rather
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
         this['asyncWasmLoadPromise'] = this['asyncWasmLoadPromise'].then(
           function() {
-            return loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true});
+            return loadSideModule(byteArray, {loadAsync: true, nodelete: true});
           }).then(
             function(module) {
               Module['preloadedWasm'][name] = module;
