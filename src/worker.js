@@ -244,8 +244,6 @@ this.onmessage = function(e) {
       if (threadInfoStruct) {
         Module['PThread'].threadCancel();
       }
-    } else if (e.data.target === 'setimmediate') {
-      // no-op
     } else if (e.data.cmd === 'processThreadQueue') {
       if (threadInfoStruct) { // If this thread is actually running?
         Module['_emscripten_current_thread_process_queued_calls']();

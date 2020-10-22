@@ -1163,34 +1163,12 @@ var LibraryBrowser = {
         Browser.requestAnimationFrame(Browser.mainLoop.runner);
       };
       Browser.mainLoop.method = 'rAF';
-    } else if (mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
-      if (typeof setImmediate === 'undefined') {
-        // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
-        var setImmediates = [];
-        var emscriptenMainLoopMessageId = 'setimmediate';
-        var Browser_setImmediate_messageHandler = function(event) {
-          // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
-          // so check for both cases.
-          if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
-            event.stopPropagation();
-            setImmediates.shift()();
-          }
-        }
-        addEventListener("message", Browser_setImmediate_messageHandler, true);
-        setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
-          setImmediates.push(func);
-          if (ENVIRONMENT_IS_WORKER) {
-            if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
-            Module['setImmediates'].push(func);
-            postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
-          } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
-        })
-      }
-      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setImmediate() {
-        setImmediate(Browser.mainLoop.runner);
-      };
-      Browser.mainLoop.method = 'immediate';
     }
+#if ASSERTIONS
+    else {
+      abort("Invalid main loop mode " + mode);
+    }
+#endif
     return 0;
   },
 

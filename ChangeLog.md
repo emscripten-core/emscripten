@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Remove `setImmediate` usage. This was only useful for IE11, so it's not that
+  helpful today. Emulate it with `setTimeout(0)` where necessary, so that
+  existing APIs do not break (and, there should be no observable difference
+  aside for on IE11).
 - Dynamic linking (MAIN_MODULE + SIDE_MODULE) now produces wasm binaries that
   depend on mutable globals.  Specifically the stack pointer global is mutable
   and shared between the modules. This is an ABI change for dynamic linking.

@@ -254,10 +254,6 @@ worker.onmessage = function worker_onmessage(event) {
       }
       break;
     }
-    case 'setimmediate': {
-      worker.postMessage({target: 'setimmediate'});
-      break;
-    }
     default: throw 'what? ' + data.target;
   }
 };
