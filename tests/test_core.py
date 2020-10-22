@@ -7687,6 +7687,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DONE_BIG_STRING']
     self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
 
+    # ASSERTIONS=2 implies STACK_OVERFLOW_CHECK=2
+    self.set_setting('STACK_OVERFLOW_CHECK', 0)
+    self.set_setting('ASSERTIONS', 2)
+    self.do_runf(path_from_root('tests', 'stack_overflow.cpp'), 'stack overflow', assert_returncode=NON_ZERO)
+
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
     self.emcc_args += ['-s', 'USE_PTHREADS=1']
