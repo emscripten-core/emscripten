@@ -200,12 +200,12 @@ class other(RunnerCore):
       self.assertContained('import(', f.read())
 
   def test_export_es6_implies_modularize(self):
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORT_ES6=1', '-s', 'ASSERTIONS=0'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORT_ES6=1'])
     src = open('a.out.js').read()
     self.assertContained('export default Module;', src)
 
   def test_export_es6_requires_modularize(self):
-    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORT_ES6=1', '-s', 'MODULARIZE=0', '-s', 'ASSERTIONS=0'])
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORT_ES6=1', '-s', 'MODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
 
   def test_emcc_out_file(self):
