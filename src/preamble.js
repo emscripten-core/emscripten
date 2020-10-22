@@ -291,7 +291,7 @@ assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 #endif
 
 #if RELOCATABLE
-__stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STACK_BASE);
+var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STACK_BASE);
 
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
