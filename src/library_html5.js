@@ -2679,7 +2679,7 @@ var LibraryJSEvents = {
   },
 
   emscripten_clear_immediate: function(id) {
-    clearImmediate(id);
+    clearTimeout(id);
   },
 
   emscripten_set_immediate_loop: function(cb, userData) {
