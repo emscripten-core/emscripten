@@ -110,7 +110,6 @@ int main() {
     tm2.tm_mon != tm_local.tm_mon || tm2.tm_wday != tm_local.tm_wday ||
     tm2.tm_yday != tm_local.tm_yday);
   printf("mktime parameter is equivalent to localtime return: %d\n", mktimeOk);
-  printf("%lu\n", t2);
 
   // Verify that mktime is able to guess what the dst is. It might get it wrong
   // during the one ambiguous hour when the clock goes back -- we assume that in
