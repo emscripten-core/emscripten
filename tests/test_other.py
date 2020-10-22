@@ -7449,6 +7449,20 @@ int main() {
       self.assertIn(b'external_debug_info', wasm)
       self.assertIn(b'a.out.wasm.debug.wasm', wasm)
 
+    # building to a subdirectory should still leave a relative path, which
+    # assumes the debug file is alongside the main one
+    os.mkdir('subdir')
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
+                      '-gseparate-dwarf',
+                      '-o', os.path.join('subdir', 'output.js')])
+    with open(os.path.join('subdir', 'output.wasm'), 'rb') as f:
+      wasm = f.read()
+      self.assertIn(b'output.wasm.debug.wasm', wasm)
+      # check both unix-style slashes and the system's slashes, so that we don't
+      # assume the encoding of the section in this test
+      self.assertNotIn(b'subdir/output.wasm.debug.wasm', wasm)
+      self.assertNotIn(bytes(os.path.join('subdir', 'output.wasm.debug.wasm'), 'ascii'), wasm)
+
   def test_separate_dwarf_with_filename(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
     self.assertNotExists('a.out.wasm.debug.wasm')
@@ -7457,6 +7471,17 @@ int main() {
     for invalid in ('-gseparate-dwarf=x=', '-gseparate-dwarfy=', '-gseparate-dwarf-hmm'):
       stderr = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), invalid])
       self.assertContained('invalid -gseparate-dwarf=FILENAME notation', stderr)
+
+    # building to a subdirectory, but with the debug file in another place,
+    # should leave a relative path to the debug wasm
+    os.mkdir('subdir')
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
+                      '-o', os.path.join('subdir', 'output.js'),
+                      '-gseparate-dwarf=with_dwarf2.wasm'])
+    self.assertExists('with_dwarf2.wasm')
+    with open(os.path.join('subdir', 'output.wasm'), 'rb') as f:
+      wasm = f.read()
+      self.assertIn(b'../with_dwarf2.wasm', wasm)
 
   def test_separate_dwarf_with_filename_and_path(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
