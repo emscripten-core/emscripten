@@ -57,23 +57,6 @@ var LibraryDylink = {
     // name   -> handle
     loadedLibNames: {},
   },
-  $LDSO_postset: 'createDefaultHandles()',
-
-  $createDefaultHandles: function() {
-    LDSO.loadedLibs[{{{ cDefine('RTLD_DEFAULT') }}}] = {
-      refcount: Infinity,   // = nodelete
-      name:     '__default__',
-      // module:
-      global:   true
-    };
-    LDSO.loadedLibs[-1] = {
-      refcount: Infinity,   // = nodelete
-      name:     '__main__',
-      module:   Module['asm'],
-      global:   true
-    };
-    LDSO.loadedLibNames['__main__'] = -1;
-  },
 
   // Dynmamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
@@ -397,6 +380,15 @@ var LibraryDylink = {
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadSideModule', '$asmjsMangle', '$fetchBinary'],
   $loadDynamicLibrary: function(lib, flags) {
+    if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
+      LDSO.loadedLibs[-1] = {
+        refcount: Infinity,   // = nodelete
+        name:     '__main__',
+        module:   Module['asm'],
+        global:   true
+      };
+      LDSO.loadedLibNames['__main__'] = -1;
+    }
 
     // when loadDynamicLibrary did not have flags, libraries were loaded globally & permanently
     flags = flags || {global: true, nodelete: true}
@@ -628,23 +620,25 @@ var LibraryDylink = {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = UTF8ToString(symbol);
-
-    var lib = LDSO.loadedLibs[handle];
-    if (!lib) {
-      DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
-      return 0;
-    }
-
     var result;
-    if (!lib.module) {
-      result = resolveGlobalSymbol(symbol)
-    } else if (lib.module.hasOwnProperty(symbol)) {
-      result = lib.module[symbol];
-    }
 
-    if (!result) {
-      DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name;
-      return 0;
+    if (handle == {{{ cDefine('RTLD_DEFAULT') }}}) {
+      result = resolveGlobalSymbol(symbol)
+      if (!result) {
+        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: RTLD_DEFAULT'
+        return 0;
+      }
+    } else {
+      var lib = LDSO.loadedLibs[handle];
+      if (!lib) {
+        DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
+        return 0;
+      }
+      if (!lib.module.hasOwnProperty(symbol)) {
+        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name;
+        return 0;
+      }
+      result = lib.module[symbol];
     }
 
     if (typeof result !== 'function') {
