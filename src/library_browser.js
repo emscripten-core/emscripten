@@ -1152,7 +1152,12 @@ var LibraryBrowser = {
       return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
     }
 
-    if (mode == 0 /*EM_TIMING_SETTIMEOUT*/) {
+    if (mode == 0 /*EM_TIMING_SETTIMEOUT*/ ||
+        mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
+      if (mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
+        // "polyfill" setImmediate using a setTimeout of 0.
+        value = 0;
+      }
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setTimeout() {
         var timeUntilNextTick = Math.max(0, Browser.mainLoop.tickStartTime + value - _emscripten_get_now())|0;
         setTimeout(Browser.mainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
@@ -1164,11 +1169,6 @@ var LibraryBrowser = {
       };
       Browser.mainLoop.method = 'rAF';
     }
-#if ASSERTIONS
-    else {
-      abort("Invalid main loop mode " + mode);
-    }
-#endif
     return 0;
   },
 
