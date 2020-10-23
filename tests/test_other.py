@@ -119,16 +119,11 @@ class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
 
-  # Utility to run a simple test in this suite. This receives a directory which
-  # should contain a test.cpp and test.out files, compiles the cpp, and runs it
-  # to verify the output, with optional compile and run arguments.
-  # TODO: use in more places
-  def do_other_test(self, dirname, emcc_args=[], run_args=[]):
-    shutil.copyfile(path_from_root('tests', dirname, 'test.cpp'), 'test.cpp')
-    self.run_process([EMCC, 'test.cpp'] + emcc_args)
-    expected = open(path_from_root('tests', dirname, 'test.out')).read()
-    seen = self.run_js('a.out.js', args=run_args) + '\n'
-    self.assertContained(expected, seen)
+  def do_other_test(self, testname, emcc_args=[], run_args=[]):
+    orig_args = self.emcc_args
+    self.emcc_args += emcc_args
+    self.do_run_in_out_file_test('tests', 'other', testname, args=run_args)
+    self.emcc_args = orig_args
 
   # Another utility to run a test in this suite. This receives a source file
   # to compile, with optional compiler and execution flags.
@@ -1591,9 +1586,9 @@ int f() {
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
-    self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['0'], emcc_args=['-s', 'LEGACY_GL_EMULATION=0'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', run_args=['0'], emcc_args=['-s', 'LEGACY_GL_EMULATION=0'])
     # with it, it should work
-    self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['1'], emcc_args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', run_args=['1'], emcc_args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_prepost(self):
     create_test_file('main.cpp', '''
@@ -3543,7 +3538,7 @@ int main() {
     self.assertContained('read: 0\nfile size is 104\n', self.run_js('a.out.js'))
 
   def test_unlink(self):
-    self.do_other_test(os.path.join('other', 'unlink'))
+    self.do_other_test('test_unlink.cpp')
 
   def test_argv0_node(self):
     create_test_file('code.cpp', r'''
@@ -3976,7 +3971,7 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     self.assertNotEqual(len(without_dash_o), 0)
 
   def test_malloc_implicit(self):
-    self.do_other_test(os.path.join('other', 'malloc_implicit'))
+    self.do_other_test('test_malloc_implicit.cpp')
 
   def test_switch64phi(self):
     # issue 2539, fastcomp segfault on phi-i64 interaction
@@ -7273,26 +7268,26 @@ end
     assert re.search(expected, out)
 
   def test_ioctl_window_size(self):
-      self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
+      self.do_other_test('test_ioctl_window_size.cpp')
 
   def test_fd_closed(self):
-    self.do_other_test(os.path.join('other', 'fd_closed'))
+    self.do_other_test('test_fd_closed.cpp')
 
   def test_fflush(self):
     # fflush without the full filesystem won't quite work
-    self.do_other_test(os.path.join('other', 'fflush'))
+    self.do_other_test('test_fflush.cpp')
 
   def test_fflush_fs(self):
     # fflush with the full filesystem will flush from libc, but not the JS logging, which awaits a newline
-    self.do_other_test(os.path.join('other', 'fflush_fs'), emcc_args=['-s', 'FORCE_FILESYSTEM=1'])
+    self.do_other_test('test_fflush_fs.cpp', emcc_args=['-s', 'FORCE_FILESYSTEM=1'])
 
   def test_fflush_fs_exit(self):
     # on exit, we can send out a newline as no more code will run
-    self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
+    self.do_other_test('test_fflush_fs_exit.cpp', emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
   def test_extern_weak(self):
-    self.do_other_test(os.path.join('other', 'extern_weak'))
-    self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
+    self.do_other_test('test_extern_weak.cpp')
+    self.do_other_test('test_extern_weak.cpp', emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
 
   def test_main_module_without_main(self):
     create_test_file('pre.js', r'''
@@ -8636,16 +8631,16 @@ int main(void) {
     for f in ['data_ro.dat', 'data_rw.dat']:
         create_test_file(f, 'Test file')
         emcc_args.extend(['--embed-file', f])
-    self.do_other_test('mmap_and_munmap', emcc_args)
+    self.do_other_test('test_mmap_and_munmap.cpp', emcc_args)
 
   def test_mmap_and_munmap_anonymous(self):
-    self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM'])
+    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM'])
 
   def test_mmap_and_munmap_anonymous_asan(self):
-    self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
+    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
 
   def test_mmap_memorygrowth(self):
-    self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
+    self.do_other_test('test_mmap_memorygrowth.cpp', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
 
   def test_files_and_module_assignment(self):
     # a pre-js can set Module to a new object or otherwise undo file preloading/
@@ -9105,11 +9100,11 @@ int main() {
     self.run_process([EMCC, 'errno_type.c'])
 
   def test_standalone_syscalls(self):
-    self.run_process([EMCC, path_from_root('tests', 'other', 'standalone_syscalls', 'test.cpp'), '-o', 'test.wasm'])
-    with open(path_from_root('tests', 'other', 'standalone_syscalls', 'test.out')) as f:
+    self.run_process([EMCC, path_from_root('tests', 'other', 'test_standalone_syscalls.cpp'), '-o', 'test.wasm'])
+    with open(path_from_root('tests', 'other', 'test_standalone_syscalls.out')) as f:
       expected = f.read()
-      for engine in WASM_ENGINES:
-        self.assertContained(expected, self.run_js('test.wasm', engine))
+    for engine in WASM_ENGINES:
+      self.assertContained(expected, self.run_js('test.wasm', engine))
 
   @requires_native_clang
   def test_wasm2c_reactor(self):
@@ -9363,7 +9358,7 @@ int main () {
     self.assertIdentical(one, two)
 
   def test_err(self):
-    self.do_other_test(os.path.join('other', 'err'))
+    self.do_other_test('test_err.cpp')
 
   def test_shared_flag(self):
     # Test that `-shared` flag causes object file generation but gives a warning
