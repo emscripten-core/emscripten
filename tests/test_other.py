@@ -5116,9 +5116,10 @@ int main(int argc, char** argv) {
         #include <stdio.h>
         int main() {
           puts("hello from main");
-          void *lib_handle = dlopen("%s", 0);
+          void *lib_handle = dlopen("%s", RTLD_NOW);
           if (!lib_handle) {
             puts("cannot load side module");
+            puts(dlerror());
             return 1;
           }
           typedef void (*voidfunc)();
@@ -5268,6 +5269,25 @@ int main() {
     self.assertContained('Hello4', out)
     self.assertContained('Ok', out)
 
+  def test_dlopen_bad_flags(self):
+    create_test_file('main.c', r'''
+#include <dlfcn.h>
+#include <stdio.h>
+
+int main() {
+  void* h = dlopen("lib.so", 0);
+  if (h) {
+    printf("expected dlopen to fail\n");
+    return 1;
+  }
+  printf("%s\n", dlerror());
+  return 0;
+}
+''')
+    self.run_process([EMCC, 'main.c', '-s', 'MAIN_MODULE=2'])
+    out = self.run_js('a.out.js')
+    self.assertContained('invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required', out)
+
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
     # before the module providing a global it needs is. in asm.js we use JS
@@ -5402,7 +5422,7 @@ int main(int argc, char** argv) {
       typedef void (*voidf)();
 
       int main() {
-        void* h = dlopen ("libside.wasm", RTLD_NOW|RTLD_GLOBAL);
+        void* h = dlopen("libside.wasm", RTLD_NOW);
         assert(h);
         voidf f = (voidf)dlsym(h, "test_throw");
         assert(f);

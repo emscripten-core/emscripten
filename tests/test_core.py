@@ -2696,7 +2696,7 @@ The current type of b is: 9
       typedef int64_t (*int64func)(int);
 
       int main() {
-        void *lib_handle = dlopen("liblib.so", 0);
+        void *lib_handle = dlopen("liblib.so", RTLD_NOW);
         if (!lib_handle) {
           puts(dlerror());
           abort();
@@ -3554,7 +3554,7 @@ ok
       typedef int (*fi)(float);
 
       int main() {
-        void *lib_handle = dlopen("liblib.so", 0);
+        void *lib_handle = dlopen("liblib.so", RTLD_NOW);
         if (!lib_handle) {
           puts(dlerror());
           abort();
