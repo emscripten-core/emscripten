@@ -5348,6 +5348,10 @@ EMSCRIPTEN_KEEPALIVE int foo() {
   return 42;
 }
 
+EMSCRIPTEN_KEEPALIVE int64_t foo64() {
+  return 64;
+}
+
 int main(int argc, char** argv) {
   int (*f)();
   f = dlsym(RTLD_DEFAULT, "foo");
@@ -5356,14 +5360,24 @@ int main(int argc, char** argv) {
     return 1;
   }
   printf("foo -> %d\n", f());
+
+  int64_t (*f64)();
+  f64 = dlsym(RTLD_DEFAULT, "foo64");
+  if (!f64) {
+    printf("dlsym failed: %s\n", dlerror());
+    return 1;
+  }
+  printf("foo64 -> %lld\n", f64());
+
   f = dlsym(RTLD_DEFAULT, "bar");
   printf("bar -> %p\n", f);
   return 0;
 }
 ''')
-    self.run_process([EMCC, 'main.c', '-s', 'MAIN_MODULE'])
+    self.run_process([EMCC, 'main.c', '-s', 'MAIN_MODULE=2'])
     out = self.run_js('a.out.js')
     self.assertContained('foo -> 42', out)
+    self.assertContained('foo64 -> 64', out)
     self.assertContained('bar -> 0', out)
 
   def test_main_module_without_exceptions_message(self):

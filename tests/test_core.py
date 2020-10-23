@@ -2677,41 +2677,38 @@ The current type of b is: 9
   @needs_dlfcn
   def test_dlfcn_i64(self):
     self.prep_dlfcn_lib()
-    self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
     create_test_file('liblib.c', '''
-      int foo(int x) {
+      #include <inttypes.h>
+
+      int64_t foo(int x) {
         return (long long)x / (long long)1234;
       }
       ''')
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
-    self.clear_setting('EXPORTED_FUNCTIONS')
     src = r'''
+      #include <inttypes.h>
       #include <stdio.h>
       #include <stdlib.h>
       #include <dlfcn.h>
 
-      typedef int (*intfunc)(int);
-
-      void *p;
+      typedef int64_t (*int64func)(int);
 
       int main() {
-        p = malloc(1024);
         void *lib_handle = dlopen("liblib.so", 0);
         if (!lib_handle) {
           puts(dlerror());
           abort();
         }
         printf("dll handle: %p\n", lib_handle);
-        intfunc x = (intfunc)dlsym(lib_handle, "foo");
+        int64func x = (int64func)dlsym(lib_handle, "foo");
         printf("foo func handle: %p\n", x);
-        if (p == 0) return 1;
         if (!x) {
           printf("dlsym failed: %s\n", dlerror());
           return 1;
         }
-        printf("|%d|\n", x(81234567));
+        printf("|%lld|\n", x(81234567));
         return 0;
       }
       '''
@@ -3864,29 +3861,15 @@ ok
       #include <stdint.h>
       extern int64_t sidey();
       int main() {
-        printf("other says %llx.\n", sidey());
+        printf("other says %lld.\n", sidey());
         return 0;
       }
     ''', '''
       #include <stdint.h>
       int64_t sidey() {
-        volatile int64_t x = 11;
-        x = x * x * x * x;
-        x += x % 17;
-        x += (x * (1 << 30));
-        x -= 96;
-        x = (x + 1000) / ((x % 5) + 1);
-        volatile uint64_t y = x / 2;
-        x = y / 3;
-        y = y * y * y * y;
-        y += y % 17;
-        y += (y * (1 << 30));
-        y -= 121;
-        y = (y + 1000) / ((y % 5) + 1);
-        x += y;
-        return x;
+        return 42;
       }
-    ''', 'other says 175a1ddee82b8c31.', force_c=True)
+    ''', 'other says 42.', force_c=True)
 
   @all_engines
   @needs_dlfcn

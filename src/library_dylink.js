@@ -111,14 +111,36 @@ var LibraryDylink = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   },
 
-  $resolveGlobalSymbol: function(sym) {
-    var resolved = Module["asm"][sym];
-    if (!resolved) {
-      var mangled = asmjsMangle(sym);
-      resolved = Module[mangled];
-      if (!resolved && sym.startsWith('invoke_')) {
-        resolved = createInvokeFunction(sym.split('_')[1]);
+  // Resolve a symbol first against Module["asm"] and then failing that
+  // resolve it directly against the global Module object.
+  $resolveGlobalSymbol: function(sym, legalized) {
+#if !WASM_BIGINT
+    // In case the function was legalized, look for the original export first.
+    // We always want to return the original wasm function here since this
+    // function is used in the internal linking only.
+    if (!legalized) {
+      var orig = Module['asm']['orig$' + sym];
+      if (orig) {
+        return orig;
       }
+    }
+#endif
+
+    var resolved = Module['asm'][sym];
+    if (!resolved) {
+#if !WASM_BIGINT
+      if (!legalized) {
+        orig = Module['_orig$' + sym];
+        if (orig) {
+          return orig;
+        }
+     }
+#endif
+      resolved = Module[asmjsMangle(sym)];
+    }
+
+    if (!resolved && sym.startsWith('invoke_')) {
+      resolved = createInvokeFunction(sym.split('_')[1]);
     }
     return resolved;
   },
@@ -211,8 +233,14 @@ var LibraryDylink = {
       // b) Symbols from side modules are not always added to the global namespace.
       var moduleExports;
 
-      function resolveSymbol(sym, type) {
-        var resolved = resolveGlobalSymbol(sym);
+      function resolveSymbol(sym, type, legalized) {
+        var resolved = resolveGlobalSymbol(sym, legalized);
+#if !WASM_BIGINT
+        if (!resolved && !legalized) {
+          // In case the function was legalized, look for the original export first.
+          resolved = moduleExports['orig$' + sym];
+        }
+#endif
         if (!resolved) {
           resolved = moduleExports[sym];
         }
@@ -266,13 +294,6 @@ var LibraryDylink = {
             assert(parts.length == 3)
             var name = parts[1];
             var sig = parts[2];
-#if !WASM_BIGINT
-            // If the export was legalized we look for the original
-            // function when adding it ot the table
-            if (sig.indexOf('j') >= 0) {
-              name = 'orig$' + name;
-            }
-#endif
             var fp = 0;
             return obj[prop] = function() {
               if (!fp) {
@@ -284,7 +305,7 @@ var LibraryDylink = {
           }
           // otherwise this is regular function import - call it indirectly
           return obj[prop] = function() {
-            return resolveSymbol(prop, 'function').apply(null, arguments);
+            return resolveSymbol(prop, 'function', true).apply(null, arguments);
           };
         }
       };
@@ -638,6 +659,10 @@ var LibraryDylink = {
         DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name;
         return 0;
       }
+#if !WASM_BIGINT
+      result = lib.module['orig$' + symbol];
+      if (!result)
+#endif
       result = lib.module[symbol];
     }
 
