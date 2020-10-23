@@ -3496,23 +3496,13 @@ window.close = function() {
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
-  def test_dylink_dso_needed_wasm(self):
-    self._run_dylink_dso_needed(1, 0)
+  def test_dylink_dso_needed(self):
+    self._run_dylink_dso_needed(0)
 
-  def test_dylink_dso_needed_wasm_inworker(self):
-    self._run_dylink_dso_needed(1, 1)
+  def test_dylink_dso_needed_inworker(self):
+    self._run_dylink_dso_needed(1)
 
-  def test_dylink_dso_needed_asmjs(self):
-    self._run_dylink_dso_needed(0, 0)
-
-  def test_dylink_dso_needed_asmjs_inworker(self):
-    self._run_dylink_dso_needed(0, 1)
-
-  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
-  @requires_sync_compilation
-  def _run_dylink_dso_needed(self, wasm, inworker):
-    print('\n# wasm=%d inworker=%d' % (wasm, inworker))
-    self.set_setting('WASM', wasm)
+  def _run_dylink_dso_needed(self, inworker):
     self.emcc_args += ['-O2']
 
     def do_run(src, expected_output):
