@@ -7481,7 +7481,7 @@ int main() {
     self.assertExists('with_dwarf2.wasm')
     with open(os.path.join('subdir', 'output.wasm'), 'rb') as f:
       wasm = f.read()
-      self.assertIn(b'../with_dwarf2.wasm', wasm)
+      self.assertIn(bytes(os.path.join('..', 'with_dwarf2.wasm'), 'ascii'), wasm)
 
   def test_separate_dwarf_with_filename_and_path(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
