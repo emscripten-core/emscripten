@@ -2467,6 +2467,13 @@ void *getBindBuffer() {
                  '--kill_exit', '--port', '6939', '--verbose',
                  '--log_stdout', self.in_dir('stdout.txt'),
                  '--log_stderr', self.in_dir('stderr.txt')]
+
+    # Verify that trying to pass argument to the page without the `--` separator will
+    # generate an actionable error message
+    err = self.expect_fail(args_base + ['--foo'])
+    self.assertContained('error: unrecognized arguments: --foo', err)
+    self.assertContained('remember to add `--` between arguments', err)
+
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
@@ -2484,11 +2491,12 @@ void *getBindBuffer() {
           browser_args = parser.parse_known_args(browser_args)[1]
         if browser_args:
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+
     for args in [
         args_base,
         args_base + ['--private_browsing', '--port', '6941']
     ]:
-      args += [self.in_dir('hello_world.html'), '1', '2', '--3']
+      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
