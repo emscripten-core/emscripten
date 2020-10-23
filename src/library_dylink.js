@@ -111,7 +111,7 @@ var LibraryDylink = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   },
 
-  // Resolve a symbol first agsint Module["asm"] and then failing that
+  // Resolve a symbol first against Module["asm"] and then failing that
   // resolve it directly against the global Module object.
   $resolveGlobalSymbol: function(sym, legalized) {
 #if !WASM_BIGINT
