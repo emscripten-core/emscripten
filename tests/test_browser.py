@@ -3508,7 +3508,6 @@ window.close = function() {
   def test_dylink_dso_needed_asmjs_inworker(self):
     self._run_dylink_dso_needed(0, 1)
 
-  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
   @requires_sync_compilation
   def _run_dylink_dso_needed(self, wasm, inworker):
     print('\n# wasm=%d inworker=%d' % (wasm, inworker))
