@@ -3994,44 +3994,34 @@ namespace
     typedef ::int64_t int_type;
 
     int_adapter(int_type v = 0)
-      : value_(v)
-    {}
-    static const int_adapter pos_infinity()
-    {
+      : value_(v) {}
+    static const int_adapter pos_infinity() {
       return (::std::numeric_limits<int_type>::max)();
     }
-    static const int_adapter neg_infinity()
-    {
+    static const int_adapter neg_infinity() {
       return (::std::numeric_limits<int_type>::min)();
     }
-    static const int_adapter not_a_number()
-    {
+    static const int_adapter not_a_number() {
       return (::std::numeric_limits<int_type>::max)()-1;
     }
-    static bool is_neg_inf(int_type v)
-    {
+    static bool is_neg_inf(int_type v) {
       return (v == neg_infinity().as_number());
     }
-    static bool is_pos_inf(int_type v)
-    {
+    static bool is_pos_inf(int_type v) {
       return (v == pos_infinity().as_number());
     }
-    static bool is_not_a_number(int_type v)
-    {
+    static bool is_not_a_number(int_type v) {
       return (v == not_a_number().as_number());
     }
 
-    bool is_infinity() const
-    {
+    bool is_infinity() const {
       return (value_ == neg_infinity().as_number() ||
               value_ == pos_infinity().as_number());
     }
-    bool is_special() const
-    {
+    bool is_special() const {
       return(is_infinity() || value_ == not_a_number().as_number());
     }
-    bool operator<(const int_adapter& rhs) const
-    {
+    bool operator<(const int_adapter& rhs) const {
       if(value_ == not_a_number().as_number()
          || rhs.value_ == not_a_number().as_number()) {
         return false;
@@ -4039,21 +4029,16 @@ namespace
       if(value_ < rhs.value_) return true;
       return false;
     }
-    int_type as_number() const
-    {
+    int_type as_number() const {
       return value_;
     }
 
-    int_adapter operator-(const int_adapter& rhs)const
-    {
-      if(is_special() || rhs.is_special())
-      {
-        if (rhs.is_pos_inf(rhs.as_number()))
-        {
+    int_adapter operator-(const int_adapter& rhs) const {
+      if(is_special() || rhs.is_special()) {
+        if (rhs.is_pos_inf(rhs.as_number())) {
           return int_adapter(1);
         }
-        if (rhs.is_neg_inf(rhs.as_number()))
-        {
+        if (rhs.is_neg_inf(rhs.as_number())) {
           return int_adapter();
         }
       }
@@ -4072,14 +4057,12 @@ namespace
         offset_(d)
     {}
 
-    time_iterator& operator--()
-    {
+    time_iterator& operator--() {
       current_ = int_adapter(current_ - offset_);
       return *this;
     }
 
-    bool operator>=(const int_adapter& t)
-    {
+    bool operator>=(const int_adapter& t) {
       return not (current_ < t);
     }
 
@@ -4088,8 +4071,7 @@ namespace
     int_adapter offset_;
   };
 
-  void iterate_backward(const int_adapter *answers, const int_adapter& td)
-  {
+  void iterate_backward(const int_adapter *answers, const int_adapter& td) {
     int_adapter end = answers[0];
     time_iterator titr(end, td);
 
@@ -4099,9 +4081,7 @@ namespace
   }
 }
 
-int
-main()
-{
+int main() {
   const int_adapter answer1[] = {};
   iterate_backward(NULL, int_adapter());
   iterate_backward(answer1, int_adapter());
@@ -4402,8 +4382,7 @@ namespace
 //============================================================================
 // :: Entry Point
 
-int main()
-{
+int main() {
   const char* const file = "/tmp/file";
   unlink(file);
   readOnlyFile(file, "This content should get written because the file "
@@ -4428,11 +4407,10 @@ Failed to open file for writing: /tmp/file; errno=2; Permission denied
     # they overflow the interpreter's limit
     large_size = int(1500000)
     create_test_file('large.txt', 'x' * large_size)
-    create_test_file('src.cpp', r'''
+    create_test_file('src.c', r'''
       #include <stdio.h>
       #include <unistd.h>
-      int main()
-      {
+      int main() {
           FILE* fp = fopen("large.txt", "r");
           if (fp) {
               printf("ok\n");
@@ -4444,7 +4422,7 @@ Failed to open file for writing: /tmp/file; errno=2; Permission denied
           return 0;
       }
     ''')
-    self.run_process([EMCC, 'src.cpp', '--embed-file', 'large.txt'])
+    self.run_process([EMCC, 'src.c', '--embed-file', 'large.txt'])
     for engine in JS_ENGINES:
       if engine == V8_ENGINE:
         continue # ooms
@@ -4452,55 +4430,42 @@ Failed to open file for writing: /tmp/file; errno=2; Permission denied
       self.assertContained('ok\n' + str(large_size) + '\n', self.run_js('a.out.js', engine=engine))
 
   def test_force_exit(self):
-    create_test_file('src.cpp', r'''
+    create_test_file('src.c', r'''
 #include <emscripten/emscripten.h>
 
-namespace
-{
-  extern "C"
-  EMSCRIPTEN_KEEPALIVE
-  void callback()
-  {
-    EM_ASM({ out('callback pre()') });
-    ::emscripten_force_exit(42);
-    EM_ASM({ out('callback post()') });
-    }
+EMSCRIPTEN_KEEPALIVE void callback() {
+  EM_ASM({ out('callback pre()') });
+  emscripten_force_exit(42);
+  EM_ASM({ out('callback post()') });
 }
 
-int
-main()
-{
+int main() {
   EM_ASM({ setTimeout(function() { out("calling callback()"); _callback() }, 100) });
-  ::emscripten_exit_with_live_runtime();
+  emscripten_exit_with_live_runtime();
   return 123;
 }
-    ''')
-    self.run_process([EMCC, 'src.cpp'])
+''')
+    self.run_process([EMCC, 'src.c'])
     output = self.run_js('a.out.js', assert_returncode=42)
-    assert 'callback pre()' in output
-    assert 'callback post()' not in output
+    self.assertContained('callback pre()', output)
+    self.assertNotContained('callback post()', output)
 
   def test_bad_locale(self):
     create_test_file('src.cpp', r'''
-
 #include <locale.h>
 #include <stdio.h>
 #include <wctype.h>
 
-int
-main(const int argc, const char * const * const argv)
-{
+int main(const int argc, const char * const * const argv) {
   const char * const locale = (argc > 1 ? argv[1] : "C");
   const char * const actual = setlocale(LC_ALL, locale);
   if(actual == NULL) {
-    printf("%s locale not supported\n",
-           locale);
+    printf("%s locale not supported\n", locale);
     return 0;
   }
   printf("locale set to %s: %s\n", locale, actual);
 }
-
-    ''')
+''')
     self.run_process([EMCC, 'src.cpp'])
 
     self.assertContained('locale set to C: C;C;C;C;C;C',
@@ -4548,9 +4513,7 @@ main(const int argc, const char * const * const argv)
 #include <iostream>
 #include <stdexcept>
 
-int
-main(const int argc, const char * const * const argv)
-{
+int main(const int argc, const char * const * const argv) {
   const char * const name = argc > 1 ? argv[1] : "C";
 
   try {
@@ -4576,7 +4539,7 @@ main(const int argc, const char * const * const argv)
     return 127;
   }
 }
-    ''')
+''')
     self.run_process([EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', self.run_js('a.out.js', args=['C']))
     self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', self.run_js('a.out.js', args=['waka'], assert_returncode=1))
@@ -4717,9 +4680,7 @@ main(const int argc, const char * const * const argv)
     printf("pass: %s\n", #expression);           \
   }                                              \
 
-int
-main()
-{
+int main() {
   int error;
   int fail = 0;
   CHECK(mkdir("path", 0777) == 0);
@@ -4875,10 +4836,9 @@ struct S_Descriptor {
     Bit32u base_16_23   :8;
 };
 
-class Descriptor
-{
+class Descriptor {
 public:
-    Descriptor() { saved.fill[0]=saved.fill[1]=0; }
+    Descriptor() { saved.fill[0] = saved.fill[1] = 0; }
     union {
         S_Descriptor seg;
         Bit32u fill[2];
@@ -5222,47 +5182,35 @@ int main(int argc, char** argv) {
     create_test_file('hello1.c', r'''
 #include <stdio.h>
 
-void
-hello1 ()
-{
-  printf ("Hello1\n");
+void hello1() {
+  printf("Hello1\n");
   return;
 }
-
 ''')
     create_test_file('hello2.c', r'''
 #include <stdio.h>
 
-void
-hello2 ()
-{
-  printf ("Hello2\n");
+void hello2() {
+  printf("Hello2\n");
   return;
 }
-
 ''')
     create_test_file('hello3.c', r'''
 #include <stdio.h>
 
-void
-hello3 ()
-{
+void hello3() {
   printf ("Hello3\n");
   return;
 }
-
 ''')
     create_test_file('hello4.c', r'''
 #include <stdio.h>
 #include <math.h>
 
-double
-hello4 (double x)
-{
-  printf ("Hello4\n");
+double hello4(double x) {
+  printf("Hello4\n");
   return fmod(x, 2.0);
 }
-
 ''')
     create_test_file('pre.js', r'''
 Module['preRun'].push(function (){
@@ -5275,29 +5223,30 @@ Module['preRun'].push(function (){
 #include <string.h>
 #include <dlfcn.h>
 
-int
-main()
-{
+int main() {
   void *h;
-  void (*f) ();
-  double (*f2) (double);
+  void (*f)();
+  double (*f2)(double);
 
-  h = dlopen ("libhello1.wasm", RTLD_NOW);
-  f = dlsym (h, "hello1");
+  h = dlopen("libhello1.wasm", RTLD_NOW);
+  f = dlsym(h, "hello1");
   f();
-  dlclose (h);
-  h = dlopen ("libhello2.wasm", RTLD_NOW);
-  f = dlsym (h, "hello2");
+  dlclose(h);
+
+  h = dlopen("libhello2.wasm", RTLD_NOW);
+  f = dlsym(h, "hello2");
   f();
-  dlclose (h);
-  h = dlopen ("libhello3.wasm", RTLD_NOW);
-  f = dlsym (h, "hello3");
+  dlclose(h);
+
+  h = dlopen("libhello3.wasm", RTLD_NOW);
+  f = dlsym(h, "hello3");
   f();
-  dlclose (h);
-  h = dlopen ("/usr/local/lib/libhello4.wasm", RTLD_NOW);
-  f2 = dlsym (h, "hello4");
+  dlclose(h);
+
+  h = dlopen("/usr/local/lib/libhello4.wasm", RTLD_NOW);
+  f2 = dlsym(h, "hello4");
   double result = f2(5.5);
-  dlclose (h);
+  dlclose(h);
 
   if (result == 1.5) {
     printf("Ok\n");
@@ -5334,26 +5283,22 @@ main()
 #include <stdio.h>
 
 extern int hello1_val;
-int hello1_val=3;
+int hello1_val = 3;
 
-void
-hello1 (int i)
-{
-  printf ("hello1_val by hello1:%d\n",hello1_val);
-  printf ("Hello%d\n",i);
+void hello1(int i) {
+  printf("hello1_val by hello1:%d\n",hello1_val);
+  printf("Hello%d\n",i);
 }
 ''')
     create_test_file('hello2.c', r'''
 #include <stdio.h>
 
 extern int hello1_val;
-extern void hello1 (int);
+extern void hello1(int);
 
-void
-hello2 (int i)
-{
+void hello2(int i) {
   void (*f) (int);
-  printf ("hello1_val by hello2:%d\n",hello1_val);
+  printf("hello1_val by hello2:%d\n",hello1_val);
   f = hello1;
   f(i);
 }
@@ -5364,20 +5309,18 @@ hello2 (int i)
 #include <string.h>
 #include <dlfcn.h>
 
-int
-main(int argc,char** argv)
-{
+int main(int argc,char** argv) {
   void *h;
   void *h2;
   void (*f) (int);
-  h = dlopen ("libhello1.wasm", RTLD_NOW|RTLD_GLOBAL);
-  h2 = dlopen ("libhello2.wasm", RTLD_NOW|RTLD_GLOBAL);
-  f = dlsym (h, "hello1");
+  h = dlopen("libhello1.wasm", RTLD_NOW|RTLD_GLOBAL);
+  h2 = dlopen("libhello2.wasm", RTLD_NOW|RTLD_GLOBAL);
+  f = dlsym(h, "hello1");
   f(1);
-  f = dlsym (h2, "hello2");
+  f = dlsym(h2, "hello2");
   f(2);
-  dlclose (h);
-  dlclose (h2);
+  dlclose(h);
+  dlclose(h2);
   return 0;
 }
 ''')
@@ -5478,15 +5421,13 @@ int main(int argc, char** argv) {
   def test_debug_asmLastOpts(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
-struct Dtlink_t
-{   struct Dtlink_t*   right;  /* right child      */
+struct Dtlink_t {   struct Dtlink_t*   right;  /* right child      */
         union
         { unsigned int  _hash;  /* hash value       */
           struct Dtlink_t* _left;  /* left child       */
         } hl;
 };
-int treecount(register struct Dtlink_t* e)
-{
+int treecount(register struct Dtlink_t* e) {
   return e ? treecount(e->hl._left) + treecount(e->right) + 1 : 0;
 }
 int main() {
@@ -5512,6 +5453,7 @@ void test(double d) {
   len3 = snprintf(buffer2, 100, "%g", d);
   printf("|%g : %u : %s : %s : %d|\n", d, len, buffer, buffer2, len3);
 }
+
 int main() {
   printf("\n");
   test(0);
@@ -5595,13 +5537,14 @@ int main() {
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
   def test_umask_0(self):
-    create_test_file('src.c', r'''
+    create_test_file('src.c', r'''\
 #include <sys/stat.h>
 #include <stdio.h>
 int main() {
   umask(0);
   printf("hello, world!\n");
-}''')
+}
+''')
     self.run_process([EMCC, 'src.c'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
@@ -5619,7 +5562,7 @@ mergeInto(LibraryManager.library, {
   }()),
 });
 ''')
-    create_test_file('test.cpp', '''
+    create_test_file('test.cpp', '''\
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -5704,9 +5647,7 @@ mergeInto(LibraryManager.library, {
 
 #define TEST_PATH "/boot/README.txt"
 
-int
-main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   errno = 0;
   char *t_realpath_buf = realpath(TEST_PATH, NULL);
   if (NULL == t_realpath_buf) {
@@ -5733,9 +5674,7 @@ main(int argc, char **argv)
 
 #define TEST_PATH "/working/TEST_NODEFS.txt"
 
-int
-main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   errno = 0;
   EM_ASM({
     FS.mkdir('/working');
