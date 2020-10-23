@@ -3640,6 +3640,7 @@ ok
   @needs_dlfcn
   def test_dylink_basics(self):
     self.do_basic_dylink_test()
+    self.verify_in_strict_mode('src.js')
 
   @needs_dlfcn
   def test_dylink_no_export(self):
