@@ -111,9 +111,21 @@ var LibraryDylink = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   },
 
+  $resolveGlobalSymbol: function(sym) {
+    var resolved = Module["asm"][sym];
+    if (!resolved) {
+      var mangled = asmjsMangle(sym);
+      resolved = Module[mangled];
+      if (!resolved && sym.startsWith('invoke_')) {
+        resolved = createInvokeFunction(sym.split('_')[1]);
+      }
+    }
+    return resolved;
+  },
+
   // Loads a side module from binary data. Returns the module's exports or a
   // progise that resolves to its exports if the loadAsync flag is set.
-  $loadSideModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle'],
+  $loadSideModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle', '$resolveGlobalSymbol'],
   $loadSideModule: function(binary, flags) {
     var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
     assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
@@ -200,20 +212,13 @@ var LibraryDylink = {
       var moduleExports;
 
       function resolveSymbol(sym, type) {
-        var resolved = Module["asm"][sym];
+        var resolved = resolveGlobalSymbol(sym);
         if (!resolved) {
-          var mangled = asmjsMangle(sym);
-          resolved = Module[mangled];
-          if (!resolved) {
-            resolved = moduleExports[sym];
-          }
-          if (!resolved && sym.startsWith('invoke_')) {
-            resolved = createInvokeFunction(sym.split('_')[1]);
-          }
-#if ASSERTIONS
-          assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
-#endif
+          resolved = moduleExports[sym];
         }
+#if ASSERTIONS
+        assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#endif
         return resolved;
       }
 
@@ -375,14 +380,14 @@ var LibraryDylink = {
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadSideModule', '$asmjsMangle', '$fetchBinary'],
   $loadDynamicLibrary: function(lib, flags) {
-    if (lib == '__self__' && !LDSO.loadedLibNames[lib]) {
+    if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
         refcount: Infinity,   // = nodelete
-        name:     '__self__',
+        name:     '__main__',
         module:   Module['asm'],
         global:   true
       };
-      LDSO.loadedLibNames['__self__'] = -1;
+      LDSO.loadedLibNames['__main__'] = -1;
     }
 
     // when loadDynamicLibrary did not have flags, libraries were loaded globally & permanently
@@ -482,7 +487,7 @@ var LibraryDylink = {
           var curr = Module[sym], next = libModule[sym];
           // don't warn on functions - might be odr, linkonce_odr, etc.
           if (!(typeof curr === 'function' && typeof next === 'function')) {
-            err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+            err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)");
           }
         }
 #endif
@@ -545,7 +550,7 @@ var LibraryDylink = {
     var searchpaths = [];
     var filename;
     if (filenameAddr === 0) {
-      filename = '__self__';
+      filename = '__main__';
     } else {
       filename = UTF8ToString(filenameAddr);
 
@@ -615,20 +620,27 @@ var LibraryDylink = {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = UTF8ToString(symbol);
+    var result;
 
-    var lib = LDSO.loadedLibs[handle];
-    if (!lib) {
-      DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
-      return 0;
+    if (handle == {{{ cDefine('RTLD_DEFAULT') }}}) {
+      result = resolveGlobalSymbol(symbol)
+      if (!result) {
+        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: RTLD_DEFAULT'
+        return 0;
+      }
+    } else {
+      var lib = LDSO.loadedLibs[handle];
+      if (!lib) {
+        DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
+        return 0;
+      }
+      if (!lib.module.hasOwnProperty(symbol)) {
+        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name;
+        return 0;
+      }
+      result = lib.module[symbol];
     }
 
-    if (!lib.module.hasOwnProperty(symbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                             '" in dynamic lib: ' + lib.name);
-      return 0;
-    }
-
-    var result = lib.module[symbol];
     if (typeof result !== 'function') {
       return result;
     }
