@@ -1237,8 +1237,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
     # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
-    # implies full stack overflow checks
-    if shared.Settings.ASSERTIONS:
+    # implies full stack overflow checks (unless the user specifically set
+    # something else)
+    if shared.Settings.ASSERTIONS and 'STACK_OVERFLOW_CHECK' not in settings_key_changes:
       shared.Settings.STACK_OVERFLOW_CHECK = max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK)
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
