@@ -31,7 +31,7 @@ from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
-from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
+from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol, shlex_join
 
 logger = logging.getLogger('building')
 
@@ -305,7 +305,7 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     stdout = None
   if EM_BUILD_VERBOSE >= 1:
     stderr = None
-  print('configure: ' + ' '.join(args), file=sys.stderr)
+  print('configure: ' + shlex_join(args), file=sys.stderr)
   run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
 
 
