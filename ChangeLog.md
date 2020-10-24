@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
+  or RTDL_NOW flags ar set.  Previously, it was possible set nether of these
+  without generating an error.
 
 2.0.8: 10/24/2020
 -----------------
@@ -40,9 +43,6 @@ Current Trunk
     `emrun filename.html -- --arg-for-page`
   This is standard behaviour for command line parsing and simplifies the
   emrun logic.
-- dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
-  or RTDL_NOW flags ar set.  Previously, it was possible set nether of these
-  without generating an error.
 
 2.0.7: 10/13/2020
 -----------------
