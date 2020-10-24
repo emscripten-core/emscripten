@@ -1026,9 +1026,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         void (*bfunc)(), (*cfunc)();
 
         // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currently working
-        bdso = dlopen("libb%(so)s", RTLD_GLOBAL);
+        bdso = dlopen("libb%(so)s", RTLD_NOW|RTLD_GLOBAL);
         assert(bdso != NULL);
-        cdso = dlopen("libc%(so)s", RTLD_GLOBAL);
+        cdso = dlopen("libc%(so)s", RTLD_NOW|RTLD_GLOBAL);
         assert(cdso != NULL);
 
         bfunc = (void (*)())dlsym(bdso, "bfunc");

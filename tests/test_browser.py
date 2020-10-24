@@ -2414,7 +2414,7 @@ void *getBindBuffer() {
           REPORT_RESULT(1);
           return 1;
         }
-        void *lib_handle = dlopen("/library.so", 0);
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
         if (!lib_handle) {
           REPORT_RESULT(2);
           return 2;

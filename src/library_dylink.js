@@ -561,11 +561,11 @@ var LibraryDylink = {
     });
   },
 
-  // void* dlopen(const char* filename, int flag);
+  // void* dlopen(const char* filename, int flags);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen__proxy: 'sync',
   dlopen__sig: 'iii',
-  dlopen: function(filenameAddr, flag) {
+  dlopen: function(filenameAddr, flags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
@@ -595,16 +595,21 @@ var LibraryDylink = {
       }
     }
 
+    if (!(flags & ({{{ cDefine('RTLD_LAZY') }}} | {{{ cDefine('RTLD_NOW') }}}))) {
+      DLFCN.errorMsg = 'invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required';
+      return 0;
+    }
+
     // We don't care about RTLD_NOW and RTLD_LAZY.
-    var flags = {
-      global:   Boolean(flag & {{{ cDefine('RTLD_GLOBAL') }}}),
-      nodelete: Boolean(flag & {{{ cDefine('RTLD_NODELETE') }}}),
+    var jsflags = {
+      global:   Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}}),
+      nodelete: Boolean(flags & {{{ cDefine('RTLD_NODELETE') }}}),
 
       fs: FS, // load libraries from provided filesystem
     }
 
     try {
-      return loadDynamicLibrary(filename, flags)
+      return loadDynamicLibrary(filename, jsflags)
     } catch (e) {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
