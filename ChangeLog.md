@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.8: 10/24/2020
+-----------------
 - `-s ASSERTIONS=2` now implies `-s STACK_OVERFLOW_CHECK=2`. Previously only
   `-s ASSERTIONS=1` implied `-s STACK_OVERFLOW_CHECK=1`.
 - Dynamic linking (MAIN_MODULE + SIDE_MODULE) now produces wasm binaries that
