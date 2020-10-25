@@ -71,3 +71,18 @@ if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variab
 #if USE_PTHREADS
 }
 #endif
+
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 38 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED
+// Older browsers may lack TypedArray.slice()
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/slice#Browser_compatibility
+[Int8Array, Uint8Array, Int16Array, Uint16Array, Int32Array, Uint32Array,
+   Float32Array, Float64Array].forEach(function(typedArray) {
+  if (!typedArray.prototype.slice) {
+    Object.defineProperty(typedArray.prototype, 'slice', {
+      value: function(begin, end) {
+        return new typedArray(this.subarray(begin, end));
+      }
+    });
+  }
+});
+#endif
