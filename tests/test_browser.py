@@ -4660,7 +4660,7 @@ window.close = function() {
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
     # with separate file packager invocation
-    self.run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'])
+    self.run_process([PYTHON, FILE_PACKAGER, 'data.data', '--preload', 'test.txt', '--js-output=' + 'data.js'])
     self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 

@@ -2196,6 +2196,12 @@ int f() {
     err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--preload-file', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
     self.assertEqual(len(err), 0)
 
+  def test_file_packager_returns_error_if_target_equal_to_jsoutput(self):
+    MESSAGE = 'error: TARGET should not be the same value of --js-output'
+    result = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--js-output=test.data'], check=False, stdout=PIPE, stderr=PIPE)
+    self.assertEqual(result.returncode, 1)
+    self.assertContained(MESSAGE, result.stderr)
+
   def test_headless(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'example.png')
     self.run_process([EMCC, path_from_root('tests', 'sdl_headless.c'), '-s', 'HEADLESS=1'])
