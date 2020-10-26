@@ -5,7 +5,7 @@
  */
 
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
+  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.prepareMainThread();',
   $PThread__deps: ['$registerPthreadPtr',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
@@ -33,7 +33,9 @@ var LibraryPThread = {
     // Stores the memory address that the main thread is waiting on, if any. If
     // the main thread is waiting, we wake it up before waking up any workers.
     // mainThreadFutex: undefined,
-    initMainThreadBlock: function() {
+
+    // Runs during startup to prepare the main thread.
+    prepareMainThread: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
