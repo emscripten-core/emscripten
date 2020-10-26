@@ -10,12 +10,13 @@ import re
 import shutil
 import sys
 import tempfile
+from subprocess import Popen
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 from tools.shared import PYTHON, WINDOWS, CLANG_CXX, EMCC, PIPE, V8_ENGINE
-from tools.shared import Popen, path_from_root, run_process
+from tools.shared import path_from_root, run_process
 import clang_native
 
 temp_dir = tempfile.mkdtemp()
