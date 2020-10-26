@@ -279,27 +279,6 @@ def parse_config_file():
   except Exception as e:
     exit_with_error('Error in evaluating %s (at %s): %s, text: %s', EM_CONFIG, CONFIG_FILE, str(e), config_text)
 
-  CONFIG_KEYS = (
-    'NODE_JS',
-    'BINARYEN_ROOT',
-    'SPIDERMONKEY_ENGINE',
-    'V8_ENGINE',
-    'LLVM_ROOT',
-    'LLVM_ADD_VERSION',
-    'CLANG_ADD_VERSION',
-    'CLOSURE_COMPILER',
-    'JAVA',
-    'JS_ENGINE',
-    'JS_ENGINES',
-    'WASMER',
-    'WASMTIME',
-    'WASM_ENGINES',
-    'FROZEN_CACHE',
-    'CACHE',
-    'PORTS',
-    'COMPILER_WRAPPER',
-  )
-
   # Only propagate certain settings from the config file.
   for key in CONFIG_KEYS:
     env_var = 'EM_' + key
@@ -1306,10 +1285,31 @@ JS_ENGINES = []
 WASMER = None
 WASMTIME = None
 WASM_ENGINES = []
+FROZEN_CACHE = False
 CACHE = None
 PORTS = None
-FROZEN_CACHE = False
 COMPILER_WRAPPER = None
+
+CONFIG_KEYS = (
+  'NODE_JS',
+  'BINARYEN_ROOT',
+  'SPIDERMONKEY_ENGINE',
+  'V8_ENGINE',
+  'LLVM_ROOT',
+  'LLVM_ADD_VERSION',
+  'CLANG_ADD_VERSION',
+  'CLOSURE_COMPILER',
+  'JAVA',
+  'JS_ENGINE',
+  'JS_ENGINES',
+  'WASMER',
+  'WASMTIME',
+  'WASM_ENGINES',
+  'FROZEN_CACHE',
+  'CACHE',
+  'PORTS',
+  'COMPILER_WRAPPER',
+)
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
 # make sure that those child processes get the same configuration file by

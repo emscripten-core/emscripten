@@ -9432,6 +9432,10 @@ exec "$@"
     self.assertContained('wrapping compiler call: ', stdout)
     self.assertExists('test_hello_world.o')
 
+    stdout = self.run_process([EMCC, '-c', path_from_root('tests', 'core', 'test_hello_world.c'), '-s', 'COMPILER_WRAPPER=./wrapper.sh'], stdout=PIPE).stdout
+    self.assertContained('wrapping compiler call: ', stdout)
+    self.assertExists('test_hello_world.o')
+
   def test_llvm_option_dash_o(self):
     # emcc used to interpret -mllvm's option value as the output file if it
     # began with -o

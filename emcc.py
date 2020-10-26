@@ -342,6 +342,11 @@ def apply_settings(changes):
     if key in shared.Settings.internal_settings:
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
 
+    if key in shared.CONFIG_KEYS:
+      logger.debug('Overriding config key: %s=%s' % (key, value))
+      setattr(shared, key, value)
+      continue
+
     # map legacy settings which have aliases to the new names
     # but keep the original key so errors are correctly reported via the `setattr` below
     user_key = key
@@ -771,13 +776,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
-  CXX = [shared.CLANG_CXX]
-  CC = [shared.CLANG_CC]
-  if shared.COMPILER_WRAPPER:
-    logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
-    CXX.insert(0, shared.COMPILER_WRAPPER)
-    CC.insert(0, shared.COMPILER_WRAPPER)
-
   if run_via_emxx:
     clang = shared.CLANG_CXX
   else:
@@ -892,15 +890,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
-    if 'EMMAKEN_COMPILER' in os.environ:
-      diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
-                          'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
-                          'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
-      CXX = [os.environ['EMMAKEN_COMPILER']]
-      CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
-
     if '-print-search-dirs' in newargs:
-      return run_process(CC + ['-print-search-dirs'], check=False).returncode
+      return run_process([clang, '-print-search-dirs'], check=False).returncode
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -1919,6 +1910,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if flag.startswith('-nostdlib'):
           return True
         return flag.startswith(('-l', '-L', '-Wl,'))
+
+      CXX = [shared.CLANG_CXX]
+      CC = [shared.CLANG_CC]
+      if shared.COMPILER_WRAPPER:
+        logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
+        CXX.insert(0, shared.COMPILER_WRAPPER)
+        CC.insert(0, shared.COMPILER_WRAPPER)
+
+      if 'EMMAKEN_COMPILER' in os.environ:
+        diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
+                            'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
+                            'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
+        CXX = [os.environ['EMMAKEN_COMPILER']]
+        CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
 
