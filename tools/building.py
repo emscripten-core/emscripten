@@ -1360,7 +1360,13 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   wasm_file_with_dwarf = shared.Settings.SEPARATE_DWARF
   if wasm_file_with_dwarf is True:
     wasm_file_with_dwarf = wasm_file + '.debug.wasm'
-  embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
+  embedded_path = shared.Settings.SEPARATE_DWARF_URL
+  if not embedded_path:
+    # a path was provided - make it relative to the wasm.
+    embedded_path = os.path.relpath(wasm_file_with_dwarf,
+                                    os.path.dirname(wasm_file))
+    # normalize the path to use URL-style separators, per the spec
+    embedded_path = embedded_path.replace('\\', '/').replace('//', '/')
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
   strip(wasm_file_with_dwarf, wasm_file, debug=True)

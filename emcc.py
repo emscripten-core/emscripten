@@ -1243,9 +1243,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Note the exports the user requested
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
-    # -s ASSERTIONS=1 implies basic stack overflow checks.
-    if shared.Settings.ASSERTIONS:
-      shared.Settings.STACK_OVERFLOW_CHECK = max(1, shared.Settings.STACK_OVERFLOW_CHECK)
+    # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
+    # implies full stack overflow checks (unless the user specifically set
+    # something else)
+    if shared.Settings.ASSERTIONS and 'STACK_OVERFLOW_CHECK' not in settings_key_changes:
+      shared.Settings.STACK_OVERFLOW_CHECK = max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK)
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
       # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
@@ -1314,6 +1316,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('cannot use closure compiler on shared modules')
       if shared.Settings.MINIMAL_RUNTIME:
         exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
+      if shared.Settings.WASM2JS:
+        exit_with_error('WASM2JS is not compatible with relocatable output')
       # shared modules need memory utilities to allocate their memory
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['allocate']
       shared.Settings.ALLOW_TABLE_GROWTH = 1
@@ -1648,7 +1652,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
-      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+      # EXPORT_ES6 requires output to be a module
+      if 'MODULARIZE' in settings_key_changes:
+        exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+      shared.Settings.MODULARIZE = 1
 
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       # When MODULARIZE option is used, currently requires declaring all module exports

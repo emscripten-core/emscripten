@@ -4,14 +4,6 @@
 Debugging with Sanitizers
 =========================
 
-.. warning::
-
-  Sanitizers can only be used with the upstream wasm backend. If you are
-  using fastcomp, you need to upgrade before sanitizers will work.
-  See here__ for instructions.
-
-__ https://v8.dev/blog/emscripten-llvm-wasm#testing
-
 .. _sanitizer_ubsan:
 
 Undefined Behaviour Sanitizer

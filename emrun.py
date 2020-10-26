@@ -1383,10 +1383,14 @@ def list_processes_by_name(exe_full_path):
 def run():
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
   usage_str = """\
-emrun [emrun_options] filename.html [html_cmdline_options]
+emrun [emrun_options] filename.html -- [html_cmdline_options]
 
    where emrun_options specifies command line options for emrun itself, whereas
    html_cmdline_options specifies startup arguments to the program.
+
+If you are seeing "unrecognized arguments" when trying to pass
+arguments to your page, remember to add `--` between arguments
+to emrun itself and arguments to your page.
 """
   parser = argparse.ArgumentParser(usage=usage_str)
 
@@ -1401,7 +1405,7 @@ emrun [emrun_options] filename.html [html_cmdline_options]
                            '--browser=/path/to/browser, to avoid emrun being '
                            'detached from the browser process it spawns.')
 
-  parser.add_argument('--no_server',
+  parser.add_argument('--no_server', action='store_true',
                       help='If specified, a HTTP web server is not launched '
                            'to host the page to run.')
 
@@ -1496,28 +1500,11 @@ emrun [emrun_options] filename.html [html_cmdline_options]
   parser.add_argument('--private_browsing', action='store_true',
                       help='If specified, opens browser in private/incognito mode.')
 
-  parser.add_argument('serve', nargs='*')
+  parser.add_argument('serve', nargs='?', default='')
 
-  opts_with_param = ['--browser', '--browser_args', '--timeout_returncode',
-                     '--timeout', '--silence_timeout', '--log_stderr', '--log_stdout',
-                     '--hostname', '--port', '--serve_root']
+  parser.add_argument('cmdlineparams', nargs='*')
 
-  cmdlineparams = []
-  # Split the startup arguments to two parts, delimited by the first (unbound) positional argument.
-  # The first set is args intended for emrun, and the second set is the cmdline args to program.
-  i = 1
-  while i < len(sys.argv):
-    if sys.argv[i] in opts_with_param:
-      i += 1 # Skip next one, it's the value for this opt.
-    elif not sys.argv[i].startswith('-'):
-      cmdlineparams = sys.argv[i + 1:]
-      sys.argv = sys.argv[:i + 1]
-      break
-    i += 1
-
-  options = parser.parse_args(sys.argv[1:])
-  args = options.serve
-  emrun_options = options
+  options = emrun_options = parser.parse_args()
 
   if options.android:
     global ADB
@@ -1543,17 +1530,20 @@ emrun [emrun_options] filename.html [html_cmdline_options]
       list_pc_browsers()
     return
 
-  if len(args) < 1 and (options.system_info or options.browser_info):
+  if not options.serve and (options.system_info or options.browser_info):
     # Don't run if only --system_info or --browser_info was passed.
     options.no_server = options.no_browser = True
 
-  if len(args) < 1 and not (options.no_server and options.no_browser):
+  if not options.serve and not (options.no_server and options.no_browser):
     logi(usage_str)
     logi('')
     logi('Type emrun --help for a detailed list of available options.')
     return
 
-  file_to_serve = args[0] if len(args) else '.'
+  if options.serve:
+    file_to_serve = options.serve
+  else:
+    file_to_serve = '.'
   file_to_serve_is_url = file_to_serve.startswith('file://') or file_to_serve.startswith('http://') or file_to_serve.startswith('https://')
 
   if options.serve_root:
@@ -1570,8 +1560,8 @@ emrun [emrun_options] filename.html [html_cmdline_options]
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
-    if len(cmdlineparams):
-      url += '?' + '&'.join(cmdlineparams)
+    if len(options.cmdlineparams):
+      url += '?' + '&'.join(options.cmdlineparams)
     hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
     url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 

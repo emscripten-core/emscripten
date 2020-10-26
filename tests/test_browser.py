@@ -2414,7 +2414,7 @@ void *getBindBuffer() {
           REPORT_RESULT(1);
           return 1;
         }
-        void *lib_handle = dlopen("/library.so", 0);
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
         if (!lib_handle) {
           REPORT_RESULT(2);
           return 2;
@@ -2467,6 +2467,13 @@ void *getBindBuffer() {
                  '--kill_exit', '--port', '6939', '--verbose',
                  '--log_stdout', self.in_dir('stdout.txt'),
                  '--log_stderr', self.in_dir('stderr.txt')]
+
+    # Verify that trying to pass argument to the page without the `--` separator will
+    # generate an actionable error message
+    err = self.expect_fail(args_base + ['--foo'])
+    self.assertContained('error: unrecognized arguments: --foo', err)
+    self.assertContained('remember to add `--` between arguments', err)
+
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
@@ -2484,11 +2491,12 @@ void *getBindBuffer() {
           browser_args = parser.parse_known_args(browser_args)[1]
         if browser_args:
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+
     for args in [
         args_base,
         args_base + ['--private_browsing', '--port', '6941']
     ]:
-      args += [self.in_dir('hello_world.html'), '1', '2', '--3']
+      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
@@ -3347,10 +3355,9 @@ window.close = function() {
         self.run_browser('a.html', '...', '/report_result?0')
 
   def test_modularize_network_error(self):
-    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-    create_test_file('test.c', src)
+    test_c_path = path_from_root('tests', 'browser_test_hello_world.c')
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest([test_c_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3366,6 +3373,29 @@ window.close = function() {
     print('Deleting a.out.wasm to cause a download error')
     os.remove('a.out.wasm')
     self.run_browser('a.html', '...', '/report_result?abort(both async and sync fetching of the wasm failed)')
+
+  def test_modularize_init_error(self):
+    test_cpp_path = path_from_root('tests', 'browser', 'test_modularize_init_error.cpp')
+    browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
+    self.compile_btest([test_cpp_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    create_test_file('a.html', '''
+      <script src="a.out.js"></script>
+      <script>
+        if (typeof window === 'object') {
+          window.addEventListener('unhandledrejection', function(event) {
+            reportResultToServer("Unhandled promise rejection: " + event.reason.message);
+          });
+        }
+        createModule()
+          .then(() => {
+            reportResultToServer("Module creation succeeded when it should have failed");
+          })
+          .catch(err => {
+            reportResultToServer(err);
+          });
+      </script>
+    ''')
+    self.run_browser('a.html', '...', '/report_result?intentional error to test rejection')
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
@@ -3474,23 +3504,13 @@ window.close = function() {
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
-  def test_dylink_dso_needed_wasm(self):
-    self._run_dylink_dso_needed(1, 0)
+  def test_dylink_dso_needed(self):
+    self._run_dylink_dso_needed(0)
 
-  def test_dylink_dso_needed_wasm_inworker(self):
-    self._run_dylink_dso_needed(1, 1)
+  def test_dylink_dso_needed_inworker(self):
+    self._run_dylink_dso_needed(1)
 
-  def test_dylink_dso_needed_asmjs(self):
-    self._run_dylink_dso_needed(0, 0)
-
-  def test_dylink_dso_needed_asmjs_inworker(self):
-    self._run_dylink_dso_needed(0, 1)
-
-  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
-  @requires_sync_compilation
-  def _run_dylink_dso_needed(self, wasm, inworker):
-    print('\n# wasm=%d inworker=%d' % (wasm, inworker))
-    self.set_setting('WASM', wasm)
+  def _run_dylink_dso_needed(self, inworker):
     self.emcc_args += ['-O2']
 
     def do_run(src, expected_output):

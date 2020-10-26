@@ -20,12 +20,29 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
+  or RTDL_NOW flags ar set.  Previously, it was possible set nether of these
+  without generating an error.
+
+2.0.8: 10/24/2020
+-----------------
+- `-s ASSERTIONS=2` now implies `-s STACK_OVERFLOW_CHECK=2`. Previously only
+  `-s ASSERTIONS=1` implied `-s STACK_OVERFLOW_CHECK=1`.
 - Dynamic linking (MAIN_MODULE + SIDE_MODULE) now produces wasm binaries that
   depend on mutable globals.  Specifically the stack pointer global is mutable
   and shared between the modules. This is an ABI change for dynamic linking.
   (#12536)
 - emcc now accepts `--arg=foo` as well as `--arg foo`.  For example
   `--js-library=file.js`.
+- Reject promises returned from the factory function created by using the
+  MODULARIZE build option if initialization of the module instance fails
+  (#12396).
+- emrun: Passing command line flags (arguments that start with `-`) to the
+  program bring run now requires a `--` on the command line to signal the
+  end of `emrun` arguments. e.g:
+    `emrun filename.html -- --arg-for-page`
+  This is standard behaviour for command line parsing and simplifies the
+  emrun logic.
 
 2.0.7: 10/13/2020
 -----------------

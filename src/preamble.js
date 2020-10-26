@@ -291,7 +291,7 @@ assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 #endif
 
 #if RELOCATABLE
-__stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STACK_BASE);
+var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STACK_BASE);
 
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
@@ -985,7 +985,7 @@ function createWasm() {
         !isFileURI(wasmBinaryFile) &&
 #endif
         typeof fetch === 'function') {
-      fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
         var result = WebAssembly.instantiateStreaming(response, info);
 #if USE_OFFSET_CONVERTER
         // This doesn't actually do another request, it only copies the Response object.
@@ -1091,7 +1091,12 @@ function createWasm() {
 #if RUNTIME_LOGGING
   err('asynchronously preparing wasm');
 #endif
+#if MODULARIZE
+  // If instantiation fails, reject the module ready promise.
+  instantiateAsync().catch(readyPromiseReject);
+#else
   instantiateAsync();
+#endif
 #if LOAD_SOURCE_MAP
   getSourceMapPromise().then(receiveSourceMapJSON);
 #endif
