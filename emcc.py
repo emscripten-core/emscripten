@@ -632,7 +632,7 @@ def backend_binaryen_passes():
   # as it is loaded first, but the side module may be assigned memory that was
   # previously used.
   if run_binaryen_optimizer and not shared.Settings.SIDE_MODULE:
-    passes += ['--unmodified-imported-mem']
+    passes += ['--zero-filled-memory']
 
   if shared.Settings.BINARYEN_EXTRA_PASSES:
     # BINARYEN_EXTRA_PASSES is comma-separated, and we support both '-'-prefixed and
