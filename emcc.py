@@ -658,6 +658,50 @@ def do_replace(input_, pattern, replacement):
   return input_.replace(pattern, replacement)
 
 
+def is_dash_s_for_emcc(args, i):
+  # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
+  # -s by itself is a linker option (alias for --strip-all)
+  if args[i] == '-s':
+    if len(args) <= i + 1:
+      return False
+    arg = args[i + 1]
+  else:
+    arg = args[i][2:]
+  return arg.split('=')[0].isupper()
+
+
+def parse_s_args(args):
+  settings_changes = []
+  for i in range(len(args)):
+    if args[i].startswith('-s'):
+      if is_dash_s_for_emcc(args, i):
+        if args[i] == '-s':
+          key = args[i + 1]
+          args[i + 1] = ''
+        else:
+          key = args[i][2:]
+        args[i] = ''
+
+        # If not = is specified default to 1
+        if '=' not in key:
+          key += '=1'
+
+        # Special handling of browser version targets. A version -1 means that the specific version
+        # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+        # #if MIN_FIREFOX_VERSION < 68
+        if re.match(r'MIN_.*_VERSION(=.*)?', key):
+          try:
+            if int(key.split('=')[1]) < 0:
+              key = key.split('=')[0] + '=0x7FFFFFFF'
+          except Exception:
+            pass
+
+        settings_changes.append(key)
+
+  newargs = [a for a in args if a]
+  return (settings_changes, newargs)
+
+
 run_via_emxx = False
 
 
@@ -786,17 +830,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   language_mode = get_language_mode(args)
 
-  def is_dash_s_for_emcc(args, i):
-    # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
-    # -s by itself is a linker option (alias for --strip-all)
-    if args[i] == '-s':
-      if len(args) <= i + 1:
-        return False
-      arg = args[i + 1]
-    else:
-      arg = args[i][2:]
-    return arg.split('=')[0].isupper()
-
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
     args += shlex.split(EMMAKEN_CFLAGS)
@@ -900,32 +933,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if DEBUG:
       start_time = time.time() # done after parsing arguments, which might affect debug state
 
-    for i in range(len(newargs)):
-      if newargs[i].startswith('-s'):
-        if is_dash_s_for_emcc(newargs, i):
-          if newargs[i] == '-s':
-            key = newargs[i + 1]
-            newargs[i + 1] = ''
-          else:
-            key = newargs[i][2:]
-          newargs[i] = ''
-
-          # If not = is specified default to 1
-          if '=' not in key:
-            key += '=1'
-
-          # Special handling of browser version targets. A version -1 means that the specific version
-          # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
-          # #if MIN_FIREFOX_VERSION < 68
-          try:
-            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=0x7FFFFFFF'
-          except Exception:
-            pass
-
-          settings_changes.append(key)
-
-    newargs = [arg for arg in newargs if arg]
+    explicit_settings_changes, newargs = parse_s_args(newargs)
+    settings_changes += explicit_settings_changes
 
     settings_key_changes = {}
     for s in settings_changes:
