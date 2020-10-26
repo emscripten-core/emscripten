@@ -304,8 +304,10 @@ var LibraryDylink = {
             };
           }
           // otherwise this is regular function import - call it indirectly
+          var resolved;
           return obj[prop] = function() {
-            return resolveSymbol(prop, 'function', true).apply(null, arguments);
+            if (!resolved) resolved = resolveSymbol(prop, 'function', true);
+            return resolved.apply(null, arguments);
           };
         }
       };
