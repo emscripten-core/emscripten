@@ -194,6 +194,15 @@ class other(RunnerCore):
     with open('hello_world.worker.js') as f:
       self.assertContained('import(', f.read())
 
+  def test_export_es6_implies_modularize(self):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORT_ES6=1'])
+    with open('a.out.js') as f:
+      self.assertContained('export default Module;', f.read())
+
+  def test_export_es6_requires_modularize(self):
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORT_ES6=1', '-s', 'MODULARIZE=0'])
+    self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', path_from_root('tests', 'hello_world.c')])
