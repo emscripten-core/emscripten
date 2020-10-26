@@ -55,12 +55,13 @@ import clang_native
 import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
+from tools.config import EM_CONFIG
+from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import MACOS, WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes, Settings
+from tools.shared import asbytes, Settings, config
+from tools.utils import MACOS, WINDOWS
 from tools import shared, line_endings, building
 
 
@@ -232,24 +233,24 @@ def chdir(dir):
 
 @contextlib.contextmanager
 def js_engines_modify(replacements):
-  """A context manager that updates shared.JS_ENGINES."""
-  original = shared.JS_ENGINES
-  shared.JS_ENGINES = replacements
+  """A context manager that updates config.JS_ENGINES."""
+  original = config.JS_ENGINES
+  config.JS_ENGINES = replacements
   try:
     yield
   finally:
-    shared.JS_ENGINES = original
+    config.JS_ENGINES = original
 
 
 @contextlib.contextmanager
 def wasm_engines_modify(replacements):
-  """A context manager that updates shared.WASM_ENGINES."""
-  original = shared.WASM_ENGINES
-  shared.WASM_ENGINES = replacements
+  """A context manager that updates config.WASM_ENGINES."""
+  original = config.WASM_ENGINES
+  config.WASM_ENGINES = replacements
   try:
     yield
   finally:
-    shared.WASM_ENGINES = original
+    config.WASM_ENGINES = original
 
 
 def ensure_dir(dirname):
@@ -989,7 +990,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def filtered_js_engines(self, js_engines=None):
     if js_engines is None:
-      js_engines = shared.JS_ENGINES
+      js_engines = config.JS_ENGINES
     for engine in js_engines:
       assert type(engine) == list
     for engine in self.banned_js_engines:
@@ -1046,7 +1047,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines
       # like with js engines, but for now as we bring it up, test in all of them
-      wasm_engines = shared.WASM_ENGINES
+      wasm_engines = config.WASM_ENGINES
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += wasm_engines
@@ -1656,8 +1657,8 @@ def build_library(name,
 
 
 def check_js_engines():
-  working_engines = list(filter(jsrun.check_engine, shared.JS_ENGINES))
-  if len(working_engines) < len(shared.JS_ENGINES):
+  working_engines = list(filter(jsrun.check_engine, config.JS_ENGINES))
+  if len(working_engines) < len(config.JS_ENGINES):
     print('Not all the JS engines in JS_ENGINES appears to work.')
     exit(1)
 

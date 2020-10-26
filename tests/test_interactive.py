@@ -13,7 +13,8 @@ if __name__ == '__main__':
 
 from runner import parameterized
 from runner import BrowserCore, path_from_root
-from tools.shared import EMCC, WINDOWS, which
+from tools.shared import EMCC, WINDOWS
+from tools.utils import which
 
 
 class interactive(BrowserCore):

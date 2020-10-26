@@ -25,20 +25,19 @@ if sys.version_info < (3, 6):
 
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
+from . import config
 
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-WINDOWS = sys.platform.startswith('win')
-MACOS = sys.platform == 'darwin'
-LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 98
 EXPECTED_LLVM_VERSION = "12.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
+PYTHON = sys.executable
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -63,18 +62,6 @@ diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
-
-
-def exit_with_error(msg, *args):
-  diagnostics.error(msg, *args)
-
-
-def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
-
-
-def root_is_writable():
-  return os.access(__rootpath__, os.W_OK)
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -126,41 +113,9 @@ def run_js_tool(filename, jsargs=[], *args, **kw):
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  command = NODE_JS + [filename] + jsargs
+  command = config.NODE_JS + [filename] + jsargs
   print_compiler_stage(command)
   return check_call(command, *args, **kw).stdout
-
-
-# Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
-def which(program):
-  def is_exe(fpath):
-    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-  if os.path.isabs(program):
-    if os.path.isfile(program):
-      return program
-
-    if WINDOWS:
-      for suffix in ['.exe', '.cmd', '.bat']:
-        if is_exe(program + suffix):
-          return program + suffix
-
-  fpath, fname = os.path.split(program)
-  if fpath:
-    if is_exe(program):
-      return program
-  else:
-    for path in os.environ["PATH"].split(os.pathsep):
-      path = path.strip('"')
-      exe_file = os.path.join(path, program)
-      if is_exe(exe_file):
-        return exe_file
-      if WINDOWS:
-        for suffix in ('.exe', '.cmd', '.bat'):
-          if is_exe(exe_file + suffix):
-            return exe_file + suffix
-
-  return None
 
 
 # Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
@@ -182,172 +137,14 @@ def timeout_run(proc, timeout=None, full_output=False, check=True):
   return '\n'.join(out) if full_output else out[0]
 
 
-def generate_config(path, first_time=False):
-  # Note: repr is used to ensure the paths are escaped correctly on Windows.
-  # The full string is replaced so that the template stays valid Python.
-  config_file = open(path_from_root('tools', 'settings_template.py')).read().splitlines()
-  config_file = config_file[3:] # remove the initial comment
-  config_file = '\n'.join(config_file)
-  # autodetect some default paths
-  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(EMSCRIPTEN_ROOT))
-  llvm_root = os.path.dirname(which('llvm-dis') or '/usr/bin/llvm-dis')
-  config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
-
-  node = which('nodejs') or which('node') or 'node'
-  config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
-
-  abspath = os.path.abspath(os.path.expanduser(path))
-  # write
-  with open(abspath, 'w') as f:
-    f.write(config_file)
-
-  if first_time:
-    print(f'''
-==============================================================================
-Welcome to Emscripten!
-
-This is the first time any of the Emscripten tools has been run.
-
-A settings file has been copied to {path}, at absolute path: {abspath}
-
-It contains our best guesses for the important paths, which are:
-
-  LLVM_ROOT       = {llvm_root}
-  NODE_JS         = {node}
-  EMSCRIPTEN_ROOT = {EMSCRIPTEN_ROOT}
-
-Please edit the file if any of those are incorrect.
-
-This command will now exit. When you are done editing those paths, re-run it.
-==============================================================================
-''', file=sys.stderr)
-
-
-def parse_config_file():
-  """Parse the emscripten config file using python's exec.
-
-  Also also EM_<KEY> environment variables to override specific config keys.
-  """
-  config = {}
-  config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
-  try:
-    exec(config_text, config)
-  except Exception as e:
-    exit_with_error('Error in evaluating %s (at %s): %s, text: %s', EM_CONFIG, CONFIG_FILE, str(e), config_text)
-
-  CONFIG_KEYS = (
-    'NODE_JS',
-    'BINARYEN_ROOT',
-    'SPIDERMONKEY_ENGINE',
-    'V8_ENGINE',
-    'LLVM_ROOT',
-    'LLVM_ADD_VERSION',
-    'CLANG_ADD_VERSION',
-    'CLOSURE_COMPILER',
-    'JAVA',
-    'JS_ENGINE',
-    'JS_ENGINES',
-    'WASMER',
-    'WASMTIME',
-    'WASM_ENGINES',
-    'FROZEN_CACHE',
-    'CACHE',
-    'PORTS',
-    'COMPILER_WRAPPER',
-  )
-
-  # Only propagate certain settings from the config file.
-  for key in CONFIG_KEYS:
-    env_var = 'EM_' + key
-    env_value = os.environ.get(env_var)
-    if env_value is not None:
-      globals()[key] = env_value
-    elif key in config:
-      globals()[key] = config[key]
-
-  # Certain keys are mandatory
-  for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
-    if key not in config:
-      exit_with_error('%s is not defined in %s', key, config_file_location())
-    if not globals()[key]:
-      exit_with_error('%s is set to empty value in %s', key, config_file_location())
-
-  if not NODE_JS:
-    exit_with_error('NODE_JS is not defined in %s', config_file_location())
-
-
-def listify(x):
-  if type(x) is not list:
-    return [x]
-  return x
-
-
-def fix_js_engine(old, new):
-  global JS_ENGINES
-  if old is None:
-    return
-  JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
-  return new
-
-
 def get_npm_cmd(name):
   if WINDOWS:
     cmd = [path_from_root('node_modules', '.bin', name + '.cmd')]
   else:
-    cmd = NODE_JS + [path_from_root('node_modules', '.bin', name)]
+    cmd = config.NODE_JS + [path_from_root('node_modules', '.bin', name)]
   if not os.path.exists(cmd[-1]):
     exit_with_error('%s was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies' % name)
   return cmd
-
-
-def normalize_config_settings():
-  global CACHE, PORTS, JAVA
-  global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
-
-  # EM_CONFIG stuff
-  if not JS_ENGINES:
-    JS_ENGINES = [NODE_JS]
-  if not JS_ENGINE:
-    JS_ENGINE = JS_ENGINES[0]
-
-  # Engine tweaks
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
-  NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
-  V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-  JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
-  JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
-  WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
-  if not CACHE:
-    if root_is_writable():
-      CACHE = path_from_root('cache')
-    else:
-      # Use the legacy method of putting the cache in the user's home directory
-      # if the emscripten root is not writable.
-      # This is useful mostly for read-only installation and perhaps could
-      # be removed in the future since such installations should probably be
-      # setting a specific cache location.
-      logger.debug('Using home-directory for emscripten cache due to read-only root')
-      CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
-  if not PORTS:
-    PORTS = os.path.join(CACHE, 'ports')
-
-  if JAVA is None:
-    logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
-    JAVA = 'java'
-
-
-# Returns the location of the emscripten config file.
-def config_file_location():
-  # Handle the case where there is no config file at all (i.e. If EM_CONFIG is passed as python code
-  # direclty on the command line).
-  if not CONFIG_FILE:
-    return '<inline config>'
-
-  return CONFIG_FILE
 
 
 def get_clang_version():
@@ -394,7 +191,7 @@ def check_llvm():
 
 
 def get_node_directory():
-  return os.path.dirname(NODE_JS[0] if type(NODE_JS) is list else NODE_JS)
+  return os.path.dirname(config.NODE_JS[0] if type(config.NODE_JS) is list else config.NODE_JS)
 
 
 # When we run some tools from npm (closure, html-minifier-terser), those
@@ -408,7 +205,7 @@ def env_with_node_in_path():
 
 def check_node_version():
   try:
-    actual = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
+    actual = run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
@@ -431,12 +228,12 @@ def set_version_globals():
 
 
 def generate_sanity():
-  sanity_file_content = EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version()
-  if CONFIG_FILE:
-    config = open(CONFIG_FILE).read()
+  sanity_file_content = EMSCRIPTEN_VERSION + '|' + config.LLVM_ROOT + '|' + get_clang_version()
+  if config.config_file:
+    config_data = open(config.config_file).read()
   else:
-    config = EM_CONFIG
-  checksum = binascii.crc32(config.encode())
+    config_data = config.EM_CONFIG
+  checksum = binascii.crc32(config_data.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
 
@@ -446,14 +243,14 @@ def perform_sanify_checks():
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
     try:
-      run_process(NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
+      run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
     except Exception as e:
-      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', NODE_JS, config_file_location, str(e))
+      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.config_file_location(), str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
-        exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
+        exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
 def check_sanity(force=False):
@@ -472,7 +269,7 @@ def check_sanity(force=False):
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
   with ToolchainProfiler.profile_block('sanity'):
     check_llvm_version()
-    if not CONFIG_FILE:
+    if not config.config_file:
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
@@ -482,7 +279,7 @@ def check_sanity(force=False):
       if sanity_data != expected:
         logger.debug('old sanity: %s' % sanity_data)
         logger.debug('new sanity: %s' % expected)
-        if FROZEN_CACHE:
+        if config.FROZEN_CACHE:
           logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
         else:
           logger.info('(Emscripten: config changed, clearing cache)')
@@ -517,19 +314,19 @@ def check_sanity(force=False):
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
 def build_llvm_tool_path(tool):
-  if LLVM_ADD_VERSION:
-    return os.path.join(LLVM_ROOT, tool + "-" + LLVM_ADD_VERSION)
+  if config.LLVM_ADD_VERSION:
+    return os.path.join(config.LLVM_ROOT, tool + "-" + config.LLVM_ADD_VERSION)
   else:
-    return os.path.join(LLVM_ROOT, tool)
+    return os.path.join(config.LLVM_ROOT, tool)
 
 
 # Some distributions ship with multiple clang versions so they add
 # the version to the binaries, cope with that
 def build_clang_tool_path(tool):
-  if CLANG_ADD_VERSION:
-    return os.path.join(LLVM_ROOT, tool + "-" + CLANG_ADD_VERSION)
+  if config.CLANG_ADD_VERSION:
+    return os.path.join(config.LLVM_ROOT, tool + "-" + config.CLANG_ADD_VERSION)
   else:
-    return os.path.join(LLVM_ROOT, tool)
+    return os.path.join(config.LLVM_ROOT, tool)
 
 
 def exe_suffix(cmd):
@@ -551,16 +348,6 @@ def replace_suffix(filename, new_suffix):
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
   return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
-
-
-def safe_ensure_dirs(dirname):
-  try:
-    os.makedirs(dirname)
-  except OSError:
-    # Python 2 compatibility: makedirs does not support exist_ok parameter
-    # Ignore error for already existing dirname as exist_ok does
-    if not os.path.isdir(dirname):
-      raise
 
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
@@ -599,7 +386,7 @@ class Configuration(object):
       try:
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config_file_location())
+        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -616,7 +403,7 @@ def apply_configuration():
 
 
 def get_llvm_target():
-  return LLVM_TARGET
+  return 'wasm32-unknown-emscripten'
 
 
 def emsdk_ldflags(user_args):
@@ -951,7 +738,7 @@ def asmjs_mangle(name):
 
 def reconfigure_cache():
   global Cache
-  Cache = cache.Cache(CACHE)
+  Cache = cache.Cache(config.CACHE)
 
 
 class JS(object):
@@ -1176,112 +963,10 @@ def read_and_preprocess(filename, expand_macros=False):
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
 # have consumers explicitly call initialization functions.
 
-# Emscripten configuration is done through the --em-config command line option
-# or the EM_CONFIG environment variable. If the specified string value contains
-# newline or semicolon-separated definitions, then these definitions will be
-# used to configure Emscripten.  Otherwise, the string is understood to be a
-# path to a settings file that contains the required definitions.
-# The search order from the config file is as follows:
-# 1. Specified on the command line (--em-config)
-# 2. Specified via EM_CONFIG environment variable
-# 3. Local .emscripten file, if found
-# 4. Local .emscripten file, as used by `emsdk --embedded` (two levels above,
-#    see below)
-# 5. User home directory config (~/.emscripten), if found.
-
-embedded_config = path_from_root('.emscripten')
-# For compatibility with `emsdk --embedded` mode also look two levels up.  The
-# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
-#  - emsdk/upstream/emscripten/emcc
-#  - emsdk/emscipten/1.38.31/emcc
-# However `emsdk --embedded` stores the config file in the emsdk root.
-# Without this check, when emcc is run from within the emsdk in embedded mode
-# and the user forgets to first run `emsdk_env.sh` (which sets EM_CONFIG) emcc
-# will not see any config file at all and fall back to creating a new/emtpy
-# one.
-# We could remove this special case if emsdk were to write its embedded config
-# file into the emscripten directory itself.
-# See: https://github.com/emscripten-core/emsdk/pull/367
-emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
-emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
-user_home_config = os.path.expanduser('~/.emscripten')
-
-EMSCRIPTEN_ROOT = __rootpath__
-
-if '--em-config' in sys.argv:
-  EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
-  # And now remove it from sys.argv
-  skip = False
-  newargs = []
-  for arg in sys.argv:
-    if not skip and arg != '--em-config':
-      newargs += [arg]
-    elif arg == '--em-config':
-      skip = True
-    elif skip:
-      skip = False
-  sys.argv = newargs
-  if not os.path.isfile(EM_CONFIG):
-    if EM_CONFIG.startswith('-'):
-      exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
-    if '=' not in EM_CONFIG:
-      exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
-    else:
-      EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
-elif 'EM_CONFIG' in os.environ:
-  EM_CONFIG = os.environ['EM_CONFIG']
-elif os.path.exists(embedded_config):
-  EM_CONFIG = embedded_config
-elif os.path.exists(emsdk_embedded_config):
-  EM_CONFIG = emsdk_embedded_config
-elif os.path.exists(user_home_config):
-  EM_CONFIG = user_home_config
-else:
-  if root_is_writable():
-    generate_config(embedded_config, first_time=True)
-  else:
-    generate_config(user_home_config, first_time=True)
-  sys.exit(0)
-
-PYTHON = sys.executable
-
-# The following globals can be overridden by the config file.
-# See parse_config_file below.
-NODE_JS = None
-BINARYEN_ROOT = None
-SPIDERMONKEY_ENGINE = None
-V8_ENGINE = None
-LLVM_ROOT = None
-LLVM_ADD_VERSION = None
-CLANG_ADD_VERSION = None
-CLOSURE_COMPILER = None
-JAVA = None
-JS_ENGINE = None
-JS_ENGINES = []
-WASMER = None
-WASMTIME = None
-WASM_ENGINES = []
-CACHE = None
-PORTS = None
-FROZEN_CACHE = False
-COMPILER_WRAPPER = None
-
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
 # make sure that those child processes get the same configuration file by
 # setting it to the currently active environment.
-os.environ['EM_CONFIG'] = EM_CONFIG
-
-if '\n' in EM_CONFIG:
-  CONFIG_FILE = None
-  logger.debug('EM_CONFIG is specified inline without a file')
-else:
-  CONFIG_FILE = os.path.expanduser(EM_CONFIG)
-  logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
-  if not os.path.exists(CONFIG_FILE):
-    exit_with_error('emscripten config file not found: ' + CONFIG_FILE)
-
-parse_config_file()
-normalize_config_settings()
+os.environ['EM_CONFIG'] = config.EM_CONFIG
 
 # Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
 # 0: disabled.
@@ -1292,13 +977,6 @@ EM_BUILD_VERBOSE = int(os.getenv('EM_BUILD_VERBOSE', '0'))
 TRACK_PROCESS_SPAWNS = EM_BUILD_VERBOSE >= 3
 
 set_version_globals()
-
-# Tools/paths
-if LLVM_ADD_VERSION is None:
-  LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
-
-if CLANG_ADD_VERSION is None:
-  CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
@@ -1321,11 +999,8 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 apply_configuration()
 
-# Target choice.
-LLVM_TARGET = 'wasm32-unknown-emscripten'
-
 Settings = SettingsManager()
 verify_settings()
-Cache = cache.Cache(CACHE)
+Cache = cache.Cache(config.CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
