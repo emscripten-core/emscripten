@@ -9495,3 +9495,21 @@ exec "$@"
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
       err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-sMAIN_MODULE', '-sWASM=0'])
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
+
+  def test_oformat(self):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])
+    self.assertTrue(building.is_wasm('out.foo'))
+    self.clear()
+
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=html', '-o', 'out.foo'])
+    self.assertFalse(building.is_wasm('out.foo'))
+    self.assertContained('<html ', open('out.foo').read())
+    self.clear()
+
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=js', '-o', 'out.foo'])
+    self.assertFalse(building.is_wasm('out.foo'))
+    self.assertContained('new ExitStatus', open('out.foo').read())
+    self.clear()
+
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=foo'])
+    self.assertContained("error: invalid output format: `foo` (must be one of ['wasm', 'js', 'mjs', 'html']", err)
