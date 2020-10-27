@@ -974,10 +974,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     compile_only = has_dash_c or has_dash_S or has_dash_E
 
     def add_link_flag(i, f):
-      # Filter out libraries that musl includes in libc itself, or which we
-      # otherwise provide implicitly.
-      if f in ('-lm', '-lrt', '-ldl', '-lpthread'):
-        return
       if f.startswith('-l'):
         libs.append((i, f[2:]))
       if f.startswith('-L'):
@@ -3126,11 +3122,11 @@ def worker_js_script(proxy_worker_filename):
 def process_libraries(libs, lib_dirs, temp_files):
   libraries = []
   consumed = []
+  suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
 
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
-    suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
 
     found = False
     for prefix in LIB_PREFIXES:
@@ -3148,9 +3144,10 @@ def process_libraries(libs, lib_dirs, temp_files):
           break
       if found:
         break
+
     if not found:
-      jslibs = building.path_to_system_js_libraries(lib)
-      if jslibs:
+      jslibs = building.map_to_js_libs(lib)
+      if jslibs is not None:
         libraries += [(i, jslib) for jslib in jslibs]
         consumed.append(i)
 
