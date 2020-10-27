@@ -21,8 +21,6 @@ input file, which is expected to be a JS file. The wasm file is expected to be
 in the same directory, and have the same basename with a '.wasm' extension.
 """
 
-from __future__ import print_function
-
 import argparse
 import os
 import subprocess

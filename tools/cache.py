@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import os
 import shutil
 import logging
@@ -134,8 +133,4 @@ class Cache(object):
     return cachename
 
 
-try:
-  from . import shared
-except ImportError:
-  # Python 2 circular import compatibility
-  import shared
+from . import shared

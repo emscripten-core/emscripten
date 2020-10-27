@@ -6,7 +6,6 @@
 """Tool to find or compare big functions in a js or ll file
 """
 
-from __future__ import print_function
 import sys
 
 

@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-A tool that generates FS API calls to generate a filesystem, and packages the files
+"""A tool that generates FS API calls to generate a filesystem, and packages the files
 to work with that.
 
 This is called by emcc. You can also call it yourself.
@@ -54,9 +53,8 @@ Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
-'''
+"""
 
-from __future__ import print_function
 import os
 import sys
 import shutil
