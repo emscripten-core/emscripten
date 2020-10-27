@@ -5430,10 +5430,11 @@ int main(int argc, char** argv) {
   return 0;
 }
 ''')
-    self.run_process([EMCC, 'main.c', '-sMAIN_MODULE=2',
-      '--js-library=lib.js',
-      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[foo,bar]',
-      '-sEXPORTED_FUNCTIONS=[_main,_foo,_bar]'])
+    self.run_process([EMCC, 'main.c',
+                      '--js-library=lib.js',
+                      '-sMAIN_MODULE=2',
+                      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[foo,bar]',
+                      '-sEXPORTED_FUNCTIONS=[_main,_foo,_bar]'])
 
     # Fist test the successful use of a JS function with dlsym
     out = self.run_js('a.out.js', args=['foo'])
