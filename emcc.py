@@ -3128,6 +3128,7 @@ def process_libraries(libs, lib_dirs, temp_files):
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
 
+    found = False
     for prefix in LIB_PREFIXES:
       for suff in suffixes:
         name = prefix + lib + suff
@@ -3137,12 +3138,18 @@ def process_libraries(libs, lib_dirs, temp_files):
             logger.debug('found library "%s" at %s', lib, path)
             temp_files.append((i, path))
             consumed.append(i)
-            continue
+            found = True
+            break
+        if found:
+          break
+      if found:
+        break
 
-    jslibs = building.map_to_js_libs(lib)
-    if jslibs is not None:
-      libraries += [(i, jslib) for jslib in jslibs]
-      consumed.append(i)
+    if not found:
+      jslibs = building.map_to_js_libs(lib)
+      if jslibs is not None:
+        libraries += [(i, jslib) for jslib in jslibs]
+        consumed.append(i)
 
   shared.Settings.SYSTEM_JS_LIBRARIES += libraries
 
