@@ -5977,7 +5977,7 @@ return malloc(size);
 
     if use_cmake:
       make_args = []
-      configure = [path_from_root('emcmake'), 'cmake', '.']
+      configure = ['cmake', '.']
     else:
       make_args = ['libz.a']
       configure = ['sh', './configure']

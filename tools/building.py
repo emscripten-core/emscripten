@@ -31,7 +31,7 @@ from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
-from .shared import get_emscripten_temp_dir, exe_suffix, which, is_c_symbol
+from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol, shlex_join
 
 logger = logging.getLogger('building')
 
@@ -271,49 +271,19 @@ def get_building_env(cflags=[]):
   return env
 
 
-# Returns a clone of the given environment with all directories that contain
-# sh.exe removed from the PATH.  Used to work around CMake limitation with
-# MinGW Makefiles, where sh.exe is not allowed to be present.
-def remove_sh_exe_from_path(env):
-  env = env.copy()
-  if not WINDOWS:
-    return env
-  path = env['PATH'].split(';')
-  path = [p for p in path if not os.path.exists(os.path.join(p, 'sh.exe'))]
-  env['PATH'] = ';'.join(path)
-  return env
-
-
-def handle_cmake_toolchain(args, env):
+def handle_cmake_toolchain(args):
   def has_substr(args, substr):
     return any(substr in s for s in args)
 
   # Append the Emscripten toolchain file if the user didn't specify one.
   if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
-    args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
-  node_js = NODE_JS
+    args.insert(1, '-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
     node_js = NODE_JS[0].replace('"', '\"')
-    args.append('-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
+    args.insert(1, '-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
 
-  # On Windows specify MinGW Makefiles or ninja if we have them and no other
-  # toolchain was specified, to keep CMake from pulling in a native Visual
-  # Studio, or Unix Makefiles.
-  if WINDOWS and '-G' not in args:
-    if which('mingw32-make'):
-      args += ['-G', 'MinGW Makefiles']
-    elif which('ninja'):
-      args += ['-G', 'Ninja']
-
-  # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles
-  # is being used. This happens quite often, so do this automatically on
-  # behalf of the user. See
-  # http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
-  if WINDOWS and 'MinGW Makefiles' in args:
-    env = remove_sh_exe_from_path(env)
-
-  return (args, env)
+  return args
 
 
 def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
@@ -325,7 +295,7 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with
     #       CMake. This is because CMake does expect to be able to do
     #       config-time builds with emcc.
-    args, env = handle_cmake_toolchain(args, env)
+    args = handle_cmake_toolchain(args)
   else:
     # When we configure via a ./configure script, don't do config-time
     # compilation with emcc, but instead do builds natively with Clang. This
@@ -335,23 +305,13 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     stdout = None
   if EM_BUILD_VERBOSE >= 1:
     stderr = None
-  print('configure: ' + ' '.join(args), file=sys.stderr)
+  print('configure: ' + shlex_join(args), file=sys.stderr)
   run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
 
 
 def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
   if env is None:
     env = get_building_env(cflags=cflags)
-
-  # On Windows prefer building with mingw32-make instead of make, if it exists.
-  if WINDOWS:
-    if args[0] == 'make':
-      mingw32_make = which('mingw32-make')
-      if mingw32_make:
-        args[0] = mingw32_make
-
-    if 'mingw32-make' in args[0]:
-      env = remove_sh_exe_from_path(env)
 
   # On Windows, run the execution through shell to get PATH expansion and
   # executable extension lookup, e.g. 'sdl2-config' will match with
