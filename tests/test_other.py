@@ -5404,6 +5404,45 @@ int main(int argc, char** argv) {
     self.assertContained('foo64 -> 64', out)
     self.assertContained('bar -> 0', out)
 
+  def test_dlsym_rtld_default_js_symbol(self):
+    create_test_file('lib.js', '''
+      mergeInto(LibraryManager.library, {
+       foo__sig: 'ii',
+       foo: function(f) { return f + 10; },
+       bar: function(f) { return f + 10; },
+      });
+      ''')
+    create_test_file('main.c', r'''
+#include <stdio.h>
+#include <utime.h>
+#include <sys/types.h>
+#include <dlfcn.h>
+
+typedef int (*func_type_t)(int arg);
+
+int main(int argc, char** argv) {
+  func_type_t fp = (func_type_t)dlsym(RTLD_DEFAULT, argv[1]);
+  if (!fp) {
+    printf("dlsym failed: %s\n", dlerror());
+    return 1;
+  }
+  printf("%s -> %d\n", argv[1], fp(10));
+  return 0;
+}
+''')
+    self.run_process([EMCC, 'main.c', '-sMAIN_MODULE=2',
+      '--js-library=lib.js',
+      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[foo,bar]',
+      '-sEXPORTED_FUNCTIONS=[_main,_foo,_bar]'])
+
+    # Fist test the successful use of a JS function with dlsym
+    out = self.run_js('a.out.js', args=['foo'])
+    self.assertContained('foo -> 20', out)
+
+    # Now test the failure case for when __sig is not present
+    out = self.run_js('a.out.js', args=['bar'], assert_returncode=NON_ZERO)
+    self.assertContained('Missing signature argument to addFunction: function _bar', out)
+
   def test_main_module_without_exceptions_message(self):
     # A side module that needs exceptions needs a main module with that
     # support enabled; show a clear message in that case.
