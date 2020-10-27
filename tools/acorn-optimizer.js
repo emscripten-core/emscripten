@@ -941,6 +941,14 @@ function createNode(props) {
   return node;
 }
 
+function createLiteral(value) {
+  return createNode({
+    type: 'Literal',
+    value: value,
+    raw: '' + value
+  });
+}
+
 function makeCallExpression(node, name, args) {
   Object.assign(node, {
     type: 'CallExpression',
@@ -1108,16 +1116,16 @@ function unsignPointers(ast) {
   });
 }
 
+function isHEAPAccess(node) {
+  return node.type === 'MemberExpression' &&
+         node.object.type === 'Identifier' &&
+         node.computed && // notice a[X] but not a.X
+         isEmscriptenHEAP(node.object.name);
+}
+
 // Replace direct HEAP* loads/stores with calls into C, in which ASan checks
 // are applied. That lets ASan cover JS too.
 function asanify(ast) {
-  function isHEAPAccess(node) {
-    return node.type === 'MemberExpression' &&
-           node.object.type === 'Identifier' &&
-           node.computed && // notice a[X] but not a.X
-           isEmscriptenHEAP(node.object.name);
-  }
-
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
       if (node.id.type === 'Identifier' && node.id.name.startsWith('_asan_js_')) {
@@ -1211,6 +1219,112 @@ function asanify(ast) {
           }
           case 'HEAPF64': {
             makeCallExpression(node, '_asan_js_load_d', [ptr]);
+            break;
+          }
+          default: {}
+        }
+      }
+    }
+  });
+}
+
+function multiply(value, by) {
+  return createNode({
+    type: 'BinaryExpression',
+    left: value,
+    operator: '*',
+    right: createLiteral(by)
+  });
+}
+
+// Replace direct heap access with SAFE_HEAP* calls.
+function safeHeap(ast) {
+  recursiveWalk(ast, {
+    FunctionDeclaration(node, c) {
+      if (node.id.type === 'Identifier' &&
+          (node.id.name.startsWith('SAFE_HEAP') ||
+           node.id.name === 'setValue' ||
+           node.id.name === 'getValue')) {
+        // do not recurse into this js impl function, which we use during
+        // startup before the wasm is ready
+      } else {
+        c(node.body);
+      }
+    },
+    AssignmentExpression(node, c) {
+      var target = node.left;
+      var value = node.right;
+      c(value);
+      if (isHEAPAccess(target)) {
+        // Instrument a store.
+        var ptr = target.property;
+        switch (target.object.name) {
+          case 'HEAP8':
+          case 'HEAPU8': {
+            makeCallExpression(node, 'SAFE_HEAP_STORE', [ptr, value, createLiteral(1)]);
+            break;
+          }
+          case 'HEAP16':
+          case 'HEAPU16': {
+            makeCallExpression(node, 'SAFE_HEAP_STORE', [multiply(ptr, 2), value, createLiteral(2)]);
+            break;
+          }
+          case 'HEAP32':
+          case 'HEAPU32': {
+            makeCallExpression(node, 'SAFE_HEAP_STORE', [multiply(ptr, 4), value, createLiteral(4)]);
+            break;
+          }
+          case 'HEAPF32': {
+            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [multiply(ptr, 4), value, createLiteral(4)]);
+            break;
+          }
+          case 'HEAPF64': {
+            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [multiply(ptr, 8), value, createLiteral(8)]);
+            break;
+          }
+        }
+      } else {
+        c(target);
+      }
+    },
+    MemberExpression(node, c) {
+      c(node.property);
+      if (!isHEAPAccess(node)) {
+        c(node.object);
+      } else {
+        // Instrument a load.
+        var ptr = node.property;
+        switch (node.object.name) {
+          case 'HEAP8': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(1), createLiteral(0)]);
+            break;
+          }
+          case 'HEAPU8': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(1), createLiteral(1)]);
+            break;
+          }
+          case 'HEAP16': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 2), createLiteral(2), createLiteral(0)]);
+            break;
+          }
+          case 'HEAPU16': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 2), createLiteral(2), createLiteral(1)]);
+            break;
+          }
+          case 'HEAP32': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 4), createLiteral(4), createLiteral(0)]);
+            break;
+          }
+          case 'HEAPU32': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 4), createLiteral(4), createLiteral(1)]);
+            break;
+          }
+          case 'HEAPF32': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [multiply(ptr, 4), createLiteral(4), createLiteral(0)]);
+            break;
+          }
+          case 'HEAPF64': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [multiply(ptr, 8), createLiteral(8), createLiteral(0)]);
             break;
           }
           default: {}
@@ -1333,7 +1447,8 @@ var registry = {
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
-  asanify: asanify
+  asanify: asanify,
+  safeHeap: safeHeap,
 };
 
 passes.forEach(function(pass) {

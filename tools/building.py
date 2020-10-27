@@ -31,7 +31,7 @@ from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
-from .shared import get_emscripten_temp_dir, exe_suffix, which, is_c_symbol
+from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol, shlex_join
 
 logger = logging.getLogger('building')
 
@@ -271,49 +271,19 @@ def get_building_env(cflags=[]):
   return env
 
 
-# Returns a clone of the given environment with all directories that contain
-# sh.exe removed from the PATH.  Used to work around CMake limitation with
-# MinGW Makefiles, where sh.exe is not allowed to be present.
-def remove_sh_exe_from_path(env):
-  env = env.copy()
-  if not WINDOWS:
-    return env
-  path = env['PATH'].split(';')
-  path = [p for p in path if not os.path.exists(os.path.join(p, 'sh.exe'))]
-  env['PATH'] = ';'.join(path)
-  return env
-
-
-def handle_cmake_toolchain(args, env):
+def handle_cmake_toolchain(args):
   def has_substr(args, substr):
     return any(substr in s for s in args)
 
   # Append the Emscripten toolchain file if the user didn't specify one.
   if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
-    args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
-  node_js = NODE_JS
+    args.insert(1, '-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
     node_js = NODE_JS[0].replace('"', '\"')
-    args.append('-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
+    args.insert(1, '-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
 
-  # On Windows specify MinGW Makefiles or ninja if we have them and no other
-  # toolchain was specified, to keep CMake from pulling in a native Visual
-  # Studio, or Unix Makefiles.
-  if WINDOWS and '-G' not in args:
-    if which('mingw32-make'):
-      args += ['-G', 'MinGW Makefiles']
-    elif which('ninja'):
-      args += ['-G', 'Ninja']
-
-  # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles
-  # is being used. This happens quite often, so do this automatically on
-  # behalf of the user. See
-  # http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
-  if WINDOWS and 'MinGW Makefiles' in args:
-    env = remove_sh_exe_from_path(env)
-
-  return (args, env)
+  return args
 
 
 def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
@@ -325,7 +295,7 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with
     #       CMake. This is because CMake does expect to be able to do
     #       config-time builds with emcc.
-    args, env = handle_cmake_toolchain(args, env)
+    args = handle_cmake_toolchain(args)
   else:
     # When we configure via a ./configure script, don't do config-time
     # compilation with emcc, but instead do builds natively with Clang. This
@@ -335,23 +305,13 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     stdout = None
   if EM_BUILD_VERBOSE >= 1:
     stderr = None
-  print('configure: ' + ' '.join(args), file=sys.stderr)
+  print('configure: ' + shlex_join(args), file=sys.stderr)
   run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
 
 
 def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
   if env is None:
     env = get_building_env(cflags=cflags)
-
-  # On Windows prefer building with mingw32-make instead of make, if it exists.
-  if WINDOWS:
-    if args[0] == 'make':
-      mingw32_make = which('mingw32-make')
-      if mingw32_make:
-        args[0] = mingw32_make
-
-    if 'mingw32-make' in args[0]:
-      env = remove_sh_exe_from_path(env)
 
   # On Windows, run the execution through shell to get PATH expansion and
   # executable extension lookup, e.g. 'sdl2-config' will match with
@@ -1360,7 +1320,13 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   wasm_file_with_dwarf = shared.Settings.SEPARATE_DWARF
   if wasm_file_with_dwarf is True:
     wasm_file_with_dwarf = wasm_file + '.debug.wasm'
-  embedded_path = shared.Settings.SEPARATE_DWARF_URL or wasm_file_with_dwarf
+  embedded_path = shared.Settings.SEPARATE_DWARF_URL
+  if not embedded_path:
+    # a path was provided - make it relative to the wasm.
+    embedded_path = os.path.relpath(wasm_file_with_dwarf,
+                                    os.path.dirname(wasm_file))
+    # normalize the path to use URL-style separators, per the spec
+    embedded_path = embedded_path.replace('\\', '/').replace('//', '/')
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
   strip(wasm_file_with_dwarf, wasm_file, debug=True)
@@ -1397,6 +1363,11 @@ def use_unsigned_pointers_in_js(js_file):
 def instrument_js_for_asan(js_file):
   logger.debug('instrumenting JS memory accesses for ASan')
   return acorn_optimizer(js_file, ['asanify'])
+
+
+def instrument_js_for_safe_heap(js_file):
+  logger.debug('instrumenting JS memory accesses for SAFE_HEAP')
+  return acorn_optimizer(js_file, ['safeHeap'])
 
 
 def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
@@ -1453,42 +1424,41 @@ def is_wasm(filename):
 # Given the name of a special Emscripten-implemented system library, returns an
 # array of absolute paths to JS library files inside emscripten/src/ that
 # corresponds to the library name.
-def path_to_system_js_libraries(library_name):
+def map_to_js_libs(library_name):
   # Some native libraries are implemented in Emscripten as system side JS libraries
-  js_system_libraries = {
-    'c': '',
-    'dl': '',
-    'EGL': 'library_egl.js',
+  library_map = {
+    'c': [],
+    'dl': [],
+    'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
-    'GLESv2': 'library_webgl.js',
+    'GLESv2': ['library_webgl.js'],
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
-    'GLEW': 'library_glew.js',
-    'glfw': 'library_glfw.js',
-    'glfw3': 'library_glfw.js',
-    'GLU': '',
-    'glut': 'library_glut.js',
-    'm': '',
-    'openal': 'library_openal.js',
-    'rt': '',
-    'pthread': '',
-    'X11': 'library_xlib.js',
-    'SDL': 'library_sdl.js',
-    'stdc++': '',
-    'uuid': 'library_uuid.js',
-    'websocket': 'library_websocket.js'
+    'GLEW': ['library_glew.js'],
+    'glfw': ['library_glfw.js'],
+    'glfw3': ['library_glfw.js'],
+    'GLU': [],
+    'glut': ['library_glut.js'],
+    'm': [],
+    'openal': ['library_openal.js'],
+    'rt': [],
+    'pthread': [],
+    'X11': ['library_xlib.js'],
+    'SDL': ['library_sdl.js'],
+    'stdc++': [],
+    'uuid': ['library_uuid.js'],
+    'websocket': ['library_websocket.js']
   }
-  library_files = []
-  if library_name in js_system_libraries:
-    if len(js_system_libraries[library_name]):
-      lib = js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
-      library_files += lib
-      logger.debug('Linking in JS library ' + str(lib))
 
-  elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
-    library_files += ['library_' + library_name]
+  if library_name in library_map:
+    libs = library_map[library_name]
+    logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
+    return libs
 
-  return library_files
+  if library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
+    return ['library_' + library_name]
+
+  return None
 
 
 def emit_wasm_source_map(wasm_file, map_file):
@@ -1569,16 +1539,12 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
       # emit some extra helpful text for common issues
       extra = ''
       # a plain -O0 build *almost* doesn't need post-link changes, except for
-      # legalization and longjmp. show a clear error for those (as the flags
-      # the user passed in are not enough to see what went wrong)
+      # legalization. show a clear error for those (as the flags the user passed
+      # in are not enough to see what went wrong)
       if shared.Settings.LEGALIZE_JS_FFI:
         extra += '\nnote: to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
-      if shared.Settings.SUPPORT_LONGJMP:
-        extra += '\nnote: to disable longjmp support (which requires changes after link) use -s SUPPORT_LONGJMP=0'
       if shared.Settings.OPT_LEVEL > 0:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
-      if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
-        extra += '\nnote: C++ exceptions always require changes'
       exit_with_error('changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: ' + str(cmd) + extra)
   if debug:
     cmd += ['-g'] # preserve the debug info
@@ -1588,8 +1554,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   print_compiler_stage(cmd)
   # if we are emitting a source map, every time we load and save the wasm
   # we must tell binaryen to update it
-  emit_source_map = Settings.DEBUG_LEVEL == 4 and outfile
-  if emit_source_map:
+  if Settings.GENERATE_SOURCE_MAP and outfile:
     cmd += ['--input-source-map=' + infile + '.map']
     cmd += ['--output-source-map=' + outfile + '.map']
   ret = check_call(cmd, stdout=stdout).stdout

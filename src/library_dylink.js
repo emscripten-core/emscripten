@@ -6,7 +6,7 @@
 var LibraryDylink = {
 #if RELOCATABLE
   // Applies relocations to exported things.
-  $relocateExports: function(exports, memoryBase, moduleLocal) {
+  $relocateExports: function(exports, memoryBase) {
     var relocated = {};
 
     for (var e in exports) {
@@ -20,9 +20,6 @@ var LibraryDylink = {
         value += memoryBase;
       }
       relocated[e] = value;
-      if (moduleLocal) {
-        moduleLocal['_' + e] = value;
-      }
     }
     return relocated;
   },
@@ -114,9 +111,44 @@ var LibraryDylink = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   },
 
-  // Loads a side module from binary data
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle'],
-  $loadWebAssemblyModule: function(binary, flags) {
+  // Resolve a symbol first against Module["asm"] and then failing that
+  // resolve it directly against the global Module object.
+  $resolveGlobalSymbol: function(sym, legalized) {
+#if !WASM_BIGINT
+    // In case the function was legalized, look for the original export first.
+    // We always want to return the original wasm function here since this
+    // function is used in the internal linking only.
+    if (!legalized) {
+      var orig = Module['asm']['orig$' + sym];
+      if (orig) {
+        return orig;
+      }
+    }
+#endif
+
+    var resolved = Module['asm'][sym];
+    if (!resolved) {
+#if !WASM_BIGINT
+      if (!legalized) {
+        orig = Module['_orig$' + sym];
+        if (orig) {
+          return orig;
+        }
+     }
+#endif
+      resolved = Module[asmjsMangle(sym)];
+    }
+
+    if (!resolved && sym.startsWith('invoke_')) {
+      resolved = createInvokeFunction(sym.split('_')[1]);
+    }
+    return resolved;
+  },
+
+  // Loads a side module from binary data. Returns the module's exports or a
+  // progise that resolves to its exports if the loadAsync flag is set.
+  $loadSideModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle', '$resolveGlobalSymbol'],
+  $loadSideModule: function(binary, flags) {
     var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
     assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
     // we should see the dylink section right after the magic number and wasm version
@@ -193,35 +225,28 @@ var LibraryDylink = {
         table.set(i, null);
       }
 
-      // We resolve symbols against the global Module but failing that also
-      // against the local symbols exported a side module.  This is because
-      // a) Module sometime need to import their own symbols
-      // b) Symbols from loaded modules are not always added to the global Module.
-      var moduleLocal = {};
+      // This is the export map that we ultimately return.  We declare it here
+      // so it can be used within resolveSymbol.  We resolve symbols against
+      // this local symbol map in the case there they are not present on the
+      // global Module object.  We need this fallback because:
+      // a) Modules sometime need to import their own symbols
+      // b) Symbols from side modules are not always added to the global namespace.
+      var moduleExports;
 
-      var resolveSymbol = function(sym, type, legalized) {
-#if WASM_BIGINT
-        assert(!legalized);
-#else
-        if (legalized) {
-          sym = 'orig$' + sym;
+      function resolveSymbol(sym, type, legalized) {
+        var resolved = resolveGlobalSymbol(sym, legalized);
+#if !WASM_BIGINT
+        if (!resolved && !legalized) {
+          // In case the function was legalized, look for the original export first.
+          resolved = moduleExports['orig$' + sym];
         }
 #endif
-
-        var resolved = Module["asm"][sym];
         if (!resolved) {
-          var mangled = asmjsMangle(sym);
-          resolved = Module[mangled];
-          if (!resolved) {
-            resolved = moduleLocal[mangled];
-          }
-          if (!resolved && sym.startsWith('invoke_')) {
-            resolved = createInvokeFunction(sym.split('_')[1]);
-          }
-#if ASSERTIONS
-          assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
-#endif
+          resolved = moduleExports[sym];
         }
+#if ASSERTIONS
+        assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#endif
         return resolved;
       }
 
@@ -269,23 +294,20 @@ var LibraryDylink = {
             assert(parts.length == 3)
             var name = parts[1];
             var sig = parts[2];
-#if WASM_BIGINT
-            var legalized = false;
-#else
-            var legalized = sig.indexOf('j') >= 0; // check for i64s
-#endif
             var fp = 0;
             return obj[prop] = function() {
               if (!fp) {
-                var f = resolveSymbol(name, 'function', legalized);
+                var f = resolveSymbol(name, 'function');
                 fp = addFunction(f, sig);
               }
               return fp;
             };
           }
           // otherwise this is regular function import - call it indirectly
+          var resolved;
           return obj[prop] = function() {
-            return resolveSymbol(prop, 'function').apply(null, arguments);
+            if (!resolved) resolved = resolveSymbol(prop, 'function', true);
+            return resolved.apply(null, arguments);
           };
         }
       };
@@ -306,7 +328,7 @@ var LibraryDylink = {
       }
 #endif
 
-      function postInstantiation(instance, moduleLocal) {
+      function postInstantiation(instance) {
 #if ASSERTIONS
         // the table should be unchanged
         assert(table === originalTable);
@@ -320,9 +342,9 @@ var LibraryDylink = {
           assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
         }
 #endif
-        var exports = relocateExports(instance.exports, memoryBase, moduleLocal);
+        moduleExports = relocateExports(instance.exports, memoryBase);
         // initialize the module
-        var init = exports['__post_instantiate'];
+        var init = moduleExports['__post_instantiate'];
         if (init) {
           if (runtimeInitialized) {
             init();
@@ -331,17 +353,17 @@ var LibraryDylink = {
             __ATINIT__.push(init);
           }
         }
-        return exports;
+        return moduleExports;
       }
 
       if (flags.loadAsync) {
         return WebAssembly.instantiate(binary, info).then(function(result) {
-          return postInstantiation(result.instance, moduleLocal);
+          return postInstantiation(result.instance);
         });
-      } else {
-        var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
-        return postInstantiation(instance, moduleLocal);
       }
+
+      var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+      return postInstantiation(instance);
     }
 
     // now load needed libraries and the module itself.
@@ -379,16 +401,16 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadSideModule', '$asmjsMangle', '$fetchBinary'],
   $loadDynamicLibrary: function(lib, flags) {
-    if (lib == '__self__' && !LDSO.loadedLibNames[lib]) {
+    if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
         refcount: Infinity,   // = nodelete
-        name:     '__self__',
+        name:     '__main__',
         module:   Module['asm'],
         global:   true
       };
-      LDSO.loadedLibNames['__self__'] = -1;
+      LDSO.loadedLibNames['__main__'] = -1;
     }
 
     // when loadDynamicLibrary did not have flags, libraries were loaded globally & permanently
@@ -446,11 +468,6 @@ var LibraryDylink = {
       return readBinary(libFile);
     }
 
-    // libModule <- libData
-    function createLibModule(libData) {
-      return loadWebAssemblyModule(libData, flags)
-    }
-
     // libModule <- lib
     function getLibModule() {
       // lookup preloaded cache first
@@ -463,11 +480,11 @@ var LibraryDylink = {
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
         return loadLibData(lib).then(function(libData) {
-          return createLibModule(libData);
+          return loadSideModule(libData, flags);
         });
       }
 
-      return createLibModule(loadLibData(lib));
+      return loadSideModule(loadLibData(lib), flags);
     }
 
     // Module.symbols <- libModule.symbols (flags.global handler)
@@ -493,7 +510,7 @@ var LibraryDylink = {
           var curr = Module[sym], next = libModule[sym];
           // don't warn on functions - might be odr, linkonce_odr, etc.
           if (!(typeof curr === 'function' && typeof next === 'function')) {
-            err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+            err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)");
           }
         }
 #endif
@@ -546,17 +563,17 @@ var LibraryDylink = {
     });
   },
 
-  // void* dlopen(const char* filename, int flag);
+  // void* dlopen(const char* filename, int flags);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen__proxy: 'sync',
   dlopen__sig: 'iii',
-  dlopen: function(filenameAddr, flag) {
+  dlopen: function(filenameAddr, flags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
     var filename;
     if (filenameAddr === 0) {
-      filename = '__self__';
+      filename = '__main__';
     } else {
       filename = UTF8ToString(filenameAddr);
 
@@ -580,16 +597,21 @@ var LibraryDylink = {
       }
     }
 
+    if (!(flags & ({{{ cDefine('RTLD_LAZY') }}} | {{{ cDefine('RTLD_NOW') }}}))) {
+      DLFCN.errorMsg = 'invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required';
+      return 0;
+    }
+
     // We don't care about RTLD_NOW and RTLD_LAZY.
-    var flags = {
-      global:   Boolean(flag & 256),  // RTLD_GLOBAL
-      nodelete: Boolean(flag & 4096), // RTLD_NODELETE
+    var jsflags = {
+      global:   Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}}),
+      nodelete: Boolean(flags & {{{ cDefine('RTLD_NODELETE') }}}),
 
       fs: FS, // load libraries from provided filesystem
     }
 
     try {
-      return loadDynamicLibrary(filename, flags)
+      return loadDynamicLibrary(filename, jsflags)
     } catch (e) {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
@@ -626,20 +648,31 @@ var LibraryDylink = {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = UTF8ToString(symbol);
+    var result;
 
-    var lib = LDSO.loadedLibs[handle];
-    if (!lib) {
-      DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
-      return 0;
+    if (handle == {{{ cDefine('RTLD_DEFAULT') }}}) {
+      result = resolveGlobalSymbol(symbol)
+      if (!result) {
+        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: RTLD_DEFAULT'
+        return 0;
+      }
+    } else {
+      var lib = LDSO.loadedLibs[handle];
+      if (!lib) {
+        DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
+        return 0;
+      }
+      if (!lib.module.hasOwnProperty(symbol)) {
+        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name;
+        return 0;
+      }
+#if !WASM_BIGINT
+      result = lib.module['orig$' + symbol];
+      if (!result)
+#endif
+      result = lib.module[symbol];
     }
 
-    if (!lib.module.hasOwnProperty(symbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                             '" in dynamic lib: ' + lib.name);
-      return 0;
-    }
-
-    var result = lib.module[symbol];
     if (typeof result !== 'function') {
       return result;
     }

@@ -1,5 +1,4 @@
 /**
-d
  * @license
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
@@ -154,5 +153,3 @@ var currentScriptUrl = typeof _scriptDir !== 'undefined' ? _scriptDir : ((typeof
 #endif // USE_PTHREADS
 
 {{BODY}}
-
-// {{MODULE_ADDITIONS}}

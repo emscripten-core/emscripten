@@ -10,6 +10,7 @@ import shutil
 import sys
 import time
 import unittest
+from subprocess import Popen, PIPE
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py sockets')
@@ -25,7 +26,7 @@ except Exception:
 import clang_native
 from runner import BrowserCore, no_windows, chdir
 from tools import shared
-from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, JS_ENGINES, CLANG_CC
+from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, WINDOWS, run_process, JS_ENGINES, CLANG_CC
 
 npm_checked = False
 

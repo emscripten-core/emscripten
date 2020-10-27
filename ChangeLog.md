@@ -1,22 +1,67 @@
 This document describes changes between tagged Emscripten SDK versions.
 
-Note that in the compiler, version numbering is used as the mechanism to
-invalidate internal compiler caches, so version numbers do not necessarily
-reflect the amount of changes between versions.
+Note that version numbers do not necessarily reflect the amount of changes
+between versions. A version number reflects a release that is known to pass all
+tests, and versions may be tagged more or less frequently at different times.
 
-To browse or download snapshots of old tagged versions, visit
-https://github.com/emscripten-core/emscripten/releases.
+Note that there is *no* ABI compatibility guarantee between versions - the ABI
+may change, so that we can keep improving and optimizing it. The compiler will
+automatically invalidate system caches when the version number updates, so that
+libc etc. are rebuilt for you. You should also rebuild object files and
+libraries in your project when you upgrade emscripten.
 
 Not all changes are documented here. In particular, new features, user-oriented
-fixes, options, command-line parameters, usage changes, deprecations,
+fixes, options, command-line parameters, breaking ABI changes, deprecations,
 significant internal modifications and optimizations etc. generally deserve a
-mention. To examine the full set of changes between versions, visit the link to
-full changeset diff at the end of each section.
+mention. To examine the full set of changes between versions, you can use git
+to browse the changes between the tags.
 
-See docs/process.md for how version tagging works.
+See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
+  or RTDL_NOW flags ar set.  Previously, it was possible set nether of these
+  without generating an error.
+
+2.0.8: 10/24/2020
+-----------------
+- `-s ASSERTIONS=2` now implies `-s STACK_OVERFLOW_CHECK=2`. Previously only
+  `-s ASSERTIONS=1` implied `-s STACK_OVERFLOW_CHECK=1`.
+- Dynamic linking (MAIN_MODULE + SIDE_MODULE) now produces wasm binaries that
+  depend on mutable globals.  Specifically the stack pointer global is mutable
+  and shared between the modules. This is an ABI change for dynamic linking.
+  (#12536)
+- emcc now accepts `--arg=foo` as well as `--arg foo`.  For example
+  `--js-library=file.js`.
+- Reject promises returned from the factory function created by using the
+  MODULARIZE build option if initialization of the module instance fails
+  (#12396).
+- emrun: Passing command line flags (arguments that start with `-`) to the
+  program bring run now requires a `--` on the command line to signal the
+  end of `emrun` arguments. e.g:
+    `emrun filename.html -- --arg-for-page`
+  This is standard behaviour for command line parsing and simplifies the
+  emrun logic.
+- `emcmake` and `emmake` are no longer opinionated about preferring ming32-make.
+  If you want to use ming32-make then you can do that in the normal way.
+  For example, with cmake, you would use `-G MinGW Makefiles`.
+
+2.0.7: 10/13/2020
+-----------------
+- Don't run Binaryen postprocessing for Emscripten EH/SjLj. This lets us avoid
+  running `wasm-emscripten-finalize` just for C++ exceptions or longjmp. This
+  is an ABI change. (#12399)
+- Run `SAFE_HEAP` on user JS code using a new Acorn pass, increasing the
+  coverage of those tests to all JS in the output (#12450).
+- `EM_LOG_DEMANGLE` is now deprecated.  Function names shown in wasm backtraces
+  are never mangled (they are either missing or demangled already) so demangled
+  is not possible anymore.
+- In STRICT mode we no longer link in C++ mode by default.  This means if you
+  are building a C++ program in STRICT mode you need to link via `em++` rather
+  than `emcc`.  This matches the behaviour of gcc and clang.
+- IDBFS now persists files whenever their timestamp changes; previously it acted
+  on sync only if the timestamp increased and ignored the file changes otherwise.
 - When `-s SUPPORT_LONGJMP=0` is passed to disable longjmp, do not run the LLVM
   wasm backend path that handles longjmp. Before this only affected linking, and
   now the flag gives you the ability to affect codegen at compile time too. This

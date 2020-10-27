@@ -36,7 +36,7 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 97
+EXPECTED_BINARYEN_VERSION = 98
 EXPECTED_LLVM_VERSION = "12.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -70,70 +70,6 @@ diagnostics.add_warning('pthreads-mem-growth')
 
 def exit_with_error(msg, *args):
   diagnostics.error(msg, *args)
-
-
-# On Windows python suffers from a particularly nasty bug if python is spawning
-# new processes while python itself is spawned from some other non-console
-# process.
-# Use a custom replacement for Popen on Windows to avoid the "WindowsError:
-# [Error 6] The handle is invalid" errors when emcc is driven through cmake or
-# mingw32-make.
-# See http://bugs.python.org/issue3905
-class WindowsPopen(object):
-  def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
-               shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
-    self.stdin = stdin
-    self.stdout = stdout
-    self.stderr = stderr
-
-    # (stdin, stdout, stderr) store what the caller originally wanted to be done with the streams.
-    # (stdin_, stdout_, stderr_) will store the fixed set of streams that workaround the bug.
-    self.stdin_ = stdin
-    self.stdout_ = stdout
-    self.stderr_ = stderr
-
-    # If the caller wants one of these PIPEd, we must PIPE them all to avoid the 'handle is invalid' bug.
-    if self.stdin_ == PIPE or self.stdout_ == PIPE or self.stderr_ == PIPE:
-      if self.stdin_ is None:
-        self.stdin_ = PIPE
-      if self.stdout_ is None:
-        self.stdout_ = PIPE
-      if self.stderr_ is None:
-        self.stderr_ = PIPE
-
-    try:
-      # Call the process with fixed streams.
-      self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
-      self.pid = self.process.pid
-    except Exception as e:
-      logger.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (shlex_join(args), str(e)))
-      raise
-
-  def communicate(self, input=None):
-    output = self.process.communicate(input)
-    self.returncode = self.process.returncode
-
-    # If caller never wanted to PIPE stdout or stderr, route the output back to screen to avoid swallowing output.
-    if self.stdout is None and self.stdout_ == PIPE and len(output[0].strip()):
-      print(output[0], file=sys.stdout)
-    if self.stderr is None and self.stderr_ == PIPE and len(output[1].strip()):
-      print(output[1], file=sys.stderr)
-
-    # Return a mock object to the caller. This works as long as all emscripten code immediately .communicate()s the result, and doesn't
-    # leave the process object around for longer/more exotic uses.
-    if self.stdout is None and self.stderr is None:
-      return (None, None)
-    if self.stdout is None:
-      return (None, output[1])
-    if self.stderr is None:
-      return (output[0], None)
-    return (output[0], output[1])
-
-  def poll(self):
-    return self.process.poll()
-
-  def kill(self):
-    return self.process.kill()
 
 
 def path_from_root(*pathelems):
@@ -209,7 +145,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
   if input is not None:
     kw['stdin'] = subprocess.PIPE
-  proc = Popen(cmd, *args, **kw)
+  proc = subprocess.Popen(cmd, *args, **kw)
   stdout, stderr = proc.communicate(input)
   result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
   if check:
@@ -346,7 +282,6 @@ def parse_config_file():
   CONFIG_KEYS = (
     'NODE_JS',
     'BINARYEN_ROOT',
-    'POPEN_WORKAROUND',
     'SPIDERMONKEY_ENGINE',
     'V8_ENGINE',
     'LLVM_ROOT',
@@ -1064,12 +999,6 @@ def reconfigure_cache():
   Cache = cache.Cache(CACHE)
 
 
-# Placeholder strings used for SINGLE_FILE
-class FilenameReplacementStrings:
-  WASM_TEXT_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_TEXT_FILE }}}'
-  WASM_BINARY_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE }}}'
-
-
 class JS(object):
   emscripten_license = '''\
 /**
@@ -1129,47 +1058,6 @@ class JS(object):
       return os.path.basename(path)
 
   @staticmethod
-  def make_initializer(sig, settings=None):
-    settings = settings or Settings
-    if sig == 'i':
-      return '0'
-    elif sig == 'f':
-      return 'Math_fround(0)'
-    elif sig == 'j':
-      if settings:
-        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64(0)'
-    else:
-      return '+0'
-
-  FLOAT_SIGS = ['f', 'd']
-
-  @staticmethod
-  def make_coercion(value, sig, settings=None, ffi_arg=False, ffi_result=False, convert_from=None):
-    settings = settings or Settings
-    if sig == 'i':
-      if convert_from in JS.FLOAT_SIGS:
-        value = '(~~' + value + ')'
-      return value + '|0'
-    if sig in JS.FLOAT_SIGS and convert_from == 'i':
-      value = '(' + value + '|0)'
-    if sig == 'f':
-      if ffi_arg:
-        return '+Math_fround(' + value + ')'
-      elif ffi_result:
-        return 'Math_fround(+(' + value + '))'
-      else:
-        return 'Math_fround(' + value + ')'
-    elif sig == 'd' or sig == 'f':
-      return '+' + value
-    elif sig == 'j':
-      if settings:
-        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64(' + value + ')'
-    else:
-      return value
-
-  @staticmethod
   def legalize_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
     if Settings.WASM_BIGINT:
@@ -1194,16 +1082,6 @@ class JS(object):
     if Settings.WASM_BIGINT:
       return True
     return sig == JS.legalize_sig(sig)
-
-  @staticmethod
-  def make_jscall(sig):
-    fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
-    args = (',' if fnargs else '') + fnargs
-    ret = '''\
-function jsCall_%s(index%s) {
-    %sfunctionPointers[index](%s);
-}''' % (sig, args, 'return ' if sig[0] != 'v' else '', fnargs)
-    return ret
 
   @staticmethod
   def make_dynCall(sig, args):
@@ -1245,48 +1123,6 @@ function%s(%s) {
 }''' % (name, ','.join(args), body, rethrow)
 
     return ret
-
-  @staticmethod
-  def align(x, by):
-    while x % by != 0:
-      x += 1
-    return x
-
-  @staticmethod
-  def generate_string_initializer(s):
-    if Settings.ASSERTIONS:
-      # append checksum of length and content
-      crcTable = []
-      for i in range(256):
-        crc = i
-        for bit in range(8):
-          crc = (crc >> 1) ^ ((crc & 1) * 0xedb88320)
-        crcTable.append(crc)
-      crc = 0xffffffff
-      n = len(s)
-      crc = crcTable[(crc ^ n) & 0xff] ^ (crc >> 8)
-      crc = crcTable[(crc ^ (n >> 8)) & 0xff] ^ (crc >> 8)
-      for i in s:
-        crc = crcTable[(crc ^ i) & 0xff] ^ (crc >> 8)
-      for i in range(4):
-        s.append((crc >> (8 * i)) & 0xff)
-    s = ''.join(map(chr, s))
-    s = s.replace('\\', '\\\\').replace("'", "\\'")
-    s = s.replace('\n', '\\n').replace('\r', '\\r')
-
-    # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
-    def escape(x):
-      return '\\x{:02x}'.format(ord(x.group()))
-
-    return re.sub('[\x1a\x80-\xff]', escape, s)
-
-  @staticmethod
-  def is_dyn_call(func):
-    return func.startswith('dynCall_')
-
-  @staticmethod
-  def is_function_table(name):
-    return name.startswith('FUNCTION_TABLE_')
 
 
 # Python 2-3 compatibility helper function:
@@ -1458,7 +1294,6 @@ PYTHON = sys.executable
 # See parse_config_file below.
 NODE_JS = None
 BINARYEN_ROOT = None
-EM_POPEN_WORKAROUND = None
 SPIDERMONKEY_ENGINE = None
 V8_ENGINE = None
 LLVM_ROOT = None
@@ -1492,19 +1327,6 @@ else:
 
 parse_config_file()
 normalize_config_settings()
-
-# Install our replacement Popen handler if we are running on Windows to avoid
-# python spawn process function.
-# nb. This is by default disabled since it has the adverse effect of buffering
-# up all logging messages, which makes builds look unresponsive (messages are
-# printed only after the whole build finishes). Whether this workaround is
-# needed seems to depend on how the host application that invokes emcc has set
-# up its stdout and stderr.
-if EM_POPEN_WORKAROUND and os.name == 'nt':
-  logger.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
-  Popen = WindowsPopen
-else:
-  Popen = subprocess.Popen
 
 # Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
 # 0: disabled.

@@ -986,17 +986,25 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
-    // timezone is specified as seconds west of UTC ("The external variable
-    // `timezone` shall be set to the difference, in seconds, between
-    // Coordinated Universal Time (UTC) and local standard time."), the same
-    // as returned by getTimezoneOffset().
-    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
-
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
     var summer = new Date(currentYear, 6, 1);
-    {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
+    var winterOffset = winter.getTimezoneOffset();
+    var summerOffset = summer.getTimezoneOffset();
+
+    // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
+    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST). 
+    // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
+    var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
+
+    // timezone is specified as seconds west of UTC ("The external variable
+    // `timezone` shall be set to the difference, in seconds, between
+    // Coordinated Universal Time (UTC) and local standard time."), the same
+    // as returned by stdTimezoneOffset.
+    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
+    {{{ makeSetValue('__get_timezone()', '0', 'stdTimezoneOffset * 60', 'i32') }}};
+
+    {{{ makeSetValue('__get_daylight()', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
@@ -1006,7 +1014,7 @@ LibraryManager.library = {
     var summerName = extractZone(summer);
     var winterNamePtr = allocateUTF8(winterName);
     var summerNamePtr = allocateUTF8(summerName);
-    if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
+    if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
       {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
@@ -1792,7 +1800,6 @@ LibraryManager.library = {
   // they each have a different signature - it is only at the wasm level that
   // they become identical).
   emscripten_longjmp: 'longjmp',
-  emscripten_longjmp_jmpbuf: 'longjmp',
 
   // ==========================================================================
   // sys/wait.h
@@ -3030,7 +3037,7 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$demangle'
+  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace',
 #if MINIMAL_RUNTIME
     , '$warnOnce'
 #endif
@@ -3044,6 +3051,10 @@ LibraryManager.library = {
     var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
+
+    if (flags & 32/*EM_LOG_DEMANGLE*/) {
+      warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
+    }
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
     if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
@@ -3070,14 +3081,14 @@ LibraryManager.library = {
     for (var l in lines) {
       var line = lines[l];
 
-      var jsSymbolName = '';
+      var symbolName = '';
       var file = '';
       var lineno = 0;
       var column = 0;
 
       var parts = chromeRe.exec(line);
       if (parts && parts.length == 5) {
-        jsSymbolName = parts[1];
+        symbolName = parts[1];
         file = parts[2];
         lineno = parts[3];
         column = parts[4];
@@ -3085,7 +3096,7 @@ LibraryManager.library = {
         parts = newFirefoxRe.exec(line);
         if (!parts) parts = firefoxRe.exec(line);
         if (parts && parts.length >= 4) {
-          jsSymbolName = parts[1];
+          symbolName = parts[1];
           file = parts[2];
           lineno = parts[3];
           column = parts[4]|0; // Old Firefox doesn't carry column information, but in new FF30, it is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
@@ -3094,12 +3105,6 @@ LibraryManager.library = {
           callstack += line + '\n';
           continue;
         }
-      }
-
-      // Try to demangle the symbol, but fall back to showing the original JS symbol name if not available.
-      var cSymbolName = (flags & 32/*EM_LOG_DEMANGLE*/) ? demangle(jsSymbolName) : jsSymbolName;
-      if (!cSymbolName) {
-        cSymbolName = jsSymbolName;
       }
 
       var haveSourceMap = false;
@@ -3111,19 +3116,19 @@ LibraryManager.library = {
           if (flags & 64/*EM_LOG_NO_PATHS*/) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
           }
-          callstack += '    at ' + cSymbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
+          callstack += '    at ' + symbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
         }
       }
       if ((flags & 16/*EM_LOG_JS_STACK*/) || !haveSourceMap) {
         if (flags & 64/*EM_LOG_NO_PATHS*/) {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
-        callstack += (haveSourceMap ? ('     = '+jsSymbolName) : ('    at '+cSymbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
+        callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
 
       // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
       if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
-        if (stack_args[1] == jsSymbolName && stack_args[2].length > 0) {
+        if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
         }
@@ -3660,36 +3665,7 @@ LibraryManager.library = {
     {{{ makeDynCall('vii', 'func') }}}(Math.min(base, end), Math.max(base, end));
   },
 
-  // misc definitions to avoid unnecessary unresolved symbols being reported
-  // by fastcomp or wasm-ld
-#if SUPPORT_LONGJMP
-  emscripten_prep_setjmp: function() {},
-  emscripten_cleanup_setjmp: function() {},
-  emscripten_check_longjmp: function() {},
-  emscripten_get_longjmp_result: function() {},
-  emscripten_setjmp: function() {},
-#endif
-  emscripten_preinvoke: function() {},
-  emscripten_postinvoke: function() {},
-  emscripten_resume: function() {},
-  emscripten_landingpad: function() {},
-  getHigh32: function() {},
-  setHigh32: function() {},
-  FtoILow: function() {},
-  FtoIHigh: function() {},
-  DtoILow: function() {},
-  DtoIHigh: function() {},
-  BDtoILow: function() {},
-  BDtoIHigh: function() {},
-  SItoF: function() {},
-  UItoF: function() {},
-  SItoD: function() {},
-  UItoD: function() {},
-  BItoD: function() {},
-  llvm_dbg_value: function() {},
-  llvm_debugtrap: function() {},
-  llvm_ctlz_i32: function() {},
-
+  // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow: function() {
     abort('stack overflow')
   },
@@ -3789,7 +3765,9 @@ LibraryManager.library = {
       return dynCallLegacy(sig, ptr, args);
     }
 #endif
-
+#if ASSERTIONS
+    assert(wasmTable.get(ptr), 'missing table entry in dynCall: ' + ptr);
+#endif
     return wasmTable.get(ptr).apply(null, args)
 #endif
   },

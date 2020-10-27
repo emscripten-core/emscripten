@@ -45,7 +45,7 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
   exports_that_are_not_initializers = [x for x in exports if x not in initializers]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
-  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(exports_that_are_not_initializers) + ';')
+  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
 
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
   post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
@@ -240,7 +240,7 @@ def report_missing_symbols(all_implemented, pre):
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
       continue
-    diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
+    diagnostics.warning('undefined', 'undefined exported symbol: "%s"', requested)
 
   # Special hanlding for the `_main` symbol
 
@@ -438,7 +438,9 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  report_missing_symbols(set([asmjs_mangle(f) for f in exports]), pre)
+  all_exports = exports + list(metadata['namedGlobals'].keys())
+  all_exports = set([asmjs_mangle(e) for e in all_exports])
+  report_missing_symbols(all_exports, pre)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
@@ -484,16 +486,16 @@ def finalize_wasm(infile, memfile, DEBUG):
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
 
-  # C++ exceptions and longjmp require invoke processing,
-  # https://github.com/WebAssembly/binaryen/issues/3081
-  if shared.Settings.SUPPORT_LONGJMP or shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+  if shared.Settings.RELOCATABLE:
+    # In relocatable mode we transform the PIC ABI from what llvm outputs
+    # to emscripten's PIC ABI that uses `fp$` and `g$` accessor functions.
     modify_wasm = True
+
   if shared.Settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
     modify_wasm = True
-  write_source_map = shared.Settings.DEBUG_LEVEL >= 4
-  if write_source_map:
+  if shared.Settings.GENERATE_SOURCE_MAP:
     building.emit_wasm_source_map(infile, infile + '.map')
     building.save_intermediate(infile + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
@@ -514,16 +516,20 @@ def finalize_wasm(infile, memfile, DEBUG):
       args.append('--dyncalls-i64')
       # we need to add some dyncalls to the wasm
       modify_wasm = True
-  if not shared.Settings.LEGALIZE_JS_FFI:
-    args.append('--no-legalize-javascript-ffi')
-  else:
+  if shared.Settings.LEGALIZE_JS_FFI:
+    # When we dynamically link our JS loader adds functions from wasm modules to
+    # the table. It must add the original versions of them, not legalized ones,
+    # so that indirect calls have the right type, so export those.
+    if shared.Settings.RELOCATABLE:
+      args.append('--pass-arg=legalize-js-interface-export-originals')
     modify_wasm = True
-  if not shared.Settings.MEM_INIT_IN_WASM:
+  else:
+    args.append('--no-legalize-javascript-ffi')
+  if memfile:
     args.append('--separate-data-segments=' + memfile)
     modify_wasm = True
   if shared.Settings.SIDE_MODULE:
     args.append('--side-module')
-    modify_wasm = True
   else:
     # --global-base is used by wasm-emscripten-finalize to calculate the size
     # of the static data used.  The argument we supply here needs to match the
@@ -542,12 +548,7 @@ def finalize_wasm(infile, memfile, DEBUG):
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
     modify_wasm = True
-  # When we dynamically link our JS loader adds functions from wasm modules to
-  # the table. It must add the original versions of them, not legalized ones,
-  # so that indirect calls have the right type, so export those.
-  if shared.Settings.RELOCATABLE:
-    args.append('--pass-arg=legalize-js-interface-export-originals')
-    modify_wasm = True
+
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
@@ -557,10 +558,10 @@ def finalize_wasm(infile, memfile, DEBUG):
                                          stdout=subprocess.PIPE)
   if modify_wasm:
     building.save_intermediate(infile, 'post_finalize.wasm')
-  if write_source_map:
+  if shared.Settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(infile + '.map', 'post_finalize.map')
 
-  if not shared.Settings.MEM_INIT_IN_WASM:
+  if memfile:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,
     # because it's an ABI question as to whether it is valid to do so or not.
     # we can do so here, since we make sure to zero out that memory (even in
@@ -632,7 +633,7 @@ def add_standard_wasm_imports(send_items_map):
     # the wasm backend reserves slot 0 for the NULL function pointer
     send_items_map['__table_base'] = '1'
   if shared.Settings.RELOCATABLE:
-    send_items_map['__stack_pointer'] = 'STACK_BASE'
+    send_items_map['__stack_pointer'] = "__stack_pointer"
 
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
@@ -767,7 +768,7 @@ def create_sending(invoke_funcs, metadata):
   add_standard_wasm_imports(send_items_map)
 
   sorted_keys = sorted(send_items_map.keys())
-  return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
+  return '{\n  ' + ',\n  '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + '\n}'
 
 
 def make_export_wrappers(exports, delay_assignment):
@@ -844,7 +845,10 @@ def create_receiving(exports, initializers):
   else:
     receiving += make_export_wrappers(exports, delay_assignment)
 
-  return '\n'.join(receiving) + '\n'
+  if shared.Settings.MINIMAL_RUNTIME:
+    return '\n  '.join(receiving) + '\n'
+  else:
+    return '\n'.join(receiving) + '\n'
 
 
 def create_module(sending, receiving, invoke_funcs, metadata):

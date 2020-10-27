@@ -554,7 +554,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_pause
      - 💭 No-op.
    * - _mm_sad_epu8
-     - ❌ scalarized
+     - ⚠️ emulated with eleven SIMD instructions+const
    * - _mm_set_epi16
      - ✅ wasm_i16x8_make
    * - _mm_set_epi32
@@ -803,9 +803,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_hsubs_epi16
      - ⚠️ emulated with a SIMD subs+two shuffles
    * - _mm_maddubs_epi16
-     - 💣 scalarized
+     - ⚠️ emulated with SIMD saturated add+four shifts+two muls+and+const
    * - _mm_mulhrs_epi16
-     - 💣 scalarized (TODO: emulatable in SIMD?)
+     - ⚠️ emulated with SIMD four widen+two muls+four adds+complex shuffle+const
    * - _mm_shuffle_epi8
      - ⚠️ emulated with a SIMD swizzle+and+const
    * - _mm_sign_epi8
@@ -849,7 +849,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_ceil_ss
      - ❌ scalarized
    * - _mm_cmpeq_epi64
-     - ❌ scalarized
+     - ⚠️ emulated with a SIMD cmp+and+shuffle
    * - _mm_cvtepi16_epi32
      - ✅ wasm_i32x4_widen_low_i16x8
    * - _mm_cvtepi16_epi64

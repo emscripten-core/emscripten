@@ -23,6 +23,7 @@ from urllib.request import urlopen
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
+from tools import shared
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
 from tools.shared import try_delete
@@ -194,12 +195,9 @@ If manually bisecting:
   through and see the print (best to run with EMTEST_SAVE_DIR=1 for the reload).
 ''')
 
-  @no_wasm_backend('wasm source maps')
   def test_emscripten_log(self):
-    # TODO: wasm support for source maps. emscripten_loadSourceMap looks at $HTML.map but it should be $NAME.wasm.map.
-    src = 'src.cpp'
-    create_test_file(src, self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
+    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
+    self.compile_btest(['src.cpp', '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html'])
     self.run_browser('page.html', None, '/report_result?1')
 
   def test_preload_file(self):
@@ -2416,7 +2414,7 @@ void *getBindBuffer() {
           REPORT_RESULT(1);
           return 1;
         }
-        void *lib_handle = dlopen("/library.so", 0);
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
         if (!lib_handle) {
           REPORT_RESULT(2);
           return 2;
@@ -2456,14 +2454,26 @@ void *getBindBuffer() {
   # by opening a new window and possibly not closing it.
   def test_zzz_emrun(self):
     self.compile_btest([path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
-    outdir = os.getcwd()
     if not has_browser():
       self.skipTest('need a browser')
-    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the browser that is launched will have that directory as startup directory,
-    # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
-    # before launching.
+
+    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the
+    # browser that is launched will have that directory as startup directory, and the browser will
+    # not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to
+    # delete it. Therefore switch away from that directory before launching.
+
     os.chdir(path_from_root())
-    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
+                 '--kill_exit', '--port', '6939', '--verbose',
+                 '--log_stdout', self.in_dir('stdout.txt'),
+                 '--log_stderr', self.in_dir('stderr.txt')]
+
+    # Verify that trying to pass argument to the page without the `--` separator will
+    # generate an actionable error message
+    err = self.expect_fail(args_base + ['--foo'])
+    self.assertContained('error: unrecognized arguments: --foo', err)
+    self.assertContained('remember to add `--` between arguments', err)
+
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
@@ -2481,22 +2491,23 @@ void *getBindBuffer() {
           browser_args = parser.parse_known_args(browser_args)[1]
         if browser_args:
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+
     for args in [
         args_base,
         args_base + ['--private_browsing', '--port', '6941']
     ]:
-      args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
-      print(' '.join(args))
+      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
+      print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
-      stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
-      stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
-      assert proc.returncode == 100
-      assert 'argc: 4' in stdout
-      assert 'argv[3]: --3' in stdout
-      assert 'hello, world!' in stdout
-      assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
-      assert 'Testing char sequences: %20%21 &auml;' in stdout
-      assert 'hello, error stream!' in stderr
+      self.assertEqual(proc.returncode, 100)
+      stdout = open(self.in_dir('stdout.txt'), 'r').read()
+      stderr = open(self.in_dir('stderr.txt'), 'r').read()
+      self.assertContained('argc: 4', stdout)
+      self.assertContained('argv[3]: --3', stdout)
+      self.assertContained('hello, world!', stdout)
+      self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
+      self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
+      self.assertContained('hello, error stream!', stderr)
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
@@ -3344,10 +3355,9 @@ window.close = function() {
         self.run_browser('a.html', '...', '/report_result?0')
 
   def test_modularize_network_error(self):
-    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-    create_test_file('test.c', src)
+    test_c_path = path_from_root('tests', 'browser_test_hello_world.c')
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest([test_c_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3363,6 +3373,29 @@ window.close = function() {
     print('Deleting a.out.wasm to cause a download error')
     os.remove('a.out.wasm')
     self.run_browser('a.html', '...', '/report_result?abort(both async and sync fetching of the wasm failed)')
+
+  def test_modularize_init_error(self):
+    test_cpp_path = path_from_root('tests', 'browser', 'test_modularize_init_error.cpp')
+    browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
+    self.compile_btest([test_cpp_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    create_test_file('a.html', '''
+      <script src="a.out.js"></script>
+      <script>
+        if (typeof window === 'object') {
+          window.addEventListener('unhandledrejection', function(event) {
+            reportResultToServer("Unhandled promise rejection: " + event.reason.message);
+          });
+        }
+        createModule()
+          .then(() => {
+            reportResultToServer("Module creation succeeded when it should have failed");
+          })
+          .catch(err => {
+            reportResultToServer(err);
+          });
+      </script>
+    ''')
+    self.run_browser('a.html', '...', '/report_result?intentional error to test rejection')
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
@@ -3471,23 +3504,13 @@ window.close = function() {
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
-  def test_dylink_dso_needed_wasm(self):
-    self._run_dylink_dso_needed(1, 0)
+  def test_dylink_dso_needed(self):
+    self._run_dylink_dso_needed(0)
 
-  def test_dylink_dso_needed_wasm_inworker(self):
-    self._run_dylink_dso_needed(1, 1)
+  def test_dylink_dso_needed_inworker(self):
+    self._run_dylink_dso_needed(1)
 
-  def test_dylink_dso_needed_asmjs(self):
-    self._run_dylink_dso_needed(0, 0)
-
-  def test_dylink_dso_needed_asmjs_inworker(self):
-    self._run_dylink_dso_needed(0, 1)
-
-  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
-  @requires_sync_compilation
-  def _run_dylink_dso_needed(self, wasm, inworker):
-    print('\n# wasm=%d inworker=%d' % (wasm, inworker))
-    self.set_setting('WASM', wasm)
+  def _run_dylink_dso_needed(self, inworker):
     self.emcc_args += ['-O2']
 
     def do_run(src, expected_output):

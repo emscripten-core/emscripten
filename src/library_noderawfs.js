@@ -46,7 +46,13 @@ mergeInto(LibraryManager.library, {
     chown: function() { fs.chownSync.apply(void 0, arguments); },
     fchown: function() { fs.fchownSync.apply(void 0, arguments); },
     truncate: function() { fs.truncateSync.apply(void 0, arguments); },
-    ftruncate: function() { fs.ftruncateSync.apply(void 0, arguments); },
+    ftruncate: function(fd, len) {
+      // See https://github.com/nodejs/node/issues/35632
+      if (len < 0) {
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+      }
+      fs.ftruncateSync.apply(void 0, arguments);
+    },
     utime: function() { fs.utimesSync.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
       if (typeof flags === "string") {

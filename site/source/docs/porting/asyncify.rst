@@ -22,12 +22,6 @@ See the
 for general background and details of how it works internally. The following
 expands on the Emscripten examples from that post.
 
-.. note:: This post talks about Asyncify using the new LLVM wasm backend.
-          There was an older Asyncify implementation for the old fastcomp
-          backend. The two algorithms and implementations are entirely separate,
-          so if you are using fastcomp, these docs may not be accurate - you
-          should upgrade to the wasm backend and new Asyncify!
-
 .. _yielding_to_main_loop:
 
 Sleeping / yielding to the event loop

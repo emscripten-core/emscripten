@@ -111,9 +111,6 @@ var PROXIED_FUNCTION_SIGNATURES = [];
 // List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
-// name of the file containing wasm text, if relevant
-var WASM_TEXT_FILE = '';
-
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
@@ -195,3 +192,5 @@ var STRUCT_INFO = '';
 
 // If true, building against Emscripten's asm.js/wasm heap memory profiler.
 var MEMORYPROFILER = 0;
+
+var GENERATE_SOURCE_MAP = 0;

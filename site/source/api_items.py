@@ -66,7 +66,6 @@ def get_mapped_items():
     mapped_wiki_inline_code['EM_JS'] = ':c:macro:`EM_JS`'
     mapped_wiki_inline_code['EM_LOG_CONSOLE'] = ':c:macro:`EM_LOG_CONSOLE`'
     mapped_wiki_inline_code['EM_LOG_C_STACK'] = ':c:macro:`EM_LOG_C_STACK`'
-    mapped_wiki_inline_code['EM_LOG_DEMANGLE'] = ':c:macro:`EM_LOG_DEMANGLE`'
     mapped_wiki_inline_code['EM_LOG_ERROR'] = ':c:macro:`EM_LOG_ERROR`'
     mapped_wiki_inline_code['EM_LOG_FUNC_PARAMS'] = ':c:macro:`EM_LOG_FUNC_PARAMS`'
     mapped_wiki_inline_code['EM_LOG_JS_STACK'] = ':c:macro:`EM_LOG_JS_STACK`'

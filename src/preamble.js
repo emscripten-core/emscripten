@@ -43,7 +43,6 @@ if (typeof WebAssembly !== 'object') {
 // Wasm globals
 
 var wasmMemory;
-var wasmTable;
 
 #if USE_PTHREADS
 // For sending to workers.
@@ -286,11 +285,14 @@ var STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}};
 
+
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 #endif
 
 #if RELOCATABLE
+var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STACK_BASE);
+
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
 // initialize sbrk (the main module is relocatable itself, and so it does not
@@ -355,9 +357,9 @@ assert(!Module['wasmMemory']);
 #else // !STANDALONE_WASM
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#include "runtime_init_table.js"
 #endif // !STANDALONE_WASM
 
+#include "runtime_init_table.js"
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
 
@@ -624,7 +626,7 @@ function abort(what) {
   throw e;
 }
 
-var memoryInitializer = null;
+// {{MEM_INITIALIZER}}
 
 #include "memoryprofiler.js"
 
@@ -678,47 +680,39 @@ function createExportWrapper(name, fixedasm) {
 // we know to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
-// A cache for wrappers based on the original function reference so we don't end up
-// creating the same wrappers over and over again
-var abortWrapperCache = {};
-
 // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
-function makeWrapper(original) {
-  var wrapper = abortWrapperCache[original];
-  if (!wrapper) {
-    wrapper = abortWrapperCache[original] = function() {
-      // Don't allow this function to be called if we're aborted!
-      if (ABORT) {
-        throw "program has already aborted!";
-      }
+function makeAbortWrapper(original) {
+  return function() {
+    // Don't allow this function to be called if we're aborted!
+    if (ABORT) {
+      throw "program has already aborted!";
+    }
 
 #if DISABLE_EXCEPTION_CATCHING != 1
-      abortWrapperDepth += 1;
+    abortWrapperDepth += 1;
 #endif
-      try {
-        return original.apply(null, arguments);
-      }
-      catch (e) {
-        if (
-          ABORT // rethrow exception if abort() was called in the original function call above
-          || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
+    try {
+      return original.apply(null, arguments);
+    }
+    catch (e) {
+      if (
+        ABORT // rethrow exception if abort() was called in the original function call above
+        || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
 #if SUPPORT_LONGJMP
-          || e === 'longjmp' // rethrow longjmp if enabled
+        || e === 'longjmp' // rethrow longjmp if enabled
 #endif
-        ) {
-          throw e;
-        }
+      ) {
+        throw e;
+      }
 
-        abort("unhandled exception: " + [e, e.stack]);
-      }
+      abort("unhandled exception: " + [e, e.stack]);
+    }
 #if DISABLE_EXCEPTION_CATCHING != 1
-      finally {
-        abortWrapperDepth -= 1;
-      }
+    finally {
+      abortWrapperDepth -= 1;
+    }
 #endif
-    };
-  }
-  return wrapper;
+    }
 }
 
 // Instrument all the exported functions to:
@@ -726,13 +720,12 @@ function makeWrapper(original) {
 // - throw an exception if someone tries to call them after the program has aborted
 // See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
 function instrumentWasmExportsWithAbort(exports) {
-
   // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
   for (var name in exports) {
       var original = exports[name];
       if (typeof original === 'function') {
-        instExports[name] = makeWrapper(original);
+        instExports[name] = makeAbortWrapper(original);
       } else {
         instExports[name] = original;
       }
@@ -744,8 +737,17 @@ function instrumentWasmExportsWithAbort(exports) {
 function instrumentWasmTableWithAbort() {
   // Override the wasmTable get function to return the wrappers
   var realGet = wasmTable.get;
+  var wrapperCache = {};
   wasmTable.get = function(i) {
-    return makeWrapper(realGet.call(wasmTable, i));
+    var func = realGet.call(wasmTable, i);
+    var cached = wrapperCache[i];
+    if (!cached || cached.func !== func) {
+      cached = wrapperCache[i] = {
+        func: func,
+        wrapper: makeAbortWrapper(func)
+      }
+    }
+    return cached.wrapper;
   };
 }
 #endif
@@ -983,7 +985,7 @@ function createWasm() {
         !isFileURI(wasmBinaryFile) &&
 #endif
         typeof fetch === 'function') {
-      fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
         var result = WebAssembly.instantiateStreaming(response, info);
 #if USE_OFFSET_CONVERTER
         // This doesn't actually do another request, it only copies the Response object.
@@ -1089,7 +1091,12 @@ function createWasm() {
 #if RUNTIME_LOGGING
   err('asynchronously preparing wasm');
 #endif
+#if MODULARIZE
+  // If instantiation fails, reject the module ready promise.
+  instantiateAsync().catch(readyPromiseReject);
+#else
   instantiateAsync();
+#endif
 #if LOAD_SOURCE_MAP
   getSourceMapPromise().then(receiveSourceMapJSON);
 #endif

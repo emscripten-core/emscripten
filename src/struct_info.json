@@ -473,7 +473,8 @@
             "F_SETFD",
             "O_EXCL",
             "F_GETFL",
-            "O_LARGEFILE"
+            "O_LARGEFILE",
+            "O_NOCTTY"
         ],
         "structs": {}
     },
@@ -913,7 +914,17 @@
         ],
         "structs": {}
     },
-
+    {
+        "file": "dlfcn.h",
+        "defines": [
+            "RTLD_NOW",
+            "RTLD_LAZY",
+            "RTLD_DEFAULT",
+            "RTLD_GLOBAL",
+            "RTLD_NODELETE"
+        ],
+        "structs": {}
+    },
     // ===========================================
     // SDL
     // ===========================================

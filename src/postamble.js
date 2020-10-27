@@ -227,8 +227,6 @@ function callMain(args) {
 }
 #endif // HAS_MAIN
 
-{{GLOBAL_VARS}}
-
 /** @type {function(Array=)} */
 function run(args) {
   args = args || arguments_;
@@ -294,7 +292,7 @@ function run(args) {
     doRun();
   }
 #if STACK_OVERFLOW_CHECK
-  if (!ABORT) checkStackCookie();
+  checkStackCookie();
 #endif
 }
 Module['run'] = run;

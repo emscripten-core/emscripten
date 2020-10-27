@@ -77,26 +77,13 @@ You can also install a specific version by specifying it, for example,
 
 .. note:: When installing old versions from before the build infrastructure rewrite (anything before ``1.38.33``), you need to write something like ``./emsdk install sdk-1.38.20-64bit`` (add ``sdk-`` and ``-64bit``) as that was the naming convention at the time.
 
-You can also specify which backend you want to use, either ``fastcomp`` or ``upstream`` (without specifying the backend, the current default is used), for example,
-
-  ::
-
-    # Get a specific version using the upstream backend.
-    ./emsdk install latest-upstream
-
-    # Get a specific version using the fastcomp backend.
-    ./emsdk install 1.38.45-fastcomp
-
 
 There are also "tip-of-tree builds", which are the very latest code that passes integration tests on `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_. This is updated much more frequently than tagged releases, but may be less stable (we `tag releases manually <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#minor-version-updates-1xy-to-1xy1>`_ using a more careful procedure). Tip-of-tree builds may be useful for continuous integration that uses the emsdk (as Emscripten's GitHub CI does), and you may want to use it in your own CI as well, so that if you find a regression on your project you can report it and prevent it from reaching a tagged release. Tip-of-builds may also be useful if you want to test a feature that just landed but didn't reach a release yet. To use a tip-of-tree build, use the ``tot`` target, and note that you must specify the backend explicitly,
 
   ::
 
-    # Get a tip-of-tree using the upstream backend.
-    ./emsdk install tot-upstream
-
-    # Get a tip-of-tree using the fastcomp backend.
-    ./emsdk install tot-fastcomp
+    # Get a tip-of-tree 
+    ./emsdk install tot
 
 (In the above examples we installed the various targets; remember to also ``activate`` them as in the full example from earlier.)
 
