@@ -3122,13 +3122,12 @@ def worker_js_script(proxy_worker_filename):
 def process_libraries(libs, lib_dirs, temp_files):
   libraries = []
   consumed = []
+  suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
 
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
-    suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
 
-    found = False
     for prefix in LIB_PREFIXES:
       for suff in suffixes:
         name = prefix + lib + suff
