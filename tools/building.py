@@ -1464,42 +1464,41 @@ def is_wasm(filename):
 # Given the name of a special Emscripten-implemented system library, returns an
 # array of absolute paths to JS library files inside emscripten/src/ that
 # corresponds to the library name.
-def path_to_system_js_libraries(library_name):
+def map_to_js_libs(library_name):
   # Some native libraries are implemented in Emscripten as system side JS libraries
-  js_system_libraries = {
-    'c': '',
-    'dl': '',
-    'EGL': 'library_egl.js',
+  library_map = {
+    'c': [],
+    'dl': [],
+    'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
-    'GLESv2': 'library_webgl.js',
+    'GLESv2': ['library_webgl.js'],
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
-    'GLEW': 'library_glew.js',
-    'glfw': 'library_glfw.js',
-    'glfw3': 'library_glfw.js',
-    'GLU': '',
-    'glut': 'library_glut.js',
-    'm': '',
-    'openal': 'library_openal.js',
-    'rt': '',
-    'pthread': '',
-    'X11': 'library_xlib.js',
-    'SDL': 'library_sdl.js',
-    'stdc++': '',
-    'uuid': 'library_uuid.js',
-    'websocket': 'library_websocket.js'
+    'GLEW': ['library_glew.js'],
+    'glfw': ['library_glfw.js'],
+    'glfw3': ['library_glfw.js'],
+    'GLU': [],
+    'glut': ['library_glut.js'],
+    'm': [],
+    'openal': ['library_openal.js'],
+    'rt': [],
+    'pthread': [],
+    'X11': ['library_xlib.js'],
+    'SDL': ['library_sdl.js'],
+    'stdc++': [],
+    'uuid': ['library_uuid.js'],
+    'websocket': ['library_websocket.js']
   }
-  library_files = []
-  if library_name in js_system_libraries:
-    if len(js_system_libraries[library_name]):
-      lib = js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
-      library_files += lib
-      logger.debug('Linking in JS library ' + str(lib))
 
-  elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
-    library_files += ['library_' + library_name]
+  if library_name in library_map:
+    libs = library_map[library_name]
+    logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
+    return libs
 
-  return library_files
+  if library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
+    return ['library_' + library_name]
+
+  return None
 
 
 def emit_wasm_source_map(wasm_file, map_file):
