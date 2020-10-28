@@ -385,7 +385,7 @@ mergeInto(LibraryManager.library, {
       STACK_MAX =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'i32') }}};
 
 #if STACK_OVERFLOW_CHECK >= 2
-      Module['___set_stack_limit'](STACK_MAX);
+      Module['___set_stack_limits'](STACK_BASE, STACK_MAX);
 #endif
 
       stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
