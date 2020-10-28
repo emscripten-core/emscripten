@@ -174,9 +174,6 @@ this.onmessage = function(e) {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace'](top, max);
       Module['_emscripten_tls_init']();
-#if STACK_OVERFLOW_CHECK
-      Module['writeStackCookie']();
-#endif
 
       Module['PThread'].receiveObjectTransfer(e.data);
       Module['PThread'].setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
