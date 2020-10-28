@@ -882,12 +882,14 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail=False):
   try:
     output = run_process(cmd + args + ['--version'], stdout=PIPE, env=env).stdout
   except Exception as e:
-    if allowed_to_fail: return False
+    if allowed_to_fail:
+      return False
     logger.warn(str(e))
     exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(cmd))
 
   if 'Version:' not in output:
-    if allowed_to_fail: return False
+    if allowed_to_fail:
+      return False
     exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(cmd), output))
 
   return True
