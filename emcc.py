@@ -2694,6 +2694,23 @@ def emit_js_source_maps(target, js_transform_tempfiles):
                       '--offset', '0'])
 
 
+def maybe_run_closure_compiler(options):
+  # Two possible reseaons why we run closure_compiler here.
+  # 1. The user explicitly requested it
+  # 2. Implictly required to perform transpilation
+  global final_js
+  if options.use_closure_compiler:
+    final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
+                                         extra_closure_args=options.closure_args)
+  else:
+    if not shared.Settings.TRANSPILE or shared.Settings.INPUT_JS_VERSION == shared.Settings.OUTPUT_JS_VERSION:
+      return
+    logger.debug('running closure compiler to traspile from %s ->  %s' % (shared.Settings.INPUT_JS_VERSION,
+                                                                          shared.Settings.OUTPUT_JS_VERSION))
+    final_js = building.closure_compiler(final_js, pretty=True, advanced=False)
+  save_intermediate('closure')
+
+
 def do_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
@@ -2779,14 +2796,8 @@ def do_binaryen(target, options, wasm_target):
   def preprocess_wasm2js_script():
     return read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'), expand_macros=True)
 
-  def run_closure_compiler():
-    global final_js
-    final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
-                                         extra_closure_args=options.closure_args)
-    save_intermediate_with_wasm('closure', wasm_target)
-
-  if final_js and options.use_closure_compiler:
-    run_closure_compiler()
+  if final_js:
+    maybe_run_closure_compiler(options)
 
   symbols_file = shared.replace_or_append_suffix(target, '.symbols') if options.emit_symbol_map else None
 

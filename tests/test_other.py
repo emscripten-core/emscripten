@@ -7385,7 +7385,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     'closure': (['--closure', '1'],), # noqa
     'closure_O3': (['--closure', '1', '-O3'],), # noqa
   })
-  def test_EM_ASM_ES6(self, args):
+  def test_EM_ASM_ES2017(self, args):
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
 int main() {
@@ -7397,7 +7397,11 @@ int main() {
   });
 }
 ''')
-    self.run_process([EMCC, 'src.cpp'] + args)
+    self.run_process([EMCC, 'src.cpp', '-sINPUT_JS_VERSION=ECMASCRIPT_2017', '-sOUTPUT_JS_VERSION=ECMASCRIPT_2017'] + args)
+    self.assertContained('hello!', self.run_js('a.out.js'))
+
+    # Also test default ES5 output
+    self.run_process([EMCC, 'src.cpp', '-sINPUT_JS_VERSION=ECMASCRIPT_2017'] + args)
     self.assertContained('hello!', self.run_js('a.out.js'))
 
   def test_check_sourcemapurl(self):
@@ -9564,3 +9568,78 @@ exec "$@"
 
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=foo'])
     self.assertContained("error: invalid output format: `foo` (must be one of ['wasm', 'js', 'mjs', 'html']", err)
+
+  def test_js_transpile(self):
+    create_test_file('lib.js', '''
+    mergeInto(LibraryManager.library, {
+      foo: function() {
+        return () => 42;
+      }
+    });''')
+    create_test_file('test.c', r'''
+    #include <stdio.h>
+
+    extern void foo();
+
+    int main() {
+      foo();
+      printf("done\n");
+      return 0;
+    }
+    ''')
+
+    # Test that ES6 no transpilation happens by default since we don't run closure at all
+    # in the default case.
+    self.run_process([EMCC, 'test.c', '--js-library=lib.js'])
+    self.assertContained('=>', open('a.out.js').read())
+
+    # If we do run closure explicitly it should fail because by deafult its setup for ES5 input.
+    err = self.expect_fail([EMCC, 'test.c', '--js-library=lib.js', '--closure=1'])
+    self.assertContained('only supported for ECMASCRIPT6 mode or better: arrow function', err)
+
+    # Explictly enabling ES6 output fixes the issue and caused closure to transpile
+    self.run_process([EMCC, 'test.c', '--js-library=lib.js', '--closure=1', '-sINPUT_JS_VERSION=ES6'])
+    self.verify_es5('a.out.js')
+    self.assertNotContained('=>', open('a.out.js').read())
+
+    # Even without `--closure` setting the output format should cause transpilation by closure.
+    self.run_process([EMCC, 'test.c', '--js-library=lib.js', '-sINPUT_JS_VERSION=ES6'])
+    self.verify_es5('a.out.js')
+    self.assertNotContained('=>', open('a.out.js').read())
+
+    # If both input and output are set to ES6 no transpilation should be needed.
+    self.run_process([EMCC, 'test.c', '--js-library=lib.js', '-sINPUT_JS_VERSION=ES6', '-sOUTPUT_JS_VERSION=ES6'])
+    self.assertContained('=>', open('a.out.js').read())
+
+  def test_no_implict_es6(self):
+    # We had a regression where enabling closure would also enable certain ES6 features
+    # in the output.
+    create_test_file('lib.js', '''
+    mergeInto(LibraryManager.library, {
+      foo: function(x, y) {
+        /**@suppress {undefinedVars}*/
+        var f = {
+         'bar': bar
+        };
+        return f;
+      }
+    });''')
+
+    create_test_file('test.c', r'''
+    #include <stdio.h>
+
+    extern void foo();
+
+    int main() {
+      foo();
+      printf("done\n");
+      return 0;
+    }
+    ''')
+
+    self.run_process([EMCC, 'test.c', '--js-library=lib.js', '--closure=1'])
+    self.verify_es5('a.out.js')
+    self.assertNotContained('{bar}', open('a.out.js').read())
+
+    self.run_process([EMCC, 'test.c', '--js-library=lib.js', '-sOUTPUT_JS_VERSION=es6'])
+    self.assertContained('{bar}', open('a.out.js').read())

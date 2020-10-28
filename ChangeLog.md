@@ -29,6 +29,13 @@ Current Trunk
   - STACK_MAX
   - STACKTOP
   - TOTAL_STACK
+- Support added for INPUT_JS_VERSION and OUTPUT_JS_VERSION settings.  These
+  control is/when we use the closure compiler to transpile the resulting
+  output.  If you use `--closure` compiler today we no longer default to
+  accepting `EMCASCRIPT_2020`.  If you want to use any langueage features
+  more recent than `ECMASCRIPT5` in your JS library code or inline JS assembly
+  code then you now need to pass a more recent version on the command line.
+  e.g. `-sINPUT_JS_VERSION=ECMASCRIPT2015`.  See #
 
 2.0.8: 10/24/2020
 -----------------

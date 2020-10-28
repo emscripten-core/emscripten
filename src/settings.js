@@ -1625,6 +1625,45 @@ var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
 // Internal (testing only): Forces memory growing to fail.
 var TEST_MEMORY_GROWTH_FAILS = 0;
 
+// The version of the JS standard that is used our JS library code (and
+// also any user JS library code) is expected to be written in.
+//
+// If this differs from OUTPUT_JS_VERSION then closure-compiler will be
+// run to transpile emscripten's output JS.
+//
+// In order to avoid transpiling in the command case we keep both these
+// settings in sync with the requires of the default set of browsers
+// versions  See MIN_FIREFOX_VERSION, etc.
+//
+// Value values to this setting are the same the values accepted by
+// closure compiler: ECMASCRIPT3, ECMASCRIPT5, ECMASCRIPT5_STRICT,
+// ECMASCRIPT_2015, ECMASCRIPT_2016, ECMASCRIPT_2017, ECMASCRIPT_2018,
+// ECMASCRIPT_2019
+//
+// See: https://github.com/google/closure-compiler/wiki/Flags-and-Options
+//
+// If you want to write libray code in some higher version that this
+// then you can use this option, but the output will be transpiled unless
+// you also increase the MIN browser versions (or OUTPUT_JS_VERSION).
+//
+// TODO(sbc): Update to ECMASCRIPT_2016 since I believe all the minimum
+// set of browsers all support this.
+//
+// TODO(sbc): Attempt to derive this, by default, from the minimum browser
+// versions.
+var INPUT_JS_VERSION = 'ECMASCRIPT5';
+
+// The version of the JS standard used in emscripten output.  If this differes
+// from INPUT_JS_VERSION then closure-compiler will be used to transpile the
+// output.
+var OUTPUT_JS_VERSION = 'ECMASCRIPT5';
+
+// Set to 0 to disable automatic traspilation of JS output from INPUT_JS_VERSION
+// to OUTPUT_JS_VERSION.  Does nothing if INPUT_JS_VERSION and OUTPUT_JS_VERSION
+// match.
+var TRANSPILE = 1;
+
+// Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no

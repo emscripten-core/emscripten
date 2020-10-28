@@ -893,7 +893,7 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
   return True
 
 
-def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
+def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   with ToolchainProfiler.profile_block('closure_compiler'):
     env = shared.env_with_node_in_path()
     user_args = []
@@ -967,12 +967,11 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     configuration.get_temp_files().note(outfile)
 
     args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
-    # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
-    args += ['--language_in', 'ECMASCRIPT_2020']
+    args += ['--language_in', Settings.INPUT_JS_VERSION]
     # Tell closure not to do any transpiling or inject any polyfills.
     # At some point we may want to look into using this as way to convert to ES5 but
     # babel is perhaps a better tool for that.
-    args += ['--language_out', 'NO_TRANSPILE']
+    args += ['--language_out', Settings.OUTPUT_JS_VERSION]
     # Tell closure never to inject the 'use strict' directive.
     args += ['--emit_use_strict=false']
 
