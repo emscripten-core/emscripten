@@ -1470,9 +1470,12 @@ def map_to_js_libs(library_name):
 # map a linker flag to a Settings option, and apply it. this lets a user write
 # -lSDL2 and it will have the same effect as -s USE_SDL=2.
 def map_and_apply_to_settings(library_name):
+  # most libraries just work, because the -l name matches the name of the
+  # library we build. however, if a library has variations, which cause us to
+  # build multiple versions with multiple names, then we need this mechanism.
   library_map = {
-    'SDL2': [('USE_SDL', 2)],
-    'SDL2_mixer': [('USE_SDL', 2), ('USE_SDL_MIXER', 2)],
+    # SDL2_mixer's built library name contains the specific codecs built in.
+    'SDL2_mixer': [('USE_SDL_MIXER', 2)],
   }
 
   if library_name in library_map:
