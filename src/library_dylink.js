@@ -694,10 +694,11 @@ var LibraryDylink = {
 #endif // ASSERTIONS
     return result;
 #else // EMULATE_FUNCTION_POINTER_CASTS
-    // Insert the function into the wasm table.  Since we know the function
-    // comes directly from the loaded wasm module we can insert it directly
-    // into the table, avoiding any JS interaction.
-    return addFunctionWasm(result);
+    // Insert the function into the wasm table.  If its a direct wasm function
+    // the second argument will not be needed.  If its a JS function we rely
+    // on the `sig` attribute being set based on the `<func>__sig` specified
+    // in library JS file.
+    return addFunctionWasm(result, result.sig);
 #endif // EMULATE_FUNCTION_POINTER_CASTS
   },
 

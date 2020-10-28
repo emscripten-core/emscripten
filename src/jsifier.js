@@ -302,6 +302,9 @@ function JSify(data, functionsOnly) {
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
+      if (MAIN_MODULE && sig) {
+        contentText += '\n' + finalName + '.sig = \'' + sig + '\';';
+      }
 
       var commentText = '';
       if (LibraryManager.library[ident + '__docs']) {
