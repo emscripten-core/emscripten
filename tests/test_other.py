@@ -580,22 +580,28 @@ f.close()
     emscripten_features = '\n'.join([x for x in emscripten_features.split('\n') if '***' in x])
     self.assertTextDataIdentical(native_features, emscripten_features)
 
-  # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that needs C++11 (embind)
+  # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that
+  # needs C++11 (embind)
   def test_cmake_with_embind_cpp11_mode(self):
+    if WINDOWS and not shared.which('ninja'):
+      self.skipTest('Skipping cmake test on windows since ninja not found')
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
-      with temp_directory(self.get_dir()) as tempdirname:
-        configure = [emcmake, 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
-        print(str(configure))
-        self.run_process(configure)
-        build = ['cmake', '--build', '.']
-        print(str(build))
-        self.run_process(build)
+      self.clear()
+      # Use ninja generator here since we assume its always installed on our build/test machines.
+      configure = [emcmake, 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
+      if WINDOWS:
+        configure += ['-G', 'Ninja']
+      print(str(configure))
+      self.run_process(configure)
+      build = ['cmake', '--build', '.']
+      print(str(build))
+      self.run_process(build)
 
-        ret = self.run_process(NODE_JS + [os.path.join(tempdirname, 'cpp_with_emscripten_val.js')], stdout=PIPE).stdout.strip()
-        if '-DNO_GNU_EXTENSIONS=1' in args:
-          self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', ret)
-        else:
-          self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
+      out = self.run_process(NODE_JS + ['cmake_with_emval.js'], stdout=PIPE).stdout
+      if '-DNO_GNU_EXTENSIONS=1' in args:
+        self.assertContained('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', out)
+      else:
+        self.assertContained('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', out)
 
   # Tests that the Emscripten CMake toolchain option
   def test_cmake_bitcode_static_libraries(self):
@@ -9495,3 +9501,21 @@ exec "$@"
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
       err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-sMAIN_MODULE', '-sWASM=0'])
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
+
+  def test_oformat(self):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])
+    self.assertTrue(building.is_wasm('out.foo'))
+    self.clear()
+
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=html', '-o', 'out.foo'])
+    self.assertFalse(building.is_wasm('out.foo'))
+    self.assertContained('<html ', open('out.foo').read())
+    self.clear()
+
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=js', '-o', 'out.foo'])
+    self.assertFalse(building.is_wasm('out.foo'))
+    self.assertContained('new ExitStatus', open('out.foo').read())
+    self.clear()
+
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=foo'])
+    self.assertContained("error: invalid output format: `foo` (must be one of ['wasm', 'js', 'mjs', 'html']", err)

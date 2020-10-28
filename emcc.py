@@ -34,6 +34,7 @@ import stat
 import sys
 import time
 import base64
+from enum import Enum
 from subprocess import PIPE
 
 import emscripten
@@ -71,9 +72,7 @@ SPECIAL_ENDINGLESS_FILENAMES = (os.devnull,)
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ASSEMBLY_CPP_ENDINGS
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
-JS_ENDINGS = ('.js', '.mjs', '.out', '')
-WASM_ENDINGS = ('.wasm',)
-EXECUTABLE_ENDINGS = JS_ENDINGS + WASM_ENDINGS + ('.html',)
+EXECUTABLE_ENDINGS = ('.wasm', '.html', '.js', '.mjs', '.out', '')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll', '.s')
@@ -215,8 +214,16 @@ def base64_encode(b):
     return b64
 
 
+class OFormat(Enum):
+  WASM = 1
+  JS = 2
+  MJS = 3
+  HTML = 4
+
+
 class EmccOptions(object):
   def __init__(self):
+    self.oformat = None
     self.requested_debug = ''
     self.profiling = False
     self.profiling_funcs = False
@@ -666,6 +673,50 @@ def do_replace(input_, pattern, replacement):
   return input_.replace(pattern, replacement)
 
 
+def is_dash_s_for_emcc(args, i):
+  # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
+  # -s by itself is a linker option (alias for --strip-all)
+  if args[i] == '-s':
+    if len(args) <= i + 1:
+      return False
+    arg = args[i + 1]
+  else:
+    arg = args[i][2:]
+  return arg.split('=')[0].isupper()
+
+
+def parse_s_args(args):
+  settings_changes = []
+  for i in range(len(args)):
+    if args[i].startswith('-s'):
+      if is_dash_s_for_emcc(args, i):
+        if args[i] == '-s':
+          key = args[i + 1]
+          args[i + 1] = ''
+        else:
+          key = args[i][2:]
+        args[i] = ''
+
+        # If not = is specified default to 1
+        if '=' not in key:
+          key += '=1'
+
+        # Special handling of browser version targets. A version -1 means that the specific version
+        # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+        # #if MIN_FIREFOX_VERSION < 68
+        if re.match(r'MIN_.*_VERSION(=.*)?', key):
+          try:
+            if int(key.split('=')[1]) < 0:
+              key = key.split('=')[0] + '=0x7FFFFFFF'
+          except Exception:
+            pass
+
+        settings_changes.append(key)
+
+  newargs = [a for a in args if a]
+  return (settings_changes, newargs)
+
+
 run_via_emxx = False
 
 
@@ -794,17 +845,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   language_mode = get_language_mode(args)
 
-  def is_dash_s_for_emcc(args, i):
-    # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
-    # -s by itself is a linker option (alias for --strip-all)
-    if args[i] == '-s':
-      if len(args) <= i + 1:
-        return False
-      arg = args[i + 1]
-    else:
-      arg = args[i][2:]
-    return arg.split('=')[0].isupper()
-
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
     args += shlex.split(EMMAKEN_CFLAGS)
@@ -908,32 +948,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if DEBUG:
       start_time = time.time() # done after parsing arguments, which might affect debug state
 
-    for i in range(len(newargs)):
-      if newargs[i].startswith('-s'):
-        if is_dash_s_for_emcc(newargs, i):
-          if newargs[i] == '-s':
-            key = newargs[i + 1]
-            newargs[i + 1] = ''
-          else:
-            key = newargs[i][2:]
-          newargs[i] = ''
-
-          # If not = is specified default to 1
-          if '=' not in key:
-            key += '=1'
-
-          # Special handling of browser version targets. A version -1 means that the specific version
-          # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
-          # #if MIN_FIREFOX_VERSION < 68
-          try:
-            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=0x7FFFFFFF'
-          except Exception:
-            pass
-
-          settings_changes.append(key)
-
-    newargs = [arg for arg in newargs if arg]
+    explicit_settings_changes, newargs = parse_s_args(newargs)
+    settings_changes += explicit_settings_changes
 
     settings_key_changes = {}
     for s in settings_changes:
@@ -966,10 +982,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     compile_only = has_dash_c or has_dash_S or has_dash_E
 
     def add_link_flag(i, f):
-      # Filter out libraries that musl includes in libc itself, or which we
-      # otherwise provide implicitly.
-      if f in ('-lm', '-lrt', '-ldl', '-lpthread'):
-        return
       if f.startswith('-l'):
         libs.append((i, f[2:]))
       if f.startswith('-L'):
@@ -1141,12 +1153,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if '-M' in newargs or '-MM' in newargs:
       final_suffix = '.mout' # not bitcode, not js; but just dependency rule of the input file
 
-    # target is now finalized, can finalize other _target s
-    if final_suffix == '.mjs':
+    # If no output format was sepecific we try to imply the format based on
+    # the output filename extension.
+    if not options.oformat:
+      if shared.Settings.SIDE_MODULE or final_suffix == '.wasm':
+        options.oformat = OFormat.WASM
+      elif final_suffix == '.mjs':
+        options.oformat = OFormat.MJS
+      elif final_suffix == '.html':
+        options.oformat = OFormat.HTML
+      else:
+        options.oformat = OFormat.JS
+
+    if options.oformat == OFormat.MJS:
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
 
-    if shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS:
+    if options.oformat == OFormat.WASM:
       # If the user asks directly for a wasm file then this *is* the target
       wasm_target = target
     else:
@@ -1161,7 +1184,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.verify_settings()
 
-    if final_suffix in WASM_ENDINGS and not shared.Settings.SIDE_MODULE:
+    if options.oformat == OFormat.WASM and not shared.Settings.SIDE_MODULE:
       # if the output is just a wasm file, it will normally be a standalone one,
       # as there is no JS. an exception are side modules, as we can't tell at
       # compile time whether JS will be involved or not - the main module may
@@ -1681,7 +1704,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         not shared.Settings.AUTODEBUG and \
         not shared.Settings.ASSERTIONS and \
         not shared.Settings.RELOCATABLE and \
-        not target.endswith(WASM_ENDINGS) and \
+        not options.oformat == OFormat.WASM and \
         not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
             shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
       shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
@@ -2169,8 +2192,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # /dev/null, but that will take some refactoring
       return 0
 
-    wasm_only = shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS
-
     if shared.Settings.MEM_INIT_IN_WASM:
       memfile = None
     else:
@@ -2187,7 +2208,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile():
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      if wasm_only:
+      if options.oformat == OFormat.WASM:
         final_js = None
       else:
         final_js = tmp_wasm + '.js'
@@ -2269,7 +2290,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     log_time('binaryen')
     # If we are not emitting any JS then we are all done now
-    if wasm_only:
+    if options.oformat == OFormat.WASM:
       return
 
     with ToolchainProfiler.profile_block('final emitting'):
@@ -2319,7 +2340,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       shared.JS.handle_license(final_js)
 
-      if final_suffix in JS_ENDINGS:
+      if options.oformat in (OFormat.JS, OFormat.MJS):
         js_target = target
       else:
         js_target = unsuffixed(target) + '.js'
@@ -2331,7 +2352,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         generated_text_files_with_native_eols += [js_target]
 
       # If we were asked to also generate HTML, do that
-      if final_suffix == '.html':
+      if options.oformat == OFormat.HTML:
         generate_html(target, options, js_target, target_basename,
                       wasm_target, memfile)
       else:
@@ -2446,6 +2467,12 @@ def parse_args(newargs):
       options.extern_pre_js += open(consume_arg()).read() + '\n'
     elif check_arg('--extern-post-js'):
       options.extern_post_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--oformat'):
+      formats = [f.lower() for f in OFormat.__members__]
+      fmt = consume_arg()
+      if fmt not in formats:
+        exit_with_error('invalid output format: `%s` (must be one of %s)' % (fmt, formats))
+      options.oformat = getattr(OFormat, fmt.upper())
     elif check_arg('--minify'):
       arg = consume_arg()
       if arg != '0':
@@ -3103,11 +3130,11 @@ def worker_js_script(proxy_worker_filename):
 def process_libraries(libs, lib_dirs, temp_files):
   libraries = []
   consumed = []
+  suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
 
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
-    suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
 
     found = False
     for prefix in LIB_PREFIXES:
@@ -3125,9 +3152,10 @@ def process_libraries(libs, lib_dirs, temp_files):
           break
       if found:
         break
+
     if not found:
-      jslibs = building.path_to_system_js_libraries(lib)
-      if jslibs:
+      jslibs = building.map_to_js_libs(lib)
+      if jslibs is not None:
         libraries += [(i, jslib) for jslib in jslibs]
         consumed.append(i)
 

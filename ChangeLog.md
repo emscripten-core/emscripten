@@ -43,6 +43,9 @@ Current Trunk
     `emrun filename.html -- --arg-for-page`
   This is standard behaviour for command line parsing and simplifies the
   emrun logic.
+- `emcmake` and `emmake` are no longer opinionated about preferring ming32-make.
+  If you want to use ming32-make then you can do that in the normal way.
+  For example, with cmake, you would use `-G MinGW Makefiles`.
 
 2.0.7: 10/13/2020
 -----------------
