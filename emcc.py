@@ -3150,6 +3150,8 @@ def process_libraries(libs, lib_dirs, temp_files):
       if jslibs is not None:
         libraries += [(i, jslib) for jslib in jslibs]
         consumed.append(i)
+      elif building.map_and_apply_to_settings(lib):
+        consumed.append(i)
 
   shared.Settings.SYSTEM_JS_LIBRARIES += libraries
 

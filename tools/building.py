@@ -1467,6 +1467,23 @@ def map_to_js_libs(library_name):
   return None
 
 
+# map a linker flag to a Settings option, and apply it. this lets a user write
+# -lSDL2 and it will have the same effect as -s USE_SDL=2.
+def map_and_apply_to_settings(library_name):
+  library_map = {
+    'SDL2': [('USE_SDL', 2)],
+    'SDL2_mixer': [('USE_SDL', 2), ('USE_SDL_MIXER', 2)],
+  }
+
+  if library_name in library_map:
+    for key, value in library_map[library_name]:
+      logger.debug('Mapping library `%s` to settings changes: %s = %s' % (library_name, key, value))
+      shared.Settings.__setattr__(key, value)
+    return True
+
+  return False
+
+
 def emit_wasm_source_map(wasm_file, map_file):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
