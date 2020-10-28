@@ -825,24 +825,6 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement.c')
 
-  @no_wasm_backend('generated code not available in wasm')
-  def test_stack_restore(self):
-    self.emcc_args += ['-g3'] # to be able to find the generated code
-
-    self.do_run_in_out_file_test('tests', 'core', 'test_stack_restore.c')
-
-    generated = open('src.js').read()
-
-    def ensure_stack_restore_count(function_name, expected_count):
-      code = generated[generated.find(function_name):]
-      code = code[:code.find('\n}') + 2]
-      actual_count = code.count('STACKTOP = sp')
-      assert actual_count == expected_count, ('Expected %d stack restorations, got %d' % (expected_count, actual_count)) + ': ' + code
-
-    ensure_stack_restore_count('function _no_stack_usage', 0)
-    ensure_stack_restore_count('function _alloca_gets_restored', 1)
-    ensure_stack_restore_count('function _stack_usage', 1)
-
   def test_strings(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strings.c', args=['wowie', 'too', '74'])
 
