@@ -6881,7 +6881,8 @@ int main() {
       for x in os.listdir('.'):
         self.assertFalse(x.endswith('.js'))
       self.assertTrue(building.is_wasm(target))
-      self.assertIn(b'dylink', open(target, 'rb').read())
+      wasm_data = open(target, 'rb').read()
+      self.assertEqual(wasm_data.count(b'dylink'), 1)
 
   def test_wasm_backend_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them

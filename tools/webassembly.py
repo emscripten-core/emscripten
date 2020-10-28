@@ -122,7 +122,8 @@ def add_dylink_section(wasm_file, needed_dynlibs):
   assert wasm[offset] == 0
   offset += 1
   size, offset = readLEB(wasm, offset)
-  section = wasm[offset:offset + size]
+  section_end = offset + size
+  section = wasm[offset:section_end]
   # section name
   assert section.startswith(section_name)
   offset = len(section_name)
@@ -173,4 +174,4 @@ def add_dylink_section(wasm_file, needed_dynlibs):
     f.write(section_name)
     f.write(contents)
     # copy rest of binary
-    f.write(wasm[8:])
+    f.write(wasm[section_end:])
