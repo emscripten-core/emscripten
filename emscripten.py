@@ -21,6 +21,7 @@ from tools import building
 from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
+from tools import webassembly
 from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
 
@@ -141,8 +142,6 @@ def update_settings_glue(metadata, DEBUG):
 
     shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
-  metadata['staticBump'] = align_memory(metadata['staticBump'])
-
   shared.Settings.BINARYEN_FEATURES = metadata['features']
   if shared.Settings.RELOCATABLE:
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
@@ -196,21 +195,12 @@ def compile_settings(temp_files):
 
 
 class Memory():
-  def __init__(self, metadata):
-    # Note: if RELOCATABLE, then only relative sizes can be computed, and we don't
-    #       actually write out any absolute memory locations ({{{ STACK_BASE }}}
-    #       does not exist, etc.)
-
-    # Memory layout:
-    #  * first the static globals
-    self.static_bump = metadata['staticBump']
-    #  * then the stack (up on fastcomp, down on upstream)
-    self.stack_low = align_memory(shared.Settings.GLOBAL_BASE + self.static_bump)
-    self.stack_high = align_memory(self.stack_low + shared.Settings.TOTAL_STACK)
-    self.stack_base = self.stack_high
-    self.stack_max = self.stack_low
-    #  * then dynamic memory begins
-    self.dynamic_base = align_memory(self.stack_high)
+  def __init__(self, static_bump):
+    stack_low = align_memory(shared.Settings.GLOBAL_BASE + static_bump)
+    stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
+    self.stack_base = stack_high
+    self.stack_max = stack_low
+    self.dynamic_base = align_memory(stack_high)
 
 
 def apply_memory(js, memory):
@@ -319,10 +309,6 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
 
   update_settings_glue(metadata, DEBUG)
 
-  memory = Memory(metadata)
-  logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
-  shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
-
   if not outfile_js:
     logger.debug('emscript: skipping js compiler glue')
     return
@@ -358,8 +344,13 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
     pre += '\n' + global_initializers + '\n'
 
   if shared.Settings.RELOCATABLE:
+    static_bump = align_memory(webassembly.parse_dylink_section(infile)[0])
+    memory = Memory(static_bump)
+    logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d', memory.stack_base, memory.stack_max, memory.dynamic_base)
+
     pre = apply_memory(pre, memory)
     post = apply_memory(post, memory)
+
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
 
