@@ -878,7 +878,7 @@ def get_closure_compiler():
   return cmd
 
 
-def check_closure_compiler(cmd, args, env, allowed_to_fail=False):
+def check_closure_compiler(cmd, args, env, allowed_to_fail):
   try:
     output = run_process(cmd + args + ['--version'], stdout=PIPE, env=env).stdout
   except Exception as e:
