@@ -8071,13 +8071,19 @@ int main () {
   def test_emscripten_metadata(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
     self.assertNotIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
+
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
                       '-s', 'EMIT_EMSCRIPTEN_METADATA'])
     self.assertIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
 
+    # Test is standalone mode too.
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out.wasm',
+                      '-s', 'EMIT_EMSCRIPTEN_METADATA'])
+    self.assertIn(b'emscripten_metadata', open('out.wasm', 'rb').read())
+
     # make sure wasm executes correctly
     ret = self.run_process(NODE_JS + ['a.out.js'], stdout=PIPE).stdout
-    self.assertTextDataIdentical('hello, world!\n', ret)
+    self.assertContained('hello, world!\n', ret)
 
   @parameterized({
     'O0': (False, ['-O0']), # noqa

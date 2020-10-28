@@ -213,10 +213,8 @@ class Memory():
     self.dynamic_base = align_memory(self.stack_high)
 
 
-def apply_memory(js, metadata):
+def apply_memory(js, memory):
   # Apply the statically-at-compile-time computed memory locations.
-  memory = Memory(metadata)
-
   # Write it all out
   js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
   js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
@@ -224,9 +222,6 @@ def apply_memory(js, metadata):
     js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
 
   logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
-
-  shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
-
   return js
 
 
@@ -386,6 +381,9 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
 
   update_settings_glue(metadata, DEBUG)
 
+  memory = Memory(metadata)
+  shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
+
   if not outfile_js:
     logger.debug('emscript: skipping js compiler glue')
     return
@@ -420,7 +418,7 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
 
     pre += '\n' + global_initializers + '\n'
 
-  pre = apply_memory(pre, metadata)
+  pre = apply_memory(pre, memory)
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
 

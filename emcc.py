@@ -2728,6 +2728,7 @@ def do_binaryen(target, options, wasm_target):
     webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
+    diagnostics.warning('deprecated', 'We hope to remove support for EMIT_EMSCRIPTEN_METADATA. See https://github.com/emscripten-core/emscripten/issues/12231')
     webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
