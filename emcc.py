@@ -632,6 +632,14 @@ def backend_binaryen_passes():
       passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(shared.Settings.ASYNCIFY_ONLY)]
   if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
+  # normally we can assume the memory, if imported, has not been modified
+  # beforehand (in fact, in most cases the memory is not even imported anyhow,
+  # but it is still safe to pass the flag), and is therefore filled with zeros.
+  # the one exception is dynamic linking of a side module: the main module is ok
+  # as it is loaded first, but the side module may be assigned memory that was
+  # previously used.
+  if run_binaryen_optimizer and not shared.Settings.SIDE_MODULE:
+    passes += ['--zero-filled-memory']
 
   if shared.Settings.BINARYEN_EXTRA_PASSES:
     # BINARYEN_EXTRA_PASSES is comma-separated, and we support both '-'-prefixed and
