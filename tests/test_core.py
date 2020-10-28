@@ -1967,23 +1967,22 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp', force_c=True)
 
   def test_runtime_stacksave(self):
-    src = open(path_from_root('tests', 'core', 'test_runtime_stacksave.c')).read()
-    self.do_run(src, 'success')
+    self.do_runf(path_from_root('tests', 'core', 'test_runtime_stacksave.c'), 'success')
 
   # Tests that -s MINIMAL_RUNTIME=1 builds can utilize -s ALLOW_MEMORY_GROWTH=1 option.
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
     self.set_setting('MINIMAL_RUNTIME', 1)
-    src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
+    src = path_from_root('tests', 'core', 'test_memorygrowth.c')
     # Fail without memory growth
     expect_fail = False
     if self.get_setting('WASM') == 0:
       expect_fail = True
-    self.do_run(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
+    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
     # Win with it
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -1993,16 +1992,16 @@ int main(int argc, char **argv) {
       self.set_setting('DYNAMIC_EXECUTION', 0)
     # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
-    src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
+    src = path_from_root('tests', 'core', 'test_memorygrowth.c')
 
     # Fail without memory growth
-    self.do_run(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('src.js').read()
+    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
+    fail = open('test_memorygrowth.js').read()
 
     # Win with it
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('src.js').read()
+    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    win = open('test_memorygrowth.js').read()
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
@@ -2023,7 +2022,7 @@ int main(int argc, char **argv) {
     if not self.get_setting('SAFE_HEAP'):
       self.set_setting('EMSCRIPTEN_TRACING', 1)
       self.emcc_args += ['--tracing']
-      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+      self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -2031,16 +2030,16 @@ int main(int argc, char **argv) {
 
     # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
-    src = open(path_from_root('tests', 'core', 'test_memorygrowth_2.c')).read()
+    src = path_from_root('tests', 'core', 'test_memorygrowth_2.c')
 
     # Fail without memory growth
-    self.do_run(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('src.js').read()
+    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
+    fail = open('test_memorygrowth_2.js').read()
 
     # Win with it
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('src.js').read()
+    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    win = open('test_memorygrowth_2.js').read()
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
@@ -2146,8 +2145,7 @@ int main(int argc, char **argv) {
 
   @no_wasm2js('massive switches can break js engines')
   def test_bigswitch(self):
-    src = open(path_from_root('tests', 'bigswitch.cpp')).read()
-    self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
+    self.do_runf(path_from_root('tests', 'bigswitch.cpp'), '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
 35040: GL_STREAM_DRAW (0x88E0)
 3060: what?
@@ -2447,8 +2445,8 @@ The current type of b is: 9
                    "It also doesn't segfault.")
   def test_intentional_fault(self):
     # Some programs intentionally segfault themselves, we should compile that into a throw
-    src = open(path_from_root('tests', 'core', 'test_intentional_fault.c')).read()
-    self.do_run(src, 'abort(' if self.run_name != 'asm2g' else 'abort(segmentation fault', assert_returncode=NON_ZERO)
+    self.do_runf(path_from_root('tests', 'core', 'test_intentional_fault.c'),
+                 'abort(' if self.run_name != 'asm2g' else 'abort(segmentation fault', assert_returncode=NON_ZERO)
 
   def test_trickystring(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_trickystring.c')
@@ -4594,9 +4592,7 @@ Have even and odd!
     self.do_run(src, expected)
 
   def test_strtod(self):
-    src = open(path_from_root('tests', 'core', 'test_strtod.c')).read()
-    expected = open(path_from_root('tests', 'core', 'test_strtod.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtod.c')
 
   def test_strtold(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtold.c')
@@ -4784,16 +4780,14 @@ Module = {
 
     create_test_file('test.file', 'some data')
 
-    src = open(path_from_root('tests', 'files.cpp')).read()
-
-    mem_file = 'src.js.mem'
+    mem_file = 'files.js.mem'
     try_delete(mem_file)
 
     def clean(out, err):
       return '\n'.join([line for line in (out + err).split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
-    self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
-                output_nicerizer=clean)
+    self.do_runf(path_from_root('tests', 'files.cpp'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
+                 output_nicerizer=clean)
 
     if self.uses_memory_init_file():
       self.assertExists(mem_file)
@@ -5372,18 +5366,16 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'core', 'test_unary_literal.cpp')
 
   def test_env(self):
-    src = path_from_root('tests', 'env', 'src.c')
     expected = open(path_from_root('tests', 'env', 'output.txt')).read()
-    self.do_runf(src, [
+    self.do_runf(path_from_root('tests', 'env', 'src.c'), [
       expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
   def test_environ(self):
-    src = open(path_from_root('tests', 'env', 'src-mini.c')).read()
     expected = open(path_from_root('tests', 'env', 'output-mini.txt')).read()
-    self.do_run(src, [
-      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
+    self.do_runf(path_from_root('tests', 'env', 'src-mini.c'), [
+      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src-mini.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
@@ -5625,9 +5617,8 @@ int main(void) {
     self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
 
     # Linked version
-    src = open(path_from_root('tests', 'dlmalloc_test.c')).read()
-    self.do_run(src, '*1,0*', args=['200', '1'])
-    self.do_run('src.js', '*400,0*', args=['400', '400'], no_build=True)
+    self.do_runf(path_from_root('tests', 'dlmalloc_test.c'), '*1,0*', args=['200', '1'])
+    self.do_run('dlmalloc_test.js', '*400,0*', args=['400', '400'], no_build=True)
 
     # TODO: do this in other passes too, passing their opts into emcc
     if self.emcc_args == []:
@@ -5719,8 +5710,7 @@ return malloc(size);
         s += '.'
       assert len(s) == 9000
       create_test_file('data.dat', s)
-      src = open(path_from_root('tests', 'mmap_file.c')).read()
-      self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
+      self.do_runf(path_from_root('tests', 'mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
   def test_cubescript(self):
     # uses register keyword
@@ -6582,16 +6572,16 @@ return malloc(size);
     def get_code_size():
       if self.is_wasm():
         # Use number of functions as a for code size
-        return self.count_wasm_contents('src.wasm', 'funcs')
+        return self.count_wasm_contents('hello_libcxx.wasm', 'funcs')
       else:
-        return os.path.getsize('src.js')
+        return os.path.getsize('hello_libcxx.js')
 
     def get_mem_size():
       if self.is_wasm():
         # Use number of functions as a for code size
-        return self.count_wasm_contents('src.wasm', 'memory-data')
+        return self.count_wasm_contents('hello_libcxx.wasm', 'memory-data')
       if self.uses_memory_init_file():
-        return os.path.getsize('src.js.mem')
+        return os.path.getsize('hello_libcxx.js.mem')
 
       # otherwise we ignore memory size
       return 0
@@ -6639,16 +6629,15 @@ return malloc(size);
     # libcxx constrcutors can be eval'd
 
     print('libcxx - remove 2 ctors from iostream code')
-    src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
 
     def test2():
-      self.do_run(src, output)
+      self.do_runf(path_from_root('tests', 'hello_libcxx.cpp'), output)
     do_test(test2)
 
     print('assertions too')
     self.set_setting('ASSERTIONS', 1)
-    self.do_run(src, output)
+    self.do_runf(path_from_root('tests', 'hello_libcxx.cpp'), output)
     self.set_setting('ASSERTIONS', 0)
 
     print('remove just some, leave others')
@@ -6687,7 +6676,7 @@ someweirdtext
   def test_embind(self):
     self.emcc_args += ['--bind']
 
-    src = r'''
+    create_test_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
 
@@ -6702,8 +6691,8 @@ someweirdtext
 
         return 0;
       }
-    '''
-    self.do_run(src, 'abs(-10): 10\nabs(-11): 11')
+    ''')
+    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11')
 
   def test_embind_2(self):
     self.emcc_args += ['--bind', '--post-js', 'post.js']
@@ -6712,7 +6701,7 @@ someweirdtext
           out('lerp ' + Module.lerp(100, 200, 66) + '.');
       }
     ''')
-    src = r'''
+    create_test_file('test_embind_2.cpp', r'''
       #include <stdio.h>
       #include <emscripten.h>
       #include <emscripten/bind.h>
@@ -6727,8 +6716,8 @@ someweirdtext
           EM_ASM(printLerp());
           return 0;
       }
-    '''
-    self.do_run(src, 'lerp 166')
+    ''')
+    self.do_runf('test_embind_2.cpp', 'lerp 166')
 
   def test_embind_3(self):
     self.emcc_args += ['--bind', '--post-js', 'post.js']
@@ -6741,7 +6730,7 @@ someweirdtext
         }
       }
     ''')
-    src = r'''
+    create_test_file('test_embind_3.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       using namespace emscripten;
@@ -6755,8 +6744,8 @@ someweirdtext
           EM_ASM(ready());
           return 0;
       }
-    '''
-    self.do_run(src, 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
+    ''')
+    self.do_runf('test_embind_3.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
   @no_wasm_backend('long doubles are f128s in wasm backend')
   def test_embind_4(self):
@@ -6766,7 +6755,7 @@ someweirdtext
         out(Module.getBufferView()[0]);
       }
     ''')
-    src = r'''
+    create_test_file('test_embind_4.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
@@ -6788,8 +6777,8 @@ someweirdtext
         EM_ASM(printFirstElement());
         return 0;
       }
-    '''
-    self.do_run(src, '107')
+    ''')
+    self.do_runf('test_embind_4.cpp', '107')
 
   def test_embind_5(self):
     self.emcc_args += ['--bind', '-s', 'EXIT_RUNTIME=1']
@@ -7361,8 +7350,7 @@ Module['onRuntimeInitialized'] = function() {
   @no_asan('asyncify stack operations confuse asan')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY', 1)
-    src = open(path_from_root('tests', 'test_fibers.cpp')).read()
-    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+    self.do_runf(path_from_root('tests', 'test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
