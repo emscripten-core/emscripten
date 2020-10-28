@@ -585,6 +585,7 @@ var NODEJS_CATCH_EXIT = 1;
 // then exit with 0 (which hides the error if you don't read the log). With
 // this, we catch any unhandled rejection and throw an actual error, which will
 // make the process exit immediately with a non-0 return code.
+// This should be fixed in Node 15+.
 var NODEJS_CATCH_REJECTION = 1;
 
 // Whether to transform the code using asyncify. This makes it possible to
