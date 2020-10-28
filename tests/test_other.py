@@ -8121,12 +8121,10 @@ int main () {
 
     hello_world_sources = [path_from_root('tests', 'small_hello_world.c'),
                            '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
-                           '-s', 'USES_DYNAMIC_ALLOC=0',
-                           '-s', 'ASM_PRIMITIVE_VARS=[STACKTOP]']
+                           '-s', 'USES_DYNAMIC_ALLOC=0']
     random_printf_sources = [path_from_root('tests', 'hello_random_printf.c'),
                              '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
                              '-s', 'USES_DYNAMIC_ALLOC=0',
-                             '-s', 'ASM_PRIMITIVE_VARS=[STACKTOP]',
                              '-s', 'SINGLE_FILE=1']
     hello_webgl_sources = [path_from_root('tests', 'minimal_webgl', 'main.cpp'),
                            path_from_root('tests', 'minimal_webgl', 'webgl.c'),
