@@ -878,15 +878,19 @@ def get_closure_compiler():
   return cmd
 
 
-def check_closure_compiler(cmd, args, env):
+def check_closure_compiler(cmd, args, env, allowed_to_fail=False):
   try:
     output = run_process(cmd + args + ['--version'], stdout=PIPE, env=env).stdout
   except Exception as e:
+    if allowed_to_fail: return False
     logger.warn(str(e))
     exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(cmd))
 
   if 'Version:' not in output:
+    if allowed_to_fail: return False
     exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(cmd), output))
+
+  return True
 
 
 def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
@@ -910,13 +914,13 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
       java_home = os.path.dirname(java_bin)
       env.setdefault('JAVA_HOME', java_home)
 
-    if WINDOWS and not any(a.startswith('--platform') for a in user_args):
-      # Disable native compiler on windows until upstream issue is fixed:
-      # https://github.com/google/closure-compiler-npm/issues/147
-      user_args.append('--platform=java')
-
     closure_cmd = get_closure_compiler()
-    check_closure_compiler(closure_cmd, user_args, env)
+
+    native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
+    if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
+      # Run with Java Closure compiler as a fallback if the native version does not work
+      user_args.append('--platform=java')
+      check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
     # Closure externs file contains known symbols to be extern to the minification, Closure
     # should not minify these symbol names.
