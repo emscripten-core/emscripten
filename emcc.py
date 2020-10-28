@@ -23,8 +23,6 @@ emcc can be influenced by a few environment variables:
                    your system headers will be used.
 """
 
-from __future__ import print_function
-
 import json
 import logging
 import os
@@ -894,9 +892,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if not shared.CONFIG_FILE:
       diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprecated. Please use a file instead.')
-
-    if sys.version_info < (3, 0, 0) and 'EMCC_ALLOW_PYTHON2' not in os.environ:
-      diagnostics.warning('deprecated', 'Support for running emscripten with python2 is deprecated.  Please update to python3 as soon as possible (See https://github.com/emscripten-core/emscripten/issues/7198')
 
     for i in range(len(newargs)):
       if newargs[i] in ('-l', '-L', '-I'):

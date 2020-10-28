@@ -9,8 +9,6 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
-from __future__ import print_function
-
 import os
 import json
 import subprocess

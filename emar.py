@@ -16,7 +16,6 @@ other in this case.
 # TODO(sbc): Implement `ar x` within emscripten, in python, to avoid this issue
 # and delete this file.
 
-from __future__ import print_function
 import sys
 
 from tools.toolchain_profiler import ToolchainProfiler

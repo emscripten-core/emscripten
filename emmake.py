@@ -21,7 +21,6 @@ that configure tests pass. emmake uses Emscripten to
 generate JavaScript.
 """
 
-from __future__ import print_function
 import sys
 from tools import building
 from subprocess import CalledProcessError

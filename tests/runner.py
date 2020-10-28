@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  python tests/runner.py asm1.test_hello_world
+  python3 tests/runner.py asm1.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -16,13 +16,6 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
-
-import sys
-
-# The emscripten test suite explcitly requires python3.6 or above.
-if sys.version_info < (3, 6):
-  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
-  sys.exit(1)
 
 from subprocess import PIPE, STDOUT
 from functools import wraps
@@ -45,6 +38,7 @@ import shutil
 import string
 import subprocess
 import stat
+import sys
 import tempfile
 import time
 import unittest
