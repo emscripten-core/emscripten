@@ -5019,6 +5019,9 @@ main( int argv, char ** argc ) {
     self.do_runf(path_from_root('tests', 'utf32.cpp'), 'OK.')
     self.do_runf(path_from_root('tests', 'utf32.cpp'), 'OK.', args=['-fshort-wchar'])
 
+  def test_utf16(self):
+    self.do_runf(path_from_root('tests', 'core', 'test_utf16.cpp'), 'OK.')
+
   def test_utf8(self):
     if self.get_setting('MINIMAL_RUNTIME'):
       self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$AsciiToString', '$stringToAscii', '$writeAsciiToMemory'])
