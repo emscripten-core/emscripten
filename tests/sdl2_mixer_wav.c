@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <emscripten.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -21,6 +22,12 @@ void sound_loop_then_quit() {
 }
 
 int main(int argc, char* argv[]){
+    SDL_version version;
+    SDL_GetVersion(&version);
+    printf("Linked against SDL %d.%d.%d.\n",
+           version.major, version.minor, version.patch);
+    assert(version.major == 2);
+
     if (SDL_Init(SDL_INIT_AUDIO) < 0)
         return -1;
     int const frequency = EM_ASM_INT_V({
