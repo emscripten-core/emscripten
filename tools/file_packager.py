@@ -262,6 +262,11 @@ def main():
           'so that it includes support for loading this file package',
           file=sys.stderr)
 
+  if jsoutput and os.path.abspath(jsoutput) == os.path.abspath(data_target):
+    print('error: TARGET should not be the same value of --js-output',
+          file=sys.stderr)
+    return 1
+
   ret = ''
   # emcc.py will add this to the output itself, so it is only needed for
   # standalone calls
