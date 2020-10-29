@@ -15,7 +15,6 @@ import re
 import shutil
 import subprocess
 import time
-import shlex
 import sys
 import tempfile
 
@@ -77,8 +76,12 @@ def root_is_writable():
   return os.access(__rootpath__, os.W_OK)
 
 
+# TODO(sbc): Investigate switching to shlex.quote
 def shlex_quote(arg):
-  return shlex.quote(arg)
+  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
+    return '"' + arg.replace('"', '\\"') + '"'
+
+  return arg
 
 
 # Switch to shlex.join once we can depend on python 3.8:
