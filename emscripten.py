@@ -216,12 +216,9 @@ class Memory():
 def apply_memory(js, memory):
   # Apply the statically-at-compile-time computed memory locations.
   # Write it all out
-  if shared.Settings.RELOCATABLE:
-    js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
-    js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
-    js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
-
-  logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
+  js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
+  js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
+  js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
   return js
 
 
@@ -382,6 +379,7 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
   update_settings_glue(metadata, DEBUG)
 
   memory = Memory(metadata)
+  logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
   shared.Settings.LEGACY_DYNAMIC_BASE = memory.dynamic_base
 
   if not outfile_js:
@@ -418,8 +416,9 @@ def emscript(infile, outfile_js, memfile, temp_files, DEBUG):
 
     pre += '\n' + global_initializers + '\n'
 
-  pre = apply_memory(pre, memory)
-  post = apply_memory(post, memory)
+  if shared.Settings.RELOCATABLE:
+    pre = apply_memory(pre, memory)
+    post = apply_memory(post, memory)
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
 
