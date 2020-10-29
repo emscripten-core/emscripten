@@ -23,6 +23,12 @@ Current Trunk
 - dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
   or RTDL_NOW flags ar set.  Previously, it was possible set nether of these
   without generating an error.
+- Stack state is no longer stored in JavaScript.  The following variables have
+  been replaced with native functions in `<emscripten/stack.h>`:
+  - STACK_BASE
+  - STACK_MAX
+  - STACKTOP
+  - TOTAL_STACK
 
 2.0.8: 10/24/2020
 -----------------

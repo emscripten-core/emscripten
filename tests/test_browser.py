@@ -3950,7 +3950,7 @@ window.close = function() {
   def test_pthread_wake_all(self):
     self.btest(path_from_root('tests', 'pthread', 'test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'INITIAL_MEMORY=64MB', '-s', 'NO_EXIT_RUNTIME=1'], also_asmjs=True)
 
-  # Test that STACK_BASE and STACK_MAX correctly bound the stack on pthreads.
+  # Test that stack base and max correctly bound the stack on pthreads.
   @requires_threads
   def test_pthread_stack_bounds(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_stack_bounds.cpp'), expected='1', args=['-s', 'USE_PTHREADS'])

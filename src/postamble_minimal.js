@@ -14,7 +14,7 @@ function run() {
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(STACK_BASE, STACK_MAX);
+  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
 #if PROXY_TO_PTHREAD
@@ -77,6 +77,7 @@ function initRuntime(asm) {
 #endif
 
 #if STACK_OVERFLOW_CHECK
+  _emscripten_stack_init();
   writeStackCookie();
 #endif
 

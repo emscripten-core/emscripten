@@ -263,9 +263,9 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var memory_layout = {
         'static_base':  {{{ GLOBAL_BASE }}},
-        'stack_base':   STACK_BASE,
-        'stack_top':    STACKTOP,
-        'stack_max':    STACK_MAX,
+        'stack_base':   _emscripten_stack_get_base(),
+        'stack_top':    _emscripten_stack_get_current(),
+        'stack_max':    _emscripten_stack_get_end(),
         'dynamic_top':  _sbrk(),
         'total_memory': HEAP8.length
       };

@@ -1351,13 +1351,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
 
     if shared.Settings.MEMORYPROFILER:
-      shared.Settings.EXPORTED_FUNCTIONS += ['___heap_base']
+      shared.Settings.EXPORTED_FUNCTIONS += ['___heap_base',
+                                             '_emscripten_stack_get_base',
+                                             '_emscripten_stack_get_end',
+                                             '_emscripten_stack_get_current']
 
     if shared.Settings.ASYNCIFY:
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
       shared.Settings.USE_LEGACY_DYNCALLS = 1
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDynCaller']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
+                                             '_emscripten_stack_get_end',
+                                             '_emscripten_stack_set_limits']
 
     # Reconfigure the cache now that settings have been applied. Some settings
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
@@ -1398,6 +1404,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.STACK_OVERFLOW_CHECK:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
+      if shared.Settings.RELOCATABLE:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
+      else:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_init']
+      if shared.Settings.STACK_OVERFLOW_CHECK == 2:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
@@ -1539,7 +1552,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.SAFE_HEAP:
       # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
-      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr', '_emscripten_stack_get_base']
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -1568,7 +1581,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += [
         '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
         'registerPthreadPtr', '_pthread_self',
-        '___emscripten_pthread_data_constructor', '_emscripten_futex_wake']
+        '___emscripten_pthread_data_constructor', '_emscripten_futex_wake',
+        '_emscripten_stack_set_limits']
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1640,10 +1654,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # object, only regular runtime has it.
         if not shared.Settings.MINIMAL_RUNTIME:
           shared.Settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
-
-        # stack check:
-        if shared.Settings.STACK_OVERFLOW_CHECK:
-          shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
 
       if shared.Settings.LINKABLE:
         exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
@@ -1890,6 +1900,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       cflags.append('-D__EMSCRIPTEN_TRACING__=1')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_current',
+                                               '_emscripten_stack_get_base',
+                                               '_emscripten_stack_get_end']
 
     if shared.Settings.USE_PTHREADS:
       newargs.append('-pthread')
