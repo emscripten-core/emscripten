@@ -940,9 +940,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logger.warning('disabling source maps because a js transform is being done')
       shared.Settings.DEBUG_LEVEL = 3
 
-    if DEBUG:
-      start_time = time.time() # done after parsing arguments, which might affect debug state
-
     explicit_settings_changes, newargs = parse_s_args(newargs)
     settings_changes += explicit_settings_changes
 
@@ -2383,9 +2380,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if DEBUG:
       shared.Cache.release_cache_lock()
 
-  if DEBUG:
-    logger.debug('total time: %.2f seconds', (time.time() - start_time))
-
   return 0
 
 
@@ -3315,9 +3309,16 @@ def is_int(s):
     return False
 
 
+def main(args):
+  start_time = time.time()
+  rtn = run(args)
+  logger.debug('total time: %.2f seconds', (time.time() - start_time))
+  return rtn
+
+
 if __name__ == '__main__':
   try:
-    sys.exit(run(sys.argv))
+    sys.exit(main(sys.argv))
   except KeyboardInterrupt:
     logger.warning('KeyboardInterrupt')
     sys.exit(1)
