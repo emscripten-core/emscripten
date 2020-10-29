@@ -3311,9 +3311,9 @@ def is_int(s):
 
 def main(args):
   start_time = time.time()
-  rtn = run(args)
+  ret = run(args)
   logger.debug('total time: %.2f seconds', (time.time() - start_time))
-  return rtn
+  return ret
 
 
 if __name__ == '__main__':
