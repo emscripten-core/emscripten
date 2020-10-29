@@ -3049,6 +3049,7 @@ Var: 42
 
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):
+
     self.prep_dlfcn_lib()
     create_test_file('liblib.c', r'''
       #include <stdio.h>
@@ -3597,7 +3598,7 @@ ok
       print('flip')
       self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'], force_c, need_reverse=False, **kwargs)
 
-  def do_basic_dylink_test(self, need_reverse=True):
+  def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -3612,12 +3613,20 @@ ok
       int sidey() {
         return 11;
       }
-    ''', 'other says 11.', 'int sidey();', force_c=True, need_reverse=need_reverse)
+    ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
 
   @needs_dlfcn
   def test_dylink_basics(self):
     self.do_basic_dylink_test()
     self.verify_in_strict_mode('src.js')
+
+  @needs_dlfcn
+  def test_dylink_basics_no_modify(self):
+    if is_optimizing(self.emcc_args):
+      self.skipTest('no modify mode only works with non-optimizing builds')
+    self.set_setting('WASM_BIGINT')
+    self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
+    self.do_basic_dylink_test()
 
   @needs_dlfcn
   def test_dylink_no_export(self):

@@ -298,6 +298,9 @@ var SYSCALL_DEBUG = 0;
 // Log out socket/network data transfer.
 var SOCKET_DEBUG = 0;
 
+// Log dynamic linker information
+var DYLINK_DEBUG = 0;
+
 // Select socket backend, either webrtc or websockets. XXX webrtc is not
 // currently tested, may be broken
 

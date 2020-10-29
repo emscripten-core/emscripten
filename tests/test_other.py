@@ -3451,8 +3451,8 @@ int main() {
         for emulate_casts in [0, 1]:
           for relocatable in [0, 1]:
             for wasm in [0, 1]:
-              # TODO: With wasm2js this code always seems to work even without EMULATE_FUNCTION_POINTER_CASTS
-              if wasm == 0:
+              # wasm2js is not compatible with relocatable mode
+              if wasm == 0 and relocatable:
                 continue
               cmd = [EMCC, 'src.cpp', '-O' + str(opts)]
               if not wasm:
@@ -3465,9 +3465,9 @@ int main() {
                 cmd += ['-s', 'RELOCATABLE'] # disables asm-optimized safe heap
               print(cmd)
               self.run_process(cmd)
-              returncode = 0 if emulate_casts else NON_ZERO
+              returncode = 0 if emulate_casts or wasm == 0 else NON_ZERO
               output = self.run_js('a.out.js', assert_returncode=returncode)
-              if emulate_casts:
+              if emulate_casts or wasm == 0:
                 # success!
                 self.assertContained('Hello, world.', output)
               else:
@@ -6711,7 +6711,7 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10309), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10297), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
