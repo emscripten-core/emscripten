@@ -1479,7 +1479,7 @@ def map_and_apply_to_settings(library_name):
   if library_name in library_map:
     for key, value in library_map[library_name]:
       logger.debug('Mapping library `%s` to settings changes: %s = %s' % (library_name, key, value))
-      shared.Settings.__setattr__(key, value)
+      setattr(shared.Settings, key, value)
     return True
 
   return False
