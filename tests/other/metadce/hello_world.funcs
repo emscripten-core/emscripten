@@ -21,6 +21,9 @@ $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
 $dynCall_jiji
+$emscripten_stack_get_end
+$emscripten_stack_get_free
+$emscripten_stack_init
 $fflush
 $fmt_fp
 $fmt_o

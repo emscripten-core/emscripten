@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
-
 from subprocess import PIPE
 import atexit
 import binascii
@@ -20,8 +18,9 @@ import time
 import sys
 import tempfile
 
-if sys.version_info < (3, 5):
-  print('error: emscripten requires python 3.5 or above', file=sys.stderr)
+# We depend on python 3.6 for fstring support
+if sys.version_info < (3, 6):
+  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
@@ -46,9 +45,6 @@ logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
 logger = logging.getLogger('shared')
-
-if sys.version_info < (2, 7, 12):
-  logger.debug('python versions older than 2.7.12 are known to run into outdated SSL certificate related issues, https://github.com/emscripten-core/emscripten/issues/6275')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
@@ -80,7 +76,7 @@ def root_is_writable():
   return os.access(__rootpath__, os.W_OK)
 
 
-# Switch to shlex.quote once we can depend on python 3
+# TODO(sbc): Investigate switching to shlex.quote
 def shlex_quote(arg):
   if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
     return '"' + arg.replace('"', '\\"') + '"'
@@ -94,37 +90,6 @@ def shlex_join(cmd):
   return ' '.join(shlex_quote(x) for x in cmd)
 
 
-# This is a workaround for https://bugs.python.org/issue9400
-class Py2CalledProcessError(subprocess.CalledProcessError):
-  def __init__(self, returncode, cmd, output=None, stderr=None):
-    super(Exception, self).__init__(returncode, cmd, output, stderr)
-    self.returncode = returncode
-    self.cmd = cmd
-    self.output = output
-    self.stderr = stderr
-
-
-# https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
-class Py2CompletedProcess:
-  def __init__(self, args, returncode, stdout, stderr):
-    self.args = args
-    self.returncode = returncode
-    self.stdout = stdout
-    self.stderr = stderr
-
-  def __repr__(self):
-    _repr = ['args=%s' % repr(self.args), 'returncode=%s' % self.returncode]
-    if self.stdout is not None:
-      _repr.append('stdout=' + repr(self.stdout))
-    if self.stderr is not None:
-      _repr.append('stderr=' + repr(self.stderr))
-    return 'CompletedProcess(%s)' % ', '.join(_repr)
-
-  def check_returncode(self):
-    if self.returncode != 0:
-      raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
-
-
 def run_process(cmd, check=True, input=None, *args, **kw):
   """Runs a subpocess returning the exit code.
 
@@ -134,24 +99,10 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   """
 
   kw.setdefault('universal_newlines', True)
-
+  ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
-
-  if hasattr(subprocess, "run"):
-    ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
-    logger.debug(debug_text)
-    return ret
-
-  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-  if input is not None:
-    kw['stdin'] = subprocess.PIPE
-  proc = subprocess.Popen(cmd, *args, **kw)
-  stdout, stderr = proc.communicate(input)
-  result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
-  if check:
-    result.check_returncode()
   logger.debug(debug_text)
-  return result
+  return ret
 
 
 def check_call(cmd, *args, **kw):
@@ -246,25 +197,25 @@ def generate_config(path, first_time=False):
     f.write(config_file)
 
   if first_time:
-    print('''
+    print(f'''
 ==============================================================================
 Welcome to Emscripten!
 
 This is the first time any of the Emscripten tools has been run.
 
-A settings file has been copied to %s, at absolute path: %s
+A settings file has been copied to {path}, at absolute path: {abspath}
 
 It contains our best guesses for the important paths, which are:
 
-  LLVM_ROOT       = %s
-  NODE_JS         = %s
-  EMSCRIPTEN_ROOT = %s
+  LLVM_ROOT       = {llvm_root}
+  NODE_JS         = {node}
+  EMSCRIPTEN_ROOT = {EMSCRIPTEN_ROOT}
 
 Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (path, abspath, llvm_root, node, EMSCRIPTEN_ROOT), file=sys.stderr)
+''', file=sys.stderr)
 
 
 def parse_config_file():
@@ -480,8 +431,7 @@ def generate_sanity():
     config = open(CONFIG_FILE).read()
   else:
     config = EM_CONFIG
-  # Convert to unsigned for python2 and python3 compat
-  checksum = binascii.crc32(config.encode()) & 0xffffffff
+  checksum = binascii.crc32(config.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
 

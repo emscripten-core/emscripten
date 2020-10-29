@@ -298,6 +298,9 @@ var SYSCALL_DEBUG = 0;
 // Log out socket/network data transfer.
 var SOCKET_DEBUG = 0;
 
+// Log dynamic linker information
+var DYLINK_DEBUG = 0;
+
 // Select socket backend, either webrtc or websockets. XXX webrtc is not
 // currently tested, may be broken
 
@@ -585,6 +588,7 @@ var NODEJS_CATCH_EXIT = 1;
 // then exit with 0 (which hides the error if you don't read the log). With
 // this, we catch any unhandled rejection and throw an actual error, which will
 // make the process exit immediately with a non-0 return code.
+// This should be fixed in Node 15+.
 var NODEJS_CATCH_REJECTION = 1;
 
 // Whether to transform the code using asyncify. This makes it possible to
@@ -1624,15 +1628,6 @@ var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
 // Internal (testing only): Forces memory growing to fail.
 var TEST_MEMORY_GROWTH_FAILS = 0;
 
-// Advanced: Customize this array to reduce the set of asm.js runtime variables
-// that are generated. This allows minifying extra bit of asm.js code from unused
-// runtime code, if you know some of these are not needed.
-// (think of this as advanced manual DCE)
-// TODO(sbc): Move to settings_internal (current blocked due to use in test
-// code).
-var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
-
-// Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
@@ -1697,4 +1692,5 @@ var LEGACY_SETTINGS = [
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
   ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
   ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
+  ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
 ];

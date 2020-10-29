@@ -248,6 +248,7 @@ commands:
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
             python3 tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            python3 tests/runner.py emrun
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
@@ -279,6 +280,7 @@ commands:
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             # skip test_zzz_zzz_4GB_fail as it OOMs on the current bot
             python3 tests/runner.py browser skip:browser.test_zzz_zzz_4GB_fail
+            python3 tests/runner.py emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -431,7 +433,7 @@ jobs:
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - run-tests:
-          test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake*"
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake*"
   test-mac:
     executor: mac
     steps:

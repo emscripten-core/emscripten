@@ -26,6 +26,18 @@ Current Trunk
 - Allow `-lSDL2_mixer` to just work. (Others like `-lSDL2` always worked, but
   for `SDL2_mixer` things were broken because we build multiple variations of
   that library.) That link flag is now the same as `-s USE_SDL2_MIXER=2`.
+- Stack state is no longer stored in JavaScript.  The following variables have
+  been replaced with native functions in `<emscripten/stack.h>`:
+  - STACK_BASE
+  - STACK_MAX
+  - STACKTOP
+  - TOTAL_STACK
+- The ABI used for importing symbol by address in dynamic linking (MAIN_MODULE +
+  SIDE_MODULE) is now the same as the ABI used by llvm and wasm-ld.  That is,
+  symbol addresses are imported from the 'GOT.mem' and 'GOT.func' pseudo
+  modules.  As one side effect of this change it is now required that JavaScript
+  functions that are imported by address are now required to have a `__sig`
+  specified in the library JavaScript file.
 
 2.0.8: 10/24/2020
 -----------------

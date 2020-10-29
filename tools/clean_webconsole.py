@@ -6,7 +6,6 @@
 """Removes timestamp and line info from a webgl log
 """
 
-from __future__ import print_function
 import os
 import re
 import sys

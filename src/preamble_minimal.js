@@ -59,12 +59,6 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
-var TOTAL_STACK = {{{ TOTAL_STACK }}},
-    STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
-    STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
-    ;
-
 #if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
 var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
 #else
@@ -96,8 +90,7 @@ var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-assert(STACK_BASE % 16 === 0, 'stack must start aligned to 16 bytes, STACK_BASE==' + STACK_BASE);
-assert({{{ INITIAL_MEMORY }}} >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ INITIAL_MEMORY }}} + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+assert({{{ INITIAL_MEMORY }}} >= {{{ TOTAL_STACK }}}, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ INITIAL_MEMORY }}} + '! (TOTAL_STACK=' + {{{ TOTAL_STACK }}} + ')');
 assert({{{ INITIAL_MEMORY }}} % WASM_PAGE_SIZE === 0);
 #if MAXIMUM_MEMORY != -1
 assert({{{ MAXIMUM_MEMORY }}} % WASM_PAGE_SIZE == 0);

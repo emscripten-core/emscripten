@@ -3,6 +3,9 @@ __errno_location
 __indirect_function_table
 __wasm_call_ctors
 dynCall_jiji
+emscripten_stack_get_end
+emscripten_stack_get_free
+emscripten_stack_init
 fflush
 main
 stackAlloc

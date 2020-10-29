@@ -20,7 +20,7 @@ import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
+from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import shared
@@ -2438,77 +2438,6 @@ void *getBindBuffer() {
     create_test_file('data.dat', 'data from the file ' + ('.' * 9000))
     self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'])
 
-  def test_emrun_info(self):
-    if not has_browser():
-      self.skipTest('need a browser')
-    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
-    assert 'CPU' in result
-    assert 'Browser' in result
-    assert 'Traceback' not in result
-
-    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
-    assert 'Traceback' not in result
-
-  # Deliberately named as test_zzz_emrun to make this test the last one
-  # as this test may take the focus away from the main test window
-  # by opening a new window and possibly not closing it.
-  def test_zzz_emrun(self):
-    self.compile_btest([path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
-    if not has_browser():
-      self.skipTest('need a browser')
-
-    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the
-    # browser that is launched will have that directory as startup directory, and the browser will
-    # not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to
-    # delete it. Therefore switch away from that directory before launching.
-
-    os.chdir(path_from_root())
-    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
-                 '--kill_exit', '--port', '6939', '--verbose',
-                 '--log_stdout', self.in_dir('stdout.txt'),
-                 '--log_stderr', self.in_dir('stderr.txt')]
-
-    # Verify that trying to pass argument to the page without the `--` separator will
-    # generate an actionable error message
-    err = self.expect_fail(args_base + ['--foo'])
-    self.assertContained('error: unrecognized arguments: --foo', err)
-    self.assertContained('remember to add `--` between arguments', err)
-
-    if EMTEST_BROWSER is not None:
-      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
-      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
-      # so strip them out.
-      browser_cmd = shlex.split(EMTEST_BROWSER)
-      browser_path = browser_cmd[0]
-      args_base += ['--browser', browser_path]
-      if len(browser_cmd) > 1:
-        browser_args = browser_cmd[1:]
-        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
-          # emrun uses its own -profile, strip it out
-          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
-          parser.add_argument('-profile')
-          parser.add_argument('--profile')
-          browser_args = parser.parse_known_args(browser_args)[1]
-        if browser_args:
-          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
-
-    for args in [
-        args_base,
-        args_base + ['--private_browsing', '--port', '6941']
-    ]:
-      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
-      print(shared.shlex_join(args))
-      proc = self.run_process(args, check=False)
-      self.assertEqual(proc.returncode, 100)
-      stdout = open(self.in_dir('stdout.txt'), 'r').read()
-      stderr = open(self.in_dir('stderr.txt'), 'r').read()
-      self.assertContained('argc: 4', stdout)
-      self.assertContained('argv[3]: --3', stdout)
-      self.assertContained('hello, world!', stdout)
-      self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
-      self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
-      self.assertContained('hello, error stream!', stderr)
-
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
   @requires_graphics_hardware
@@ -3954,7 +3883,7 @@ window.close = function() {
   def test_pthread_wake_all(self):
     self.btest(path_from_root('tests', 'pthread', 'test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'INITIAL_MEMORY=64MB', '-s', 'NO_EXIT_RUNTIME=1'], also_asmjs=True)
 
-  # Test that STACK_BASE and STACK_MAX correctly bound the stack on pthreads.
+  # Test that stack base and max correctly bound the stack on pthreads.
   @requires_threads
   def test_pthread_stack_bounds(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_stack_bounds.cpp'), expected='1', args=['-s', 'USE_PTHREADS'])
@@ -4664,7 +4593,7 @@ window.close = function() {
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
     # with separate file packager invocation
-    self.run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'])
+    self.run_process([PYTHON, FILE_PACKAGER, 'data.data', '--preload', 'test.txt', '--js-output=' + 'data.js'])
     self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
@@ -4960,3 +4889,73 @@ window.close = function() {
                # don't run this with the default extra_tries value, as this is
                # *meant* to notice something random, a race condition.
                extra_tries=0)
+
+
+class emrun(RunnerCore):
+  def test_emrun_info(self):
+    if not has_browser():
+      self.skipTest('need a browser')
+    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
+    assert 'CPU' in result
+    assert 'Browser' in result
+    assert 'Traceback' not in result
+
+    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
+    assert 'Traceback' not in result
+
+  def test_emrun(self):
+    self.run_process([EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
+    if not has_browser():
+      self.skipTest('need a browser')
+
+    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the
+    # browser that is launched will have that directory as startup directory, and the browser will
+    # not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to
+    # delete it. Therefore switch away from that directory before launching.
+
+    os.chdir(path_from_root())
+    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
+                 '--kill_exit', '--port', '6939', '--verbose',
+                 '--log_stdout', self.in_dir('stdout.txt'),
+                 '--log_stderr', self.in_dir('stderr.txt')]
+
+    # Verify that trying to pass argument to the page without the `--` separator will
+    # generate an actionable error message
+    err = self.expect_fail(args_base + ['--foo'])
+    self.assertContained('error: unrecognized arguments: --foo', err)
+    self.assertContained('remember to add `--` between arguments', err)
+
+    if EMTEST_BROWSER is not None:
+      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
+      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
+      # so strip them out.
+      browser_cmd = shlex.split(EMTEST_BROWSER)
+      browser_path = browser_cmd[0]
+      args_base += ['--browser', browser_path]
+      if len(browser_cmd) > 1:
+        browser_args = browser_cmd[1:]
+        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
+          # emrun uses its own -profile, strip it out
+          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
+          parser.add_argument('-profile')
+          parser.add_argument('--profile')
+          browser_args = parser.parse_known_args(browser_args)[1]
+        if browser_args:
+          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+
+    for args in [
+        args_base,
+        args_base + ['--private_browsing', '--port', '6941']
+    ]:
+      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
+      print(shared.shlex_join(args))
+      proc = self.run_process(args, check=False)
+      self.assertEqual(proc.returncode, 100)
+      stdout = open(self.in_dir('stdout.txt'), 'r').read()
+      stderr = open(self.in_dir('stderr.txt'), 'r').read()
+      self.assertContained('argc: 4', stdout)
+      self.assertContained('argv[3]: --3', stdout)
+      self.assertContained('hello, world!', stdout)
+      self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
+      self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
+      self.assertContained('hello, error stream!', stderr)

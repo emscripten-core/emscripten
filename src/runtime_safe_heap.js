@@ -111,7 +111,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   if (runtimeInitialized) {
     var brk = _sbrk() >>> 0;
     if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + brk);
-    assert(brk >= STACK_BASE); // sbrk-managed memory must be above the stack
+    assert(brk >= _emscripten_stack_get_base()); // sbrk-managed memory must be above the stack
     assert(brk <= HEAP8.length);
   }
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
@@ -131,7 +131,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (runtimeInitialized) {
     var brk = _sbrk() >>> 0;
     if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + brk);
-    assert(brk >= STACK_BASE); // sbrk-managed memory must be above the stack
+    assert(brk >= _emscripten_stack_get_base()); // sbrk-managed memory must be above the stack
     assert(brk <= HEAP8.length);
   }
   var type = getSafeHeapType(bytes, isFloat);
