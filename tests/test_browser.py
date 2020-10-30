@@ -3274,7 +3274,7 @@ window.close = function() {
         src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
         create_test_file('test.c', self.with_report_result(src))
         # this test is synchronous, so avoid async startup due to wasm features
-        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'SINGLE_FILE=1'] + args + opts)
+        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'SINGLE_FILE=1'] + args + opts)
         create_test_file('a.html', '''
           <script src="a.out.js"></script>
           <script>
