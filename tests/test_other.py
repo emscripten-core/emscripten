@@ -161,9 +161,13 @@ class other(RunnerCore):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
       proc = self.run_process([compiler, '-v'], stdout=PIPE, stderr=PIPE)
+      self.assertEqual(proc.stdout, '')
+      # assert that the emcc message comes first.  We had a bug where the sub-process output
+      # from clang would be flushed to stderr first.
+      self.assertContained('emcc (Emscripten gcc/clang-like replacement', proc.stderr)
+      self.assertTrue(proc.stderr.startswith('emcc (Emscripten gcc/clang-like replacement'))
       self.assertContained('clang version %s' % shared.EXPECTED_LLVM_VERSION, proc.stderr)
       self.assertContained('GNU', proc.stderr)
-      self.assertNotContained('this is dangerous', proc.stdout)
       self.assertNotContained('this is dangerous', proc.stderr)
 
   def test_emcc_generate_config(self):
