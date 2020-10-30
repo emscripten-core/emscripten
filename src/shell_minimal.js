@@ -1,5 +1,4 @@
 /**
-d
  * @license
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
@@ -144,9 +143,6 @@ var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts === 'f
 #if MODULARIZE
 if (ENVIRONMENT_IS_WORKER) {
   var buffer = {{{EXPORT_NAME}}}.buffer;
-  var STACK_BASE = {{{EXPORT_NAME}}}.STACK_BASE;
-  var STACKTOP = {{{EXPORT_NAME}}}.STACKTOP;
-  var STACK_MAX = {{{EXPORT_NAME}}}.STACK_MAX;
 }
 #endif
 
@@ -154,5 +150,3 @@ var currentScriptUrl = typeof _scriptDir !== 'undefined' ? _scriptDir : ((typeof
 #endif // USE_PTHREADS
 
 {{BODY}}
-
-// {{MODULE_ADDITIONS}}

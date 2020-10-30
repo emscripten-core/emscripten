@@ -9,33 +9,11 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-// Handy sets
-
-var STRUCT_LIST = set('struct', 'list');
-
 var addedLibraryItems = {};
-
-var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow',
-  'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan',
-  'Math_atan2', 'Math_exp', 'Math_log', 'Math_ceil', 'Math_imul', 'Math_min',
-  'Math_max', 'Math_clz32', 'Math_fround',
-  'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array',
-  'Uint32Array', 'Float32Array', 'Float64Array'];
-
-var SETJMP_LABEL = -1;
-
-var INDENTATION = ' ';
-
-var functionStubSigs = {};
 
 // Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
 var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
-
-// proxiedFunctionInvokers contains bodies of the functions that will perform the proxying. These
-// are generated in a map to keep track which ones have already been emitted, to avoid outputting duplicates.
-// map: pair(sig, syncOrAsync) -> function body
-var proxiedFunctionInvokers = {};
 
 // Used internally. set when there is a main() function.
 // Also set when in a linkable module, as the main() function might
@@ -149,9 +127,7 @@ function JSify(data, functionsOnly) {
 
       var noExport = false;
 
-      if (allExternPrimitives.indexOf(ident) != -1) {
-        return;
-      } else if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
+      if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
@@ -177,28 +153,16 @@ function JSify(data, functionsOnly) {
           // (not useful to warn/error multiple times)
           LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          var isGlobalAccessor = ident.startsWith('g$');
           var realIdent = ident;
-          if (isGlobalAccessor) {
-            realIdent = realIdent.substr(2);
-          }
 
           var target = "Module['" + mangleCSymbolName(realIdent) + "']";
           var assertion = '';
           if (ASSERTIONS) {
             var what = 'function';
-            if (isGlobalAccessor) {
-              what = 'global';
-            }
-            assertion += 'if (!' + target + ') abort("external ' + what + ' \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+            assertion += 'if (!' + target + ') abort("external symbol \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
 
           }
-          var functionBody;
-          if (isGlobalAccessor) {
-            functionBody = assertion + "return " + target + ";"
-          } else {
-            functionBody = assertion + "return " + target + ".apply(null, arguments);";
-          }
+          var functionBody = assertion + "return " + target + ".apply(null, arguments);";
           LibraryManager.library[ident] = new Function(functionBody);
           noExport = true;
         }
@@ -229,7 +193,7 @@ function JSify(data, functionsOnly) {
           }
           // In asm, we need to know about library functions. If there is a target, though, then no
           // need to consider this a library function - we will call directly to it anyhow
-          if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
+          if (!redirectedIdent && (typeof target == 'function')) {
             Functions.libraryFunctions[finalName] = 1;
           }
         }
@@ -325,6 +289,9 @@ function JSify(data, functionsOnly) {
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
+      if (MAIN_MODULE && sig) {
+        contentText += '\n' + finalName + '.sig = \'' + sig + '\';';
+      }
 
       var commentText = '';
       if (LibraryManager.library[ident + '__docs']) {
@@ -368,7 +335,6 @@ function JSify(data, functionsOnly) {
     if (!mainPass) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
-      print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
       return;
     }
 
@@ -438,10 +404,8 @@ function JSify(data, functionsOnly) {
     }
 
     var postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
-    print(postParts[0]);
-
-    print(postParts[1]);
+    var post = processMacros(preprocess(read(postFile), postFile));
+    print(post);
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));

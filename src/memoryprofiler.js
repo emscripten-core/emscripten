@@ -70,7 +70,7 @@ var emscriptenMemoryProfiler = {
   totalTimesMallocCalled: 0,
   totalTimesFreeCalled: 0,
 
-  // Tracks the highest seen location of the STACKTOP variable.
+  // Tracks the highest seen location of the stack pointer.
   stackTopWatermark: Infinity,
 
   // The canvas DOM element to which to draw the allocation map.
@@ -161,8 +161,10 @@ var emscriptenMemoryProfiler = {
   },
 
   recordStackWatermark: function() {
-    var self = emscriptenMemoryProfiler;
-    self.stackTopWatermark = Math.min(self.stackTopWatermark, STACKTOP);
+    if (runtimeInitialized) {
+      var self = emscriptenMemoryProfiler;
+      self.stackTopWatermark = Math.min(self.stackTopWatermark, _emscripten_stack_get_current());
+    }
   },
 
   onMalloc: function onMalloc(ptr, size) {
@@ -485,28 +487,25 @@ var emscriptenMemoryProfiler = {
       self.canvas.width = document.documentElement.clientWidth - 32;
     }
 
+    if (!runtimeInitialized) {
+      return;
+    }
+    var stackBase = _emscripten_stack_get_base();
+    var stackMax = _emscripten_stack_get_end();
+    var stackCurrent = _emscripten_stack_get_current();
     var width = (nBits(HEAP8.length) + 3) / 4; // Pointer 'word width'
     var html = 'Total HEAP size: ' + self.formatBytes(HEAP8.length) + '.';
-    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(Math.min(STACK_BASE, STACK_MAX) - {{{ GLOBAL_BASE }}});
+    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(stackMax - {{{ GLOBAL_BASE }}});
     html += '. {{{ GLOBAL_BASE }}}: ' + toHex({{{ GLOBAL_BASE }}}, width);
 
-    html += '<br />' + colorBar('#FF8080') + 'STACK memory area size: ' + self.formatBytes(Math.abs(STACK_MAX - STACK_BASE));
-    html += '. STACK_BASE: ' + toHex(STACK_BASE, width);
-    html += '. STACKTOP: ' + toHex(STACKTOP, width);
-    html += '. STACK_MAX: ' + toHex(STACK_MAX, width) + '.';
-    html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(Math.abs(self.stackTopWatermark - STACK_BASE));
+    html += '<br />' + colorBar('#FF8080') + 'STACK memory area size: ' + self.formatBytes(stackBase - stackMax);
+    html += '. STACK_BASE: ' + toHex(stackBase, width);
+    html += '. STACKTOP: ' + toHex(stackCurrent, width);
+    html += '. STACK_MAX: ' + toHex(stackMax, width) + '.';
+    html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
-    if (runtimeInitialized) {
-      // During startup sbrk may not be defined yet. Ideally we should probably
-      // refactor memoryprofiler so that it only gets here after compiled code is
-      // ready to be called. For now, if the runtime is not yet initialized,
-      // assume the brk is right after the stack.
-      var heap_base = Module['___heap_base'];
-      var heap_end = _sbrk();
-    } else {
-      var heap_base = STACK_BASE;
-      var heap_end = STACK_BASE;
-    }
+    var heap_base = Module['___heap_base'];
+    var heap_end = _sbrk();
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);
     html += ". end: " + toHex(heap_end, width) + ".";
@@ -525,13 +524,13 @@ var emscriptenMemoryProfiler = {
     self.drawContext.fillRect(0, 0, self.canvas.width, self.canvas.height);
 
     self.drawContext.fillStyle = "#FF8080";
-    self.fillLine(STACK_BASE, STACK_MAX);
+    self.fillLine(stackMax, stackBase);
 
     self.drawContext.fillStyle = "#FFFF00";
-    self.fillLine(Math.min(STACK_BASE, self.stackTopWatermark), Math.max(STACK_BASE, self.stackTopWatermark));
+    self.fillLine(self.stackTopWatermark, stackBase);
 
     self.drawContext.fillStyle = "#FF0000";
-    self.fillLine(Math.min(STACK_BASE, STACKTOP), Math.max(STACK_BASE, STACKTOP));
+    self.fillLine(stackCurrent, stackBase);
 
     self.drawContext.fillStyle = "#70FF70";
     self.fillLine(heap_base, heap_end);

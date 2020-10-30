@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  python tests/runner.py asm1.test_hello_world
+  python3 tests/runner.py asm1.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -16,13 +16,6 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
-
-import sys
-
-# The emscripten test suite explcitly requires python3.6 or above.
-if sys.version_info < (3, 6):
-  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
-  sys.exit(1)
 
 from subprocess import PIPE, STDOUT
 from functools import wraps
@@ -44,6 +37,7 @@ import shlex
 import shutil
 import string
 import subprocess
+import stat
 import sys
 import tempfile
 import time
@@ -63,7 +57,7 @@ import parallel_testsuite
 from jsrun import NON_ZERO
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import WINDOWS
+from tools.shared import MACOS, WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
 from tools.shared import asbytes, Settings
@@ -162,6 +156,18 @@ def is_slow_test(func):
 def no_wasm_backend(note=''):
   assert not callable(note)
   return unittest.skip(note)
+
+
+def disabled(note=''):
+  assert not callable(note)
+  return unittest.skip(note)
+
+
+def no_mac(note=''):
+  assert not callable(note)
+  if MACOS:
+    return unittest.skip(note)
+  return lambda f: f
 
 
 def no_windows(note=''):
@@ -266,6 +272,10 @@ def create_test_file(name, contents, binary=False):
   mode = 'wb' if binary else 'w'
   with open(name, mode) as f:
     f.write(contents)
+
+
+def make_executable(name):
+  os.chmod(name, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
 
 # The core test modes
@@ -570,13 +580,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             post_build=None, js_outfile=True):
     suffix = '.js' if js_outfile else '.wasm'
     if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
-      compiler = EMXX
+      compiler = [EMXX]
     else:
-      compiler = EMCC
+      # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+      # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
+      # this if this issues is fixed.
+      compiler = [EMCC, '-nostdlib++']
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = [compiler, filename, '-o', output] + self.get_emcc_args(main_file=True) + \
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + \
         ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
         ['-I' + include for include in includes] + \
         libraries
@@ -1007,9 +1020,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         void (*bfunc)(), (*cfunc)();
 
         // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currently working
-        bdso = dlopen("libb%(so)s", RTLD_GLOBAL);
+        bdso = dlopen("libb%(so)s", RTLD_NOW|RTLD_GLOBAL);
         assert(bdso != NULL);
-        cdso = dlopen("libc%(so)s", RTLD_GLOBAL);
+        cdso = dlopen("libc%(so)s", RTLD_NOW|RTLD_GLOBAL);
         assert(cdso != NULL);
 
         bfunc = (void (*)())dlsym(bdso, "bfunc");
@@ -1752,16 +1765,17 @@ def skip_requested_tests(args, modules):
       which = [arg.split('skip:')[1]]
 
       print(','.join(which), file=sys.stderr)
+      skipped = False
       for test in which:
         print('will skip "%s"' % test, file=sys.stderr)
         suite_name, test_name = test.split('.')
         for m in modules:
-          try:
-            suite = getattr(m, suite_name)
+          suite = getattr(m, suite_name, None)
+          if suite:
             setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
+            skipped = True
             break
-          except AttributeError:
-            pass
+      assert skipped, "Not able to skip test " + test
       args[i] = None
   return [a for a in args if a is not None]
 

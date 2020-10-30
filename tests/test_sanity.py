@@ -6,7 +6,6 @@
 import os
 import platform
 import shutil
-import stat
 import time
 import re
 import tempfile
@@ -14,7 +13,7 @@ import zipfile
 from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, chdir
-from runner import create_test_file, no_wasm_backend, ensure_dir
+from runner import create_test_file, ensure_dir, make_executable
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import try_delete
@@ -65,9 +64,7 @@ def make_fake_wasm_opt(filename, version):
     f.write('#!/bin/sh\n')
     f.write('echo "wasm-opt version %s"\n' % version)
     f.write('echo "..."\n')
-  shutil.copyfile(filename, filename + '++')
-  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-  os.chmod(filename + '++', stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  make_executable(filename)
 
 
 def make_fake_clang(filename, version):
@@ -81,8 +78,8 @@ def make_fake_clang(filename, version):
     f.write('echo "clang version %s"\n' % version)
     f.write('echo "..."\n')
   shutil.copyfile(filename, filename + '++')
-  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-  os.chmod(filename + '++', stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  make_executable(filename)
+  make_executable(filename + '++')
 
 
 def make_fake_llc(filename, targets):
@@ -94,7 +91,7 @@ def make_fake_llc(filename, targets):
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake output\nRegistered Targets:\n%s"' % targets)
-  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  make_executable(filename)
 
 
 def make_fake_lld(filename):
@@ -102,7 +99,7 @@ def make_fake_lld(filename):
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('exit 0\n')
-  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  make_executable(filename)
 
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
@@ -184,9 +181,9 @@ class sanity(RunnerCore):
     for command in commands:
       wipe()
 
-      def make_executable(name):
-        with open(os.path.join(temp_bin, name), 'w') as f:
-          os.fchmod(f.fileno(), stat.S_IRWXU)
+      def make_new_executable(name):
+        open(os.path.join(temp_bin, name), 'w').close()
+        make_executable(os.path.join(temp_bin, name))
 
       env = os.environ.copy()
       if 'EM_CONFIG' in env:
@@ -194,8 +191,8 @@ class sanity(RunnerCore):
 
       try:
         temp_bin = tempfile.mkdtemp()
-        make_executable('llvm-dis')
-        make_executable('node')
+        make_new_executable('llvm-dis')
+        make_new_executable('node')
         env['PATH'] = temp_bin + os.pathsep + os.environ['PATH']
         output = self.do(command, env=env)
       finally:
@@ -326,7 +323,7 @@ else
 fi
 ''' % (version, NODE_JS))
         f.close()
-        os.chmod(self.in_dir('fake', 'nodejs'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+        make_executable(self.in_dir('fake', 'nodejs'))
         if not succeed:
           if version[0] == 'v':
             self.check_working(EMCC, NODE_WARNING)
@@ -533,7 +530,6 @@ fi
     os.remove(custom_config_filename)
     shutil.rmtree(temp_dir)
 
-  @no_wasm_backend('depends on WASM=0 working')
   def test_emcc_ports(self):
     restore_and_set_up()
 
@@ -568,7 +564,7 @@ fi
       assert not os.path.exists(PORTS_DIR)
 
       def first_use():
-        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
+        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
         self.assertExists(PORTS_DIR)
@@ -576,7 +572,7 @@ fi
 
       def second_use():
         # Using it again avoids retrieve and build
-        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
+        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE not in output, output
         assert BUILDING_MESSAGE not in output, output
 
@@ -627,7 +623,7 @@ fi
         with open(test_engine_path, 'w') as f:
           f.write('#!/bin/sh\n')
           f.write('exec %s $@\n' % (engine))
-        os.chmod(test_engine_path, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+        make_executable(test_engine_path)
 
         out = self.run_js(sample_script, engine=test_engine_path, args=['--foo'])
 

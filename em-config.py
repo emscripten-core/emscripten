@@ -14,7 +14,6 @@ This tool prints the value of the variable to stdout if one
 is found, or exits with 1 if the variable does not exist.
 """
 
-from __future__ import print_function
 import sys
 import re
 from tools import shared

@@ -131,10 +131,6 @@ IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
   longjmp(setjmp_stack[next_setjmp - 1], 1);
 });
 
-IMPORT_IMPL(void, Z_envZ_emscripten_longjmp_jmpbufZ_vii, (u32 buf, u32 value), {
-  return Z_envZ_emscripten_longjmpZ_vii(buf, value);
-});
-
 IMPORT_IMPL(void, Z_envZ_emscripten_notify_memory_growthZ_vi, (u32 size), {});
 
 static u32 tempRet0 = 0;

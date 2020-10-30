@@ -9,7 +9,6 @@ WebIDL binder
 http://kripken.github.io/emscripten-site/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
 '''
 
-from __future__ import print_function
 import os, sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

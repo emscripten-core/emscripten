@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
-
 from subprocess import PIPE
 import atexit
 import binascii
@@ -20,8 +18,9 @@ import time
 import sys
 import tempfile
 
-if sys.version_info < (3, 5):
-  print('error: emscripten requires python 3.5 or above', file=sys.stderr)
+# We depend on python 3.6 for fstring support
+if sys.version_info < (3, 6):
+  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
@@ -36,7 +35,7 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 97
+EXPECTED_BINARYEN_VERSION = 98
 EXPECTED_LLVM_VERSION = "12.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -46,9 +45,6 @@ logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
 logger = logging.getLogger('shared')
-
-if sys.version_info < (2, 7, 12):
-  logger.debug('python versions older than 2.7.12 are known to run into outdated SSL certificate related issues, https://github.com/emscripten-core/emscripten/issues/6275')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
@@ -72,70 +68,6 @@ def exit_with_error(msg, *args):
   diagnostics.error(msg, *args)
 
 
-# On Windows python suffers from a particularly nasty bug if python is spawning
-# new processes while python itself is spawned from some other non-console
-# process.
-# Use a custom replacement for Popen on Windows to avoid the "WindowsError:
-# [Error 6] The handle is invalid" errors when emcc is driven through cmake or
-# mingw32-make.
-# See http://bugs.python.org/issue3905
-class WindowsPopen(object):
-  def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
-               shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
-    self.stdin = stdin
-    self.stdout = stdout
-    self.stderr = stderr
-
-    # (stdin, stdout, stderr) store what the caller originally wanted to be done with the streams.
-    # (stdin_, stdout_, stderr_) will store the fixed set of streams that workaround the bug.
-    self.stdin_ = stdin
-    self.stdout_ = stdout
-    self.stderr_ = stderr
-
-    # If the caller wants one of these PIPEd, we must PIPE them all to avoid the 'handle is invalid' bug.
-    if self.stdin_ == PIPE or self.stdout_ == PIPE or self.stderr_ == PIPE:
-      if self.stdin_ is None:
-        self.stdin_ = PIPE
-      if self.stdout_ is None:
-        self.stdout_ = PIPE
-      if self.stderr_ is None:
-        self.stderr_ = PIPE
-
-    try:
-      # Call the process with fixed streams.
-      self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
-      self.pid = self.process.pid
-    except Exception as e:
-      logger.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (shlex_join(args), str(e)))
-      raise
-
-  def communicate(self, input=None):
-    output = self.process.communicate(input)
-    self.returncode = self.process.returncode
-
-    # If caller never wanted to PIPE stdout or stderr, route the output back to screen to avoid swallowing output.
-    if self.stdout is None and self.stdout_ == PIPE and len(output[0].strip()):
-      print(output[0], file=sys.stdout)
-    if self.stderr is None and self.stderr_ == PIPE and len(output[1].strip()):
-      print(output[1], file=sys.stderr)
-
-    # Return a mock object to the caller. This works as long as all emscripten code immediately .communicate()s the result, and doesn't
-    # leave the process object around for longer/more exotic uses.
-    if self.stdout is None and self.stderr is None:
-      return (None, None)
-    if self.stdout is None:
-      return (None, output[1])
-    if self.stderr is None:
-      return (output[0], None)
-    return (output[0], output[1])
-
-  def poll(self):
-    return self.process.poll()
-
-  def kill(self):
-    return self.process.kill()
-
-
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
@@ -144,7 +76,7 @@ def root_is_writable():
   return os.access(__rootpath__, os.W_OK)
 
 
-# Switch to shlex.quote once we can depend on python 3
+# TODO(sbc): Investigate switching to shlex.quote
 def shlex_quote(arg):
   if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
     return '"' + arg.replace('"', '\\"') + '"'
@@ -158,37 +90,6 @@ def shlex_join(cmd):
   return ' '.join(shlex_quote(x) for x in cmd)
 
 
-# This is a workaround for https://bugs.python.org/issue9400
-class Py2CalledProcessError(subprocess.CalledProcessError):
-  def __init__(self, returncode, cmd, output=None, stderr=None):
-    super(Exception, self).__init__(returncode, cmd, output, stderr)
-    self.returncode = returncode
-    self.cmd = cmd
-    self.output = output
-    self.stderr = stderr
-
-
-# https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
-class Py2CompletedProcess:
-  def __init__(self, args, returncode, stdout, stderr):
-    self.args = args
-    self.returncode = returncode
-    self.stdout = stdout
-    self.stderr = stderr
-
-  def __repr__(self):
-    _repr = ['args=%s' % repr(self.args), 'returncode=%s' % self.returncode]
-    if self.stdout is not None:
-      _repr.append('stdout=' + repr(self.stdout))
-    if self.stderr is not None:
-      _repr.append('stderr=' + repr(self.stderr))
-    return 'CompletedProcess(%s)' % ', '.join(_repr)
-
-  def check_returncode(self):
-    if self.returncode != 0:
-      raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
-
-
 def run_process(cmd, check=True, input=None, *args, **kw):
   """Runs a subpocess returning the exit code.
 
@@ -198,24 +99,10 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   """
 
   kw.setdefault('universal_newlines', True)
-
+  ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
-
-  if hasattr(subprocess, "run"):
-    ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
-    logger.debug(debug_text)
-    return ret
-
-  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-  if input is not None:
-    kw['stdin'] = subprocess.PIPE
-  proc = Popen(cmd, *args, **kw)
-  stdout, stderr = proc.communicate(input)
-  result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
-  if check:
-    result.check_returncode()
   logger.debug(debug_text)
-  return result
+  return ret
 
 
 def check_call(cmd, *args, **kw):
@@ -310,25 +197,25 @@ def generate_config(path, first_time=False):
     f.write(config_file)
 
   if first_time:
-    print('''
+    print(f'''
 ==============================================================================
 Welcome to Emscripten!
 
 This is the first time any of the Emscripten tools has been run.
 
-A settings file has been copied to %s, at absolute path: %s
+A settings file has been copied to {path}, at absolute path: {abspath}
 
 It contains our best guesses for the important paths, which are:
 
-  LLVM_ROOT       = %s
-  NODE_JS         = %s
-  EMSCRIPTEN_ROOT = %s
+  LLVM_ROOT       = {llvm_root}
+  NODE_JS         = {node}
+  EMSCRIPTEN_ROOT = {EMSCRIPTEN_ROOT}
 
 Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (path, abspath, llvm_root, node, EMSCRIPTEN_ROOT), file=sys.stderr)
+''', file=sys.stderr)
 
 
 def parse_config_file():
@@ -346,7 +233,6 @@ def parse_config_file():
   CONFIG_KEYS = (
     'NODE_JS',
     'BINARYEN_ROOT',
-    'POPEN_WORKAROUND',
     'SPIDERMONKEY_ENGINE',
     'V8_ENGINE',
     'LLVM_ROOT',
@@ -362,6 +248,7 @@ def parse_config_file():
     'FROZEN_CACHE',
     'CACHE',
     'PORTS',
+    'COMPILER_WRAPPER',
   )
 
   # Only propagate certain settings from the config file.
@@ -544,8 +431,7 @@ def generate_sanity():
     config = open(CONFIG_FILE).read()
   else:
     config = EM_CONFIG
-  # Convert to unsigned for python2 and python3 compat
-  checksum = binascii.crc32(config.encode()) & 0xffffffff
+  checksum = binascii.crc32(config.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
 
@@ -1041,7 +927,7 @@ def is_c_symbol(name):
 def treat_as_user_function(name):
   if name.startswith('dynCall_'):
     return False
-  if name in Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED:
+  if name in Settings.WASM_SYSTEM_EXPORTS:
     return False
   return True
 
@@ -1061,12 +947,6 @@ def asmjs_mangle(name):
 def reconfigure_cache():
   global Cache
   Cache = cache.Cache(CACHE)
-
-
-# Placeholder strings used for SINGLE_FILE
-class FilenameReplacementStrings:
-  WASM_TEXT_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_TEXT_FILE }}}'
-  WASM_BINARY_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE }}}'
 
 
 class JS(object):
@@ -1128,47 +1008,6 @@ class JS(object):
       return os.path.basename(path)
 
   @staticmethod
-  def make_initializer(sig, settings=None):
-    settings = settings or Settings
-    if sig == 'i':
-      return '0'
-    elif sig == 'f':
-      return 'Math_fround(0)'
-    elif sig == 'j':
-      if settings:
-        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64(0)'
-    else:
-      return '+0'
-
-  FLOAT_SIGS = ['f', 'd']
-
-  @staticmethod
-  def make_coercion(value, sig, settings=None, ffi_arg=False, ffi_result=False, convert_from=None):
-    settings = settings or Settings
-    if sig == 'i':
-      if convert_from in JS.FLOAT_SIGS:
-        value = '(~~' + value + ')'
-      return value + '|0'
-    if sig in JS.FLOAT_SIGS and convert_from == 'i':
-      value = '(' + value + '|0)'
-    if sig == 'f':
-      if ffi_arg:
-        return '+Math_fround(' + value + ')'
-      elif ffi_result:
-        return 'Math_fround(+(' + value + '))'
-      else:
-        return 'Math_fround(' + value + ')'
-    elif sig == 'd' or sig == 'f':
-      return '+' + value
-    elif sig == 'j':
-      if settings:
-        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64(' + value + ')'
-    else:
-      return value
-
-  @staticmethod
   def legalize_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
     if Settings.WASM_BIGINT:
@@ -1193,16 +1032,6 @@ class JS(object):
     if Settings.WASM_BIGINT:
       return True
     return sig == JS.legalize_sig(sig)
-
-  @staticmethod
-  def make_jscall(sig):
-    fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
-    args = (',' if fnargs else '') + fnargs
-    ret = '''\
-function jsCall_%s(index%s) {
-    %sfunctionPointers[index](%s);
-}''' % (sig, args, 'return ' if sig[0] != 'v' else '', fnargs)
-    return ret
 
   @staticmethod
   def make_dynCall(sig, args):
@@ -1244,48 +1073,6 @@ function%s(%s) {
 }''' % (name, ','.join(args), body, rethrow)
 
     return ret
-
-  @staticmethod
-  def align(x, by):
-    while x % by != 0:
-      x += 1
-    return x
-
-  @staticmethod
-  def generate_string_initializer(s):
-    if Settings.ASSERTIONS:
-      # append checksum of length and content
-      crcTable = []
-      for i in range(256):
-        crc = i
-        for bit in range(8):
-          crc = (crc >> 1) ^ ((crc & 1) * 0xedb88320)
-        crcTable.append(crc)
-      crc = 0xffffffff
-      n = len(s)
-      crc = crcTable[(crc ^ n) & 0xff] ^ (crc >> 8)
-      crc = crcTable[(crc ^ (n >> 8)) & 0xff] ^ (crc >> 8)
-      for i in s:
-        crc = crcTable[(crc ^ i) & 0xff] ^ (crc >> 8)
-      for i in range(4):
-        s.append((crc >> (8 * i)) & 0xff)
-    s = ''.join(map(chr, s))
-    s = s.replace('\\', '\\\\').replace("'", "\\'")
-    s = s.replace('\n', '\\n').replace('\r', '\\r')
-
-    # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
-    def escape(x):
-      return '\\x{:02x}'.format(ord(x.group()))
-
-    return re.sub('[\x1a\x80-\xff]', escape, s)
-
-  @staticmethod
-  def is_dyn_call(func):
-    return func.startswith('dynCall_')
-
-  @staticmethod
-  def is_function_table(name):
-    return name.startswith('FUNCTION_TABLE_')
 
 
 # Python 2-3 compatibility helper function:
@@ -1457,7 +1244,6 @@ PYTHON = sys.executable
 # See parse_config_file below.
 NODE_JS = None
 BINARYEN_ROOT = None
-EM_POPEN_WORKAROUND = None
 SPIDERMONKEY_ENGINE = None
 V8_ENGINE = None
 LLVM_ROOT = None
@@ -1473,6 +1259,7 @@ WASM_ENGINES = []
 CACHE = None
 PORTS = None
 FROZEN_CACHE = False
+COMPILER_WRAPPER = None
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
 # make sure that those child processes get the same configuration file by
@@ -1490,19 +1277,6 @@ else:
 
 parse_config_file()
 normalize_config_settings()
-
-# Install our replacement Popen handler if we are running on Windows to avoid
-# python spawn process function.
-# nb. This is by default disabled since it has the adverse effect of buffering
-# up all logging messages, which makes builds look unresponsive (messages are
-# printed only after the whole build finishes). Whether this workaround is
-# needed seems to depend on how the host application that invokes emcc has set
-# up its stdout and stderr.
-if EM_POPEN_WORKAROUND and os.name == 'nt':
-  logger.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
-  Popen = WindowsPopen
-else:
-  Popen = subprocess.Popen
 
 # Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
 # 0: disabled.

@@ -31,7 +31,6 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
-from __future__ import print_function
 import sys, random
 
 input_strings = [

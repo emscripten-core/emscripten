@@ -6,7 +6,6 @@
 """Utilties for manipulating WebAssembly binaries from python.
 """
 
-import math
 import logging
 
 from . import shared
@@ -27,7 +26,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 28)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
 
 def toLEB(x):
@@ -63,7 +62,6 @@ def add_emscripten_metadata(wasm_file):
 
   mem_size = shared.Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
   global_base = shared.Settings.GLOBAL_BASE
-  dynamic_base = shared.Settings.LEGACY_DYNAMIC_BASE
 
   logger.debug('creating wasm emscripten metadata section with mem size %d' % mem_size)
   name = b'\x13emscripten_metadata' # section name, including prefixed size
@@ -84,7 +82,7 @@ def add_emscripten_metadata(wasm_file):
     toLEB(mem_size) +
     toLEB(0) +
     toLEB(global_base) +
-    toLEB(dynamic_base) +
+    toLEB(0) +
     # dynamictopPtr, always 0 now
     toLEB(0) +
 
@@ -110,20 +108,36 @@ def add_emscripten_metadata(wasm_file):
     f.write(orig[8:])
 
 
+def parse_dylink_section(wasm_file):
+  wasm = open(wasm_file, 'rb').read()
+  section_name = b'\06dylink' # section name, including prefixed size
+
+  # Read the existing section data
+  offset = 8
+  assert wasm[offset] == 0
+  offset += 1
+  size, offset = readLEB(wasm, offset)
+  section_end = offset + size
+  section = wasm[offset:section_end]
+  # section name
+  assert section.startswith(section_name)
+  offset = len(section_name)
+  mem_size, offset = readLEB(section, offset)
+  mem_align, offset = readLEB(section, offset)
+  table_size, offset = readLEB(section, offset)
+  table_align, offset = readLEB(section, offset)
+
+  return (mem_size, mem_align, table_size, table_align, section_end)
+
+
 def add_dylink_section(wasm_file, needed_dynlibs):
-  # a wasm shared library has a special "dylink" section, see tools-conventions repo
-  # TODO: use this in the wasm backend
-  assert False
-  # TODO read mem_align from existing "dylink" section.
-  mem_align = 1
-  mem_size = shared.Settings.STATIC_BUMP
-  table_size = 0
-  mem_align = int(math.log(mem_align, 2))
+  # A wasm shared library has a special "dylink" section, see tools-conventions repo.
+  # This function adds this section to the beginning on the given file.
+
+  mem_size, mem_align, table_size, table_align, section_end = parse_dylink_section(wasm_file)
   logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
 
-  # Write new wasm binary with 'dylink' section
-  wasm = open(wasm_file, 'rb').read()
-  section_name = b"\06dylink" # section name, including prefixed size
+  section_name = b'\06dylink' # section name, including prefixed size
   contents = (toLEB(mem_size) + toLEB(mem_align) +
               toLEB(table_size) + toLEB(0))
 
@@ -154,14 +168,18 @@ def add_dylink_section(wasm_file, needed_dynlibs):
     contents += toLEB(len(dyn_needed))
     contents += dyn_needed
 
+  orig = open(wasm_file, 'rb').read()
+  file_header = orig[:8]
+  file_remainder = orig[section_end:]
+
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'wb') as f:
     # copy magic number and version
-    f.write(wasm[0:8])
+    f.write(file_header)
     # write the special section
     f.write(b'\0') # user section is code 0
     f.write(toLEB(section_size))
     f.write(section_name)
     f.write(contents)
     # copy rest of binary
-    f.write(wasm[8:])
+    f.write(file_remainder)

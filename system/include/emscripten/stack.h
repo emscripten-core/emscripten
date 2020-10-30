@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include <inttypes.h>
+#include <stddef.h>
+
 // API that gives access to introspecting the Wasm data stack. Build with
 // -lstack.js to use this API.
 
@@ -26,17 +29,21 @@ uintptr_t emscripten_stack_get_base(void);
 // emscripten_stack_get_base().
 uintptr_t emscripten_stack_get_end(void);
 
+// Setup internal base/end values based on the initial values that were either
+// set at compile time (in static linking) or instantiations time (for dynamic
+// linking).
+void emscripten_stack_init(void);
+
+// Sets the internal values reported by emscripten_stack_get_base and
+// emscripten_stack_get_end.  This should only used by low level libraries
+// such as asyncify fibres.
+void emscripten_stack_set_limits(void* base, void* end);
+
 // Returns the current stack pointer.
 uintptr_t emscripten_stack_get_current(void);
 
-// Setup internal state such that emscripten_stack_get_free can be used.
-// This needed until we can fix:
-// https://github.com/emscripten-core/emscripten/issues/11773
-void emscripten_stack_init(void);
-
 // Returns the number of free bytes left on the stack.  This is required to be
-// fast so that it can be called frequently and requires `emscripten_stack_init`
-// to be called before it will return accurate values.
+// fast so that it can be called frequently.
 size_t emscripten_stack_get_free(void);
 
 #ifdef __cplusplus

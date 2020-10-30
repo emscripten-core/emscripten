@@ -97,7 +97,6 @@ var EXIT_RUNTIME = 0;
 // 1: create a *.mem file containing the binary data of the initial memory;
 
 //    use the --memory-init-file command line switch to select this method
-// 2: embed a string literal representing that initial memory data
 var MEM_INIT_METHOD = 0;
 
 // The total stack size. There is no way to enlarge the stack, so this
@@ -223,12 +222,6 @@ var ALLOW_TABLE_GROWTH = 0;
 // default, any other value will be used as an override
 var GLOBAL_BASE = -1;
 
-// Warn at compile time about instructions that LLVM tells us are not fully
-// aligned.  This is useful to find places in your code where you might refactor
-// to ensure proper alignment.  This is currently only supported in asm.js, not
-// wasm.
-var WARN_UNALIGNED = 0;
-
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
 
@@ -304,6 +297,9 @@ var SYSCALL_DEBUG = 0;
 
 // Log out socket/network data transfer.
 var SOCKET_DEBUG = 0;
+
+// Log dynamic linker information
+var DYLINK_DEBUG = 0;
 
 // Select socket backend, either webrtc or websockets. XXX webrtc is not
 // currently tested, may be broken
@@ -388,7 +384,8 @@ var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
 // enable any WebGL extension. If false, to save code size,
 // emscripten_webgl_enable_extension() cannot be called to enable any of extensions
 // 'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers',
-// 'WEBGL_multi_draw', or 'WEBGL_draw_instanced_base_vertex_base_instance',
+// 'WEBGL_multi_draw', 'WEBGL_draw_instanced_base_vertex_base_instance',
+// or 'WEBGL_multi_draw_instanced_base_vertex_base_instance',
 // but the dedicated functions emscripten_webgl_enable_*()
 // found in html5.h are used to enable each of those extensions.
 // This way code size is increased only for the extensions that are actually used.
@@ -591,6 +588,7 @@ var NODEJS_CATCH_EXIT = 1;
 // then exit with 0 (which hides the error if you don't read the log). With
 // this, we catch any unhandled rejection and throw an actual error, which will
 // make the process exit immediately with a non-0 return code.
+// This should be fixed in Node 15+.
 var NODEJS_CATCH_REJECTION = 1;
 
 // Whether to transform the code using asyncify. This makes it possible to
@@ -1103,9 +1101,8 @@ var WASM = 1;
 // means we don't need to legalize for JS (but this requires a new enough JS
 // VM).
 //
-// Standlone builds by default require a `main` entry point.  If you want to
-// build a library (also known as a reactor) instead you can pass `--no-entry`
-// or specify a list of EXPORTED_FUNCTIONS that does not include `main`.
+// Standlone builds require a `main` entry point by default.  If you want to
+// build a library (also known as a reactor) instead you can pass `--no-entry`.
 var STANDALONE_WASM = 0;
 
 // Whether to ignore implicit traps when optimizing in binaryen.  Implicit
@@ -1239,7 +1236,8 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 var IN_TEST_HARNESS = 0;
 
 // If true, enables support for pthreads.
-// [compile+link] - affects user code at compile and system libraries at link
+// [compile+link] - affects user code at compile and system libraries at link.
+// This setting is equivalent to `-pthread`, which should be preferred.
 var USE_PTHREADS = 0;
 
 // In web browsers, Workers cannot be created while the main browser thread
@@ -1502,6 +1500,9 @@ var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 // not available.  If you are using C++ exceptions, but do not need
 // setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
 // code size and performance when catching exceptions.
+// [compile+link] - at compile time this enables the transformations needed for
+// longjmp support at codegen time, while at link it allows linking in the
+// library support.
 var SUPPORT_LONGJMP = 1;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
@@ -1536,9 +1537,10 @@ var MINIFY_HTML = 1;
 // bisecting.
 var MAYBE_WASM2JS = 0;
 
-// The size of our shadow memory.
-// By default, we have 32 MiB. This supports 256 MiB of real memory.
-var ASAN_SHADOW_SIZE = 33554432;
+// This option is no longer used. The appropriate shadow memory size is now
+// calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
+// future release.
+var ASAN_SHADOW_SIZE = -1
 
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
 // 'throw') support library. This does not need to be set directly, but pass
@@ -1626,15 +1628,6 @@ var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
 // Internal (testing only): Forces memory growing to fail.
 var TEST_MEMORY_GROWTH_FAILS = 0;
 
-// Advanced: Customize this array to reduce the set of asm.js runtime variables
-// that are generated. This allows minifying extra bit of asm.js code from unused
-// runtime code, if you know some of these are not needed.
-// (think of this as advanced manual DCE)
-// TODO(sbc): Move to settings_internal (current blocked due to use in test
-// code).
-var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
-
-// Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
@@ -1698,4 +1691,6 @@ var LEGACY_SETTINGS = [
   ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
   ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
+  ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
+  ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
 ];

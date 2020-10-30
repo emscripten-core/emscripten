@@ -21,7 +21,9 @@ Open a terminal in the directory in which you installed Emscripten (on Windows o
 
 .. note:: On Windows, invoke the tool with **emcc** instead of **./emcc**.
 
-For example, the following output reports an installation where Java is missing::
+For example, the following output reports an installation where Java is missing:
+
+.. code-block:: none
   :emphasize-lines: 6
 
   emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) 1.21.0

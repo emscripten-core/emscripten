@@ -74,6 +74,25 @@ int main() {
   printf("localtime tm_zone matches tzname (summer): %s\n",
          strcmp(tzname[tm_summer.tm_isdst], tm_summer.tm_zone) ? "no" : "yes");
 
+  // Verify that timezone is always equal to std time
+  // Need to invert these since timezone is positive in the east and negative in the west
+  int inv_summer = tm_summer.tm_gmtoff * -1;
+  int inv_winter = tm_winter.tm_gmtoff * -1;
+
+  if (tm_winter.tm_isdst) {
+    printf("localtime equals std: %s\n", inv_summer == timezone ? "true" : "false");
+    assert(inv_winter != timezone);
+    assert(inv_summer == timezone);
+  } else if (tm_summer.tm_isdst) {
+    printf("localtime equals std: %s\n", inv_winter == timezone ? "true" : "false");
+    assert(inv_summer != timezone);
+    assert(inv_winter == timezone);
+  } else {
+    printf("localtime equals std: %s\n", (inv_summer == timezone && inv_winter == timezone) ? "true" : "false");
+    assert(inv_summer == timezone);
+    assert(inv_winter == timezone);
+  }
+
   // Verify localtime() and mktime() reverse each other; run through an entire year
   // in half hours (the two hours where the time jumps forward and back are the
   // ones to watch, but we don't where they are since the zoneinfo could be US or
@@ -91,6 +110,25 @@ int main() {
       mktimeOk = 0;
   }
   printf("localtime <-> mktime: %d\n", mktimeOk);
+
+  // Verify that mktime updates the tm struct to the correct date if its values are
+  // out of range by matching against the return value of localtime.
+  struct tm tm2 { 0 }, tm_local;
+  tm2.tm_sec = tm2.tm_min = tm2.tm_hour = tm2.tm_mday = tm2.tm_mon = tm2.tm_wday =
+    tm2.tm_yday = 1000;
+  time_t t2 = mktime(&tm2); localtime_r(&t2, &tm_local);
+  mktimeOk = !(
+    tm2.tm_sec < 0 || tm2.tm_sec > 60 || tm2.tm_min < 0 || tm2.tm_min > 59 ||
+    tm2.tm_hour < 0 || tm2.tm_hour > 23 || tm2.tm_mday < 1 || tm2.tm_mday > 31 ||
+    tm2.tm_mon < 0 || tm2.tm_mon > 11 || tm2.tm_wday < 0 || tm2.tm_wday > 6 ||
+    tm2.tm_yday < 0 || tm2.tm_yday > 365);
+  printf("mktime updates parameter to be in range: %d\n", mktimeOk);
+  mktimeOk = !(
+    tm2.tm_sec != tm_local.tm_sec || tm2.tm_min != tm_local.tm_min ||
+    tm2.tm_hour != tm_local.tm_hour || tm2.tm_mday != tm_local.tm_mday ||
+    tm2.tm_mon != tm_local.tm_mon || tm2.tm_wday != tm_local.tm_wday ||
+    tm2.tm_yday != tm_local.tm_yday);
+  printf("mktime parameter is equivalent to localtime return: %d\n", mktimeOk);
 
   // Verify that mktime is able to guess what the dst is. It might get it wrong
   // during the one ambiguous hour when the clock goes back -- we assume that in

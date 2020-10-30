@@ -246,14 +246,22 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     :returns: **HamishW**-Replace with description.
 
 
-  .. cpp:function:: std::vector<T> vecFromJSArray(val v)
+  .. cpp:function:: std::vector<T> vecFromJSArray(const val& v)
 
-    **HamishW**-Replace with description.
+    Copies a javascript array into a std::vector, checking the type of each element.
+    For a more efficient but unsafe version working with numbers, see convertJSObjectToNumberVector.
 
-    **HamishW**. I believe NOT internal. Please confirm.
+    :param val v: The javascript array to be copied
+    :returns: A std::vector<T> made from the javascript array
 
-    :param val v: **HamishW**-Replace with description.
-    :returns: **HamishW**-Replace with description.
+  .. cpp:function:: std::vector<T> convertJSArrayToNumberVector(const val& v)
+
+    Converts a javascript object into a std::vector<T> efficiently, as if using the javascript `Number()` function on each element.
+    This is way more efficient than vecFromJSArray on any array with more than 2 values, but is less safe.
+    No type checking is done, so any invalid array entry will silently be replaced by a NaN value (or 0 for interger types).
+
+    :param val v: The javascript (typed) array to be copied
+    :returns: A std::vector<T> made from the javascript array
 
 
   .. cpp:function:: val await() const

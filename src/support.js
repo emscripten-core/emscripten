@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// {{PREAMBLE_ADDITIONS}}
-
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
 
 {{{ alignMemory }}}
@@ -52,12 +50,6 @@ function getCompilerSetting(name) {
 }
 #endif // ASSERTIONS
 #endif // RETAIN_COMPILER_SETTINGS
-
-// The address globals begin at. Very low in memory, for code size and optimization opportunities.
-// Above 0 is static memory, starting with globals.
-// Then the stack.
-// Then 'dynamic' memory for sbrk.
-var GLOBAL_BASE = {{{ GLOBAL_BASE }}};
 
 #if USE_PTHREADS
 // JS library code refers to Atomics in the manner used from asm.js, provide

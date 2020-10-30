@@ -43,7 +43,6 @@ if (typeof WebAssembly !== 'object') {
 // Wasm globals
 
 var wasmMemory;
-var wasmTable;
 
 #if USE_PTHREADS
 // For sending to workers.
@@ -209,7 +208,7 @@ var ALLOC_STACK = 1; // Lives for the duration of the current function call
 //             initialize it with setValue(), and so forth.
 // @slab: An array of data.
 // @allocator: How to allocate memory, see ALLOC_*
-/** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
+/** @type {function((Uint8Array|Array<number>), number)} */
 function allocate(slab, allocator) {
   var ret;
 #if ASSERTIONS
@@ -228,7 +227,7 @@ function allocate(slab, allocator) {
   }
 
   if (slab.subarray || slab.slice) {
-    HEAPU8.set(/** @type {!Uint8Array} */slab, ret);
+    HEAPU8.set(/** @type {!Uint8Array} */(slab), ret);
   } else {
     HEAPU8.set(new Uint8Array(slab), ret);
   }
@@ -282,15 +281,9 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-var STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
-    STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getQuoted('STACK_MAX') }}};
-
-#if ASSERTIONS
-assert(STACK_BASE % 16 === 0, 'stack must start aligned');
-#endif
-
 #if RELOCATABLE
+var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ getQuoted('STACK_BASE') }}});
+
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
 // initialize sbrk (the main module is relocatable itself, and so it does not
@@ -298,18 +291,6 @@ assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 // global, basically).
 Module['___heap_base'] = {{{ getQuoted('HEAP_BASE') }}};
 #endif // RELOCATABLE
-
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  // At the 'load' stage of Worker startup, we are just loading this script
-  // but not ready to run yet. At 'run' we receive proper values for the stack
-  // etc. and can launch a pthread. Set some fake values there meanwhile to
-  // catch bugs, then set the real values in establishStackSpace later.
-#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
-  STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
-#endif
-}
-#endif
 
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
@@ -355,9 +336,9 @@ assert(!Module['wasmMemory']);
 #else // !STANDALONE_WASM
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#include "runtime_init_table.js"
 #endif // !STANDALONE_WASM
 
+#include "runtime_init_table.js"
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
 
@@ -400,7 +381,7 @@ function initRuntime() {
 #endif
   runtimeInitialized = true;
 #if STACK_OVERFLOW_CHECK >= 2
-  Module['___set_stack_limits'](STACK_BASE, STACK_MAX);
+  Module['___set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
   {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
@@ -584,6 +565,10 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 #if MAIN_MODULE
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 addOnPreRun(preloadDylibs);
+#else
+#if RELOCATABLE
+addOnPreRun(reportUndefinedSymbols);
+#endif
 #endif
 
 /** @param {string|number=} what */
@@ -624,7 +609,7 @@ function abort(what) {
   throw e;
 }
 
-var memoryInitializer = null;
+// {{MEM_INITIALIZER}}
 
 #include "memoryprofiler.js"
 
@@ -678,47 +663,39 @@ function createExportWrapper(name, fixedasm) {
 // we know to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
-// A cache for wrappers based on the original function reference so we don't end up
-// creating the same wrappers over and over again
-var abortWrapperCache = {};
-
 // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
-function makeWrapper(original) {
-  var wrapper = abortWrapperCache[original];
-  if (!wrapper) {
-    wrapper = abortWrapperCache[original] = function() {
-      // Don't allow this function to be called if we're aborted!
-      if (ABORT) {
-        throw "program has already aborted!";
-      }
+function makeAbortWrapper(original) {
+  return function() {
+    // Don't allow this function to be called if we're aborted!
+    if (ABORT) {
+      throw "program has already aborted!";
+    }
 
 #if DISABLE_EXCEPTION_CATCHING != 1
-      abortWrapperDepth += 1;
+    abortWrapperDepth += 1;
 #endif
-      try {
-        return original.apply(null, arguments);
-      }
-      catch (e) {
-        if (
-          ABORT // rethrow exception if abort() was called in the original function call above
-          || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
+    try {
+      return original.apply(null, arguments);
+    }
+    catch (e) {
+      if (
+        ABORT // rethrow exception if abort() was called in the original function call above
+        || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
 #if SUPPORT_LONGJMP
-          || e === 'longjmp' // rethrow longjmp if enabled
+        || e === 'longjmp' // rethrow longjmp if enabled
 #endif
-        ) {
-          throw e;
-        }
+      ) {
+        throw e;
+      }
 
-        abort("unhandled exception: " + [e, e.stack]);
-      }
+      abort("unhandled exception: " + [e, e.stack]);
+    }
 #if DISABLE_EXCEPTION_CATCHING != 1
-      finally {
-        abortWrapperDepth -= 1;
-      }
+    finally {
+      abortWrapperDepth -= 1;
+    }
 #endif
-    };
-  }
-  return wrapper;
+    }
 }
 
 // Instrument all the exported functions to:
@@ -726,13 +703,12 @@ function makeWrapper(original) {
 // - throw an exception if someone tries to call them after the program has aborted
 // See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
 function instrumentWasmExportsWithAbort(exports) {
-
   // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
   for (var name in exports) {
       var original = exports[name];
       if (typeof original === 'function') {
-        instExports[name] = makeWrapper(original);
+        instExports[name] = makeAbortWrapper(original);
       } else {
         instExports[name] = original;
       }
@@ -744,8 +720,17 @@ function instrumentWasmExportsWithAbort(exports) {
 function instrumentWasmTableWithAbort() {
   // Override the wasmTable get function to return the wrappers
   var realGet = wasmTable.get;
+  var wrapperCache = {};
   wasmTable.get = function(i) {
-    return makeWrapper(realGet.call(wasmTable, i));
+    var func = realGet.call(wasmTable, i);
+    var cached = wrapperCache[i];
+    if (!cached || cached.func !== func) {
+      cached = wrapperCache[i] = {
+        func: func,
+        wrapper: makeAbortWrapper(func)
+      }
+    }
+    return cached.wrapper;
   };
 }
 #endif
@@ -823,8 +808,12 @@ function createWasm() {
     'a': asmLibraryArg,
 #else // MINIFY_WASM_IMPORTED_MODULES
     'env': asmLibraryArg,
-    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg,
 #endif // MINIFY_WASM_IMPORTED_MODULES
+#if RELOCATABLE
+    'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
+    'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
+#endif
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
@@ -834,7 +823,7 @@ function createWasm() {
     var exports = instance.exports;
 
 #if RELOCATABLE
-    exports = relocateExports(exports, GLOBAL_BASE);
+    exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
 #endif
 
 #if ASYNCIFY
@@ -983,7 +972,7 @@ function createWasm() {
         !isFileURI(wasmBinaryFile) &&
 #endif
         typeof fetch === 'function') {
-      fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
         var result = WebAssembly.instantiateStreaming(response, info);
 #if USE_OFFSET_CONVERTER
         // This doesn't actually do another request, it only copies the Response object.
@@ -991,6 +980,8 @@ function createWasm() {
         Promise.all([response.clone().arrayBuffer(), result]).then(function (results) {
           wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(results[0]), results[1].module);
           {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+        }, function(reason) {
+          err('failed to initialize offset-converter: ' + reason);
         });
 #endif
         return result.then(receiveInstantiatedSource, function(reason) {
@@ -1087,7 +1078,12 @@ function createWasm() {
 #if RUNTIME_LOGGING
   err('asynchronously preparing wasm');
 #endif
+#if MODULARIZE
+  // If instantiation fails, reject the module ready promise.
+  instantiateAsync().catch(readyPromiseReject);
+#else
   instantiateAsync();
+#endif
 #if LOAD_SOURCE_MAP
   getSourceMapPromise().then(receiveSourceMapJSON);
 #endif

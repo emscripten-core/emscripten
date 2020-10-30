@@ -125,14 +125,38 @@ When you want to run the entire test suite locally, these are currently the impo
 Benchmarking
 ============
 
-Emscripten has a benchmark suite that measures both speed and code size. To run it, do:
+Emscripten has a benchmark suite that measures both speed and code size, which
+includes several interesting real-world codebases, from physics engines to
+compression libraries to virtual machines. It also includes some existing
+benchmarks such as CoreMark and LINPACK. See for example
+`this post's section on speed <https://kripken.github.io/blog/wasm/2020/07/27/wasmboxc.html>`_
+which gives an overview.
+
+To run the benchmark suite, do:
 
 .. code-block:: bash
 
   # Run all benchmarks
   python tests/runner.py benchmark
 
-Usually you will want to customize the python in `tests/test_benchmark.py` to run the benchmarks you want, see ``benchmarkers`` in the source code.
+As with all the test suites, you can also run a specific benchmark:
+
+.. code-block:: bash
+
+  # Run one specific benchmark
+  python tests/runner.py benchmark.test_skinning
+
+Usually you will want to customize the python in `tests/test_benchmark.py` to
+run the benchmarks you want (there is currently no external config file). Things
+you may want to modify include:
+
+* ``benchmarkers`` is the list of VMs to run the benchmarks on.
+* ``DEFAULT_ARG`` is how long the benchmark should run (they all try to run for
+  a similar amount of time for consistency).
+* ``TEST_REPS`` is how many times to repeat each run (more will take longer, but
+  should have less noise).
+* ``PROFILING`` controls whether the builds are set up for profiling (which can
+  increase code size, so it's not done by default).
 
 Debugging test failures
 =======================

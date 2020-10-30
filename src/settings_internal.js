@@ -62,13 +62,6 @@ var EMBIND = 0;
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
 
-// Computed during emscripten for the purpose of writing to emscripten_metadata
-// section.
-// TODO(sbc): Remove this.  If emscripten doesn't need it then neither should
-// any other loader.
-// See https://github.com/emscripten-core/emscripten/issues/12231
-var LEGACY_DYNAMIC_BASE = -1;
-
 // List of functions implemented in compiled code; received from the backend.
 var IMPLEMENTED_FUNCTIONS = [];
 
@@ -111,9 +104,6 @@ var PROXIED_FUNCTION_SIGNATURES = [];
 // List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
-// name of the file containing wasm text, if relevant
-var WASM_TEXT_FILE = '';
-
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
@@ -151,10 +141,10 @@ var MINIFY_ASMJS_EXPORT_NAMES = 1;
 // Internal: represents a browser version that is not supported at all.
 var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 
-// Wasm backend does not apply C name mangling (== prefix with an underscore) to
-// the following functions. (it also does not mangle any function that starts with
-// string "dynCall_")
-var WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', '__growWasmMemory', '__heap_base', '__data_end'];
+// Wasm backend symbols that are considered system symbols and don't
+// have the normal C symbol name mangled applied (== prefix with an underscore)
+// (Also implicily on this list is any function that starts with string "dynCall_")
+var WASM_SYSTEM_EXPORTS = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore'];
 
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
@@ -195,3 +185,5 @@ var STRUCT_INFO = '';
 
 // If true, building against Emscripten's asm.js/wasm heap memory profiler.
 var MEMORYPROFILER = 0;
+
+var GENERATE_SOURCE_MAP = 0;

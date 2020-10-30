@@ -1011,10 +1011,6 @@ Defines
 
   If specified, prints a call stack that contains file names referring to lines in the built .js/.html file along with the message. The flags :c:data:`EM_LOG_C_STACK` and :c:data:`EM_LOG_JS_STACK` can be combined to output both untranslated and translated file and line information.
 
-.. c:macro:: EM_LOG_DEMANGLE
-
-  If specified, C/C++ function names are de-mangled before printing. Otherwise, the mangled post-compilation JavaScript function names are displayed.
-
 .. c:macro:: EM_LOG_NO_PATHS
 
   If specified, the pathnames of the file information in the call stack will be omitted.
@@ -1340,43 +1336,6 @@ IndexedDB
   :param pexists: An out parameter that will be filled with a non-zero value if the file exists in that database.
   :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
-
-Fastcomp Asyncify functions
-===========================
-
-Fastcomp's Asyncify support has asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
-
-Typedefs
---------
-
-.. c:type:: emscripten_coroutine
-
-    A handle to the structure used by coroutine supporting functions.
-
-Functions
----------
-
-.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
-
-  Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
-  this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
-  Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
-
-  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
-
-.. c:function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
-
-    Create a coroutine which will be run as `func(arg)`.
-
-    :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
-
-.. c:function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
-
-    Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
-
-.. c:function:: void emscripten_yield(void)
-
-    This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
 
 Upstream Asyncify functions
 ===========================

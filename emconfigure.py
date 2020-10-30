@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-This is a helper script. It runs ./configure (or cmake,
+"""This is a helper script. It runs ./configure (or cmake,
 etc.) for you, setting the environment variables to use
 emcc and so forth. Usage:
 
@@ -15,9 +14,8 @@ You can also use this for cmake and other configure-like
 stages. What happens is that all compilations done during
 this command are to native code, not JS, so that configure
 tests will work properly.
-'''
+"""
 
-from __future__ import print_function
 import sys
 from tools import building
 from subprocess import CalledProcessError

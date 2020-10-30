@@ -1,6 +1,5 @@
 $__errno_location
 $__fflush_unlocked
-$__growWasmMemory
 $__lock
 $__lockfile
 $__ofl_lock
@@ -9,6 +8,9 @@ $__unlock
 $__unlockfile
 $__wasm_call_ctors
 $add
+$emscripten_stack_get_end
+$emscripten_stack_get_free
+$emscripten_stack_init
 $fflush
 $stackAlloc
 $stackRestore

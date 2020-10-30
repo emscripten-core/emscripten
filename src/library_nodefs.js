@@ -20,6 +20,7 @@ mergeInto(LibraryManager.library, {
         "{{{ cDefine('O_APPEND') }}}": flags["O_APPEND"],
         "{{{ cDefine('O_CREAT') }}}": flags["O_CREAT"],
         "{{{ cDefine('O_EXCL') }}}": flags["O_EXCL"],
+        "{{{ cDefine('O_NOCTTY') }}}": flags["O_NOCTTY"],
         "{{{ cDefine('O_RDONLY') }}}": flags["O_RDONLY"],
         "{{{ cDefine('O_RDWR') }}}": flags["O_RDWR"],
         "{{{ cDefine('O_DSYNC') }}}": flags["O_SYNC"],

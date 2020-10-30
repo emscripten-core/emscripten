@@ -4,6 +4,8 @@
 Pthreads support
 ==============================
 
+.. note:: Browsers are currently shipping SharedArrayBuffer gated behind Cross Origin Opener Policy (COOP) and Cross Origin Embedder Policy (COEP) headers. Pthreads code will not work in deployed environment unless these headers are correctly set. For more information click `this <https://web.dev/coop-coep>`_
+
 Emscripten has support for multithreading using SharedArrayBuffer in browsers. That API allows sharing memory between the main thread and web workers as well as atomic operations for synchronization, which enables Emscripten to implement support for the Pthreads (POSIX threads) API. This support is considered stable in Emscripten.
 
 .. note:: As of Sep 2019, some browsers have disabled SharedArrayBuffer due to
@@ -17,7 +19,7 @@ Compiling with pthreads enabled
 
 By default, support for pthreads is not enabled. To enable code generation for pthreads, the following command line flags exist:
 
-- Pass the compiler flag ``-s USE_PTHREADS=1`` when compiling any .c/.cpp files, AND when linking to generate the final output .js file.
+- Pass the compiler flag ``-pthread`` when compiling any .c/.cpp files, AND when linking to generate the final output .js file.
 - Optionally, pass the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` to specify a predefined pool of web workers to populate at page preRun time before application main() is called. This is important because if the workers do not already exist then we may need to wait for the next browser event iteration for certain things, see below.
 
 There should be no other changes required. In C/C++ code, the preprocessor check ``#ifdef __EMSCRIPTEN_PTHREADS__`` can be used to detect whether Emscripten is currently targeting pthreads.
@@ -35,6 +37,8 @@ Additional flags
   result, your application's ``main()`` is run off the browser main (UI) thread,
   which is good for responsiveness. The browser main thread does still run code
   when things are proxied to it, for example to handle events, rendering, etc.
+  The main thread also does things like create pthreads for you, so that you
+  can depend on them synchronously.
 
 Note that Emscripten has the
 ``--proxy-to-worker`` :ref:`linker flag <proxy-to-worker>` which sounds similar
@@ -117,7 +121,22 @@ Special considerations
 
 The Emscripten implementation for the pthreads API should follow the POSIX standard closely, but some behavioral differences do exist:
 
-- When the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` is not specified and ``pthread_create()`` is called, the new thread will not start until control is yielded back to the browser's main event loop, because the web worker cannot be created while JS or wasm code is running. This is a violation of POSIX behavior and will break common code which creates a thread and immediately joins it or otherwise synchronously waits to observe an effect such as a memory write. Using a pool creates the web workers before main is called, allowing thread creation to be synchronous.
+- When ``pthread_create()`` is called, if we need to create a new Web Worker,
+  then that requires returning the main event loop. That is, you cannot call
+  ``pthread_create`` and then keep running code synchronously that expects the
+  worker to start running - it will only run after you return to the event loop.
+  This is a violation of POSIX behavior and will break common code which creates
+  a thread and immediately joins it or otherwise synchronously waits to observe
+  an effect such as a memory write. There are several solutions to this:
+
+  1. Return to the main event loop (for example, use
+     ``emscripten_set_main_loop``, or Asyncify).
+  2. Use the linker flag ``-s PTHREAD_POOL_SIZE=<integer>``. Using a pool
+     creates the Web Workers before main is called, so they can just be used
+     when ``pthread_create`` is called.
+  3. Use the linker flag ``-s PROXY_TO_PTHREAD``, which will run ``main()`` on
+     a worker for you. When doing so, ``pthread_create`` is proxied to the
+     main browser thread, where it can return to the main event loop as needed.
 
 - The Emscripten implementation does not support `POSIX signals <http://man7.org/linux/man-pages/man7/signal.7.html>`_, which are sometimes used in conjunction with pthreads. This is because it is not possible to send signals to web workers and pre-empt their execution. The only exception to this is pthread_kill() which can be used as normal to forcibly terminate a running thread.
 

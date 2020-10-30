@@ -182,8 +182,7 @@ var LibraryManager = {
     // Save the list for has() queries later.
     this.libraries = libraries;
 
-    for (var i = 0; i < libraries.length; i++) {
-      var filename = libraries[i];
+    for (var filename of libraries) {
       var src = read(filename);
       var processed = undefined;
       try {
@@ -223,8 +222,6 @@ var LibraryManager = {
         while (typeof lib[target] === 'string') {
           // ignore code and variable assignments, aliases are just simple names
           if (lib[target].search(/[=({; ]/) >= 0) continue libloop;
-          // ignore trivial pass-throughs to Math.*
-          if (lib[target].indexOf('Math_') == 0) continue libloop;
           target = lib[target];
         }
         if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
@@ -498,11 +495,10 @@ function exportRuntime() {
       }
     }
   }
-  return runtimeElements.map(function(name) {
-    return maybeExport(name);
-  }).join('\n') + runtimeNumbers.map(function(name) {
-    return maybeExportNumber(name);
-  }).join('\n');
+  var exports = runtimeElements.map(function(name) { return maybeExport(name); });
+  exports = exports.concat(runtimeNumbers.map(function(name) { return maybeExportNumber(name); }));
+  exports = exports.filter(function(name) { return name != '' });
+  return exports.join('\n');
 }
 
 var PassManager = {

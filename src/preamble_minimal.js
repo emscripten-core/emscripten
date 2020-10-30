@@ -59,13 +59,6 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
-var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
-    TOTAL_STACK = {{{ TOTAL_STACK }}},
-    STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
-    STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
-    ;
-
 #if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
 var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
 #else
@@ -97,8 +90,7 @@ var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-assert(STACK_BASE % 16 === 0, 'stack must start aligned to 16 bytes, STACK_BASE==' + STACK_BASE);
-assert({{{ INITIAL_MEMORY }}} >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ INITIAL_MEMORY }}} + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+assert({{{ INITIAL_MEMORY }}} >= {{{ TOTAL_STACK }}}, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ INITIAL_MEMORY }}} + '! (TOTAL_STACK=' + {{{ TOTAL_STACK }}} + ')');
 assert({{{ INITIAL_MEMORY }}} % WASM_PAGE_SIZE === 0);
 #if MAXIMUM_MEMORY != -1
 assert({{{ MAXIMUM_MEMORY }}} % WASM_PAGE_SIZE == 0);
@@ -144,12 +136,10 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
-
 #if ASSERTIONS
 if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
-HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
-
+HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
 #endif
 
 #if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
@@ -173,19 +163,17 @@ var wasmOffsetConverter;
 var __ATEXIT__    = []; // functions called during shutdown
 #endif
 
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP
 var runtimeInitialized = false;
 
-// This is always false in minimal_runtime - the runtime does not have a concept of exiting (keeping this variable here for now since it is referenced from generated code)
+// This is always false in minimal_runtime - the runtime does not have a concept
+// of exiting (keeping this variable here for now since it is referenced from
+// generated code)
 var runtimeExited = false;
 #endif
 
 #include "runtime_math.js"
-
-var memoryInitializer = null;
-
 #include "memoryprofiler.js"
-
 #include "runtime_debug.js"
 
 // === Body ===

@@ -12,7 +12,6 @@ Usage: emrun <options> filename.html <args to program>
 See emrun --help for more information
 """
 
-from __future__ import print_function
 import argparse
 import atexit
 import cgi
@@ -101,12 +100,7 @@ LINUX = False
 MACOS = False
 if os.name == 'nt':
   WINDOWS = True
-  try:
-    import winreg
-  except ImportError:
-    # In python2 this is called _winreg. Remove once we fully drop python2 support.
-    # See https://docs.python.org/2/library/_winreg.html
-    import _winreg as winreg
+  import winreg
 elif platform.system() == 'Linux':
   LINUX = True
 elif platform.mac_ver()[0] != '':
@@ -167,8 +161,8 @@ def logv(msg):
   Only shown if run with --verbose.
   """
   global last_message_time
-  with http_mutex:
-    if emrun_options.verbose:
+  if emrun_options.verbose:
+    with http_mutex:
       if emrun_options.log_html:
         sys.stdout.write(format_html(msg))
       else:
@@ -481,6 +475,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       now = tick()
       # Did user close browser?
       if not emrun_options.no_browser and not is_browser_process_alive():
+        logv("Shutting down because browser is no longer alive")
         delete_emrun_safe_firefox_profile()
         if not emrun_options.serve_after_close:
           self.is_running = False
@@ -665,34 +660,34 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       data = data.replace("+", " ")
       data = unquote_u(data)
 
-      # The user page sent a message with POST. Parse the message and log it to stdout/stderr.
-      is_stdout = False
-      is_stderr = False
-      seq_num = -1
-      # The html shell is expected to send messages of form ^out^(number)^(message) or ^err^(number)^(message).
-      if data.startswith('^err^'):
-        is_stderr = True
-      elif data.startswith('^out^'):
-        is_stdout = True
-      if is_stderr or is_stdout:
-        try:
-          i = data.index('^', 5)
-          seq_num = int(data[5:i])
-          data = data[i + 1:]
-        except ValueError:
-          pass
-
-      is_exit = data.startswith('^exit^')
-
       if data == '^pageload^': # Browser is just notifying that it has successfully launched the page.
         have_received_messages = True
-      elif not is_exit:
+      elif data.startswith('^exit^'):
+        if not emrun_options.serve_after_exit:
+          page_exit_code = int(data[6:])
+          logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve_after_exit to keep serving even after the page terminates with exit().')
+          self.server.shutdown()
+          return
+      else:
+        # The user page sent a message with POST. Parse the message and log it to stdout/stderr.
+        is_stdout = False
+        is_stderr = False
+        seq_num = -1
+        # The html shell is expected to send messages of form ^out^(number)^(message) or ^err^(number)^(message).
+        if data.startswith('^err^'):
+          is_stderr = True
+        elif data.startswith('^out^'):
+          is_stdout = True
+        if is_stderr or is_stdout:
+          try:
+            i = data.index('^', 5)
+            seq_num = int(data[5:i])
+            data = data[i + 1:]
+          except ValueError:
+            pass
+
         log = browser_loge if is_stderr else browser_logi
         self.server.handle_incoming_message(seq_num, log, data)
-      elif not emrun_options.serve_after_exit:
-        page_exit_code = int(data[6:])
-        logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve_after_exit to keep serving even after the page terminates with exit().')
-        self.server.shutdown()
 
     self.send_response(200)
     self.send_header('Content-type', 'text/plain')
@@ -1121,9 +1116,16 @@ def win_get_default_browser():
   except WindowsError:
     logv("Unable to find default browser key in Windows registry. Trying fallback.")
 
-  # Fall back to 'start %1', which we have to treat as if user passed --serve_forever, since
+  # Fall back to 'start "" %1', which we have to treat as if user passed --serve_forever, since
   # for some reason, we are not able to detect when the browser closes when this is passed.
-  return ['cmd', '/C', 'start']
+  #
+  # If the first argument to 'start' is quoted, then 'start' will create a new cmd.exe window with
+  # that quoted string as the title. If the URL contained spaces, it would be quoted by subprocess,
+  # and if we did 'start %1', it would create a new cmd.exe window with the URL as title instead of
+  # actually launching the browser. Therefore, we must pass a dummy quoted first argument for start
+  # to interpret as the title. For this purpose, we use the empty string, which will be quoted
+  # as "". See #9253 for details.
+  return ['cmd', '/C', 'start', '']
 
 
 def find_browser(name):
@@ -1375,10 +1377,14 @@ def list_processes_by_name(exe_full_path):
 def run():
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
   usage_str = """\
-emrun [emrun_options] filename.html [html_cmdline_options]
+emrun [emrun_options] filename.html -- [html_cmdline_options]
 
    where emrun_options specifies command line options for emrun itself, whereas
    html_cmdline_options specifies startup arguments to the program.
+
+If you are seeing "unrecognized arguments" when trying to pass
+arguments to your page, remember to add `--` between arguments
+to emrun itself and arguments to your page.
 """
   parser = argparse.ArgumentParser(usage=usage_str)
 
@@ -1393,7 +1399,7 @@ emrun [emrun_options] filename.html [html_cmdline_options]
                            '--browser=/path/to/browser, to avoid emrun being '
                            'detached from the browser process it spawns.')
 
-  parser.add_argument('--no_server',
+  parser.add_argument('--no_server', action='store_true',
                       help='If specified, a HTTP web server is not launched '
                            'to host the page to run.')
 
@@ -1488,28 +1494,11 @@ emrun [emrun_options] filename.html [html_cmdline_options]
   parser.add_argument('--private_browsing', action='store_true',
                       help='If specified, opens browser in private/incognito mode.')
 
-  parser.add_argument('serve', nargs='*')
+  parser.add_argument('serve', nargs='?', default='')
 
-  opts_with_param = ['--browser', '--browser_args', '--timeout_returncode',
-                     '--timeout', '--silence_timeout', '--log_stderr', '--log_stdout',
-                     '--hostname', '--port', '--serve_root']
+  parser.add_argument('cmdlineparams', nargs='*')
 
-  cmdlineparams = []
-  # Split the startup arguments to two parts, delimited by the first (unbound) positional argument.
-  # The first set is args intended for emrun, and the second set is the cmdline args to program.
-  i = 1
-  while i < len(sys.argv):
-    if sys.argv[i] in opts_with_param:
-      i += 1 # Skip next one, it's the value for this opt.
-    elif not sys.argv[i].startswith('-'):
-      cmdlineparams = sys.argv[i + 1:]
-      sys.argv = sys.argv[:i + 1]
-      break
-    i += 1
-
-  options = parser.parse_args(sys.argv[1:])
-  args = options.serve
-  emrun_options = options
+  options = emrun_options = parser.parse_args()
 
   if options.android:
     global ADB
@@ -1535,17 +1524,20 @@ emrun [emrun_options] filename.html [html_cmdline_options]
       list_pc_browsers()
     return
 
-  if len(args) < 1 and (options.system_info or options.browser_info):
+  if not options.serve and (options.system_info or options.browser_info):
     # Don't run if only --system_info or --browser_info was passed.
     options.no_server = options.no_browser = True
 
-  if len(args) < 1 and not (options.no_server and options.no_browser):
+  if not options.serve and not (options.no_server and options.no_browser):
     logi(usage_str)
     logi('')
     logi('Type emrun --help for a detailed list of available options.')
     return
 
-  file_to_serve = args[0] if len(args) else '.'
+  if options.serve:
+    file_to_serve = options.serve
+  else:
+    file_to_serve = '.'
   file_to_serve_is_url = file_to_serve.startswith('file://') or file_to_serve.startswith('http://') or file_to_serve.startswith('https://')
 
   if options.serve_root:
@@ -1562,8 +1554,8 @@ emrun [emrun_options] filename.html [html_cmdline_options]
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
-    if len(cmdlineparams):
-      url += '?' + '&'.join(cmdlineparams)
+    if len(options.cmdlineparams):
+      url += '?' + '&'.join(options.cmdlineparams)
     hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
     url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 

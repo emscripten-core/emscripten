@@ -3060,7 +3060,7 @@ var LibrarySDL = {
       audio = info.audio;
     }
     audio['onended'] = function() { if (SDL.music.audio == this) _Mix_HaltMusic(); } // will send callback
-    audio.loop = loops != 0; // TODO: handle N loops for finite N
+    audio.loop = loops != 0 && loops != 1; // TODO: handle N loops for finite N
     audio.volume = SDL.music.volume;
     SDL.music.audio = audio;
     audio.play();

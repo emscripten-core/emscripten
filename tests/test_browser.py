@@ -20,9 +20,10 @@ import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
+from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
+from tools import shared
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
 from tools.shared import try_delete
@@ -194,12 +195,9 @@ If manually bisecting:
   through and see the print (best to run with EMTEST_SAVE_DIR=1 for the reload).
 ''')
 
-  @no_wasm_backend('wasm source maps')
   def test_emscripten_log(self):
-    # TODO: wasm support for source maps. emscripten_loadSourceMap looks at $HTML.map but it should be $NAME.wasm.map.
-    src = 'src.cpp'
-    create_test_file(src, self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
+    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
+    self.compile_btest(['src.cpp', '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html'])
     self.run_browser('page.html', None, '/report_result?1')
 
   def test_preload_file(self):
@@ -1562,7 +1560,7 @@ keydown(100);keyup(100); // trigger the end
   def test_egl_createcontext_error(self):
     self.btest('test_egl_createcontext_error.c', '1', args=['-lEGL', '-lGL'])
 
-  def do_test_worker(self, args=[]):
+  def test_worker(self):
     # Test running in a web worker
     create_test_file('file.dat', 'data for worker')
     html_file = open('main.html', 'w')
@@ -1585,14 +1583,12 @@ keydown(100);keyup(100); // trigger the end
     html_file.close()
 
     for file_data in [1, 0]:
-      cmd = [EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + args
+      cmd = [EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else [])
       print(cmd)
       subprocess.check_call(cmd)
       self.assertExists('worker.js')
       self.run_browser('main.html', '', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
-  def test_worker(self):
-    self.do_test_worker()
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
@@ -1967,9 +1963,15 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom_pre3(self):
     self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
+  @parameterized({
+    '': ([],),
+    'tracing': (['-sTRACE_WEBGL_CALLS'],),
+  })
   @requires_graphics_hardware
-  def test_cubegeom(self):
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+  def test_cubegeom(self, args):
+    # proxy only in the simple, normal case (we can't trace GL calls when
+    # proxied)
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'] + args, also_proxied=not args)
 
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
@@ -1994,7 +1996,7 @@ void *getBindBuffer() {
 }
 ''')
     # also test -Os in wasm, which uses meta-dce, which should not break legacy gl emulation hacks
-    for opts in [[], ['-O1'], ['-Os', '-s', 'WASM=1']]:
+    for opts in [[], ['-O1'], ['-Os']]:
       self.btest('cubegeom_proc.c', reference='cubegeom.png', args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
@@ -2398,7 +2400,7 @@ void *getBindBuffer() {
         return 42;
       }
     ''')
-    self.compile_btest(['library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
+    self.compile_btest(['library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'EXPORT_ALL=1'])
     os.rename('library.wasm', 'library.so')
     main = r'''
       #include <dlfcn.h>
@@ -2412,7 +2414,7 @@ void *getBindBuffer() {
           REPORT_RESULT(1);
           return 1;
         }
-        void *lib_handle = dlopen("/library.so", 0);
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
         if (!lib_handle) {
           REPORT_RESULT(2);
           return 2;
@@ -2429,70 +2431,12 @@ void *getBindBuffer() {
     '''
     self.btest(
       main,
-      args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '-s', 'WASM=1', '--use-preload-plugins', '-s', 'EXPORT_ALL=1'],
+      args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL=1'],
       expected='0')
 
   def test_mmap_file(self):
     create_test_file('data.dat', 'data from the file ' + ('.' * 9000))
     self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'])
-
-  def test_emrun_info(self):
-    if not has_browser():
-      self.skipTest('need a browser')
-    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
-    assert 'CPU' in result
-    assert 'Browser' in result
-    assert 'Traceback' not in result
-
-    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
-    assert 'Traceback' not in result
-
-  # Deliberately named as test_zzz_emrun to make this test the last one
-  # as this test may take the focus away from the main test window
-  # by opening a new window and possibly not closing it.
-  def test_zzz_emrun(self):
-    self.compile_btest([path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
-    outdir = os.getcwd()
-    if not has_browser():
-      self.skipTest('need a browser')
-    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the browser that is launched will have that directory as startup directory,
-    # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
-    # before launching.
-    os.chdir(path_from_root())
-    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
-    if EMTEST_BROWSER is not None:
-      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
-      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
-      # so strip them out.
-      browser_cmd = shlex.split(EMTEST_BROWSER)
-      browser_path = browser_cmd[0]
-      args_base += ['--browser', browser_path]
-      if len(browser_cmd) > 1:
-        browser_args = browser_cmd[1:]
-        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
-          # emrun uses its own -profile, strip it out
-          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
-          parser.add_argument('-profile')
-          parser.add_argument('--profile')
-          browser_args = parser.parse_known_args(browser_args)[1]
-        if browser_args:
-          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
-    for args in [
-        args_base,
-        args_base + ['--private_browsing', '--port', '6941']
-    ]:
-      args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
-      print(' '.join(args))
-      proc = self.run_process(args, check=False)
-      stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
-      stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
-      assert proc.returncode == 100
-      assert 'argc: 4' in stdout
-      assert 'argv[3]: --3' in stdout
-      assert 'hello, world!' in stdout
-      assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
-      assert 'Testing char sequences: %20%21 &auml;' in stdout
-      assert 'hello, error stream!' in stderr
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
@@ -3340,10 +3284,9 @@ window.close = function() {
         self.run_browser('a.html', '...', '/report_result?0')
 
   def test_modularize_network_error(self):
-    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-    create_test_file('test.c', src)
+    test_c_path = path_from_root('tests', 'browser_test_hello_world.c')
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest([test_c_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3359,6 +3302,29 @@ window.close = function() {
     print('Deleting a.out.wasm to cause a download error')
     os.remove('a.out.wasm')
     self.run_browser('a.html', '...', '/report_result?abort(both async and sync fetching of the wasm failed)')
+
+  def test_modularize_init_error(self):
+    test_cpp_path = path_from_root('tests', 'browser', 'test_modularize_init_error.cpp')
+    browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
+    self.compile_btest([test_cpp_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    create_test_file('a.html', '''
+      <script src="a.out.js"></script>
+      <script>
+        if (typeof window === 'object') {
+          window.addEventListener('unhandledrejection', function(event) {
+            reportResultToServer("Unhandled promise rejection: " + event.reason.message);
+          });
+        }
+        createModule()
+          .then(() => {
+            reportResultToServer("Module creation succeeded when it should have failed");
+          })
+          .catch(err => {
+            reportResultToServer(err);
+          });
+      </script>
+    ''')
+    self.run_browser('a.html', '...', '/report_result?intentional error to test rejection')
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
@@ -3454,8 +3420,8 @@ window.close = function() {
     create_test_file('pre.js', '''
       var Module = { dynamicLibraries: ['side.wasm'] };
   ''')
-    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
 
     print('wasm (will auto-preload since no sync binary reading)')
 
@@ -3463,27 +3429,17 @@ window.close = function() {
       Module.dynamicLibraries = ['side.wasm'];
   ''')
     # same wasm side module works
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
-  def test_dylink_dso_needed_wasm(self):
-    self._run_dylink_dso_needed(1, 0)
+  def test_dylink_dso_needed(self):
+    self._run_dylink_dso_needed(0)
 
-  def test_dylink_dso_needed_wasm_inworker(self):
-    self._run_dylink_dso_needed(1, 1)
+  def test_dylink_dso_needed_inworker(self):
+    self._run_dylink_dso_needed(1)
 
-  def test_dylink_dso_needed_asmjs(self):
-    self._run_dylink_dso_needed(0, 0)
-
-  def test_dylink_dso_needed_asmjs_inworker(self):
-    self._run_dylink_dso_needed(0, 1)
-
-  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
-  @requires_sync_compilation
-  def _run_dylink_dso_needed(self, wasm, inworker):
-    print('\n# wasm=%d inworker=%d' % (wasm, inworker))
-    self.set_setting('WASM', wasm)
+  def _run_dylink_dso_needed(self, inworker):
     self.emcc_args += ['-O2']
 
     def do_run(src, expected_output):
@@ -3613,10 +3569,8 @@ window.close = function() {
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_fetch_and_op(self):
-    # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
-    # Therefore perform very extensive testing of different codegen modes to catch any problems.
     for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os']]:
-      for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
+      for debug in [[], ['-g']]:
         args = opt + debug
         print(args)
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
@@ -3657,11 +3611,16 @@ window.close = function() {
   def test_pthread_create(self):
     def test(args):
       print(args)
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
+                 expected='0',
+                 args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args,
+                 extra_tries=0) # this should be 100% deterministic
     print() # new line
     test([])
     test(['-O3'])
-    test(['-s', 'MINIMAL_RUNTIME=1'])
+    # TODO: re-enable minimal runtime once the flakiness is figure out,
+    # https://github.com/emscripten-core/emscripten/issues/12368
+    # test(['-s', 'MINIMAL_RUNTIME=1'])
 
   # Test that preallocating worker threads work.
   @requires_threads
@@ -3920,7 +3879,7 @@ window.close = function() {
   def test_pthread_wake_all(self):
     self.btest(path_from_root('tests', 'pthread', 'test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'INITIAL_MEMORY=64MB', '-s', 'NO_EXIT_RUNTIME=1'], also_asmjs=True)
 
-  # Test that STACK_BASE and STACK_MAX correctly bound the stack on pthreads.
+  # Test that stack base and max correctly bound the stack on pthreads.
   @requires_threads
   def test_pthread_stack_bounds(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_stack_bounds.cpp'), expected='1', args=['-s', 'USE_PTHREADS'])
@@ -3997,31 +3956,6 @@ window.close = function() {
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'])
-
-  @no_wasm_backend('mem init file')
-  def test_meminit_pairs(self):
-    d = 'const char *data[] = {\n  "'
-    d += '",\n  "'.join(''.join('\\x{:02x}\\x{:02x}'.format(i, j)
-                                for j in range(256)) for i in range(256))
-    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
-      d += '"\n};\n' + f.read()
-    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1", '-s', 'WASM=0']
-    self.btest(d, expected='0', args=args + ["--closure", "0"])
-    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
-    self.btest(d, expected='0', args=args + ["--closure", "1"])
-
-  @no_wasm_backend('mem init file')
-  def test_meminit_big(self):
-    d = 'const char *data[] = {\n  "'
-    d += '",\n  "'.join([''.join('\\x{:02x}\\x{:02x}'.format(i, j)
-                                 for j in range(256)) for i in range(256)] * 256)
-    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
-      d += '"\n};\n' + f.read()
-    assert len(d) > (1 << 27) # more than 32M memory initializer
-    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1", '-s', 'WASM=0']
-    self.btest(d, expected='0', args=args + ["--closure", "0"])
-    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
-    self.btest(d, expected='0', args=args + ["--closure", "1"])
 
   def test_canvas_style_proxy(self):
     self.btest('canvas_style_proxy.c', expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests/canvas_style_proxy_shell.html'), '--pre-js', path_from_root('tests/canvas_style_proxy_pre.js')])
@@ -4108,15 +4042,12 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
 
-  def test_binaryen_worker(self):
-    self.do_test_worker(['-s', 'WASM=1'])
-
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     ensure_dir('cdn')
     create_test_file('shell2.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    self.compile_btest(['src.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=1', '-o', 'test.html'])
+    self.compile_btest(['src.cpp', '--shell-file', 'shell2.html', '-o', 'test.html'])
     shutil.move('test.wasm', os.path.join('cdn', 'test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
 
@@ -4185,6 +4116,24 @@ window.close = function() {
                args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
     self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
                args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+
+  # Tests for base_vertex/base_instance extension
+  # For testing WebGL draft extensions like this, if using chrome as the browser,
+  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
+  # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
+  # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
+  @requires_graphics_hardware
+  def test_webgl_draw_base_vertex_base_instance(self):
+    for multiDraw in [0, 1]:
+      for drawElements in [0, 1]:
+        self.btest('webgl_draw_base_vertex_base_instance_test.c', reference='webgl_draw_instanced_base_vertex_base_instance.png',
+                   args=['-lGL',
+                         '-s', 'MAX_WEBGL_VERSION=2',
+                         '-s', 'OFFSCREEN_FRAMEBUFFER=1',
+                         '-DMULTI_DRAW=' + str(multiDraw),
+                         '-DDRAW_ELEMENTS=' + str(drawElements),
+                         '-DEXPLICIT_SWAP=1',
+                         '-DWEBGL_CONTEXT_VERSION=2'])
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
@@ -4529,7 +4478,6 @@ window.close = function() {
 
   # Tests that base64 utils work in browser with no native atob function
   def test_base64_atob_fallback(self):
-    opts = ['-s', 'SINGLE_FILE=1', '-s', 'WASM=1']
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -4542,7 +4490,7 @@ window.close = function() {
     # generate a dummy file
     create_test_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts)
+    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-s', 'SINGLE_FILE=1'])
     create_test_file('a.html', '''
       <script>
         atob = undefined;
@@ -4557,7 +4505,7 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
-    self.btest('single_file_static_initializer.cpp', '19', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
+    self.btest('single_file_static_initializer.cpp', '19', args=['-s', 'SINGLE_FILE=1'], also_proxied=True)
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
@@ -4588,8 +4536,8 @@ window.close = function() {
     for wasm_enabled in [True, False]:
       args = ['src.cpp', '-o', 'test.js', '-s', 'SINGLE_FILE=1']
 
-      if wasm_enabled:
-        args += ['-s', 'WASM=1']
+      if not wasm_enabled:
+        args += ['-s', 'WASM=0']
 
       self.compile_btest(args)
 
@@ -4613,7 +4561,7 @@ window.close = function() {
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    self.compile_btest(['src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1'])
+    self.compile_btest(['src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1'])
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     self.assertExists('test.js')
@@ -4637,12 +4585,12 @@ window.close = function() {
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')
     create_test_file('page.c', self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
-    self.compile_btest(['page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
+    self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
     # with separate file packager invocation
-    self.run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'])
-    self.compile_btest(['page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
+    self.run_process([PYTHON, FILE_PACKAGER, 'data.data', '--preload', 'test.txt', '--js-output=' + 'data.js'])
+    self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
   def test_unicode_html_shell(self):
@@ -4937,3 +4885,73 @@ window.close = function() {
                # don't run this with the default extra_tries value, as this is
                # *meant* to notice something random, a race condition.
                extra_tries=0)
+
+
+class emrun(RunnerCore):
+  def test_emrun_info(self):
+    if not has_browser():
+      self.skipTest('need a browser')
+    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
+    assert 'CPU' in result
+    assert 'Browser' in result
+    assert 'Traceback' not in result
+
+    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
+    assert 'Traceback' not in result
+
+  def test_emrun(self):
+    self.run_process([EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
+    if not has_browser():
+      self.skipTest('need a browser')
+
+    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the
+    # browser that is launched will have that directory as startup directory, and the browser will
+    # not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to
+    # delete it. Therefore switch away from that directory before launching.
+
+    os.chdir(path_from_root())
+    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
+                 '--kill_exit', '--port', '6939', '--verbose',
+                 '--log_stdout', self.in_dir('stdout.txt'),
+                 '--log_stderr', self.in_dir('stderr.txt')]
+
+    # Verify that trying to pass argument to the page without the `--` separator will
+    # generate an actionable error message
+    err = self.expect_fail(args_base + ['--foo'])
+    self.assertContained('error: unrecognized arguments: --foo', err)
+    self.assertContained('remember to add `--` between arguments', err)
+
+    if EMTEST_BROWSER is not None:
+      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
+      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
+      # so strip them out.
+      browser_cmd = shlex.split(EMTEST_BROWSER)
+      browser_path = browser_cmd[0]
+      args_base += ['--browser', browser_path]
+      if len(browser_cmd) > 1:
+        browser_args = browser_cmd[1:]
+        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
+          # emrun uses its own -profile, strip it out
+          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
+          parser.add_argument('-profile')
+          parser.add_argument('--profile')
+          browser_args = parser.parse_known_args(browser_args)[1]
+        if browser_args:
+          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+
+    for args in [
+        args_base,
+        args_base + ['--private_browsing', '--port', '6941']
+    ]:
+      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
+      print(shared.shlex_join(args))
+      proc = self.run_process(args, check=False)
+      self.assertEqual(proc.returncode, 100)
+      stdout = open(self.in_dir('stdout.txt'), 'r').read()
+      stderr = open(self.in_dir('stderr.txt'), 'r').read()
+      self.assertContained('argc: 4', stdout)
+      self.assertContained('argv[3]: --3', stdout)
+      self.assertContained('hello, world!', stdout)
+      self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
+      self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
+      self.assertContained('hello, error stream!', stderr)

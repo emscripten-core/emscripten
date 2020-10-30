@@ -76,15 +76,11 @@ WebAssembly.Module = function(bytes) {};
  * @param {Object=} importObject
  */
 WebAssembly.Instance = function(moduleObject, importObject) {};
-/** @typedef {{initial:number, maximum:(number|undefined)}} */
-var MemoryDescriptor;
 /**
  * @constructor
  * @param {MemoryDescriptor} memoryDescriptor
  */
 WebAssembly.Memory = function(memoryDescriptor) {};
-/** @typedef {{element:string, initial:number, maximum:(number|undefined)}} */
-var TableDescriptor;
 /**
  * @constructor
  * @param {TableDescriptor} tableDescriptor
@@ -305,72 +301,8 @@ var selfThreadId;
 /** @suppress {duplicate} */
 var noExitRuntime;
 
-// No BigInt in closure yet
-//    https://github.com/google/closure-compiler/issues/3167
-var BigInt;
-
-// Worklet
-/**
- * @constructor
- */
-function Worklet() {}
-/**
- * @param {string} moduleURL
- * @param {object} options
- * @return {!Promise}
- */
-Worklet.prototype.addModule = function(moduleURL, options) {};
-
-// AudioWorklet
-/**
- * @constructor
- * @extends {Worklet}
- */
-function AudioWorklet() {}
-
 /** @type {?AudioWorklet} */
 BaseAudioContext.prototype.audioWorklet;
-
-// AudioWorkletProcessor
-/**
- * @constructor
- */
-function AudioWorkletProcessor() {}
-
-/** @type {!MessagePort} */
-AudioWorkletProcessor.prototype.port;
-
-// AudioWorkletNodeOptions
-/**
- * @constructor
- */
-function AudioWorkletNodeOptions() {}
-/** @type {number} */
-AudioWorkletNodeOptions.prototype.numberOfInputs;
-/** @type {number} */
-AudioWorkletNodeOptions.prototype.numberOfOutputs;
-/** @type {!Array<number>} */
-AudioWorkletNodeOptions.prototype.outputChannelCount;
-/** @dict */
-AudioWorkletNodeOptions.prototype.parameterData
-/** @dict */
-AudioWorkletNodeOptions.prototype.processorOptions;
-
-// AudioWorkletNode
-/**
- * @constructor
- * @extends {AudioNode}
- * @param {BaseAudioContext} context
- * @param {string} name
- * @param {AudioWorkletNodeOptions} options
- */
-function AudioWorkletNode(context, name, options) {}
-/** @type {!MessagePort} */
-AudioWorkletNode.prototype.port;
-/** @type {?Object<string, number>} */
-AudioWorkletNode.prototype.parameters;
-/** @type {EventListener|(function():(undefined))} */
-AudioWorkletNode.prototype.onprocessorerror;
 
 /*
  * AudioWorkletGlobalScope globals

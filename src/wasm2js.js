@@ -9,7 +9,7 @@
 
 // Emit "var WebAssembly" if definitely using wasm2js. Otherwise, in MAYBE_WASM2JS
 // mode, we can't use a "var" since it would prevent normal wasm from working.
-/** @suppress{const} */
+/** @suppress{duplicate, const} */
 #if WASM2JS || WASM == 2
 var
 #endif
@@ -23,16 +23,6 @@ WebAssembly = {
 #else
     this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
 #endif
-    this.grow = function(amount) {
-#if ASSERTIONS
-      var oldBuffer = this.buffer;
-#endif
-      var ret = __growWasmMemory(amount);
-#if ASSERTIONS
-      assert(this.buffer !== oldBuffer); // the call should have updated us
-#endif
-      return ret;
-    };
   },
 
 #if RELOCATABLE
