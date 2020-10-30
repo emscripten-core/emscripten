@@ -274,6 +274,12 @@ Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. T
 
 Note that in ``MODULARIZE`` mode we do not look for a global Module object for default values. Default values must be passed as a parameter to the factory function.  (see details in settings.js)
 
+Why is Module['onRuntimeInitialized'] not called when my JavaScript file is loaded?
+===================================================================================
+
+When you are compiling your application to a ``.js`` file, you normally use ``emcc`` or ``em++`` flag ``--post-js`` to load the file. Then, your next ``<script>`` tag will likely have a ``src`` attribute pointing to your client or appliciation code, such as ``index.js``, ``main.js``, or ``app.js``.
+
+Rather than loading them in two separate script tags, you can use the ``--extern-post-js`` :ref:`compiler flag <emcc-extern-post-js>` to append your client code to the same file. Doing so will ensure your callback is registered before the Module is loaded.
 
 .. _faq-NO_EXIT_RUNTIME:
 
