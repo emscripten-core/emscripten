@@ -6700,8 +6700,8 @@ int main() {
 
   @parameterized({
     'O0': ([],      [], ['waka'],   847), # noqa
-    'O1': (['-O1'], [], ['waka'],   303), # noqa
-    'O2': (['-O2'], [], ['waka'],   265), # noqa
+    'O1': (['-O1'], [], ['waka'],   286), # noqa
+    'O2': (['-O2'], [], ['waka'],   245), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'], [], [],          62), # noqa
     'Os': (['-Os'], [], [],          62), # noqa
@@ -8298,12 +8298,13 @@ int main () {
           # happens in wasm2js, so it may be platform-nondeterminism in closure
           # compiler).
           # TODO: identify what is causing this. meanwhile allow some amount of slop
-          if js:
-            slop = 30
-          else:
-            slop = 20
-          if size <= expected_size + slop and size >= expected_size - slop:
-            size = expected_size
+          if not os.environ.get('EMTEST_REBASELINE'):
+            if js:
+              slop = 30
+            else:
+              slop = 20
+            if size <= expected_size + slop and size >= expected_size - slop:
+              size = expected_size
 
           # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
           # this is because optimizing for compressed sizes can be unpredictable and sometimes counterproductive

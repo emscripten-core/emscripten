@@ -64,10 +64,3 @@ assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
 #endif
 #endif
 updateGlobalBufferAndViews(buffer);
-
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
-#if USE_PTHREADS
-}
-#endif
