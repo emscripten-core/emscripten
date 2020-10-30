@@ -223,6 +223,7 @@ class OFormat(Enum):
 
 class EmccOptions(object):
   def __init__(self):
+    self.compiler_wrapper = None
     self.oformat = None
     self.requested_debug = ''
     self.profiling = False
@@ -786,13 +787,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
-  CXX = [shared.CLANG_CXX]
-  CC = [shared.CLANG_CC]
-  if shared.COMPILER_WRAPPER:
-    logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
-    CXX.insert(0, shared.COMPILER_WRAPPER)
-    CC.insert(0, shared.COMPILER_WRAPPER)
-
   if run_via_emxx:
     clang = shared.CLANG_CXX
   else:
@@ -904,15 +898,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
-    if 'EMMAKEN_COMPILER' in os.environ:
-      diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
-                          'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
-                          'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
-      CXX = [os.environ['EMMAKEN_COMPILER']]
-      CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
-
     if '-print-search-dirs' in newargs:
-      return run_process(CC + ['-print-search-dirs'], check=False).returncode
+      return run_process([clang, '-print-search-dirs'], check=False).returncode
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -1945,6 +1932,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return True
       return flag.startswith(('-l', '-L', '-Wl,'))
 
+    CXX = [shared.CLANG_CXX]
+    CC = [shared.CLANG_CC]
+    if shared.COMPILER_WRAPPER:
+      logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
+      CXX.insert(0, shared.COMPILER_WRAPPER)
+      CC.insert(0, shared.COMPILER_WRAPPER)
+
+    if 'EMMAKEN_COMPILER' in os.environ:
+      diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
+                          'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
+                          'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
+      CXX = [os.environ['EMMAKEN_COMPILER']]
+      CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
+
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
 
     if not building.can_inline():
@@ -2463,6 +2464,8 @@ def parse_args(newargs):
       options.extern_pre_js += open(consume_arg()).read() + '\n'
     elif check_arg('--extern-post-js'):
       options.extern_post_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--compiler-wrapper'):
+      shared.COMPILER_WRAPPER = consume_arg()
     elif check_arg('--oformat'):
       formats = [f.lower() for f in OFormat.__members__]
       fmt = consume_arg()
