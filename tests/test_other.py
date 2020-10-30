@@ -4838,6 +4838,31 @@ int main(void) {
     self.assertNotEqual(result.returncode, 0)
     self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', result.stdout)
 
+  def test_modularize_sync_compilation(self):
+    create_test_file('post.js', r'''
+console.log('before');
+var result = Module();
+// It should be an object.
+console.log(typeof result);
+// And it should have the exports that Module has, showing it is Module in fact.
+console.log(typeof result._main);
+// And it should not be a Promise.
+console.log(typeof result.then);
+console.log('after');
+''')
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
+                      '-s', 'MODULARIZE=1',
+                      '-s', 'WASM_ASYNC_COMPILATION=0',
+                      '--extern-post-js', 'post.js'])
+    self.assertContained('''\
+before
+hello, world!
+object
+function
+undefined
+after
+''', self.run_js('a.out.js'))
+
   def test_export_all_3142(self):
     create_test_file('src.cpp', r'''
 typedef unsigned int Bit32u;

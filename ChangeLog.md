@@ -35,6 +35,10 @@ Current Trunk
   modules.  As one side effect of this change it is now required that JavaScript
   functions that are imported by address are now required to have a `__sig`
   specified in the library JavaScript file.
+- `MODULARIZE` + `WASM_ASYNC_COMPILATION=0`, that is, modularize mode but with
+  async compilation turned off, so that startup is synchronous, now returns the
+  Module object from the factory function (as it would not make sense to return
+  a Promise without async startup). See #12647
 
 2.0.8: 10/24/2020
 -----------------
