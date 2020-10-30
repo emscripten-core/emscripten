@@ -23,6 +23,9 @@ Current Trunk
 - dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
   or RTDL_NOW flags ar set.  Previously, it was possible set nether of these
   without generating an error.
+- Allow `-lSDL2_mixer` to just work. (Others like `-lSDL2` always worked, but
+  for `SDL2_mixer` things were broken because we build multiple variations of
+  that library.) That link flag is now the same as `-s USE_SDL2_MIXER=2`.
 - Stack state is no longer stored in JavaScript.  The following variables have
   been replaced with native functions in `<emscripten/stack.h>`:
   - STACK_BASE
@@ -35,6 +38,10 @@ Current Trunk
   modules.  As one side effect of this change it is now required that JavaScript
   functions that are imported by address are now required to have a `__sig`
   specified in the library JavaScript file.
+- `MODULARIZE` + `WASM_ASYNC_COMPILATION=0`, that is, modularize mode but with
+  async compilation turned off, so that startup is synchronous, now returns the
+  Module object from the factory function (as it would not make sense to return
+  a Promise without async startup). See #12647
 
 2.0.8: 10/24/2020
 -----------------

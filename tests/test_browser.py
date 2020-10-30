@@ -2198,10 +2198,54 @@ void *getBindBuffer() {
     self.btest('openal_capture_sanity.c', expected='0')
 
   def test_runtimelink(self):
-    main, supp = self.setup_runtimelink_test()
-    create_test_file('supp.cpp', supp)
-    self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE=1', '-O2', '-s', 'EXPORT_ALL=1'])
-    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL=1'], expected='76')
+    create_test_file('header.h', r'''
+      struct point
+      {
+        int x, y;
+      };
+    ''')
+
+    create_test_file('supp.cpp', r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      extern void mainFunc(int x);
+      extern int mainInt;
+
+      void suppFunc(struct point &p) {
+        printf("supp: %d,%d\n", p.x, p.y);
+        mainFunc(p.x + p.y);
+        printf("supp see: %d\n", mainInt);
+      }
+
+      int suppInt = 76;
+    ''')
+
+    main = r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      extern void suppFunc(struct point &p);
+      extern int suppInt;
+
+      void mainFunc(int x) {
+        printf("main: %d\n", x);
+      }
+
+      int mainInt = 543;
+
+      int main( int argc, const char *argv[] ) {
+        struct point p = { 54, 2 };
+        suppFunc(p);
+        printf("main see: %d\nok.\n", suppInt);
+        #ifdef BROWSER
+          REPORT_RESULT(suppInt);
+        #endif
+        return 0;
+      }
+    '''
+    self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
+    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL=1'], expected='76')
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
@@ -3121,10 +3165,14 @@ window.close = function() {
     self.compile_btest(['test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
 
+  @parameterized({
+    'dash_s': (['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2'],),
+    'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
+  })
   @requires_sound_hardware
-  def test_sdl2_mixer_wav(self):
+  def test_sdl2_mixer_wav(self, flags):
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), 'sound.wav')
-    self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432'])
+    self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'INITIAL_MEMORY=33554432'] + flags)
 
   @parameterized({
     'wav': ([],         '0',            'the_entertainer.wav'),
@@ -3274,7 +3322,7 @@ window.close = function() {
         src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
         create_test_file('test.c', self.with_report_result(src))
         # this test is synchronous, so avoid async startup due to wasm features
-        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'SINGLE_FILE=1'] + args + opts)
+        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'SINGLE_FILE=1'] + args + opts)
         create_test_file('a.html', '''
           <script src="a.out.js"></script>
           <script>

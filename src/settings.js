@@ -954,6 +954,10 @@ var DETERMINISTIC = 0;
 // resolved with the module instance when it is safe to run the compiled code,
 // similar to the `onRuntimeInitialized` callback. You do not need to use the
 // `onRuntimeInitialized` callback when using `MODULARIZE`.
+//
+// (If WASM_ASYNC_COMPILATION is off, that is, if compilation is
+// *synchronous*, then it would not make sense to return a Promise, and instead
+// the Module object itself is returned, which is ready to be used.)
 // 
 // The default name of the function is `Module`, but can be changed using the
 // `EXPORT_NAME` option. We recommend renaming it to a more typical name for a

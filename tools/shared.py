@@ -98,6 +98,10 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   and should be fatal.  In those cases the `check_call` wrapper should be preferred.
   """
 
+  # Flush standard streams otherwise the output of the subprocess may appear in the
+  # output before messages that we have already written.
+  sys.stdout.flush()
+  sys.stderr.flush()
   kw.setdefault('universal_newlines', True)
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))

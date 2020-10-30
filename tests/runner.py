@@ -858,56 +858,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.assertNotContained('Traceback', proc.stderr)
     return proc.stderr
 
-  def setup_runtimelink_test(self):
-    create_test_file('header.h', r'''
-      struct point
-      {
-        int x, y;
-      };
-    ''')
-
-    supp = r'''
-      #include <stdio.h>
-      #include "header.h"
-
-      extern void mainFunc(int x);
-      extern int mainInt;
-
-      void suppFunc(struct point &p) {
-        printf("supp: %d,%d\n", p.x, p.y);
-        mainFunc(p.x + p.y);
-        printf("supp see: %d\n", mainInt);
-      }
-
-      int suppInt = 76;
-    '''
-    create_test_file('supp.cpp', supp)
-
-    main = r'''
-      #include <stdio.h>
-      #include "header.h"
-
-      extern void suppFunc(struct point &p);
-      extern int suppInt;
-
-      void mainFunc(int x) {
-        printf("main: %d\n", x);
-      }
-
-      int mainInt = 543;
-
-      int main( int argc, const char *argv[] ) {
-        struct point p = { 54, 2 };
-        suppFunc(p);
-        printf("main see: %d\nok.\n", suppInt);
-        #ifdef BROWSER
-          REPORT_RESULT(suppInt);
-        #endif
-        return 0;
-      }
-    '''
-    return (main, supp)
-
   # excercise dynamic linker.
   #
   # test that linking to shared library B, which is linked to A, loads A as well.

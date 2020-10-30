@@ -475,7 +475,7 @@ class TestCoreBase(RunnerCore):
   def test_cube2hash(self):
     # A good test of i64 math
     self.do_run('// empty file', 'Usage: hashstring <seed>',
-                libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
+                libraries=self.get_library('cube2hash', ['libcube2hash.a'], configure=None),
                 includes=[path_from_root('tests', 'cube2hash')], assert_returncode=NON_ZERO)
 
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
@@ -5018,6 +5018,9 @@ main( int argv, char ** argc ) {
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
     self.do_runf(path_from_root('tests', 'utf32.cpp'), 'OK.')
     self.do_runf(path_from_root('tests', 'utf32.cpp'), 'OK.', args=['-fshort-wchar'])
+
+  def test_utf16(self):
+    self.do_runf(path_from_root('tests', 'core', 'test_utf16.cpp'), 'OK.')
 
   def test_utf8(self):
     if self.get_setting('MINIMAL_RUNTIME'):
