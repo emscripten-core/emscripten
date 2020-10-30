@@ -2835,7 +2835,9 @@ def modularize():
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final_js).read()
 
-  return_value = shared.Settings.EXPORT_NAME + '.ready'
+  return_value = shared.Settings.EXPORT_NAME
+  if shared.Settings.WASM_ASYNC_COMPILATION:
+    return_value += '.ready'
   if not shared.Settings.EXPORT_READY_PROMISE:
     return_value = '{}'
 
