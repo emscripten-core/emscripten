@@ -1493,9 +1493,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs.append('libembind')
 
     shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
-    # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
-    # where static data ends (and correspondingly where the stack begins).
-    shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
     if not shared.Settings.STANDALONE_WASM:
       # in standalone mode, crt1 will call the constructors from inside the wasm
       shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
@@ -1792,7 +1789,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           '_emscripten_builtin_memalign',
           '_emscripten_builtin_malloc',
           '_emscripten_builtin_free',
-          '___data_end',
           '___heap_base',
           '___global_base'
       ]
