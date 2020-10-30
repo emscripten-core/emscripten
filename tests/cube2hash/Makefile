@@ -1,7 +1,7 @@
-all: cube2hash.bc
+all: libcube2hash.a
 
-cube2hash.bc: cube2crypto.o tiger.o hashstring.o
-	$(CXX) -r $^ -o $@
+libcube2hash.a: cube2crypto.o tiger.o hashstring.o
+	$(AR) rcs $@ $^
 
 hashstring.o: hashstring.cpp
 	$(CXX) -c $^ -o $@
