@@ -767,21 +767,6 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
-  __cxa_call_unexpected: function(exception) {
-    err('Unexpected exception thrown, this is not properly supported - aborting');
-#if !MINIMAL_RUNTIME
-    ABORT = true;
-#endif
-    throw exception;
-  },
-
-  terminate: function() {
-#if !MINIMAL_RUNTIME
-    ABORT = true;
-#endif
-    throw 'terminated';
-  },
-
   __gxx_personality_v0: function() {
   },
 

@@ -20,6 +20,7 @@ var LibraryExceptions = {};
   '__cxa_end_catch',
   '__cxa_get_exception_ptr',
   '_ZSt18uncaught_exceptionv',
+  '__cxa_call_unexpected',
   '__cxa_current_primary_exception',
   '__cxa_rethrow_primary_exception',
   '__cxa_find_matching_catch',
