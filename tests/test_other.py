@@ -8273,12 +8273,13 @@ int main () {
           # happens in wasm2js, so it may be platform-nondeterminism in closure
           # compiler).
           # TODO: identify what is causing this. meanwhile allow some amount of slop
-          if js:
-            slop = 30
-          else:
-            slop = 20
-          if size <= expected_size + slop and size >= expected_size - slop:
-            size = expected_size
+          if not os.environ.get('EMTEST_REBASELINE'):
+            if js:
+              slop = 30
+            else:
+              slop = 20
+            if size <= expected_size + slop and size >= expected_size - slop:
+              size = expected_size
 
           # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
           # this is because optimizing for compressed sizes can be unpredictable and sometimes counterproductive
