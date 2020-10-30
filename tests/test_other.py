@@ -297,6 +297,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       os.chdir(last)
       try_delete(path)
 
+  @is_slow_test
   @parameterized({
     'c': [EMCC],
     'cxx': [EMXX]})
@@ -304,7 +305,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
     for params, opt_level, obj_params, closure, has_malloc in [ # obj_params are used after compiling first
       (['-o', 'something.js'],                          0, None, 0, 1),
-      (['-o', 'something.js', '-O0'],                   0, None, 0, 0),
+      (['-o', 'something.js', '-O0', '-g'],             0, None, 0, 0),
       (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
       (['-o', 'something.js', '-O1', '-g'],             1, None, 0, 0), # no closure since debug
       (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
@@ -312,15 +313,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       (['-o', 'something.js', '-Os'],                   2, None, 0, 1),
       (['-o', 'something.js', '-O3'],                   3, None, 0, 1),
       # and, test compiling first
-      (['-c', '-o', 'something.o'], 0, [],      0, 0),
-      (['-c', '-o', 'something.o', '-O0'], 0, [], 0, 0),
+      (['-c', '-o', 'something.o'],        0, [],      0, 0),
+      (['-c', '-o', 'something.o', '-O0'], 0, [],      0, 0),
       (['-c', '-o', 'something.o', '-O1'], 1, ['-O1'], 0, 0),
       (['-c', '-o', 'something.o', '-O2'], 2, ['-O2'], 0, 0),
       (['-c', '-o', 'something.o', '-O3'], 3, ['-O3'], 0, 0),
-      (['-O1', '-c', '-o', 'something.o'], 1, [], 0, 0),
+      (['-O1', '-c', '-o', 'something.o'], 1, [],      0, 0),
       # non-wasm
       (['-s', 'WASM=0', '-o', 'something.js'],                          0, None, 0, 1),
-      (['-s', 'WASM=0', '-o', 'something.js', '-O0'],                   0, None, 0, 0),
+      (['-s', 'WASM=0', '-o', 'something.js', '-O0', '-g'],             0, None, 0, 0),
       (['-s', 'WASM=0', '-o', 'something.js', '-O1'],                   1, None, 0, 0),
       (['-s', 'WASM=0', '-o', 'something.js', '-O1', '-g'],             1, None, 0, 0), # no closure since debug
       (['-s', 'WASM=0', '-o', 'something.js', '-O2'],                   2, None, 0, 1),
@@ -335,8 +336,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O3'], 3, ['-s', 'WASM=0', '-O3'], 0, 0),
       (['-s', 'WASM=0', '-O1', '-c', '-o', 'something.o'], 1, ['-s', 'WASM=0'],        0, 0),
     ]:
-      if 'WASM=0' in params:
-        continue
       print(params, opt_level, obj_params, closure, has_malloc)
       self.clear()
       keep_debug = '-g' in params
@@ -368,11 +367,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
         assert '._main = ' not in generated, 'closure compiler should not have been run'
         if keep_debug:
-          assert ('switch (label)' in generated or 'switch (label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
-          assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
+          assert ('assert(INITIAL_INITIAL_MEMORY >= TOTAL_STACK' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
         if 'WASM=0' in params:
-          if opt_level >= 2 and '-g' in params:
-            assert re.search(r'HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search(r'HEAP8\[HEAP32\[', generated) or re.search(r'[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
           looks_unminified = ' = {}' in generated and ' = []' in generated
           looks_minified = '={}' in generated and '=[]' and ';var' in generated
           assert not (looks_minified and looks_unminified)
