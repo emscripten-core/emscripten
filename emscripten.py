@@ -429,8 +429,6 @@ def finalize_wasm(infile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
-  if shared.Settings.RELOCATABLE:
-    args.append('--new-pic-abi')
   if shared.Settings.USE_LEGACY_DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
