@@ -285,11 +285,6 @@ def create_named_globals(metadata):
     v = int(v)
     if shared.Settings.RELOCATABLE:
       v += shared.Settings.GLOBAL_BASE
-    elif k == '__data_end':
-      # We keep __data_end alive internally so that wasm-emscripten-finalize knows where the
-      # static data region ends.  Don't export this to JS like other user-exported global
-      # address.
-      continue
     mangled = asmjs_mangle(k)
     if shared.Settings.MINIMAL_RUNTIME:
       named_globals.append("var %s = %s;" % (mangled, v))
