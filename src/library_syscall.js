@@ -1597,16 +1597,15 @@ var WASI_SYSCALLS = set([
 ]);
 
 for (var x in SyscallsLibrary) {
-  var which = null; // if this is a musl syscall, its number
-  var wasi = false;
-  if (x in WASI_SYSCALLS) {
-    wasi = true;
-  } else if (!x.startsWith('__sys_') || isJsLibraryConfigIdentifier(x)) {
+  if (x[0] === '$' || isJsLibraryConfigIdentifier(x)) {
     continue;
   }
+
+  var wasi = x in WASI_SYSCALLS;
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;
   t = t.toString();
+
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
   // has disabled the filesystem or we have proven some other way that this will
   // not be called in practice, and do not need that code.
@@ -1617,12 +1616,21 @@ for (var x in SyscallsLibrary) {
              '}';
     });
   }
+
+  var isVariadic = !wasi && t.indexOf(', varargs') != -1;
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+  var canThrow = false;
+#else
+  var canThrow = SyscallsLibrary[x + '__nothrow'] !== true;
+#endif
+
   var pre = '', post = '';
-  if (!wasi && t.indexOf(', varargs') != -1) {
+  if (isVariadic) {
     pre += 'SYSCALLS.varargs = varargs;\n';
   }
+
 #if SYSCALL_DEBUG
-  if (!wasi && t.indexOf(', varargs') != -1) {
+  if (isVariadic) {
     if (canThrow) {
       post += 'finally { SYSCALLS.varargs = undefined; }\n';
     } else {
@@ -1639,12 +1647,8 @@ for (var x in SyscallsLibrary) {
   post += "err('syscall return: ' + ret);\n";
   post += "return ret;\n";
 #endif
-  var canThrow = SyscallsLibrary[x + '__nothrow'] !== true;
   delete SyscallsLibrary[x + '__nothrow'];
   var handler = '';
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  canThrow = false;
-#endif
   if (canThrow) {
     pre += 'try {\n';
     handler +=
