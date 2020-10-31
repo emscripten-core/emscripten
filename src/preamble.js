@@ -835,7 +835,7 @@ function createWasm() {
 
 #if !RELOCATABLE
     wasmTable = Module['asm']['__indirect_function_table'];
-#if ASSERTIONS
+#if ASSERTIONS && !PURE_WASI
     assert(wasmTable, "table not found in wasm exports");
 #endif
 #endif
@@ -858,7 +858,7 @@ function createWasm() {
     assert(wasmMemory, "memory not found in wasm exports");
 #endif
     updateGlobalBufferAndViews(wasmMemory.buffer);
-#if ASSERTIONS
+#if STACK_OVERFLOW_CHECK
     writeStackCookie();
 #endif
 #endif

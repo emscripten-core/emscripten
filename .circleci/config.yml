@@ -12,6 +12,7 @@ executors:
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
+      EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       PYTHON_BIN: "python3"
   mac:
     environment:
@@ -61,6 +62,7 @@ commands:
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
+            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/12.0.0/
             cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
@@ -107,8 +109,9 @@ commands:
           paths:
             - emsdk/
             - cache/
-            - vms
-            - .jsvu
+            - vms/
+            - wasi-sdk/
+            - .jsvu/
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -351,6 +354,14 @@ jobs:
             wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.8.0/wasmtime-$VERSION-x86_64-linux.tar.xz
             tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
             cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
+      - run:
+          name: get wasi-sdk-sysroot
+          command: |
+            wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/libclang_rt.builtins-wasm32-wasi-11.0.tar.gz
+            wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sysroot-11.0.tar.gz
+            mkdir ~/wasi-sdk
+            tar xvf libclang_rt.builtins-wasm32-wasi-11.0.tar.gz -C ~/wasi-sdk
+            tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - run:
           name: get v8
           command: |

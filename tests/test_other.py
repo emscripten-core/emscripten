@@ -9610,3 +9610,15 @@ exec "$@"
     err = self.run_process([EMCC, '--post-link', 'bare.wasm'], stderr=PIPE).stderr
     self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)
     err = self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+  def compile_with_wasi_sdk(self, filename, output):
+    sysroot = os.environ.get('EMTEST_WASI_SYSROOT')
+    if not sysroot:
+      self.skipTest('EMTEST_WASI_SYSROOT not found in environment')
+    sysroot = os.path.expanduser(sysroot)
+    self.run_process([CLANG_CC, '--sysroot=' + sysroot, '--target=wasm32-wasi', filename, '-o', output])
+
+  def test_run_wasi_sdk_output(self):
+    self.compile_with_wasi_sdk(path_from_root('tests', 'hello_world.c'), 'hello.wasm')
+    self.run_process([EMCC, '--post-link', '-sPURE_WASI', 'hello.wasm'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))

@@ -1622,6 +1622,13 @@ var ERROR_ON_WASM_CHANGES_AFTER_LINK = 0;
 // cost of a few bytes extra.
 var ABORT_ON_WASM_EXCEPTIONS = 0;
 
+// Build binaries that use as many WASI APIs as possible, and include additional
+// JS support libraries for those APIs.  This allows emscripten produce binaries
+// are more WASI compilant and also allows it to process and execute WASI
+// binaries built with other SDKs (e.g.  wasi-sdk).
+// Implies STANDALONE_WASM.
+var PURE_WASI = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
