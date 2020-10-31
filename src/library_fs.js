@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$setErrNo', '$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
+  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -111,11 +111,6 @@ FS.staticInit();` +
     genericErrors: {},
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
-
-    handleFSError: function(e) {
-      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-      return setErrNo(e.errno);
-    },
 
     //
     // paths
@@ -1527,7 +1522,6 @@ FS.staticInit();` +
       if (ret.exists) {
         return ret.object;
       } else {
-        setErrNo(ret.error);
         return null;
       }
     },
@@ -1657,7 +1651,6 @@ FS.staticInit();` +
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile: function(obj) {
       if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-      var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
       } else if (read_) {
@@ -1668,13 +1661,11 @@ FS.staticInit();` +
           obj.contents = intArrayFromString(read_(obj.url), true);
           obj.usedBytes = obj.contents.length;
         } catch (e) {
-          success = false;
+          throw new FS.ErrnoError({{{ cDefine('EIO') }}});
         }
       } else {
         throw new Error('Cannot load without read() or XMLHttpRequest.');
       }
-      if (!success) setErrNo({{{ cDefine('EIO') }}});
-      return success;
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
     // XHR, which is not possible in browsers except in a web worker! Use preloading,
@@ -1813,17 +1804,13 @@ FS.staticInit();` +
       keys.forEach(function(key) {
         var fn = node.stream_ops[key];
         stream_ops[key] = function forceLoadLazyFile() {
-          if (!FS.forceLoadFile(node)) {
-            throw new FS.ErrnoError({{{ cDefine('EIO') }}});
-          }
+          FS.forceLoadFile(node);
           return fn.apply(null, arguments);
         };
       });
       // use a custom read function
       stream_ops.read = function stream_ops_read(stream, buffer, offset, length, position) {
-        if (!FS.forceLoadFile(node)) {
-          throw new FS.ErrnoError({{{ cDefine('EIO') }}});
-        }
+        FS.forceLoadFile(node);
         var contents = stream.node.contents;
         if (position >= contents.length)
           return 0;
