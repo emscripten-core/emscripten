@@ -50,7 +50,13 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  utime__deps: ['$FS', '$setErrNo'],
+  $handleFSError__deps: ['$setErrNo'],
+  $handleFSError: function(e) {
+    if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
+    return setErrNo(e.errno);
+  },
+
+  utime__deps: ['$FS', '$handleFSError'],
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
@@ -70,12 +76,12 @@ LibraryManager.library = {
       FS.utime(path, time, time);
       return 0;
     } catch (e) {
-      FS.handleFSError(e);
+      handleFSError(e);
       return -1;
     }
   },
 
-  utimes__deps: ['$FS', '$setErrNo'],
+  utimes__deps: ['$FS', '$handleFSError'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
   utimes: function(path, times) {
@@ -93,7 +99,7 @@ LibraryManager.library = {
       FS.utime(path, time, time);
       return 0;
     } catch (e) {
-      FS.handleFSError(e);
+      handleFSError(e);
       return -1;
     }
   },
