@@ -1538,6 +1538,22 @@ def get_binaryen_bin():
   return rtn
 
 
+def clean_finalized_output(output):
+  # Clean JSON, so that [..., "abc"de"", ...] gets escaped properly when compiling with Rust
+  if output is None:
+    return None
+  regexp = re.compile('"\w+":.+')
+  lines = output.split(",")
+  cleaned_lines = []
+  for line in lines:
+    splitted = line.split("\"")
+    if not regexp.search(line.strip()) and len(splitted) > 2 and line[-1] != "]":
+      cleaned_lines.append("\"%s\"" % "\\\"".join(splitted[1:-1]))
+    else:
+      cleaned_lines.append(line)
+  return ",".join(cleaned_lines)
+
+
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
   if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL != 3:
@@ -1584,7 +1600,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
     save_intermediate(outfile, '%s.wasm' % tool)
-  return ret
+  return clean_finalized_output(ret)
 
 
 def run_wasm_opt(*args, **kwargs):
