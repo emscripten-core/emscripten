@@ -78,7 +78,7 @@ mergeInto(LibraryManager.library, {
       var stream = FS.createStream({
         path: name,
         node: node,
-        flags: FS.modeStringToFlags('r+'),
+        flags: {{{ cDefine('O_RDWR') }}},
         seekable: false,
         stream_ops: SOCKFS.stream_ops
       });

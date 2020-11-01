@@ -292,21 +292,15 @@ FS.staticInit();` +
     // permissions
     //
     flagModes: {
+      // Extra quotes used here on the keys to this object otherwise jsifier will
+      // erase them in the process of reading and then writing the JS library
+      // code.
       '"r"': {{{ cDefine('O_RDONLY') }}},
-      '"rs"': {{{ cDefine('O_RDONLY') }}} | {{{ cDefine('O_SYNC') }}},
       '"r+"': {{{ cDefine('O_RDWR') }}},
       '"w"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
-      '"wx"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xw"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
       '"w+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
-      '"wx+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xw+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
       '"a"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
-      '"ax"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xa"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
       '"a+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
-      '"ax+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xa+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}}
     },
     // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
     modeStringToFlags: function(str) {
@@ -1265,7 +1259,7 @@ FS.staticInit();` +
     },
     readFile: function(path, opts) {
       opts = opts || {};
-      opts.flags = opts.flags || 'r';
+      opts.flags = opts.flags || {{{ cDefine('O_RDONLY') }}};
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
@@ -1286,7 +1280,7 @@ FS.staticInit();` +
     },
     writeFile: function(path, data, opts) {
       opts = opts || {};
-      opts.flags = opts.flags || 'w';
+      opts.flags = opts.flags || {{{ cDefine('O_TRUNC') | cDefine('O_CREAT') | cDefine('O_WRONLY') }}};
       var stream = FS.open(path, opts.flags, opts.mode);
       if (typeof data === 'string') {
         var buf = new Uint8Array(lengthBytesUTF8(data)+1);
@@ -1402,9 +1396,9 @@ FS.staticInit();` +
       }
 
       // open default streams for the stdin, stdout and stderr devices
-      var stdin = FS.open('/dev/stdin', 'r');
-      var stdout = FS.open('/dev/stdout', 'w');
-      var stderr = FS.open('/dev/stderr', 'w');
+      var stdin = FS.open('/dev/stdin', {{{ cDefine('O_RDONLY') }}});
+      var stdout = FS.open('/dev/stdout', {{{ cDefine('O_WRONLY') }}});
+      var stderr = FS.open('/dev/stderr', {{{ cDefine('O_WRONLY') }}});
 #if ASSERTIONS
       assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
       assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
@@ -1586,7 +1580,7 @@ FS.staticInit();` +
         }
         // make sure we can write to the file
         FS.chmod(node, mode | {{{ cDefine('S_IWUGO') }}});
-        var stream = FS.open(node, 'w');
+        var stream = FS.open(node, {{{ cDefine('O_TRUNC') | cDefine('O_CREAT') | cDefine('O_WRONLY') }}});
         FS.write(stream, data, 0, data.length, 0, canOwn);
         FS.close(stream);
         FS.chmod(node, mode);
