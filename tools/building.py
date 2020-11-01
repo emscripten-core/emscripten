@@ -1542,7 +1542,7 @@ def clean_finalized_output(output):
   # Clean JSON, so that [..., "abc"de"", ...] gets escaped properly when compiling with Rust
   if output is None:
     return None
-  regexp = re.compile('"\w+":.+')
+  regexp = re.compile('"\\w+":.+')
   lines = output.split(",")
   cleaned_lines = []
   for line in lines:
