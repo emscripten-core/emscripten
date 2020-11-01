@@ -13333,3 +13333,82 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
     self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py', err)
+
+  def run_wasi_test_suite_test(self, name):
+    if not os.path.exists(path_from_root('test/third_party/wasi-test-suite')):
+      self.fail('wasi-testsuite not found; run `git submodule update --init`')
+    self.node_args += shared.node_bigint_flags()
+    wasm = path_from_root('test', 'third_party', 'wasi-test-suite', name + '.wasm')
+    with open(path_from_root('test', 'third_party', 'wasi-test-suite', name + '.json')) as f:
+      config = json.load(f)
+    exit_code = config.get('exitCode', 0)
+    args = config.get('args', [])
+    env = config.get('env', [])
+    if env:
+      env = [f'ENV["{key}"] = "{value}";' for key, value in env.items()]
+      env = '\n'.join(env)
+      create_file('env.js', 'Module.preRun = () => { %s };' % env)
+      self.emcc_args.append('--pre-js=env.js')
+    self.run_process([EMCC, '-Wno-experimental', '--post-link', '-g',
+                      '-sPURE_WASI', '-lnodefs.js', '-lnoderawfs.js',
+                      wasm, '-o', name + '.js'] + self.get_emcc_args(main_file=True))
+
+    output = self.run_js(name + '.js', args=args, assert_returncode=exit_code)
+    if 'stdout' in config:
+      self.assertContained(config['stdout'], output)
+
+  @requires_node
+  def test_wasi_std_env_args(self):
+    create_file('pre.js', 'Module["thisProgram"] = "std_env_args.wasm"')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.run_wasi_test_suite_test('std_env_args')
+
+  @requires_node
+  def test_wasi_std_env_vars(self):
+    self.run_wasi_test_suite_test('std_env_vars')
+
+  @requires_node
+  def test_wasi_std_io_stdout(self):
+    self.run_wasi_test_suite_test('std_io_stdout')
+
+  @requires_node
+  def test_wasi_std_io_stderr(self):
+    self.run_wasi_test_suite_test('std_io_stderr')
+
+  @requires_node
+  def test_wasi_clock_res_get(self):
+    self.run_wasi_test_suite_test('wasi_clock_res_get')
+
+  @requires_node
+  def test_wasi_clock_time_get(self):
+    self.run_wasi_test_suite_test('wasi_clock_time_get')
+
+  @requires_node
+  def test_wasi_fd_fdstat_get(self):
+    self.run_wasi_test_suite_test('wasi_fd_fdstat_get')
+
+  @requires_node
+  def test_wasi_wasi_fd_write_file(self):
+    self.run_wasi_test_suite_test('wasi_fd_write_file')
+    with open('new_file') as f:
+      self.assertEqual(f.read(), 'new_file')
+
+  @requires_node
+  def test_wasi_wasi_fd_write_stdout(self):
+    self.run_wasi_test_suite_test('wasi_fd_write_stdout')
+
+  @requires_node
+  def test_wasi_wasi_fd_write_stderr(self):
+    self.run_wasi_test_suite_test('wasi_fd_write_stderr')
+
+  @requires_node
+  def test_wasi_proc_exit(self):
+    self.run_wasi_test_suite_test('wasi_proc_exit')
+
+  @requires_node
+  def test_wasi_random_get(self):
+    self.run_wasi_test_suite_test('wasi_random_get')
+
+  @requires_node
+  def test_wasi_sched_yield(self):
+    self.run_wasi_test_suite_test('wasi_sched_yield')

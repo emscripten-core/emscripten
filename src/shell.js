@@ -218,7 +218,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 #include "node_shell_read.js"
 
-  if (process.argv.length > 1) {
+  if (!Module['thisProgram'] && process.argv.length > 1) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 

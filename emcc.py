@@ -1137,7 +1137,7 @@ def package_files(options, target):
   if options.preload_files:
     # Preloading files uses --pre-js code that runs before the module is loaded.
     file_code = shared.check_call(cmd, stdout=PIPE).stdout
-    js_manipulation.add_files_pre_js(options.pre_js, file_code)
+    js_manipulation.add_files_pre_js(settings.PRE_JS_FILES, file_code)
   else:
     # Otherwise, we are embedding files, which does not require --pre-js code,
     # and instead relies on a static constrcutor to populate the filesystem.
@@ -1310,9 +1310,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # Embed and preload files
   if len(options.preload_files) or len(options.embed_files):
     linker_arguments += package_files(options, target)
-
-  settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
-  settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
 
   if options.oformat == OFormat.OBJECT:
     logger.debug(f'link_to_object: {linker_arguments} -> {target}')
@@ -1891,7 +1888,7 @@ def phase_linker_setup(options, state, newargs):
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
 
-  if (options.oformat == OFormat.WASM or settings.PURE_WASI) and not settings.SIDE_MODULE:
+  if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
     # as there is no JS. an exception are side modules, as we can't tell at
     # compile time whether JS will be involved or not - the main module may
@@ -1901,6 +1898,10 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.LZ4:
     settings.EXPORTED_RUNTIME_METHODS += ['LZ4']
+
+  if settings.PURE_WASI:
+    settings.STANDALONE_WASM = 1
+    settings.WASM_BIGINT = 1
 
   if settings.WASM2C:
     # wasm2c only makes sense with standalone wasm - there will be no JS,
@@ -2905,6 +2906,9 @@ def phase_linker_setup(options, state, newargs):
   if not settings.STANDALONE_WASM:
     # in standalone mode, crt1 will call the constructors from inside the wasm
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
+
+  settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
+  settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
 
   return target, wasm_target
 
