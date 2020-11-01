@@ -1792,7 +1792,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.USE_LSAN = 1
       shared.Settings.EXIT_RUNTIME = 1
 
-      if shared.Settings.LINKABLE:
+      if shared.Settings.RELOCATABLE:
         exit_with_error('LSan does not support dynamic linking')
 
     if 'address' in sanitize:
@@ -1833,7 +1833,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # by SAFE_HEAP as a null pointer dereference.
         exit_with_error('ASan does not work with SAFE_HEAP')
 
-      if shared.Settings.LINKABLE:
+      if shared.Settings.RELOCATABLE:
         exit_with_error('ASan does not support dynamic linking')
 
     if sanitize and '-g4' in args:
