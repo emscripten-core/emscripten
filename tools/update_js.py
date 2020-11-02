@@ -7,7 +7,6 @@
 Performs a search-replace in all of js/
 '''
 
-from __future__ import print_function
 import os
 
 

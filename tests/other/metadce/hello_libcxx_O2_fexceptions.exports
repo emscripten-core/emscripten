@@ -1,7 +1,6 @@
 _ZSt18uncaught_exceptionv
 __cxa_can_catch
 __cxa_is_pointer_type
-__data_end
 __errno_location
 __indirect_function_table
 __wasm_call_ctors

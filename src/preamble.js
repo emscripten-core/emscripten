@@ -281,17 +281,8 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-var STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
-    STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getQuoted('STACK_MAX') }}};
-
-
-#if ASSERTIONS
-assert(STACK_BASE % 16 === 0, 'stack must start aligned');
-#endif
-
 #if RELOCATABLE
-var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STACK_BASE);
+var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ getQuoted('STACK_BASE') }}});
 
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
@@ -301,27 +292,15 @@ var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, STAC
 Module['___heap_base'] = {{{ getQuoted('HEAP_BASE') }}};
 #endif // RELOCATABLE
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  // At the 'load' stage of Worker startup, we are just loading this script
-  // but not ready to run yet. At 'run' we receive proper values for the stack
-  // etc. and can launch a pthread. Set some fake values there meanwhile to
-  // catch bugs, then set the real values in establishStackSpace later.
-#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
-  STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
-#endif
-}
-#endif
-
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
+{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
-assert(INITIAL_INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
@@ -402,7 +381,7 @@ function initRuntime() {
 #endif
   runtimeInitialized = true;
 #if STACK_OVERFLOW_CHECK >= 2
-  Module['___set_stack_limits'](STACK_BASE, STACK_MAX);
+  Module['___set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
   {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
@@ -586,6 +565,10 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 #if MAIN_MODULE
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 addOnPreRun(preloadDylibs);
+#else
+#if RELOCATABLE
+addOnPreRun(reportUndefinedSymbols);
+#endif
 #endif
 
 /** @param {string|number=} what */
@@ -825,8 +808,12 @@ function createWasm() {
     'a': asmLibraryArg,
 #else // MINIFY_WASM_IMPORTED_MODULES
     'env': asmLibraryArg,
-    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg,
 #endif // MINIFY_WASM_IMPORTED_MODULES
+#if RELOCATABLE
+    'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
+    'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
+#endif
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and

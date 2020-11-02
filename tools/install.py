@@ -9,8 +9,6 @@ a traditional `make dist` target but is written in python so it can be portable
 and run on non-unix platforms (basically windows).
 """
 
-from __future__ import print_function
-
 import argparse
 import fnmatch
 import logging

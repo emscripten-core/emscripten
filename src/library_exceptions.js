@@ -261,6 +261,7 @@ var LibraryExceptions = {
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
   __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast'],
+  __cxa_rethrow__sig: 'v',
   __cxa_rethrow: function() {
     var catchInfo = exceptionCaught.pop();
     var info = catchInfo.get_exception_info();
@@ -325,6 +326,7 @@ var LibraryExceptions = {
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
   __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '$exception_decRef',
                           '$CatchInfo'],
+  __cxa_end_catch__sig: 'v',
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0);

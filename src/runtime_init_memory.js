@@ -20,7 +20,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   {
     wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_INITIAL_MEMORY / WASM_PAGE_SIZE
+      'initial': INITIAL_MEMORY / WASM_PAGE_SIZE
 #if ALLOW_MEMORY_GROWTH
 #if MAXIMUM_MEMORY != -1
       ,
@@ -28,7 +28,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #else
       ,
-      'maximum': INITIAL_INITIAL_MEMORY / WASM_PAGE_SIZE
+      'maximum': INITIAL_MEMORY / WASM_PAGE_SIZE
 #endif // ALLOW_MEMORY_GROWTH
 #if USE_PTHREADS
       ,
@@ -56,18 +56,11 @@ if (wasmMemory) {
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
 // specifically provide the memory length with Module['INITIAL_MEMORY'].
-INITIAL_INITIAL_MEMORY = buffer.byteLength;
+INITIAL_MEMORY = buffer.byteLength;
 #ifdef ASSERTIONS
-assert(INITIAL_INITIAL_MEMORY % WASM_PAGE_SIZE === 0);
+assert(INITIAL_MEMORY % WASM_PAGE_SIZE === 0);
 #ifdef ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
 assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
 #endif
 #endif
 updateGlobalBufferAndViews(buffer);
-
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
-#if USE_PTHREADS
-}
-#endif

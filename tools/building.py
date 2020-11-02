@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
-
 import atexit
 import json
 import logging
@@ -1467,10 +1465,30 @@ def map_to_js_libs(library_name):
   return None
 
 
-def emit_wasm_source_map(wasm_file, map_file):
+# map a linker flag to a Settings option, and apply it. this lets a user write
+# -lSDL2 and it will have the same effect as -s USE_SDL=2.
+def map_and_apply_to_settings(library_name):
+  # most libraries just work, because the -l name matches the name of the
+  # library we build. however, if a library has variations, which cause us to
+  # build multiple versions with multiple names, then we need this mechanism.
+  library_map = {
+    # SDL2_mixer's built library name contains the specific codecs built in.
+    'SDL2_mixer': [('USE_SDL_MIXER', 2)],
+  }
+
+  if library_name in library_map:
+    for key, value in library_map[library_name]:
+      logger.debug('Mapping library `%s` to settings changes: %s = %s' % (library_name, key, value))
+      setattr(shared.Settings, key, value)
+    return True
+
+  return False
+
+
+def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
-  base_path = os.path.dirname(os.path.abspath(Settings.WASM_BINARY_FILE))
+  base_path = os.path.dirname(os.path.abspath(final_wasm))
   sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
                    wasm_file,
                    '--dwarfdump=' + LLVM_DWARFDUMP,

@@ -22,6 +22,7 @@
 #if SANITIZER_EMSCRIPTEN
 
 #include <emscripten.h>
+#include <emscripten/stack.h>
 
 namespace __sanitizer {
 
@@ -89,8 +90,8 @@ uptr internal_munmap(void *addr, uptr length) {
 
 void GetThreadStackTopAndBottom(bool at_initialization, uptr *stack_top,
                                 uptr *stack_bottom) {
-  *stack_top = EM_ASM_INT({ return STACK_BASE; });
-  *stack_bottom = EM_ASM_INT({ return STACK_MAX; });
+  *stack_top = emscripten_stack_get_base();
+  *stack_bottom = emscripten_stack_get_end();
 }
 
 char *fake_argv[] = {0};

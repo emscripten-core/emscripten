@@ -62,13 +62,6 @@ var EMBIND = 0;
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
 
-// Computed during emscripten for the purpose of writing to emscripten_metadata
-// section.
-// TODO(sbc): Remove this.  If emscripten doesn't need it then neither should
-// any other loader.
-// See https://github.com/emscripten-core/emscripten/issues/12231
-var LEGACY_DYNAMIC_BASE = -1;
-
 // List of functions implemented in compiled code; received from the backend.
 var IMPLEMENTED_FUNCTIONS = [];
 

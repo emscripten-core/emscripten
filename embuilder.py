@@ -12,7 +12,6 @@ process (in particular, if emcc does this automatically, and you are
 running multiple build commands in parallel, confusion can occur).
 """
 
-from __future__ import print_function
 import argparse
 import logging
 import sys
