@@ -31,7 +31,7 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
-import sys, random
+import sys, random, os
 
 input_strings = [
   (0x0, 'Unidentified',          'DOM_PK_UNKNOWN'),
@@ -241,6 +241,7 @@ def hash_all(k1, k2):
 # value at step i, k_1 and k_2 are the constants we are searching, and s_i is the i'th input
 # character
 perfect_hash_table = None
+random.seed(os.environ.get('SOURCE_DATE_EPOCH'))
 while perfect_hash_table == None:
   # The search space is super-narrow, but since there are so few items to hash, practically
   # almost any choice gives a collision free hash.
