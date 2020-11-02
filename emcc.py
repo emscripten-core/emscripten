@@ -1157,8 +1157,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Otherwise the wasm file is produced alongside the final target.
       wasm_target = unsuffixed(target) + '.wasm'
 
-    wasm_source_map_target = wasm_target + '.map'
-
     # Apply user -jsD settings
     for s in user_js_defines:
       shared.Settings.attrs[s[0]] = s[1]
@@ -1729,13 +1727,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM_BIGINT:
       shared.Settings.LEGALIZE_JS_FFI = 0
 
-    if shared.Settings.SINGLE_FILE:
-      # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-      shared.Settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
-    else:
-      # set file locations, so that JS glue can find what it needs
-      shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_target))
-      shared.Settings.GENERATE_SOURCE_MAP = shared.Settings.DEBUG_LEVEL >= 4
+    shared.Settings.GENERATE_SOURCE_MAP = shared.Settings.DEBUG_LEVEL >= 4 and not shared.Settings.SINGLE_FILE
 
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
@@ -2216,14 +2208,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       final_js = None
     else:
       final_js = tmp_wasm + '.js'
-    emscripten.run(tmp_wasm, final_js, memfile)
+    emscripten.run(tmp_wasm, wasm_target, final_js, memfile)
 
     save_intermediate('original')
-
-    # we also received the wasm at this stage
-    safe_move(tmp_wasm, wasm_target)
-    if shared.Settings.GENERATE_SOURCE_MAP:
-      safe_move(tmp_wasm + '.map', wasm_source_map_target)
 
   # exit block 'emscript'
   log_time('emscript (llvm => executable code)')
