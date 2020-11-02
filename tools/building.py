@@ -773,10 +773,6 @@ def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None)
     assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
 
-def can_inline():
-  return Settings.INLINING_LIMIT == 0
-
-
 def get_safe_internalize():
   if Settings.LINKABLE:
     return [] # do not internalize anything

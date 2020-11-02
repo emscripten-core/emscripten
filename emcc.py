@@ -718,6 +718,33 @@ def parse_s_args(args):
   return (settings_changes, newargs)
 
 
+def calc_cflags(options):
+  # Flags we pass to the compiler when building C/C++ code
+  # We add these to the user's flags (newargs), but not when building .s or .S assembly files
+  cflags = []
+
+  if options.tracing:
+    cflags.append('-D__EMSCRIPTEN_TRACING__=1')
+
+  if shared.Settings.USE_PTHREADS:
+    cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
+
+  if not shared.Settings.STRICT:
+    # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+    # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+    cflags.append('-DEMSCRIPTEN')
+
+  # if exception catching is disabled, we can prevent that code from being
+  # generated in the frontend
+  if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
+    cflags.append('-fignore-exceptions')
+
+  if shared.Settings.INLINING_LIMIT:
+    cflags.append('-fno-inline-functions')
+
+  return cflags
+
+
 run_via_emxx = False
 
 
@@ -947,11 +974,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     input_files = []
     libs = []
     link_flags = []
-
-    # All of the above arg lists entries contain indexes into the full argument
-    # list. In order to add extra implicit args (embind.cc, etc) below, we keep a
-    # counter for the next index that should be used.
-    next_arg_index = len(newargs)
 
     has_header_inputs = False
     lib_dirs = []
@@ -1359,18 +1381,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs.append(f)
         add_link_flag(len(newargs), f)
 
-    # Flags we pass to the compiler when building C/C++ code
-    # We add these to the user's flags (newargs), but not when building .s or .S assembly files
-    cflags = []
-
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
     newargs = [x for x in newargs if x not in shared.SIMD_INTEL_FEATURE_TOWER and x not in shared.SIMD_NEON_FLAGS]
-
-    if not shared.Settings.STRICT:
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      cflags.append('-DEMSCRIPTEN')
 
     link_to_object = False
     if options.shared or options.relocatable:
@@ -1432,11 +1445,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
     if shared.Settings.STB_IMAGE and final_suffix in EXECUTABLE_ENDINGS:
-      input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
-      next_arg_index += 1
+      input_files.append((len(newargs), shared.path_from_root('third_party', 'stb_image.c')))
       shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
-      # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation when compiling
-      cflags.append('-DSTB_IMAGE_IMPLEMENTATION')
+      # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation
+      # when compiling
+      newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
     if shared.Settings.USE_WEBGL2:
       shared.Settings.MAX_WEBGL_VERSION = 2
@@ -1448,8 +1461,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.ASMFS and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libasmfs')
-      cflags.append('-D__EMSCRIPTEN_ASMFS__=1')
-      next_arg_index += 1
       shared.Settings.FILESYSTEM = 0
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
       shared.Settings.FETCH = 1
@@ -1464,7 +1475,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libfetch')
-      next_arg_index += 1
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_fetch.js')))
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
@@ -1496,11 +1506,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
-
-    # if exception catching is disabled, we can prevent that code from being
-    # generated in the frontend
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
-      cflags.append('-fignore-exceptions')
 
     if options.proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
@@ -1554,7 +1559,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
-      cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
       newargs += ['-pthread']
       # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
       # manually export them
@@ -1870,13 +1874,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.SINGLE_FILE:
         exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
 
-    if options.tracing:
-      cflags.append('-D__EMSCRIPTEN_TRACING__=1')
-      if shared.Settings.ALLOW_MEMORY_GROWTH:
-        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
-        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_current',
-                                               '_emscripten_stack_get_base',
-                                               '_emscripten_stack_get_end']
+    if options.tracing and shared.Settings.ALLOW_MEMORY_GROWTH:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_current',
+                                             '_emscripten_stack_get_base',
+                                             '_emscripten_stack_get_end']
 
     if shared.Settings.USE_PTHREADS:
       newargs.append('-pthread')
@@ -1939,9 +1941,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
-
-    if not building.can_inline():
-      cflags.append('-fno-inline-functions')
+    cflags = calc_cflags(options)
 
     def use_cxx(src):
       if 'c++' in language_mode or run_via_emxx:
