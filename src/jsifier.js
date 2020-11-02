@@ -127,7 +127,7 @@ function JSify(data, functionsOnly) {
 
       var noExport = false;
 
-      if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
+      if (!LibraryManager.library.hasOwnProperty(ident)) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';

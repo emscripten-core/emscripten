@@ -726,16 +726,6 @@ LibraryManager.library = {
     return limit;
   },
 
-  // ==========================================================================
-  // string.h
-  // ==========================================================================
-
-  memcpy__inline: function(dest, src, num, align) {
-    var ret = '';
-    ret += makeCopyValues(dest, src, num, 'null', null, align);
-    return ret;
-  },
-
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
