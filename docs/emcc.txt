@@ -575,8 +575,8 @@ Options that are modified or new in *emcc* are listed below:
      in addition to the generated **.js** and/or **.html** file.
 
 "-c"
-   Tells *emcc* to compiler to and object file which can then be
-   linked with other object files into an executable.
+   Tells *emcc* to emit an object file which can then be linked with
+   other object files to produce an executable.
 
 "--output_eol windows|linux"
    Specifies the line ending to generate for the text files that are
