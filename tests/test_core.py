@@ -5087,11 +5087,8 @@ main( int argv, char ** argc ) {
       self.do_run_in_out_file_test('tests', 'core', 'test_istream.cpp')
 
   def test_fs_base(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.uses_es6 = True
-    # TODO(sbc): It seems that INCLUDE_FULL_LIBRARY will generally generate
-    # undefined symbols at link time so perhaps have it imply this setting?
-    self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
-    self.set_setting('INCLUDE_FULL_LIBRARY', 1)
     self.add_pre_run(open(path_from_root('tests', 'filesystem', 'src.js')).read())
     src = 'int main() {return 0;}\n'
     expected = open(path_from_root('tests', 'filesystem', 'output.txt')).read()
@@ -5331,8 +5328,7 @@ main( int argv, char ** argc ) {
 
   @also_with_wasm_bigint
   def test_unistd_io(self):
-    self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ERRNO_CODES'])
     orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       self.clear()
