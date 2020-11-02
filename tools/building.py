@@ -1125,6 +1125,8 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     'fd_seek',
     'fd_fdstat_get',
     'fd_sync',
+    'fd_pread',
+    'fd_pwrite',
     'proc_exit',
     'clock_res_get',
     'clock_time_get',

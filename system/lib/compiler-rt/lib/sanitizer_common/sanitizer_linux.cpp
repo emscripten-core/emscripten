@@ -106,6 +106,7 @@ extern struct ps_strings *__ps_strings;
 #include <emscripten/threading.h>
 #include <math.h>
 #include <wasi/api.h>
+#include <wasi/wasi-helpers.h>
 #endif
 
 extern char **environ;
@@ -224,17 +225,35 @@ uptr internal_open(const char *filename, int flags, u32 mode) {
 }
 
 uptr internal_read(fd_t fd, void *buf, uptr count) {
+#ifdef __EMSCRIPTEN__
+  __wasi_iovec_t iov = { (uint8_t *)buf, count };
+  size_t num;
+  if (__wasi_syscall_ret(__wasi_fd_read(fd, &iov, 1, &num))) {
+    return -1;
+  }
+  return num;
+#else
   sptr res;
   HANDLE_EINTR(res,
                (sptr)internal_syscall(SYSCALL(read), fd, (uptr)buf, count));
   return res;
+#endif
 }
 
 uptr internal_write(fd_t fd, const void *buf, uptr count) {
+#ifdef __EMSCRIPTEN__
+  __wasi_ciovec_t iov = { (const uint8_t *)buf, count };
+  size_t num;
+  if (__wasi_syscall_ret(__wasi_fd_write(fd, &iov, 1, &num))) {
+    return -1;
+  }
+  return num;
+#else
   sptr res;
   HANDLE_EINTR(res,
                (sptr)internal_syscall(SYSCALL(write), fd, (uptr)buf, count));
   return res;
+#endif
 }
 
 uptr internal_ftruncate(fd_t fd, uptr size) {
