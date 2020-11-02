@@ -277,7 +277,7 @@ Note that in ``MODULARIZE`` mode we do not look for a global Module object for d
 Why is Module['onRuntimeInitialized'] not called when my JavaScript file is loaded?
 ===================================================================================
 
-When you are compiling your application to a ``.js`` file, you normally use ``emcc`` or ``em++`` flag ``--post-js`` to load the file. Then, your next ``<script>`` tag will likely have a ``src`` attribute pointing to your client or appliciation code, such as ``index.js``, ``main.js``, or ``app.js``.
+When you are compiling your application to a ``.js`` file, you normally use ``emcc`` or ``em++`` flag ``--post-js`` to load the file. Then, your next ``<script>`` tag will likely have a ``src`` attribute pointing to your client or application code, such as ``index.js``, ``main.js``, or ``app.js``.
 
 Rather than loading them in two separate script tags, you can use the ``--extern-post-js`` :ref:`compiler flag <emcc-extern-post-js>` to append your client code to the same file. Doing so will ensure your callback is registered before the Module is loaded.
 
@@ -555,4 +555,3 @@ Why the weird name for the project?
 ===================================
 
 I don't know why; it's a perfectly `cromulent <http://en.wikipedia.org/wiki/Lisa_the_Iconoclast>`_ word!
-
