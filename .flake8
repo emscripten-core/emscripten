@@ -8,7 +8,6 @@ exclude =
  ./site/source/conf.py,
  ./tools/debug/,
  ./tools/webidl_binder.py,
- ./tools/create_dom_pk_codes.py,
  ./tools/ffdb.py,
  ./system/lib/, # system libraries
  ./cache/, # download/built content
