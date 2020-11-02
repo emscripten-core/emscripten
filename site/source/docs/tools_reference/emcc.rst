@@ -16,7 +16,8 @@ Command line syntax
 
 (Note that you will need ``./emcc`` if you want to run emcc from your current directory.)
 
-The input file(s) can be either source code files that *Clang* can handle (C or C++), LLVM bitcode in binary form, or LLVM assembly files in human-readable form.
+The input file(s) can be either source code files that *Clang* can handle (C or
+C++), object files (produced by `emcc -c`), or LLVM assembly files.
 
 
 Arguments
@@ -182,7 +183,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-llvm-opts:
 
 ``--llvm-opts <level>``
-  Enables LLVM optimizations, relevant when we call the LLVM optimizer (which is done when building source files to object files / bitcode). Possible ``level`` values are:
+  Enables LLVM optimizations, relevant when we call the LLVM optimizer (which is done when building source files to object code). Possible ``level`` values are:
 
     - ``0``: No LLVM optimizations (default in -O0).
     - ``1``: LLVM ``-O1`` optimizations (default in -O1).
@@ -435,27 +436,28 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-o-target:
 
 ``-o <target>``
-  The ``target`` file name extension defines the output type to be generated:
+  When linking an executable, the ``target`` file name extension defines the output type to be generated:
 
     - <name> **.js** : JavaScript (+ separate **<name>.wasm** file if emitting WebAssembly). (default)
     - <name> **.mjs** : ES6 JavaScript module (+ separate **<name>.wasm** file if emitting WebAssembly).
     - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
-    - <name> **.bc** : LLVM bitcode.
-    - <name> **.o** : WebAssembly object file (unless -flto is used in which case it will be in LLVM bitcode format).
     - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone wasm"; this enables ``STANDALONE_WASM``).
+
+  These rules only apply when linking.  When compiling to object code (See `-c`
+  below) the name of the output file is irrelevant.
 
   .. note:: If ``--memory-init-file`` is used, a **.mem** file will be created in addition to the generated **.js** and/or **.html** file.
 
 .. _emcc-c:
 
 ``-c``
-  Tells *emcc* to generate LLVM bitcode (which can then be linked with other bitcode files), instead of compiling all the way to JavaScript.
+  Tells *emcc* to emit an object file which can then be linked with other object files to produce an executable.
 
 ``--output_eol windows|linux``
   Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
 
 ``--cflags``
-  Prints out the flags ``emcc`` would pass to ``clang`` to compile source code to object/bitcode form. You can use this to invoke clang yourself, and then run ``emcc`` on those outputs just for the final linking+conversion to JS.
+  Prints out the flags ``emcc`` would pass to ``clang`` to compile source code to object form. You can use this to invoke clang yourself, and then run ``emcc`` on those outputs just for the final linking+conversion to JS.
 
 .. _emcc-environment-variables:
 
