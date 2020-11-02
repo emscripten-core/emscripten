@@ -216,7 +216,14 @@ var LibraryManager = {
     // (and makes it simpler to switch between SDL versions, fastcomp and non-fastcomp, etc.).
     var lib = LibraryManager.library;
     libloop: for (var x in lib) {
-      if (x.lastIndexOf('__') > 0) continue; // ignore __deps, __*
+      if (isJsLibraryConfigIdentifier(x)) {
+        var index = x.lastIndexOf('__');
+        var basename = x.slice(0, index);
+        if (!(basename in lib)) {
+          error('Missing library element `' + basename + '` for library config `' + x + '`');
+        }
+        continue;
+      }
       if (typeof lib[x] === 'string') {
         var target = x;
         while (typeof lib[target] === 'string') {
