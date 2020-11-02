@@ -245,7 +245,7 @@ def hash_all(k1, k2):
 # character
 perfect_hash_table = None
 
-# Last know perfect hash constants.  Stored here to this script will
+# Last used perfect hash constants.  Stored here so that this script will
 # produce the same output it did when the current output was generated.
 k1 = 0x7E057D79
 k2 = 3
