@@ -763,9 +763,6 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
-  terminate__sig: 'vi',
-  terminate: '__cxa_call_unexpected',
-
   __gxx_personality_v0: function() {
   },
 
@@ -1789,7 +1786,7 @@ LibraryManager.library = {
     error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
   }],
   // will never be emitted, as the dep errors at compile time
-  longjmp: function() {
+  longjmp: function(env, value) {
     abort('longjmp not supported');
   },
 #endif
