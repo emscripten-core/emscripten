@@ -29,7 +29,7 @@ from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
 from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
-from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol, shlex_join
+from .shared import get_emscripten_temp_dir, exe_suffix, which, is_c_symbol, shlex_join
 
 logger = logging.getLogger('building')
 
