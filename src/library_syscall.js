@@ -301,22 +301,6 @@ var SyscallsLibrary = {
     exit(status);
     // no return
   },
-  __sys_read: function(fd, buf, count) {
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
-  },
-  __sys_write: function(fd, buf, count) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
-#else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    for (var i = 0; i < count; i++) {
-      SYSCALLS.printChar(fd, HEAPU8[buf+i]);
-    }
-    return count;
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
-  },
   __sys_open: function(path, flags, varargs) {
     var pathname = SYSCALLS.getStr(path);
     var mode = SYSCALLS.get();
@@ -967,16 +951,7 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
-  __sys_pread64: function(fd, buf, count, zero, low, high) {
-    var stream = SYSCALLS.getStreamFromFD(fd)
-    var offset = SYSCALLS.get64(low, high);
-    return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
-  },
-  __sys_pwrite64: function(fd, buf, count, zero, low, high) {
-    var stream = SYSCALLS.getStreamFromFD(fd)
-    var offset = SYSCALLS.get64(low, high);
-    return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
-  },
+
   __sys_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefine('EINVAL') }}};
     var cwd = FS.cwd();
@@ -1414,21 +1389,7 @@ var SyscallsLibrary = {
   __sys_pipe2: function(fds, flags) {
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __sys_preadv: function(fd, iov, iovcnt, low, high) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
-  },
-  __sys_pwritev: function(fd, iov, iovcnt, low, high) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    var offset = SYSCALLS.get64(low, high);
-    return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
-  },
+
   __sys_recvmmsg__nothrow: true,
   __sys_recvmmsg__proxy: false,
   __sys_recvmmsg: function(sockfd, msgvec, vlen, flags) {

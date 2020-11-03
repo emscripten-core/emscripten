@@ -194,6 +194,17 @@ var WasiLibrary = {
     return 0;
   },
 
+  fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+    {{{ receiveI64ParamAsI32s('offset') }}}
+    var stream = SYSCALLS.getStreamFromFD(fd)
+#if ASSERTIONS
+    assert(!offset_high, 'offsets over 2^32 not yet supported');
+#endif
+    var num = SYSCALLS.doWritev(stream, iov, iovcnt, offset_low);
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
+  },
+
   fd_close__sig: 'ii',
   fd_close: function(fd) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -223,7 +234,17 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_seek__sig: 'iiiiii',
+  fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+    {{{ receiveI64ParamAsI32s('offset') }}}
+#if ASSERTIONS
+    assert(!offset_high, 'offsets over 2^32 not yet supported');
+#endif
+    var stream = SYSCALLS.getStreamFromFD(fd)
+    var num = SYSCALLS.doReadv(stream, iov, iovcnt, offset_low);
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
+  },
+
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
     {{{ receiveI64ParamAsI32s('offset') }}}
     var stream = SYSCALLS.getStreamFromFD(fd);

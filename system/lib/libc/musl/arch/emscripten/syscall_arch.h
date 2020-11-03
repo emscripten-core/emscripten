@@ -36,8 +36,6 @@ extern "C" {
 #define SYS_IMPORT(NAME) EM_IMPORT(__sys_##NAME)
 
 long SYS_IMPORT(exit) __syscall1(long exit_code);
-long SYS_IMPORT(read) __syscall3(long fd, long buf, long count);
-long SYS_IMPORT(write) __syscall4(long fd, long buf, long count);
 long SYS_IMPORT(open) __syscall5(long path, long flags, ...); // mode is optional
 long SYS_IMPORT(link) __syscall9(long oldpath, long newpath);
 long SYS_IMPORT(unlink) __syscall10(long path);
@@ -91,10 +89,6 @@ long SYS_IMPORT(mremap)
   __syscall163(long old_addr, long old_size, long new_size, long flags, long new_addr);
 long SYS_IMPORT(poll) __syscall168(long fds, long nfds, long timeout);
 long SYS_IMPORT(rt_sigqueueinfo) __syscall178(long tgid, long sig, long uinfo);
-long SYS_IMPORT(pread64)
-  __syscall180(long fd, long buf, long count, long zero, long low, long high);
-long SYS_IMPORT(pwrite64)
-  __syscall181(long fd, long buf, long count, long zero, long low, long high);
 long SYS_IMPORT(getcwd) __syscall183(long buf, long size);
 long SYS_IMPORT(ugetrlimit) __syscall191(long resource, long rlim);
 long SYS_IMPORT(mmap2) __syscall192(long addr, long len, long prot, long flags, long fd, long off);
@@ -146,8 +140,6 @@ long SYS_IMPORT(utimensat) __syscall320(long dirfd, long path, long times, long 
 long SYS_IMPORT(fallocate) __syscall324(long fd, long mode, long off_low, long off_high, long len_low, long len_high);
 long SYS_IMPORT(dup3) __syscall330(long fd, long suggestfd, long flags);
 long SYS_IMPORT(pipe2) __syscall331(long fds, long flags);
-long SYS_IMPORT(preadv) __syscall333(long fd, long iov, long iovcnt, long low, long high);
-long SYS_IMPORT(pwritev) __syscall334(long fd, long iov, long iovcnt, long low, long high);
 long SYS_IMPORT(recvmmsg) __syscall337(long sockfd, long msgvec, long vlen, long flags, ...);
 long SYS_IMPORT(prlimit64) __syscall340(long pid, long resource, long new_limit, long old_limit);
 long SYS_IMPORT(sendmmsg) __syscall345(long sockfd, long msgvec, long vlen, long flags, ...);
