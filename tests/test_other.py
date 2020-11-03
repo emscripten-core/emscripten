@@ -9608,4 +9608,11 @@ exec "$@"
     self.clear()
 
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=foo'])
-    self.assertContained("error: invalid output format: `foo` (must be one of ['wasm', 'js', 'mjs', 'html']", err)
+    self.assertContained("error: invalid output format: `foo` (must be one of ['wasm', 'js', 'mjs', 'html', 'bare']", err)
+
+  def test_post_link(self):
+    err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr
+    self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)
+    err = self.run_process([EMCC, '--post-link', 'bare.wasm'], stderr=PIPE).stderr
+    self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)
+    err = self.assertContained('hello, world!', self.run_js('a.out.js'))

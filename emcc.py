@@ -219,10 +219,13 @@ class OFormat(Enum):
   JS = 2
   MJS = 3
   HTML = 4
+  BARE = 5
 
 
 class EmccOptions(object):
   def __init__(self):
+    self.post_link = False
+    self.executable = False
     self.compiler_wrapper = None
     self.oformat = None
     self.requested_debug = ''
@@ -745,6 +748,23 @@ def calc_cflags(options):
   return cflags
 
 
+def get_file_suffix(filename):
+  """Parses the essential suffix of a filename, discarding Unix-style version
+  numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
+  if filename in SPECIAL_ENDINGLESS_FILENAMES:
+    return filename
+  while filename:
+    filename, suffix = os.path.splitext(filename)
+    if not suffix[1:].isdigit():
+      return suffix
+  return ''
+
+
+def in_temp(name):
+  temp_dir = shared.get_emscripten_temp_dir()
+  return os.path.join(temp_dir, os.path.basename(name))
+
+
 run_via_emxx = False
 
 
@@ -752,7 +772,6 @@ run_via_emxx = False
 # Main run() function
 #
 def run(args):
-  global final_js
   target = None
 
   # Additional compiler flags that we treat as if they were passed to us on the
@@ -881,22 +900,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- End configs -------------
 
-  temp_dir = shared.get_emscripten_temp_dir()
-
-  def in_temp(name):
-    return os.path.join(temp_dir, os.path.basename(name))
-
-  def get_file_suffix(filename):
-    """Parses the essential suffix of a filename, discarding Unix-style version
-    numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
-    if filename in SPECIAL_ENDINGLESS_FILENAMES:
-      return filename
-    while filename:
-      filename, suffix = os.path.splitext(filename)
-      if not suffix[1:].isdigit():
-        return suffix
-    return ''
-
   def optimizing(opts):
     return '-O0' not in opts
 
@@ -924,6 +927,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i + 1] = ''
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
+
+    if options.post_link or options.oformat == OFormat.BARE:
+      diagnostics.warning('experimental', '--oformat=base/--post-link are experimental and subject to change.')
 
     if '-print-search-dirs' in newargs:
       return run_process([clang, '-print-search-dirs'], check=False).returncode
@@ -1103,15 +1109,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Check if a target is specified on the command line
     specified_target, args = find_output_arg(args)
 
-    make_output_executable = False
-
     if os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args:
       # configure tests want a more shell-like style, where we emit return codes on exit()
       shared.Settings.EXIT_RUNTIME = 1
       # use node.js raw filesystem access, to behave just like a native executable
       shared.Settings.NODERAWFS = 1
       # Add `#!` line to output JS and make it executable.
-      make_output_executable = True
+      options.executable = True
       # Autoconf expects the executable output file to be called `a.out`
       default_target_name = 'a.out'
     elif shared.Settings.SIDE_MODULE:
@@ -1172,7 +1176,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
 
-    if options.oformat == OFormat.WASM:
+    if options.oformat in (OFormat.WASM, OFormat.BARE):
       # If the user asks directly for a wasm file then this *is* the target
       wasm_target = target
     else:
@@ -1375,7 +1379,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
 
-    if not compile_only:
+    if not compile_only and not options.post_link:
       ldflags = shared.emsdk_ldflags(newargs)
       for f in ldflags:
         newargs.append(f)
@@ -1689,12 +1693,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if will_metadce() and \
         shared.Settings.OPT_LEVEL >= 2 and \
         shared.Settings.DEBUG_LEVEL <= 2 and \
+        options.oformat not in (OFormat.WASM, OFormat.BARE) and \
         not shared.Settings.LINKABLE and \
         not shared.Settings.STANDALONE_WASM and \
         not shared.Settings.AUTODEBUG and \
         not shared.Settings.ASSERTIONS and \
         not shared.Settings.RELOCATABLE and \
-        not options.oformat == OFormat.WASM and \
         not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
             shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
       shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
@@ -1919,6 +1923,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # tempfile names
     shared.Cache.acquire_cache_lock()
     atexit.register(shared.Cache.release_cache_lock)
+
+  if options.post_link:
+    process_libraries(libs, lib_dirs, temp_files)
+    if len(input_files) != 1:
+      exit_with_error('--post-link requires a single input file')
+    post_link(options, input_files[0][1], wasm_target, target)
+    return 0
 
   with ToolchainProfiler.profile_block('compile inputs'):
     def is_link_flag(flag):
@@ -2164,7 +2175,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   with ToolchainProfiler.profile_block('link'):
     logger.debug('linking: ' + str(linker_inputs))
-    tmp_wasm = in_temp(target_basename + '.wasm')
 
     # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
     # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
@@ -2174,7 +2184,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
       js_funcs = get_all_js_syms(misc_temp_files)
       log_time('JS symbol generation')
-    building.link_lld(linker_inputs, tmp_wasm, external_symbol_list=js_funcs)
+    building.link_lld(linker_inputs, wasm_target, external_symbol_list=js_funcs)
     # Special handling for when the user passed '-Wl,--version'.  In this case the linker
     # does not create the output file, but just prints its version and exits with 0.
     if '--version' in linker_inputs:
@@ -2188,6 +2198,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # /dev/null, but that will take some refactoring
     return 0
 
+  # Perform post-link steps (unless we are running bare mode)
+  if options.oformat != OFormat.BARE:
+    post_link(options, wasm_target, wasm_target, target)
+
+  return 0
+
+
+def post_link(options, in_wasm, wasm_target, target):
+  global final_js
+
+  target_basename = unsuffixed_basename(target)
+
+  if options.oformat != OFormat.WASM:
+    final_js = in_temp(target_basename + '.js')
+
   if shared.Settings.MEM_INIT_IN_WASM:
     memfile = None
   else:
@@ -2195,7 +2220,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   with ToolchainProfiler.profile_block('emscript'):
     # Emscripten
-    logger.debug('LLVM => JS')
+    logger.debug('emscript')
     if options.memory_init_file:
       shared.Settings.MEM_INIT_METHOD = 1
     else:
@@ -2204,16 +2229,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if embed_memfile():
       shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-    if options.oformat == OFormat.WASM:
-      final_js = None
-    else:
-      final_js = tmp_wasm + '.js'
-    emscripten.run(tmp_wasm, wasm_target, final_js, memfile)
-
+    emscripten.run(in_wasm, wasm_target, final_js, memfile)
     save_intermediate('original')
 
   # exit block 'emscript'
-  log_time('emscript (llvm => executable code)')
+  log_time('emscript)')
 
   with ToolchainProfiler.profile_block('source transforms'):
     # Embed and preload files
@@ -2346,9 +2366,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.oformat == OFormat.HTML:
       generate_html(target, options, js_target, target_basename,
                     wasm_target, memfile)
-    else:
-      if options.proxy_to_worker:
-        generate_worker_js(target, js_target, target_basename)
+    elif options.proxy_to_worker:
+      generate_worker_js(target, js_target, target_basename)
 
     if embed_memfile() and memfile:
       shared.try_delete(memfile)
@@ -2356,7 +2375,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for f in generated_text_files_with_native_eols:
       tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
 
-    if make_output_executable:
+    if options.executable:
       make_js_executable(js_target)
 
   log_time('final emitting')
@@ -2453,6 +2472,8 @@ def parse_args(newargs):
       options.extern_post_js += open(consume_arg()).read() + '\n'
     elif check_arg('--compiler-wrapper'):
       shared.COMPILER_WRAPPER = consume_arg()
+    elif check_flag('--post-link'):
+      options.post_link = True
     elif check_arg('--oformat'):
       formats = [f.lower() for f in OFormat.__members__]
       fmt = consume_arg()
