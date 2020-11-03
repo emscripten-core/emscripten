@@ -452,22 +452,11 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
   else:
     args.append('--no-legalize-javascript-ffi')
   if memfile:
-    args.append('--separate-data-segments=' + memfile)
+    args.append(f'--separate-data-segments={memfile}')
+    args.append(f'--global-base={shared.Settings.GLOBAL_BASE}')
     modify_wasm = True
   if shared.Settings.SIDE_MODULE:
     args.append('--side-module')
-  else:
-    # --global-base is used by wasm-emscripten-finalize to calculate the size
-    # of the static data used.  The argument we supply here needs to match the
-    # global based used by lld (see building.link_lld).  For relocatable this is
-    # zero for the global base although at runtime __memory_base is used.
-    # For non-relocatable output we used shared.Settings.GLOBAL_BASE.
-    # TODO(sbc): Can we remove this argument infer this from the segment
-    # initializer?
-    if shared.Settings.RELOCATABLE:
-      args.append('--global-base=0')
-    else:
-      args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
   if shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
     modify_wasm = True
