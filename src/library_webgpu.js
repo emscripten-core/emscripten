@@ -1292,14 +1292,14 @@ var LibraryWebGPU = {
 
   // wgpuComputePipeline
 
-  wgpuComputePipelineGetBindGroupLayout(pipelineId, groupIndex) {
+  wgpuComputePipelineGetBindGroupLayout: function(pipelineId, groupIndex) {
     var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
     return WebGPU.mgrBindGroupLayout.create(pipeline["getBindGroupLayout"](groupIndex));
   },
 
   // wgpuRenderPipeline
 
-  wgpuRenderPipelineGetBindGroupLayout(pipelineId, groupIndex) {
+  wgpuRenderPipelineGetBindGroupLayout: function(pipelineId, groupIndex) {
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
     return WebGPU.mgrBindGroupLayout.create(pipeline["getBindGroupLayout"](groupIndex));
   },
