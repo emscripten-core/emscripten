@@ -8940,12 +8940,6 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-lm', '-ldl', '-lrt', '-lpthread'])
 
   def test_supported_linker_flags(self):
-    out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--print-map'], stderr=PIPE).stderr
-    self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
-
-    out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--print-map'], stderr=PIPE).stderr
-    self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
-
     out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-rpath=foo'], stderr=PIPE).stderr
     self.assertContained('warning: ignoring unsupported linker flag: `-rpath=foo`', out)
 
