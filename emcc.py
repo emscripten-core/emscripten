@@ -743,6 +743,18 @@ def calc_cflags(options):
   if shared.Settings.INLINING_LIMIT:
     cflags.append('-fno-inline-functions')
 
+  if shared.Settings.RELOCATABLE:
+    cflags.append('-fPIC')
+    cflags.append('-fvisibility=default')
+
+  if shared.Settings.LTO:
+    cflags.append('-flto=' + shared.Settings.LTO)
+  else:
+    # With LTO mode these args get passed instead
+    # at link time when the backend runs.
+    for a in building.llvm_backend_args():
+      cflags += ['-mllvm', a]
+
   return cflags
 
 
@@ -1950,7 +1962,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
-    cflags = calc_cflags(options)
+    compile_args += calc_cflags(options)
 
     def use_cxx(src):
       if 'c++' in language_mode or run_via_emxx:
@@ -1977,8 +1989,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     def get_clang_command(src_file):
       cxx = use_cxx(src_file)
-      base_cflags = shared.get_cflags(args, cxx)
-      cmd = get_compiler(cxx) + base_cflags + cflags + compile_args + [src_file]
+      cflags = shared.get_cflags(args, cxx)
+      cmd = get_compiler(cxx) + cflags + compile_args + [src_file]
       return system_libs.process_args(cmd, shared.Settings)
 
     def get_clang_command_asm(src_file):
@@ -2008,8 +2020,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not header.endswith(HEADER_ENDINGS):
           exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
         cxx = use_cxx(header)
-        base_cflags = shared.get_cflags(args, cxx)
-        cmd = get_compiler(cxx) + base_cflags + cflags + compile_args + [header]
+        cflags = shared.get_cflags(args, cxx)
+        cmd = get_compiler(cxx) + cflags + compile_args + [header]
         if specified_target:
           cmd += ['-o', specified_target]
         cmd = system_libs.process_args(cmd, shared.Settings)
@@ -2036,16 +2048,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         cmd = get_clang_command(input_file)
       cmd += ['-c', '-o', output_file]
-      if shared.Settings.RELOCATABLE:
-        cmd.append('-fPIC')
-        cmd.append('-fvisibility=default')
-      if shared.Settings.LTO:
-        cmd.append('-flto=' + shared.Settings.LTO)
-      else:
-        # With LTO mode these args get passed instead
-        # at link time when the backend runs.
-        for a in building.llvm_backend_args():
-          cmd += ['-mllvm', a]
       shared.print_compiler_stage(cmd)
       shared.check_call(cmd)
       if output_file not in ('-', os.devnull):
