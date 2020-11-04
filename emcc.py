@@ -2900,17 +2900,16 @@ var %(EXPORT_NAME)s = (function() {
     # Export using a UMD style export, or ES6 exports if selected
 
     if shared.Settings.EXPORT_ES6:
-      f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+      f.write('export default %s;' % shared.Settings.EXPORT_NAME)
     elif not shared.Settings.MINIMAL_RUNTIME:
-      f.write('''if (typeof exports === 'object' && typeof module === 'object')
-      module.exports = %(EXPORT_NAME)s;
-    else if (typeof define === 'function' && define['amd'])
-      define([], function() { return %(EXPORT_NAME)s; });
-    else if (typeof exports === 'object')
-      exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
-    ''' % {
-        'EXPORT_NAME': shared.Settings.EXPORT_NAME
-      })
+      f.write('''\
+if (typeof exports === 'object' && typeof module === 'object')
+  module.exports = %(EXPORT_NAME)s;
+else if (typeof define === 'function' && define['amd'])
+  define([], function() { return %(EXPORT_NAME)s; });
+else if (typeof exports === 'object')
+  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+''' % {'EXPORT_NAME': shared.Settings.EXPORT_NAME})
 
   save_intermediate('modularized')
 
