@@ -9581,6 +9581,15 @@ exec "$@"
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--js-library=lib.js'])
     self.assertContained('error: Missing library element `foo` for library config `foo__sig`', err)
 
+  def test_jslib_ifdef(self):
+    create_test_file('lib.js', '''
+      #ifdef ASSERTIONS
+      var foo;
+      #endif
+      ''')
+    proc = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--js-library=lib.js'], stderr=PIPE)
+    self.assertContained('warning: use of #ifdef in js library.  Use #if instead.', proc.stderr)
+
   def test_wasm2js_no_dynamic_linking(self):
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
       err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-sMAIN_MODULE', '-sWASM=0'])

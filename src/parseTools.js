@@ -50,35 +50,40 @@ function preprocess(text, filenameHint) {
       }
 
       if (!inStyle) {
-        if (line.indexOf('#if') === 0) {
-          var parts = line.split(' ');
-          var after = parts.slice(1).join(' ');
-          var truthy = !!eval(after);
-          showStack.push(truthy);
-        } else if (line.indexOf('#include') === 0) {
-          if (showStack.indexOf(false) === -1) {
-            var filename = line.substr(line.indexOf(' ')+1);
-            if (filename.indexOf('"') === 0) {
-              filename = filename.substr(1, filename.length - 2);
+        var trimmed = line.trim()
+        if (trimmed[0] === '#') {
+          var first = trimmed.split(' ', 1)[0]
+          if (first == '#if' || first == '#ifdef') {
+            if (first == '#ifdef') {
+              warn('warning: use of #ifdef in js library.  Use #if instead.');
             }
-            var included = read(filename);
-            var result = preprocess(included, filename);
-            if (result) {
-              ret += "// include: " + filename + "\n";
-              ret += result;
-              ret += "// end include: " + filename + "\n";
+            var after = trimmed.substring(trimmed.indexOf(' '));
+            var truthy = !!eval(after);
+            showStack.push(truthy);
+          } else if (first === '#include') {
+            if (showStack.indexOf(false) === -1) {
+              var filename = line.substr(line.indexOf(' ')+1);
+              if (filename.indexOf('"') === 0) {
+                filename = filename.substr(1, filename.length - 2);
+              }
+              var included = read(filename);
+              var result = preprocess(included, filename);
+              if (result) {
+                ret += "// include: " + filename + "\n";
+                ret += result;
+                ret += "// end include: " + filename + "\n";
+              }
             }
+          } else if (first === '#else') {
+            assert(showStack.length > 0);
+            showStack.push(!showStack.pop());
+          } else if (first === '#endif') {
+            assert(showStack.length > 0);
+            showStack.pop();
+          } else {
+            throw "Unknown preprocessor directive on line " + i + ': `' + line + '`';
           }
-        } else if (line.indexOf('#else') === 0) {
-          assert(showStack.length > 0);
-          showStack.push(!showStack.pop());
-        } else if (line.indexOf('#endif') === 0) {
-          assert(showStack.length > 0);
-          showStack.pop();
         } else {
-          if (line[0] === '#') {
-            throw "Unclear preprocessor command on line " + i + ': ' + line;
-          }
           if (showStack.indexOf(false) === -1) {
             // Never emit more than one empty line at a time.
             if (emptyLine && !line) {

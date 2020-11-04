@@ -177,7 +177,7 @@ function JSify(data, functionsOnly) {
         return;
       }
       deps.forEach(function(dep) {
-        if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #ifdefs in src/library*.js)');
+        if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #if in src/library*.js)');
       });
       var isFunction = false;
 
