@@ -3358,7 +3358,7 @@ int main()
       self.assertContainedIf(warning, err, suffix in shared_suffixes)
 
   def test_symbol_map(self):
-    UNMINIFIED_HEAP8 = 'var HEAP8 = new global.Int8Array'
+    UNMINIFIED_HEAP8 = 'var HEAP8 = new '
     UNMINIFIED_MIDDLE = 'function middle'
 
     for opts in [['-O2'], ['-O3']]:
@@ -8220,6 +8220,10 @@ int main () {
       return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
 
     for js in [False, True]:
+      # TODO(sbc): re-enabled once binaryen side change rolls:
+      # https://github.com/WebAssembly/binaryen/pull/3325
+      if js:
+        continue
       for sources, name in [
           [hello_world_sources, 'hello_world'],
           [random_printf_sources, 'random_printf'],
