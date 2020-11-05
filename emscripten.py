@@ -151,6 +151,17 @@ def update_settings_glue(metadata, DEBUG):
     shared.Settings.WASM_TABLE_SIZE = metadata['tableSize'] + 1
   shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
 
+  # Store exports for Closure compiler to be able to track these as globals in
+  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
+  shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in metadata['exports']]
+
+  if shared.Settings.STACK_OVERFLOW_CHECK:
+    if 'emscripten_stack_get_end' not in metadata['exports']:
+      logger.warning('STACK_OVERFLOW_CHECK disabled because emscripten stack helpers not exported')
+      shared.Settings.STACK_OVERFLOW_CHECK = 0
+    else:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+
 
 # static code hooks
 class StaticCodeHooks:
@@ -361,10 +372,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
   exports = metadata['exports']
-
-  # Store exports for Closure compiler to be able to track these as globals in
-  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
-  shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in exports]
 
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
