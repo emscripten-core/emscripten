@@ -1960,7 +1960,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
-    compile_args += calc_cflags(options)
+    cflags = calc_cflags(options)
+    system_libs.add_ports_cflags(cflags, shared.Settings)
 
     def use_cxx(src):
       if 'c++' in language_mode or run_via_emxx:
@@ -1987,9 +1988,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     def get_clang_command(src_file):
       cxx = use_cxx(src_file)
-      cflags = shared.get_cflags(args, cxx)
-      cmd = get_compiler(cxx) + cflags + compile_args + [src_file]
-      return system_libs.process_args(cmd, shared.Settings)
+      per_file_cflags = shared.get_cflags(args, cxx)
+      return get_compiler(cxx) + cflags + per_file_cflags + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
       asflags = shared.get_asmflags()
@@ -2017,12 +2017,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for header in headers:
         if not header.endswith(HEADER_ENDINGS):
           exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
-        cxx = use_cxx(header)
-        cflags = shared.get_cflags(args, cxx)
-        cmd = get_compiler(cxx) + cflags + compile_args + [header]
+        cmd = get_clang_command(header)
         if specified_target:
           cmd += ['-o', specified_target]
-        cmd = system_libs.process_args(cmd, shared.Settings)
         logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
         shared.print_compiler_stage(cmd)
         return run_process(cmd, check=False).returncode

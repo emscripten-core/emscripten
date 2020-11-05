@@ -1956,7 +1956,7 @@ def build_port(port_name, settings):
     port.get(Ports, settings, shared)
 
 
-def process_args(args, settings):
+def add_ports_cflags(args, settings):
   # Legacy SDL1 port is not actually a port at all but builtin
   if settings.USE_SDL == 1:
     args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
