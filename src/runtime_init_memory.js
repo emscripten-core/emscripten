@@ -9,13 +9,18 @@
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
-  buffer = Module['buffer'];
 } else {
 #endif // USE_PTHREADS
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
     wasmMemory = Module['wasmMemory'];
+    // If the user provides an incorrect length, just use that length instead rather than providing the user to
+    // specifically provide the memory length with Module['INITIAL_MEMORY'].
+    INITIAL_MEMORY = buffer.byteLength;
+    #ifdef ASSERTIONS
+    assert(INITIAL_MEMORY % WASM_PAGE_SIZE === 0);
+    #endif
   } else
 #endif
   {
@@ -50,14 +55,5 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 
-if (wasmMemory) {
-  buffer = wasmMemory.buffer;
-}
-
-// If the user provides an incorrect length, just use that length instead rather than providing the user to
-// specifically provide the memory length with Module['INITIAL_MEMORY'].
-INITIAL_MEMORY = buffer.byteLength;
-#if ASSERTIONS
-assert(INITIAL_MEMORY % {{{ WASM_PAGE_SIZE }}} === 0);
-#endif
+buffer = wasmMemory.buffer;
 updateGlobalBufferAndViews(buffer);
