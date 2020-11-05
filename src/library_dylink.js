@@ -390,11 +390,6 @@ var LibraryDylink = {
       };
       var proxy = new Proxy(env, proxyHandler);
       var info = {
-        'global': {
-          'NaN': NaN,
-          'Infinity': Infinity,
-        },
-        'global.Math': Math,
         'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
         'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
         'env': proxy,
