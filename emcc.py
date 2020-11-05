@@ -318,7 +318,7 @@ def expand_byte_size_suffixes(value):
   many bytes that is and returns it as an integer.
   """
   value = value.strip()
-  match = re.match(r'^(\d+)\s*([kmgt]?b)?$', value, re.I)
+  match = re.match(r'^(-?\d+)\s*([kmgt]?b)?$', value, re.I)
   if not match:
     exit_with_error("invalid byte size `%s`.  Valid suffixes are: kb, mb, gb, tb" % value)
   value, suffix = match.groups()
