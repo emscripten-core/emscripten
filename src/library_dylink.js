@@ -621,7 +621,7 @@ var LibraryDylink = {
 
   $preloadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $preloadDylibs: function() {
-#ifdef DYLINK_DEBUG
+#if DYLINK_DEBUG
     err('preloadDylibs');
 #endif
     var libs = {{{ JSON.stringify(RUNTIME_LINKED_LIBS) }}};
@@ -629,7 +629,7 @@ var LibraryDylink = {
       libs = libs.concat(Module['dynamicLibraries'])
     }
     if (!libs.length) {
-#ifdef DYLINK_DEBUG
+#if DYLINK_DEBUG
       err('preloadDylibs: no libraries to preload');
 #endif
       reportUndefinedSymbols();

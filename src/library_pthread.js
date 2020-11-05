@@ -1381,7 +1381,7 @@ var LibraryPThread = {
 #endif
   },
 
-  // The profiler setters are defined twice, here in asm.js so that they can be #ifdeffed out
+  // The profiler setters are defined twice, here in asm.js so that they can be #if'ed out
   // without having to pay the impact of a FFI transition for a no-op in non-profiling builds.
   emscripten_conditional_set_current_thread_status__asm: true,
   emscripten_conditional_set_current_thread_status__sig: 'vii',
