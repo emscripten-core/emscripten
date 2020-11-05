@@ -86,14 +86,13 @@ assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memo
 #endif
 
 #if ASSERTIONS
-var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 assert({{{ INITIAL_MEMORY }}} >= {{{ TOTAL_STACK }}}, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ INITIAL_MEMORY }}} + '! (TOTAL_STACK=' + {{{ TOTAL_STACK }}} + ')');
-assert({{{ INITIAL_MEMORY }}} % WASM_PAGE_SIZE === 0);
+assert({{{ INITIAL_MEMORY }}} % {{{ WASM_PAGE_SIZE }}} === 0);
 #if MAXIMUM_MEMORY != -1
-assert({{{ MAXIMUM_MEMORY }}} % WASM_PAGE_SIZE == 0);
+assert({{{ MAXIMUM_MEMORY }}} % {{{ WASM_PAGE_SIZE }}} == 0);
 #endif
 assert(buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #if USE_PTHREADS
