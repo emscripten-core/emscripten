@@ -239,9 +239,6 @@ function allocate(slab, allocator) {
 
 // Memory management
 
-var PAGE_SIZE = {{{ POSIX_PAGE_SIZE }}};
-var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
-
 function alignUp(x, multiple) {
   if (x % multiple > 0) {
     x += multiple - (x % multiple);
