@@ -46,7 +46,7 @@ Current Trunk
   case the input to emscripten is a single wasm file (for example the output of
   `wasm-ld`).  When emcc is run with `--post-link` it will take a wasm file as
   input that perform all the normal post link steps such as finalizing and
-  optimizing the wasm file and generating the JavaScript and/of html that will
+  optimizing the wasm file and generating the JavaScript and/or html that will
   run it.
 
 2.0.8: 10/24/2020
