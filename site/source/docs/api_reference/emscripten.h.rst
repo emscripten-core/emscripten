@@ -594,7 +594,7 @@ Typedefs
 
   Defined as: ::
 
-    typedef void (*em_async_wget2_data_onprogress_func)(unsigned void*, int, int)
+    typedef void (*em_async_wget2_data_onprogress_func)(unsigned, void*, int, int)
 
 
 .. c:type:: em_run_preload_plugins_data_onload_func
