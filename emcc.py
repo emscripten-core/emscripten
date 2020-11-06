@@ -1150,25 +1150,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     final_suffix = get_file_suffix(target)
 
-    if has_dash_c or has_dash_S or has_dash_E:
+    if has_dash_c or has_dash_S or has_dash_E or '-M' in newargs or '-MM' in newargs:
       if has_dash_c:
         if '-emit-llvm' in newargs:
-          final_suffix = '.bc'
-        else:
-          final_suffix = options.default_object_extension
-        target = target_basename + final_suffix
+          options.default_object_extension = '.bc'
       elif has_dash_S:
         if '-emit-llvm' in newargs:
-          final_suffix = '.ll'
+          options.default_object_extension = '.ll'
         else:
-          final_suffix = '.s'
-        target = target_basename + final_suffix
+          options.default_object_extension = '.s'
+      elif '-M' in newargs or '-MM' in newargs:
+        options.default_object_extension = '.mout' # not bitcode, not js; but just dependency rule of the input file
 
-      if len(input_files) > 1 and specified_target:
-        exit_with_error('cannot specify -o with -c/-S/-E and multiple source files')
-
-    if '-M' in newargs or '-MM' in newargs:
-      final_suffix = '.mout' # not bitcode, not js; but just dependency rule of the input file
+      if specified_target:
+        if len(input_files) > 1:
+          exit_with_error('cannot specify -o with -c/-S/-E/-M and multiple source files')
+      else:
+        target = target_basename + options.default_object_extension
 
     # If no output format was sepecific we try to imply the format based on
     # the output filename extension.
@@ -2030,12 +2028,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return run_process(cmd, check=False).returncode
 
     def get_object_filename(input_file):
-      if compile_only and len(input_files) == 1:
-        # no need for a temp file, just emit to the right place
+      if compile_only:
+        # In compile-only mode we don't use any temp file.   The object files are written directly
+        # to their final output locations.
         if specified_target:
+          assert len(input_files) == 1
           return specified_target
         else:
-          return unsuffixed_basename(input_files[0][1]) + options.default_object_extension
+          return unsuffixed_basename(input_file) + options.default_object_extension
       else:
         return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
@@ -2076,37 +2076,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # exit block 'compile inputs'
   log_time('compile inputs')
-
-  with ToolchainProfiler.profile_block('process inputs'):
-    # If we were just compiling stop here
-    if compile_only:
-      if not specified_target:
-        assert len(temp_files) == len(input_files)
-        for tempf, inputf in zip(temp_files, input_files):
-          safe_move(tempf[1], unsuffixed_basename(inputf[1]) + final_suffix)
-      else:
-        # Specifying -o with multiple input source files is not allowed.
-        # We error out much earlier in this case.
-        assert len(input_files) == 1
-        input_file = input_files[0][1]
-        temp_file = temp_files[0][1]
-        if specified_target != '-':
-          if temp_file != input_file:
-            safe_move(temp_file, specified_target)
-          else:
-            safe_copy(temp_file, specified_target)
-        temp_output_base = unsuffixed(temp_file)
-        if os.path.exists(temp_output_base + '.d'):
-          # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
-          # adjusting the target name away from the temporary file name to the specified target.
-          # It will be deleted with the rest of the temporary directory.
-          deps = open(temp_output_base + '.d').read()
-          deps = deps.replace(temp_output_base + options.default_object_extension, specified_target)
-          with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_file) + '.d')), "w") as out_dep:
-            out_dep.write(deps)
-
-  # exit block 'process inputs'
-  log_time('process inputs')
 
   if compile_only:
     logger.debug('stopping after compile phase')
