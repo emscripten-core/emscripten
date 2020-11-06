@@ -2028,7 +2028,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     def get_object_filename(input_file):
       if compile_only:
         # In compile-only mode we don't use any temp file.   The object files are written directly
-        # to thier final output locations.
+        # to their final output locations.
         if specified_target:
           assert len(input_files) == 1
           return specified_target
