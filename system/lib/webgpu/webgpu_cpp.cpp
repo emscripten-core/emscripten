@@ -1607,6 +1607,9 @@ namespace wgpu {
     void RenderBundleEncoder::SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) const {
         wgpuRenderBundleEncoderSetBindGroup(Get(), groupIndex, group.Get(), dynamicOffsetCount, reinterpret_cast<uint32_t const * >(dynamicOffsets));
     }
+    void RenderBundleEncoder::SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset, uint64_t size) const {
+        wgpuRenderBundleEncoderSetIndexBuffer(Get(), buffer.Get(), static_cast<WGPUIndexFormat>(format), offset, size);
+    }
     void RenderBundleEncoder::SetIndexBufferWithFormat(Buffer const& buffer, IndexFormat format, uint64_t offset, uint64_t size) const {
         wgpuRenderBundleEncoderSetIndexBufferWithFormat(Get(), buffer.Get(), static_cast<WGPUIndexFormat>(format), offset, size);
     }
@@ -1664,6 +1667,9 @@ namespace wgpu {
     }
     void RenderPassEncoder::SetBlendColor(Color const * color) const {
         wgpuRenderPassEncoderSetBlendColor(Get(), reinterpret_cast<WGPUColor const * >(color));
+    }
+    void RenderPassEncoder::SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset, uint64_t size) const {
+        wgpuRenderPassEncoderSetIndexBuffer(Get(), buffer.Get(), static_cast<WGPUIndexFormat>(format), offset, size);
     }
     void RenderPassEncoder::SetIndexBufferWithFormat(Buffer const& buffer, IndexFormat format, uint64_t offset, uint64_t size) const {
         wgpuRenderPassEncoderSetIndexBufferWithFormat(Get(), buffer.Get(), static_cast<WGPUIndexFormat>(format), offset, size);
