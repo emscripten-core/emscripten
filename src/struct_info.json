@@ -1708,7 +1708,6 @@
                 "type",
                 "hasDynamicOffset",
                 "minBufferBindingSize",
-                "multisampled",
                 "viewDimension",
                 "textureComponentType",
                 "storageTextureFormat"
