@@ -8220,10 +8220,6 @@ int main () {
       return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
 
     for js in [False, True]:
-      # TODO(sbc): re-enabled once binaryen side change rolls:
-      # https://github.com/WebAssembly/binaryen/pull/3325
-      if js:
-        continue
       for sources, name in [
           [hello_world_sources, 'hello_world'],
           [random_printf_sources, 'random_printf'],
