@@ -9642,21 +9642,21 @@ exec "$@"
 
   # Test that Closure prints out clear readable error messages when there are errors.
   def test_closure_errors(self):
-    err = self.expect_fail([EMCC, path_from_root('tests', 'closure_error.c'), '-O2', '--closure', '1', '--js-library', path_from_root('tests', 'library_closure_error.js')])
+    err = self.expect_fail([EMCC, path_from_root('tests', 'closure_error.c'), '-O2', '--closure', '1'])
     lines = err.split('\n')
 
     def find_substr_index(s):
-      for i in range(len(lines)):
-        if s in lines[i]:
+      for i, line in enumerate(lines):
+        if s in line:
           return i
       return -1
 
     idx1 = find_substr_index('[JSC_UNDEFINED_VARIABLE] variable thisVarDoesNotExist is undeclared')
     idx2 = find_substr_index('[JSC_UNDEFINED_VARIABLE] variable thisVarDoesNotExistEither is undeclared')
-    assert idx1 != -1
-    assert idx2 != -1
+    self.assertNotEqual(idx1, -1)
+    self.assertNotEqual(idx2, -1)
     # The errors must be present on distinct lines.
-    assert idx1 != idx2
+    self.assertNotEqual(idx1, idx2)
 
   # Make sure that --cpuprofiler compiles with --closure 1
   def test_cpuprofiler_closure(self):

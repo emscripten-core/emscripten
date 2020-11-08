@@ -1,6 +1,9 @@
-extern void foo(void);
+#include <emscripten.h>
 
 int main()
 {
-	foo();
+	EM_ASM({
+		thisVarDoesNotExist++;
+		thisVarDoesNotExistEither++;
+	});
 }
