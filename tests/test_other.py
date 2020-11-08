@@ -9639,3 +9639,20 @@ exec "$@"
     self.compile_with_wasi_sdk(path_from_root('tests', 'hello_world.c'), 'hello.wasm')
     self.run_process([EMCC, '--post-link', '-sPURE_WASI', 'hello.wasm'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+  # Test that Closure prints out clear readable error messages when there are errors.
+  def test_closure_errors(self):
+    err = self.expect_fail([EMCC, path_from_root('tests', 'closure_error.c'), '-O2', '--closure', '1', '--js-library', path_from_root('tests', 'library_closure_error.js')])
+    lines = err.split('\n')
+    def find_substr_index(s):
+      for i in range(len(lines)):
+        if s in lines[i]:
+          return i
+      return -1
+
+    idx1 = find_substr_index('[JSC_UNDEFINED_VARIABLE] variable thisVarDoesNotExist is undeclared')
+    idx2 = find_substr_index('[JSC_UNDEFINED_VARIABLE] variable thisVarDoesNotExistEither is undeclared')
+    assert idx1 != -1
+    assert idx2 != -1
+    # The errors must be present on distinct lines.
+    assert idx1 != idx2
