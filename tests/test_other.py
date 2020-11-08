@@ -9644,6 +9644,7 @@ exec "$@"
   def test_closure_errors(self):
     err = self.expect_fail([EMCC, path_from_root('tests', 'closure_error.c'), '-O2', '--closure', '1', '--js-library', path_from_root('tests', 'library_closure_error.js')])
     lines = err.split('\n')
+
     def find_substr_index(s):
       for i in range(len(lines)):
         if s in lines[i]:
@@ -9660,7 +9661,7 @@ exec "$@"
   # Make sure that --cpuprofiler compiles with --closure 1
   def test_cpuprofiler_closure(self):
     # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', , '--cpuprofiler'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--cpuprofiler'])
 
   # Make sure that --memoryprofiler compiles with --closure 1
   def test_memoryprofiler_closure(self):
