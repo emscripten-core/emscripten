@@ -161,7 +161,7 @@ var emscriptenMemoryProfiler = {
   },
 
   recordStackWatermark: function() {
-    if (runtimeInitialized) {
+    if (typeof runtimeInitialized === 'undefined' || runtimeInitialized) {
       var self = emscriptenMemoryProfiler;
       self.stackTopWatermark = Math.min(self.stackTopWatermark, _emscripten_stack_get_current());
     }
@@ -487,7 +487,7 @@ var emscriptenMemoryProfiler = {
       self.canvas.width = document.documentElement.clientWidth - 32;
     }
 
-    if (!runtimeInitialized) {
+    if (typeof runtimeInitialized !== 'undefined' && !runtimeInitialized) {
       return;
     }
     var stackBase = _emscripten_stack_get_base();
@@ -513,7 +513,7 @@ var emscriptenMemoryProfiler = {
     html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + self.formatBytes(heap_end - heap_base - self.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + self.formatBytes(HEAP8.length - heap_end) + " (" + ((HEAP8.length - heap_base - self.totalMemoryAllocated) * 100 / (HEAP8.length - heap_base)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
 
     var preloadedMemoryUsed = 0;
-    for (i in self.sizeOfPreRunAllocatedPtr) preloadedMemoryUsed += self.sizeOfPreRunAllocatedPtr[i]|0;
+    for (var i in self.sizeOfPreRunAllocatedPtr) preloadedMemoryUsed += self.sizeOfPreRunAllocatedPtr[i]|0;
     html += '<br />' + colorBar('#FF9900') + colorBar('#FFDD33') + 'Preloaded memory used, most likely memory reserved by files in the virtual filesystem : ' + self.formatBytes(preloadedMemoryUsed);
 
     html += '<br />OpenAL audio data: ' + self.formatBytes(self.countOpenALAudioDataSize()) + ' (outside HEAP)';
@@ -588,7 +588,7 @@ var emscriptenMemoryProfiler = {
     var sort = document.getElementById('memoryProfilerSort');
     var sortOrder = sort.options[sort.selectedIndex].value;
 
-    var html = '';
+    html = '';
 
     // Print out sbrk() and memory resize subdivisions:
     if (document.getElementById('showHeapResizes').checked) {

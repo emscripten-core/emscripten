@@ -9656,3 +9656,18 @@ exec "$@"
     assert idx2 != -1
     # The errors must be present on distinct lines.
     assert idx1 != idx2
+
+  # Make sure that --cpuprofiler compiles with --closure 1
+  def test_cpuprofiler_closure(self):
+    # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', , '--cpuprofiler'])
+
+  # Make sure that --memoryprofiler compiles with --closure 1
+  def test_memoryprofiler_closure(self):
+    # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--memoryprofiler'])
+
+  # Make sure that --threadprofiler compiles with --closure 1
+  def test_threadprofiler_closure(self):
+    # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'USE_PTHREADS=1', '--closure', '1', '--threadprofiler'])
