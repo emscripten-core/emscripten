@@ -7,6 +7,8 @@
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
 
+var currentlyParsedFilename = '';
+
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
@@ -29,6 +31,7 @@ function processMacros(text) {
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
+  currentlyParsedFilename = filenameHint;
   var fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
   var isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   var inStyle = false;
@@ -985,6 +988,21 @@ function asmFFICoercion(value, type) {
 
 function makeDynCall(sig, funcPtr) {
   assert(sig.indexOf('j') == -1);
+  if (funcPtr === undefined) {
+    printErr(`warning: ${currentlyParsedFilename}: Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). Please update to new syntax.`);
+    var ret = (sig[0] == 'v') ? 'return ' : '';
+    var args = [];
+    for(var i = 1; i < sig.length; ++i) {
+      args.push(`a${i}`);
+    }
+    args = args.join(', ');
+
+    if (USE_LEGACY_DYNCALLS) {
+      return `(function(cb, ${args}) { return getDynCaller("${sig}", cb)(${args}) })`;
+    } else {
+      return `(function(cb, ${args}) { return wasmTable.get(cb)(${args}) })`;
+    }
+  }
   if (USE_LEGACY_DYNCALLS) {
     return `getDynCaller("${sig}", ${funcPtr})`;
   } else {
