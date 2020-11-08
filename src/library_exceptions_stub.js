@@ -13,8 +13,6 @@ var LibraryExceptions = {};
   '__cxa_decrement_exception_refcount',
   '__cxa_throw',
   '__cxa_rethrow',
-  'llvm_eh_exception',
-  'llvm_eh_selector',
   'llvm_eh_typeid_for',
   '__cxa_begin_catch',
   '__cxa_end_catch',

@@ -283,21 +283,6 @@ var LibraryExceptions = {
     {{{ makeThrow('ptr') }}}
   },
 
-  llvm_eh_exception__deps: ['$exceptionLast'],
-  llvm_eh_exception: function() {
-    return exceptionLast;
-  },
-
-  llvm_eh_selector__jsargs: true,
-  llvm_eh_selector__deps: ['$exceptionLast'],
-  llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = exceptionLast;
-    for (var i = 2; i < arguments.length; i++) {
-      if (arguments[i] == type) return type;
-    }
-    return 0;
-  },
-
   llvm_eh_typeid_for: function(type) {
     return type;
   },
