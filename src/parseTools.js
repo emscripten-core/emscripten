@@ -836,19 +836,12 @@ function makeSetTempRet0(value) {
   return "setTempRet0((" + value + ") | 0)";
 }
 
-function makeStructuralReturn(values, inAsm) {
-  var i = -1;
-  return 'return ' + asmCoercion(values.slice(1).map(function(value) {
-    i++;
-    if (!inAsm) {
-      return 'setTempRet' + i + '(' + value + ')';
-    }
-    if (i === 0) {
-      return makeSetTempRet0(value)
-    } else {
-      return 'tempRet' + i + ' = ' + value;
-    }
-  }).concat([values[0]]).join(','), 'i32');
+// Takes a pair of return values, stashes on in tempRet0 and returns the other
+// Should probably be renamed to `makeReturn64` but keeping this old name in
+// case external JS library code uses this name.
+function makeStructuralReturn(values) {
+  assert(values.length == 2);
+  return makeSetTempRet0(values[1]) + '; return ' + asmCoercion(values[0], 'i32');
 }
 
 function makeThrow(what) {
