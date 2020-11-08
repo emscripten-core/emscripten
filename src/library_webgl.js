@@ -646,7 +646,7 @@ var LibraryGL = {
           || canvas.getContext("experimental-webgl", webGLContextAttributes)
 #endif
           );
-#endif
+#endif // MAX_WEBGL_VERSION >= 2
 
 #if GL_PREINITIALIZED_CONTEXT
       }
