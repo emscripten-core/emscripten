@@ -8184,9 +8184,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
       self.clear_setting('EXPORTED_FUNCTIONS')
 
-    # If we pass --no-entry or set EXPORTED_FUNCTIONS to empty should never see any errors
+  def test_undefined_main_explict(self):
+    # If we pass --no-entry this test should compile without issue
     self.emcc_args.append('--no-entry')
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
+
+  def test_undefined_main_wasm_output(self):
+    if not can_do_standalone(self):
+      self.skipTest('standalone mode only')
+    err = self.expect_fail([EMCC, '-o', 'out.wasm', path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
+    self.assertContained('undefined symbol: main', err)
 
   def test_export_start(self):
     if not can_do_standalone(self):
