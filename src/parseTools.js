@@ -836,7 +836,7 @@ function makeSetTempRet0(value) {
   return "setTempRet0((" + value + ") | 0)";
 }
 
-// Takes a pair of return values, stashes on in tempRet0 and returns the other
+// Takes a pair of return values, stashes one in tempRet0 and returns the other.
 // Should probably be renamed to `makeReturn64` but keeping this old name in
 // case external JS library code uses this name.
 function makeStructuralReturn(values) {
