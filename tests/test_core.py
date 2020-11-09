@@ -5715,10 +5715,10 @@ return malloc(size);
 
     self.emcc_args = [x for x in self.emcc_args if x != '-g'] # remove -g, so we have one test without it by default
 
-    self.emcc_args += ['-I', path_from_root('tests', 'cubescript')]
+    self.emcc_args += ['-I', path_from_root('tests', 'third_party', 'cubescript')]
 
     def test():
-      src = path_from_root('tests', 'cubescript', 'command.cpp')
+      src = path_from_root('tests', 'third_party', 'cubescript', 'command.cpp')
       self.do_runf(src, '*\nTemp is 33\n9\n5\nhello, everyone\n*')
 
     test()
