@@ -15,7 +15,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(1, __rootpath__)
 
 from tools.toolchain_profiler import ToolchainProfiler
-from tools import building
+from tools import building, config
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
@@ -101,7 +101,7 @@ class Minifier(object):
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = shared.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
+      cmd = config.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
@@ -329,7 +329,7 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
-      commands = [shared.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] + passes for f in filenames]
+      commands = [config.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] + passes for f in filenames]
 
       cores = min(cores, len(filenames))
       if len(chunks) > 1 and cores >= 2:

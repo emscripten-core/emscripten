@@ -6,7 +6,7 @@
 import os
 import re
 
-from tools.shared import Settings, path_from_root, unsuffixed, NODE_JS, check_call, exit_with_error
+from tools.shared import Settings, path_from_root, unsuffixed, config, check_call, exit_with_error
 
 
 # map an emscripten-style signature letter to a wasm2c C type
@@ -75,7 +75,7 @@ def get_func_types(code):
 
 def do_wasm2c(infile):
   assert Settings.STANDALONE_WASM
-  WASM2C = NODE_JS + [path_from_root('node_modules', 'wasm2c', 'wasm2c.js')]
+  WASM2C = config.NODE_JS + [path_from_root('node_modules', 'wasm2c', 'wasm2c.js')]
   WASM2C_DIR = path_from_root('node_modules', 'wasm2c')
   c_file = unsuffixed(infile) + '.wasm.c'
   h_file = unsuffixed(infile) + '.wasm.h'

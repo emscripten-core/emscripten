@@ -20,16 +20,18 @@ from . import diagnostics
 from . import response_file
 from . import shared
 from . import webassembly
+from . import config
 from .toolchain_profiler import ToolchainProfiler
 from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
-from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_AR
+from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
-from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
-from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
+from .shared import asmjs_mangle, DEBUG
+from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
-from .shared import get_emscripten_temp_dir, exe_suffix, which, is_c_symbol, shlex_join
+from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
+from .utils import which, WINDOWS
 
 logger = logging.getLogger('building')
 
@@ -289,10 +291,10 @@ def handle_cmake_toolchain(args, env):
   # Append the Emscripten toolchain file if the user didn't specify one.
   if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
     args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
-  node_js = NODE_JS
+  node_js = config.NODE_JS
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
-    node_js = NODE_JS[0].replace('"', '\"')
+    node_js = config.NODE_JS[0].replace('"', '\"')
     args.append('-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
 
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
@@ -333,7 +335,7 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     stdout = None
   if EM_BUILD_VERBOSE >= 1:
     stderr = None
-  print('configure: ' + shlex_join(args), file=sys.stderr)
+  print('configure: ' + shared.shlex_join(args), file=sys.stderr)
   run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
 
 
@@ -869,7 +871,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     with open(temp, 'a') as f:
       f.write('// EXTRA_INFO: ' + extra_info)
     filename = temp
-  cmd = NODE_JS + [optimizer, filename] + passes
+  cmd = config.NODE_JS + [optimizer, filename] + passes
   # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
   # will be carried over to a later Closure run.
   if Settings.USE_CLOSURE_COMPILER:
@@ -899,7 +901,7 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
 
 def get_closure_compiler():
   # First check if the user configured a specific CLOSURE_COMPILER in thier settings
-  if shared.CLOSURE_COMPILER:
+  if config.CLOSURE_COMPILER:
     return shared.CLOSURE_COMPILER
 
   # Otherwise use the one installed vai npm
@@ -942,7 +944,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
     # to enable use the java backend.  Without this it will only try the native and JavaScript
     # versions of the compiler.
-    java_bin = os.path.dirname(JAVA)
+    java_bin = os.path.dirname(config.JAVA)
     if java_bin:
       def add_to_path(dirname):
         env['PATH'] = env['PATH'] + os.pathsep + dirname
@@ -1569,7 +1571,7 @@ def check_binaryen(bindir):
 def get_binaryen_bin():
   assert Settings.WASM, 'non wasm builds should not ask for binaryen'
   global binaryen_checked
-  rtn = os.path.join(BINARYEN_ROOT, 'bin')
+  rtn = os.path.join(config.BINARYEN_ROOT, 'bin')
   if not binaryen_checked:
     check_binaryen(rtn)
     binaryen_checked = True

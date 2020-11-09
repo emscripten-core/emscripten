@@ -49,6 +49,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
+from tools import config
 
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -654,8 +655,8 @@ def backend_binaryen_passes():
 
 def make_js_executable(script):
   src = open(script).read()
-  cmd = shared.shlex_join(shared.JS_ENGINE)
-  if not os.path.isabs(shared.JS_ENGINE[0]):
+  cmd = shared.shlex_join(config.JS_ENGINE)
+  if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
     cmd = '/usr/bin/env -S ' + cmd
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
@@ -926,7 +927,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # warnings are properly printed during arg parse.
     newargs = diagnostics.capture_warnings(newargs)
 
-    if not shared.CONFIG_FILE:
+    if not config.config_file:
       diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprecated. Please use a file instead.')
 
     for i in range(len(newargs)):
@@ -1947,10 +1948,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     CXX = [shared.CLANG_CXX]
     CC = [shared.CLANG_CC]
-    if shared.COMPILER_WRAPPER:
-      logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
-      CXX.insert(0, shared.COMPILER_WRAPPER)
-      CC.insert(0, shared.COMPILER_WRAPPER)
+    if config.COMPILER_WRAPPER:
+      logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
+      CXX.insert(0, config.COMPILER_WRAPPER)
+      CC.insert(0, config.COMPILER_WRAPPER)
 
     if 'EMMAKEN_COMPILER' in os.environ:
       diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
@@ -2437,7 +2438,7 @@ def parse_args(newargs):
     elif check_arg('--extern-post-js'):
       options.extern_post_js += open(consume_arg()).read() + '\n'
     elif check_arg('--compiler-wrapper'):
-      shared.COMPILER_WRAPPER = consume_arg()
+      config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
       options.post_link = True
     elif check_arg('--oformat'):
@@ -2604,7 +2605,7 @@ def parse_args(newargs):
       if os.path.exists(path):
         exit_with_error('File ' + optarg + ' passed to --generate-config already exists!')
       else:
-        shared.generate_config(optarg)
+        config.generate_config(optarg)
       should_exit = True
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif arg == '-pthread':

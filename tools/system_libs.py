@@ -16,7 +16,7 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import shared, building, ports
+from . import shared, building, ports, config
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
@@ -1716,7 +1716,7 @@ class Ports(object):
 
   @staticmethod
   def get_dir():
-    dirname = shared.PORTS
+    dirname = config.PORTS
     shared.safe_ensure_dirs(dirname)
     return dirname
 
