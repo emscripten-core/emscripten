@@ -194,7 +194,7 @@ var LibraryPThreadStub = {
     var l = 0, h = 0;
     l = (a + c)>>>0;
     h = (b + d + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
-    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+    {{{ makeStructuralReturn(['l|0', 'h']) }}};
   },
 
   i64Subtract__asm: true,
@@ -205,7 +205,7 @@ var LibraryPThreadStub = {
     l = (a - c)>>>0;
     h = (b - d)>>>0;
     h = (b - d - (((c>>>0) > (a>>>0))|0))>>>0; // Borrow one from high word to low word on underflow.
-    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+    {{{ makeStructuralReturn(['l|0', 'h']) }}};
   },
 
   // gnu atomics
