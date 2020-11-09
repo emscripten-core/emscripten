@@ -228,7 +228,7 @@ def report_missing_symbols(all_implemented, pre):
   missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
 
   for requested in missing:
-    if ('function ' + asstr(requested)) in pre:
+    if ('function ' + asstr(requested) + '(') in pre:
       continue
     diagnostics.warning('undefined', 'undefined exported symbol: "%s"', requested)
 

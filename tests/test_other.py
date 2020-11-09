@@ -5635,10 +5635,16 @@ int main() {
     self.assertContained('ok', self.run_js('a.out.js'))
 
   def test_no_warn_exported_jslibfunc(self):
-    err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
-                            '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]',
-                            '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stderr=PIPE).stderr
-    self.assertNotContained('function requested to be exported, but not implemented: "_alGetError"', err)
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
+                     '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]',
+                     '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'])
+
+    # Same again but with `_alGet` wich does not exist.  This is a regression
+    # test for a bug we had where any prefix of a valid function was accepted.
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'),
+                           '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]',
+                           '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGet"]'])
+    self.assertContained('undefined exported symbol: "_alGet"', err)
 
   def test_musl_syscalls(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
