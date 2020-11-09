@@ -25,14 +25,18 @@ LibraryManager.library = {
   // getTempRet0/setTempRet0: scratch space handling i64 return
   // ==========================================================================
 
+  $tempRet0: '0',
+
   getTempRet0__sig: 'i',
+  getTempRet0__deps: ['$tempRet0'],
   getTempRet0: function() {
-    return {{{ makeGetTempRet0() }}};
+    return tempRet0;
   },
 
   setTempRet0__sig: 'vi',
-  setTempRet0: function($i) {
-    {{{ makeSetTempRet0('$i') }}};
+  setTempRet0__deps: ['$tempRet0'],
+  setTempRet0: function(value) {
+    tempRet0 = value;
   },
 
   // ==========================================================================

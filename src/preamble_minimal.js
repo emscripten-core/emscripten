@@ -22,14 +22,6 @@ function abort(what) {
 #endif
 }
 
-var tempRet0 = 0;
-var setTempRet0 = function(value) {
-  tempRet0 = value;
-}
-var getTempRet0 = function() {
-  return tempRet0;
-}
-
 function alignUp(x, multiple) {
   if (x % multiple > 0) {
     x += multiple - (x % multiple);
