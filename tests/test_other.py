@@ -9635,3 +9635,36 @@ exec "$@"
     self.compile_with_wasi_sdk(path_from_root('tests', 'hello_world.c'), 'hello.wasm')
     self.run_process([EMCC, '--post-link', '-sPURE_WASI', 'hello.wasm'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+  # Test that Closure prints out clear readable error messages when there are errors.
+  def test_closure_errors(self):
+    err = self.expect_fail([EMCC, path_from_root('tests', 'closure_error.c'), '-O2', '--closure', '1'])
+    lines = err.split('\n')
+
+    def find_substr_index(s):
+      for i, line in enumerate(lines):
+        if s in line:
+          return i
+      return -1
+
+    idx1 = find_substr_index('[JSC_UNDEFINED_VARIABLE] variable thisVarDoesNotExist is undeclared')
+    idx2 = find_substr_index('[JSC_UNDEFINED_VARIABLE] variable thisVarDoesNotExistEither is undeclared')
+    self.assertNotEqual(idx1, -1)
+    self.assertNotEqual(idx2, -1)
+    # The errors must be present on distinct lines.
+    self.assertNotEqual(idx1, idx2)
+
+  # Make sure that --cpuprofiler compiles with --closure 1
+  def test_cpuprofiler_closure(self):
+    # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--cpuprofiler'])
+
+  # Make sure that --memoryprofiler compiles with --closure 1
+  def test_memoryprofiler_closure(self):
+    # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--memoryprofiler'])
+
+  # Make sure that --threadprofiler compiles with --closure 1
+  def test_threadprofiler_closure(self):
+    # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'USE_PTHREADS=1', '--closure', '1', '--threadprofiler'])

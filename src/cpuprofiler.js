@@ -13,7 +13,7 @@
 if (!performance.realNow) {
   var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   if (isSafari) {
-    realPerformance = performance;
+    var realPerformance = performance;
     performance = {
       realNow: function() { return realPerformance.now(); },
       now: function() { return realPerformance.now(); }
@@ -297,7 +297,7 @@ var emscriptenCpuProfiler = {
 
     // Create the UI display if it doesn't yet exist. If you want to customize the location/style of the cpuprofiler UI,
     // you can manually create this beforehand.
-    cpuprofiler = document.getElementById('cpuprofiler');
+    var cpuprofiler = document.getElementById('cpuprofiler');
     if (!cpuprofiler) {
       var css = '.colorbox { border: solid 1px black; margin-left: 10px; margin-right: 3px; display: inline-block; width: 20px; height: 10px; }  .hastooltip:hover .tooltip { display: block; } .tooltip { display: none; background: #FFFFFF; margin-left: 28px; padding: 5px; position: absolute; z-index: 1000; width:200px; } .hastooltip { margin:0px; }';
       var style = document.createElement('style');
@@ -431,12 +431,12 @@ var emscriptenCpuProfiler = {
     for(var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
-      var h = (sect.frametimesInsideMainLoop[x] + sect.frametimesOutsideMainLoop[x]) * scale;
+      h = (sect.frametimesInsideMainLoop[x] + sect.frametimesOutsideMainLoop[x]) * scale;
       y -= h;
       this.drawContext.fillStyle = sect.drawColor;
       this.drawContext.fillRect(x, y, 1, h);
     }
-    var h = this.timeSpentOutsideMainloop[x] * scale;
+    h = this.timeSpentOutsideMainloop[x] * scale;
     y -= h;
     var fps60Limit = this.canvas.height - (16.666666666 + 1.0) * this.canvas.height / this.verticalTimeScale; // Be very lax, allow 1msec extra jitter.
     var fps30Limit = this.canvas.height - (33.333333333 + 1.0) * this.canvas.height / this.verticalTimeScale; // Be very lax, allow 1msec extra jitter.
@@ -645,7 +645,7 @@ var emscriptenCpuProfiler = {
 
 // Hook into setInterval to be able to capture the time spent executing them.
 emscriptenCpuProfiler.createSection(2, 'setInterval', emscriptenCpuProfiler.colorSetIntervalSection, /*traceable=*/true);
-realSetInterval = setInterval;
+var realSetInterval = setInterval;
 setInterval = function(fn, delay) {
   function wrappedSetInterval() {
     emscriptenCpuProfiler.enterSection(2);
@@ -657,7 +657,7 @@ setInterval = function(fn, delay) {
 
 // Hook into setTimeout to be able to capture the time spent executing them.
 emscriptenCpuProfiler.createSection(3, 'setTimeout', emscriptenCpuProfiler.colorSetTimeoutSection, /*traceable=*/true);
-realSetTimeout = setTimeout;
+var realSetTimeout = setTimeout;
 setTimeout = function(fn, delay) {
   function wrappedSetTimeout() {
     emscriptenCpuProfiler.enterSection(3);
