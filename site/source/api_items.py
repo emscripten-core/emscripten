@@ -113,8 +113,6 @@ def get_mapped_items():
     mapped_wiki_inline_code['FS.getMode()'] = ':js:func:`FS.getMode`'
     mapped_wiki_inline_code['FS.getPath'] = ':js:func:`FS.getPath`'
     mapped_wiki_inline_code['FS.getPath()'] = ':js:func:`FS.getPath`'
-    mapped_wiki_inline_code['FS.handleFSError'] = ':js:func:`FS.handleFSError`'
-    mapped_wiki_inline_code['FS.handleFSError()'] = ':js:func:`FS.handleFSError`'
     mapped_wiki_inline_code['FS.init'] = ':js:func:`FS.init`'
     mapped_wiki_inline_code['FS.init()'] = ':js:func:`FS.init`'
     mapped_wiki_inline_code['FS.isBlkdev'] = ':js:func:`FS.isBlkdev`'
