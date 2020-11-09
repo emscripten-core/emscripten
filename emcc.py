@@ -2727,7 +2727,9 @@ def do_binaryen(target, options, wasm_target):
       final_js = building.instrument_js_for_safe_heap(final_js)
 
     if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
-      # minify the JS
+      # minify the JS. Do not minify whitespace if Closure is used, so that
+      # Closure can print out readable error messages (Closure will then
+      # minify whitespace afterwards)
       save_intermediate_with_wasm('preclean', wasm_target)
       final_js = building.minify_wasm_js(js_file=final_js,
                                          wasm_file=wasm_target,
