@@ -1418,6 +1418,10 @@ var LibraryPThread = {
     return noExitRuntime;
   },
 
+  $invokeEntryPoint: function(ptr, arg) {
+    return {{{ makeDynCall('ii', 'ptr') }}}(arg);
+  },
+
   // When using postMessage to send an object, it is processed by the structured clone algorithm.
   // The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
   // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
