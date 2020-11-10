@@ -311,10 +311,13 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *fun
 //    guaranteed to be executed on the main thread in the program order they
 //    were called in.
 //  - Note that synchronous and asynchronous commands are *also* guaranteed to
-//    be executed in order. That is, sync and async commands cannot be
-//    reordered. The only difference between a sync and async command is that
-//    the return value is ignored in the async case, but they are executed in
-//    the same way, and the same order, on the main thread.
+//    be executed in order. That is, all commands, sync and async, will not get
+//    reordered in the queue, but will be executed in the sequential order in
+//    which they were dispatched. If you issue commands A, B, C, then regardless
+//    of which of them are sync or async, they will execute in that same order
+//    on the main runtime thread. The only difference between an async and a
+//    sync command is that an async one has no return value, and does not block
+//    the calling thread.
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...);
 
 // The 'async_waitable' variant of the run_in_main_runtime_thread functions run
