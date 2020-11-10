@@ -1422,6 +1422,9 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   if not debug_info:
     # to remove debug info, we just write to that same file, and without -g
     args += ['-o', wasm_file]
+  else:
+    # suppress the wasm-opt warning regarding "no output file specified"
+    args += ['--quiet']
   # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
