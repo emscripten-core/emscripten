@@ -280,4 +280,9 @@ else:
   if not os.path.exists(config_file):
     exit_with_error('emscripten config file not found: ' + config_file)
 
+# Emscripten compiler spawns other processes, which can reimport shared.py, so
+# make sure that those child processes get the same configuration file by
+# setting it to the currently active environment.
+os.environ['EM_CONFIG'] = EM_CONFIG
+
 parse_config_file()
