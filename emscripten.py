@@ -321,15 +321,14 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
 
   update_settings_glue(metadata, DEBUG)
 
-  if not outfile_js:
-    logger.debug('emscript: skipping js compiler glue')
+  if shared.Settings.SIDE_MODULE:
+    logger.debug('emscript: skipping remaining js glue generation')
     return
 
   if DEBUG:
     logger.debug('emscript: js compiler glue')
-
-  if DEBUG:
     t = time.time()
+
   glue, forwarded_data = compile_settings(temp_files)
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -342,6 +341,19 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
   assert not forwarded_json['Functions']['implementedFunctions']
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
+
+  exports = metadata['exports']
+
+  if shared.Settings.ASYNCIFY:
+    exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
+
+  all_exports = exports + list(metadata['namedGlobals'].keys())
+  all_exports = set([asmjs_mangle(e) for e in all_exports])
+  report_missing_symbols(all_exports, pre)
+
+  if not outfile_js:
+    logger.debug('emscript: skipping remaining js glue generation')
+    return
 
   # memory and global initializers
 
@@ -368,15 +380,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
-
-  exports = metadata['exports']
-
-  if shared.Settings.ASYNCIFY:
-    exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
-
-  all_exports = exports + list(metadata['namedGlobals'].keys())
-  all_exports = set([asmjs_mangle(e) for e in all_exports])
-  report_missing_symbols(all_exports, pre)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
