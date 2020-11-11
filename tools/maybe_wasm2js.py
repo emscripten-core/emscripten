@@ -43,7 +43,8 @@ cmd = [os.path.join(building.get_binaryen_bin(), 'wasm2js'), '--emscripten', was
 cmd += opts
 js = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
 # assign the instantiate function to where it will be used
-# TODO:remove second case once wasm2js (binaryen) changes roll
+# TODO(sbc): From the seond patterns here that represents the output of
+# older versions of wasm2js
 if 'function instantiate(asmLibraryArg)' in js:
   js = js.replace('function instantiate(asmLibraryArg) {',
                   "Module['__wasm2jsInstantiate__'] = function(asmLibraryArg) {")
