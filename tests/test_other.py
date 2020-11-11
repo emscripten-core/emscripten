@@ -504,6 +504,7 @@ f.close()
       output = self.run_process(cmd, stdout=PIPE).stdout
       self.assertContained(expected, output)
 
+  @is_slow_test
   @parameterized({
     # ('directory to the test', 'output filename', ['extra args to pass to
     # CMake']) Testing all combinations would be too much work and the test
@@ -4614,6 +4615,7 @@ int main(const int argc, const char * const * const argv) {
     self.run_process([EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'FILESYSTEM=0'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
+  @is_slow_test
   def test_no_nuthin(self):
     # check FILESYSTEM is automatically set, and effective
 
@@ -6954,6 +6956,7 @@ int main() {
       wasm_data = open(target, 'rb').read()
       self.assertEqual(wasm_data.count(b'dylink'), 1)
 
+  @is_slow_test
   def test_wasm_backend_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
 
@@ -7078,6 +7081,7 @@ int main() {
     assert not os.path.isfile('a.js')
 
   # Tests that Emscripten-provided header files can be cleanly included in C code
+  @is_slow_test
   def test_include_system_header_in_c(self):
     for std in [[], ['-std=c89']]: # Test oldest C standard, and the default C standard
       for directory, headers in [

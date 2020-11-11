@@ -4599,6 +4599,7 @@ Have even and odd!
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase.c')
 
   @no_wasm2js('very slow to compile')
+  @is_slow_test
   def test_printf(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -5733,6 +5734,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function.c')
 
   @wasm_simd
+  @is_slow_test
   def test_wasm_builtin_simd(self):
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
@@ -5741,6 +5743,7 @@ return malloc(size);
     self.build(path_from_root('tests', 'test_wasm_builtin_simd.cpp'))
 
   @wasm_simd
+  @is_slow_test
   def test_wasm_intrinsics_simd(self):
     def run():
       self.do_runf(path_from_root('tests', 'test_wasm_intrinsics_simd.c'), 'Success!')
@@ -5780,6 +5783,7 @@ return malloc(size);
   @wasm_simd
   @requires_native_clang
   @no_safe_heap('has unaligned 64-bit operations in wasm')
+  @is_slow_test
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -5819,6 +5823,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE4.1 smmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @is_slow_test
   def test_sse4_1(self):
     src = path_from_root('tests', 'sse', 'test_sse4_1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -5912,6 +5917,7 @@ return malloc(size);
                 no_build=True)
 
   @no_asan('local count too large for VMs')
+  @is_slow_test
   def test_sqlite(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
