@@ -350,16 +350,15 @@ def is_browser_process_alive():
       for p in current_browser_processes:
         if psutil.pid_exists(p['pid']):
           return True
+      return False
     except Exception:
       # Fail gracefully if psutil not available
-      return True
-  else:
-    # We do not have a track of the browser process ID that we spawned.
-    # Make an assumption that the browser process is open as long until
-    # the C program calls exit().
-    return page_exit_code is None
+      logv('psutil is not available, emrun may not be able to accurately track whether the browser process is alive or not')
 
-  return False
+  # We do not have a track of the browser process ID that we spawned.
+  # Make an assumption that the browser process is open as long until
+  # the C program calls exit().
+  return page_exit_code is None
 
 
 def kill_browser_process():
@@ -425,7 +424,7 @@ def kill_browser_process():
 # starting a browser process from command line generally launches just a "stub" spawner
 # process that immediately exits.
 def detect_browser_processes():
-  global previous_browser_processes, current_browser_processes, navigation_has_occurred
+  global current_browser_processes
   logv('First navigation occurred. Identifying currently running browser processes')
   running_browser_processes = list_processes_by_name(browser_exe)
 
@@ -438,7 +437,7 @@ def detect_browser_processes():
   for p in running_browser_processes:
     logv('Detected running browser process id: ' + str(p['pid']) + ', existed already at emrun startup? ' + str(pid_existed(p['pid'])))
 
-  current_browser_processes = list(filter(lambda x: not pid_existed(x['pid']), running_browser_processes))
+  current_browser_processes = [p for p in running_browser_processes if not pid_existed(p['pid'])]
 
   if len(current_browser_processes) == 0:
     logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
@@ -587,7 +586,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
     # A browser has navigated to this page - check which PID got spawned for
     # the browser
-    global navigation_has_occurred, current_browser_processes
+    global navigation_has_occurred
     if not navigation_has_occurred and current_browser_processes is None:
       detect_browser_processes()
 
@@ -1767,12 +1766,6 @@ to emrun itself and arguments to your page.
     #   serve_forever = True
     global previous_browser_processes
     logv(browser_exe)
-#    browser_path_name = browser[0]
-    # Workaround hack to Safari workaround bug from above: we need to launch
-    # Safari via "open -a Safari", so transform that string to hardcoded path location
-    # on the system.
-#    if MACOS and browser[0] == 'open' and browser[1] == '-a' and browser[2] == 'Safari':
-#      browser_path_name = '/Applications/Safari.app/Contents/MacOS/Safari'
     previous_browser_processes = list_processes_by_name(browser_exe)
     for p in previous_browser_processes:
       logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
