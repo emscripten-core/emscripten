@@ -7,6 +7,8 @@
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
 
+var currentlyParsedFilename = '';
+
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
@@ -29,86 +31,91 @@ function processMacros(text) {
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
-  var fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
-  var isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
-  var inStyle = false;
-  var lines = text.split('\n');
-  var ret = '';
-  var showStack = [];
-  var emptyLine = false;
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i];
-    try {
-      if (line[line.length-1] === '\r') {
-        line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
-      }
-      if (isHtml && line.indexOf('<style') !== -1 && !inStyle) {
-        inStyle = true;
-      }
-      if (isHtml && line.indexOf('</style') !== -1 && inStyle) {
-        inStyle = false;
-      }
+  currentlyParsedFilename = filenameHint;
+  try {
+    var fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
+    var isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
+    var inStyle = false;
+    var lines = text.split('\n');
+    var ret = '';
+    var showStack = [];
+    var emptyLine = false;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      try {
+        if (line[line.length-1] === '\r') {
+          line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
+        }
+        if (isHtml && line.indexOf('<style') !== -1 && !inStyle) {
+          inStyle = true;
+        }
+        if (isHtml && line.indexOf('</style') !== -1 && inStyle) {
+          inStyle = false;
+        }
 
-      if (!inStyle) {
-        var trimmed = line.trim()
-        if (trimmed[0] === '#') {
-          var first = trimmed.split(' ', 1)[0]
-          if (first == '#if' || first == '#ifdef') {
-            if (first == '#ifdef') {
-              warn('warning: use of #ifdef in js library.  Use #if instead.');
-            }
-            var after = trimmed.substring(trimmed.indexOf(' '));
-            var truthy = !!eval(after);
-            showStack.push(truthy);
-          } else if (first === '#include') {
-            if (showStack.indexOf(false) === -1) {
-              var filename = line.substr(line.indexOf(' ')+1);
-              if (filename.indexOf('"') === 0) {
-                filename = filename.substr(1, filename.length - 2);
+        if (!inStyle) {
+          var trimmed = line.trim()
+          if (trimmed[0] === '#') {
+            var first = trimmed.split(' ', 1)[0]
+            if (first == '#if' || first == '#ifdef') {
+              if (first == '#ifdef') {
+                warn('warning: use of #ifdef in js library.  Use #if instead.');
               }
-              var included = read(filename);
-              var result = preprocess(included, filename);
-              if (result) {
-                ret += "// include: " + filename + "\n";
-                ret += result;
-                ret += "// end include: " + filename + "\n";
+              var after = trimmed.substring(trimmed.indexOf(' '));
+              var truthy = !!eval(after);
+              showStack.push(truthy);
+            } else if (first === '#include') {
+              if (showStack.indexOf(false) === -1) {
+                var filename = line.substr(line.indexOf(' ')+1);
+                if (filename.indexOf('"') === 0) {
+                  filename = filename.substr(1, filename.length - 2);
+                }
+                var included = read(filename);
+                var result = preprocess(included, filename);
+                if (result) {
+                  ret += "// include: " + filename + "\n";
+                  ret += result;
+                  ret += "// end include: " + filename + "\n";
+                }
               }
-            }
-          } else if (first === '#else') {
-            assert(showStack.length > 0);
-            showStack.push(!showStack.pop());
-          } else if (first === '#endif') {
-            assert(showStack.length > 0);
-            showStack.pop();
-          } else {
-            throw "Unknown preprocessor directive on line " + i + ': `' + line + '`';
-          }
-        } else {
-          if (showStack.indexOf(false) === -1) {
-            // Never emit more than one empty line at a time.
-            if (emptyLine && !line) {
-              continue;
-            }
-            ret += line + '\n';
-            if (!line) {
-              emptyLine = true;
+            } else if (first === '#else') {
+              assert(showStack.length > 0);
+              showStack.push(!showStack.pop());
+            } else if (first === '#endif') {
+              assert(showStack.length > 0);
+              showStack.pop();
             } else {
-              emptyLine = false;
+              throw "Unknown preprocessor directive on line " + i + ': `' + line + '`';
+            }
+          } else {
+            if (showStack.indexOf(false) === -1) {
+              // Never emit more than one empty line at a time.
+              if (emptyLine && !line) {
+                continue;
+              }
+              ret += line + '\n';
+              if (!line) {
+                emptyLine = true;
+              } else {
+                emptyLine = false;
+              }
             }
           }
+        } else { // !inStyle
+          if (showStack.indexOf(false) === -1) {
+            ret += line + '\n';
+          }
         }
-      } else { // !inStyle
-        if (showStack.indexOf(false) === -1) {
-          ret += line + '\n';
-        }
+      } catch(e) {
+        printErr('parseTools.js preprocessor error in ' + filenameHint + ':' + (i+1) + ': \"' + line + '\"!');
+        throw e;
       }
-    } catch(e) {
-      printErr('parseTools.js preprocessor error in ' + filenameHint + ':' + (i+1) + ': \"' + line + '\"!');
-      throw e;
     }
+    assert(showStack.length == 0, 'preprocessing error in file '+ filenameHint + ', no matching #endif found (' + showStack.length + ' unmatched preprocessing directives on stack)');
+    return ret;
+  } finally {
+    currentlyParsedFilename = null;
   }
-  assert(showStack.length == 0, 'preprocessing error in file '+ filenameHint + ', no matching #endif found (' + showStack.length + ' unmatched preprocessing directives on stack)');
-  return ret;
 }
 
 function removePointing(type, num) {
@@ -978,6 +985,21 @@ function asmFFICoercion(value, type) {
 
 function makeDynCall(sig, funcPtr) {
   assert(sig.indexOf('j') == -1);
+  if (funcPtr === undefined) {
+    printErr(`warning: ${currentlyParsedFilename}: Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). Please update to new syntax.`);
+    var ret = (sig[0] == 'v') ? 'return ' : '';
+    var args = [];
+    for(var i = 1; i < sig.length; ++i) {
+      args.push(`a${i}`);
+    }
+    args = args.join(', ');
+
+    if (USE_LEGACY_DYNCALLS) {
+      return `(function(cb, ${args}) { return getDynCaller("${sig}", cb)(${args}) })`;
+    } else {
+      return `(function(cb, ${args}) { return wasmTable.get(cb)(${args}) })`;
+    }
+  }
   if (USE_LEGACY_DYNCALLS) {
     return `getDynCaller("${sig}", ${funcPtr})`;
   } else {

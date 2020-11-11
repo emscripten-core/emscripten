@@ -9616,6 +9616,11 @@ exec "$@"
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=foo'])
     self.assertContained("error: invalid output format: `foo` (must be one of ['wasm', 'js', 'mjs', 'html', 'bare']", err)
 
+  # Tests that the old format of {{{ makeDynCall('sig') }}}(func, param1) works
+  def test_old_makeDynCall_syntax(self):
+    err = self.run_process([EMCC, path_from_root('tests', 'test_old_dyncall_format.c'), '--js-library', path_from_root('tests', 'library_test_old_dyncall_format.js')], stderr=PIPE).stderr
+    self.assertContained('syntax for makeDynCall has changed', err)
+
   def test_post_link(self):
     err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr
     self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)

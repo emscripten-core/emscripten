@@ -48,6 +48,13 @@ Current Trunk
   input that perform all the normal post link steps such as finalizing and
   optimizing the wasm file and generating the JavaScript and/or html that will
   run it.
+- Added emulation support and a build time warning for calling Wasm function
+  pointers from JS library files via the old syntax
+        {{{ makeDynCall('sig') }}} (ptr, arg1, arg2);
+  that was broken on Aug 31st 2020 (Emscripten 2.0.2). A build warning will now
+  be emitted if the old signature is used. Convert to using the new signature
+        {{{ makeDynCall('sig', 'ptr') }}} (arg1, arg2);
+  instead.
 
 2.0.8: 10/24/2020
 -----------------
@@ -134,6 +141,30 @@ Current Trunk
 
 2.0.3: 09/10/2020
 -----------------
+- Breaking changes to calling Wasm function pointers from JavaScript:
+  1. It is no longer possible to directly call dynCall_sig(funcPtr, param) to
+    call a function pointer from JavaScript code. As a result, JavaScript code
+    outside all JS libraries (pre-js/post-js/EM_ASM/EM_JS/external JS code) can no
+    longer call a function pointer via static signature matching dynCall_sig, but
+    must instead use the dynamic binding function
+
+       dynCall(sig, ptr, args);
+
+    This carries a significant performance overhead. The function dynCall is not
+    available in -s MINIMAL_RUNTIME=1 builds.
+  2. old syntax for calling a Wasm function pointer from a JS library file used
+     to be
+
+      {{{ makeDynCall('sig') }}} (ptr, arg1, arg2);
+
+    This syntax will no longer work, and until Emscripten <2.0.9 causes
+    a runtime error TypeError: WebAssembly.Table.get(): Argument 0 must be
+    convertible to a valid number.
+
+    New syntax for calling Wasm function pointers from JS library files is
+
+      {{{ makeDynCall('sig', 'ptr') }}} (arg1, arg2);
+
 - The native optimizer and the corresponding config setting
   (`EMSCRIPTEN_NATIVE_OPTIMIZER`) have been removed (it was only relevant to
   asmjs/fastcomp backend).
