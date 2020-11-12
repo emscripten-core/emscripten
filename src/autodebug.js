@@ -101,7 +101,7 @@ function store_val_f64(loc, value) {
 }
 
 {{{
-EXTRA_WASM_IMPORTS.push([
+EXTRA_WASM_IMPORTS.push(
   'log_execution',
   'get_i32',
   'get_i64',
@@ -125,5 +125,5 @@ EXTRA_WASM_IMPORTS.push([
   'store_val_i64',
   'store_val_f32',
   'store_val_f64'
-]);
+);
 }}}
