@@ -1846,7 +1846,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         ('__indirect_function_table', 'wasmTable'),
         # the backend reserves slot 0 for the NULL function pointer
         ('__table_base', '1'),
-        ('__stack_pointer', '__stack_pointer'),
+        '__stack_pointer',
       ]
       if options.use_closure_compiler:
         exit_with_error('cannot use closure compiler on shared modules')
