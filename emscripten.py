@@ -182,6 +182,7 @@ def apply_forwarded_data(forwarded_data):
   StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
   StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
   StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
+  # new imports may have been noticed by the JS compiler
   shared.Settings.EXTRA_WASM_IMPORTS = forwarded_json['EXTRA_WASM_IMPORTS']
 
 
