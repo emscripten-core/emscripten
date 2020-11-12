@@ -737,6 +737,9 @@ def add_standard_wasm_imports(send_items_map):
       return value;
     }'''
 
+  if shared.Settings.INSTRUMENT:
+    send_items_map['log_function'] = '''log_function'''
+
 
 def create_sending(invoke_funcs, metadata):
   basic_funcs = []

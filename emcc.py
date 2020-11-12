@@ -632,6 +632,9 @@ def backend_binaryen_passes():
     extras = shared.Settings.BINARYEN_EXTRA_PASSES.split(',')
     passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
 
+  if shared.Settings.INSTRUMENT:
+    passes += ['--log-function']
+
   return passes
 
 
