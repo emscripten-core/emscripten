@@ -549,28 +549,16 @@ def add_standard_wasm_imports(send_items_map):
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
 
-  # With the wasm backend __memory_base and __table_base are only needed for
-  # relocatable output.
-  if shared.Settings.RELOCATABLE:
-    # tell the memory segments where to place themselves
-    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE)
-    send_items_map['__indirect_function_table'] = 'wasmTable'
-
-    # the wasm backend reserves slot 0 for the NULL function pointer
-    send_items_map['__table_base'] = '1'
-  if shared.Settings.RELOCATABLE:
-    send_items_map['__stack_pointer'] = "__stack_pointer"
-
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
     send_items_map['setTempRet0'] = 'setTempRet0'
     send_items_map['getTempRet0'] = 'getTempRet0'
 
   for item in shared.Settings.EXTRA_WASM_IMPORTS:
-    if type(item) is list:
-      key, value = item
-    else:
+    if type(item) is str:
       key = value = item
+    else:
+      key, value = item
     send_items_map[key] = value
 
 
