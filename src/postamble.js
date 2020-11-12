@@ -239,6 +239,15 @@ function run(args) {
   }
 
 #if STACK_OVERFLOW_CHECK
+  // This is normally called automatically during __wasm_call_ctors but need to
+  // get these values before even running any of the ctors so we call it redundantly
+  // here.
+  // TODO(sbc): Move writeStackCookie to native to to avoid this.
+#if RELOCATABLE
+  _emscripten_stack_set_limits({{{ getQuoted('STACK_BASE') }}}, {{{ getQuoted('STACK_MAX') }}});
+#else
+  _emscripten_stack_init();
+#endif
   writeStackCookie();
 #endif
 
@@ -373,17 +382,13 @@ function exit(status, implicit) {
     if (!implicit) {
 #if EXIT_RUNTIME == 0
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
-#if MODULARIZE
-      readyPromiseReject(msg);
-#endif // MODULARIZE
-      err(msg);
 #else
       var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
+#endif // EXIT_RUNTIME
 #if MODULARIZE
       readyPromiseReject(msg);
 #endif // MODULARIZE
       err(msg);
-#endif // EXIT_RUNTIME
     }
 #endif // ASSERTIONS
   } else {

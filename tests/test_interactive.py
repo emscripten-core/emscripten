@@ -6,13 +6,15 @@
 import json
 import os
 import shutil
-from runner import parameterized
+from subprocess import Popen
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
 
+from runner import parameterized
 from runner import BrowserCore, path_from_root
-from tools.shared import Popen, EMCC, WINDOWS, which
+from tools.shared import EMCC, WINDOWS
+from tools.utils import which
 
 
 class interactive(BrowserCore):

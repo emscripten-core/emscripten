@@ -23,8 +23,8 @@ emcc can be influenced by a few environment variables:
                    your system headers will be used.
 """
 
-from __future__ import print_function
 
+import atexit
 import json
 import logging
 import os
@@ -34,6 +34,7 @@ import stat
 import sys
 import time
 import base64
+from enum import Enum
 from subprocess import PIPE
 
 import emscripten
@@ -48,6 +49,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
+from tools import config
 
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -71,9 +73,7 @@ SPECIAL_ENDINGLESS_FILENAMES = (os.devnull,)
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ASSEMBLY_CPP_ENDINGS
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
-JS_ENDINGS = ('.js', '.mjs', '.out', '')
-WASM_ENDINGS = ('.wasm',)
-EXECUTABLE_ENDINGS = JS_ENDINGS + WASM_ENDINGS + ('.html',)
+EXECUTABLE_ENDINGS = ('.wasm', '.html', '.js', '.mjs', '.out', '')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll', '.s')
@@ -92,8 +92,6 @@ SUPPORTED_LINKER_FLAGS = (
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
     '-bind_at_load': False,
-    # wasm-ld doesn't support map files yet.
-    '--print-map': False,
     '-M': False,
     # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
     # in order to aid build systems that want to pass these flags.
@@ -215,8 +213,20 @@ def base64_encode(b):
     return b64
 
 
+class OFormat(Enum):
+  WASM = 1
+  JS = 2
+  MJS = 3
+  HTML = 4
+  BARE = 5
+
+
 class EmccOptions(object):
   def __init__(self):
+    self.post_link = False
+    self.executable = False
+    self.compiler_wrapper = None
+    self.oformat = None
     self.requested_debug = ''
     self.profiling = False
     self.profiling_funcs = False
@@ -625,6 +635,14 @@ def backend_binaryen_passes():
       passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(shared.Settings.ASYNCIFY_ONLY)]
   if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
+  # normally we can assume the memory, if imported, has not been modified
+  # beforehand (in fact, in most cases the memory is not even imported anyhow,
+  # but it is still safe to pass the flag), and is therefore filled with zeros.
+  # the one exception is dynamic linking of a side module: the main module is ok
+  # as it is loaded first, but the side module may be assigned memory that was
+  # previously used.
+  if run_binaryen_optimizer and not shared.Settings.SIDE_MODULE:
+    passes += ['--zero-filled-memory']
 
   if shared.Settings.BINARYEN_EXTRA_PASSES:
     # BINARYEN_EXTRA_PASSES is comma-separated, and we support both '-'-prefixed and
@@ -640,8 +658,8 @@ def backend_binaryen_passes():
 
 def make_js_executable(script):
   src = open(script).read()
-  cmd = shared.shlex_join(shared.JS_ENGINE)
-  if not os.path.isabs(shared.JS_ENGINE[0]):
+  cmd = shared.shlex_join(config.JS_ENGINE)
+  if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
     cmd = '/usr/bin/env -S ' + cmd
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
@@ -661,6 +679,106 @@ def do_replace(input_, pattern, replacement):
   return input_.replace(pattern, replacement)
 
 
+def is_dash_s_for_emcc(args, i):
+  # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
+  # -s by itself is a linker option (alias for --strip-all)
+  if args[i] == '-s':
+    if len(args) <= i + 1:
+      return False
+    arg = args[i + 1]
+  else:
+    arg = args[i][2:]
+  return arg.split('=')[0].isupper()
+
+
+def parse_s_args(args):
+  settings_changes = []
+  for i in range(len(args)):
+    if args[i].startswith('-s'):
+      if is_dash_s_for_emcc(args, i):
+        if args[i] == '-s':
+          key = args[i + 1]
+          args[i + 1] = ''
+        else:
+          key = args[i][2:]
+        args[i] = ''
+
+        # If not = is specified default to 1
+        if '=' not in key:
+          key += '=1'
+
+        # Special handling of browser version targets. A version -1 means that the specific version
+        # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+        # #if MIN_FIREFOX_VERSION < 68
+        if re.match(r'MIN_.*_VERSION(=.*)?', key):
+          try:
+            if int(key.split('=')[1]) < 0:
+              key = key.split('=')[0] + '=0x7FFFFFFF'
+          except Exception:
+            pass
+
+        settings_changes.append(key)
+
+  newargs = [a for a in args if a]
+  return (settings_changes, newargs)
+
+
+def calc_cflags(options):
+  # Flags we pass to the compiler when building C/C++ code
+  # We add these to the user's flags (newargs), but not when building .s or .S assembly files
+  cflags = []
+
+  if options.tracing:
+    cflags.append('-D__EMSCRIPTEN_TRACING__=1')
+
+  if shared.Settings.USE_PTHREADS:
+    cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
+
+  if not shared.Settings.STRICT:
+    # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+    # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+    cflags.append('-DEMSCRIPTEN')
+
+  # if exception catching is disabled, we can prevent that code from being
+  # generated in the frontend
+  if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
+    cflags.append('-fignore-exceptions')
+
+  if shared.Settings.INLINING_LIMIT:
+    cflags.append('-fno-inline-functions')
+
+  if shared.Settings.RELOCATABLE:
+    cflags.append('-fPIC')
+    cflags.append('-fvisibility=default')
+
+  if shared.Settings.LTO:
+    cflags.append('-flto=' + shared.Settings.LTO)
+  else:
+    # With LTO mode these args get passed instead
+    # at link time when the backend runs.
+    for a in building.llvm_backend_args():
+      cflags += ['-mllvm', a]
+
+  return cflags
+
+
+def get_file_suffix(filename):
+  """Parses the essential suffix of a filename, discarding Unix-style version
+  numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
+  if filename in SPECIAL_ENDINGLESS_FILENAMES:
+    return filename
+  while filename:
+    filename, suffix = os.path.splitext(filename)
+    if not suffix[1:].isdigit():
+      return suffix
+  return ''
+
+
+def in_temp(name):
+  temp_dir = shared.get_emscripten_temp_dir()
+  return os.path.join(temp_dir, os.path.basename(name))
+
+
 run_via_emxx = False
 
 
@@ -668,7 +786,6 @@ run_via_emxx = False
 # Main run() function
 #
 def run(args):
-  global final_js
   target = None
 
   # Additional compiler flags that we treat as if they were passed to us on the
@@ -730,13 +847,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
-  CXX = [shared.CLANG_CXX]
-  CC = [shared.CLANG_CC]
-  if shared.COMPILER_WRAPPER:
-    logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
-    CXX.insert(0, shared.COMPILER_WRAPPER)
-    CC.insert(0, shared.COMPILER_WRAPPER)
-
   if run_via_emxx:
     clang = shared.CLANG_CXX
   else:
@@ -789,17 +899,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   language_mode = get_language_mode(args)
 
-  def is_dash_s_for_emcc(args, i):
-    # -s OPT=VALUE or -s OPT or -sOPT are all interpreted as emscripten flags.
-    # -s by itself is a linker option (alias for --strip-all)
-    if args[i] == '-s':
-      if len(args) <= i + 1:
-        return False
-      arg = args[i + 1]
-    else:
-      arg = args[i][2:]
-    return arg.split('=')[0].isupper()
-
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
     args += shlex.split(EMMAKEN_CFLAGS)
@@ -814,22 +913,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
 
   # ---------------- End configs -------------
-
-  temp_dir = shared.get_emscripten_temp_dir()
-
-  def in_temp(name):
-    return os.path.join(temp_dir, os.path.basename(name))
-
-  def get_file_suffix(filename):
-    """Parses the essential suffix of a filename, discarding Unix-style version
-    numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
-    if filename in SPECIAL_ENDINGLESS_FILENAMES:
-      return filename
-    while filename:
-      filename, suffix = os.path.splitext(filename)
-      if not suffix[1:].isdigit():
-        return suffix
-    return ''
 
   def optimizing(opts):
     return '-O0' not in opts
@@ -847,11 +930,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # warnings are properly printed during arg parse.
     newargs = diagnostics.capture_warnings(newargs)
 
-    if not shared.CONFIG_FILE:
+    if not config.config_file:
       diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprecated. Please use a file instead.')
-
-    if sys.version_info < (3, 0, 0) and 'EMCC_ALLOW_PYTHON2' not in os.environ:
-      diagnostics.warning('deprecated', 'Support for running emscripten with python2 is deprecated.  Please update to python3 as soon as possible (See https://github.com/emscripten-core/emscripten/issues/7198')
 
     for i in range(len(newargs)):
       if newargs[i] in ('-l', '-L', '-I'):
@@ -862,15 +942,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
-    if 'EMMAKEN_COMPILER' in os.environ:
-      diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
-                          'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
-                          'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
-      CXX = [os.environ['EMMAKEN_COMPILER']]
-      CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
+    if options.post_link or options.oformat == OFormat.BARE:
+      diagnostics.warning('experimental', '--oformat=base/--post-link are experimental and subject to change.')
 
     if '-print-search-dirs' in newargs:
-      return run_process(CC + ['-print-search-dirs'], check=False).returncode
+      return run_process([clang, '-print-search-dirs'], check=False).returncode
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -900,35 +976,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logger.warning('disabling source maps because a js transform is being done')
       shared.Settings.DEBUG_LEVEL = 3
 
-    if DEBUG:
-      start_time = time.time() # done after parsing arguments, which might affect debug state
-
-    for i in range(len(newargs)):
-      if newargs[i].startswith('-s'):
-        if is_dash_s_for_emcc(newargs, i):
-          if newargs[i] == '-s':
-            key = newargs[i + 1]
-            newargs[i + 1] = ''
-          else:
-            key = newargs[i][2:]
-          newargs[i] = ''
-
-          # If not = is specified default to 1
-          if '=' not in key:
-            key += '=1'
-
-          # Special handling of browser version targets. A version -1 means that the specific version
-          # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
-          # #if MIN_FIREFOX_VERSION < 68
-          try:
-            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=0x7FFFFFFF'
-          except Exception:
-            pass
-
-          settings_changes.append(key)
-
-    newargs = [arg for arg in newargs if arg]
+    explicit_settings_changes, newargs = parse_s_args(newargs)
+    settings_changes += explicit_settings_changes
 
     settings_key_changes = {}
     for s in settings_changes:
@@ -946,11 +995,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     libs = []
     link_flags = []
 
-    # All of the above arg lists entries contain indexes into the full argument
-    # list. In order to add extra implicit args (embind.cc, etc) below, we keep a
-    # counter for the next index that should be used.
-    next_arg_index = len(newargs)
-
     has_header_inputs = False
     lib_dirs = []
 
@@ -961,10 +1005,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     compile_only = has_dash_c or has_dash_S or has_dash_E
 
     def add_link_flag(i, f):
-      # Filter out libraries that musl includes in libc itself, or which we
-      # otherwise provide implicitly.
-      if f in ('-lm', '-lrt', '-ldl', '-lpthread'):
-        return
       if f.startswith('-l'):
         libs.append((i, f[2:]))
       if f.startswith('-L'):
@@ -1083,15 +1123,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Check if a target is specified on the command line
     specified_target, args = find_output_arg(args)
 
-    make_output_executable = False
-
     if os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args:
       # configure tests want a more shell-like style, where we emit return codes on exit()
       shared.Settings.EXIT_RUNTIME = 1
       # use node.js raw filesystem access, to behave just like a native executable
       shared.Settings.NODERAWFS = 1
       # Add `#!` line to output JS and make it executable.
-      make_output_executable = True
+      options.executable = True
       # Autoconf expects the executable output file to be called `a.out`
       default_target_name = 'a.out'
     elif shared.Settings.SIDE_MODULE:
@@ -1116,39 +1154,46 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     final_suffix = get_file_suffix(target)
 
-    if has_dash_c or has_dash_S or has_dash_E:
+    if has_dash_c or has_dash_S or has_dash_E or '-M' in newargs or '-MM' in newargs:
       if has_dash_c:
         if '-emit-llvm' in newargs:
-          final_suffix = '.bc'
-        else:
-          final_suffix = options.default_object_extension
-        target = target_basename + final_suffix
+          options.default_object_extension = '.bc'
       elif has_dash_S:
         if '-emit-llvm' in newargs:
-          final_suffix = '.ll'
+          options.default_object_extension = '.ll'
         else:
-          final_suffix = '.s'
-        target = target_basename + final_suffix
+          options.default_object_extension = '.s'
+      elif '-M' in newargs or '-MM' in newargs:
+        options.default_object_extension = '.mout' # not bitcode, not js; but just dependency rule of the input file
 
-      if len(input_files) > 1 and specified_target:
-        exit_with_error('cannot specify -o with -c/-S/-E and multiple source files')
+      if specified_target:
+        if len(input_files) > 1:
+          exit_with_error('cannot specify -o with -c/-S/-E/-M and multiple source files')
+      else:
+        target = target_basename + options.default_object_extension
 
-    if '-M' in newargs or '-MM' in newargs:
-      final_suffix = '.mout' # not bitcode, not js; but just dependency rule of the input file
+    # If no output format was sepecific we try to imply the format based on
+    # the output filename extension.
+    if not options.oformat:
+      if shared.Settings.SIDE_MODULE or final_suffix == '.wasm':
+        options.oformat = OFormat.WASM
+      elif final_suffix == '.mjs':
+        options.oformat = OFormat.MJS
+      elif final_suffix == '.html':
+        options.oformat = OFormat.HTML
+      else:
+        options.oformat = OFormat.JS
 
-    # target is now finalized, can finalize other _target s
-    if final_suffix == '.mjs':
+    if options.oformat == OFormat.MJS:
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
 
-    if shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS:
+    if options.oformat in (OFormat.WASM, OFormat.BARE):
       # If the user asks directly for a wasm file then this *is* the target
       wasm_target = target
     else:
       # Otherwise the wasm file is produced alongside the final target.
       wasm_target = unsuffixed(target) + '.wasm'
-
-    wasm_source_map_target = wasm_target + '.map'
 
     # Apply user -jsD settings
     for s in user_js_defines:
@@ -1156,7 +1201,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.verify_settings()
 
-    if final_suffix in WASM_ENDINGS and not shared.Settings.SIDE_MODULE:
+    if (options.oformat == OFormat.WASM or shared.Settings.PURE_WASI) and not shared.Settings.SIDE_MODULE:
       # if the output is just a wasm file, it will normally be a standalone one,
       # as there is no JS. an exception are side modules, as we can't tell at
       # compile time whether JS will be involved or not - the main module may
@@ -1308,6 +1353,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.RELOCATABLE = 1
 
     if shared.Settings.RELOCATABLE:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$reportUndefinedSymbols', '$relocateExports', '$GOTHandler']
       if options.use_closure_compiler:
         exit_with_error('cannot use closure compiler on shared modules')
       if shared.Settings.MINIMAL_RUNTIME:
@@ -1317,7 +1363,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # shared modules need memory utilities to allocate their memory
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['allocate']
       shared.Settings.ALLOW_TABLE_GROWTH = 1
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$relocateExports']
 
     # various settings require sbrk() access
     if shared.Settings.DETERMINISTIC or \
@@ -1328,36 +1373,33 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_sbrk']
 
     if shared.Settings.MEMORYPROFILER:
-      shared.Settings.EXPORTED_FUNCTIONS += ['___heap_base']
+      shared.Settings.EXPORTED_FUNCTIONS += ['___heap_base',
+                                             '_emscripten_stack_get_base',
+                                             '_emscripten_stack_get_end',
+                                             '_emscripten_stack_get_current']
 
     if shared.Settings.ASYNCIFY:
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
       shared.Settings.USE_LEGACY_DYNCALLS = 1
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDynCaller']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
+                                             '_emscripten_stack_get_end',
+                                             '_emscripten_stack_set_limits']
 
     # Reconfigure the cache now that settings have been applied. Some settings
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
 
-    if not compile_only:
+    if not compile_only and not options.post_link:
       ldflags = shared.emsdk_ldflags(newargs)
       for f in ldflags:
         newargs.append(f)
         add_link_flag(len(newargs), f)
 
-    # Flags we pass to the compiler when building C/C++ code
-    # We add these to the user's flags (newargs), but not when building .s or .S assembly files
-    cflags = []
-
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
     newargs = [x for x in newargs if x not in shared.SIMD_INTEL_FEATURE_TOWER and x not in shared.SIMD_NEON_FLAGS]
-
-    if not shared.Settings.STRICT:
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      cflags.append('-DEMSCRIPTEN')
 
     link_to_object = False
     if options.shared or options.relocatable:
@@ -1374,7 +1416,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
+      if shared.Settings.RELOCATABLE:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
+      else:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_init']
+      if shared.Settings.STACK_OVERFLOW_CHECK == 2:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
@@ -1382,8 +1430,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # HTML output creates a singleton instance, and it does so without the
       # Promise. However, in Pthreads mode the Promise is used for worker
       # creation.
-      if shared.Settings.MINIMAL_RUNTIME and final_suffix == '.html' and \
-         not shared.Settings.USE_PTHREADS:
+      if shared.Settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not shared.Settings.USE_PTHREADS:
         shared.Settings.EXPORT_READY_PROMISE = 0
 
     if shared.Settings.LEGACY_VM_SUPPORT:
@@ -1412,11 +1459,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
     if shared.Settings.STB_IMAGE and final_suffix in EXECUTABLE_ENDINGS:
-      input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
-      next_arg_index += 1
+      input_files.append((len(newargs), shared.path_from_root('third_party', 'stb_image.c')))
       shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
-      # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation when compiling
-      cflags.append('-DSTB_IMAGE_IMPLEMENTATION')
+      # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation
+      # when compiling
+      newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
     if shared.Settings.USE_WEBGL2:
       shared.Settings.MAX_WEBGL_VERSION = 2
@@ -1428,8 +1475,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.ASMFS and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libasmfs')
-      cflags.append('-D__EMSCRIPTEN_ASMFS__=1')
-      next_arg_index += 1
       shared.Settings.FILESYSTEM = 0
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
       shared.Settings.FETCH = 1
@@ -1444,7 +1489,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libfetch')
-      next_arg_index += 1
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_fetch.js')))
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
@@ -1460,9 +1504,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs.append('libembind')
 
     shared.Settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
-    # We need to preserve the __data_end symbol so that wasm-emscripten-finalize can determine
-    # where static data ends (and correspondingly where the stack begins).
-    shared.Settings.EXPORTED_FUNCTIONS += ['___data_end']
     if not shared.Settings.STANDALONE_WASM:
       # in standalone mode, crt1 will call the constructors from inside the wasm
       shared.Settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
@@ -1479,11 +1520,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
-
-    # if exception catching is disabled, we can prevent that code from being
-    # generated in the frontend
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
-      cflags.append('-fignore-exceptions')
 
     if options.proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
@@ -1516,7 +1552,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.SAFE_HEAP:
       # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
-      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr', '_emscripten_stack_get_base']
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -1537,7 +1573,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
-      cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
       newargs += ['-pthread']
       # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
       # manually export them
@@ -1545,7 +1580,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += [
         '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
         'registerPthreadPtr', '_pthread_self',
-        '___emscripten_pthread_data_constructor', '_emscripten_futex_wake']
+        '___emscripten_pthread_data_constructor', '_emscripten_futex_wake',
+        '_emscripten_stack_set_limits']
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1618,10 +1654,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.MINIMAL_RUNTIME:
           shared.Settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
-        # stack check:
-        if shared.Settings.STACK_OVERFLOW_CHECK:
-          shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
-
       if shared.Settings.LINKABLE:
         exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
       if shared.Settings.SIDE_MODULE:
@@ -1648,7 +1680,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
-      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+      # EXPORT_ES6 requires output to be a module
+      if 'MODULARIZE' in settings_key_changes:
+        exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+      shared.Settings.MODULARIZE = 1
 
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       # When MODULARIZE option is used, currently requires declaring all module exports
@@ -1668,12 +1703,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if will_metadce() and \
         shared.Settings.OPT_LEVEL >= 2 and \
         shared.Settings.DEBUG_LEVEL <= 2 and \
+        options.oformat not in (OFormat.WASM, OFormat.BARE) and \
         not shared.Settings.LINKABLE and \
         not shared.Settings.STANDALONE_WASM and \
         not shared.Settings.AUTODEBUG and \
         not shared.Settings.ASSERTIONS and \
         not shared.Settings.RELOCATABLE and \
-        not target.endswith(WASM_ENDINGS) and \
         not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
             shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
       shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
@@ -1694,7 +1729,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Require explicit -lfoo.js flags to link with JS libraries.
       shared.Settings.AUTO_JS_LIBRARIES = 0
 
-    if shared.Settings.MODULARIZE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \
+    if shared.Settings.MODULARIZE and shared.Settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
@@ -1703,6 +1738,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
       if shared.Settings.MINIMAL_RUNTIME:
         exit_with_error('MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm')
+      if shared.Settings.WASM2JS:
+        exit_with_error('WASM2JS is not compatible with STANDALONE_WASM output')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
@@ -1710,13 +1747,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM_BIGINT:
       shared.Settings.LEGALIZE_JS_FFI = 0
 
-    if shared.Settings.SINGLE_FILE:
-      # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-      shared.Settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
-    else:
-      # set file locations, so that JS glue can find what it needs
-      shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_target))
-      shared.Settings.GENERATE_SOURCE_MAP = shared.Settings.DEBUG_LEVEL >= 4
+    shared.Settings.GENERATE_SOURCE_MAP = shared.Settings.DEBUG_LEVEL >= 4 and not shared.Settings.SINGLE_FILE
 
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
@@ -1759,7 +1790,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           '_emscripten_builtin_memalign',
           '_emscripten_builtin_malloc',
           '_emscripten_builtin_free',
-          '___data_end',
           '___heap_base',
           '___global_base'
       ]
@@ -1860,10 +1890,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.SINGLE_FILE:
         exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
 
-    if options.tracing:
-      cflags.append('-D__EMSCRIPTEN_TRACING__=1')
-      if shared.Settings.ALLOW_MEMORY_GROWTH:
-        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
+    if options.tracing and shared.Settings.ALLOW_MEMORY_GROWTH:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_current',
+                                             '_emscripten_stack_get_base',
+                                             '_emscripten_stack_get_end']
 
     if shared.Settings.USE_PTHREADS:
       newargs.append('-pthread')
@@ -1903,451 +1934,422 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # use it at once, they might collide if they happen to use the same
     # tempfile names
     shared.Cache.acquire_cache_lock()
+    atexit.register(shared.Cache.release_cache_lock)
 
-  try:
-    with ToolchainProfiler.profile_block('compile inputs'):
-      def is_link_flag(flag):
-        if flag.startswith('-nostdlib'):
-          return True
-        return flag.startswith(('-l', '-L', '-Wl,'))
+  if options.post_link:
+    process_libraries(libs, lib_dirs, temp_files)
+    if len(input_files) != 1:
+      exit_with_error('--post-link requires a single input file')
+    post_link(options, input_files[0][1], wasm_target, target)
+    return 0
 
-      compile_args = [a for a in newargs if a and not is_link_flag(a)]
+  with ToolchainProfiler.profile_block('compile inputs'):
+    def is_link_flag(flag):
+      if flag.startswith('-nostdlib'):
+        return True
+      return flag.startswith(('-l', '-L', '-Wl,'))
 
-      if not building.can_inline():
-        cflags.append('-fno-inline-functions')
+    CXX = [shared.CLANG_CXX]
+    CC = [shared.CLANG_CC]
+    if config.COMPILER_WRAPPER:
+      logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
+      CXX.insert(0, config.COMPILER_WRAPPER)
+      CC.insert(0, config.COMPILER_WRAPPER)
 
-      def use_cxx(src):
-        if 'c++' in language_mode or run_via_emxx:
-          return True
-        # Next consider the filename
-        if src.endswith(C_ENDINGS + OBJC_ENDINGS):
-          return False
-        if src.endswith(CXX_ENDINGS):
-          return True
-        # Finally fall back to the default
-        if shared.Settings.DEFAULT_TO_CXX:
-          # Default to using C++ even when run as `emcc`.
-          # This means that emcc will act as a C++ linker when no source files are
-          # specified.
-          # This differs to clang and gcc where the default is always C unless run as
-          # clang++/g++.
-          return True
+    if 'EMMAKEN_COMPILER' in os.environ:
+      diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
+                          'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
+                          'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
+      CXX = [os.environ['EMMAKEN_COMPILER']]
+      CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
+
+    compile_args = [a for a in newargs if a and not is_link_flag(a)]
+    cflags = calc_cflags(options)
+    system_libs.add_ports_cflags(cflags, shared.Settings)
+
+    def use_cxx(src):
+      if 'c++' in language_mode or run_via_emxx:
+        return True
+      # Next consider the filename
+      if src.endswith(C_ENDINGS + OBJC_ENDINGS):
         return False
+      if src.endswith(CXX_ENDINGS):
+        return True
+      # Finally fall back to the default
+      if shared.Settings.DEFAULT_TO_CXX:
+        # Default to using C++ even when run as `emcc`.
+        # This means that emcc will act as a C++ linker when no source files are
+        # specified.
+        # This differs to clang and gcc where the default is always C unless run as
+        # clang++/g++.
+        return True
+      return False
 
-      def get_compiler(cxx):
-        if cxx:
-          return CXX
-        return CC
+    def get_compiler(cxx):
+      if cxx:
+        return CXX
+      return CC
 
-      def get_clang_command(src_file):
-        cxx = use_cxx(src_file)
-        base_cflags = shared.get_cflags(args, cxx)
-        cmd = get_compiler(cxx) + base_cflags + cflags + compile_args + [src_file]
-        return system_libs.process_args(cmd, shared.Settings)
+    def get_clang_command(src_file):
+      cxx = use_cxx(src_file)
+      per_file_cflags = shared.get_cflags(args, cxx)
+      return get_compiler(cxx) + cflags + per_file_cflags + compile_args + [src_file]
 
-      def get_clang_command_asm(src_file):
-        asflags = shared.get_asmflags()
-        return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
+    def get_clang_command_asm(src_file):
+      asflags = shared.get_asmflags()
+      return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
 
-      # preprocessor-only (-E) support
-      if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
-        for input_file in [x[1] for x in input_files]:
-          cmd = get_clang_command(input_file)
-          if specified_target:
-            cmd += ['-o', specified_target]
-          # Do not compile, but just output the result from preprocessing stage or
-          # output the dependency rule. Warning: clang and gcc behave differently
-          # with -MF! (clang seems to not recognize it)
-          logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-          shared.print_compiler_stage(cmd)
-          rtn = run_process(cmd, check=False).returncode
-          if rtn:
-            return rtn
-        return 0
-
-      # Precompiled headers support
-      if has_header_inputs:
-        headers = [header for _, header in input_files]
-        for header in headers:
-          if not header.endswith(HEADER_ENDINGS):
-            exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
-          cxx = use_cxx(header)
-          base_cflags = shared.get_cflags(args, cxx)
-          cmd = get_compiler(cxx) + base_cflags + cflags + compile_args + [header]
-          if specified_target:
-            cmd += ['-o', specified_target]
-          cmd = system_libs.process_args(cmd, shared.Settings)
-          logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
-          shared.print_compiler_stage(cmd)
-          return run_process(cmd, check=False).returncode
-
-      def get_object_filename(input_file):
-        if compile_only and len(input_files) == 1:
-          # no need for a temp file, just emit to the right place
-          if specified_target:
-            return specified_target
-          else:
-            return unsuffixed_basename(input_files[0][1]) + options.default_object_extension
-        else:
-          return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
-
-      def compile_source_file(i, input_file):
-        logger.debug('compiling source file: ' + input_file)
-        output_file = get_object_filename(input_file)
-        temp_files.append((i, output_file))
-        if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
-          cmd = get_clang_command_asm(input_file)
-        else:
-          cmd = get_clang_command(input_file)
-        cmd += ['-c', '-o', output_file]
-        if shared.Settings.RELOCATABLE:
-          cmd.append('-fPIC')
-          cmd.append('-fvisibility=default')
-        if shared.Settings.LTO:
-          cmd.append('-flto=' + shared.Settings.LTO)
-        else:
-          # With LTO mode these args get passed instead
-          # at link time when the backend runs.
-          for a in building.llvm_backend_args():
-            cmd += ['-mllvm', a]
+    # preprocessor-only (-E) support
+    if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
+      for input_file in [x[1] for x in input_files]:
+        cmd = get_clang_command(input_file)
+        if specified_target:
+          cmd += ['-o', specified_target]
+        # Do not compile, but just output the result from preprocessing stage or
+        # output the dependency rule. Warning: clang and gcc behave differently
+        # with -MF! (clang seems to not recognize it)
+        logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
         shared.print_compiler_stage(cmd)
-        shared.check_call(cmd)
-        if output_file not in ('-', os.devnull):
-          assert os.path.exists(output_file)
+        rtn = run_process(cmd, check=False).returncode
+        if rtn:
+          return rtn
+      return 0
 
-      # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
-      for i, input_file in input_files:
-        file_suffix = get_file_suffix(input_file)
-        if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (has_dash_c and file_suffix == '.bc'):
-          compile_source_file(i, input_file)
-        elif file_suffix in DYNAMICLIB_ENDINGS:
-          logger.debug('using shared library: ' + input_file)
-          temp_files.append((i, input_file))
-        elif building.is_ar(input_file):
-          logger.debug('using static library: ' + input_file)
-          ensure_archive_index(input_file)
-          temp_files.append((i, input_file))
-        elif language_mode:
-          compile_source_file(i, input_file)
-        elif input_file == '-':
-          exit_with_error('-E or -x required when input is from standard input')
-        else:
-          # Default to assuming the inputs are object files and pass them to the linker
-          logger.debug('using object file: ' + input_file)
-          temp_files.append((i, input_file))
+    # Precompiled headers support
+    if has_header_inputs:
+      headers = [header for _, header in input_files]
+      for header in headers:
+        if not header.endswith(HEADER_ENDINGS):
+          exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
+        cmd = get_clang_command(header)
+        if specified_target:
+          cmd += ['-o', specified_target]
+        logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
+        shared.print_compiler_stage(cmd)
+        return run_process(cmd, check=False).returncode
 
-    # exit block 'compile inputs'
-    log_time('compile inputs')
-
-    with ToolchainProfiler.profile_block('process inputs'):
-      # If we were just compiling stop here
+    def get_object_filename(input_file):
       if compile_only:
-        if not specified_target:
-          assert len(temp_files) == len(input_files)
-          for tempf, inputf in zip(temp_files, input_files):
-            safe_move(tempf[1], unsuffixed_basename(inputf[1]) + final_suffix)
-        else:
-          # Specifying -o with multiple input source files is not allowed.
-          # We error out much earlier in this case.
+        # In compile-only mode we don't use any temp file.   The object files are written directly
+        # to their final output locations.
+        if specified_target:
           assert len(input_files) == 1
-          input_file = input_files[0][1]
-          temp_file = temp_files[0][1]
-          if specified_target != '-':
-            if temp_file != input_file:
-              safe_move(temp_file, specified_target)
-            else:
-              safe_copy(temp_file, specified_target)
-          temp_output_base = unsuffixed(temp_file)
-          if os.path.exists(temp_output_base + '.d'):
-            # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
-            # adjusting the target name away from the temporary file name to the specified target.
-            # It will be deleted with the rest of the temporary directory.
-            deps = open(temp_output_base + '.d').read()
-            deps = deps.replace(temp_output_base + options.default_object_extension, specified_target)
-            with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_file) + '.d')), "w") as out_dep:
-              out_dep.write(deps)
-
-    # exit block 'process inputs'
-    log_time('process inputs')
-
-    if compile_only:
-      logger.debug('stopping after compile phase')
-      for flag in link_flags:
-        diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
-      return 0
-
-    if specified_target and specified_target.startswith('-'):
-      exit_with_error('invalid output filename: `%s`' % specified_target)
-
-    using_lld = not (link_to_object and shared.Settings.LTO)
-    link_flags = filter_link_flags(link_flags, using_lld)
-
-    # Decide what we will link
-    consumed = process_libraries(libs, lib_dirs, temp_files)
-    # Filter out libraries that are actually JS libs
-    link_flags = [l for l in link_flags if l[0] not in consumed]
-    temp_files = filter_out_dynamic_libs(temp_files)
-
-    linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
-
-    if link_to_object:
-      with ToolchainProfiler.profile_block('linking to object file'):
-        logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
-        if len(temp_files) == 1:
-          temp_file = temp_files[0][1]
-          # skip running the linker and just copy the object file
-          safe_copy(temp_file, target)
+          return specified_target
         else:
-          building.link_to_object(linker_inputs, target)
-        logger.debug('stopping after linking to object file')
-        return 0
+          return unsuffixed_basename(input_file) + options.default_object_extension
+      else:
+        return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
-    if final_suffix in ('.o', '.bc', '.so', '.dylib') and not shared.Settings.SIDE_MODULE:
-     diagnostics.warning('emcc', 'generating an executable with an object extension (%s).  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
+    def compile_source_file(i, input_file):
+      logger.debug('compiling source file: ' + input_file)
+      output_file = get_object_filename(input_file)
+      temp_files.append((i, output_file))
+      if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
+        cmd = get_clang_command_asm(input_file)
+      else:
+        cmd = get_clang_command(input_file)
+      cmd += ['-c', '-o', output_file]
+      shared.print_compiler_stage(cmd)
+      shared.check_call(cmd)
+      if output_file not in ('-', os.devnull):
+        assert os.path.exists(output_file)
 
-    ## Continue on to create JavaScript
+    # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
+    for i, input_file in input_files:
+      file_suffix = get_file_suffix(input_file)
+      if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (has_dash_c and file_suffix == '.bc'):
+        compile_source_file(i, input_file)
+      elif file_suffix in DYNAMICLIB_ENDINGS:
+        logger.debug('using shared library: ' + input_file)
+        temp_files.append((i, input_file))
+      elif building.is_ar(input_file):
+        logger.debug('using static library: ' + input_file)
+        ensure_archive_index(input_file)
+        temp_files.append((i, input_file))
+      elif language_mode:
+        compile_source_file(i, input_file)
+      elif input_file == '-':
+        exit_with_error('-E or -x required when input is from standard input')
+      else:
+        # Default to assuming the inputs are object files and pass them to the linker
+        logger.debug('using object file: ' + input_file)
+        temp_files.append((i, input_file))
 
-    with ToolchainProfiler.profile_block('calculate system libraries'):
-      # link in ports and system libraries, if necessary
-      if not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-        extra_files_to_link = system_libs.get_ports(shared.Settings)
-        if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-          link_as_cxx = run_via_emxx
-          # Traditionally we always link as C++.  For compatibility we continue to do that,
-          # unless running in strict mode.
-          if not shared.Settings.STRICT and '-nostdlib++' not in newargs:
-            link_as_cxx = True
-          extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
-        linker_inputs += extra_files_to_link
+  # exit block 'compile inputs'
+  log_time('compile inputs')
 
-    # exit block 'calculate system libraries'
-    log_time('calculate system libraries')
+  if compile_only:
+    logger.debug('stopping after compile phase')
+    for flag in link_flags:
+      diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
+    return 0
 
-    def dedup_list(lst):
-      rtn = []
-      for item in lst:
-        if item not in rtn:
-          rtn.append(item)
-      return rtn
+  if specified_target and specified_target.startswith('-'):
+    exit_with_error('invalid output filename: `%s`' % specified_target)
 
-    # Make a final pass over shared.Settings.EXPORTED_FUNCTIONS to remove any
-    # duplication between functions added by the driver/libraries and function
-    # specified by the user
-    shared.Settings.EXPORTED_FUNCTIONS = dedup_list(shared.Settings.EXPORTED_FUNCTIONS)
+  using_lld = not (link_to_object and shared.Settings.LTO)
+  link_flags = filter_link_flags(link_flags, using_lld)
 
-    with ToolchainProfiler.profile_block('link'):
-      logger.debug('linking: ' + str(linker_inputs))
-      tmp_wasm = in_temp(target_basename + '.wasm')
+  # Decide what we will link
+  consumed = process_libraries(libs, lib_dirs, temp_files)
+  # Filter out libraries that are actually JS libs
+  link_flags = [l for l in link_flags if l[0] not in consumed]
+  temp_files = filter_out_dynamic_libs(temp_files)
 
-      # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
-      # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
-      # fastcomp deferred linking opts.
-      # TODO: we could check if this is a fastcomp build, and still speed things up here
-      js_funcs = None
-      if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
-        js_funcs = get_all_js_syms(misc_temp_files)
-        log_time('JS symbol generation')
-      building.link_lld(linker_inputs, tmp_wasm, external_symbol_list=js_funcs)
-      # Special handling for when the user passed '-Wl,--version'.  In this case the linker
-      # does not create the output file, but just prints its version and exits with 0.
-      if '--version' in linker_inputs:
-        return 0
+  linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
-    # exit block 'link'
-    log_time('link')
-
-    if target == os.devnull:
-      # TODO(sbc): In theory we should really run the whole pipeline even if the output is
-      # /dev/null, but that will take some refactoring
+  if link_to_object:
+    with ToolchainProfiler.profile_block('linking to object file'):
+      logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
+      if len(temp_files) == 1:
+        temp_file = temp_files[0][1]
+        # skip running the linker and just copy the object file
+        safe_copy(temp_file, target)
+      else:
+        building.link_to_object(linker_inputs, target)
+      logger.debug('stopping after linking to object file')
       return 0
 
-    wasm_only = shared.Settings.SIDE_MODULE or final_suffix in WASM_ENDINGS
+  if final_suffix in ('.o', '.bc', '.so', '.dylib') and not shared.Settings.SIDE_MODULE:
+   diagnostics.warning('emcc', 'generating an executable with an object extension (%s).  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
 
-    if shared.Settings.MEM_INIT_IN_WASM:
-      memfile = None
+  ## Continue on to create JavaScript
+
+  with ToolchainProfiler.profile_block('calculate system libraries'):
+    # link in ports and system libraries, if necessary
+    if not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
+      extra_files_to_link = system_libs.get_ports(shared.Settings)
+      if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
+        link_as_cxx = run_via_emxx
+        # Traditionally we always link as C++.  For compatibility we continue to do that,
+        # unless running in strict mode.
+        if not shared.Settings.STRICT and '-nostdlib++' not in newargs:
+          link_as_cxx = True
+        extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
+      linker_inputs += extra_files_to_link
+
+  # exit block 'calculate system libraries'
+  log_time('calculate system libraries')
+
+  def dedup_list(lst):
+    rtn = []
+    for item in lst:
+      if item not in rtn:
+        rtn.append(item)
+    return rtn
+
+  # Make a final pass over shared.Settings.EXPORTED_FUNCTIONS to remove any
+  # duplication between functions added by the driver/libraries and function
+  # specified by the user
+  shared.Settings.EXPORTED_FUNCTIONS = dedup_list(shared.Settings.EXPORTED_FUNCTIONS)
+
+  with ToolchainProfiler.profile_block('link'):
+    logger.debug('linking: ' + str(linker_inputs))
+
+    # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
+    # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
+    # fastcomp deferred linking opts.
+    # TODO: we could check if this is a fastcomp build, and still speed things up here
+    js_funcs = None
+    if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
+      js_funcs = get_all_js_syms(misc_temp_files)
+      log_time('JS symbol generation')
+    building.link_lld(linker_inputs, wasm_target, external_symbol_list=js_funcs)
+    # Special handling for when the user passed '-Wl,--version'.  In this case the linker
+    # does not create the output file, but just prints its version and exits with 0.
+    if '--version' in linker_inputs:
+      return 0
+
+  # exit block 'link'
+  log_time('link')
+
+  if target == os.devnull:
+    # TODO(sbc): In theory we should really run the whole pipeline even if the output is
+    # /dev/null, but that will take some refactoring
+    return 0
+
+  # Perform post-link steps (unless we are running bare mode)
+  if options.oformat != OFormat.BARE:
+    post_link(options, wasm_target, wasm_target, target)
+
+  return 0
+
+
+def post_link(options, in_wasm, wasm_target, target):
+  global final_js
+
+  target_basename = unsuffixed_basename(target)
+
+  if options.oformat != OFormat.WASM:
+    final_js = in_temp(target_basename + '.js')
+
+  if shared.Settings.MEM_INIT_IN_WASM:
+    memfile = None
+  else:
+    memfile = shared.replace_or_append_suffix(target, '.mem')
+
+  with ToolchainProfiler.profile_block('emscript'):
+    # Emscripten
+    logger.debug('emscript')
+    if options.memory_init_file:
+      shared.Settings.MEM_INIT_METHOD = 1
     else:
-      memfile = shared.replace_or_append_suffix(target, '.mem')
+      assert shared.Settings.MEM_INIT_METHOD != 1
 
-    with ToolchainProfiler.profile_block('emscript'):
-      # Emscripten
-      logger.debug('LLVM => JS')
-      if options.memory_init_file:
-        shared.Settings.MEM_INIT_METHOD = 1
-      else:
-        assert shared.Settings.MEM_INIT_METHOD != 1
+    if embed_memfile():
+      shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      if embed_memfile():
-        shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
+    emscripten.run(in_wasm, wasm_target, final_js, memfile)
+    save_intermediate('original')
 
-      if wasm_only:
-        final_js = None
-      else:
-        final_js = tmp_wasm + '.js'
-      emscripten.run(tmp_wasm, final_js, memfile)
+  # exit block 'emscript'
+  log_time('emscript)')
 
-      save_intermediate('original')
+  with ToolchainProfiler.profile_block('source transforms'):
+    # Embed and preload files
+    if len(options.preload_files) or len(options.embed_files):
+      logger.debug('setting up files')
+      file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
+      if len(options.preload_files):
+        file_args.append('--preload')
+        file_args += options.preload_files
+      if len(options.embed_files):
+        file_args.append('--embed')
+        file_args += options.embed_files
+      if len(options.exclude_files):
+        file_args.append('--exclude')
+        file_args += options.exclude_files
+      if options.use_preload_cache:
+        file_args.append('--use-preload-cache')
+      if shared.Settings.LZ4:
+        file_args.append('--lz4')
+      if options.use_preload_plugins:
+        file_args.append('--use-preload-plugins')
+      file_code = shared.check_call([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
+      options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
-      # we also received the wasm at this stage
-      safe_move(tmp_wasm, wasm_target)
-      if shared.Settings.GENERATE_SOURCE_MAP:
-        safe_move(tmp_wasm + '.map', wasm_source_map_target)
+    # Apply pre and postjs files
+    if final_js and (options.pre_js or options.post_js):
+      logger.debug('applying pre/postjses')
+      src = open(final_js).read()
+      final_js += '.pp.js'
+      with open(final_js, 'w') as f:
+        # pre-js code goes right after the Module integration code (so it
+        # can use Module), we have a marker for it
+        f.write(do_replace(src, '// {{PRE_JSES}}', fix_windows_newlines(options.pre_js)))
+        f.write(fix_windows_newlines(options.post_js))
+      options.pre_js = src = options.post_js = None
+      save_intermediate('pre-post')
 
-    # exit block 'emscript'
-    log_time('emscript (llvm => executable code)')
+    # Apply a source code transformation, if requested
+    if options.js_transform:
+      safe_copy(final_js, final_js + '.tr.js')
+      final_js += '.tr.js'
+      posix = not shared.WINDOWS
+      logger.debug('applying transform: %s', options.js_transform)
+      shared.check_call(building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final_js)]))
+      save_intermediate('transformed')
 
-    with ToolchainProfiler.profile_block('source transforms'):
-      # Embed and preload files
-      if len(options.preload_files) or len(options.embed_files):
-        logger.debug('setting up files')
-        file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
-        if len(options.preload_files):
-          file_args.append('--preload')
-          file_args += options.preload_files
-        if len(options.embed_files):
-          file_args.append('--embed')
-          file_args += options.embed_files
-        if len(options.exclude_files):
-          file_args.append('--exclude')
-          file_args += options.exclude_files
-        if options.use_preload_cache:
-          file_args.append('--use-preload-cache')
-        if shared.Settings.LZ4:
-          file_args.append('--lz4')
-        if options.use_preload_plugins:
-          file_args.append('--use-preload-plugins')
-        file_code = shared.check_call([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
-        options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+  # exit block 'source transforms'
+  log_time('source transforms')
 
-      # Apply pre and postjs files
-      if final_js and (options.pre_js or options.post_js):
-        logger.debug('applying pre/postjses')
-        src = open(final_js).read()
-        final_js += '.pp.js'
-        with open(final_js, 'w') as f:
-          # pre-js code goes right after the Module integration code (so it
-          # can use Module), we have a marker for it
-          f.write(do_replace(src, '// {{PRE_JSES}}', fix_windows_newlines(options.pre_js)))
-          f.write(fix_windows_newlines(options.post_js))
-        options.pre_js = src = options.post_js = None
-        save_intermediate('pre-post')
+  if memfile and not shared.Settings.MINIMAL_RUNTIME:
+    # MINIMAL_RUNTIME doesn't use `var memoryInitializer` but instead expects Module['mem'] to
+    # be loaded before the module.  See src/postamble_minimal.js.
+    with ToolchainProfiler.profile_block('memory initializer'):
+      # For the wasm backend, we don't have any memory info in JS. All we need to do
+      # is set the memory initializer url.
+      src = open(final_js).read()
+      src = do_replace(src, '// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
+      open(final_js + '.mem.js', 'w').write(src)
+      final_js += '.mem.js'
 
-      # Apply a source code transformation, if requested
-      if options.js_transform:
-        safe_copy(final_js, final_js + '.tr.js')
-        final_js += '.tr.js'
-        posix = not shared.WINDOWS
-        logger.debug('applying transform: %s', options.js_transform)
-        shared.check_call(building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final_js)]))
-        save_intermediate('transformed')
+    log_time('memory initializer')
 
-    # exit block 'source transforms'
-    log_time('source transforms')
+  with ToolchainProfiler.profile_block('binaryen'):
+    do_binaryen(target, options, wasm_target)
 
-    if memfile and not shared.Settings.MINIMAL_RUNTIME:
-      # MINIMAL_RUNTIME doesn't use `var memoryInitializer` but instead expects Module['mem'] to
-      # be loaded before the module.  See src/postamble_minimal.js.
-      with ToolchainProfiler.profile_block('memory initializer'):
-        # For the wasm backend, we don't have any memory info in JS. All we need to do
-        # is set the memory initializer url.
-        src = open(final_js).read()
-        src = do_replace(src, '// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
-        open(final_js + '.mem.js', 'w').write(src)
-        final_js += '.mem.js'
+  log_time('binaryen')
+  # If we are not emitting any JS then we are all done now
+  if options.oformat == OFormat.WASM:
+    return
 
-      log_time('memory initializer')
+  with ToolchainProfiler.profile_block('final emitting'):
+    # Remove some trivial whitespace
+    # TODO: do not run when compress has already been done on all parts of the code
+    # src = open(final_js).read()
+    # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
+    # open(final_js, 'w').write(src)
 
-    with ToolchainProfiler.profile_block('binaryen'):
-      do_binaryen(target, options, wasm_target)
+    if shared.Settings.USE_PTHREADS:
+      target_dir = os.path.dirname(os.path.abspath(target))
+      worker_output = os.path.join(target_dir, shared.Settings.PTHREAD_WORKER_FILE)
+      with open(worker_output, 'w') as f:
+        f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
 
-    log_time('binaryen')
-    # If we are not emitting any JS then we are all done now
-    if wasm_only:
-      return
+      # Minify the worker.js file in optimized builds
+      if (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1) and not shared.Settings.DEBUG_LEVEL:
+        minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
+        open(worker_output, 'w').write(minified_worker)
 
-    with ToolchainProfiler.profile_block('final emitting'):
-      # Remove some trivial whitespace
-      # TODO: do not run when compress has already been done on all parts of the code
-      # src = open(final_js).read()
-      # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-      # open(final_js, 'w').write(src)
+    # track files that will need native eols
+    generated_text_files_with_native_eols = []
 
-      if shared.Settings.USE_PTHREADS:
-        target_dir = os.path.dirname(os.path.abspath(target))
-        worker_output = os.path.join(target_dir, shared.Settings.PTHREAD_WORKER_FILE)
-        with open(worker_output, 'w') as f:
-          f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
+    if shared.Settings.MODULARIZE:
+      modularize()
 
-        # Minify the worker.js file in optimized builds
-        if (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1) and not shared.Settings.DEBUG_LEVEL:
-          minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-          open(worker_output, 'w').write(minified_worker)
+    module_export_name_substitution()
 
-      # track files that will need native eols
-      generated_text_files_with_native_eols = []
-
-      if shared.Settings.MODULARIZE:
-        modularize()
-
-      module_export_name_substitution()
-
-      # Run a final regex pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
-      # by processing steps that occurred after Closure.
-      if shared.Settings.MINIMAL_RUNTIME == 2 and shared.Settings.USE_CLOSURE_COMPILER and shared.Settings.DEBUG_LEVEL == 0 and not shared.Settings.SINGLE_FILE:
-        # Process .js runtime file. Note that we need to handle the license text
-        # here, so that it will not confuse the hacky script.
-        shared.JS.handle_license(final_js)
-        shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final_js])
-
-      # Apply pre and postjs files
-      if options.extern_pre_js or options.extern_post_js:
-        logger.debug('applying extern pre/postjses')
-        src = open(final_js).read()
-        final_js += '.epp.js'
-        with open(final_js, 'w') as f:
-          f.write(fix_windows_newlines(options.extern_pre_js))
-          f.write(src)
-          f.write(fix_windows_newlines(options.extern_post_js))
-        save_intermediate('extern-pre-post')
-
+    # Run a final regex pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
+    # by processing steps that occurred after Closure.
+    if shared.Settings.MINIMAL_RUNTIME == 2 and shared.Settings.USE_CLOSURE_COMPILER and shared.Settings.DEBUG_LEVEL == 0 and not shared.Settings.SINGLE_FILE:
+      # Process .js runtime file. Note that we need to handle the license text
+      # here, so that it will not confuse the hacky script.
       shared.JS.handle_license(final_js)
+      shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final_js])
 
-      if final_suffix in JS_ENDINGS:
-        js_target = target
-      else:
-        js_target = unsuffixed(target) + '.js'
+    # Apply pre and postjs files
+    if options.extern_pre_js or options.extern_post_js:
+      logger.debug('applying extern pre/postjses')
+      src = open(final_js).read()
+      final_js += '.epp.js'
+      with open(final_js, 'w') as f:
+        f.write(fix_windows_newlines(options.extern_pre_js))
+        f.write(src)
+        f.write(fix_windows_newlines(options.extern_post_js))
+      save_intermediate('extern-pre-post')
 
-      # The JS is now final. Move it to its final location
-      safe_move(final_js, js_target)
+    shared.JS.handle_license(final_js)
 
-      if not shared.Settings.SINGLE_FILE:
-        generated_text_files_with_native_eols += [js_target]
+    if options.oformat in (OFormat.JS, OFormat.MJS):
+      js_target = target
+    else:
+      js_target = unsuffixed(target) + '.js'
 
-      # If we were asked to also generate HTML, do that
-      if final_suffix == '.html':
-        generate_html(target, options, js_target, target_basename,
-                      wasm_target, memfile)
-      else:
-        if options.proxy_to_worker:
-          generate_worker_js(target, js_target, target_basename)
+    # The JS is now final. Move it to its final location
+    safe_move(final_js, js_target)
 
-      if embed_memfile() and memfile:
-        shared.try_delete(memfile)
+    if not shared.Settings.SINGLE_FILE:
+      generated_text_files_with_native_eols += [js_target]
 
-      for f in generated_text_files_with_native_eols:
-        tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
+    # If we were asked to also generate HTML, do that
+    if options.oformat == OFormat.HTML:
+      generate_html(target, options, js_target, target_basename,
+                    wasm_target, memfile)
+    elif options.proxy_to_worker:
+      generate_worker_js(target, js_target, target_basename)
 
-      if make_output_executable:
-        make_js_executable(js_target)
+    if embed_memfile() and memfile:
+      shared.try_delete(memfile)
 
-    log_time('final emitting')
-    # exit block 'final emitting'
+    for f in generated_text_files_with_native_eols:
+      tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
 
-  finally:
-    if DEBUG:
-      shared.Cache.release_cache_lock()
+    if options.executable:
+      make_js_executable(js_target)
 
-  if DEBUG:
-    logger.debug('total time: %.2f seconds', (time.time() - start_time))
+  log_time('final emitting')
+  # exit block 'final emitting'
 
   return 0
 
@@ -2438,6 +2440,16 @@ def parse_args(newargs):
       options.extern_pre_js += open(consume_arg()).read() + '\n'
     elif check_arg('--extern-post-js'):
       options.extern_post_js += open(consume_arg()).read() + '\n'
+    elif check_arg('--compiler-wrapper'):
+      config.COMPILER_WRAPPER = consume_arg()
+    elif check_flag('--post-link'):
+      options.post_link = True
+    elif check_arg('--oformat'):
+      formats = [f.lower() for f in OFormat.__members__]
+      fmt = consume_arg()
+      if fmt not in formats:
+        exit_with_error('invalid output format: `%s` (must be one of %s)' % (fmt, formats))
+      options.oformat = getattr(OFormat, fmt.upper())
     elif check_arg('--minify'):
       arg = consume_arg()
       if arg != '0':
@@ -2596,7 +2608,7 @@ def parse_args(newargs):
       if os.path.exists(path):
         exit_with_error('File ' + optarg + ' passed to --generate-config already exists!')
       else:
-        shared.generate_config(optarg)
+        config.generate_config(optarg)
       should_exit = True
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif arg == '-pthread':
@@ -2698,6 +2710,7 @@ def do_binaryen(target, options, wasm_target):
     webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
+    diagnostics.warning('deprecated', 'We hope to remove support for EMIT_EMSCRIPTEN_METADATA. See https://github.com/emscripten-core/emscripten/issues/12231')
     webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
@@ -2718,12 +2731,14 @@ def do_binaryen(target, options, wasm_target):
       final_js = building.instrument_js_for_safe_heap(final_js)
 
     if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
-      # minify the JS
+      # minify the JS. Do not minify whitespace if Closure is used, so that
+      # Closure can print out readable error messages (Closure will then
+      # minify whitespace afterwards)
       save_intermediate_with_wasm('preclean', wasm_target)
       final_js = building.minify_wasm_js(js_file=final_js,
                                          wasm_file=wasm_target,
                                          expensive_optimizations=will_metadce(),
-                                         minify_whitespace=minify_whitespace(),
+                                         minify_whitespace=minify_whitespace() and not options.use_closure_compiler,
                                          debug_info=intermediate_debug_info)
       save_intermediate_with_wasm('postclean', wasm_target)
 
@@ -2803,7 +2818,9 @@ def modularize():
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final_js).read()
 
-  return_value = shared.Settings.EXPORT_NAME + '.ready'
+  return_value = shared.Settings.EXPORT_NAME
+  if shared.Settings.WASM_ASYNC_COMPILATION:
+    return_value += '.ready'
   if not shared.Settings.EXPORT_READY_PROMISE:
     return_value = '{}'
 
@@ -2857,17 +2874,16 @@ var %(EXPORT_NAME)s = (function() {
     # Export using a UMD style export, or ES6 exports if selected
 
     if shared.Settings.EXPORT_ES6:
-      f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+      f.write('export default %s;' % shared.Settings.EXPORT_NAME)
     elif not shared.Settings.MINIMAL_RUNTIME:
-      f.write('''if (typeof exports === 'object' && typeof module === 'object')
-      module.exports = %(EXPORT_NAME)s;
-    else if (typeof define === 'function' && define['amd'])
-      define([], function() { return %(EXPORT_NAME)s; });
-    else if (typeof exports === 'object')
-      exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
-    ''' % {
-        'EXPORT_NAME': shared.Settings.EXPORT_NAME
-      })
+      f.write('''\
+if (typeof exports === 'object' && typeof module === 'object')
+  module.exports = %(EXPORT_NAME)s;
+else if (typeof define === 'function' && define['amd'])
+  define([], function() { return %(EXPORT_NAME)s; });
+else if (typeof exports === 'object')
+  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+''' % {'EXPORT_NAME': shared.Settings.EXPORT_NAME})
 
   save_intermediate('modularized')
 
@@ -3095,11 +3111,11 @@ def worker_js_script(proxy_worker_filename):
 def process_libraries(libs, lib_dirs, temp_files):
   libraries = []
   consumed = []
+  suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
 
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
-    suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
 
     found = False
     for prefix in LIB_PREFIXES:
@@ -3117,10 +3133,13 @@ def process_libraries(libs, lib_dirs, temp_files):
           break
       if found:
         break
+
     if not found:
-      jslibs = building.path_to_system_js_libraries(lib)
-      if jslibs:
+      jslibs = building.map_to_js_libs(lib)
+      if jslibs is not None:
         libraries += [(i, jslib) for jslib in jslibs]
+        consumed.append(i)
+      elif building.map_and_apply_to_settings(lib):
         consumed.append(i)
 
   shared.Settings.SYSTEM_JS_LIBRARIES += libraries
@@ -3270,9 +3289,16 @@ def is_int(s):
     return False
 
 
+def main(args):
+  start_time = time.time()
+  ret = run(args)
+  logger.debug('total time: %.2f seconds', (time.time() - start_time))
+  return ret
+
+
 if __name__ == '__main__':
   try:
-    sys.exit(run(sys.argv))
+    sys.exit(main(sys.argv))
   except KeyboardInterrupt:
     logger.warning('KeyboardInterrupt')
     sys.exit(1)

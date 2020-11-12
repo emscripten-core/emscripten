@@ -216,7 +216,14 @@ var LibraryManager = {
     // (and makes it simpler to switch between SDL versions, fastcomp and non-fastcomp, etc.).
     var lib = LibraryManager.library;
     libloop: for (var x in lib) {
-      if (x.lastIndexOf('__') > 0) continue; // ignore __deps, __*
+      if (isJsLibraryConfigIdentifier(x)) {
+        var index = x.lastIndexOf('__');
+        var basename = x.slice(0, index);
+        if (!(basename in lib)) {
+          error('Missing library element `' + basename + '` for library config `' + x + '`');
+        }
+        continue;
+      }
       if (typeof lib[x] === 'string') {
         var target = x;
         while (typeof lib[target] === 'string') {
@@ -244,7 +251,14 @@ var LibraryManager = {
             error('Function ' + x + ' aliases to target function ' + target + ', but neither the alias or the target provide a signature. Please add a ' + target + "__sig: 'vifj...' annotation or a " + x + "__sig: 'vifj...' annotation to describe the type of function forwarding that is needed!");
           }
 
+          if (typeof lib[target] !== 'function') {
+            error(`no alias found for ${x}`);
+          }
+
           var argCount = sig.length - 1;
+          if (argCount !== lib[target].length) {
+            error(`incorrect number of arguments in signature of ${x} (declared: ${argCount}, expected: ${lib[target].length})`);
+          }
           var ret = sig == 'v' ? '' : 'return ';
           var args = genArgSequence(argCount).join(',');
           lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');

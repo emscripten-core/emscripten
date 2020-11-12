@@ -111,6 +111,25 @@ int main() {
   }
   printf("localtime <-> mktime: %d\n", mktimeOk);
 
+  // Verify that mktime updates the tm struct to the correct date if its values are
+  // out of range by matching against the return value of localtime.
+  struct tm tm2 { 0 }, tm_local;
+  tm2.tm_sec = tm2.tm_min = tm2.tm_hour = tm2.tm_mday = tm2.tm_mon = tm2.tm_wday =
+    tm2.tm_yday = 1000;
+  time_t t2 = mktime(&tm2); localtime_r(&t2, &tm_local);
+  mktimeOk = !(
+    tm2.tm_sec < 0 || tm2.tm_sec > 60 || tm2.tm_min < 0 || tm2.tm_min > 59 ||
+    tm2.tm_hour < 0 || tm2.tm_hour > 23 || tm2.tm_mday < 1 || tm2.tm_mday > 31 ||
+    tm2.tm_mon < 0 || tm2.tm_mon > 11 || tm2.tm_wday < 0 || tm2.tm_wday > 6 ||
+    tm2.tm_yday < 0 || tm2.tm_yday > 365);
+  printf("mktime updates parameter to be in range: %d\n", mktimeOk);
+  mktimeOk = !(
+    tm2.tm_sec != tm_local.tm_sec || tm2.tm_min != tm_local.tm_min ||
+    tm2.tm_hour != tm_local.tm_hour || tm2.tm_mday != tm_local.tm_mday ||
+    tm2.tm_mon != tm_local.tm_mon || tm2.tm_wday != tm_local.tm_wday ||
+    tm2.tm_yday != tm_local.tm_yday);
+  printf("mktime parameter is equivalent to localtime return: %d\n", mktimeOk);
+
   // Verify that mktime is able to guess what the dst is. It might get it wrong
   // during the one ambiguous hour when the clock goes back -- we assume that in
   // no locale that happens on Jul 1 (summer2002) or Dec 25 (xmas2002).

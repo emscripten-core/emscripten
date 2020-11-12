@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
-
 import atexit
 import json
 import logging
@@ -22,16 +20,18 @@ from . import diagnostics
 from . import response_file
 from . import shared
 from . import webassembly
+from . import config
 from .toolchain_profiler import ToolchainProfiler
 from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
-from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, NODE_JS, WASM_LD, LLVM_AR
+from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
-from .shared import asmjs_mangle, DEBUG, WINDOWS, JAVA
-from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage, BINARYEN_ROOT
+from .shared import asmjs_mangle, DEBUG
+from .shared import EM_BUILD_VERBOSE, TEMP_DIR, print_compiler_stage
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
-from .shared import get_emscripten_temp_dir, exe_suffix, which, is_c_symbol
+from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
+from .utils import which, WINDOWS
 
 logger = logging.getLogger('building')
 
@@ -291,10 +291,10 @@ def handle_cmake_toolchain(args, env):
   # Append the Emscripten toolchain file if the user didn't specify one.
   if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
     args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
-  node_js = NODE_JS
+  node_js = config.NODE_JS
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
-    node_js = NODE_JS[0].replace('"', '\"')
+    node_js = config.NODE_JS[0].replace('"', '\"')
     args.append('-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
 
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
@@ -335,7 +335,7 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     stdout = None
   if EM_BUILD_VERBOSE >= 1:
     stderr = None
-  print('configure: ' + ' '.join(args), file=sys.stderr)
+  print('configure: ' + shared.shlex_join(args), file=sys.stderr)
   run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
 
 
@@ -815,10 +815,6 @@ def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None)
     assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
 
-def can_inline():
-  return Settings.INLINING_LIMIT == 0
-
-
 def get_safe_internalize():
   if Settings.LINKABLE:
     return [] # do not internalize anything
@@ -875,7 +871,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     with open(temp, 'a') as f:
       f.write('// EXTRA_INFO: ' + extra_info)
     filename = temp
-  cmd = NODE_JS + [optimizer, filename] + passes
+  cmd = config.NODE_JS + [optimizer, filename] + passes
   # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
   # will be carried over to a later Closure run.
   if Settings.USE_CLOSURE_COMPILER:
@@ -905,7 +901,7 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
 
 def get_closure_compiler():
   # First check if the user configured a specific CLOSURE_COMPILER in thier settings
-  if shared.CLOSURE_COMPILER:
+  if config.CLOSURE_COMPILER:
     return shared.CLOSURE_COMPILER
 
   # Otherwise use the one installed vai npm
@@ -918,15 +914,21 @@ def get_closure_compiler():
   return cmd
 
 
-def check_closure_compiler(cmd, args, env):
+def check_closure_compiler(cmd, args, env, allowed_to_fail):
   try:
     output = run_process(cmd + args + ['--version'], stdout=PIPE, env=env).stdout
   except Exception as e:
+    if allowed_to_fail:
+      return False
     logger.warn(str(e))
     exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(cmd))
 
   if 'Version:' not in output:
+    if allowed_to_fail:
+      return False
     exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(cmd), output))
+
+  return True
 
 
 def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
@@ -942,7 +944,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
     # to enable use the java backend.  Without this it will only try the native and JavaScript
     # versions of the compiler.
-    java_bin = os.path.dirname(JAVA)
+    java_bin = os.path.dirname(config.JAVA)
     if java_bin:
       def add_to_path(dirname):
         env['PATH'] = env['PATH'] + os.pathsep + dirname
@@ -950,13 +952,13 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
       java_home = os.path.dirname(java_bin)
       env.setdefault('JAVA_HOME', java_home)
 
-    if WINDOWS and not any(a.startswith('--platform') for a in user_args):
-      # Disable native compiler on windows until upstream issue is fixed:
-      # https://github.com/google/closure-compiler-npm/issues/147
-      user_args.append('--platform=java')
-
     closure_cmd = get_closure_compiler()
-    check_closure_compiler(closure_cmd, user_args, env)
+
+    native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
+    if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
+      # Run with Java Closure compiler as a fallback if the native version does not work
+      user_args.append('--platform=java')
+      check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
     # Closure externs file contains known symbols to be extern to the minification, Closure
     # should not minify these symbol names.
@@ -1165,6 +1167,8 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     'fd_seek',
     'fd_fdstat_get',
     'fd_sync',
+    'fd_pread',
+    'fd_pwrite',
     'proc_exit',
     'clock_res_get',
     'clock_time_get',
@@ -1418,6 +1422,9 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   if not debug_info:
     # to remove debug info, we just write to that same file, and without -g
     args += ['-o', wasm_file]
+  else:
+    # suppress the wasm-opt warning regarding "no output file specified"
+    args += ['--quiet']
   # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
@@ -1464,48 +1471,67 @@ def is_wasm(filename):
 # Given the name of a special Emscripten-implemented system library, returns an
 # array of absolute paths to JS library files inside emscripten/src/ that
 # corresponds to the library name.
-def path_to_system_js_libraries(library_name):
+def map_to_js_libs(library_name):
   # Some native libraries are implemented in Emscripten as system side JS libraries
-  js_system_libraries = {
-    'c': '',
-    'dl': '',
-    'EGL': 'library_egl.js',
+  library_map = {
+    'c': [],
+    'dl': [],
+    'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
-    'GLESv2': 'library_webgl.js',
+    'GLESv2': ['library_webgl.js'],
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
-    'GLEW': 'library_glew.js',
-    'glfw': 'library_glfw.js',
-    'glfw3': 'library_glfw.js',
-    'GLU': '',
-    'glut': 'library_glut.js',
-    'm': '',
-    'openal': 'library_openal.js',
-    'rt': '',
-    'pthread': '',
-    'X11': 'library_xlib.js',
-    'SDL': 'library_sdl.js',
-    'stdc++': '',
-    'uuid': 'library_uuid.js',
-    'websocket': 'library_websocket.js'
+    'GLEW': ['library_glew.js'],
+    'glfw': ['library_glfw.js'],
+    'glfw3': ['library_glfw.js'],
+    'GLU': [],
+    'glut': ['library_glut.js'],
+    'm': [],
+    'openal': ['library_openal.js'],
+    'rt': [],
+    'pthread': [],
+    'X11': ['library_xlib.js'],
+    'SDL': ['library_sdl.js'],
+    'stdc++': [],
+    'uuid': ['library_uuid.js'],
+    'websocket': ['library_websocket.js']
   }
-  library_files = []
-  if library_name in js_system_libraries:
-    if len(js_system_libraries[library_name]):
-      lib = js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
-      library_files += lib
-      logger.debug('Linking in JS library ' + str(lib))
 
-  elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
-    library_files += ['library_' + library_name]
+  if library_name in library_map:
+    libs = library_map[library_name]
+    logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
+    return libs
 
-  return library_files
+  if library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
+    return ['library_' + library_name]
+
+  return None
 
 
-def emit_wasm_source_map(wasm_file, map_file):
+# map a linker flag to a Settings option, and apply it. this lets a user write
+# -lSDL2 and it will have the same effect as -s USE_SDL=2.
+def map_and_apply_to_settings(library_name):
+  # most libraries just work, because the -l name matches the name of the
+  # library we build. however, if a library has variations, which cause us to
+  # build multiple versions with multiple names, then we need this mechanism.
+  library_map = {
+    # SDL2_mixer's built library name contains the specific codecs built in.
+    'SDL2_mixer': [('USE_SDL_MIXER', 2)],
+  }
+
+  if library_name in library_map:
+    for key, value in library_map[library_name]:
+      logger.debug('Mapping library `%s` to settings changes: %s = %s' % (library_name, key, value))
+      setattr(shared.Settings, key, value)
+    return True
+
+  return False
+
+
+def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
-  base_path = os.path.dirname(os.path.abspath(Settings.WASM_BINARY_FILE))
+  base_path = os.path.dirname(os.path.abspath(final_wasm))
   sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
                    wasm_file,
                    '--dwarfdump=' + LLVM_DWARFDUMP,
@@ -1548,7 +1574,7 @@ def check_binaryen(bindir):
 def get_binaryen_bin():
   assert Settings.WASM, 'non wasm builds should not ask for binaryen'
   global binaryen_checked
-  rtn = os.path.join(BINARYEN_ROOT, 'bin')
+  rtn = os.path.join(config.BINARYEN_ROOT, 'bin')
   if not binaryen_checked:
     check_binaryen(rtn)
     binaryen_checked = True

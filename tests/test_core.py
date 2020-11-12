@@ -20,8 +20,9 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
 from tools.shared import try_delete, PIPE
-from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, LLVM_ROOT
-from tools import shared, building
+from tools.shared import PYTHON, EMCC, EMAR
+from tools.utils import WINDOWS, MACOS
+from tools import shared, building, config
 from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify, disabled
@@ -33,24 +34,24 @@ import clang_native
 
 def wasm_simd(f):
   def decorated(self):
-    if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
+    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
       self.skipTest('wasm simd only supported in d8 for now')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
-    with js_engines_modify([V8_ENGINE + ['--experimental-wasm-simd']]):
+    with js_engines_modify([config.V8_ENGINE + ['--experimental-wasm-simd']]):
       f(self)
   return decorated
 
 
 def bleeding_edge_wasm_backend(f):
   def decorated(self):
-    if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
+    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
       self.skipTest('only works in d8 for now')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
-    with js_engines_modify([V8_ENGINE]):
+    with js_engines_modify([config.V8_ENGINE]):
       f(self)
   return decorated
 
@@ -61,7 +62,7 @@ def also_with_wasm_bigint(f):
     f(self)
     if self.get_setting('WASM'):
       self.set_setting('WASM_BIGINT', 1)
-      with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+      with js_engines_modify([config.NODE_JS + ['--experimental-wasm-bigint']]):
         f(self)
   return decorated
 
@@ -90,10 +91,10 @@ def with_both_exception_handling(f):
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.get_setting('WASM'):
         self.skipTest('wasm2js does not support wasm exceptions')
-      if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
+      if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
         self.skipTest('d8 required to run wasm eh tests')
       self.emcc_args.append('-fwasm-exceptions')
-      with js_engines_modify([V8_ENGINE + ['--experimental-wasm-eh']]):
+      with js_engines_modify([config.V8_ENGINE + ['--experimental-wasm-eh']]):
         f(self)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -128,7 +129,7 @@ def also_with_noderawfs(func):
     func(self)
     print('noderawfs')
     self.emcc_args = orig_args + ['-s', 'NODERAWFS=1', '-DNODERAWFS']
-    with js_engines_modify([NODE_JS]):
+    with js_engines_modify([config.NODE_JS]):
       func(self)
   return decorated
 
@@ -156,8 +157,8 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
           # when it sees an i64 on the ffi.
           self.set_setting('WASM_BIGINT', 1)
           # if we are impure, disallow all wasm engines
-          with wasm_engines_modify([] if impure else shared.WASM_ENGINES):
-            with js_engines_modify([NODE_JS + ['--experimental-wasm-bigint']]):
+          with wasm_engines_modify([] if impure else config.WASM_ENGINES):
+            with js_engines_modify([config.NODE_JS + ['--experimental-wasm-bigint']]):
               func(self)
               if wasm2c:
                 print('wasm2c')
@@ -179,7 +180,7 @@ def node_pthreads(f):
       self.skipTest('asan ends up using atomics that are not yet supported in node 12')
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    with js_engines_modify([NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
+    with js_engines_modify([config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
       f(self)
   return decorated
 
@@ -398,7 +399,7 @@ class TestCoreBase(RunnerCore):
     self.set_setting('WASM_BIGINT', 1)
     self.emcc_args += ['-fexceptions']
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_invoke_bigint.cpp',
-                                 js_engines=[NODE_JS + ['--experimental-wasm-bigint']])
+                                 js_engines=[config.NODE_JS + ['--experimental-wasm-bigint']])
 
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy.c')
@@ -475,7 +476,7 @@ class TestCoreBase(RunnerCore):
   def test_cube2hash(self):
     # A good test of i64 math
     self.do_run('// empty file', 'Usage: hashstring <seed>',
-                libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
+                libraries=self.get_library('cube2hash', ['libcube2hash.a'], configure=None),
                 includes=[path_from_root('tests', 'cube2hash')], assert_returncode=NON_ZERO)
 
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
@@ -824,24 +825,6 @@ base align: 0, 0, 0, 0'''])
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement.c')
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement.c')
-
-  @no_wasm_backend('generated code not available in wasm')
-  def test_stack_restore(self):
-    self.emcc_args += ['-g3'] # to be able to find the generated code
-
-    self.do_run_in_out_file_test('tests', 'core', 'test_stack_restore.c')
-
-    generated = open('src.js').read()
-
-    def ensure_stack_restore_count(function_name, expected_count):
-      code = generated[generated.find(function_name):]
-      code = code[:code.find('\n}') + 2]
-      actual_count = code.count('STACKTOP = sp')
-      assert actual_count == expected_count, ('Expected %d stack restorations, got %d' % (expected_count, actual_count)) + ': ' + code
-
-    ensure_stack_restore_count('function _no_stack_usage', 0)
-    ensure_stack_restore_count('function _alloca_gets_restored', 1)
-    ensure_stack_restore_count('function _stack_usage', 1)
 
   def test_strings(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strings.c', args=['wowie', 'too', '74'])
@@ -1814,7 +1797,7 @@ int main() {
     self.do_run(src, 'got null')
 
   def test_emscripten_get_now(self):
-    self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
+    self.banned_js_engines = [config.V8_ENGINE] # timer limitations in v8 shell
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
 
@@ -1967,23 +1950,22 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp', force_c=True)
 
   def test_runtime_stacksave(self):
-    src = open(path_from_root('tests', 'core', 'test_runtime_stacksave.c')).read()
-    self.do_run(src, 'success')
+    self.do_runf(path_from_root('tests', 'core', 'test_runtime_stacksave.c'), 'success')
 
   # Tests that -s MINIMAL_RUNTIME=1 builds can utilize -s ALLOW_MEMORY_GROWTH=1 option.
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
     self.set_setting('MINIMAL_RUNTIME', 1)
-    src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
+    src = path_from_root('tests', 'core', 'test_memorygrowth.c')
     # Fail without memory growth
     expect_fail = False
     if self.get_setting('WASM') == 0:
       expect_fail = True
-    self.do_run(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
+    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
     # Win with it
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -1993,16 +1975,16 @@ int main(int argc, char **argv) {
       self.set_setting('DYNAMIC_EXECUTION', 0)
     # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
-    src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
+    src = path_from_root('tests', 'core', 'test_memorygrowth.c')
 
     # Fail without memory growth
-    self.do_run(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('src.js').read()
+    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
+    fail = open('test_memorygrowth.js').read()
 
     # Win with it
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('src.js').read()
+    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    win = open('test_memorygrowth.js').read()
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
@@ -2023,7 +2005,7 @@ int main(int argc, char **argv) {
     if not self.get_setting('SAFE_HEAP'):
       self.set_setting('EMSCRIPTEN_TRACING', 1)
       self.emcc_args += ['--tracing']
-      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+      self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -2031,16 +2013,16 @@ int main(int argc, char **argv) {
 
     # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
-    src = open(path_from_root('tests', 'core', 'test_memorygrowth_2.c')).read()
+    src = path_from_root('tests', 'core', 'test_memorygrowth_2.c')
 
     # Fail without memory growth
-    self.do_run(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('src.js').read()
+    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
+    fail = open('test_memorygrowth_2.js').read()
 
     # Win with it
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
-    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('src.js').read()
+    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    win = open('test_memorygrowth_2.js').read()
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
@@ -2146,8 +2128,7 @@ int main(int argc, char **argv) {
 
   @no_wasm2js('massive switches can break js engines')
   def test_bigswitch(self):
-    src = open(path_from_root('tests', 'bigswitch.cpp')).read()
-    self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
+    self.do_runf(path_from_root('tests', 'bigswitch.cpp'), '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
 35040: GL_STREAM_DRAW (0x88E0)
 3060: what?
@@ -2447,8 +2428,8 @@ The current type of b is: 9
                    "It also doesn't segfault.")
   def test_intentional_fault(self):
     # Some programs intentionally segfault themselves, we should compile that into a throw
-    src = open(path_from_root('tests', 'core', 'test_intentional_fault.c')).read()
-    self.do_run(src, 'abort(' if self.run_name != 'asm2g' else 'abort(segmentation fault', assert_returncode=NON_ZERO)
+    self.do_runf(path_from_root('tests', 'core', 'test_intentional_fault.c'),
+                 'abort(' if self.run_name != 'asm2g' else 'abort(segmentation fault', assert_returncode=NON_ZERO)
 
   def test_trickystring(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_trickystring.c')
@@ -2463,7 +2444,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('tests', 'core', 'test_copyop.cpp')
 
   def test_memcpy_memcmp(self):
-    self.banned_js_engines = [V8_ENGINE] # Currently broken under V8_ENGINE but not node
+    self.banned_js_engines = [config.V8_ENGINE] # Currently broken under V8_ENGINE but not node
 
     def check(result, err):
       result = result.replace('\n \n', '\n') # remove extra node output
@@ -2696,7 +2677,7 @@ The current type of b is: 9
       typedef int64_t (*int64func)(int);
 
       int main() {
-        void *lib_handle = dlopen("liblib.so", 0);
+        void *lib_handle = dlopen("liblib.so", RTLD_NOW);
         if (!lib_handle) {
           puts(dlerror());
           abort();
@@ -2828,7 +2809,7 @@ The current type of b is: 9
   def test_dlfcn_data_and_fptr(self):
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
     if self.is_wasm():
-      self.banned_js_engines = [V8_ENGINE]
+      self.banned_js_engines = [config.V8_ENGINE]
 
     self.prep_dlfcn_lib()
     create_test_file('liblib.cpp', r'''
@@ -3069,6 +3050,7 @@ Var: 42
 
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):
+
     self.prep_dlfcn_lib()
     create_test_file('liblib.c', r'''
       #include <stdio.h>
@@ -3554,7 +3536,7 @@ ok
       typedef int (*fi)(float);
 
       int main() {
-        void *lib_handle = dlopen("liblib.so", 0);
+        void *lib_handle = dlopen("liblib.so", RTLD_NOW);
         if (!lib_handle) {
           puts(dlerror());
           abort();
@@ -3617,7 +3599,7 @@ ok
       print('flip')
       self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'], force_c, need_reverse=False, **kwargs)
 
-  def do_basic_dylink_test(self, need_reverse=True):
+  def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -3632,12 +3614,20 @@ ok
       int sidey() {
         return 11;
       }
-    ''', 'other says 11.', 'int sidey();', force_c=True, need_reverse=need_reverse)
+    ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
 
   @needs_dlfcn
   def test_dylink_basics(self):
     self.do_basic_dylink_test()
     self.verify_in_strict_mode('src.js')
+
+  @needs_dlfcn
+  def test_dylink_basics_no_modify(self):
+    if is_optimizing(self.emcc_args):
+      self.skipTest('no modify mode only works with non-optimizing builds')
+    self.set_setting('WASM_BIGINT')
+    self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
+    self.do_basic_dylink_test()
 
   @needs_dlfcn
   def test_dylink_no_export(self):
@@ -4594,9 +4584,7 @@ Have even and odd!
     self.do_run(src, expected)
 
   def test_strtod(self):
-    src = open(path_from_root('tests', 'core', 'test_strtod.c')).read()
-    expected = open(path_from_root('tests', 'core', 'test_strtod.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtod.c')
 
   def test_strtold(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtold.c')
@@ -4611,6 +4599,7 @@ Have even and odd!
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase.c')
 
   @no_wasm2js('very slow to compile')
+  @is_slow_test
   def test_printf(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -4753,7 +4742,7 @@ Pass: 0.000012 0.000012''')
     self.do_run_in_out_file_test('tests', 'core', 'test_langinfo.c')
 
   def test_files(self):
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
+    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
     if self.maybe_closure(): # Use closure here, to test we don't break FS stuff
       self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
     elif '-O3' in self.emcc_args and not self.is_wasm():
@@ -4784,16 +4773,14 @@ Module = {
 
     create_test_file('test.file', 'some data')
 
-    src = open(path_from_root('tests', 'files.cpp')).read()
-
-    mem_file = 'src.js.mem'
+    mem_file = 'files.js.mem'
     try_delete(mem_file)
 
     def clean(out, err):
       return '\n'.join([line for line in (out + err).split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
-    self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
-                output_nicerizer=clean)
+    self.do_runf(path_from_root('tests', 'files.cpp'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
+                 output_nicerizer=clean)
 
     if self.uses_memory_init_file():
       self.assertExists(mem_file)
@@ -4839,13 +4826,13 @@ Module = {
     self.do_runf(path_from_root('tests', 'fs', 'test_getdents64.cpp'), '..')
 
   def test_getdents64_special_cases(self):
-    self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
+    self.banned_js_engines = [config.V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
     src = path_from_root('tests', 'fs', 'test_getdents64_special_cases.cpp')
     out = path_from_root('tests', 'fs', 'test_getdents64_special_cases.out')
     self.do_run_from_file(src, out, assert_identical=True)
 
   def test_getcwd_with_non_ascii_name(self):
-    self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
+    self.banned_js_engines = [config.V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
     src = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
     out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
     self.do_run_from_file(src, out, assert_identical=True)
@@ -4863,7 +4850,7 @@ Module = {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_runf(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'success', js_engines=[NODE_JS])
+      self.do_runf(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'success', js_engines=[config.NODE_JS])
 
   def test_fgetc_unsigned(self):
     src = r'''
@@ -5021,7 +5008,7 @@ main( int argv, char ** argc ) {
 
   @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
   def test_utf(self):
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
+    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # only node handles utf well
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_run_in_out_file_test('tests', 'core', 'test_utf.c')
@@ -5033,6 +5020,9 @@ main( int argv, char ** argc ) {
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
     self.do_runf(path_from_root('tests', 'utf32.cpp'), 'OK.')
     self.do_runf(path_from_root('tests', 'utf32.cpp'), 'OK.', args=['-fshort-wchar'])
+
+  def test_utf16(self):
+    self.do_runf(path_from_root('tests', 'core', 'test_utf16.cpp'), 'OK.')
 
   def test_utf8(self):
     if self.get_setting('MINIMAL_RUNTIME'):
@@ -5099,11 +5089,8 @@ main( int argv, char ** argc ) {
       self.do_run_in_out_file_test('tests', 'core', 'test_istream.cpp')
 
   def test_fs_base(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.uses_es6 = True
-    # TODO(sbc): It seems that INCLUDE_FULL_LIBRARY will generally generate
-    # undefined symbols at link time so perhaps have it imply this setting?
-    self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
-    self.set_setting('INCLUDE_FULL_LIBRARY', 1)
     self.add_pre_run(open(path_from_root('tests', 'filesystem', 'src.js')).read())
     src = 'int main() {return 0;}\n'
     expected = open(path_from_root('tests', 'filesystem', 'output.txt')).read()
@@ -5112,6 +5099,10 @@ main( int argv, char ** argc ) {
   @also_with_noderawfs
   @is_slow_test
   def test_fs_nodefs_rw(self):
+    # TODO(sbc): This test exposes in issue in the way we run closure compiler and
+    # causes it to generate non-ES5 output.
+    # Remove this line once we fix: https://github.com/emscripten-core/emscripten/issues/12628
+    self.uses_es6 = True
     self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG', 1)
     self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'success')
@@ -5128,11 +5119,11 @@ main( int argv, char ** argc ) {
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_home.c'), 'success', js_engines=[NODE_JS])
+    self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_home.c'), 'success', js_engines=[config.NODE_JS])
 
   def test_fs_nodefs_nofollow(self):
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_nofollow.c'), 'success', js_engines=[NODE_JS])
+    self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
 
   def test_fs_trackingdelegate(self):
     src = path_from_root('tests', 'fs', 'test_trackingdelegate.c')
@@ -5217,12 +5208,12 @@ main( int argv, char ** argc ) {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('tests', 'unistd', 'access.c', js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'access.c', js_engines=[config.NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
     if not WINDOWS:
       self.emcc_args = orig_compiler_opts
       self.emcc_args += ['-s', 'NODERAWFS=1']
-      self.do_run_in_out_file_test('tests', 'unistd', 'access.c', js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'access.c', js_engines=[config.NODE_JS])
 
   def test_unistd_curdir(self):
     self.uses_es6 = True
@@ -5256,14 +5247,14 @@ main( int argv, char ** argc ) {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('tests', 'unistd', 'truncate.c', js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'truncate.c', js_engines=[config.NODE_JS])
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
   def test_unistd_truncate_noderawfs(self):
     self.uses_es6 = True
     self.set_setting('NODERAWFS')
-    self.do_run_in_out_file_test('tests', 'unistd', 'truncate.c', js_engines=[NODE_JS])
+    self.do_run_in_out_file_test('tests', 'unistd', 'truncate.c', js_engines=[config.NODE_JS])
 
   def test_unistd_swab(self):
     self.do_run_in_out_file_test('tests', 'unistd', 'swab.c')
@@ -5301,7 +5292,7 @@ main( int argv, char ** argc ) {
           self.emcc_args += ['-DNO_SYMLINK=1']
         if MACOS:
           continue
-      self.do_runf(path_from_root('tests', 'unistd', 'unlink.c'), 'success', js_engines=[NODE_JS])
+      self.do_runf(path_from_root('tests', 'unistd', 'unlink.c'), 'success', js_engines=[config.NODE_JS])
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     if not WINDOWS and not MACOS:
       self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
@@ -5309,7 +5300,7 @@ main( int argv, char ** argc ) {
       if os.geteuid() == 0:
         self.emcc_args += ['-DSKIP_ACCESS_TESTS']
       self.emcc_args += ['-s', 'NODERAWFS=1']
-      self.do_runf(path_from_root('tests', 'unistd', 'unlink.c'), 'success', js_engines=[NODE_JS])
+      self.do_runf(path_from_root('tests', 'unistd', 'unlink.c'), 'success', js_engines=[config.NODE_JS])
 
   def test_unistd_links(self):
     self.clear()
@@ -5324,7 +5315,7 @@ main( int argv, char ** argc ) {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('tests', 'unistd', 'links.c', js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'links.c', js_engines=[config.NODE_JS])
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   def test_unistd_symlink_on_nodefs(self):
@@ -5332,15 +5323,14 @@ main( int argv, char ** argc ) {
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.emcc_args += ['-lnodefs.js']
-    self.do_run_in_out_file_test('tests', 'unistd', 'symlink_on_nodefs.c', js_engines=[NODE_JS])
+    self.do_run_in_out_file_test('tests', 'unistd', 'symlink_on_nodefs.c', js_engines=[config.NODE_JS])
 
   def test_unistd_sleep(self):
     self.do_run_in_out_file_test('tests', 'unistd', 'sleep.c')
 
   @also_with_wasm_bigint
   def test_unistd_io(self):
-    self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ERRNO_CODES'])
     orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       self.clear()
@@ -5356,13 +5346,13 @@ main( int argv, char ** argc ) {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('tests', 'unistd', 'misc.c', js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'misc.c', js_engines=[config.NODE_JS])
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
   @also_with_standalone_wasm(wasm2c=True)
   def test_posixtime(self):
-    self.banned_js_engines = [V8_ENGINE] # v8 lacks monotonic time
+    self.banned_js_engines = [config.V8_ENGINE] # v8 lacks monotonic time
     self.do_run_in_out_file_test('tests', 'core', 'test_posixtime.c')
 
   def test_uname(self):
@@ -5372,18 +5362,16 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'core', 'test_unary_literal.cpp')
 
   def test_env(self):
-    src = path_from_root('tests', 'env', 'src.c')
     expected = open(path_from_root('tests', 'env', 'output.txt')).read()
-    self.do_runf(src, [
+    self.do_runf(path_from_root('tests', 'env', 'src.c'), [
       expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
   def test_environ(self):
-    src = open(path_from_root('tests', 'env', 'src-mini.c')).read()
     expected = open(path_from_root('tests', 'env', 'output-mini.txt')).read()
-    self.do_run(src, [
-      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
+    self.do_runf(path_from_root('tests', 'env', 'src-mini.c'), [
+      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src-mini.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
@@ -5610,7 +5598,7 @@ int main(void) {
 
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   def test_dlmalloc_inline(self):
-    self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
+    self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
 
@@ -5620,14 +5608,13 @@ int main(void) {
 
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   def test_dlmalloc(self):
-    self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
+    self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
 
     # Linked version
-    src = open(path_from_root('tests', 'dlmalloc_test.c')).read()
-    self.do_run(src, '*1,0*', args=['200', '1'])
-    self.do_run('src.js', '*400,0*', args=['400', '400'], no_build=True)
+    self.do_runf(path_from_root('tests', 'dlmalloc_test.c'), '*1,0*', args=['200', '1'])
+    self.do_run('dlmalloc_test.js', '*400,0*', args=['400', '400'], no_build=True)
 
     # TODO: do this in other passes too, passing their opts into emcc
     if self.emcc_args == []:
@@ -5719,8 +5706,7 @@ return malloc(size);
         s += '.'
       assert len(s) == 9000
       create_test_file('data.dat', s)
-      src = open(path_from_root('tests', 'mmap_file.c')).read()
-      self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
+      self.do_runf(path_from_root('tests', 'mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
   def test_cubescript(self):
     # uses register keyword
@@ -5730,10 +5716,10 @@ return malloc(size);
 
     self.emcc_args = [x for x in self.emcc_args if x != '-g'] # remove -g, so we have one test without it by default
 
-    self.emcc_args += ['-I', path_from_root('tests', 'cubescript')]
+    self.emcc_args += ['-I', path_from_root('tests', 'third_party', 'cubescript')]
 
     def test():
-      src = path_from_root('tests', 'cubescript', 'command.cpp')
+      src = path_from_root('tests', 'third_party', 'cubescript', 'command.cpp')
       self.do_runf(src, '*\nTemp is 33\n9\n5\nhello, everyone\n*')
 
     test()
@@ -5748,6 +5734,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function.c')
 
   @wasm_simd
+  @is_slow_test
   def test_wasm_builtin_simd(self):
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
@@ -5756,6 +5743,7 @@ return malloc(size);
     self.build(path_from_root('tests', 'test_wasm_builtin_simd.cpp'))
 
   @wasm_simd
+  @is_slow_test
   def test_wasm_intrinsics_simd(self):
     def run():
       self.do_runf(path_from_root('tests', 'test_wasm_intrinsics_simd.c'), 'Success!')
@@ -5795,6 +5783,7 @@ return malloc(size);
   @wasm_simd
   @requires_native_clang
   @no_safe_heap('has unaligned 64-bit operations in wasm')
+  @is_slow_test
   def test_sse2(self):
     src = path_from_root('tests', 'sse', 'test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -5834,6 +5823,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE4.1 smmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @is_slow_test
   def test_sse4_1(self):
     src = path_from_root('tests', 'sse', 'test_sse4_1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -5927,6 +5917,7 @@ return malloc(size);
                 no_build=True)
 
   @no_asan('local count too large for VMs')
+  @is_slow_test
   def test_sqlite(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
@@ -5977,7 +5968,7 @@ return malloc(size);
 
     if use_cmake:
       make_args = []
-      configure = [path_from_root('emcmake'), 'cmake', '.']
+      configure = ['cmake', '.']
     else:
       make_args = ['libz.a']
       configure = ['sh', './configure']
@@ -6545,8 +6536,8 @@ return malloc(size);
     self.assertIsNotNone(full_aborter)
     self.assertIsNotNone(short_aborter)
     print('full:', full_aborter, 'short:', short_aborter)
-    if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
-      output = self.run_js('test_demangle_stacks.js', engine=SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
+    if config.SPIDERMONKEY_ENGINE and os.path.exists(config.SPIDERMONKEY_ENGINE[0]):
+      output = self.run_js('test_demangle_stacks.js', engine=config.SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
       # we may see the full one, if -g, or the short one if not
       if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
         # stack traces may also be ' name ' or 'name@' etc
@@ -6582,16 +6573,16 @@ return malloc(size);
     def get_code_size():
       if self.is_wasm():
         # Use number of functions as a for code size
-        return self.count_wasm_contents('src.wasm', 'funcs')
+        return self.count_wasm_contents('hello_libcxx.wasm', 'funcs')
       else:
-        return os.path.getsize('src.js')
+        return os.path.getsize('hello_libcxx.js')
 
     def get_mem_size():
       if self.is_wasm():
         # Use number of functions as a for code size
-        return self.count_wasm_contents('src.wasm', 'memory-data')
+        return self.count_wasm_contents('hello_libcxx.wasm', 'memory-data')
       if self.uses_memory_init_file():
-        return os.path.getsize('src.js.mem')
+        return os.path.getsize('hello_libcxx.js.mem')
 
       # otherwise we ignore memory size
       return 0
@@ -6639,16 +6630,15 @@ return malloc(size);
     # libcxx constrcutors can be eval'd
 
     print('libcxx - remove 2 ctors from iostream code')
-    src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
 
     def test2():
-      self.do_run(src, output)
+      self.do_runf(path_from_root('tests', 'hello_libcxx.cpp'), output)
     do_test(test2)
 
     print('assertions too')
     self.set_setting('ASSERTIONS', 1)
-    self.do_run(src, output)
+    self.do_runf(path_from_root('tests', 'hello_libcxx.cpp'), output)
     self.set_setting('ASSERTIONS', 0)
 
     print('remove just some, leave others')
@@ -6687,7 +6677,7 @@ someweirdtext
   def test_embind(self):
     self.emcc_args += ['--bind']
 
-    src = r'''
+    create_test_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
 
@@ -6702,8 +6692,8 @@ someweirdtext
 
         return 0;
       }
-    '''
-    self.do_run(src, 'abs(-10): 10\nabs(-11): 11')
+    ''')
+    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11')
 
   def test_embind_2(self):
     self.emcc_args += ['--bind', '--post-js', 'post.js']
@@ -6712,7 +6702,7 @@ someweirdtext
           out('lerp ' + Module.lerp(100, 200, 66) + '.');
       }
     ''')
-    src = r'''
+    create_test_file('test_embind_2.cpp', r'''
       #include <stdio.h>
       #include <emscripten.h>
       #include <emscripten/bind.h>
@@ -6727,8 +6717,8 @@ someweirdtext
           EM_ASM(printLerp());
           return 0;
       }
-    '''
-    self.do_run(src, 'lerp 166')
+    ''')
+    self.do_runf('test_embind_2.cpp', 'lerp 166')
 
   def test_embind_3(self):
     self.emcc_args += ['--bind', '--post-js', 'post.js']
@@ -6741,7 +6731,7 @@ someweirdtext
         }
       }
     ''')
-    src = r'''
+    create_test_file('test_embind_3.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       using namespace emscripten;
@@ -6755,8 +6745,8 @@ someweirdtext
           EM_ASM(ready());
           return 0;
       }
-    '''
-    self.do_run(src, 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
+    ''')
+    self.do_runf('test_embind_3.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
   @no_wasm_backend('long doubles are f128s in wasm backend')
   def test_embind_4(self):
@@ -6766,7 +6756,7 @@ someweirdtext
         out(Module.getBufferView()[0]);
       }
     ''')
-    src = r'''
+    create_test_file('test_embind_4.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
@@ -6788,8 +6778,8 @@ someweirdtext
         EM_ASM(printFirstElement());
         return 0;
       }
-    '''
-    self.do_run(src, '107')
+    ''')
+    self.do_runf('test_embind_4.cpp', '107')
 
   def test_embind_5(self):
     self.emcc_args += ['--bind', '-s', 'EXIT_RUNTIME=1']
@@ -7048,7 +7038,7 @@ someweirdtext
 
     building.emcc('src.cpp', self.get_emcc_args(), js_filename)
 
-    LLVM_DWARFDUMP = os.path.join(LLVM_ROOT, 'llvm-dwarfdump')
+    LLVM_DWARFDUMP = os.path.join(config.LLVM_ROOT, 'llvm-dwarfdump')
     out = self.run_process([LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
 
     # parse the sections
@@ -7185,7 +7175,7 @@ someweirdtext
 
   @no_wasm2js('symbol names look different wasm2js backtraces')
   def test_emscripten_log(self):
-    self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
+    self.banned_js_engines = [config.V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
@@ -7265,7 +7255,7 @@ someweirdtext
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.set_setting('ASYNCIFY', 1)
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE, config.V8_ENGINE] # needs setTimeout which only node has
 
     src = r'''
 #include <stdio.h>
@@ -7361,8 +7351,7 @@ Module['onRuntimeInitialized'] = function() {
   @no_asan('asyncify stack operations confuse asan')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY', 1)
-    src = open(path_from_root('tests', 'test_fibers.cpp')).read()
-    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+    self.do_runf(path_from_root('tests', 'test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
@@ -7598,9 +7587,9 @@ Module['onRuntimeInitialized'] = function() {
     create_test_file('lib.js', '''
       mergeInto(LibraryManager.library, {
         check_memprof_requirements: function() {
-          if (typeof STACK_BASE === 'number' &&
-              typeof STACK_MAX === 'number' &&
-              typeof STACKTOP === 'number' &&
+          if (typeof _emscripten_stack_get_base === 'function' &&
+              typeof _emscripten_stack_get_end === 'function' &&
+              typeof _emscripten_stack_get_current === 'function' &&
               typeof Module['___heap_base'] === 'number') {
              out('able to run memprof');
            } else {
@@ -7711,12 +7700,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
       js = open('test_hello_world.js').read()
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
-    for engine in JS_ENGINES:
+    for engine in config.JS_ENGINES:
       print(engine)
       # set us to test in just this engine
-      self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
+      self.banned_js_engines = [e for e in config.JS_ENGINES if e != engine]
       # tell the compiler to build with just that engine
-      if engine == NODE_JS:
+      if engine == config.NODE_JS:
         right = 'node'
         wrong = 'shell'
       else:
@@ -7784,7 +7773,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   def test_minimal_runtime_hello_world(self, args):
     # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
-    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE]
+    self.banned_js_engines = [config.V8_ENGINE, config.SPIDERMONKEY_ENGINE]
     self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
@@ -8201,9 +8190,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
       self.clear_setting('EXPORTED_FUNCTIONS')
 
-    # If we pass --no-entry or set EXPORTED_FUNCTIONS to empty should never see any errors
+  def test_undefined_main_explict(self):
+    # If we pass --no-entry this test should compile without issue
     self.emcc_args.append('--no-entry')
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main.cpp')
+
+  def test_undefined_main_wasm_output(self):
+    if not can_do_standalone(self):
+      self.skipTest('standalone mode only')
+    err = self.expect_fail([EMCC, '-o', 'out.wasm', path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
+    self.assertContained('undefined symbol: main', err)
 
   def test_export_start(self):
     if not can_do_standalone(self):

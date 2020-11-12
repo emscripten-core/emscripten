@@ -20,13 +20,13 @@ import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
+from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER
 from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import shared
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
-from tools.shared import try_delete
+from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE
+from tools.shared import try_delete, config
 
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
@@ -2198,10 +2198,54 @@ void *getBindBuffer() {
     self.btest('openal_capture_sanity.c', expected='0')
 
   def test_runtimelink(self):
-    main, supp = self.setup_runtimelink_test()
-    create_test_file('supp.cpp', supp)
-    self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE=1', '-O2', '-s', 'EXPORT_ALL=1'])
-    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL=1'], expected='76')
+    create_test_file('header.h', r'''
+      struct point
+      {
+        int x, y;
+      };
+    ''')
+
+    create_test_file('supp.cpp', r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      extern void mainFunc(int x);
+      extern int mainInt;
+
+      void suppFunc(struct point &p) {
+        printf("supp: %d,%d\n", p.x, p.y);
+        mainFunc(p.x + p.y);
+        printf("supp see: %d\n", mainInt);
+      }
+
+      int suppInt = 76;
+    ''')
+
+    main = r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      extern void suppFunc(struct point &p);
+      extern int suppInt;
+
+      void mainFunc(int x) {
+        printf("main: %d\n", x);
+      }
+
+      int mainInt = 543;
+
+      int main( int argc, const char *argv[] ) {
+        struct point p = { 54, 2 };
+        suppFunc(p);
+        printf("main see: %d\nok.\n", suppInt);
+        #ifdef BROWSER
+          REPORT_RESULT(suppInt);
+        #endif
+        return 0;
+      }
+    '''
+    self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
+    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL=1'], expected='76')
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
@@ -2414,7 +2458,7 @@ void *getBindBuffer() {
           REPORT_RESULT(1);
           return 1;
         }
-        void *lib_handle = dlopen("/library.so", 0);
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
         if (!lib_handle) {
           REPORT_RESULT(2);
           return 2;
@@ -2437,77 +2481,6 @@ void *getBindBuffer() {
   def test_mmap_file(self):
     create_test_file('data.dat', 'data from the file ' + ('.' * 9000))
     self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'])
-
-  def test_emrun_info(self):
-    if not has_browser():
-      self.skipTest('need a browser')
-    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
-    assert 'CPU' in result
-    assert 'Browser' in result
-    assert 'Traceback' not in result
-
-    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
-    assert 'Traceback' not in result
-
-  # Deliberately named as test_zzz_emrun to make this test the last one
-  # as this test may take the focus away from the main test window
-  # by opening a new window and possibly not closing it.
-  def test_zzz_emrun(self):
-    self.compile_btest([path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
-    if not has_browser():
-      self.skipTest('need a browser')
-
-    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the
-    # browser that is launched will have that directory as startup directory, and the browser will
-    # not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to
-    # delete it. Therefore switch away from that directory before launching.
-
-    os.chdir(path_from_root())
-    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
-                 '--kill_exit', '--port', '6939', '--verbose',
-                 '--log_stdout', self.in_dir('stdout.txt'),
-                 '--log_stderr', self.in_dir('stderr.txt')]
-
-    # Verify that trying to pass argument to the page without the `--` separator will
-    # generate an actionable error message
-    err = self.expect_fail(args_base + ['--foo'])
-    self.assertContained('error: unrecognized arguments: --foo', err)
-    self.assertContained('remember to add `--` between arguments', err)
-
-    if EMTEST_BROWSER is not None:
-      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
-      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
-      # so strip them out.
-      browser_cmd = shlex.split(EMTEST_BROWSER)
-      browser_path = browser_cmd[0]
-      args_base += ['--browser', browser_path]
-      if len(browser_cmd) > 1:
-        browser_args = browser_cmd[1:]
-        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
-          # emrun uses its own -profile, strip it out
-          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
-          parser.add_argument('-profile')
-          parser.add_argument('--profile')
-          browser_args = parser.parse_known_args(browser_args)[1]
-        if browser_args:
-          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
-
-    for args in [
-        args_base,
-        args_base + ['--private_browsing', '--port', '6941']
-    ]:
-      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
-      print(shared.shlex_join(args))
-      proc = self.run_process(args, check=False)
-      self.assertEqual(proc.returncode, 100)
-      stdout = open(self.in_dir('stdout.txt'), 'r').read()
-      stderr = open(self.in_dir('stderr.txt'), 'r').read()
-      self.assertContained('argc: 4', stdout)
-      self.assertContained('argv[3]: --3', stdout)
-      self.assertContained('hello, world!', stdout)
-      self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
-      self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
-      self.assertContained('hello, error stream!', stderr)
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
@@ -3192,10 +3165,14 @@ window.close = function() {
     self.compile_btest(['test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
 
+  @parameterized({
+    'dash_s': (['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2'],),
+    'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
+  })
   @requires_sound_hardware
-  def test_sdl2_mixer_wav(self):
+  def test_sdl2_mixer_wav(self, flags):
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), 'sound.wav')
-    self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'INITIAL_MEMORY=33554432'])
+    self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'INITIAL_MEMORY=33554432'] + flags)
 
   @parameterized({
     'wav': ([],         '0',            'the_entertainer.wav'),
@@ -3345,7 +3322,7 @@ window.close = function() {
         src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
         create_test_file('test.c', self.with_report_result(src))
         # this test is synchronous, so avoid async startup due to wasm features
-        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'SINGLE_FILE=1'] + args + opts)
+        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'SINGLE_FILE=1'] + args + opts)
         create_test_file('a.html', '''
           <script src="a.out.js"></script>
           <script>
@@ -3950,7 +3927,7 @@ window.close = function() {
   def test_pthread_wake_all(self):
     self.btest(path_from_root('tests', 'pthread', 'test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'INITIAL_MEMORY=64MB', '-s', 'NO_EXIT_RUNTIME=1'], also_asmjs=True)
 
-  # Test that STACK_BASE and STACK_MAX correctly bound the stack on pthreads.
+  # Test that stack base and max correctly bound the stack on pthreads.
   @requires_threads
   def test_pthread_stack_bounds(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_stack_bounds.cpp'), expected='1', args=['-s', 'USE_PTHREADS'])
@@ -4660,7 +4637,7 @@ window.close = function() {
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
     # with separate file packager invocation
-    self.run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'])
+    self.run_process([PYTHON, FILE_PACKAGER, 'data.data', '--preload', 'test.txt', '--js-output=' + 'data.js'])
     self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
@@ -4910,7 +4887,7 @@ window.close = function() {
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB.cpp', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB.cpp', js_engines=[config.V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_2GB_fail(self):
@@ -4923,7 +4900,7 @@ window.close = function() {
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=2GB']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail.cpp', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail.cpp', js_engines=[config.V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_4GB_fail(self):
@@ -4936,7 +4913,7 @@ window.close = function() {
     # test that we properly report an allocation error that would overflow over
     # 4GB.
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[config.V8_ENGINE])
 
   @unittest.skip("only run this manually, to test for race conditions")
   @parameterized({
@@ -4956,3 +4933,73 @@ window.close = function() {
                # don't run this with the default extra_tries value, as this is
                # *meant* to notice something random, a race condition.
                extra_tries=0)
+
+
+class emrun(RunnerCore):
+  def test_emrun_info(self):
+    if not has_browser():
+      self.skipTest('need a browser')
+    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
+    assert 'CPU' in result
+    assert 'Browser' in result
+    assert 'Traceback' not in result
+
+    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
+    assert 'Traceback' not in result
+
+  def test_emrun(self):
+    self.run_process([EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
+    if not has_browser():
+      self.skipTest('need a browser')
+
+    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the
+    # browser that is launched will have that directory as startup directory, and the browser will
+    # not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to
+    # delete it. Therefore switch away from that directory before launching.
+
+    os.chdir(path_from_root())
+    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
+                 '--kill_exit', '--port', '6939', '--verbose',
+                 '--log_stdout', self.in_dir('stdout.txt'),
+                 '--log_stderr', self.in_dir('stderr.txt')]
+
+    # Verify that trying to pass argument to the page without the `--` separator will
+    # generate an actionable error message
+    err = self.expect_fail(args_base + ['--foo'])
+    self.assertContained('error: unrecognized arguments: --foo', err)
+    self.assertContained('remember to add `--` between arguments', err)
+
+    if EMTEST_BROWSER is not None:
+      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
+      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
+      # so strip them out.
+      browser_cmd = shlex.split(EMTEST_BROWSER)
+      browser_path = browser_cmd[0]
+      args_base += ['--browser', browser_path]
+      if len(browser_cmd) > 1:
+        browser_args = browser_cmd[1:]
+        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
+          # emrun uses its own -profile, strip it out
+          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
+          parser.add_argument('-profile')
+          parser.add_argument('--profile')
+          browser_args = parser.parse_known_args(browser_args)[1]
+        if browser_args:
+          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+
+    for args in [
+        args_base,
+        args_base + ['--private_browsing', '--port', '6941']
+    ]:
+      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
+      print(shared.shlex_join(args))
+      proc = self.run_process(args, check=False)
+      self.assertEqual(proc.returncode, 100)
+      stdout = open(self.in_dir('stdout.txt'), 'r').read()
+      stderr = open(self.in_dir('stderr.txt'), 'r').read()
+      self.assertContained('argc: 4', stdout)
+      self.assertContained('argv[3]: --3', stdout)
+      self.assertContained('hello, world!', stdout)
+      self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
+      self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
+      self.assertContained('hello, error stream!', stderr)

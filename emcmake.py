@@ -4,7 +4,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import sys
 from tools import building
 from subprocess import CalledProcessError

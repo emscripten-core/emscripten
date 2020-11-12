@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import glob
 import hashlib
 import itertools
@@ -17,7 +16,7 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import shared, building, ports
+from . import shared, building, ports, config
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
@@ -150,6 +149,7 @@ def get_wasm_libc_rt_files():
   other_files = files_in_path(
     path_components=['system', 'lib', 'libc'],
     filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+               'emscripten_scan_stack.c',
                'emscripten_memmove.c'])
   # Calls to iprintf can be generated during codegen. Ideally we wouldn't
   # compile these with -O2 like we do the rest of compiler-rt since its
@@ -645,6 +645,7 @@ class libcompiler_rt(MTLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = glob_in_path(src_dir, '*.c')
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
+  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_limits.S'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'))
 
@@ -1715,7 +1716,7 @@ class Ports(object):
 
   @staticmethod
   def get_dir():
-    dirname = shared.PORTS
+    dirname = config.PORTS
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -1955,7 +1956,7 @@ def build_port(port_name, settings):
     port.get(Ports, settings, shared)
 
 
-def process_args(args, settings):
+def add_ports_cflags(args, settings):
   # Legacy SDL1 port is not actually a port at all but builtin
   if settings.USE_SDL == 1:
     args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]

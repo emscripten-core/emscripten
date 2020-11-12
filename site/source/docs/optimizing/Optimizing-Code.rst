@@ -41,8 +41,45 @@ Compiling source files to object files works as you'd expect in a native build s
 - JavaScript is generated at this phase, and is optimized by Emscripten's JS optimizer. Optionally you can also run :ref:`the closure compiler <emcc-closure>`, which is highly recommended for code size.
 - Emscripten also optimizes the combined wasm+JS, by minifying imports and exports between them, and by running meta-dce which removes unused code in cycles that span the two worlds.
 
-To skip extra optimization work at link time, link with ``-O0`` (or no optimization level), which works regardless of how the source files were compiled and optimized. Linking in this way with ``-O0`` is useful for fast iteration builds, while final release builds may want something like ``-O3 --closure 1``.
+Link Times
+==========
 
+To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. It
+is ok to link with those flags even if the source files were compiled with a
+different optimization level.
+
+``-O0`` will do no optimization work at link time. ``-O1`` will do very minimal
+optimizations, and does not have the assertions that ``-O0`` does by default,
+so it can be useful for a build that links very quickly but also runs reasonably
+fast. (Of course, for a final release build, it is usually worth linking with
+something like ``-O3 --closure 1`` for full optimizations.)
+
+In some cases Emscripten can avoid modifying the wasm binary that is produced by
+the linker (``wasm-ld``). That will give you the fastest possible link times.
+All Emscripten does in such a build is generate the JavaScript support code,
+while leaving the WebAssembly output from the linker unmodified.
+
+Specifically, as of Emscripten 2.0.7, if you build with either ``-O0`` or
+``-O1`` then the only thing Emscripten needs to do to the wasm file is legalize
+it. This can be avoided by enabling BigInt integration which renders legalization
+unnecessary (as when using BigInts we can represent ``i64`` values properly
+without legalization). To do that, build with
+
+.. code-block:: bash
+
+  emcc -s WASM_BIGINT
+
+You can also ensure you get that speedup:
+
+.. code-block:: bash
+
+  emcc -s WASM_BIGINT -s ERROR_ON_WASM_CHANGES_AFTER_LINK
+
+``ERROR_ON_WASM_CHANGES_AFTER_LINK`` will, as the name implies, show an error
+during link if Emscripten must perform changes to the Wasm. If you remove that
+``-s WASM_BIGINT``, it will tell you that legalization forces it to change the
+wasm. You will also get an error if you build with ``-O2`` or above, as the
+Binaryen optimizer would normally be run.
 
 Advanced compiler settings
 ==========================

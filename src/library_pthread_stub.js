@@ -59,8 +59,8 @@ var LibraryPThreadStub = {
        void **restrict stackaddr, size_t *restrict stacksize); */
     /*FIXME: assumes that there is only one thread, and that attr is the
       current thread*/
-    {{{ makeSetValue('stackaddr', '0', 'STACK_BASE', 'i8*') }}};
-    {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}};
+    {{{ makeSetValue('stackaddr', '0', '_emscripten_stack_get_base()', 'i8*') }}};
+    {{{ makeSetValue('stacksize', '0', TOTAL_STACK, 'i32') }}};
     return 0;
   },
   pthread_attr_getdetachstate: function(attr, detachstate) {
@@ -194,7 +194,7 @@ var LibraryPThreadStub = {
     var l = 0, h = 0;
     l = (a + c)>>>0;
     h = (b + d + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
-    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+    {{{ makeStructuralReturn(['l|0', 'h']) }}};
   },
 
   i64Subtract__asm: true,
@@ -205,7 +205,7 @@ var LibraryPThreadStub = {
     l = (a - c)>>>0;
     h = (b - d)>>>0;
     h = (b - d - (((c>>>0) > (a>>>0))|0))>>>0; // Borrow one from high word to low word on underflow.
-    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+    {{{ makeStructuralReturn(['l|0', 'h']) }}};
   },
 
   // gnu atomics

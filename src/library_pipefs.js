@@ -38,7 +38,7 @@ mergeInto(LibraryManager.library, {
       var readableStream = FS.createStream({
         path: rName,
         node: rNode,
-        flags: FS.modeStringToFlags('r'),
+        flags: {{{ cDefine('O_RDONLY') }}},
         seekable: false,
         stream_ops: PIPEFS.stream_ops
       });
@@ -47,7 +47,7 @@ mergeInto(LibraryManager.library, {
       var writableStream = FS.createStream({
         path: wName,
         node: wNode,
-        flags: FS.modeStringToFlags('w'),
+        flags: {{{ cDefine('O_WRONLY') }}},
         seekable: false,
         stream_ops: PIPEFS.stream_ops
       });

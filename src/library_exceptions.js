@@ -5,6 +5,7 @@
  */
 
 var LibraryExceptions = {
+  $uncaughtExceptionCount: '0',
   $exceptionLast: '0',
   $exceptionCaught: ' []',
 
@@ -240,7 +241,7 @@ var LibraryExceptions = {
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
   __cxa_throw__sig: 'viii',
-  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '_ZSt18uncaught_exceptionv'],
+  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
     err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
@@ -249,18 +250,15 @@ var LibraryExceptions = {
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
     info.init(type, destructor);
     exceptionLast = ptr;
-    if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
-      __ZSt18uncaught_exceptionv.uncaught_exceptions = 1;
-    } else {
-      __ZSt18uncaught_exceptionv.uncaught_exceptions++;
-    }
+    uncaughtExceptionCount++;
     {{{ makeThrow('ptr') }}}
   },
 
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast'],
+  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'],
+  __cxa_rethrow__sig: 'v',
   __cxa_rethrow: function() {
     var catchInfo = exceptionCaught.pop();
     var info = catchInfo.get_exception_info();
@@ -270,7 +268,7 @@ var LibraryExceptions = {
       exceptionCaught.push(catchInfo);
       info.set_rethrown(true);
       info.set_caught(false);
-      __ZSt18uncaught_exceptionv.uncaught_exceptions++;
+      uncaughtExceptionCount++;
     } else {
       catchInfo.free();
     }
@@ -282,33 +280,18 @@ var LibraryExceptions = {
     {{{ makeThrow('ptr') }}}
   },
 
-  llvm_eh_exception__deps: ['$exceptionLast'],
-  llvm_eh_exception: function() {
-    return exceptionLast;
-  },
-
-  llvm_eh_selector__jsargs: true,
-  llvm_eh_selector__deps: ['$exceptionLast'],
-  llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = exceptionLast;
-    for (var i = 2; i < arguments.length; i++) {
-      if (arguments[i] == type) return type;
-    }
-    return 0;
-  },
-
   llvm_eh_typeid_for: function(type) {
     return type;
   },
 
   __cxa_begin_catch__deps: ['$CatchInfo', '$exceptionCaught', '$exception_addRef',
-                            '_ZSt18uncaught_exceptionv'],
+                            '$uncaughtExceptionCount'],
   __cxa_begin_catch: function(ptr) {
     var catchInfo = new CatchInfo(ptr);
     var info = catchInfo.get_exception_info();
     if (!info.get_caught()) {
       info.set_caught(true);
-      __ZSt18uncaught_exceptionv.uncaught_exceptions--;
+      uncaughtExceptionCount--;
     }
     info.set_rethrown(false);
     exceptionCaught.push(catchInfo);
@@ -325,6 +308,7 @@ var LibraryExceptions = {
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
   __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '$exception_decRef',
                           '$CatchInfo'],
+  __cxa_end_catch__sig: 'v',
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0);
@@ -350,13 +334,9 @@ var LibraryExceptions = {
     return new CatchInfo(ptr).get_exception_ptr();
   },
 
-  _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
-    return __ZSt18uncaught_exceptionv.uncaught_exceptions > 0;
-  },
-
-  __cxa_uncaught_exceptions__deps: ['_ZSt18uncaught_exceptionv'],
+  __cxa_uncaught_exceptions__deps: ['$uncaughtExceptionCount'],
   __cxa_uncaught_exceptions: function() {
-    return __ZSt18uncaught_exceptionv.uncaught_exceptions;
+    return uncaughtExceptionCount;
   },
 
   __cxa_call_unexpected: function(exception) {

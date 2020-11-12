@@ -12,6 +12,7 @@ executors:
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
+      EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       PYTHON_BIN: "python3"
   mac:
     environment:
@@ -61,6 +62,7 @@ commands:
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
+            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/12.0.0/
             cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
@@ -107,8 +109,9 @@ commands:
           paths:
             - emsdk/
             - cache/
-            - vms
-            - .jsvu
+            - vms/
+            - wasi-sdk/
+            - .jsvu/
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -248,6 +251,7 @@ commands:
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
             python3 tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            python3 tests/runner.py emrun
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
@@ -279,6 +283,7 @@ commands:
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             # skip test_zzz_zzz_4GB_fail as it OOMs on the current bot
             python3 tests/runner.py browser skip:browser.test_zzz_zzz_4GB_fail
+            python3 tests/runner.py emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -349,6 +354,14 @@ jobs:
             wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.8.0/wasmtime-$VERSION-x86_64-linux.tar.xz
             tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
             cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
+      - run:
+          name: get wasi-sdk-sysroot
+          command: |
+            wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/libclang_rt.builtins-wasm32-wasi-11.0.tar.gz
+            wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sysroot-11.0.tar.gz
+            mkdir ~/wasi-sdk
+            tar xvf libclang_rt.builtins-wasm32-wasi-11.0.tar.gz -C ~/wasi-sdk
+            tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - run:
           name: get v8
           command: |
@@ -422,7 +435,7 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install make cmake.portable
+            choco install make cmake.portable ninja
             choco install python --version 3.8.0
       - run:
           name: Add python to bash path
@@ -431,7 +444,7 @@ jobs:
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - run-tests:
-          test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null"
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake*"
   test-mac:
     executor: mac
     steps:

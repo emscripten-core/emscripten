@@ -143,9 +143,6 @@ var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts === 'f
 #if MODULARIZE
 if (ENVIRONMENT_IS_WORKER) {
   var buffer = {{{EXPORT_NAME}}}.buffer;
-  var STACK_BASE = {{{EXPORT_NAME}}}.STACK_BASE;
-  var STACKTOP = {{{EXPORT_NAME}}}.STACKTOP;
-  var STACK_MAX = {{{EXPORT_NAME}}}.STACK_MAX;
 }
 #endif
 

@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  python tests/runner.py asm1.test_hello_world
+  python3 tests/runner.py asm1.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -16,13 +16,6 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
-
-import sys
-
-# The emscripten test suite explcitly requires python3.6 or above.
-if sys.version_info < (3, 6):
-  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
-  sys.exit(1)
 
 from subprocess import PIPE, STDOUT
 from functools import wraps
@@ -45,6 +38,7 @@ import shutil
 import string
 import subprocess
 import stat
+import sys
 import tempfile
 import time
 import unittest
@@ -61,12 +55,13 @@ import clang_native
 import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG
+from tools.config import EM_CONFIG
+from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import MACOS, WINDOWS
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes, Settings
+from tools.shared import asbytes, Settings, config
+from tools.utils import MACOS, WINDOWS
 from tools import shared, line_endings, building
 
 
@@ -238,24 +233,24 @@ def chdir(dir):
 
 @contextlib.contextmanager
 def js_engines_modify(replacements):
-  """A context manager that updates shared.JS_ENGINES."""
-  original = shared.JS_ENGINES
-  shared.JS_ENGINES = replacements
+  """A context manager that updates config.JS_ENGINES."""
+  original = config.JS_ENGINES
+  config.JS_ENGINES = replacements
   try:
     yield
   finally:
-    shared.JS_ENGINES = original
+    config.JS_ENGINES = original
 
 
 @contextlib.contextmanager
 def wasm_engines_modify(replacements):
-  """A context manager that updates shared.WASM_ENGINES."""
-  original = shared.WASM_ENGINES
-  shared.WASM_ENGINES = replacements
+  """A context manager that updates config.WASM_ENGINES."""
+  original = config.WASM_ENGINES
+  config.WASM_ENGINES = replacements
   try:
     yield
   finally:
-    shared.WASM_ENGINES = original
+    config.WASM_ENGINES = original
 
 
 def ensure_dir(dirname):
@@ -864,56 +859,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.assertNotContained('Traceback', proc.stderr)
     return proc.stderr
 
-  def setup_runtimelink_test(self):
-    create_test_file('header.h', r'''
-      struct point
-      {
-        int x, y;
-      };
-    ''')
-
-    supp = r'''
-      #include <stdio.h>
-      #include "header.h"
-
-      extern void mainFunc(int x);
-      extern int mainInt;
-
-      void suppFunc(struct point &p) {
-        printf("supp: %d,%d\n", p.x, p.y);
-        mainFunc(p.x + p.y);
-        printf("supp see: %d\n", mainInt);
-      }
-
-      int suppInt = 76;
-    '''
-    create_test_file('supp.cpp', supp)
-
-    main = r'''
-      #include <stdio.h>
-      #include "header.h"
-
-      extern void suppFunc(struct point &p);
-      extern int suppInt;
-
-      void mainFunc(int x) {
-        printf("main: %d\n", x);
-      }
-
-      int mainInt = 543;
-
-      int main( int argc, const char *argv[] ) {
-        struct point p = { 54, 2 };
-        suppFunc(p);
-        printf("main see: %d\nok.\n", suppInt);
-        #ifdef BROWSER
-          REPORT_RESULT(suppInt);
-        #endif
-        return 0;
-      }
-    '''
-    return (main, supp)
-
   # excercise dynamic linker.
   #
   # test that linking to shared library B, which is linked to A, loads A as well.
@@ -1026,9 +971,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         void (*bfunc)(), (*cfunc)();
 
         // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currently working
-        bdso = dlopen("libb%(so)s", RTLD_GLOBAL);
+        bdso = dlopen("libb%(so)s", RTLD_NOW|RTLD_GLOBAL);
         assert(bdso != NULL);
-        cdso = dlopen("libc%(so)s", RTLD_GLOBAL);
+        cdso = dlopen("libc%(so)s", RTLD_NOW|RTLD_GLOBAL);
         assert(cdso != NULL);
 
         bfunc = (void (*)())dlsym(bdso, "bfunc");
@@ -1045,7 +990,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def filtered_js_engines(self, js_engines=None):
     if js_engines is None:
-      js_engines = shared.JS_ENGINES
+      js_engines = config.JS_ENGINES
     for engine in js_engines:
       assert type(engine) == list
     for engine in self.banned_js_engines:
@@ -1102,7 +1047,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines
       # like with js engines, but for now as we bring it up, test in all of them
-      wasm_engines = shared.WASM_ENGINES
+      wasm_engines = config.WASM_ENGINES
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += wasm_engines
@@ -1712,8 +1657,8 @@ def build_library(name,
 
 
 def check_js_engines():
-  working_engines = list(filter(jsrun.check_engine, shared.JS_ENGINES))
-  if len(working_engines) < len(shared.JS_ENGINES):
+  working_engines = list(filter(jsrun.check_engine, config.JS_ENGINES))
+  if len(working_engines) < len(config.JS_ENGINES):
     print('Not all the JS engines in JS_ENGINES appears to work.')
     exit(1)
 

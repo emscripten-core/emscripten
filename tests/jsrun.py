@@ -9,6 +9,7 @@ import sys
 from subprocess import Popen, PIPE, CalledProcessError
 
 from tools import shared
+from tools.shared import config
 
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
 
@@ -90,7 +91,7 @@ def run_js(filename, engine=None, args=[],
            stdin=None, stdout=PIPE, stderr=None, cwd=None,
            full_output=False, assert_returncode=0, skip_check=False):
   if not engine:
-    engine = shared.JS_ENGINES[0]
+    engine = config.JS_ENGINES[0]
 
   # We used to support True here but we no longer do.  Assert here just in case.
   assert(type(assert_returncode) == int)

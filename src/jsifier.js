@@ -127,7 +127,7 @@ function JSify(data, functionsOnly) {
 
       var noExport = false;
 
-      if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
+      if (!LibraryManager.library.hasOwnProperty(ident)) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
@@ -153,28 +153,16 @@ function JSify(data, functionsOnly) {
           // (not useful to warn/error multiple times)
           LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          var isGlobalAccessor = ident.startsWith('g$');
           var realIdent = ident;
-          if (isGlobalAccessor) {
-            realIdent = realIdent.substr(2);
-          }
 
           var target = "Module['" + mangleCSymbolName(realIdent) + "']";
           var assertion = '';
           if (ASSERTIONS) {
             var what = 'function';
-            if (isGlobalAccessor) {
-              what = 'global';
-            }
-            assertion += 'if (!' + target + ') abort("external ' + what + ' \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+            assertion += 'if (!' + target + ') abort("external symbol \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
 
           }
-          var functionBody;
-          if (isGlobalAccessor) {
-            functionBody = assertion + "return " + target + ";"
-          } else {
-            functionBody = assertion + "return " + target + ".apply(null, arguments);";
-          }
+          var functionBody = assertion + "return " + target + ".apply(null, arguments);";
           LibraryManager.library[ident] = new Function(functionBody);
           noExport = true;
         }
@@ -189,7 +177,7 @@ function JSify(data, functionsOnly) {
         return;
       }
       deps.forEach(function(dep) {
-        if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #ifdefs in src/library*.js)');
+        if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #if in src/library*.js)');
       });
       var isFunction = false;
 
@@ -301,6 +289,9 @@ function JSify(data, functionsOnly) {
       // we also export library methods as necessary.
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
+      }
+      if (MAIN_MODULE && sig) {
+        contentText += '\n' + finalName + '.sig = \'' + sig + '\';';
       }
 
       var commentText = '';

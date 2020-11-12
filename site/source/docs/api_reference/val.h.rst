@@ -249,7 +249,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
   .. cpp:function:: std::vector<T> vecFromJSArray(const val& v)
 
     Copies a javascript array into a std::vector, checking the type of each element.
-    For a more efficient but unsafe version working with numbers, see convertJSObjectToNumberVector.
+    For a more efficient but unsafe version working with numbers, see convertJSArrayToNumberVector.
 
     :param val v: The javascript array to be copied
     :returns: A std::vector<T> made from the javascript array

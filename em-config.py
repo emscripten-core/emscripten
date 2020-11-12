@@ -14,20 +14,19 @@ This tool prints the value of the variable to stdout if one
 is found, or exits with 1 if the variable does not exist.
 """
 
-from __future__ import print_function
 import sys
 import re
-from tools import shared
+from tools import config
 
 
 def main():
   if len(sys.argv) != 2 or \
     not re.match(r"^[\w\W_][\w\W_\d]*$", sys.argv[1]) or \
-    not hasattr(shared, sys.argv[1]):
+    not hasattr(config, sys.argv[1]):
     print('Usage: em-config VAR_NAME', file=sys.stderr)
     exit(1)
 
-  print(getattr(shared, sys.argv[1]))
+  print(getattr(config, sys.argv[1]))
   return 0
 
 

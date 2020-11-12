@@ -301,22 +301,6 @@ var SyscallsLibrary = {
     exit(status);
     // no return
   },
-  __sys_read: function(fd, buf, count) {
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
-  },
-  __sys_write: function(fd, buf, count) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
-#else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    for (var i = 0; i < count; i++) {
-      SYSCALLS.printChar(fd, HEAPU8[buf+i]);
-    }
-    return count;
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
-  },
   __sys_open: function(path, flags, varargs) {
     var pathname = SYSCALLS.getStr(path);
     var mode = SYSCALLS.get();
@@ -967,16 +951,7 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
-  __sys_pread64: function(fd, buf, count, zero, low, high) {
-    var stream = SYSCALLS.getStreamFromFD(fd)
-    var offset = SYSCALLS.get64(low, high);
-    return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
-  },
-  __sys_pwrite64: function(fd, buf, count, zero, low, high) {
-    var stream = SYSCALLS.getStreamFromFD(fd)
-    var offset = SYSCALLS.get64(low, high);
-    return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
-  },
+
   __sys_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefine('EINVAL') }}};
     var cwd = FS.cwd();
@@ -1414,21 +1389,7 @@ var SyscallsLibrary = {
   __sys_pipe2: function(fds, flags) {
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __sys_preadv: function(fd, iov, iovcnt, low, high) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
-  },
-  __sys_pwritev: function(fd, iov, iovcnt, low, high) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    var offset = SYSCALLS.get64(low, high);
-    return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
-  },
+
   __sys_recvmmsg__nothrow: true,
   __sys_recvmmsg__proxy: false,
   __sys_recvmmsg: function(sockfd, msgvec, vlen, flags) {
@@ -1454,159 +1415,17 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
-
-  // WASI (WebAssembly System Interface) I/O support.
-  // This is the set of syscalls that use the FS etc. APIs. The rest is in
-  // library_wasi.js.
-
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
-  $flush_NO_FILESYSTEM: function() {
-    // flush anything remaining in the buffers during shutdown
-    if (typeof _fflush !== 'undefined') _fflush(0);
-    var buffers = SYSCALLS.buffers;
-    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
-    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
-  },
-  fd_write__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1
-  fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
-#endif
-#endif
-  fd_write__sig: 'iiiii',
-  fd_write: function(fd, iov, iovcnt, pnum) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    var num = SYSCALLS.doWritev(stream, iov, iovcnt);
-#else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    var num = 0;
-    for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-      for (var j = 0; j < len; j++) {
-        SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
-      }
-      num += len;
-    }
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
-    return 0;
-  },
-  fd_close__sig: 'ii',
-  fd_close: function(fd) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    FS.close(stream);
-#else
-#if PROXY_POSIX_SOCKETS
-    // close() is a tricky function because it can be used to close both regular file descriptors
-    // and POSIX network socket handles, hence an implementation would need to track for each
-    // file descriptor which kind of item it is. To simplify, when using PROXY_POSIX_SOCKETS
-    // option, use shutdown() to close a socket, and this function should behave like a no-op.
-    warnOnce('To close sockets with PROXY_POSIX_SOCKETS bridge, prefer to use the function shutdown() that is proxied, instead of close()')
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
-#endif
-    return 0;
-  },
-  fd_read__sig: 'iiiii',
-  fd_read: function(fd, iov, iovcnt, pnum) {
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    var num = SYSCALLS.doReadv(stream, iov, iovcnt);
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
-    return 0;
-  },
-  fd_seek__sig: 'iiiiii',
-  fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
-    {{{ receiveI64ParamAsI32s('offset') }}}
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    var HIGH_OFFSET = 0x100000000; // 2^32
-    // use an unsigned operator on low and shift high by 32-bits
-    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
-
-    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
-    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
-    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-      return -{{{ cDefine('EOVERFLOW') }}};
-    }
-
-    FS.llseek(stream, offset, whence);
-    {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
-    if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-    return 0;
-  },
-  fd_fdstat_get__sig: 'iii',
-  fd_fdstat_get: function(fd, pbuf) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    // All character devices are terminals (other things a Linux system would
-    // assume is a character device, like the mouse, we have special APIs for).
-    var type = stream.tty ? {{{ cDefine('__WASI_FILETYPE_CHARACTER_DEVICE') }}} :
-               FS.isDir(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_DIRECTORY') }}} :
-               FS.isLink(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_SYMBOLIC_LINK') }}} :
-               {{{ cDefine('__WASI_FILETYPE_REGULAR_FILE') }}};
-#else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    var type = fd == 1 || fd == 2 ? {{{ cDefine('__WASI_FILETYPE_CHARACTER_DEVICE') }}} : abort();
-#endif
-    {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_filetype, 'type', 'i8') }}};
-    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_flags, '?', 'i16') }}};
-    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_base, '?', 'i64') }}};
-    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_inheriting, '?', 'i64') }}};
-    return 0;
-  },
-  fd_sync__sig: 'ii',
-  fd_sync: function(fd) {
-    var stream = SYSCALLS.getStreamFromFD(fd);
-#if ASYNCIFY
-    return Asyncify.handleSleep(function(wakeUp) {
-      var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        wakeUp(0);
-        return;
-      }
-      mount.type.syncfs(mount, false, function(err) {
-        if (err) {
-          wakeUp(function() { return {{{ cDefine('EIO') }}} });
-          return;
-        }
-        wakeUp(0);
-      });
-    });
-#else
-    if (stream.stream_ops && stream.stream_ops.fsync) {
-      return -stream.stream_ops.fsync(stream);
-    }
-    return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif // ASYNCIFY
-  },
-
 };
 
-var WASI_SYSCALLS = set([
-  'fd_write',
-  'fd_close',
-  'fd_read',
-  'fd_seek',
-  'fd_fdstat_get',
-  'fd_sync',
-]);
-
-for (var x in SyscallsLibrary) {
-  var which = null; // if this is a musl syscall, its number
-  var wasi = false;
-  if (x in WASI_SYSCALLS) {
-    wasi = true;
-  } else if (!x.startsWith('__sys_') || isJsLibraryConfigIdentifier(x)) {
-    continue;
+function wrapSyscallFunction(x, library, isWasi) {
+  if (x[0] === '$' || isJsLibraryConfigIdentifier(x)) {
+    return;
   }
-  var t = SyscallsLibrary[x];
-  if (typeof t === 'string') continue;
+
+  var t = library[x];
+  if (typeof t === 'string') return;
   t = t.toString();
+
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
   // has disabled the filesystem or we have proven some other way that this will
   // not be called in practice, and do not need that code.
@@ -1617,12 +1436,21 @@ for (var x in SyscallsLibrary) {
              '}';
     });
   }
+
+  var isVariadic = !isWasi && t.indexOf(', varargs') != -1;
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+  var canThrow = false;
+#else
+  var canThrow = library[x + '__nothrow'] !== true;
+#endif
+
   var pre = '', post = '';
-  if (!wasi && t.indexOf(', varargs') != -1) {
+  if (isVariadic) {
     pre += 'SYSCALLS.varargs = varargs;\n';
   }
+
 #if SYSCALL_DEBUG
-  if (!wasi && t.indexOf(', varargs') != -1) {
+  if (isVariadic) {
     if (canThrow) {
       post += 'finally { SYSCALLS.varargs = undefined; }\n';
     } else {
@@ -1639,12 +1467,8 @@ for (var x in SyscallsLibrary) {
   post += "err('syscall return: ' + ret);\n";
   post += "return ret;\n";
 #endif
-  var canThrow = SyscallsLibrary[x + '__nothrow'] !== true;
-  delete SyscallsLibrary[x + '__nothrow'];
+  delete library[x + '__nothrow'];
   var handler = '';
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  canThrow = false;
-#endif
   if (canThrow) {
     pre += 'try {\n';
     handler +=
@@ -1655,14 +1479,14 @@ for (var x in SyscallsLibrary) {
     "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
     "  canWarn = false;\n";
 #endif
-    if (wasi) {
+    // Musl syscalls are negated.
+    if (isWasi) {
       handler += "  return e.errno;\n";
     } else {
       // Musl syscalls are negated.
       handler += "  return -e.errno;\n";
     }
-    handler +=
-    "}\n";
+    handler += "}\n";
   }
   post = handler + post;
 
@@ -1674,9 +1498,9 @@ for (var x in SyscallsLibrary) {
     var bodyEnd = t.lastIndexOf('}');
     t = t.substring(0, bodyEnd) + post + t.substring(bodyEnd);
   }
-  SyscallsLibrary[x] = eval('(' + t + ')');
-  if (!SyscallsLibrary[x + '__deps']) SyscallsLibrary[x + '__deps'] = [];
-  SyscallsLibrary[x + '__deps'].push('$SYSCALLS');
+  library[x] = eval('(' + t + ')');
+  if (!library[x + '__deps']) library[x + '__deps'] = [];
+  library[x + '__deps'].push('$SYSCALLS');
 #if USE_PTHREADS
   // Most syscalls need to happen on the main JS thread (e.g. because the
   // filesystem is in JS and on that thread). Proxy synchronously to there.
@@ -1687,10 +1511,14 @@ for (var x in SyscallsLibrary) {
   // instead of synchronously, and marked with
   //  __proxy: 'async'
   // (but essentially all syscalls do have return values).
-  if (SyscallsLibrary[x + '__proxy'] === undefined) {
-    SyscallsLibrary[x + '__proxy'] = 'sync';
+  if (library[x + '__proxy'] === undefined) {
+    library[x + '__proxy'] = 'sync';
   }
 #endif
+}
+
+for (var x in SyscallsLibrary) {
+  wrapSyscallFunction(x, SyscallsLibrary, false);
 }
 
 mergeInto(LibraryManager.library, SyscallsLibrary);

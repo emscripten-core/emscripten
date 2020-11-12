@@ -50,7 +50,20 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  utime__deps: ['$FS', '$setErrNo'],
+  $setFileTime__deps: ['$setErrNo'],
+  $setFileTime: function(path, time) {
+    path = UTF8ToString(path);
+    try {
+      FS.utime(path, time, time);
+      return 0;
+    } catch (e) {
+      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
+      setErrNo(e.errno);
+      return -1;
+    }
+  },
+
+  utime__deps: ['$FS', '$setFileTime'],
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
@@ -59,43 +72,29 @@ LibraryManager.library = {
     var time;
     if (times) {
       // NOTE: We don't keep track of access timestamps.
-      var offset = {{{ C_STRUCTS.utimbuf.modtime }}};
-      time = {{{ makeGetValue('times', 'offset', 'i32') }}};
-      time *= 1000;
+      time = {{{ makeGetValue('times', C_STRUCTS.utimbuf.modtime, 'i32') }}} * 1000;
     } else {
       time = Date.now();
     }
-    path = UTF8ToString(path);
-    try {
-      FS.utime(path, time, time);
-      return 0;
-    } catch (e) {
-      FS.handleFSError(e);
-      return -1;
-    }
+    return setFileTime(path, time);
   },
 
-  utimes__deps: ['$FS', '$setErrNo'],
+  utimes__deps: ['$FS', '$setFileTime'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
   utimes: function(path, times) {
+    // utimes is just like utime but take an array of 2 times: `struct timeval times[2]`
+    // times[0] is the new access time (which we currently ignore)
+    // times[1] is the new modification time.
     var time;
     if (times) {
-      var offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_sec }}};
-      time = {{{ makeGetValue('times', 'offset', 'i32') }}} * 1000;
-      offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_usec }}};
-      time += {{{ makeGetValue('times', 'offset', 'i32') }}} / 1000;
+      var mtime = times + {{{ C_STRUCTS.timeval.__size__ }}};
+      time = {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_sec, 'i32') }}} * 1000;
+      time += {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_usec, 'i32') }}} / 1000;
     } else {
       time = Date.now();
     }
-    path = UTF8ToString(path);
-    try {
-      FS.utime(path, time, time);
-      return 0;
-    } catch (e) {
-      FS.handleFSError(e);
-      return -1;
-    }
+    return setFileTime(path, time);
   },
 
   // ==========================================================================
@@ -720,16 +719,6 @@ LibraryManager.library = {
     return limit;
   },
 
-  // ==========================================================================
-  // string.h
-  // ==========================================================================
-
-  memcpy__inline: function(dest, src, num, align) {
-    var ret = '';
-    ret += makeCopyValues(dest, src, num, 'null', null, align);
-    return ret;
-  },
-
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
@@ -758,6 +747,7 @@ LibraryManager.library = {
   // ==========================================================================
   __builtin_prefetch: function(){},
 
+  __assert_fail__sig: 'viiii',
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
@@ -765,9 +755,6 @@ LibraryManager.library = {
   __assert_func: function(filename, line, func, condition) {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
-
-  terminate__sig: 'vi',
-  terminate: '__cxa_call_unexpected',
 
   __gxx_personality_v0: function() {
   },
@@ -841,6 +828,12 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
     var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
+    // To match expected behavior, update fields from date
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getDate()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
 
     return (date.getTime() / 1000)|0;
   },
@@ -1675,6 +1668,7 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
+  clock_gettime__sig: 'iii',
   clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
@@ -1785,7 +1779,7 @@ LibraryManager.library = {
     error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
   }],
   // will never be emitted, as the dep errors at compile time
-  longjmp: function() {
+  longjmp: function(env, value) {
     abort('longjmp not supported');
   },
 #endif
@@ -1793,6 +1787,7 @@ LibraryManager.library = {
   // (it emits them atm as they are generated by an IR pass, at at that time
   // they each have a different signature - it is only at the wasm level that
   // they become identical).
+  emscripten_longjmp__sig: 'vii',
   emscripten_longjmp: 'longjmp',
 
   // ==========================================================================
@@ -2888,10 +2883,12 @@ LibraryManager.library = {
   // emscripten.h
   // ==========================================================================
 
+  emscripten_run_script__sig: 'vi',
   emscripten_run_script: function(ptr) {
     {{{ makeEval('eval(UTF8ToString(ptr));') }}}
   },
 
+  emscripten_run_script_int__sig: 'ii',
   emscripten_run_script_int__docs: '/** @suppress{checkTypes} */',
   emscripten_run_script_int: function(ptr) {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
@@ -3652,12 +3649,6 @@ LibraryManager.library = {
   },
 
   // special runtime support
-
-  emscripten_scan_stack: function(func) {
-    var base = STACK_BASE; // TODO verify this is right on pthreads
-    var end = stackSave();
-    {{{ makeDynCall('vii', 'func') }}}(Math.min(base, end), Math.max(base, end));
-  },
 
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow: function() {

@@ -917,6 +917,8 @@
     {
         "file": "dlfcn.h",
         "defines": [
+            "RTLD_NOW",
+            "RTLD_LAZY",
             "RTLD_DEFAULT",
             "RTLD_GLOBAL",
             "RTLD_NODELETE"
@@ -1706,7 +1708,6 @@
                 "type",
                 "hasDynamicOffset",
                 "minBufferBindingSize",
-                "multisampled",
                 "viewDimension",
                 "textureComponentType",
                 "storageTextureFormat"
