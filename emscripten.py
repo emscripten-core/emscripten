@@ -182,6 +182,7 @@ def apply_forwarded_data(forwarded_data):
   StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
   StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
   StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
+  shared.Settings.EXTRA_WASM_IMPORTS = forwarded_json['EXTRA_WASM_IMPORTS']
 
 
 def compile_settings(temp_files):
@@ -564,102 +565,12 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map['setTempRet0'] = 'setTempRet0'
     send_items_map['getTempRet0'] = 'getTempRet0'
 
-  if shared.Settings.AUTODEBUG:
-    send_items_map['log_execution'] = '''function(loc) {
-      console.log('log_execution ' + loc);
-    }'''
-    send_items_map['get_i32'] = '''function(loc, index, value) {
-      console.log('get_i32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_i64'] = '''function(loc, index, low, high) {
-      console.log('get_i64 ' + [loc, index, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['get_f32'] = '''function(loc, index, value) {
-      console.log('get_f32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_f64'] = '''function(loc, index, value) {
-      console.log('get_f64 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_anyref'] = '''function(loc, index, value) {
-      console.log('get_anyref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_exnref'] = '''function(loc, index, value) {
-      console.log('get_exnref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_i32'] = '''function(loc, index, value) {
-      console.log('set_i32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_i64'] = '''function(loc, index, low, high) {
-      console.log('set_i64 ' + [loc, index, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['set_f32'] = '''function(loc, index, value) {
-      console.log('set_f32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_f64'] = '''function(loc, index, value) {
-      console.log('set_f64 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_anyref'] = '''function(loc, index, value) {
-      console.log('set_anyref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_exnref'] = '''function(loc, index, value) {
-      console.log('set_exnref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
-      console.log('load_ptr ' + [loc, bytes, offset, ptr]);
-      return ptr;
-    }'''
-    send_items_map['load_val_i32'] = '''function(loc, value) {
-      console.log('load_val_i32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['load_val_i64'] = '''function(loc, low, high) {
-      console.log('load_val_i64 ' + [loc, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['load_val_f32'] = '''function(loc, value) {
-      console.log('load_val_f32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['load_val_f64'] = '''function(loc, value) {
-      console.log('load_val_f64 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_ptr'] = '''function(loc, bytes, offset, ptr) {
-      console.log('store_ptr ' + [loc, bytes, offset, ptr]);
-      return ptr;
-    }'''
-    send_items_map['store_val_i32'] = '''function(loc, value) {
-      console.log('store_val_i32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_val_i64'] = '''function(loc, low, high) {
-      console.log('store_val_i64 ' + [loc, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['store_val_f32'] = '''function(loc, value) {
-      console.log('store_val_f32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_val_f64'] = '''function(loc, value) {
-      console.log('store_val_f64 ' + [loc, value]);
-      return value;
-    }'''
+  for item in shared.Settings.EXTRA_WASM_IMPORTS:
+    if type(item) is list:
+      key, value = item
+    else:
+      key = value = item
+    send_items_map[key] = value
 
 
 def create_sending(invoke_funcs, metadata):

@@ -1095,4 +1095,8 @@ function createWasm() {
 var tempDouble;
 var tempI64;
 
+#if AUTODEBUG
+#include "autodebug.js"
+#endif
+
 // === Body ===

@@ -1300,10 +1300,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.IGNORE_MISSING_MAIN = 0
       shared.Settings.DEFAULT_TO_CXX = 0
 
-    # If set to 1, we will run the autodebugger (the automatic debugging tool, see
-    # tools/autodebugger).  Note that this will disable inclusion of libraries. This
-    # is useful because including dlmalloc makes it hard to compare native and js
-    # builds
     if os.environ.get('EMCC_AUTODEBUG'):
       shared.Settings.AUTODEBUG = 1
 
