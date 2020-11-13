@@ -461,10 +461,9 @@ class TestCoreBase(RunnerCore):
   def test_sha1(self):
     self.do_runf(path_from_root('tests', 'sha1.c'), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
-  @no_wasm_backend('test checks that __asmjs__ is #defined')
-  def test_asmjs_unknown_emscripten(self):
+  def test_wasm32_unknown_emscripten(self):
     # No other configuration is supported, so always run this.
-    self.do_runf(path_from_root('tests', 'asmjs-unknown-emscripten.c'), '')
+    self.do_runf(path_from_root('tests', 'wasm32-unknown-emscripten.c'), '')
 
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
