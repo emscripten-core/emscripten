@@ -49,83 +49,6 @@ static inline void a_or_64(volatile uint64_t *p, uint64_t v)
 }
 
 #ifdef __EMSCRIPTEN_PTHREADS__
-#ifdef __asmjs__
-#define a_store_l a_store_l
-static inline void a_store_l(volatile void *p, long x)
-{
-	emscripten_atomic_store_u32((void*)p, x);
-}
-
-#define a_or_l a_or_l
-static inline void a_or_l(volatile void *p, long v)
-{
-	emscripten_atomic_or_u32((void*)p, v);
-}
-
-#define a_cas_p a_cas_p
-static inline void *a_cas_p(volatile void *p, void *t, void *s)
-{
-	return (void*)emscripten_atomic_cas_u32(p, (uint32_t)t, (uint32_t)s);
-}
-
-#define a_cas_l a_cas_l
-static inline long a_cas_l(volatile void *p, long t, long s)
-{
-	return emscripten_atomic_cas_u32(p, t, s);
-}
-
-#define a_cas a_cas
-static inline int a_cas(volatile int *p, int t, int s)
-{
-	return emscripten_atomic_cas_u32(p, t, s);
-}
-
-#define a_or a_or
-static inline void a_or(volatile void *p, int v)
-{
-	emscripten_atomic_or_u32((void*)p, v);
-}
-
-#define a_and a_and
-static inline void a_and(volatile void *p, int v)
-{
-	emscripten_atomic_and_u32((void*)p, v);
-}
-
-#define a_swap a_swap
-static inline int a_swap(volatile int *x, int v)
-{
-	int old;
-	do {
-		old = emscripten_atomic_load_u32(x);
-	} while(emscripten_atomic_cas_u32(x, old, v) != old);
-	return old;
-}
-
-#define a_fetch_add a_fetch_add
-static inline int a_fetch_add(volatile int *x, int v)
-{
-	return emscripten_atomic_add_u32(x, v);
-}
-
-#define a_inc a_inc
-static inline void a_inc(volatile int *x)
-{
-	emscripten_atomic_add_u32((void*)x, 1);
-}
-
-#define a_dec a_dec
-static inline void a_dec(volatile int *x)
-{
-	emscripten_atomic_sub_u32((void*)x, 1);
-}
-
-#define a_store a_store
-static inline void a_store(volatile int *p, int x)
-{
-	emscripten_atomic_store_u32((void*)p, x);
-}
-#else // __asmjs__
 #define a_store_l a_store_l
 static inline void a_store_l(volatile void *p, long x)
 {
@@ -202,7 +125,6 @@ static inline void a_store(volatile int *p, int x)
 {
 	__c11_atomic_store((_Atomic int*)p, x, __ATOMIC_SEQ_CST);
 }
-#endif // __asmjs__
 #else // __EMSCRIPTEN_PTHREADS__
 #define a_store_l a_store_l
 static inline void a_store_l(volatile void *p, long x)

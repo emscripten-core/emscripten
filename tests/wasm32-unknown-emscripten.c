@@ -8,8 +8,11 @@
 #ifndef __EMSCRIPTEN__
 #error __EMSCRIPTEN__ is not defined
 #endif
-#ifndef __asmjs__
-#error __asmjs__ is not defined
+#ifndef __wasm__
+#error __wasm__ is not defined
+#endif
+#ifndef __wasm32__
+#error __wasm32__ is not defined
 #endif
 #ifdef __cplusplus
 #ifndef _GNU_SOURCE
@@ -94,8 +97,8 @@ int main() {
   assert(sizeof(long) == 4);
   assert(sizeof(intmax_t) == 8);
   assert(__alignof(double) == 8);
-  assert(sizeof(long double) == 8);
-  assert(__alignof(long double) == 8);
+  assert(sizeof(long double) == 16);
+  assert(__alignof(long double) == 16);
   assert(sizeof(intptr_t) == 4);
   assert(sizeof(size_t) == 4);
   assert(sizeof(ptrdiff_t) == 4);
