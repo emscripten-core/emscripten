@@ -199,7 +199,7 @@ Pointers, References, Value types (Ref and Value)
 
 C++ arguments and return types can be pointers, references, or value types (allocated on the stack). The IDL file uses different decoration to represent each of these cases.
 
-Undecorated argument and return values in the IDL are assumed to be *pointers* in the C++:
+Undecorated argument and return values of a custom type in the IDL are assumed to be *pointers* in the C++:
 
 .. code-block:: cpp
 
@@ -210,6 +210,8 @@ Undecorated argument and return values in the IDL are assumed to be *pointers* i
 
   // WebIDL
   MyClass process(MyClass input);
+  
+This assumption isn't true for base types like void,int,bool,DOMString,etc.
 
 References should be decorated using ``[Ref]``:
 
@@ -222,6 +224,7 @@ References should be decorated using ``[Ref]``:
 
   // WebIDL
   [Ref] MyClass process([Ref] MyClass input);
+
 
 .. note:: If ``[Ref]`` is omitted on a reference, the generated glue C++ will not compile (it fails when it tries to convert the reference — which it thinks is a pointer — to an object).
 
