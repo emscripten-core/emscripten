@@ -2774,10 +2774,14 @@ Module["preRun"].push(function () {
         in_html('200')
 
   @requires_graphics_hardware
-  def test_glfw3(self):
+  @parameterized({
+    'no_gl': (['-DCLIENT_API=GLFW_NO_API'],),
+    'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API'],)
+  })
+  def test_glfw3(self, args):
     for opts in [[], ['-s', 'LEGACY_GL_EMULATION=1'], ['-Os', '--closure', '1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
+      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
   @requires_graphics_hardware
   def test_glfw_events(self):
