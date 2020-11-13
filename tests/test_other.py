@@ -4989,7 +4989,11 @@ int main() {
     self.assertContained(MESSAGE, err)
     self.clear()
 
-  def test_massive_alloc(self):
+  @parameterized({
+    '': (True,),
+    'wasm2js': (False,),
+  })
+  def test_massive_alloc(self, wasm):
     create_test_file('main.cpp', r'''
 #include <stdio.h>
 #include <stdlib.h>
@@ -4999,14 +5003,14 @@ int main() {
   return x == 0; // can't alloc it, but don't fail catastrophically, expect null
 }
     ''')
-    self.run_process([EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
+    cmd = [EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH']
+    if not wasm:
+      cmd += ['-s', 'WASM=0']
+    self.run_process(cmd)
     # just care about message regarding allocating over 1GB of memory
     output = self.run_js('a.out.js')
-    self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1473314816\n''', output)
-    print('wasm')
-    self.run_process([EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1'])
-    # no message about growth, just check return code
-    self.run_js('a.out.js')
+    if not wasm:
+      self.assertContained('Warning: Enlarging memory arrays, this is not fast! 16777216,1473314816\n', output)
 
   def test_failing_alloc(self):
     for pre_fail, post_fail, opts in [
@@ -9605,8 +9609,8 @@ exec "$@"
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
 
   def test_wasm2js_standalone(self):
-    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-sSTANDALONE_WASM', '-sWASM=0'])
-    self.assertContained('WASM2JS is not compatible with STANDALONE_WASM output', err)
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-sSTANDALONE_WASM', '-sWASM=0'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_oformat(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])

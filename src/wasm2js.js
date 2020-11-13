@@ -64,7 +64,7 @@ WebAssembly = {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // This will be replaced by the actual wasm2js code.
-    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory);
+    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg);
   },
 
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {
