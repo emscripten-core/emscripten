@@ -7,6 +7,7 @@ emscripten_stack_get_free
 emscripten_stack_init
 fflush
 global_val
+memory
 stackAlloc
 stackRestore
 stackSave

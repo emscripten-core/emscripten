@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- The WebAssembly memory used by emscripten programs is now, by default, created
+  in the wasm file and exported to JavaScript.  Previously we could create the
+  memory in JavaScript and import it into the wasm file.  The new
+  `IMPORTED_MEMORY` setting can be used to revert to the old behaviour.
+  Breaking change: This new setting is required if you provide a runtime
+  value for `wasmMemory` or `INITIAL_MEMORY` on the Module object.
 
 2.0.9: 11/16/2020
 -----------------

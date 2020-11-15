@@ -478,10 +478,7 @@ def lld_flags_for_executable(external_symbol_list):
   else:
     cmd.append('--allow-undefined')
 
-  # wasi does not import the memory (but for JS it is efficient to do so,
-  # as it allows us to set up memory, preload files, etc. even before the
-  # wasm module arrives)
-  if not Settings.STANDALONE_WASM:
+  if Settings.IMPORTED_MEMORY:
     cmd.append('--import-memory')
 
   if Settings.USE_PTHREADS:
@@ -1144,7 +1141,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       if export in user_requested_exports or Settings.EXPORT_ALL:
         item['root'] = True
   # in standalone wasm, always export the memory
-  if Settings.STANDALONE_WASM:
+  if not Settings.IMPORTED_MEMORY:
     graph.append({
       'export': 'memory',
       'name': 'emcc$export$memory',
