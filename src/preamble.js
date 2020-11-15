@@ -267,15 +267,34 @@ var HEAP,
   HEAPF64;
 
 function updateGlobalBufferAndViews(buf) {
+  // Using Data Views to force little-endian ordering on all architectures.
+  function _generateProxyObj(byteCount, getter, setter) {
+    return {
+      get: function (target, key) {
+        return new DataView(target.buffer)[getter](byteCount * (key), true);
+      },
+      set: function (target, key, value) {
+        new DataView(target.buffer)[setter](byteCount * (key), value, true);
+      }
+    }
+  }
+
   buffer = buf;
   Module['HEAP8'] = HEAP8 = new Int8Array(buf);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buf);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buf);
+  var _HEAP16 = new Int16Array(buf);
+  var _HEAP32 = new Int32Array(buf);
   Module['HEAPU8'] = HEAPU8 = new Uint8Array(buf);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buf);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
+  var _HEAPU16 = new Uint16Array(buf);
+  var _HEAPU32 = new Uint32Array(buf);
+  var _HEAPF32 = new Float32Array(buf);
+  var _HEAPF64 = new Float64Array(buf);
+
+  Module['HEAP16'] = HEAP16 = new Proxy(_HEAP16, _generateProxyObj(2, 'getInt16', 'setInt16'));
+  Module['HEAP32'] = HEAP32 = new Proxy(_HEAP32, _generateProxyObj(4, 'getInt32', 'setInt32'));
+  Module['HEAPU16'] = HEAPU16 = new Proxy(_HEAPU16, _generateProxyObj(2, 'getUint16', 'setUint16'));
+  Module['HEAPU32'] = HEAPU32 = new Proxy(_HEAPU32, _generateProxyObj(4, 'getUint32', 'setUint32'));
+  Module['HEAPF32'] = HEAPF32 = new Proxy(_HEAPF32, _generateProxyObj(4, 'getFloat32', 'setFloat32'));
+  Module['HEAPF64'] = HEAPF64 = new Proxy(_HEAPF64, _generateProxyObj(8, 'getFloat64', 'setFloat64'));
 }
 
 #if RELOCATABLE
