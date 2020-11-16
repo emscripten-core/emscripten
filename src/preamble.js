@@ -268,13 +268,13 @@ var HEAP,
 
 function updateGlobalBufferAndViews(buf) {
   // Using Data Views to force little-endian ordering on all architectures.
-  function _generateProxyObj(byteCount, getter, setter) {
+  function _generateProxyObj(viewObj, byteCount, getter, setter) {
     return {
       get: function (target, key) {
-        return new DataView(target.buffer)[getter](byteCount * (key), true);
-      },
+        return viewObj[getter](byteCount * (key), true);
+      }, 
       set: function (target, key, value) {
-        new DataView(target.buffer)[setter](byteCount * (key), value, true);
+        return viewObj[setter](byteCount * (key), value, true);
       }
     }
   }
@@ -289,12 +289,19 @@ function updateGlobalBufferAndViews(buf) {
   var _HEAPF32 = new Float32Array(buf);
   var _HEAPF64 = new Float64Array(buf);
 
-  Module['HEAP16'] = HEAP16 = new Proxy(_HEAP16, _generateProxyObj(2, 'getInt16', 'setInt16'));
-  Module['HEAP32'] = HEAP32 = new Proxy(_HEAP32, _generateProxyObj(4, 'getInt32', 'setInt32'));
-  Module['HEAPU16'] = HEAPU16 = new Proxy(_HEAPU16, _generateProxyObj(2, 'getUint16', 'setUint16'));
-  Module['HEAPU32'] = HEAPU32 = new Proxy(_HEAPU32, _generateProxyObj(4, 'getUint32', 'setUint32'));
-  Module['HEAPF32'] = HEAPF32 = new Proxy(_HEAPF32, _generateProxyObj(4, 'getFloat32', 'setFloat32'));
-  Module['HEAPF64'] = HEAPF64 = new Proxy(_HEAPF64, _generateProxyObj(8, 'getFloat64', 'setFloat64'));
+  var _HEAP16View = new DataView(_HEAP16.buffer);
+  var _HEAP32View = new DataView(_HEAP32.buffer);
+  var _HEAPU16View = new DataView(_HEAPU16.buffer);
+  var _HEAPU32View = new DataView(_HEAPU32.buffer);
+  var _HEAPF32View = new DataView(_HEAPF32.buffer);
+  var _HEAPF64View = new DataView(_HEAPF64.buffer);
+
+  Module['HEAP16'] = HEAP16 = new Proxy(_HEAP16, _generateProxyObj(_HEAP16View, 2, 'getInt16', 'setInt16'));
+  Module['HEAP32'] = HEAP32 = new Proxy(_HEAP32, _generateProxyObj(_HEAP32View, 4, 'getInt32', 'setInt32'));
+  Module['HEAPU16'] = HEAPU16 = new Proxy(_HEAPU16, _generateProxyObj(_HEAPU16View, 2, 'getUint16', 'setUint16'));
+  Module['HEAPU32'] = HEAPU32 = new Proxy(_HEAPU32, _generateProxyObj(_HEAPU32View, 4, 'getUint32', 'setUint32'));
+  Module['HEAPF32'] = HEAPF32 = new Proxy(_HEAPF32, _generateProxyObj(_HEAPF32View, 4, 'getFloat32', 'setFloat32'));
+  Module['HEAPF64'] = HEAPF64 = new Proxy(_HEAPF64, _generateProxyObj(_HEAPF64View, 8, 'getFloat64', 'setFloat64'));
 }
 
 #if RELOCATABLE
