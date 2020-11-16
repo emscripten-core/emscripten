@@ -274,7 +274,8 @@ function updateGlobalBufferAndViews(buf) {
         return viewObj[getter](byteCount * (key), true);
       }, 
       set: function (target, key, value) {
-        return viewObj[setter](byteCount * (key), value, true);
+        viewObj[setter](byteCount * (key), value, true);
+        return true;
       }
     }
   }
