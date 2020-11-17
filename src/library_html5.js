@@ -2735,7 +2735,7 @@ var LibraryJSEvents = {
         // Save a little bit of code space: modern browsers should treat
         // negative setTimeout as timeout of 0
         // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
-        setTimeout(tick, t - performance.now());
+        setTimeout(tick, n - performance.now());
       }
     }
     return setTimeout(tick, 0);

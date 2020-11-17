@@ -214,6 +214,12 @@ var MEMORY_GROWTH_GEOMETRIC_CAP = 96*1024*1024;
 // and MEMORY_GROWTH_GEOMETRIC_CAP are ignored.
 var MEMORY_GROWTH_LINEAR_STEP = -1;
 
+// The "architecture" to compile for. 0 means the default wasm32, 1 is
+// the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
+// wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
+// using i64 pointers).
+var MEMORY64 = 0;
+
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
 var ALLOW_TABLE_GROWTH = 0;

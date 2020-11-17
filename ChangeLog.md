@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.9: 11/16/2020
+-----------------
 - dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
   or RTDL_NOW flags ar set.  Previously, it was possible set nether of these
   without generating an error.

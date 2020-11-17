@@ -295,46 +295,71 @@ int pthread_barrier_destroy(pthread_barrier_t* mutex) { return 0; }
 
 int pthread_barrier_wait(pthread_barrier_t* mutex) { return 0; }
 
-/* magic value to track a validly constructed TLS slot */
-#define PTHREAD_TLS_MAGIC_ID 0x02468ACE
+// pthread_key_t is 32-bit, so to be able to store pointers in there, we sadly
+// have to track an array of them.
+static size_t num_tls_entries = 0;
+static size_t max_tls_entries = 0;
+struct entry_t { const void* value; int allocated; };
+static struct entry_t* tls_entries = NULL;
 
 int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
   if (key == 0)
     return EINVAL;
-  uintptr_t* tls = (uintptr_t*)malloc(sizeof(uintptr_t) * 2);
-  tls[0] = 0;
-  tls[1] = PTHREAD_TLS_MAGIC_ID;
-  *key = (pthread_key_t)tls;
+  if (!max_tls_entries) {
+    // First time we're called, allocate entry table.
+    max_tls_entries = 4;
+    tls_entries = (struct entry_t*)malloc(max_tls_entries * sizeof(void *));
+  }
+  // Find empty spot.
+  size_t entry = 0;
+  for (; entry < num_tls_entries; entry++) {
+    if (!tls_entries[entry].allocated) break;
+  }
+  if (entry == max_tls_entries) {
+    // No empty spots, table full: double the table.
+    max_tls_entries *= 2;
+    tls_entries =
+      (struct entry_t*)realloc(tls_entries, num_tls_entries * sizeof(void *));
+  }
+  if (entry == num_tls_entries) {
+    // No empty spots, but table not full.
+    num_tls_entries++;
+  }
+  struct entry_t* e = &tls_entries[entry];
+  e->value = NULL;
+  e->allocated = 1;
+  // Key can't be zero.
+  *key = (pthread_key_t)entry + 1;
   return 0;
 }
 
 int pthread_key_delete(pthread_key_t key) {
-  if (key == 0)
+  if (key == 0 || key > num_tls_entries)
     return EINVAL;
-  uintptr_t* tls = (uintptr_t*)key;
-  if (tls[1] != PTHREAD_TLS_MAGIC_ID)
+  struct entry_t* e = &tls_entries[key - 1];
+  if (!e->allocated)
     return EINVAL;
-  tls[0] = tls[1] = 0;
-  free(tls);
+  e->value = NULL;
+  e->allocated = 0;
   return 0;
 }
 
 void* pthread_getspecific(pthread_key_t key) {
-  if (key == 0)
+  if (key == 0 || key > num_tls_entries)
     return NULL;
-  uintptr_t* tls = (uintptr_t*)key;
-  if (tls[1] != PTHREAD_TLS_MAGIC_ID)
+  struct entry_t* e = &tls_entries[key - 1];
+  if (!e->allocated)
     return NULL;
-  return (void*)tls[0];
+  return (void*)e->value;
 }
 
 int pthread_setspecific(pthread_key_t key, const void* value) {
-  if (key == 0)
+  if (key == 0 || key > num_tls_entries)
     return EINVAL;
-  uintptr_t* tls = (uintptr_t*)key;
-  if (tls[1] != PTHREAD_TLS_MAGIC_ID)
+  struct entry_t* e = &tls_entries[key - 1];
+  if (!e->allocated)
     return EINVAL;
-  tls[0] = (uintptr_t)value;
+  e->value = value;
   return 0;
 }
 

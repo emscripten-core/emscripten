@@ -3,37 +3,45 @@
 .globl stackAlloc
 .globl emscripten_stack_get_current
 
-.globaltype __stack_pointer, i32
+#ifdef __wasm64__
+#define PTR i64
+#define MASK 0xfffffffffffffff0
+#else
+#define PTR i32
+#define MASK 0xfffffff0
+#endif
+
+.globaltype __stack_pointer, PTR
 
 stackSave:
-  .functype stackSave() -> (i32)
+  .functype stackSave() -> (PTR)
   global.get __stack_pointer
   end_function
 
 stackRestore:
-  .functype stackRestore(i32) -> ()
+  .functype stackRestore(PTR) -> ()
   local.get 0
   global.set __stack_pointer
   end_function
 
 stackAlloc:
-  .functype stackAlloc(i32) -> (i32)
-  .local i32, i32
+  .functype stackAlloc(PTR) -> (PTR)
+  .local PTR, PTR
   global.get __stack_pointer
   # Get arg 0 -> number of bytes to allocate
   local.get 0
   # Stack grows down.  Subtract arg0 from __stack_pointer
-  i32.sub
+  PTR.sub
   # Align result by anding with ~15
-  i32.const 0xfffffff0
-  i32.and
+  PTR.const MASK
+  PTR.and
   local.tee 1
   global.set __stack_pointer
   local.get 1
   end_function
 
 emscripten_stack_get_current:
-  .functype emscripten_stack_get_current () -> (i32)
+  .functype emscripten_stack_get_current () -> (PTR)
   global.get __stack_pointer
   end_function
 

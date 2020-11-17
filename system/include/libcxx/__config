@@ -54,7 +54,7 @@
 #  endif
 #endif  // _LIBCPP_STD_VER
 
-#if defined(__ELF__) || defined(__asmjs__) // XXX EMSCRIPTEN: Add define to avoid selecting coff format which activates declspec defines (the ELF define is actually never used)
+#if defined(__ELF__)
 #  define _LIBCPP_OBJECT_FORMAT_ELF   1
 #elif defined(__MACH__)
 #  define _LIBCPP_OBJECT_FORMAT_MACHO 1

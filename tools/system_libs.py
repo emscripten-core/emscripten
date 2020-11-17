@@ -61,6 +61,8 @@ def get_cflags(force_object_files=False):
     flags += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
+  if shared.Settings.MEMORY64:
+    flags += ['-s', 'MEMORY64=' + str(shared.Settings.MEMORY64)]
   return flags
 
 
@@ -371,6 +373,8 @@ class Library(object):
         cmd = [shared.EMXX]
       if ext != '.s':
         cmd += cflags
+      elif shared.Settings.MEMORY64:
+        cmd += ['-s', 'MEMORY64=' + str(shared.Settings.MEMORY64)]
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
     run_build_commands(commands)
@@ -644,7 +648,7 @@ class libcompiler_rt(MTLibrary):
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = glob_in_path(src_dir, '*.c')
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.s'))
+  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.S'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_limits.S'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'))

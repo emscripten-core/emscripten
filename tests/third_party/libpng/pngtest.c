@@ -2014,8 +2014,6 @@ main(int argc, char *argv[])
          (unsigned long) png_get_chunk_malloc_max(dummy_ptr));
    png_destroy_read_struct(&dummy_ptr, NULL, NULL);
 
-   if(ierror == 0)
-	   printf("TESTS PASSED\n");
    return (int)(ierror != 0);
 }
 #else

@@ -1446,9 +1446,10 @@ int f() {
     building.emcc(path_from_root('tests', 'sdl2_mixer_wav.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
 
   def test_libpng(self):
-    shutil.copyfile(path_from_root('tests', 'pngtest.png'), 'pngtest.png')
-    building.emcc(path_from_root('tests', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_LIBPNG=1'], output_filename='a.out.js')
-    self.assertContained('TESTS PASSED', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
+    shutil.copyfile(path_from_root('tests', 'third_party', 'libpng', 'pngtest.png'), 'pngtest.png')
+    building.emcc(path_from_root('tests', 'third_party', 'libpng', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_LIBPNG=1'], output_filename='a.out.js')
+    output = self.run_js('a.out.js')
+    self.assertContained('libpng passes test', output)
 
   def test_libjpeg(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpg')
@@ -8186,7 +8187,17 @@ int main () {
   # The no_windows/no_mac decorators also solve that problem.
   @no_windows("Code size is slightly different on Windows")
   @no_mac("Code size is slightly different on Mac")
-  def test_minimal_runtime_code_size(self):
+  @parameterized({
+    'hello_world_wasm': ('hello_world', False),
+    'hello_world_wasm2js': ('hello_world', True),
+    'random_printf_wasm': ('random_printf', False),
+    'random_printf_wasm2js': ('random_printf', True),
+    'hello_webgl_wasm': ('hello_webgl', False),
+    'hello_webgl_wasm2js': ('hello_webgl', True),
+    'hello_webgl2_wasm': ('hello_webgl2', False),
+    'hello_webgl2_wasm2js': ('hello_webgl2', True),
+  })
+  def test_minimal_runtime_code_size(self, test_name, js):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'ENVIRONMENT=web',
                                '-s', 'TEXTDECODER=2',
@@ -8227,125 +8238,118 @@ int main () {
                            '-s', 'MODULARIZE=1']
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 
+    sources = {
+      'hello_world': hello_world_sources,
+      'random_printf': random_printf_sources,
+      'hello_webgl': hello_webgl_sources,
+      'hello_webgl2': hello_webgl2_sources}[test_name]
+
     def print_percent(actual, expected):
       if actual == expected:
         return ''
       return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
 
-    for js in [False, True]:
-      for sources, name in [
-          [hello_world_sources, 'hello_world'],
-          [random_printf_sources, 'random_printf'],
-          [hello_webgl_sources, 'hello_webgl'],
-          [hello_webgl2_sources, 'hello_webgl2']
-        ]:
+    outputs = ['a.html', 'a.js']
 
-        outputs = ['a.html', 'a.js']
+    args = smallest_code_size_args[:]
 
-        test_name = name
+    if js:
+      outputs += ['a.mem']
+      args += wasm2js
+      test_name += '_wasm2js'
+    else:
+      outputs += ['a.wasm']
+      test_name += '_wasm'
 
-        args = smallest_code_size_args[:]
+    if 'SINGLE_FILE=1' in sources:
+      outputs = ['a.html']
 
+    results_file = path_from_root('tests', 'code_size', test_name + '.json')
+
+    expected_results = {}
+    try:
+      expected_results = json.loads(open(results_file, 'r').read())
+    except Exception:
+      if not os.environ.get('EMTEST_REBASELINE'):
+        raise
+
+    args = [EMCC, '-o', 'a.html'] + args + sources
+    print(shared.shlex_join(args))
+    self.run_process(args)
+
+    def get_file_gzipped_size(f):
+      f_gz = f + '.gz'
+      with gzip.open(f_gz, 'wb') as gzf:
+        gzf.write(open(f, 'rb').read())
+      size = os.path.getsize(f_gz)
+      try_delete(f_gz)
+      return size
+
+    obtained_results = {}
+    total_output_size = 0
+    total_expected_size = 0
+    total_output_size_gz = 0
+    total_expected_size_gz = 0
+    for f in outputs:
+      f_gz = f + '.gz'
+      expected_size = expected_results[f] if f in expected_results else float('inf')
+      expected_size_gz = expected_results[f_gz] if f_gz in expected_results else float('inf')
+      size = os.path.getsize(f)
+      size_gz = get_file_gzipped_size(f)
+
+      obtained_results[f] = size
+      obtained_results[f_gz] = size_gz
+
+      if size != expected_size and (f.endswith('.js') or f.endswith('.html')):
+        print('Contents of ' + f + ': ')
+        print(open(f, 'r').read())
+
+      print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
+      print('size of ' + f_gz + ' == ' + str(size_gz) + ', expected ' + str(expected_size_gz) + ', delta=' + str(size_gz - expected_size_gz) + print_percent(size_gz, expected_size_gz))
+
+      # Hack: Generated .mem initializer files have different sizes on different
+      # platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home
+      # Linux gives x+2 bytes..). Likewise asm.js files seem to be affected by
+      # the LLVM IR text names, which lead to asm.js names, which leads to
+      # difference code size, which leads to different relooper choices,
+      # as a result leading to slightly different total code sizes.
+      # Also as of July 16, 2020, wasm2js files have different sizes on
+      # different platforms (Windows and MacOS improved to give a slightly
+      # better thing than Linux does, which didn't change; this just
+      # started to happen on CI, not in response to a code update, so it
+      # may have been present all along but just noticed now; it only
+      # happens in wasm2js, so it may be platform-nondeterminism in closure
+      # compiler).
+      # TODO: identify what is causing this. meanwhile allow some amount of slop
+      if not os.environ.get('EMTEST_REBASELINE'):
         if js:
-          outputs += ['a.mem']
-          args += wasm2js
-          test_name += '_wasm2js'
+          slop = 30
         else:
-          outputs += ['a.wasm']
-          test_name += '_wasm'
+          slop = 20
+        if size <= expected_size + slop and size >= expected_size - slop:
+          size = expected_size
 
-        if 'SINGLE_FILE=1' in sources:
-          outputs = ['a.html']
+      # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
+      # this is because optimizing for compressed sizes can be unpredictable and sometimes counterproductive
+      total_output_size += size
+      total_expected_size += expected_size
 
-        results_file = path_from_root('tests', 'code_size', test_name + '.json')
+      total_output_size_gz += size_gz
+      total_expected_size_gz += expected_size_gz
 
-        print('\n-----------------------------\n' + test_name)
+    obtained_results['total'] = total_output_size
+    obtained_results['total_gz'] = total_output_size_gz
+    print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
+    print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
 
-        expected_results = {}
-        try:
-          expected_results = json.loads(open(results_file, 'r').read())
-        except Exception:
-          if not os.environ.get('EMTEST_REBASELINE'):
-            raise
-
-        args = [EMCC, '-o', 'a.html'] + args + sources
-        print('\n' + ' '.join(args))
-        self.run_process(args)
-        print('\n')
-
-        def get_file_gzipped_size(f):
-          f_gz = f + '.gz'
-          with gzip.open(f_gz, 'wb') as gzf:
-            gzf.write(open(f, 'rb').read())
-          size = os.path.getsize(f_gz)
-          try_delete(f_gz)
-          return size
-
-        obtained_results = {}
-        total_output_size = 0
-        total_expected_size = 0
-        total_output_size_gz = 0
-        total_expected_size_gz = 0
-        for f in outputs:
-          f_gz = f + '.gz'
-          expected_size = expected_results[f] if f in expected_results else float('inf')
-          expected_size_gz = expected_results[f_gz] if f_gz in expected_results else float('inf')
-          size = os.path.getsize(f)
-          size_gz = get_file_gzipped_size(f)
-
-          obtained_results[f] = size
-          obtained_results[f_gz] = size_gz
-
-          if size != expected_size and (f.endswith('.js') or f.endswith('.html')):
-            print('Contents of ' + f + ': ')
-            print(open(f, 'r').read())
-
-          print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
-          print('size of ' + f_gz + ' == ' + str(size_gz) + ', expected ' + str(expected_size_gz) + ', delta=' + str(size_gz - expected_size_gz) + print_percent(size_gz, expected_size_gz))
-
-          # Hack: Generated .mem initializer files have different sizes on different
-          # platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home
-          # Linux gives x+2 bytes..). Likewise asm.js files seem to be affected by
-          # the LLVM IR text names, which lead to asm.js names, which leads to
-          # difference code size, which leads to different relooper choices,
-          # as a result leading to slightly different total code sizes.
-          # Also as of July 16, 2020, wasm2js files have different sizes on
-          # different platforms (Windows and MacOS improved to give a slightly
-          # better thing than Linux does, which didn't change; this just
-          # started to happen on CI, not in response to a code update, so it
-          # may have been present all along but just noticed now; it only
-          # happens in wasm2js, so it may be platform-nondeterminism in closure
-          # compiler).
-          # TODO: identify what is causing this. meanwhile allow some amount of slop
-          if not os.environ.get('EMTEST_REBASELINE'):
-            if js:
-              slop = 30
-            else:
-              slop = 20
-            if size <= expected_size + slop and size >= expected_size - slop:
-              size = expected_size
-
-          # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
-          # this is because optimizing for compressed sizes can be unpredictable and sometimes counterproductive
-          total_output_size += size
-          total_expected_size += expected_size
-
-          total_output_size_gz += size_gz
-          total_expected_size_gz += expected_size_gz
-
-        obtained_results['total'] = total_output_size
-        obtained_results['total_gz'] = total_output_size_gz
-        print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
-        print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
-
-        if os.environ.get('EMTEST_REBASELINE'):
-          open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
-        else:
-          if total_output_size > total_expected_size:
-            print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
-          if total_output_size < total_expected_size:
-            print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Rerun test with other.test_minimal_runtime_code_size with EMTEST_REBASELINE=1 to update the expected sizes!')
-          self.assertEqual(total_output_size, total_expected_size)
+    if os.environ.get('EMTEST_REBASELINE'):
+      open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
+    else:
+      if total_output_size > total_expected_size:
+        print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
+      if total_output_size < total_expected_size:
+        print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Rerun test with other.test_minimal_runtime_code_size with EMTEST_REBASELINE=1 to update the expected sizes!')
+      self.assertEqual(total_output_size, total_expected_size)
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):

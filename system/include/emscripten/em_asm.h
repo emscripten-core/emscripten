@@ -25,7 +25,6 @@
 
 #else
 
-#ifndef __asmjs__
 // In wasm backend, we need to call the emscripten_asm_const_* functions with
 // the C vararg calling convention, because we will call it with a variety of
 // arguments, but need to generate a coherent import for the wasm module before
@@ -171,28 +170,6 @@ void emscripten_asm_const_async_on_main_thread(
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-
-#else // __asmjs__
-
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
-#define _EM_ASM_PREP_ARGS(...) , ##__VA_ARGS__
-
-int emscripten_asm_const_int(const char* code, ...);
-double emscripten_asm_const_double(const char* code, ...);
-
-int emscripten_asm_const_int_sync_on_main_thread(const char* code, ...);
-double emscripten_asm_const_double_sync_on_main_thread(const char* code, ...);
-
-void emscripten_asm_const_async_on_main_thread(const char* code, ...);
-
-#ifdef __cplusplus
-}
-#endif // __cplusplus
-
-#endif // __asmjs__
 
 // Note: If the code block in the EM_ASM() family of functions below contains a comma,
 // then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
