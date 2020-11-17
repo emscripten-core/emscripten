@@ -409,7 +409,10 @@ def apply_configuration():
 
 
 def get_llvm_target():
-  return 'wasm32-unknown-emscripten'
+  if Settings.MEMORY64:
+    return 'wasm64-unknown-emscripten'
+  else:
+    return 'wasm32-unknown-emscripten'
 
 
 def emsdk_ldflags(user_args):

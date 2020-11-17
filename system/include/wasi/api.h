@@ -29,6 +29,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#pragma push_macro("_Static_assert")
+#undef _Static_assert
+#define _Static_assert(X, Y)
+
 _Static_assert(_Alignof(int8_t) == 1, "non-wasi data layout");
 _Static_assert(_Alignof(uint8_t) == 1, "non-wasi data layout");
 _Static_assert(_Alignof(int16_t) == 2, "non-wasi data layout");
@@ -2750,5 +2754,7 @@ __wasi_errno_t __wasi_sock_shutdown(
 #ifdef __cplusplus
 }
 #endif
+
+#pragma pop_macro("_Static_assert")
 
 #endif
