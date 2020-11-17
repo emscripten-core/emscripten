@@ -1302,10 +1302,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.IGNORE_MISSING_MAIN = 0
       shared.Settings.DEFAULT_TO_CXX = 0
 
-    # If set to 1, we will run the autodebugger (the automatic debugging tool, see
-    # tools/autodebugger).  Note that this will disable inclusion of libraries. This
-    # is useful because including dlmalloc makes it hard to compare native and js
-    # builds
     if os.environ.get('EMCC_AUTODEBUG'):
       shared.Settings.AUTODEBUG = 1
 
@@ -1350,18 +1346,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.LINKABLE = 1
         shared.Settings.EXPORT_ALL = 1
       shared.Settings.RELOCATABLE = 1
-
-    if shared.Settings.RELOCATABLE:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$reportUndefinedSymbols', '$relocateExports', '$GOTHandler']
-      if options.use_closure_compiler:
-        exit_with_error('cannot use closure compiler on shared modules')
-      if shared.Settings.MINIMAL_RUNTIME:
-        exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
-      if shared.Settings.WASM2JS:
-        exit_with_error('WASM2JS is not compatible with relocatable output')
-      # shared modules need memory utilities to allocate their memory
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['allocate']
-      shared.Settings.ALLOW_TABLE_GROWTH = 1
 
     # various settings require sbrk() access
     if shared.Settings.DETERMINISTIC or \
@@ -1853,6 +1837,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # a higher global base is useful for optimizing load/store offsets, as it
       # enables the --post-emscripten pass
       shared.Settings.GLOBAL_BASE = 1024
+
+    if shared.Settings.RELOCATABLE:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$reportUndefinedSymbols', '$relocateExports', '$GOTHandler']
+      shared.Settings.EXTRA_WASM_IMPORTS += [
+        # tell the memory segments where to place themselves
+        ('__memory_base', str(shared.Settings.GLOBAL_BASE)),
+        ('__indirect_function_table', 'wasmTable'),
+        # the backend reserves slot 0 for the NULL function pointer
+        ('__table_base', '1'),
+        '__stack_pointer',
+      ]
+      if options.use_closure_compiler:
+        exit_with_error('cannot use closure compiler on shared modules')
+      if shared.Settings.MINIMAL_RUNTIME:
+        exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
+      if shared.Settings.WASM2JS:
+        exit_with_error('WASM2JS is not compatible with relocatable output')
+      # shared modules need memory utilities to allocate their memory
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['allocate']
+      shared.Settings.ALLOW_TABLE_GROWTH = 1
 
     # various settings require malloc/free support from JS
     if shared.Settings.RELOCATABLE or \

@@ -1636,6 +1636,12 @@ var ABORT_ON_WASM_EXCEPTIONS = 0;
 // Implies STANDALONE_WASM.
 var PURE_WASI = 0;
 
+// Extra items to provide as imports to the wasm. This is a list of items, each
+// of which can be a string X, in which case we import the global JavaScript
+// name X as "X", or a pair [KEY, VALUE], in which case we import the name
+// VALUE as "KEY".
+var EXTRA_WASM_IMPORTS = [];
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================

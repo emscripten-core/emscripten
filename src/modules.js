@@ -516,6 +516,7 @@ var PassManager = {
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),
+      EXTRA_WASM_IMPORTS: EXTRA_WASM_IMPORTS,
     }));
   },
   load: function(json) {
