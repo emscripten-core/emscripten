@@ -21,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER
-from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
+from runner import create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import shared
 from tools import system_libs
@@ -124,6 +124,14 @@ def requires_asmfs(f):
     return f(self, *args, **kwargs)
 
   return decorated
+
+
+# Today we only support the wasm backend so any tests that is disabled under the llvm
+# backend is always disabled.
+# TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
+def no_wasm_backend(note=''):
+  assert not callable(note)
+  return unittest.skip(note)
 
 
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
