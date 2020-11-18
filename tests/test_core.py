@@ -2087,6 +2087,7 @@ int main(int argc, char **argv) {
   @no_asan('ASan alters the memory size')
   def test_module_wasm_memory(self):
     self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'test_module_wasm_memory.js')]
+    self.set_setting('IMPORTED_MEMORY')
     self.do_runf(path_from_root('tests', 'core', 'test_module_wasm_memory.c'), 'success')
 
   def test_ssr(self): # struct self-ref

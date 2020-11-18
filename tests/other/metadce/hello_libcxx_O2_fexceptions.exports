@@ -13,6 +13,7 @@ dynCall_viijii
 free
 main
 malloc
+memory
 setThrew
 stackAlloc
 stackRestore

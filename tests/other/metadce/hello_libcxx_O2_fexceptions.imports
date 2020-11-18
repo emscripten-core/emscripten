@@ -31,7 +31,6 @@ env.invoke_viiii
 env.invoke_viiiiiii
 env.invoke_viiiiiiiiii
 env.invoke_viiiiiiiiiiiiiii
-env.memory
 env.setTempRet0
 env.strftime_l
 wasi_snapshot_preview1.environ_get
