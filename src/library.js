@@ -743,19 +743,12 @@ LibraryManager.library = {
 #endif
 
   // ==========================================================================
-  // GCC/LLVM specifics
+  // assert.h
   // ==========================================================================
-  __builtin_prefetch: function(){},
 
   __assert_fail__sig: 'viiii',
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
-  },
-
-  __gxx_personality_v0: function() {
-  },
-
-  __gcc_personality_v0: function() {
   },
 
   // ==========================================================================
