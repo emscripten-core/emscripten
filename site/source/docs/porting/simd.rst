@@ -39,9 +39,7 @@ SIMD-related bug reports are tracked in the `Emscripten bug tracker with the lab
 Compiling SIMD code targeting x86 SSE instruction set
 =====================================================
 
-Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
-
-Currently only the SSE1 and SSE2 instruction sets are supported.
+Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`. SSE2 through AVX are also supported, given the correct compiler flag and headers.
 
 The following table highlights the availability and expected performance of different SSE1 intrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
@@ -59,7 +57,7 @@ The following legend is used to highlight the expected performance of various in
 
 Certain intrinsics in the table below are marked "virtual". This means that there does not actually exist a native x86 SSE instruction set opcode to implement them, but native compilers offer the function as a convenience. Different compilers might generate a different instruction sequence for these.
 
-.. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h>
+.. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h> and -msse
    :widths: 20 30
    :header-rows: 1
 
@@ -293,7 +291,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different SSE2 intrinsics. Refer to `Intel Intrinsics Guide on SSE2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE2>`_.
 
-.. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h>
+.. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h> and -msse2
    :widths: 20 30
    :header-rows: 1
 
@@ -737,7 +735,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different SSE3 intrinsics. Refer to `Intel Intrinsics Guide on SSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE3>`_.
 
-.. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h>
+.. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h> and -msse3
    :widths: 20 30
    :header-rows: 1
 
@@ -776,7 +774,7 @@ The following table highlights the availability and expected performance of diff
 
 The following table highlights the availability and expected performance of different SSSE3 intrinsics. Refer to `Intel Intrinsics Guide on SSSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSSE3>`_.
 
-.. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h>
+.. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h> and -mssse3
    :widths: 20 30
    :header-rows: 1
 
@@ -822,7 +820,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different SSE4.1 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_1>`_.
 
-.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
+.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h> and -msse41
    :widths: 20 30
    :header-rows: 1
 
@@ -953,7 +951,7 @@ The following table highlights the availability and expected performance of diff
 
 The following table highlights the availability and expected performance of different SSE4.2 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_2>`_.
 
-.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
+.. list-table:: x86 SSE4.2 intrinsics available via #include <nmmintrin.h> and -msse42
    :widths: 20 30
    :header-rows: 1
 
@@ -969,7 +967,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different AVX intrinsics. Refer to `Intel Intrinsics Guide on AVX <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=AVX>`_.
 
-.. list-table:: x86 AVX intrinsics available via #include <immintrin.h>
+.. list-table:: x86 AVX intrinsics available via #include <immintrin.h> and -mavx
    :widths: 20 30
    :header-rows: 1
 
