@@ -21,14 +21,18 @@ void print_vararg(int n, va_list v) {
 void multi_vararg(int n, ...) {
   va_list v;
 
+  printf("part1:\n");
   va_start(v, n);
   print_vararg(n, v);
+  va_end(v);
+
+  printf("part2:\n");
+  va_start(v, n);
+  print_vararg(n, v);
+  printf("part3:\n");
   print_vararg(n, v); // the value of v is undefined for this call
   va_end(v);
 
-  va_start(v, n);
-  print_vararg(n, v);
-  va_end(v);
 }
 
 int main() {

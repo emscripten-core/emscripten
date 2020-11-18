@@ -151,14 +151,6 @@ def is_slow_test(func):
   return decorated
 
 
-# Today we only support the wasm backend so any tests that is disabled under the llvm
-# backend is always disabled.
-# TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
-def no_wasm_backend(note=''):
-  assert not callable(note)
-  return unittest.skip(note)
-
-
 def disabled(note=''):
   assert not callable(note)
   return unittest.skip(note)
