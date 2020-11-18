@@ -8189,8 +8189,8 @@ int main () {
   @no_windows("Code size is slightly different on Windows")
   @no_mac("Code size is slightly different on Mac")
   @parameterized({
-    'hello_world_wasm': ('hello_world', False),
-    'hello_world_wasm2js': ('hello_world', True),
+    'hello_world_wasm': ('hello_world', False, True),
+    'hello_world_wasm2js': ('hello_world', True, True),
     'random_printf_wasm': ('random_printf', False),
     'random_printf_wasm2js': ('random_printf', True),
     'hello_webgl_wasm': ('hello_webgl', False),
@@ -8198,7 +8198,7 @@ int main () {
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
   })
-  def test_minimal_runtime_code_size(self, test_name, js):
+  def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'ENVIRONMENT=web',
                                '-s', 'TEXTDECODER=2',
@@ -8285,6 +8285,21 @@ int main () {
       size = os.path.getsize(f_gz)
       try_delete(f_gz)
       return size
+
+    # For certain tests, don't just check the output size but check
+    # the full JS output matches the expectations.  That means that
+    # any change that touches those core lines of output will need
+    # to rebaseline this test.  However:
+    # a) such changes deserve extra scrutiny
+    # b) such changes should be few and far between
+    # c) rebaselining is trivial (just run with EMTEST_REBASELINE=1)
+    # Note that we do not compare the full wasm output since that is
+    # even more fragile and can change with LLVM updates.
+    if compare_js_output:
+      js_out = path_from_root('tests', 'code_size', test_name + '.js')
+      terser = shared.get_npm_cmd('terser')
+      self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'])
+      self.assertFileContents(js_out, open('pretty.js').read())
 
     obtained_results = {}
     total_output_size = 0
