@@ -6992,8 +6992,7 @@ someweirdtext
 
     building.emcc('src.cpp', self.get_emcc_args(), js_filename)
 
-    LLVM_DWARFDUMP = os.path.join(config.LLVM_ROOT, 'llvm-dwarfdump')
-    out = self.run_process([LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
+    out = self.run_process([shared.LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
 
     # parse the sections
     sections = {}
