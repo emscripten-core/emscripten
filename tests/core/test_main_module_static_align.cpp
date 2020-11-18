@@ -5,22 +5,13 @@
 
 #include <assert.h>
 #include <stddef.h>
-#include <emscripten.h>
+#include <stdio.h>
 
 __attribute__((aligned(16))) volatile char aligned;
 
 int main() {
   assert((((size_t) &aligned) % 16) == 0);
-#if __wasm__
-  EM_ASM({
-    out('tempDoublePtr alignment: 0.');
-  });
-#else
-  EM_ASM({
-    // whether the char was properly aligned affects tempDoublePtr, which is after the static aligns
-    out('tempDoublePtr: ' + tempDoublePtr + '.');
-    out('tempDoublePtr alignment: ' + (tempDoublePtr % 16) + '.');
-  });
-#endif
+  puts("done!");
+  return 0;
 }
 
