@@ -493,9 +493,6 @@ def emsdk_cflags(user_args, cxx):
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
     c_opts += ['-D__SSE4_2__=1']
 
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
-    c_opts += ['-D__SSE4_2__=1']
-
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
     c_opts += ['-D__AVX__=1']
 

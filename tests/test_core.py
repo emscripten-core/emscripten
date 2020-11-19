@@ -5847,15 +5847,7 @@ return malloc(size);
     self.maybe_closure()
     self.do_runf(src, native_result)
 
-  # Tests invoking the SIMD API via x86 SSE4 nmmintrin.h header (_mm_x() functions)
-  @wasm_simd
-  @requires_native_clang
-  def test_sse4(self):
-    src = path_from_root('tests', 'sse', 'test_sse4_2.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-msse4', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
-    native_result = self.run_process('./test_sse4_2', stdout=PIPE).stdout
-
-    orig_args = self.emcc_args
+    # -msse4 should give same results as -msse4.2
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse4', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
