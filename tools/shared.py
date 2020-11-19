@@ -35,7 +35,7 @@ DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 98
 EXPECTED_LLVM_VERSION = "12.0"
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 PYTHON = sys.executable
 
@@ -470,6 +470,9 @@ def emsdk_cflags(user_args, cxx):
     c_opts += ['-D__SSE4_2__=1']
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
+    c_opts += ['-D__SSE4_2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
     c_opts += ['-D__AVX__=1']
 
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
