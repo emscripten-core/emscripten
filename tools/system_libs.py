@@ -1194,8 +1194,13 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
           'pthread_setspecific.c', 'pthread_setcancelstate.c'
         ])
-      files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread.c')]
-      files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_wasm.c')]
+      files += files_in_path(
+        path_components=['system', 'lib', 'pthread'],
+        filenames=[
+          'library_pthread.c',
+          'emscripten_atomic.c',
+          'emscripten_init_tls.c',
+        ])
       return files
     else:
       return [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
