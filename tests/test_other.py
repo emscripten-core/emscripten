@@ -7363,8 +7363,11 @@ end
     self.do_other_test('test_fflush_fs_exit.cpp', emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
   def test_extern_weak(self):
-    self.do_other_test('test_extern_weak.cpp')
-    self.do_other_test('test_extern_weak.cpp', emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
+    self.do_other_test('test_extern_weak.c')
+
+  @disabled('https://github.com/emscripten-core/emscripten/issues/12819')
+  def test_extern_weak_dynamic(self):
+    self.do_other_test('test_extern_weak.c', emcc_args=['-s', 'MAIN_MODULE=2'])
 
   def test_main_module_without_main(self):
     create_test_file('pre.js', r'''
