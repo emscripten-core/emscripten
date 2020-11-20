@@ -17,43 +17,6 @@ var LibraryPThreadStub = {
 #endif
   },
 
-  pthread_mutexattr_init: function() {},
-  pthread_mutexattr_setschedparam: function() {},
-  pthread_mutexattr_setprotocol: function() {},
-  pthread_mutexattr_settype: function() {},
-  pthread_mutexattr_destroy: function() {},
-
-  pthread_mutexattr_setpshared: function(attr, pshared) {
-    // XXX implement if/when getpshared is required
-    return 0;
-  },
-
-  pthread_cond_init: function() { return 0; },
-  pthread_cond_destroy: function() { return 0; },
-  pthread_cond_timedwait: function() { return 0; },
-
-  pthread_condattr_init: function() { return 0; },
-  pthread_condattr_destroy: function() { return 0; },
-  pthread_condattr_setclock: function() { return 0; },
-  pthread_condattr_setpshared: function() { return 0; },
-  pthread_condattr_getclock: function() { return 0; },
-  pthread_condattr_getpshared: function() { return 0; },
-
-  pthread_attr_init: function(attr) {
-    /* int pthread_attr_init(pthread_attr_t *attr); */
-    //FIXME: should allocate a pthread_attr_t
-    return 0;
-  },
-  pthread_getattr_np: function(thread, attr) {
-    /* int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr); */
-    //FIXME: should fill in attributes of the given thread in pthread_attr_t
-    return 0;
-  },
-  pthread_attr_destroy: function(attr) {
-    /* int pthread_attr_destroy(pthread_attr_t *attr); */
-    //FIXME: should destroy the pthread_attr_t struct
-    return 0;
-  },
   pthread_attr_getstack: function(attr, stackaddr, stacksize) {
     /* int pthread_attr_getstack(const pthread_attr_t *restrict attr,
        void **restrict stackaddr, size_t *restrict stacksize); */
@@ -63,13 +26,6 @@ var LibraryPThreadStub = {
     {{{ makeSetValue('stacksize', '0', TOTAL_STACK, 'i32') }}};
     return 0;
   },
-  pthread_attr_getdetachstate: function(attr, detachstate) {
-    /* int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate); */
-    return 0;
-  },
-
-  pthread_setcancelstate: function() { return 0; },
-  pthread_setcanceltype: function() { return 0; },
 
   pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
@@ -93,52 +49,11 @@ var LibraryPThreadStub = {
     return 0;
   },
 
-  pthread_rwlock_init: function() { return 0; },
-  pthread_rwlock_destroy: function() { return 0; },
-  pthread_rwlock_rdlock: function() { return 0; },
-  pthread_rwlock_tryrdlock: function() { return 0; },
-  pthread_rwlock_timedrdlock: function() { return 0; },
-  pthread_rwlock_wrlock: function() { return 0; },
-  pthread_rwlock_trywrlock: function() { return 0; },
-  pthread_rwlock_timedwrlock: function() { return 0; },
-  pthread_rwlock_unlock: function() { return 0; },
-
-  pthread_rwlockattr_init: function() { return 0; },
-  pthread_rwlockattr_destroy: function() { return 0; },
-  pthread_rwlockattr_setpshared: function() { return 0; },
-  pthread_rwlockattr_getpshared: function() { return 0; },
-
-  pthread_spin_init: function() { return 0; },
-  pthread_spin_destroy: function() { return 0; },
-  pthread_spin_lock: function() { return 0; },
-  pthread_spin_trylock: function() { return 0; },
-  pthread_spin_unlock: function() { return 0; },
-
-  pthread_attr_setdetachstate: function() {},
-  pthread_attr_setschedparam: function() {},
-  pthread_attr_setstacksize: function() {},
-
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function() {
     return {{{ cDefine('EAGAIN') }}};
   },
-  pthread_cancel: function() {},
-  pthread_exit__deps: ['exit'],
-  pthread_exit: function(status) {
-    _exit(status);
-  },
 
-  pthread_equal: function(x, y) { return x == y },
   {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function() {},
-  pthread_detach: function() {},
-
-  sem_init: function() {},
-  sem_post: function() {},
-  sem_wait: function() {},
-  sem_trywait: function() {},
-  sem_destroy: function() {},
-
-  emscripten_main_browser_thread_id__deps: ['pthread_self'],
-  emscripten_main_browser_thread_id: function() { return _pthread_self(); },
 
   // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
   usleep__deps: ['emscripten_get_now'],
@@ -171,8 +86,6 @@ var LibraryPThreadStub = {
     }
     return _usleep((seconds * 1e6) + (nanoseconds / 1000));
   },
-
-  __wait: function() {},
 };
 
 mergeInto(LibraryManager.library, LibraryPThreadStub);
