@@ -1157,8 +1157,9 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   cflags = ['-O2']
 
   def get_files(self):
+    files = [shared.path_from_root('system', 'lib', 'pthread', 'emscripten_atomic.c')]
     if self.is_mt:
-      files = files_in_path(
+      files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
         filenames=[
           'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
@@ -1198,12 +1199,11 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'pthread'],
         filenames=[
           'library_pthread.c',
-          'emscripten_atomic.c',
           'emscripten_tls_init.c',
         ])
-      return files
     else:
-      return [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
+      files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
+    return files
 
   def get_base_name_prefix(self):
     return 'libpthread' if self.is_mt else 'libpthread_stub'
