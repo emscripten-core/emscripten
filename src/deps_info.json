@@ -179,6 +179,8 @@
   "emscripten_webgl_get_shader_source_utf8": ["malloc", "free"],
   "emscripten_webgl_get_parameter_utf8": ["malloc", "free"],
   "emscripten_webgl_create_context": ["malloc", "free"],
+  "emscripten_start_fetch": ["emscripten_is_main_browser_thread"],
+  "emscripten_fetch": ["emscripten_is_main_browser_thread"],
   "glMapBufferRange": ["malloc", "free"],
   "glGetString": ["malloc", "free"],
   "glGetStringi": ["malloc", "free"],

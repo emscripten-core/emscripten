@@ -1200,6 +1200,7 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'library_pthread.c',
           'emscripten_tls_init.c',
+          'pthread_self.s',
         ])
     else:
       files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
