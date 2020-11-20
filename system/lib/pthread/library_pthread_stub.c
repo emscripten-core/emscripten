@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "pthread_impl.h"
+#include <emscripten/stack.h>
+#include <emscripten/threading.h>
+#include <emscripten/emscripten.h>
 
 int emscripten_has_threading_support() { return 0; }
 
@@ -256,6 +259,14 @@ int pthread_attr_destroy(pthread_attr_t *attr) {
 }
 
 int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate) {
+  return 0;
+}
+
+int pthread_attr_getstack(const pthread_attr_t *attr, void **stackaddr, size_t *stacksize) {
+  /*FIXME: assumes that there is only one thread, and that attr is the
+    current thread*/
+  *stackaddr = (void*)emscripten_stack_get_base();
+  *stacksize = emscripten_stack_get_base() - emscripten_stack_get_end();
   return 0;
 }
 
