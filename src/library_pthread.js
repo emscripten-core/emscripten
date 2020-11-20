@@ -14,11 +14,6 @@ var LibraryPThread = {
 #endif
                    ],
   $PThread: {
-    MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
-    mainThreadInfo: {
-      schedPolicy: 0/*SCHED_OTHER*/,
-      schedPrio: 0
-    },
     // Contains all Workers that are idle/unused and not currently hosting an
     // executing pthread.  Unused Workers can either be pooled up before page
     // startup, but also when a pthread quits, its hosting Worker is not
@@ -933,10 +928,10 @@ var LibraryPThread = {
     return __emscripten_do_pthread_join(thread, status, false);
   },
 
-  pthread_kill__deps: ['$killThread'],
+  pthread_kill__deps: ['$killThread', 'emscripten_main_browser_thread_id'],
   pthread_kill: function(thread, signal) {
     if (signal < 0 || signal >= 65/*_NSIG*/) return ERRNO_CODES.EINVAL;
-    if (thread === PThread.MAIN_THREAD_ID) {
+    if (thread === _emscripten_main_browser_thread_id()) {
       if (signal == 0) return 0; // signal == 0 is a no-op.
       err('Main thread (id=' + thread + ') cannot be killed with pthread_kill!');
       return ERRNO_CODES.ESRCH;
@@ -957,9 +952,9 @@ var LibraryPThread = {
     return 0;
   },
 
-  pthread_cancel__deps: ['$cancelThread'],
+  pthread_cancel__deps: ['$cancelThread', 'emscripten_main_browser_thread_id'],
   pthread_cancel: function(thread) {
-    if (thread === PThread.MAIN_THREAD_ID) {
+    if (thread === _emscripten_main_browser_thread_id()) {
       err('Main thread (id=' + thread + ') cannot be canceled!');
       return ERRNO_CODES.ESRCH;
     }
