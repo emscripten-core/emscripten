@@ -1199,7 +1199,7 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'library_pthread.c',
           'emscripten_atomic.c',
-          'emscripten_init_tls.c',
+          'emscripten_tls_init.c',
         ])
       return files
     else:
