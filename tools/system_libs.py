@@ -6,7 +6,6 @@
 import glob
 import hashlib
 import itertools
-import json
 import logging
 import os
 import re
@@ -17,6 +16,7 @@ import zipfile
 from glob import iglob
 
 from . import shared, building, ports, config
+from . import deps_info
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
@@ -1403,56 +1403,11 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
   if only_forced:
     temp_files = []
 
-  # deps_info.json is a mechanism that lets JS code depend on C functions. This
-  # needs special help because of how linking works:
-  #
-  #   1. Receive some input files (.o, .c, etc.) from the user.
-  #   2. Link them with system libraries.
-  #   3. Whatever symbols are still unresolved, look in JS libraries for them.
-  #
-  # This makes C->JS calls work in a natural way: if compiled code depends on
-  # a function foo() that is implemented in a JS library, it will be unresolved
-  # after stage 2, and therefore linked in at stage 3. The problem is the other
-  # direction: if a JS library function decides it needs some function from say
-  # libc, then at stage 3 it is too late to link in more libc code. That's
-  # where deps_info.json comes in.
-  #
-  # Specifically, before stage 2 (linking with system libraries) we look at what
-  # symbols are required by the input files. Imagine that js_func in a JS
-  # library depends on libc_func in libc. Then if deps_info.json tells us
-  #
-  #  "js_func": ["libc_func"]
-  #
-  # then if we see js_func is required (undefined) before stage 2, then we add
-  # a requirement to link in libc_func when linking in system libraries. All
-  # we do with deps_info.json is see if any of the keys are among the
-  # undefined symbols before stage 2, and if they are, add their values to the
-  # things we need to link in.
-  #
-  # This usually works the way you want, but note that it happens *before* stage
-  # 2 and not after it. That is, we look for js_func before linking in system
-  # libraries. If you have a situation where
-  #
-  #   user_code => other_libc_func => js_func => libc_func
-  #
-  # then the deps_info.json entry must contain
-  #
-  #  "other_libc_func": ["libc_func"]
-  #
-  # because that is what we see before stage 2: all we see is that
-  # other_libc_func is going to be linked in, and we don't know yet that it
-  # will end up calling js_func. But the presence of a call to other_libc_func
-  # indicates that we will need libc_func linked in as well, so that is what the
-  # deps_info.json entry should contain.
-  #
-  # TODO: Move all __deps from src/library*.js to deps_info.json, and use that single source of info
-  #       both here and in the JS compiler.
-  deps_info = json.loads(open(shared.path_from_root('src', 'deps_info.json')).read())
   added = set()
 
   def add_back_deps(need):
     more = False
-    for ident, deps in deps_info.items():
+    for ident, deps in deps_info.deps_info.items():
       if ident in need.undefs and ident not in added:
         added.add(ident)
         more = True
@@ -1487,7 +1442,7 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
   # and must assume all of deps_info must be exported. Note that this might cause
   # warnings on exports that do not exist.
   if only_forced:
-    for key, value in deps_info.items():
+    for key, value in deps_info.deps_info.items():
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
 
