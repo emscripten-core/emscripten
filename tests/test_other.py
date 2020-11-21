@@ -9179,7 +9179,7 @@ int main() {
   # I.e. -s MIN_X_VERSION=-1 is equal to -s MIN_X_VERSION=Infinity
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
-    self.run_process([EMCC, path_from_root('tests', 'test_html5.c'), '-s', 'MIN_IE_VERSION=-1'])
+    self.run_process([EMCC, path_from_root('tests', 'test_html5_core.c'), '-s', 'MIN_IE_VERSION=-1'])
     self.assertContained('allowsDeferredCalls: true', open('a.out.js').read())
     self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', open('a.out.js').read())
 
