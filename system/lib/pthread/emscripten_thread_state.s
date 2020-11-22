@@ -7,9 +7,9 @@ is_main_thread:
 .globaltype is_runtime_thread, i32
 is_runtime_thread:
 
-.globl pthread_self
-pthread_self:
-  .functype pthread_self () -> (i32)
+.globl __pthread_self
+__pthread_self:
+  .functype __pthread_self () -> (i32)
   global.get thread_id
   end_function
 

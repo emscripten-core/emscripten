@@ -1158,6 +1158,9 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
   def get_files(self):
     files = [shared.path_from_root('system', 'lib', 'pthread', 'emscripten_atomic.c')]
+    files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
+        filenames=['pthread_self.c'])
     if self.is_mt:
       files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
@@ -1193,14 +1196,14 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
           'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
           'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
-          'pthread_setspecific.c', 'pthread_setcancelstate.c'
+          'pthread_setspecific.c', 'pthread_setcancelstate.c',
         ])
       files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
         filenames=[
           'library_pthread.c',
           'emscripten_tls_init.c',
-          'pthread_self.s',
+          'emscripten_thread_state.s',
         ])
     else:
       files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]

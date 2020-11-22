@@ -43,7 +43,6 @@ $pop_arg
 $pop_arg_long_double
 $printf
 $printf_core
-$pthread_self
 $stackAlloc
 $stackRestore
 $stackSave
