@@ -190,7 +190,7 @@ var LibraryPThread = {
       }
 
       // Call into the musl function that runs destructors of all thread-specific data.
-      if (ENVIRONMENT_IS_PTHREAD && threadInfoStruct) ___pthread_tsd_run_dtors();
+      if (ENVIRONMENT_IS_PTHREAD && _pthread_self()) ___pthread_tsd_run_dtors();
     },
 
     // Called when we are performing a pthread_exit(), either explicitly called
@@ -202,13 +202,13 @@ var LibraryPThread = {
         err('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
 #if PTHREADS_PROFILING
-        var profilerBlock = Atomics.load(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
-        Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
+        var profilerBlock = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
         _free(profilerBlock);
 #endif
         Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
         // When we publish this, the main thread is free to deallocate the thread object and we are done.
-        // Therefore set threadInfoStruct = 0; above to 'release' the object in this worker thread.
+        // Therefore set _pthread_self = 0; above to 'release' the object in this worker thread.
         Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
 
         // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
@@ -219,7 +219,6 @@ var LibraryPThread = {
 
         _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}});
         __emscripten_thread_init(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
-        threadInfoStruct = 0;
         if (ENVIRONMENT_IS_PTHREAD) {
           // Note: in theory we would like to return any offscreen canvases back to the main thread,
           // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
@@ -230,10 +229,11 @@ var LibraryPThread = {
 
     threadCancel: function() {
       PThread.runExitHandlers();
-      Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -1/*PTHREAD_CANCELED*/);
-      Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
-      _emscripten_futex_wake(threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
-      threadInfoStruct = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
+      var tb = _pthread_self();
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -1/*PTHREAD_CANCELED*/);
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
+      _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
+      // Not hosting a pthread anymore in this worker, reset the info structures to null.
       __emscripten_thread_init(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
       postMessage({ 'cmd': 'cancelDone' });
     },
@@ -556,7 +556,6 @@ var LibraryPThread = {
         'start_routine': threadParams.startRoutine,
         'arg': threadParams.arg,
         'threadInfoStruct': threadParams.pthread_ptr,
-        'selfThreadId': threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
         'parentThreadId': threadParams.parent_pthread_ptr,
         'stackBase': threadParams.stackBase,
         'stackSize': threadParams.stackSize
@@ -831,10 +830,11 @@ var LibraryPThread = {
   // everywhere.
   _pthread_testcancel_js: function() {
     if (!ENVIRONMENT_IS_PTHREAD) return;
-    if (!threadInfoStruct) return;
-    var cancelDisabled = Atomics.load(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2);
+    var tb = _pthread_self();
+    if (!tb) return;
+    var cancelDisabled = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2);
     if (cancelDisabled) return;
-    var canceled = Atomics.load(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
+    var canceled = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
     if (canceled == 2) throw 'Canceled!';
   },
 
@@ -857,7 +857,7 @@ var LibraryPThread = {
 #endif
   },
 
-  _emscripten_do_pthread_join__deps: ['$cleanupThread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait',
+  _emscripten_do_pthread_join__deps: ['$cleanupThread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self',
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
   'emscripten_check_blocking_allowed'
 #endif
@@ -867,7 +867,7 @@ var LibraryPThread = {
       err('pthread_join attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;
     }
-    if (ENVIRONMENT_IS_PTHREAD && selfThreadId == thread) {
+    if (ENVIRONMENT_IS_PTHREAD && _pthread_self() == thread) {
       err('PThread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK;
     }
