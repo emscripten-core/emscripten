@@ -9,7 +9,6 @@
 // that executes pthreads on the Emscripten application.
 
 // Thread-local:
-var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
 #if EMBIND
 var initializedJS = false; // Guard variable for one-time init of the JS state (currently only embind types registration)
 #endif
@@ -155,14 +154,12 @@ this.onmessage = function(e) {
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
       Module['__emscripten_thread_init'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
-      parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
       // The stack grows downwards
       var max = e.data.stackBase;
       var top = e.data.stackBase + e.data.stackSize;
 #if ASSERTIONS
       assert(threadInfoStruct);
-      assert(parentThreadId);
       assert(top != 0);
       assert(max != 0);
       assert(top > max);

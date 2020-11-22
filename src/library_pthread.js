@@ -556,7 +556,6 @@ var LibraryPThread = {
         'start_routine': threadParams.startRoutine,
         'arg': threadParams.arg,
         'threadInfoStruct': threadParams.pthread_ptr,
-        'parentThreadId': threadParams.parent_pthread_ptr,
         'stackBase': threadParams.stackBase,
         'stackSize': threadParams.stackSize
     };
@@ -801,7 +800,6 @@ var LibraryPThread = {
       detached: detached,
       startRoutine: start_routine,
       pthread_ptr: threadInfoStruct,
-      parent_pthread_ptr: _pthread_self(),
       arg: arg,
 #if OFFSCREENCANVAS_SUPPORT
       moduleCanvasId: moduleCanvasId,
