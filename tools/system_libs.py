@@ -748,7 +748,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'lock_ptc.c',
         # 'pthread_setattr_default_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
-        'pthread_cancel.c', 'pthread_detach.c',
+        'pthread_cancel.c',
         'pthread_join.c', 'pthread_testcancel.c',
       ]
       libc_files += files_in_path(
@@ -756,7 +756,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'library_pthread.c',
           'pthread_create.c',
-          'pthread_detach.c',
           'pthread_join.c',
           'pthread_testcancel.c',
           'emscripten_proxy_main.c',
