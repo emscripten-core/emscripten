@@ -182,5 +182,5 @@
   "glMapBufferRange": ["malloc", "free"],
   "glGetString": ["malloc", "free"],
   "glGetStringi": ["malloc", "free"],
-  "syslog": ["malloc", "free"]
+  "syslog": ["malloc", "htons", "ntohs"]
 }

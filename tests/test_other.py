@@ -9709,3 +9709,6 @@ exec "$@"
   def test_threadprofiler_closure(self):
     # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'USE_PTHREADS=1', '--closure', '1', '--threadprofiler'])
+
+  def test_syslog(self):
+    self.do_other_test('test_syslog.c')
