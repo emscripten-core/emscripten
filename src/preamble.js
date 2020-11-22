@@ -47,11 +47,6 @@ var wasmMemory;
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
-// Only workers actually use these field, but we refer to them from
-// library_pthread (which exists on all threads) so this definition is useful
-// to avoid accessing the global scope.
-var threadInfoStruct = 0;
-var selfThreadId = 0;
 #endif // USE_PTHREADS
 
 //========================================
