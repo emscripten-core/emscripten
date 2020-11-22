@@ -1577,9 +1577,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # manually export them
 
       shared.Settings.EXPORTED_FUNCTIONS += [
+        '__emscripten_thread_init',
         '_emscripten_get_global_libc',
         '___pthread_tsd_run_dtors',
-        'registerPthreadPtr', '_pthread_self',
+        '_pthread_self',
         '___emscripten_pthread_data_constructor',
         '_emscripten_futex_wake',
         '_emscripten_stack_set_limits',

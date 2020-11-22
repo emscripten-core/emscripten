@@ -155,7 +155,7 @@ this.onmessage = function(e) {
       threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['registerPthreadPtr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['__emscripten_thread_init'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
