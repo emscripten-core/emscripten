@@ -212,19 +212,19 @@ this.onmessage = function(e) {
         } else if (ex != 'unwind') {
 #if MINIMAL_RUNTIME
           // ExitStatus not present in MINIMAL_RUNTIME
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
 #else
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
 #endif
 
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
             throw ex;
           }
 #endif
-          Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
+          Module['_emscripten_futex_wake'](threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}}, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
 #if MINIMAL_RUNTIME
           throw ex; // ExitStatus not present in MINIMAL_RUNTIME
 #else
