@@ -103,7 +103,7 @@ macOS
 +++++
 
 If you use the Emscripten SDK it includes a bundled version of Python 3.  Otherwise
-you will need to manually install and use Python 3.5 or newer.
+you will need to manually install and use Python 3.6 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
@@ -127,18 +127,15 @@ Linux
 
 .. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
-- *Python*, *CMake*, and *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
+- *Python* is not provided by *emsdk*. The user is expected to install this beforehand with the *system package manager*:
 
   ::
 
     # Install Python
     sudo apt-get install python3
 
-    # Install CMake (optional, only needed for tests and building Binaryen)
+    # Install CMake (optional, only needed for tests and building Binaryen or LLVM)
     sudo apt-get install cmake
-
-    # Install Java (optional, only needed for Closure Compiler minification)
-    sudo apt-get install default-jre
 
 .. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``.emscripten`` file to point to it.
 
@@ -147,7 +144,7 @@ Linux
   ::
 
     # Install git
-    sudo apt-get install git-core
+    sudo apt-get install git
 
 
 Verifying the installation
