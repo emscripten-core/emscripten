@@ -4,13 +4,13 @@
 
 #if !__EMSCRIPTEN_PTHREADS__
 static struct pthread __main_pthread;
-pthread_t pthread_self(void) {
+pthread_t __pthread_self(void) {
   return &__main_pthread;
 }
 
 __attribute__((constructor))
 void __emscripten_pthread_data_constructor(void) {
-  pthread_self()->locale = &libc.global_locale;
+  __pthread_self()->locale = &libc.global_locale;
 }
 #endif // !__EMSCRIPTEN_PTHREADS__
 
