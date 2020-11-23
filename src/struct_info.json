@@ -33,7 +33,7 @@
         }
     },
     {
-        "file": "libc/sys/stat.h",
+        "file": "sys/stat.h",
         "defines": [
             "S_IFDIR",
             "S_IFREG",
@@ -893,7 +893,7 @@
         "structs": {}
     },
     {
-        "file": "compat/sys/stat.h",
+        "file": "sys/stat.h",
         "defines": [
             "S_IALLUGO",
             "S_IWUGO",
