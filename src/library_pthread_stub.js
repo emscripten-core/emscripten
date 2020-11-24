@@ -55,36 +55,14 @@ var LibraryPThreadStub = {
 
   {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function() {},
 
-  // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
-  usleep__deps: ['emscripten_get_now'],
-  usleep: function(useconds) {
-    // int usleep(useconds_t useconds);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
-    // We're single-threaded, so use a busy loop. Super-ugly.
+  // When pthreads is not enabled, we can't use the Atomics futex api to do
+  // proper sleeps, so simulate a busy spin wait loop instead.
+  emscripten_thread_sleep__deps: ['emscripten_get_now'],
+  emscripten_thread_sleep: function(msecs) {
     var start = _emscripten_get_now();
-    while (_emscripten_get_now() - start < useconds / 1000) {
+    while (_emscripten_get_now() - start < msecs) {
       // Do nothing.
     }
-  },
-
-  nanosleep__deps: ['usleep', '$setErrNo'],
-  nanosleep: function(rqtp, rmtp) {
-    // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
-    if (rqtp === 0) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    var seconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-    var nanoseconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-    if (nanoseconds < 0 || nanoseconds > 999999999 || seconds < 0) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    if (rmtp !== 0) {
-      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}};
-      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_nsec, '0', 'i32') }}};
-    }
-    return _usleep((seconds * 1e6) + (nanoseconds / 1000));
   },
 };
 

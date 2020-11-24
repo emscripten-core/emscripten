@@ -688,7 +688,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'inet_addr.c', 'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
-        'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
+        'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
         # 'process' exclusion
@@ -734,7 +734,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # Allowed files from ignored modules
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
-        filenames=['clock_settime.c', 'asctime.c', 'ctime.c', 'gmtime.c', 'localtime.c'])
+        filenames=['clock_settime.c', 'asctime.c', 'ctime.c', 'gmtime.c', 'localtime.c', 'nanosleep.c'])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
         filenames=['getpagesize.c', 'err.c'])
@@ -1354,7 +1354,6 @@ class libstandalonewasm(MuslInternalLibrary):
                    'gettimeofday.c',
                    'gmtime_r.c',
                    'localtime_r.c',
-                   'nanosleep.c',
                    'mktime.c',
                    'time.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
