@@ -623,9 +623,13 @@ f.close()
       end = stderr.index('End of search list.')
       includes = stderr[start:end]
       includes = [i.strip() for i in includes.splitlines()[1:]]
+      cachedir = os.path.normpath(shared.Cache.dirname)
+      llvmroot = os.path.normpath(os.path.dirname(config.LLVM_ROOT))
       for i in includes:
-        # we also alow for the cache include directory and llvm's own builtin includes
-        if shared.Cache.dirname in i or os.path.dirname(config.LLVM_ROOT) in i:
+        i = os.path.normpath(i)
+        # we also allow for the cache include directory and llvm's own builtin includes.
+        # all other include paths should be inside the sysroot.
+        if i.startswith(cachedir) or i.startswith(llvmroot):
           continue
         self.assertContained(path_from_root('system'), i)
 
