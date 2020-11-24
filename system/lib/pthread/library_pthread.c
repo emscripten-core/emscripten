@@ -154,20 +154,6 @@ void emscripten_thread_sleep(double msecs) {
     EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
 }
 
-int nanosleep(const struct timespec* req, struct timespec* rem) {
-  if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999L || req->tv_sec < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-  emscripten_thread_sleep(req->tv_sec * 1000.0 + req->tv_nsec / 1e6);
-  return 0;
-}
-
-int usleep(unsigned usec) {
-  emscripten_thread_sleep(usec / 1e3);
-  return 0;
-}
-
 // Allocator and deallocator for em_queued_call objects.
 static em_queued_call* em_queued_call_malloc() {
   em_queued_call* call = (em_queued_call*)malloc(sizeof(em_queued_call));
