@@ -820,7 +820,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different SSE4.1 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_1>`_.
 
-.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h> and -msse41
+.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h> and -msse4.1
    :widths: 20 30
    :header-rows: 1
 
@@ -951,7 +951,7 @@ The following table highlights the availability and expected performance of diff
 
 The following table highlights the availability and expected performance of different SSE4.2 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_2>`_.
 
-.. list-table:: x86 SSE4.2 intrinsics available via #include <nmmintrin.h> and -msse42
+.. list-table:: x86 SSE4.2 intrinsics available via #include <nmmintrin.h> and -msse4.2
    :widths: 20 30
    :header-rows: 1
 
