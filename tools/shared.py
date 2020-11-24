@@ -442,31 +442,7 @@ def emsdk_cflags(user_args, cxx):
   # -isystem so they are last, like system dirs, which allows projects to
   # override them)
 
-  c_opts = ['-Xclang', '-nostdsysteminc']
-
-  c_include_paths = [
-    path_from_root('system', 'include', 'compat'),
-    path_from_root('system', 'include'),
-    path_from_root('system', 'include', 'libc'),
-    path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
-    path_from_root('system', 'local', 'include'),
-    path_from_root('system', 'include', 'SSE'),
-    path_from_root('system', 'include', 'neon'),
-    path_from_root('system', 'lib', 'compiler-rt', 'include'),
-    path_from_root('system', 'lib', 'libunwind', 'include'),
-    Cache.get_path('include')
-  ]
-
-  cxx_include_paths = [
-    path_from_root('system', 'include', 'libcxx'),
-    path_from_root('system', 'lib', 'libcxxabi', 'include'),
-  ]
-
-  def include_directive(paths):
-    result = []
-    for path in paths:
-      result += ['-Xclang', '-isystem' + path]
-    return result
+  c_opts = ['--sysroot=' + path_from_root('system')]
 
   def array_contains_any_of(hay, needles):
     for n in needles:
@@ -499,10 +475,36 @@ def emsdk_cflags(user_args, cxx):
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     c_opts += ['-D__ARM_NEON__=1']
 
-  # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
+  sysroot_include_paths = []
+
   if cxx:
-    c_opts += include_directive(cxx_include_paths)
-  return c_opts + include_directive(c_include_paths)
+    sysroot_include_paths += [
+      os.path.join('/include', 'libcxx'),
+      os.path.join('/lib', 'libcxxabi', 'include'),
+    ]
+
+  # TODO: Merge the cache into the sysroot.
+  c_opts += ['-Xclang', '-isystem' + Cache.get_path('include')]
+
+  sysroot_include_paths += [
+    os.path.join('/include', 'compat'),
+    os.path.join('/include', 'libc'),
+    os.path.join('/lib', 'libc', 'musl', 'arch', 'emscripten'),
+    os.path.join('/local', 'include'),
+    os.path.join('/include', 'SSE'),
+    os.path.join('/include', 'neon'),
+    os.path.join('/lib', 'compiler-rt', 'include'),
+    os.path.join('/lib', 'libunwind', 'include'),
+  ]
+
+  def include_directive(paths):
+    result = []
+    for path in paths:
+      result += ['-Xclang', '-iwithsysroot' + path]
+    return result
+
+  # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
+  return c_opts + include_directive(sysroot_include_paths)
 
 
 def get_asmflags():

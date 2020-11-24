@@ -26,6 +26,10 @@ Current Trunk
   `IMPORTED_MEMORY` setting can be used to revert to the old behaviour.
   Breaking change: This new setting is required if you provide a runtime
   value for `wasmMemory` or `INITIAL_MEMORY` on the Module object.
+- Internally, emscripten now uses the `--sysroot` argument to point clang at
+  it headers.  This should not effect most projects but has a minor effect the
+  order of the system include paths: The root include path
+  (`<emscritpen_root>/system/include`) is now always last in the include path.
 
 2.0.9: 11/16/2020
 -----------------

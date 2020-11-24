@@ -622,12 +622,12 @@ f.close()
       start = stderr.index('<...> search starts here:')
       end = stderr.index('End of search list.')
       includes = stderr[start:end]
-      includes = [i.strip() for i in includes.splitlines()[1:-1]]
+      includes = [i.strip() for i in includes.splitlines()[1:]]
       for i in includes:
-        if shared.Cache.dirname in i:
-          self.assertContained(shared.Cache.dirname, i)
-        else:
-          self.assertContained(path_from_root('system'), i)
+        # we also alow for the cache include directory and llvm's own builtin includes
+        if shared.Cache.dirname in i or os.path.dirname(config.LLVM_ROOT) in i:
+          continue
+        self.assertContained(path_from_root('system'), i)
 
     err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-v'], stderr=PIPE).stderr
     verify_includes(err)
@@ -661,7 +661,7 @@ f.close()
       self.run_process([compiler, '-c', '--bind', '--embed-file', 'test.c', path_from_root('tests', 'hello_world.cpp')])
 
   def test_odd_suffixes(self):
-    for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
+    for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC']:
       self.clear()
       print(suffix)
       shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'test.' + suffix)
@@ -674,6 +674,27 @@ f.close()
       self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-shared', '-o', 'binary.' + suffix])
       self.run_process([EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+  def test_preprocessed_input(self):
+    # .i and .ii files are assumed to be the output the pre-processor so clang doesn't add include
+    # paths.  This means we can only compile and run things that don't contain includes.
+    for suffix in ['.i', '.ii']:
+      create_test_file('simple' + suffix, '''
+        #ifdef __cplusplus
+        extern "C" {
+        #endif
+        int puts(const char *s);
+        #ifdef __cplusplus
+        }
+        #endif
+        int main() { puts("hello"); }
+        ''')
+      self.run_process([EMCC, 'simple' + suffix])
+      self.assertContained('hello', self.run_js('a.out.js'))
+
+      create_test_file('with_include' + suffix, '#include <stdio.h>\nint main() { puts("hello"); }')
+      err = self.expect_fail([EMCC, 'with_include' + suffix])
+      self.assertContained('fatal error: \'stdio.h\' file not found', err)
 
   def test_wl_linkflags(self):
     # Test path -L and -l via -Wl, arguments and -Wl, response files
