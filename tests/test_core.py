@@ -5828,6 +5828,7 @@ return malloc(size);
     self.maybe_closure()
     self.do_runf(src, native_result)
 
+    # -msse4 should give same results as -msse4.2
     self.emcc_args = orig_args + ['-I' + path_from_root('tests', 'sse'), '-msse4', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
