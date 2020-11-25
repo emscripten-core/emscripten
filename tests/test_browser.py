@@ -175,9 +175,10 @@ class browser(BrowserCore):
   def setUpClass(cls):
     super().setUpClass()
     cls.browser_timeout = 60
-    print()
-    print('Running the browser tests. Make sure the browser allows popups from localhost.')
-    print()
+    if EMTEST_BROWSER != 'node':
+      print()
+      print('Running the browser tests. Make sure the browser allows popups from localhost.')
+      print()
 
   def setUp(self):
     super().setUp()
@@ -4333,7 +4334,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5629), 100)
+    self.assertLess(abs(size - 5787), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
