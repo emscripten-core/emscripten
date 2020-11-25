@@ -1108,12 +1108,6 @@ var LibraryPThread = {
     if (execute) routine();
   },
 
-  // pthread_sigmask - examine and change mask of blocked signals
-  pthread_sigmask: function(how, set, oldset) {
-    err('pthread_sigmask() is not supported: this is a no-op.');
-    return 0;
-  },
-
   pthread_atfork: function(prepare, parent, child) {
     err('fork() is not supported: pthread_atfork is a no-op.');
     return 0;
