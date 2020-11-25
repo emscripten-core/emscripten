@@ -459,16 +459,13 @@ def parse_json(path, header_files, structs, defines):
       defines[part[1]] = part[0]
 
 
-def output_json(obj, compressed=True, stream=None):
+def output_json(obj, stream=None):
   if stream is None:
     stream = sys.stdout
   elif isinstance(stream, str):
     stream = open(stream, 'w')
 
-  if compressed:
-    json.dump(obj, stream, separators=(',', ':'))
-  else:
-    json.dump(obj, stream, indent=4, sort_keys=True)
+  json.dump(obj, stream, indent=4, sort_keys=True)
 
   stream.write('\n')
   stream.close()
@@ -497,8 +494,6 @@ def main(args):
                       help='Don\'t output anything besides error messages.')
   parser.add_argument('-f', dest='list_fields', action='store_true', default=False,
                       help='Output a list of structs and fields for the given headers.')
-  parser.add_argument('-c', dest='pretty_print', action='store_false', default=True,
-                      help="Compress JSON output (don't pretty print)")
   parser.add_argument('-o', dest='output', metavar='path', default=None,
                       help='Path to the JSON file that will be written. If omitted, the generated data will be printed to stdout.')
   parser.add_argument('-I', dest='includes', metavar='dir', action='append', default=[],
@@ -533,7 +528,7 @@ def main(args):
       else:
         data.append(parse_header(path, cpp_opts))
 
-    output_json(data, not args.pretty_print, args.output)
+    output_json(data, args.output)
     return 0
 
   # Look for structs in all passed headers.
@@ -554,7 +549,7 @@ def main(args):
 
   # Inspect all collected structs.
   struct_info = inspect_code(header_files, cpp_opts, structs, defines)
-  output_json(struct_info, not args.pretty_print, args.output)
+  output_json(struct_info, args.output)
   return 0
 
 
