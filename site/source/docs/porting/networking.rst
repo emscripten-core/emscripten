@@ -22,7 +22,7 @@ Emulated POSIX TCP Sockets over WebSockets
 
 If you have existing TCP networking code written in C/C++ that utilizes the Posix Sockets API, by default Emscripten attempts to emulate such connections to take place over the WebSocket protocol instead. For this to work, you will need to use something like WebSockify on the server side to enable the TCP server stack to receive incoming WebSocket connections. This emulation is not very complete at the moment, it is likely that you will run into problems out of the box and need to adapt the code to work within the limitations that this emulation provides.
 
-This is the default build mode for Emscripten. Use the linker flag `-s WEBSOCKET_URL` or `Module['websocket']['url]` to specify the WebSocket URL to connect to, and the linker flag `-s WEBSOCKET_SUBPROTOCOL` or `Module['websocket']['subprotocol']` to control the connection type ('binary' or 'text').
+This is the default build mode for Emscripten. Use the linker flag `-s WEBSOCKET_URL` or `Module['websocket']['url']` to specify the WebSocket URL to connect to, and the linker flag `-s WEBSOCKET_SUBPROTOCOL` or `Module['websocket']['subprotocol']` to control the connection type ('binary' or 'text').
 
 Full POSIX Sockets over WebSocket Proxy Server
 ==============================================
