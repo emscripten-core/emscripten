@@ -904,7 +904,7 @@ int llvm_atomic_load_add_i32_p0i32(int* ptr, int delta) {
 // Stores the memory address that the main thread is waiting on, if any. If
 // the main thread is waiting, we wake it up before waking up any workers.
 EMSCRIPTEN_KEEPALIVE
-void* main_thread_futex;
+void* _emscripten_main_thread_futex;
 
 typedef struct main_args {
   int argc;
