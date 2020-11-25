@@ -53,7 +53,9 @@ void test_async_waitable()
 		}
 		emscripten_async_waitable_close(c);
 	}
-	assert(func_called == 1000);
+	int final_count = emscripten_atomic_load_u32((void*)&func_called);
+	printf("final_count: %d\n", final_count);
+	assert(final_count == 1000);
 }
 
 void *thread_main(void*)
@@ -61,7 +63,8 @@ void *thread_main(void*)
 	test_sync();
 	test_async();
 	test_async_waitable();
-	pthread_exit(0);
+	printf("thread_main done\n");
+	pthread_exit(NULL);
 }
 
 int main()
@@ -74,8 +77,13 @@ int main()
 		pthread_t thread;
 		int rc = pthread_create(&thread, NULL, thread_main, NULL);
 		assert(rc == 0);
-		rc = pthread_join(thread, 0);
+		void* retval;
+		rc = pthread_join(thread, &retval);
 		assert(rc == 0);
+		printf("pthread_join done: %ld\n", (intptr_t)retval);
+		// This assertion fails intermittently.
+		// FIXME(https://github.com/emscripten-core/emscripten/issues/12885)
+		//assert(retval == NULL);
 	}
 
 	test_async();
