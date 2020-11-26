@@ -1395,7 +1395,7 @@ Functions
     including rarely-used functions, in which case the lazy-loading may
     not happen at all.
 
-  .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
+  .. note:: This requires building with ``-s ASYNCIFY -s ASYNCIFY_LAZY_LOAD_CODE``.
 
 ABI functions
 =============

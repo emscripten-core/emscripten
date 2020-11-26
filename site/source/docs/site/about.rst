@@ -41,7 +41,7 @@ Building the site
 
 The site sources are stored on `GitHub <https://github.com/emscripten-core/emscripten/tree/master/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
 
-The site is published to the **emscripten-core/emscripten-site** *gh-pages* branch (GitHub pages).
+The site is published to the **kripken/emscripten-site** *gh-pages* branch (GitHub pages).
 
 .. note:: Remember to update the :ref:`about-build-versions` for *public* builds.
 
