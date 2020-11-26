@@ -21,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER
-from runner import create_test_file, parameterized, ensure_dir
+from runner import create_test_file, parameterized, ensure_dir, disabled
 from tools import building
 from tools import shared
 from tools import system_libs
@@ -3987,6 +3987,14 @@ window.close = function() {
   @requires_threads
   def test_pthread_asan_use_after_free(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
+
+  @requires_threads
+  @disabled('https://github.com/emscripten-core/emscripten/issues/11345')
+  def test_pthread_abort(self):
+    # Note that as the test runs with PROXY_TO_PTHREAD, we set TOTAL_STACK,
+    # and not DEFAULT_PTHREAD_STACK_SIZE, as the pthread for main() gets the
+    # same stack size as the main thread normally would.
+    self.btest(path_from_root('tests', 'core', 'pthread', 'test_pthread_abort.c'), expected='xx', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):

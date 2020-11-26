@@ -8085,6 +8085,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-fexceptions']
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'exceptions.cpp')
 
+  @node_pthreads
+  @disabled('https://github.com/emscripten-core/emscripten/issues/11345')
+  def test_pthread_abort(self):
+    self.set_setting('PTHREAD_POOL_SIZE', '1')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_pthread_abort.c')
+
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
