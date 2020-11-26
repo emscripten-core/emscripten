@@ -25,9 +25,6 @@ var LibraryPThread = {
     // Points to a pthread_t structure in the Emscripten main heap, allocated on
     // demand if/when first needed.
     // mainThreadBlock: undefined,
-    // Stores the memory address that the main thread is waiting on, if any. If
-    // the main thread is waiting, we wake it up before waking up any workers.
-    // mainThreadFutex: undefined,
     initMainThreadBlock: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
@@ -107,9 +104,8 @@ var LibraryPThread = {
 #endif
     },
     initShared: function() {
-      PThread.mainThreadFutex = _main_thread_futex;
 #if ASSERTIONS
-      assert(PThread.mainThreadFutex > 0);
+      assert(__emscripten_main_thread_futex > 0);
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -1145,20 +1141,20 @@ var LibraryPThread = {
 #endif
       // Register globally which address the main thread is simulating to be
       // waiting on. When zero, the main thread is not waiting on anything, and on
-      // nonzero, the contents of the address pointed by PThread.mainThreadFutex
+      // nonzero, the contents of the address pointed by __emscripten_main_thread_futex
       // tell which address the main thread is simulating its wait on.
       // We need to be careful of recursion here: If we wait on a futex, and
       // then call _emscripten_main_thread_process_queued_calls() below, that
       // will call code that takes the proxying mutex - which can once more
       // reach this code in a nested call. To avoid interference between the
-      // two (there is just a single mainThreadFutex at a time), unmark
+      // two (there is just a single __emscripten_main_thread_futex at a time), unmark
       // ourselves before calling the potentially-recursive call. See below for
       // how we handle the case of our futex being notified during the time in
-      // between when we are not set as the value of mainThreadFutex.
+      // between when we are not set as the value of __emscripten_main_thread_futex.
 #if ASSERTIONS
-      assert(PThread.mainThreadFutex > 0);
+      assert(__emscripten_main_thread_futex > 0);
 #endif
-      var lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, addr);
+      var lastAddr = Atomics.exchange(HEAP32, __emscripten_main_thread_futex >> 2, addr);
 #if ASSERTIONS
       // We must not have already been waiting.
       assert(lastAddr == 0);
@@ -1172,7 +1168,7 @@ var LibraryPThread = {
           PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
           // We timed out, so stop marking ourselves as waiting.
-          lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, 0);
+          lastAddr = Atomics.exchange(HEAP32, __emscripten_main_thread_futex >> 2, 0);
 #if ASSERTIONS
           // The current value must have been our address which we set, or
           // in a race it was set to 0 which means another thread just allowed
@@ -1186,7 +1182,7 @@ var LibraryPThread = {
         // Note that we have to do so carefully, as we may take a lock while
         // doing so, which can recurse into this function; stop marking
         // ourselves as waiting while we do so.
-        lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, 0);
+        lastAddr = Atomics.exchange(HEAP32, __emscripten_main_thread_futex >> 2, 0);
 #if ASSERTIONS
         assert(lastAddr == addr || lastAddr == 0);
 #endif
@@ -1201,20 +1197,20 @@ var LibraryPThread = {
         //
         //  * wait on futex A
         //  * recurse into emscripten_main_thread_process_queued_calls(),
-        //    which waits on futex B. that sets the mainThreadFutex address to
+        //    which waits on futex B. that sets the __emscripten_main_thread_futex address to
         //    futex B, and there is no longer any mention of futex A.
-        //  * a worker is done with futex A. it checks mainThreadFutex but does
+        //  * a worker is done with futex A. it checks __emscripten_main_thread_futex but does
         //    not see A, so it does nothing special for the main thread.
         //  * a worker is done with futex B. it flips mainThreadMutex from B
         //    to 0, ending the wait on futex B.
-        //  * we return to the wait on futex A. mainThreadFutex is 0, but that
+        //  * we return to the wait on futex A. __emscripten_main_thread_futex is 0, but that
         //    is because of futex B being done - we can't tell from
-        //    mainThreadFutex whether A is done or not. therefore, check the
+        //    __emscripten_main_thread_futex whether A is done or not. therefore, check the
         //    memory value of the futex.
         //
         // That case motivates the design here. Given that, checking the memory
         // address is also necessary for other reasons: we unset and re-set our
-        // address in mainThreadFutex around calls to
+        // address in __emscripten_main_thread_futex around calls to
         // emscripten_main_thread_process_queued_calls(), and a worker could
         // attempt to wake us up right before/after such times.
         //
@@ -1235,7 +1231,7 @@ var LibraryPThread = {
         }
 
         // Mark us as waiting once more, and continue the loop.
-        lastAddr = Atomics.exchange(HEAP32, PThread.mainThreadFutex >> 2, addr);
+        lastAddr = Atomics.exchange(HEAP32, __emscripten_main_thread_futex >> 2, addr);
 #if ASSERTIONS
         assert(lastAddr == 0);
 #endif
@@ -1260,19 +1256,19 @@ var LibraryPThread = {
     // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
     // this scheme does not adhere to real queue-based waiting.
 #if ASSERTIONS
-    assert(PThread.mainThreadFutex > 0);
+    assert(__emscripten_main_thread_futex > 0);
 #endif
-    var mainThreadWaitAddress = Atomics.load(HEAP32, PThread.mainThreadFutex >> 2);
+    var mainThreadWaitAddress = Atomics.load(HEAP32, __emscripten_main_thread_futex >> 2);
     var mainThreadWoken = 0;
     if (mainThreadWaitAddress == addr) {
 #if ASSERTIONS
-      // We only use mainThreadFutex on the main browser thread, where we
+      // We only use __emscripten_main_thread_futex on the main browser thread, where we
       // cannot block while we wait. Therefore we should only see it set from
       // other threads, and not on the main thread itself. In other words, the
       // main thread must never try to wake itself up!
       assert(!ENVIRONMENT_IS_WEB);
 #endif
-      var loadedAddr = Atomics.compareExchange(HEAP32, PThread.mainThreadFutex >> 2, mainThreadWaitAddress, 0);
+      var loadedAddr = Atomics.compareExchange(HEAP32, __emscripten_main_thread_futex >> 2, mainThreadWaitAddress, 0);
       if (loadedAddr == mainThreadWaitAddress) {
         --count;
         mainThreadWoken = 1;
