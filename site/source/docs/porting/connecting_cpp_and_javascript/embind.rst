@@ -99,9 +99,13 @@ object.
 Binding libraries
 =================
 
-Binding code is run as a static constructor and static constructors only get run if the object file is included in the link, therefore when generating bindings for library files compiler must be explicitly instructed to include the object file.
+Binding code is run as a static constructor and static constructors only get
+run if the object file is included in the link, therefore when generating
+bindings for library files compiler must be explicitly instructed to include
+the object file.
 
-For example, to generate bindings for a hypothetical **library.a** compiled with Emscripten run *emcc* with ``whole-archive`` compiler flag::
+For example, to generate bindings for a hypothetical **library.a** compiled
+with Emscripten run *emcc* with ``whole-archive`` compiler flag::
 
    emcc --bind -o library.js -Wl,--whole-archive library.a -Wl,--no-whole-archive
 
