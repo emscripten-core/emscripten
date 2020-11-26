@@ -43,19 +43,30 @@ void test_async_waitable()
 {
 	printf("Testing waitable async proxied runs:\n");
 	emscripten_atomic_store_u32((void*)&func_called, 0);
+	em_queued_call* handles[1000];
+
 	for(int i = 0; i < 1000; ++i)
 	{
-		em_queued_call *c = emscripten_async_waitable_run_in_main_runtime_thread(EM_FUNC_SIG_V, v);
-		if (i == 999)
-		{
-			EMSCRIPTEN_RESULT r = emscripten_wait_for_call_v(c, INFINITY);
-			assert(r == EMSCRIPTEN_RESULT_SUCCESS);
-		}
-		emscripten_async_waitable_close(c);
+		handles[i] = emscripten_async_waitable_run_in_main_runtime_thread(EM_FUNC_SIG_V, v);
 	}
+
+	EMSCRIPTEN_RESULT r = emscripten_wait_for_call_v(handles[999], INFINITY);
+	assert(r == EMSCRIPTEN_RESULT_SUCCESS);
+
+	// Since ordering is guaranteed we know that all the other tasks must
+	// also have already been completed.
 	int final_count = emscripten_atomic_load_u32((void*)&func_called);
 	printf("final_count: %d\n", final_count);
 	assert(final_count == 1000);
+
+	// Cleanup/free all the handles.  Waiting on the 1000th a second time is
+	// allowed by the API.
+	for(int i = 0; i < 1000; ++i)
+	{
+		EMSCRIPTEN_RESULT r = emscripten_wait_for_call_v(handles[i], INFINITY);
+		assert(r == EMSCRIPTEN_RESULT_SUCCESS);
+		emscripten_async_waitable_close(handles[i]);
+	}
 }
 
 void *thread_main(void*)
@@ -81,9 +92,7 @@ int main()
 		rc = pthread_join(thread, &retval);
 		assert(rc == 0);
 		printf("pthread_join done: %ld\n", (intptr_t)retval);
-		// This assertion fails intermittently.
-		// FIXME(https://github.com/emscripten-core/emscripten/issues/12885)
-		//assert(retval == NULL);
+		assert(retval == NULL);
 	}
 
 	test_async();
