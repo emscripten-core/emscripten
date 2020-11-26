@@ -105,7 +105,7 @@ bindings for library files compiler must be explicitly instructed to include
 the object file.
 
 For example, to generate bindings for a hypothetical **library.a** compiled
-with Emscripten run *emcc* with ``whole-archive`` compiler flag::
+with Emscripten run *emcc* with ``--whole-archive`` compiler flag::
 
    emcc --bind -o library.js -Wl,--whole-archive library.a -Wl,--no-whole-archive
 
