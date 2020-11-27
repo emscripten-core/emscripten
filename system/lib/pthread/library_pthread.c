@@ -171,7 +171,10 @@ static void em_queued_call_free(em_queued_call* call) {
   free(call);
 }
 
-void emscripten_async_waitable_close(em_queued_call* call) { em_queued_call_free(call); }
+void emscripten_async_waitable_close(em_queued_call* call) {
+  assert(call->operationDone);
+  em_queued_call_free(call);
+}
 
 extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
@@ -338,7 +341,7 @@ static void _do_call(em_queued_call* q) {
   // If the caller is detached from this operation, it is the main thread's responsibility to free
   // up the call object.
   if (q->calleeDelete) {
-    emscripten_async_waitable_close(q);
+    em_queued_call_free(q);
     // No need to wake a listener, nothing is listening to this since the call object is detached.
   } else {
     // The caller owns this call object, it is listening to it and will free it up.
@@ -904,7 +907,7 @@ int llvm_atomic_load_add_i32_p0i32(int* ptr, int delta) {
 // Stores the memory address that the main thread is waiting on, if any. If
 // the main thread is waiting, we wake it up before waking up any workers.
 EMSCRIPTEN_KEEPALIVE
-void* main_thread_futex;
+void* _emscripten_main_thread_futex;
 
 typedef struct main_args {
   int argc;

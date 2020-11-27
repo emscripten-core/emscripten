@@ -6,7 +6,6 @@
 import glob
 import hashlib
 import itertools
-import json
 import logging
 import os
 import re
@@ -17,6 +16,7 @@ import zipfile
 from glob import iglob
 
 from . import shared, building, ports, config
+from . import deps_info
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
@@ -751,6 +751,61 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'libc'],
         filenames=['extras.c', 'wasi-helpers.c'])
 
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'pthread'],
+        filenames=['emscripten_atomic.c'])
+
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
+        filenames=['pthread_self.c'])
+
+    if self.is_mt:
+      libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
+        filenames=[
+          'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
+          'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c',
+          'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c',
+          'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c',
+          'pthread_mutex_timedlock.c', 'pthread_spin_lock.c',
+          'pthread_attr_setdetachstate.c', 'pthread_cond_init.c',
+          'pthread_mutex_trylock.c', 'pthread_spin_trylock.c',
+          'pthread_attr_setguardsize.c', 'pthread_cond_signal.c',
+          'pthread_mutex_unlock.c', 'pthread_spin_unlock.c',
+          'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c',
+          'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c',
+          'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c',
+          'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c',
+          'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c',
+          'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c',
+          'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c',
+          'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c',
+          'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c',
+          'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c',
+          'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c',
+          'pthread_rwlock_timedrdlock.c', 'sem_unlink.c',
+          'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c',
+          'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c',
+          'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c',
+          '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c',
+          'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c',
+          'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c',
+          'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c',
+          'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
+          'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
+          'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
+          'pthread_setspecific.c', 'pthread_setcancelstate.c',
+        ])
+      libc_files += files_in_path(
+        path_components=['system', 'lib', 'pthread'],
+        filenames=[
+          'library_pthread.c',
+          'emscripten_tls_init.c',
+          'emscripten_thread_state.s',
+        ])
+    else:
+      libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
+
     return libc_files
 
 
@@ -1152,67 +1207,6 @@ class libhtml5(Library):
   src_glob = '*.c'
 
 
-class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
-  name = 'libpthread'
-  cflags = ['-O2']
-
-  def get_files(self):
-    files = [shared.path_from_root('system', 'lib', 'pthread', 'emscripten_atomic.c')]
-    files += files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
-        filenames=['pthread_self.c'])
-    if self.is_mt:
-      files += files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
-        filenames=[
-          'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
-          'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c',
-          'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c',
-          'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c',
-          'pthread_mutex_timedlock.c', 'pthread_spin_lock.c',
-          'pthread_attr_setdetachstate.c', 'pthread_cond_init.c',
-          'pthread_mutex_trylock.c', 'pthread_spin_trylock.c',
-          'pthread_attr_setguardsize.c', 'pthread_cond_signal.c',
-          'pthread_mutex_unlock.c', 'pthread_spin_unlock.c',
-          'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c',
-          'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c',
-          'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c',
-          'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c',
-          'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c',
-          'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c',
-          'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c',
-          'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c',
-          'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c',
-          'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c',
-          'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c',
-          'pthread_rwlock_timedrdlock.c', 'sem_unlink.c',
-          'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c',
-          'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c',
-          'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c',
-          '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c',
-          'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c',
-          'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c',
-          'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c',
-          'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
-          'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
-          'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
-          'pthread_setspecific.c', 'pthread_setcancelstate.c',
-        ])
-      files += files_in_path(
-        path_components=['system', 'lib', 'pthread'],
-        filenames=[
-          'library_pthread.c',
-          'emscripten_tls_init.c',
-          'emscripten_thread_state.s',
-        ])
-    else:
-      files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
-    return files
-
-  def get_base_name_prefix(self):
-    return 'libpthread' if self.is_mt else 'libpthread_stub'
-
-
 class CompilerRTLibrary(Library):
   cflags = ['-O2', '-fno-builtin']
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
@@ -1402,56 +1396,11 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
   if only_forced:
     temp_files = []
 
-  # deps_info.json is a mechanism that lets JS code depend on C functions. This
-  # needs special help because of how linking works:
-  #
-  #   1. Receive some input files (.o, .c, etc.) from the user.
-  #   2. Link them with system libraries.
-  #   3. Whatever symbols are still unresolved, look in JS libraries for them.
-  #
-  # This makes C->JS calls work in a natural way: if compiled code depends on
-  # a function foo() that is implemented in a JS library, it will be unresolved
-  # after stage 2, and therefore linked in at stage 3. The problem is the other
-  # direction: if a JS library function decides it needs some function from say
-  # libc, then at stage 3 it is too late to link in more libc code. That's
-  # where deps_info.json comes in.
-  #
-  # Specifically, before stage 2 (linking with system libraries) we look at what
-  # symbols are required by the input files. Imagine that js_func in a JS
-  # library depends on libc_func in libc. Then if deps_info.json tells us
-  #
-  #  "js_func": ["libc_func"]
-  #
-  # then if we see js_func is required (undefined) before stage 2, then we add
-  # a requirement to link in libc_func when linking in system libraries. All
-  # we do with deps_info.json is see if any of the keys are among the
-  # undefined symbols before stage 2, and if they are, add their values to the
-  # things we need to link in.
-  #
-  # This usually works the way you want, but note that it happens *before* stage
-  # 2 and not after it. That is, we look for js_func before linking in system
-  # libraries. If you have a situation where
-  #
-  #   user_code => other_libc_func => js_func => libc_func
-  #
-  # then the deps_info.json entry must contain
-  #
-  #  "other_libc_func": ["libc_func"]
-  #
-  # because that is what we see before stage 2: all we see is that
-  # other_libc_func is going to be linked in, and we don't know yet that it
-  # will end up calling js_func. But the presence of a call to other_libc_func
-  # indicates that we will need libc_func linked in as well, so that is what the
-  # deps_info.json entry should contain.
-  #
-  # TODO: Move all __deps from src/library*.js to deps_info.json, and use that single source of info
-  #       both here and in the JS compiler.
-  deps_info = json.loads(open(shared.path_from_root('src', 'deps_info.json')).read())
   added = set()
 
   def add_back_deps(need):
     more = False
-    for ident, deps in deps_info.items():
+    for ident, deps in deps_info.deps_info.items():
       if ident in need.undefs and ident not in added:
         added.add(ident)
         more = True
@@ -1486,7 +1435,7 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
   # and must assume all of deps_info must be exported. Note that this might cause
   # warnings on exports that do not exist.
   if only_forced:
-    for key, value in deps_info.items():
+    for key, value in deps_info.deps_info.items():
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
 
@@ -1585,7 +1534,6 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
         add_library(system_libs_map['libunwind'])
     if shared.Settings.MALLOC != 'none':
       add_library(system_libs_map['libmalloc'])
-    add_library(system_libs_map['libpthread'])
     if shared.Settings.STANDALONE_WASM:
       add_library(system_libs_map['libstandalonewasm'])
     add_library(system_libs_map['libc_rt_wasm'])

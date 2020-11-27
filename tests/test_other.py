@@ -2539,7 +2539,6 @@ int main() {
   puts("ok");
 }
 ''')
-    # Pass -s USE_PTHREADS=1 to ensure we don't link against libpthread_stub.a
     self.run_process([EMCC, 'src.cpp', '-s', 'USE_PTHREADS=1', '-s', 'ENVIRONMENT=node'])
     ret = self.run_process(config.NODE_JS + ['--experimental-wasm-threads', 'a.out.js'], stdout=PIPE).stdout
     self.assertContained('ok', ret)
@@ -4140,7 +4139,7 @@ int main() {
     # fail! not enough stdlibs
     'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++,libc,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
     # force all the needed stdlibs, so this works even though we ignore the input file
-    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
+    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
   })
   def test_only_force_stdlibs(self, env, fail):
     with env_modify(env):
@@ -4167,7 +4166,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc,libpthread', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       self.run_process([EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', self.run_js('a.out.js'))
 

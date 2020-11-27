@@ -43,7 +43,6 @@ MINIMAL_TASKS = [
     'libdlmalloc-debug',
     'libemmalloc',
     'libemmalloc-64bit',
-    'libpthread_stub',
     'libsockets',
     'libc_rt_wasm',
     'struct_info',
@@ -164,8 +163,6 @@ def main():
       # we don't support PIC + pthreads yet
       for task in SYSTEM_TASKS + USER_TASKS:
         if '-mt' in task:
-          skip_tasks.append(task)
-        if 'pthread' in task and 'stub' not in task:
           skip_tasks.append(task)
       print('Skipping building of %s, because we don\'t support threads and PIC code.' % ', '.join(skip_tasks))
     # cocos2d: must be ported, errors on

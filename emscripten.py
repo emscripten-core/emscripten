@@ -878,7 +878,7 @@ def generate_struct_info():
   def generate_struct_info():
     with ToolchainProfiler.profile_block('gen_struct_info'):
       out = shared.Cache.get_path(generated_struct_info_name)
-      gen_struct_info.main(['-q', '-c', '-o', out])
+      gen_struct_info.main(['-q', '-o', out])
       return out
 
   shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
