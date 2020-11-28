@@ -349,6 +349,17 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_lazy_load_code: function() {
+    // After loading lazy code, we don't need to load it again. It would be even
+    // better if the optimizer would remove the call into this JS method
+    // entirely.
+    // Note that we just check this during the normal phase of asyncify: the
+    // first time we are called we will unwind and then rewind, and we just want
+    // to be a no-op after both of those.
+    if (Asyncify.state === Asyncify.State.Normal &&
+        _emscripten_lazy_load_code._called) {
+      return;
+    }
+    _emscripten_lazy_load_code._called = true;
     Asyncify.handleSleep(function(wakeUp) {
       // Update the expected wasm binary file to be the lazy one.
       wasmBinaryFile += '.lazy.wasm';

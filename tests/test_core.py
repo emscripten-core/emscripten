@@ -7491,6 +7491,13 @@ Module['onRuntimeInitialized'] = function() {
       break_wasm('emscripten_lazy_load_code.wasm')
       verify_broken()
 
+  @no_asan('asyncify stack operations confuse asan')
+  @no_wasm2js('TODO: lazy loading in wasm2js')
+  def test_emscripten_lazy_load_code_library(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code_library.cpp')
+
   # Test basic wasm2js functionality in all core compilation modes.
   @no_asan('no wasm2js support yet in asan')
   def test_wasm2js(self):
