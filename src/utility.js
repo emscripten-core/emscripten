@@ -37,28 +37,7 @@ function dump(item) {
   }
 }
 
-function dumpKeys(item) {
-  var ret = [];
-  for (var i in item) {
-    var j = item[i];
-    if (typeof j === 'string' || typeof j === 'number') {
-      ret.push(i + ': ' + j);
-    } else {
-      ret.push(i + ': [?]');
-    }
-  }
-  return ret.join(', ');
-}
-
-function assertEq(a, b) {
-  if (a !== b) {
-    printErr('Stack: ' + new Error().stack);
-    throw 'Should have been equal: ' + a + ' : ' + b;
-  }
-  return false;
-}
-
-function assertTrue(a, msg) {
+function assert(a, msg) {
   if (!a) {
     msg = 'Assertion failed: ' + msg;
     print(msg);
@@ -66,7 +45,6 @@ function assertTrue(a, msg) {
     throw msg;
   }
 }
-var assert = assertTrue;
 
 function warn(a, msg) {
   if (!msg) {
@@ -98,50 +76,15 @@ function error(msg) {
   printErr('error: ' + msg);
 }
 
-function dedup(items, ident) {
-  var seen = {};
-  if (ident) {
-    return items.filter(function(item) {
-      if (seen[item[ident]]) return false;
-      seen[item[ident]] = true;
-      return true;
-    });
-  } else {
-    return items.filter(function(item) {
-      if (seen[item]) return false;
-      seen[item] = true;
-      return true;
-    });
-  }
-}
-
 function range(size) {
   var ret = [];
   for (var i = 0; i < size; i++) ret.push(i);
   return ret;
 }
 
-function zeros(size) {
-  var ret = [];
-  for (var i = 0; i < size; i++) ret.push(0);
-  return ret;
-}
-
-function spaces(size) {
-  var ret = '';
-  for (var i = 0; i < size; i++) ret += ' ';
-  return ret;
-}
-
 function keys(x) {
   var ret = [];
   for (var a in x) ret.push(a);
-  return ret;
-}
-
-function values(x) {
-  var ret = [];
-  for (var a in x) ret.push(x[a]);
   return ret;
 }
 
@@ -153,36 +96,6 @@ function bind(self, func) {
 
 function sum(x) {
   return x.reduce(function(a,b) { return a+b }, 0);
-}
-
-function sumTruthy(x) {
-  return x.reduce(function(a,b) { return (!!a)+(!!b) }, 0);
-}
-
-function sumStringy(x) {
-  return x.reduce(function(a,b) { return a+b }, '');
-}
-
-function filterTruthy(x) {
-  return x.filter(function(y) { return !!y });
-}
-
-function loopOn(array, func) {
-  for (var i = 0; i < array.length; i++) {
-    func(i, array[i]);
-  }
-}
-
-// Splits out items that pass filter. Returns also the original sans the filtered
-function splitter(array, filter) {
-  var splitOut = array.filter(filter);
-  var leftIn = array.filter(function(x) { return !filter(x) });
-  return { leftIn: leftIn, splitOut: splitOut };
-}
-
-// Usage: arrayOfArrays.reduce(concatenator, []);
-function concatenator(x, y) {
-  return x.concat(y);
 }
 
 function mergeInto(obj, other) {
@@ -197,53 +110,10 @@ function isNumber(x) {
   return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x === 'NaN';
 }
 
-function isArray(x) {
-  try {
-    return typeof x === 'object' && 'length' in x && 'slice' in x;
-  } catch(e) {
-    return false;
-  }
-}
-
-// Functions that start with '$' should not be imported to asm.js/wasm module.
-// They are intended to be exclusive to JS code only.
-function isJsOnlyIdentifier(ident) {
-  return ident[0] == '$';
-}
-
 function isJsLibraryConfigIdentifier(ident) {
   return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
    || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import')
    || ident.endsWith('__nothrow');
-}
-
-// Flattens something like [5, 6, 'hi', [1, 'bye'], 44] into
-// [5, 6, 'hi', 1, bye, 44].
-function flatten(x) {
-  if (typeof x !== 'object') return [x];
-  // Avoid multiple concats by finding the size first. This is much faster
-  function getSize(y) {
-    if (typeof y !== 'object') {
-      return 1;
-    } else {
-      return sum(y.map(getSize));
-    }
-  }
-  var size = getSize(x);
-  var ret = new Array(size);
-  var index = 0;
-  function add(y) {
-    for (var i = 0; i < y.length; i++) {
-      if (typeof y[i] !== 'object') {
-        ret[index++] = y[i];
-      } else {
-        add(y[i]);
-      }
-    }
-  }
-  add(x);
-  assert(index == size);
-  return ret;
 }
 
 // Sets
@@ -258,110 +128,8 @@ function set() {
 }
 var unset = keys;
 
-function numberedSet() {
-  var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
-  var ret = {};
-  for (var i = 0; i < args.length; i++) {
-    ret[args[i]] = i;
-  }
-  return ret;
-}
-
-function setSub(x, y) {
-  var ret = set(keys(x));
-  for (var yy in y) {
-    if (yy in ret) {
-      delete ret[yy];
-    }
-  }
-  return ret;
-}
-
-// Intersection of 2 sets. Faster if |xx| << |yy|
-function setIntersect(x, y) {
-  var ret = {};
-  for (var xx in x) {
-    if (xx in y) {
-      ret[xx] = 0;
-    }
-  }
-  return ret;
-}
-
-function setUnion(x, y) {
-  var ret = set(keys(x));
-  for (var yy in y) {
-    ret[yy] = 0;
-  }
-  return ret;
-}
-
-function setSize(x) {
-  var ret = 0;
-  for (var xx in x) ret++;
-  return ret;
-}
-
-function invertArray(x) {
-  var ret = {};
-  for (var i = 0; i < x.length; i++) {
-    ret[x[i]] = i;
-  }
-  return ret;
-}
-
-function copy(x) {
-  return JSON.parse(JSON.stringify(x));
-}
-
-function jsonCompare(x, y) {
-  return JSON.stringify(x) == JSON.stringify(y);
-}
-
-function sortedJsonCompare(x, y) {
-  if (x === null || typeof x !== 'object') return x === y;
-  for (var i in x) {
-    if (!sortedJsonCompare(x[i], y[i])) return false;
-  }
-  for (var i in y) {
-    if (!sortedJsonCompare(x[i], y[i])) return false;
-  }
-  return true;
-}
-
-function escapeJSONKey(x) {
-  if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
-  assert(x.indexOf("'") < 0, 'cannot have internal single quotes in keys: ' + x);
-  return "'" + x + "'";
-}
-
-function stringifyWithFunctions(obj) {
-  if (typeof obj === 'function') return obj.toString();
-  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
-  if (isArray(obj)) {
-    return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
-  } else {
-    return '{' + keys(obj).map(function(key) { return escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key]) }).join(',') + '}';
-  }
-}
-
-function sleep(secs) {
-  var start = Date.now();
-  while (Date.now() - start < secs*1000) {};
-}
-
-function log2(x) {
-  return Math.log(x)/Math.LN2;
-}
-
 function isPowerOfTwo(x) {
   return x > 0 && ((x & (x-1)) == 0);
-}
-
-function ceilPowerOfTwo(x) {
-  var ret = 1;
-  while (ret < x) ret <<= 1;
-  return ret;
 }
 
 function Benchmarker() {
@@ -390,5 +158,4 @@ function Benchmarker() {
       printErr(text + ' times: \n' + ids.map(function(id) { return id + ' : ' + totals[id] + ' ms' }).join('\n'));
     }
   };
-};
-
+}
