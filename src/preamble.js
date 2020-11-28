@@ -703,14 +703,13 @@ function instrumentWasmExportsWithAbort(exports) {
   // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
   for (var name in exports) {
-      var original = exports[name];
-      if (typeof original === 'function') {
-        instExports[name] = makeAbortWrapper(original);
-      } else {
-        instExports[name] = original;
-      }
+    var original = exports[name];
+    if (typeof original === 'function') {
+      instExports[name] = makeAbortWrapper(original);
+    } else {
+      instExports[name] = original;
+    }
   }
-
   return instExports;
 }
 
@@ -729,6 +728,39 @@ function instrumentWasmTableWithAbort() {
     }
     return cached.wrapper;
   };
+}
+#endif
+
+#if ASYNCIFY_LAZY_LOAD_CODE
+// The last set of wasm exports. In lazy loading that will be replaced when we
+// swap in the new code.
+var lastExports;
+
+function instrumentWasmExportsForLaziness(exports) {
+  // Save the original wasm exports.
+  lastExports = exports;
+  // Make each export call indirectly, so that the exports themselves can be
+  // replaced with the ones from the lazy-loaded module.
+  // TODO: table as well?
+  var instExports = {};
+  for (var name in exports) {
+    instExports[name] = (function(name) {
+      if (typeof exports[name] !== 'function') {
+        return exports[name];
+      }
+      return function() {
+        // Do a fully dynamic lookup, getting the current exports from lastExports,
+        // which will change after lazily replacing the module. That new object
+        // may differ from "exports" at this time, as we capture the first
+        // exports to the "var _foo" globals just once. Each of those must be
+        // able to call the newer functions on the newer wasm. That new object
+        // will also have had instrumentWasmExportsForLaziness run on it, so we
+        // will update lastExports so that it always has the right ones to call.
+        return lastExports[name].apply(null, arguments);
+      };
+    })(name);
+  }
+  return instExports;
 }
 #endif
 
@@ -818,6 +850,10 @@ function createWasm() {
   /** @param {WebAssembly.Module=} module*/
   function receiveInstance(instance, module) {
     var exports = instance.exports;
+
+#if ASYNCIFY_LAZY_LOAD_CODE
+    exports = instrumentWasmExportsForLaziness(exports);
+#endif
 
 #if RELOCATABLE
     exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
