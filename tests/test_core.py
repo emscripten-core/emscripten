@@ -23,7 +23,7 @@ from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config
 from runner import RunnerCore, path_from_root, requires_native_clang
-from runner import skip_if, needs_dlfcn, no_windows, no_mac, is_slow_test, create_test_file, parameterized
+from runner import skip_if, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
 from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify, disabled
 from runner import NON_ZERO
 import clang_native
@@ -6969,8 +6969,9 @@ someweirdtext
       assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
 
   @no_wasm2js('TODO: source maps in wasm2js')
-  @no_mac("needs investigation, started to fail on https://chromium-review.googlesource.com/c/emscripten-releases/+/2560546")
   def test_dwarf(self):
+    if not is_optimizing(self.emcc_args):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/12903')
     self.emcc_args.append('-g')
 
     create_test_file('src.cpp', '''
