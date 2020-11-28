@@ -821,6 +821,10 @@ base align: 0, 0, 0, 0'''])
   def test_strndup(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strndup.c')
 
+  @no_asan('asan error on aligned word read access https://github.com/emscripten-core/emscripten/issues/7279')
+  def test_strncpy(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_strncpy.c')
+
   def test_errar(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_errar.c')
 
