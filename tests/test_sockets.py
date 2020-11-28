@@ -24,7 +24,7 @@ except Exception:
   # which is the same behavior as before.
   pass
 import clang_native
-from runner import BrowserCore, no_windows, chdir
+from runner import BrowserCore, no_windows, chdir, create_test_file
 from tools import shared, config
 from tools.shared import PYTHON, EMCC, path_from_root, WINDOWS, run_process, CLANG_CC
 
@@ -338,16 +338,16 @@ class sockets(BrowserCore):
     with open(host_filepath) as f:
       host_src = f.read()
     with open(temp_host_filepath, 'w') as f:
-      f.write(self.with_report_result(host_src))
+      f.write(host_src)
 
     peer_filepath = path_from_root('tests', 'sockets', peer_src)
     temp_peer_filepath = os.path.join(self.get_dir(), os.path.basename(peer_src))
     with open(peer_filepath) as f:
       peer_src = f.read()
     with open(temp_peer_filepath, 'w') as f:
-      f.write(self.with_report_result(peer_src))
+      f.write(peer_src)
 
-    open(os.path.join(self.get_dir(), 'host_pre.js'), 'w').write('''
+    create_test_file('host_pre.js', '''
       var Module = {
         webrtc: {
           broker: 'http://localhost:8182',
@@ -374,7 +374,7 @@ class sockets(BrowserCore):
       };
     ''')
 
-    open(os.path.join(self.get_dir(), 'peer_pre.js'), 'w').write('''
+    create_test_file('peer_pre.js', '''
       var Module = {
         webrtc: {
           broker: 'http://localhost:8182',
@@ -398,8 +398,8 @@ class sockets(BrowserCore):
       };
     ''')
 
-    self.run_process([EMCC, '-Werror', temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
-    self.run_process([EMCC, '-Werror', temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
+    self.compile_btest(['-Werror', temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
+    self.compile_btest(['-Werror', temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
 
     # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
     self.run_process([NPM, 'install', path_from_root('tests', 'sockets', 'p2p')])
