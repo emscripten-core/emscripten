@@ -3766,18 +3766,18 @@ var LibraryGL = {
     var mapping = GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)];
     if (!mapping) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */);
-      Module.printError('buffer was never mapped in glFlushMappedBufferRange');
+      err('buffer was never mapped in glFlushMappedBufferRange');
       return;
     }
 
     if (!(mapping.access & 0x10)) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */);
-      Module.printError('buffer was not mapped with GL_MAP_FLUSH_EXPLICIT_BIT in glFlushMappedBufferRange');
+      err('buffer was not mapped with GL_MAP_FLUSH_EXPLICIT_BIT in glFlushMappedBufferRange');
       return;
     }
     if (offset < 0 || length < 0 || offset + length > mapping.length) {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
-      Module.printError('invalid range in glFlushMappedBufferRange');
+      err('invalid range in glFlushMappedBufferRange');
       return;
     }
 
@@ -3800,7 +3800,7 @@ var LibraryGL = {
     var mapping = GL.mappedBuffers[buffer];
     if (!mapping) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */);
-      Module.printError('buffer was never mapped in glUnmapBuffer');
+      err('buffer was never mapped in glUnmapBuffer');
       return 0;
     }
     GL.mappedBuffers[buffer] = null;
