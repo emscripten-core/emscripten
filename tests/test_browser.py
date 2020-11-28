@@ -21,12 +21,12 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER
-from runner import no_wasm_backend, create_test_file, parameterized, ensure_dir
+from runner import create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import shared
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, V8_ENGINE
-from tools.shared import try_delete
+from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE
+from tools.shared import try_delete, config
 
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
@@ -100,6 +100,8 @@ def no_firefox(note='firefox is not supported'):
 
 
 def no_swiftshader(f):
+  assert callable(f)
+
   def decorated(self):
     if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
       self.skipTest('not compatible with swiftshader')
@@ -109,6 +111,8 @@ def no_swiftshader(f):
 
 
 def requires_threads(f):
+  assert callable(f)
+
   def decorated(self, *args, **kwargs):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
@@ -118,12 +122,22 @@ def requires_threads(f):
 
 
 def requires_asmfs(f):
+  assert callable(f)
+
   def decorated(self, *args, **kwargs):
     # https://github.com/emscripten-core/emscripten/issues/9534
     self.skipTest('ASMFS is looking for a maintainer')
     return f(self, *args, **kwargs)
 
   return decorated
+
+
+# Today we only support the wasm backend so any tests that is disabled under the llvm
+# backend is always disabled.
+# TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
+def no_wasm_backend(note=''):
+  assert not callable(note)
+  return unittest.skip(note)
 
 
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
@@ -2531,11 +2545,15 @@ Module["preRun"].push(function () {
 
     self.btest('doublestart.c', args=['--pre-js', 'pre.js', '-o', 'test.html'], expected='1')
 
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '-g1', '--closure', '1', '-s', 'HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
+    'pthread': (['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],),
+    'legacy': (['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0'],)
+  })
   @requires_threads
-  def test_html5(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1', '-s', 'HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], ['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0']]:
-      print(opts)
-      self.btest(path_from_root('tests', 'test_html5.c'), args=[] + opts, expected='0')
+  def test_html5_core(self, opts):
+    self.btest(path_from_root('tests', 'test_html5_core.c'), args=opts, expected='0')
 
   @requires_threads
   def test_html5_gamepad(self):
@@ -4121,7 +4139,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5496), 100)
+    self.assertLess(abs(size - 5368), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4484,8 +4502,8 @@ window.close = function() {
   # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
   def test_minimal_runtime_hello_pthread(self):
     for opts in [[], ['-O3']]:
-      for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '-s', 'MINIMAL_RUNTIME=1']]:
-        self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
+      for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule']]:
+        self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'MINIMAL_RUNTIME=1', '-s', 'USE_PTHREADS=1'] + modularize + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_threads
@@ -4887,7 +4905,7 @@ window.close = function() {
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB.cpp', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB.cpp', js_engines=[config.V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_2GB_fail(self):
@@ -4900,7 +4918,7 @@ window.close = function() {
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=2GB']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail.cpp', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail.cpp', js_engines=[config.V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_4GB_fail(self):
@@ -4913,7 +4931,7 @@ window.close = function() {
     # test that we properly report an allocation error that would overflow over
     # 4GB.
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
-    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[V8_ENGINE])
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[config.V8_ENGINE])
 
   @unittest.skip("only run this manually, to test for race conditions")
   @parameterized({

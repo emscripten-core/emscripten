@@ -22,9 +22,10 @@ Emscripten tools and dependencies
 
 In general a complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`.
 
-  - :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node):
-  - :term:`Python` 2.7.12 or above, or Python 3.5 or above (Python 2.7.0 or newer may also work, but is known to have SSL related issues, https://github.com/emscripten-core/emscripten/issues/6275)
-  - :term:`Java` (1.6.0_31 or later).  Java is optional. It is required to use the :term:`Closure Compiler` (in order to minify your code).
+  - :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node)
+  - :term:`Python` (3.6 or above)
+    site/source/docs/building_from_source/toolchain_what_is_needed.rst
+  - :term:`Java` (1.6.0_31 or later). Java is optional. It can be used to run the java version of term:`Closure Compiler`.
   - :term:`Git` client. Git is required if building tools from source.
   - :term:`LLVM` (LLVM, including clang and wasm-ld)
   - :term:`Binaryen` (Binaryen, including wasm-opt, wasm-emscripten-finalize, etc.)

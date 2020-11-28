@@ -50,13 +50,20 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  $handleFSError__deps: ['$setErrNo'],
-  $handleFSError: function(e) {
-    if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-    return setErrNo(e.errno);
+  $setFileTime__deps: ['$setErrNo'],
+  $setFileTime: function(path, time) {
+    path = UTF8ToString(path);
+    try {
+      FS.utime(path, time, time);
+      return 0;
+    } catch (e) {
+      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
+      setErrNo(e.errno);
+      return -1;
+    }
   },
 
-  utime__deps: ['$FS', '$handleFSError'],
+  utime__deps: ['$FS', '$setFileTime'],
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
@@ -65,43 +72,29 @@ LibraryManager.library = {
     var time;
     if (times) {
       // NOTE: We don't keep track of access timestamps.
-      var offset = {{{ C_STRUCTS.utimbuf.modtime }}};
-      time = {{{ makeGetValue('times', 'offset', 'i32') }}};
-      time *= 1000;
+      time = {{{ makeGetValue('times', C_STRUCTS.utimbuf.modtime, 'i32') }}} * 1000;
     } else {
       time = Date.now();
     }
-    path = UTF8ToString(path);
-    try {
-      FS.utime(path, time, time);
-      return 0;
-    } catch (e) {
-      handleFSError(e);
-      return -1;
-    }
+    return setFileTime(path, time);
   },
 
-  utimes__deps: ['$FS', '$handleFSError'],
+  utimes__deps: ['$FS', '$setFileTime'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
   utimes: function(path, times) {
+    // utimes is just like utime but take an array of 2 times: `struct timeval times[2]`
+    // times[0] is the new access time (which we currently ignore)
+    // times[1] is the new modification time.
     var time;
     if (times) {
-      var offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_sec }}};
-      time = {{{ makeGetValue('times', 'offset', 'i32') }}} * 1000;
-      offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_usec }}};
-      time += {{{ makeGetValue('times', 'offset', 'i32') }}} / 1000;
+      var mtime = times + {{{ C_STRUCTS.timeval.__size__ }}};
+      time = {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_sec, 'i32') }}} * 1000;
+      time += {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_usec, 'i32') }}} / 1000;
     } else {
       time = Date.now();
     }
-    path = UTF8ToString(path);
-    try {
-      FS.utime(path, time, time);
-      return 0;
-    } catch (e) {
-      handleFSError(e);
-      return -1;
-    }
+    return setFileTime(path, time);
   },
 
   // ==========================================================================
@@ -750,23 +743,12 @@ LibraryManager.library = {
 #endif
 
   // ==========================================================================
-  // GCC/LLVM specifics
+  // assert.h
   // ==========================================================================
-  __builtin_prefetch: function(){},
 
   __assert_fail__sig: 'viiii',
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
-  },
-
-  __assert_func: function(filename, line, func, condition) {
-    abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
-  },
-
-  __gxx_personality_v0: function() {
-  },
-
-  __gcc_personality_v0: function() {
   },
 
   // ==========================================================================

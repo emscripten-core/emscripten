@@ -8,11 +8,12 @@
 
 {{{ exportRuntime() }}}
 
-#if MEM_INIT_IN_WASM == 0
+#if !MEM_INIT_IN_WASM
+function runMemoryInitializer() {
 #if USE_PTHREADS
-if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
+  if (!memoryInitializer || ENVIRONMENT_IS_PTHREAD) return;
 #else
-if (memoryInitializer) {
+  if (!memoryInitializer) return
 #endif
   if (!isDataURI(memoryInitializer)) {
     memoryInitializer = locateFile(memoryInitializer);

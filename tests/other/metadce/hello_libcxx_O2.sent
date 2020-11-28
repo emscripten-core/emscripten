@@ -8,6 +8,5 @@ fd_close
 fd_read
 fd_seek
 fd_write
-memory
 setTempRet0
 strftime_l

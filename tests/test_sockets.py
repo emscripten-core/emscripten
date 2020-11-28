@@ -25,12 +25,12 @@ except Exception:
   pass
 import clang_native
 from runner import BrowserCore, no_windows, chdir
-from tools import shared
-from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, WINDOWS, run_process, JS_ENGINES, CLANG_CC
+from tools import shared, config
+from tools.shared import PYTHON, EMCC, path_from_root, WINDOWS, run_process, CLANG_CC
 
 npm_checked = False
 
-NPM = os.path.join(os.path.dirname(NODE_JS[0]), 'npm.cmd' if WINDOWS else 'npm')
+NPM = os.path.join(os.path.dirname(config.NODE_JS[0]), 'npm.cmd' if WINDOWS else 'npm')
 
 
 def clean_processes(processes):
@@ -113,7 +113,7 @@ class CompiledServerHarness():
     # the ws module is installed
     global npm_checked
     if not npm_checked:
-      child = run_process(NODE_JS + ['-e', 'require("ws");'], check=False)
+      child = run_process(config.NODE_JS + ['-e', 'require("ws");'], check=False)
       assert child.returncode == 0, '"ws" node module not found.  you may need to run npm install'
       npm_checked = True
 
@@ -121,7 +121,7 @@ class CompiledServerHarness():
     proc = run_process([EMCC, '-Werror', path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
-    process = Popen(NODE_JS + ['server.js'])
+    process = Popen(config.NODE_JS + ['server.js'])
     self.processes.append(process)
 
   def __exit__(self, *args, **kwargs):
@@ -148,7 +148,7 @@ class BackgroundServerProcess():
 
 
 def NodeJsWebSocketEchoServerProcess():
-  return BackgroundServerProcess(NODE_JS + [path_from_root('tests', 'websocket', 'nodejs_websocket_echo_server.js')])
+  return BackgroundServerProcess(config.NODE_JS + [path_from_root('tests', 'websocket', 'nodejs_websocket_echo_server.js')])
 
 
 def PythonTcpEchoServerProcess(port):
@@ -403,7 +403,7 @@ class sockets(BrowserCore):
 
     # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
     self.run_process([NPM, 'install', path_from_root('tests', 'sockets', 'p2p')])
-    broker = Popen(NODE_JS + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')])
+    broker = Popen(config.NODE_JS + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')])
 
     expected = '1'
     self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])
@@ -413,7 +413,7 @@ class sockets(BrowserCore):
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
     # Run with ./runner.py sockets.test_nodejs_sockets_echo
-    if NODE_JS not in JS_ENGINES:
+    if config.NODE_JS not in config.JS_ENGINES:
       self.skipTest('node is not present')
 
     sockets_include = '-I' + path_from_root('tests', 'sockets')

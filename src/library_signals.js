@@ -53,6 +53,11 @@ var funs = {
 #endif
     return 0;
   },
+  // pthread_sigmask - examine and change mask of blocked signals
+  pthread_sigmask: function(how, set, oldset) {
+    err('pthread_sigmask() is not supported: this is a no-op.');
+    return 0;
+  },
   __libc_current_sigrtmin: function() {
 #if ASSERTIONS
     err('Calling stub instead of __libc_current_sigrtmin');

@@ -6,7 +6,7 @@
 import os
 import shutil
 import logging
-from . import tempfiles, filelock
+from . import tempfiles, filelock, config, utils
 
 logger = logging.getLogger('cache')
 
@@ -35,6 +35,8 @@ class Cache(object):
         subdir += '-lto'
       if shared.Settings.RELOCATABLE:
         subdir += '-pic'
+      if shared.Settings.MEMORY64:
+        subdir += '-memory64'
       dirname = os.path.join(dirname, subdir)
 
     self.dirname = dirname
@@ -74,7 +76,7 @@ class Cache(object):
       logger.debug('PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
 
   def ensure(self):
-    shared.safe_ensure_dirs(self.dirname)
+    utils.safe_ensure_dirs(self.dirname)
 
   def erase(self):
     self.acquire_cache_lock()
@@ -110,7 +112,7 @@ class Cache(object):
       if os.path.exists(cachename) and not force:
         return cachename
       # it doesn't exist yet, create it
-      if shared.FROZEN_CACHE:
+      if config.FROZEN_CACHE:
         # it's ok to build small .txt marker files like "vanilla"
         if not shortname.endswith('.txt'):
           raise Exception('FROZEN_CACHE disallows building system libs: %s' % shortname)
@@ -124,7 +126,7 @@ class Cache(object):
       self.ensure()
       temp = creator()
       if os.path.normcase(temp) != os.path.normcase(cachename):
-        shared.safe_ensure_dirs(os.path.dirname(cachename))
+        utils.safe_ensure_dirs(os.path.dirname(cachename))
         shutil.copyfile(temp, cachename)
       logger.info(' - ok')
     finally:

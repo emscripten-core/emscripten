@@ -18,8 +18,8 @@ if __name__ == '__main__':
 import clang_native
 import jsrun
 import runner
-from tools.shared import run_process, path_from_root, SPIDERMONKEY_ENGINE, LLVM_ROOT, V8_ENGINE, PIPE, try_delete, EMCC
-from tools import shared, building
+from tools.shared import run_process, path_from_root, PIPE, try_delete, EMCC, config
+from tools import building
 
 # standard arguments for timing:
 # 0: no runtime, just startup
@@ -188,7 +188,7 @@ class EmscriptenBenchmarker(Benchmarker):
     self.filename = filename
     self.old_env = os.environ
     os.environ = self.env.copy()
-    llvm_root = self.env.get('LLVM') or LLVM_ROOT
+    llvm_root = self.env.get('LLVM') or config.LLVM_ROOT
     if lib_builder:
       env_init = self.env.copy()
       # Note that we need to pass in all the flags here because some build
@@ -356,11 +356,11 @@ benchmarkers = [
   # NativeBenchmarker('gcc',   'gcc',    'g++')
 ]
 
-if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
+if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
   # avoid the baseline compiler running, because it adds a lot of noise
   # (the nondeterministic time it takes to get to the full compiler ends up
   # mattering as much as the actual benchmark)
-  aot_v8 = V8_ENGINE + ['--no-liftoff']
+  aot_v8 = config.V8_ENGINE + ['--no-liftoff']
   default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
   benchmarkers += [
     EmscriptenBenchmarker(default_v8_name, aot_v8),
@@ -372,7 +372,7 @@ if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
       # CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
     ]
 
-if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
+if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINES:
   # TODO: ensure no baseline compiler is used, see v8
   benchmarkers += [
     # EmscriptenBenchmarker('sm', SPIDERMONKEY_ENGINE),
@@ -382,7 +382,7 @@ if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
       # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
     ]
 
-if shared.NODE_JS and shared.NODE_JS in shared.JS_ENGINES:
+if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
   benchmarkers += [
     # EmscriptenBenchmarker('Node.js', shared.NODE_JS),
   ]
@@ -408,7 +408,7 @@ class benchmark(runner.RunnerCore):
         fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
     except Exception:
       pass
-    fingerprint.append('llvm: ' + LLVM_ROOT)
+    fingerprint.append('llvm: ' + config.LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))
 
   # avoid depending on argument reception from the commandline

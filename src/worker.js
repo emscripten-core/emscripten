@@ -9,9 +9,6 @@
 // that executes pthreads on the Emscripten application.
 
 // Thread-local:
-var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
-var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
-var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
 #if EMBIND
 var initializedJS = false; // Guard variable for one-time init of the JS state (currently only embind types registration)
 #endif
@@ -30,7 +27,7 @@ function threadPrintErr() {
 }
 function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
-  postMessage({cmd: 'alert', text: text, threadId: selfThreadId});
+  postMessage({cmd: 'alert', text: text, threadId: Module['_pthread_self']()});
 }
 #if ASSERTIONS
 // We don't need out() for now, but may need to add it if we want to use it
@@ -152,21 +149,17 @@ this.onmessage = function(e) {
       // threads see a somewhat coherent clock across each of them
       // (+/- 0.1msecs in testing).
       Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
-      threadInfoStruct = e.data.threadInfoStruct;
+      var threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['registerPthreadPtr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['__emscripten_thread_init'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
-      selfThreadId = e.data.selfThreadId;
-      parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
       // The stack grows downwards
       var max = e.data.stackBase;
       var top = e.data.stackBase + e.data.stackSize;
 #if ASSERTIONS
       assert(threadInfoStruct);
-      assert(selfThreadId);
-      assert(parentThreadId);
       assert(top != 0);
       assert(max != 0);
       assert(top > max);
@@ -212,19 +205,19 @@ this.onmessage = function(e) {
         } else if (ex != 'unwind') {
 #if MINIMAL_RUNTIME
           // ExitStatus not present in MINIMAL_RUNTIME
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
 #else
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
 #endif
 
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
             throw ex;
           }
 #endif
-          Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
+          Module['_emscripten_futex_wake'](threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}}, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
 #if MINIMAL_RUNTIME
           throw ex; // ExitStatus not present in MINIMAL_RUNTIME
 #else

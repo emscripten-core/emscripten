@@ -47,11 +47,6 @@ var wasmMemory;
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
-// Only workers actually use these field, but we refer to them from
-// library_pthread (which exists on all threads) so this definition is useful
-// to avoid accessing the global scope.
-var threadInfoStruct = 0;
-var selfThreadId = 0;
 #endif // USE_PTHREADS
 
 //========================================
@@ -325,15 +320,16 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #endif
 #endif
 
-#if STANDALONE_WASM
-#if ASSERTIONS
-// In standalone mode, the wasm creates the memory, and the user can't provide it.
-assert(!Module['wasmMemory']);
-#endif // ASSERTIONS
-#else // !STANDALONE_WASM
+#if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#endif // !STANDALONE_WASM
+#else // IMPORTED_MEMORY
+#if ASSERTIONS
+// If memory is defined in wasm, the user can't provide it.
+assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -s IMPORTED_MEMORY to define wasmMemory externally');
+assert(INITIAL_MEMORY == {{{INITIAL_MEMORY}}}, 'Detected runtime INITIAL_MEMORY setting.  Use -s IMPORTED_MEMORY to define wasmMemory dynamically');
+#endif // ASSERTIONS
+#endif // IMPORTED_MEMORY
 
 #include "runtime_init_table.js"
 #include "runtime_stack_check.js"
@@ -869,6 +865,21 @@ function createWasm() {
 
     Module['asm'] = exports;
 
+#if !IMPORTED_MEMORY
+    wasmMemory = Module['asm']['memory'];
+#if ASSERTIONS
+    assert(wasmMemory, "memory not found in wasm exports");
+    // This assertion doesn't hold when emscripten is run in --post-link
+    // mode.
+    // TODO(sbc): Read INITIAL_MEMORY out of the wasm file in post-link mode.
+    //assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
+#endif
+    updateGlobalBufferAndViews(wasmMemory.buffer);
+#endif
+#if !MEM_INIT_IN_WASM
+    runMemoryInitializer();
+#endif
+
 #if !RELOCATABLE
     wasmTable = Module['asm']['__indirect_function_table'];
 #if ASSERTIONS && !PURE_WASI
@@ -884,19 +895,6 @@ function createWasm() {
     // If we didn't declare the asm exports as top level enties this function
     // is in charge of programatically exporting them on the global object.
     exportAsmFunctions(exports);
-#endif
-#if STANDALONE_WASM
-    // In pure wasm mode the memory is created in the wasm (not imported), and
-    // then exported.
-    // TODO: do not create a Memory earlier in JS
-    wasmMemory = exports['memory'];
-#if ASSERTIONS
-    assert(wasmMemory, "memory not found in wasm exports");
-#endif
-    updateGlobalBufferAndViews(wasmMemory.buffer);
-#if STACK_OVERFLOW_CHECK
-    writeStackCookie();
-#endif
 #endif
 #if USE_PTHREADS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.

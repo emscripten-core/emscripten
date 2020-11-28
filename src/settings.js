@@ -214,6 +214,12 @@ var MEMORY_GROWTH_GEOMETRIC_CAP = 96*1024*1024;
 // and MEMORY_GROWTH_GEOMETRIC_CAP are ignored.
 var MEMORY_GROWTH_LINEAR_STEP = -1;
 
+// The "architecture" to compile for. 0 means the default wasm32, 1 is
+// the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
+// wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
+// using i64 pointers).
+var MEMORY64 = 0;
+
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
 var ALLOW_TABLE_GROWTH = 0;
@@ -1629,6 +1635,17 @@ var ABORT_ON_WASM_EXCEPTIONS = 0;
 // This setting is experimental and subject to change or removal.
 // Implies STANDALONE_WASM.
 var PURE_WASI = 0;
+
+// Set to 1 to define the WebAssembly.Memory object outside of the wasm
+// module.  By default the wasm module defines the memory and exports
+// it to JavaScript.
+// Use of the following settings will enable this settings since they
+// depend on being able to define the memory in JavaScript:
+// - USE_PTHREADS
+// - RELOCATABLE
+// - ASYNCIFY_LAZY_LOAD_CODE
+// - WASM2JS (WASM=0)
+var IMPORTED_MEMORY = 0;
 
 //===========================================
 // Internal, used for testing only, from here

@@ -8,6 +8,14 @@
 // of 9 and 16.
 {{{ GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 }}} // = 288
 
+{{{
+  global.isCurrentContextWebGL2 = function isCurrentContextWebGL2() {
+    if (MIN_WEBGL_VERSION >= 2) return 'true';
+    if (MAX_WEBGL_VERSION <= 1) return 'false';
+    return 'GL.currentContext.version >= 2';
+  }
+}}}
+
 var LibraryGL = {
 
   // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
@@ -483,7 +491,7 @@ var LibraryGL = {
           break;
         default:
 #if MAX_WEBGL_VERSION >= 2
-          if (GL.currentContext.version >= 2) {
+          if ({{{ isCurrentContextWebGL2() }}}) {
             if (dataType == 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */ || dataType == 0x8D9F /* GL_INT_2_10_10_10_REV */) {
               sizeBytes = 4;
               break;
@@ -618,6 +626,9 @@ var LibraryGL = {
       } else {
 #endif
 
+#if MIN_WEBGL_VERSION >= 2
+      var ctx = canvas.getContext("webgl2", webGLContextAttributes);
+#else
       var ctx = 
 #if MAX_WEBGL_VERSION >= 2
         (webGLContextAttributes.majorVersion > 1)
@@ -635,6 +646,7 @@ var LibraryGL = {
           || canvas.getContext("experimental-webgl", webGLContextAttributes)
 #endif
           );
+#endif // MAX_WEBGL_VERSION >= 2
 
 #if GL_PREINITIALIZED_CONTEXT
       }
@@ -1075,41 +1087,13 @@ var LibraryGL = {
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
       __webgl_enable_WEBGL_multi_draw(GLctx);
 
-      // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
-      // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
-      // As new extensions are ratified at http://www.khronos.org/registry/webgl/extensions/ , feel free to add your new extensions
-      // here, as long as they don't produce a performance impact for users that might not be using those extensions.
-      // E.g. debugging-related extensions should probably be off by default.
-      var automaticallyEnabledExtensions = [ // Khronos ratified WebGL extensions ordered by number (no debug extensions):
-                                             "OES_texture_float", "OES_texture_half_float", "OES_standard_derivatives",
-                                             "OES_vertex_array_object", "WEBGL_compressed_texture_s3tc", "WEBGL_depth_texture",
-                                             "OES_element_index_uint", "EXT_texture_filter_anisotropic", "EXT_frag_depth",
-                                             "WEBGL_draw_buffers", "ANGLE_instanced_arrays", "OES_texture_float_linear",
-                                             "OES_texture_half_float_linear", "EXT_blend_minmax", "EXT_shader_texture_lod",
-                                             "EXT_texture_norm16",
-                                             // Community approved WebGL extensions ordered by number:
-                                             "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
-                                             "EXT_sRGB", "WEBGL_compressed_texture_etc1", "EXT_disjoint_timer_query",
-                                             "WEBGL_compressed_texture_etc", "WEBGL_compressed_texture_astc", "EXT_color_buffer_float",
-                                             "WEBGL_compressed_texture_s3tc_srgb", "EXT_disjoint_timer_query_webgl2",
-                                             // Old style prefixed forms of extensions (but still currently used on e.g. iPhone Xs as
-                                             // tested on iOS 12.4.1):
-                                             "WEBKIT_WEBGL_compressed_texture_pvrtc"];
-
-      function shouldEnableAutomatically(extension) {
-        var ret = false;
-        automaticallyEnabledExtensions.forEach(function(include) {
-          if (extension.indexOf(include) != -1) {
-            ret = true;
-          }
-        });
-        return ret;
-      }
-
-      var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      var exts = GLctx.getSupportedExtensions() || [];
       exts.forEach(function(ext) {
-        if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
-          GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+        // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders are not enabled by default.
+        if (ext.indexOf('lose_context') < 0 && ext.indexOf('debug') < 0) {
+          // Call .getExtension() to enable that extension permanently.
+          GLctx.getExtension(ext);
         }
       });
     },
@@ -1214,7 +1198,7 @@ var LibraryGL = {
         var glVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
         // return GLES version string corresponding to the version of the WebGL context
 #if MAX_WEBGL_VERSION >= 2
-        if (GL.currentContext.version >= 2) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
+        if ({{{ isCurrentContextWebGL2() }}}) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
         else
 #endif
         {
@@ -1448,7 +1432,7 @@ var LibraryGL = {
   glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, imageSize, data);
       } else {
@@ -1464,7 +1448,7 @@ var LibraryGL = {
   glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, imageSize, data);
       } else {
@@ -1544,7 +1528,7 @@ var LibraryGL = {
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
 #if MAX_WEBGL_VERSION >= 2
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
-    if (GL.currentContext.version >= 2) {
+    if ({{{ isCurrentContextWebGL2() }}}) {
       // WebGL 1 unsized texture internalFormats are no longer supported in WebGL 2, so patch those format
       // enums to the ones that are present in WebGL 2.
       if (format == 0x1902/*GL_DEPTH_COMPONENT*/ && internalFormat == 0x1902/*GL_DEPTH_COMPONENT*/ && type == 0x1405/*GL_UNSIGNED_INT*/) {
@@ -1561,7 +1545,7 @@ var LibraryGL = {
       }
     }
 #endif
-    if (GL.currentContext.version >= 2) {
+    if ({{{ isCurrentContextWebGL2() }}}) {
       // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
@@ -1586,14 +1570,14 @@ var LibraryGL = {
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
 #if MAX_WEBGL_VERSION >= 2
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
-    if (GL.currentContext.version >= 2) {
+    if ({{{ isCurrentContextWebGL2() }}}) {
       // In WebGL 1 to do half float textures, one uses the type enum GL_HALF_FLOAT_OES, but in
       // WebGL 2 when half float textures were adopted to the core spec, the enum changed value
       // which breaks backwards compatibility. Route old enum number to the new one.
       if (type == 0x8d61/*GL_HALF_FLOAT_OES*/) type = 0x140B /*GL_HALF_FLOAT*/;
     }
 #endif
-    if (GL.currentContext.version >= 2) {
+    if ({{{ isCurrentContextWebGL2() }}}) {
       // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
@@ -1619,7 +1603,7 @@ var LibraryGL = {
   ],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
@@ -1800,7 +1784,7 @@ var LibraryGL = {
 #endif
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (data) {
         GLctx.bufferData(target, HEAPU8, usage, data, size);
       } else {
@@ -1819,7 +1803,7 @@ var LibraryGL = {
   glBufferSubData__sig: 'viiii',
   glBufferSubData: function(target, offset, size, data) {
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.bufferSubData(target, offset, HEAPU8, data, size);
       return;
     }
@@ -2243,7 +2227,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform1iv(GL.uniforms[location], HEAP32, value>>2, count);
       return;
     }
@@ -2286,7 +2270,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform2iv(GL.uniforms[location], HEAP32, value>>2, count*2);
       return;
     }
@@ -2330,7 +2314,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*3);
       return;
     }
@@ -2375,7 +2359,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform4iv(GL.uniforms[location], HEAP32, value>>2, count*4);
       return;
     }
@@ -2421,7 +2405,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform1fv(GL.uniforms[location], HEAPF32, value>>2, count);
       return;
     }
@@ -2464,7 +2448,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform2fv(GL.uniforms[location], HEAPF32, value>>2, count*2);
       return;
     }
@@ -2508,7 +2492,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform3fv(GL.uniforms[location], HEAPF32, value>>2, count*3);
       return;
     }
@@ -2553,7 +2537,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform4fv(GL.uniforms[location], HEAPF32, value>>2, count*4);
       return;
     }
@@ -2603,7 +2587,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*4);
       return;
     }
@@ -2649,7 +2633,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*9);
       return;
     }
@@ -2700,7 +2684,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*16);
       return;
     }
@@ -2896,7 +2880,7 @@ var LibraryGL = {
     var source = GL.getSource(shader, count, string, length);
 
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
-    if (GL.currentContext.version >= 2) {
+    if ({{{ isCurrentContextWebGL2() }}}) {
       // If a WebGL 1 shader happens to use GL_EXT_shader_texture_lod extension,
       // it will not compile on WebGL 2, because WebGL 2 no longer supports that
       // extension for WebGL 1 shaders. Therefore upgrade shaders to WebGL 2
@@ -3822,7 +3806,7 @@ var LibraryGL = {
     GL.mappedBuffers[buffer] = null;
 
     if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
-      if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
         GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
       } else {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));

@@ -49,6 +49,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
+from tools import config
 
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -553,6 +554,8 @@ def backend_binaryen_passes():
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if shared.Settings.SAFE_HEAP:
     passes += ['--safe-heap']
+  if shared.Settings.MEMORY64 == 2:
+    passes += ['--memory64-lowering']
   if run_binaryen_optimizer:
     passes += ['--post-emscripten']
     if not shared.Settings.EXIT_RUNTIME:
@@ -654,8 +657,8 @@ def backend_binaryen_passes():
 
 def make_js_executable(script):
   src = open(script).read()
-  cmd = shared.shlex_join(shared.JS_ENGINE)
-  if not os.path.isabs(shared.JS_ENGINE[0]):
+  cmd = shared.shlex_join(config.JS_ENGINE)
+  if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
     cmd = '/usr/bin/env -S ' + cmd
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
@@ -926,7 +929,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # warnings are properly printed during arg parse.
     newargs = diagnostics.capture_warnings(newargs)
 
-    if not shared.CONFIG_FILE:
+    if not config.config_file:
       diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprecated. Please use a file instead.')
 
     for i in range(len(newargs)):
@@ -1574,10 +1577,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # manually export them
 
       shared.Settings.EXPORTED_FUNCTIONS += [
-        '_emscripten_get_global_libc', '___pthread_tsd_run_dtors',
-        'registerPthreadPtr', '_pthread_self',
-        '___emscripten_pthread_data_constructor', '_emscripten_futex_wake',
-        '_emscripten_stack_set_limits']
+        '__emscripten_thread_init',
+        '_emscripten_get_global_libc',
+        '___pthread_tsd_run_dtors',
+        '_pthread_self',
+        '___emscripten_pthread_data_constructor',
+        '_emscripten_futex_wake',
+        '_emscripten_stack_set_limits',
+        '_emscripten_tls_init']
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1734,11 +1741,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
       if shared.Settings.MINIMAL_RUNTIME:
         exit_with_error('MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm')
-      if shared.Settings.WASM2JS:
-        exit_with_error('WASM2JS is not compatible with STANDALONE_WASM output')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
+
+    # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
+    if shared.Settings.USE_PTHREADS or shared.Settings.RELOCATABLE or shared.Settings.ASYNCIFY_LAZY_LOAD_CODE or shared.Settings.WASM2JS:
+      shared.Settings.IMPORTED_MEMORY = 1
 
     if shared.Settings.WASM_BIGINT:
       shared.Settings.LEGALIZE_JS_FFI = 0
@@ -1895,6 +1904,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.USE_PTHREADS:
       newargs.append('-pthread')
 
+    # Any "pointers" passed to JS will now be i64's, in both modes.
+    if shared.Settings.MEMORY64:
+      if settings_key_changes.get('WASM_BIGINT') == '0':
+        exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
+      shared.Settings.WASM_BIGINT = 1
+
     # check if we can address the 2GB mark and higher: either if we start at
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
     if shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
@@ -1947,10 +1962,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     CXX = [shared.CLANG_CXX]
     CC = [shared.CLANG_CC]
-    if shared.COMPILER_WRAPPER:
-      logger.debug('using compiler wrapper: %s', shared.COMPILER_WRAPPER)
-      CXX.insert(0, shared.COMPILER_WRAPPER)
-      CC.insert(0, shared.COMPILER_WRAPPER)
+    if config.COMPILER_WRAPPER:
+      logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
+      CXX.insert(0, config.COMPILER_WRAPPER)
+      CC.insert(0, config.COMPILER_WRAPPER)
 
     if 'EMMAKEN_COMPILER' in os.environ:
       diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
@@ -1960,7 +1975,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
-    compile_args += calc_cflags(options)
+    cflags = calc_cflags(options)
+    system_libs.add_ports_cflags(cflags, shared.Settings)
 
     def use_cxx(src):
       if 'c++' in language_mode or run_via_emxx:
@@ -1987,9 +2003,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     def get_clang_command(src_file):
       cxx = use_cxx(src_file)
-      cflags = shared.get_cflags(args, cxx)
-      cmd = get_compiler(cxx) + cflags + compile_args + [src_file]
-      return system_libs.process_args(cmd, shared.Settings)
+      per_file_cflags = shared.get_cflags(args, cxx)
+      return get_compiler(cxx) + cflags + per_file_cflags + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
       asflags = shared.get_asmflags()
@@ -2017,12 +2032,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for header in headers:
         if not header.endswith(HEADER_ENDINGS):
           exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
-        cxx = use_cxx(header)
-        cflags = shared.get_cflags(args, cxx)
-        cmd = get_compiler(cxx) + cflags + compile_args + [header]
+        cmd = get_clang_command(header)
         if specified_target:
           cmd += ['-o', specified_target]
-        cmd = system_libs.process_args(cmd, shared.Settings)
         logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
         shared.print_compiler_stage(cmd)
         return run_process(cmd, check=False).returncode
@@ -2440,7 +2452,7 @@ def parse_args(newargs):
     elif check_arg('--extern-post-js'):
       options.extern_post_js += open(consume_arg()).read() + '\n'
     elif check_arg('--compiler-wrapper'):
-      shared.COMPILER_WRAPPER = consume_arg()
+      config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
       options.post_link = True
     elif check_arg('--oformat'):
@@ -2607,7 +2619,7 @@ def parse_args(newargs):
       if os.path.exists(path):
         exit_with_error('File ' + optarg + ' passed to --generate-config already exists!')
       else:
-        shared.generate_config(optarg)
+        config.generate_config(optarg)
       should_exit = True
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif arg == '-pthread':
@@ -2730,12 +2742,14 @@ def do_binaryen(target, options, wasm_target):
       final_js = building.instrument_js_for_safe_heap(final_js)
 
     if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
-      # minify the JS
+      # minify the JS. Do not minify whitespace if Closure is used, so that
+      # Closure can print out readable error messages (Closure will then
+      # minify whitespace afterwards)
       save_intermediate_with_wasm('preclean', wasm_target)
       final_js = building.minify_wasm_js(js_file=final_js,
                                          wasm_file=wasm_target,
                                          expensive_optimizations=will_metadce(),
-                                         minify_whitespace=minify_whitespace(),
+                                         minify_whitespace=minify_whitespace() and not options.use_closure_compiler,
                                          debug_info=intermediate_debug_info)
       save_intermediate_with_wasm('postclean', wasm_target)
 

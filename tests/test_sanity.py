@@ -14,9 +14,10 @@ from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, chdir
 from runner import create_test_file, ensure_dir, make_executable
-from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
-from tools.shared import CONFIG_FILE, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
-from tools.shared import try_delete
+from tools.config import config_file, EM_CONFIG
+from tools.shared import PYTHON, EMCC
+from tools.shared import CANONICAL_TEMP_DIR
+from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs
 
@@ -25,27 +26,27 @@ commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
 
 def restore():
-  shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
+  shutil.copyfile(config_file + '_backup', config_file)
 
 
 # restore the config file and set it up for our uses
 def restore_and_set_up():
   restore()
-  with open(CONFIG_FILE, 'a') as f:
+  with open(config_file, 'a') as f:
     # make LLVM_ROOT sensitive to the LLVM env var, as we test that
-    f.write('LLVM_ROOT = "%s"\n' % LLVM_ROOT)
+    f.write('LLVM_ROOT = "%s"\n' % config.LLVM_ROOT)
     # unfreeze the cache, so we can test that
     f.write('FROZEN_CACHE = False\n')
 
 
 # wipe the config and sanity files, creating a blank slate
 def wipe():
-  try_delete(CONFIG_FILE)
+  try_delete(config_file)
   try_delete(SANITY_FILE)
 
 
 def add_to_config(content):
-  with open(CONFIG_FILE, 'a') as f:
+  with open(config_file, 'a') as f:
     f.write('\n' + content + '\n')
 
 
@@ -54,7 +55,7 @@ def get_basic_config():
 LLVM_ROOT = "%s"
 BINARYEN_ROOT = "%s"
 NODE_JS = %s
-''' % (LLVM_ROOT, shared.BINARYEN_ROOT, NODE_JS)
+''' % (config.LLVM_ROOT, config.BINARYEN_ROOT, config.NODE_JS)
 
 
 def make_fake_wasm_opt(filename, version):
@@ -122,15 +123,15 @@ class sanity(RunnerCore):
     # the sanity checks here
     del os.environ['EMCC_SKIP_SANITY_CHECK']
 
-    assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
-    shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
+    assert os.path.exists(config_file), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
+    shutil.copyfile(config_file, config_file + '_backup')
 
     print()
     print('Running sanity checks.')
-    print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (CONFIG_FILE, CONFIG_FILE))
+    print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (config_file, config_file))
     print()
     print('>>> the original settings file is:')
-    print(open(CONFIG_FILE).read().strip())
+    print(open(config_file).read().strip())
     print('<<<')
     print()
 
@@ -198,7 +199,7 @@ class sanity(RunnerCore):
       finally:
         shutil.rmtree(temp_bin)
 
-      default_config = shared.embedded_config
+      default_config = config.embedded_config
       self.assertContained('Welcome to Emscripten!', output)
       self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
       self.assertContained('A settings file has been copied to %s, at absolute path: %s' % (default_config, default_config), output)
@@ -255,7 +256,7 @@ class sanity(RunnerCore):
 
     # Fake a different llvm version
     restore_and_set_up()
-    with open(CONFIG_FILE, 'a') as f:
+    with open(config_file, 'a') as f:
       f.write('LLVM_ROOT = "' + self.in_dir('fake') + '"')
 
     real_version_x, real_version_y = (int(x) for x in EXPECTED_LLVM_VERSION.split('.'))
@@ -302,7 +303,7 @@ class sanity(RunnerCore):
 
     # Fake a different node version
     restore_and_set_up()
-    with open(CONFIG_FILE, 'a') as f:
+    with open(config_file, 'a') as f:
       f.write('NODE_JS = "' + self.in_dir('fake', 'nodejs') + '"')
 
     ensure_dir('fake')
@@ -321,7 +322,7 @@ echo "%s"
 else
 %s $@
 fi
-''' % (version, NODE_JS))
+''' % (version, config.NODE_JS))
         f.close()
         make_executable(self.in_dir('fake', 'nodejs'))
         if not succeed:
@@ -380,7 +381,7 @@ fi
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc should also check sanity if the file is outdated
-    open(CONFIG_FILE, 'a').write('# extra stuff\n')
+    open(config_file, 'a').write('# extra stuff\n')
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
@@ -509,14 +510,14 @@ fi
 
     fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
 
-    orig_config = open(CONFIG_FILE, 'r').read()
+    orig_config = open(config_file, 'r').read()
 
     # Move the ~/.emscripten to a custom location.
     with os.fdopen(fd, "w") as f:
       f.write(get_basic_config())
 
     # Make a syntax error in the original config file so that attempting to access it would fail.
-    open(CONFIG_FILE, 'w').write('asdfasdfasdfasdf\n\'\'\'' + orig_config)
+    open(config_file, 'w').write('asdfasdfasdfasdf\n\'\'\'' + orig_config)
 
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
@@ -605,11 +606,11 @@ fi
     ensure_dir(test_path)
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
-      jsengines = [('d8',     V8_ENGINE),
-                   ('d8_g',   V8_ENGINE),
-                   ('js',     SPIDERMONKEY_ENGINE),
-                   ('node',   NODE_JS),
-                   ('nodejs', NODE_JS)]
+      jsengines = [('d8',     config.V8_ENGINE),
+                   ('d8_g',   config.V8_ENGINE),
+                   ('js',     config.SPIDERMONKEY_ENGINE),
+                   ('node',   config.NODE_JS),
+                   ('nodejs', config.NODE_JS)]
       for filename, engine in jsengines:
         if type(engine) is list:
           engine = engine[0]
@@ -655,7 +656,7 @@ fi
     Cache.erase()
 
     def make_fake(report):
-      with open(CONFIG_FILE, 'a') as f:
+      with open(config_file, 'a') as f:
         f.write('LLVM_ROOT = "' + self.in_dir('fake', 'bin') + '"\n')
         # BINARYEN_ROOT needs to exist in the config, even though this test
         # doesn't actually use it.
@@ -679,11 +680,11 @@ fi
     # with no binaryen root, an error is shown
     restore_and_set_up()
 
-    open(CONFIG_FILE, 'a').write('\nBINARYEN_ROOT = ""\n')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % CONFIG_FILE)
+    open(config_file, 'a').write('\nBINARYEN_ROOT = ""\n')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % config_file)
 
-    open(CONFIG_FILE, 'a').write('\ndel BINARYEN_ROOT\n')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is not defined in %s' % CONFIG_FILE)
+    open(config_file, 'a').write('\ndel BINARYEN_ROOT\n')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is not defined in %s' % config_file)
 
   def test_embuilder_force(self):
     restore_and_set_up()
@@ -698,14 +699,14 @@ fi
     # the --lto flag makes us build wasm-bc
     self.do([EMCC, '--clear-cache'])
     self.run_process([EMBUILDER, 'build', 'libemmalloc'])
-    self.assertExists(os.path.join(shared.CACHE, 'wasm'))
+    self.assertExists(os.path.join(config.CACHE, 'wasm'))
     self.do([EMCC, '--clear-cache'])
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
-    self.assertExists(os.path.join(shared.CACHE, 'wasm-lto'))
+    self.assertExists(os.path.join(config.CACHE, 'wasm-lto'))
 
   def test_binaryen_version(self):
     restore_and_set_up()
-    with open(CONFIG_FILE, 'a') as f:
+    with open(config_file, 'a') as f:
       f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
 
     make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')

@@ -9,7 +9,7 @@ static const double_t toint = 1/EPS;
 
 double ceil(double x)
 {
-// XXX EMSCRIPTEN: on wasm backend, use the wasm instruction via clang builtin
+// XXX EMSCRIPTEN: use the wasm instruction via clang builtin
 // See https://github.com/emscripten-core/emscripten/issues/9236
 #ifdef __wasm__
 	return __builtin_ceil(x);

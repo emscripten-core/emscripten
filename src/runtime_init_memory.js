@@ -4,8 +4,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-// Create the main memory. (Note: this isn't used in STANDALONE_WASM mode since the wasm
-// memory is created in the wasm, not in JS.)
+// Create the wasm memory. (Note: this only applies if IMPORTED_MEMORY is defined)
+#if !IMPORTED_MEMORY
+{{{ throw "this file should not be be included when IMPORTED_MEMORY is set"; }}}
+#endif
+
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
