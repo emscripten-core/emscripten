@@ -3,8 +3,7 @@
     // libc
     // ===========================================
     {
-        "file": "libc/dirent.h",
-        "defines": [],
+        "file": "dirent.h",
         "structs": {
             "dirent": [
                 "d_ino",
@@ -16,15 +15,13 @@
         }
     },
     {
-        "file": "libc/limits.h",
+        "file": "limits.h",
         "defines": [
             "INT_MAX"
-        ],
-        "structs": {}
+        ]
     },
     {
-        "file": "libc/utime.h",
-        "defines": [],
+        "file": "utime.h",
         "structs": {
             "utimbuf": [
                 "actime",
@@ -81,8 +78,7 @@
         }
     },
     {
-        "file": "libc/sys/statvfs.h",
-        "defines": [],
+        "file": "sys/statvfs.h",
         "structs": {
             "statvfs": [
                 "f_bsize",
@@ -100,8 +96,7 @@
         }
     },
     {
-        "file": "libc/sys/statfs.h",
-        "defines": [],
+        "file": "sys/statfs.h",
         "structs": {
             "statfs": [
                 "f_bsize",
@@ -118,7 +113,7 @@
         }
     },
     {
-        "file": "libc/fcntl.h",
+        "file": "fcntl.h",
         "defines": [
             "F_UNLCK",
             "O_RDWR",
@@ -149,7 +144,7 @@
         }
     },
     {
-        "file": "libc/poll.h",
+        "file": "poll.h",
         "defines": [
             "POLLHUP",
             "POLLERR",
@@ -169,7 +164,7 @@
         }
     },
     {
-        "file": "libc/stdlib.h",
+        "file": "stdlib.h",
         "defines": [
             "RAND_MAX"
         ],
@@ -184,15 +179,13 @@
         }
     },
     {
-        "file": "libc/limits.h",
+        "file": "limits.h",
         "defines": [
             "PTHREAD_KEYS_MAX"
-        ],
-        "structs": {}
+        ]
     },
     {
-        "file": "libc/sys/utsname.h",
-        "defines": [],
+        "file": "sys/utsname.h",
         "structs": {
             "utsname": [
                 "sysname",
@@ -205,7 +198,7 @@
         }
     },
     {
-        "file": "libc/time.h",
+        "file": "time.h",
         "defines": [
             ["li", "CLOCKS_PER_SEC"],
             "TIME_UTC",
@@ -256,8 +249,7 @@
         }
     },
     {
-        "file": "libc/sys/times.h",
-        "defines": [],
+        "file": "sys/times.h",
         "structs": {
             "tms": [
                 "tms_utime",
@@ -268,7 +260,6 @@
         }
     },
     {
-        "defines": [],
         "file": "compat/sys/timeb.h",
         "structs": {
             "timeb": [
@@ -280,8 +271,7 @@
         }
     },
     {
-        "file": "libc/sys/resource.h",
-        "defines": [],
+        "file": "sys/resource.h",
         "structs": {
             "rlimit": [
                 "rlim_cur",
@@ -318,7 +308,7 @@
         }
     },
     {
-        "file": "libc/netdb.h",
+        "file": "netdb.h",
         "defines": [
             "AI_V4MAPPED",
             "EAI_SERVICE",
@@ -437,23 +427,21 @@
         }
     },
     {
-        "file": "libc/netinet/in.h",
+        "file": "netinet/in.h",
         "defines": [
             "IPPROTO_UDP",
             "IPPROTO_TCP",
             "INADDR_LOOPBACK"
-        ],
-        "structs": {}
+        ]
     },
     {
-        "file": "libc/math.h",
+        "file": "math.h",
         "defines": [
             "FP_ZERO",
             "FP_NAN",
             "FP_INFINITE",
             "FP_NORMAL"
-        ],
-        "structs": {}
+        ]
     },
     {
         "file": "bits/fcntl.h",
@@ -475,18 +463,16 @@
             "F_GETFL",
             "O_LARGEFILE",
             "O_NOCTTY"
-        ],
-        "structs": {}
+        ]
     },
     {
         "file": "signal.h",
         "defines": [
             "SIGALRM"
-        ],
-        "structs": {}
+        ]
     },
     {
-        "file": "libc/sys/socket.h",
+        "file": "sys/socket.h",
         "defines": [
             "SOCK_DGRAM",
             "SOCK_STREAM",
@@ -497,8 +483,7 @@
             "AF_INET6",
             "SOL_SOCKET",
             "SO_ERROR"
-        ],
-        "structs": {}
+        ]
     },
     {
         "file": "bits/ioctl.h",
@@ -516,11 +501,10 @@
             "TIOCSPGRP",
             "TIOCGWINSZ",
             "TIOCSWINSZ"
-        ],
-        "structs": {}
+        ]
     },
     {
-        "file": "libc/unistd.h",
+        "file": "unistd.h",
         "defines": [
             "_SC_XOPEN_LEGACY",
             "_SC_XOPEN_VERSION",
@@ -685,8 +669,7 @@
             "_SC_AIO_LISTIO_MAX",
             "_SC_BC_SCALE_MAX",
             "_SC_TTY_NAME_MAX"
-        ],
-        "structs": {}
+        ]
     },
     {
         "file": "bits/errno.h",
@@ -810,11 +793,10 @@
             "EISCONN",
             "ENOTBLK",
             "EOVERFLOW"
-        ],
-        "structs": {}
+        ]
     },
     {
-        "file": "libc/langinfo.h",
+        "file": "langinfo.h",
         "defines": [
             "ABDAY_7",
             "ABDAY_6",
@@ -871,26 +853,23 @@
             "ABMON_12",
             "ABMON_11",
             "ABMON_10"
-        ],
-        "structs": {}
+        ]
     },
     {
-        "file": "libc/stdio.h",
+        "file": "stdio.h",
         "defines": [
             "EOF",
             "SEEK_END",
             "SEEK_CUR",
             "SEEK_SET"
-        ],
-        "structs": {}
+        ]
     },
     {
-        "file": "libc/arpa/tftp.h",
+        "file": "arpa/tftp.h",
         "defines": [
             "EACCES",
             "EEXIST"
-        ],
-        "structs": {}
+        ]
     },
     {
         "file": "sys/stat.h",
@@ -900,8 +879,7 @@
             "S_IRUGO",
             "S_IRWXUGO",
             "S_IXUGO"
-        ],
-        "structs": {}
+        ]
     },
     {
         "file": "bits/mman.h",
@@ -911,8 +889,7 @@
             "MAP_FIXED",
             "MAP_PRIVATE",
             "PROT_WRITE"
-        ],
-        "structs": {}
+        ]
     },
     {
         "file": "dlfcn.h",
@@ -922,15 +899,13 @@
             "RTLD_DEFAULT",
             "RTLD_GLOBAL",
             "RTLD_NODELETE"
-        ],
-        "structs": {}
+        ]
     },
     // ===========================================
     // SDL
     // ===========================================
     {
         "file": "SDL/SDL_rect.h",
-        "defines": [],
         "structs": {
             "SDL_Rect": [
                 "x",
@@ -942,7 +917,6 @@
     },
     {
         "file": "SDL/SDL_keyboard.h",
-        "defines": [],
         "structs": {
             "SDL_Keysym": [
                 "scancode",
@@ -993,7 +967,6 @@
     },
     {
         "file": "SDL/SDL_surface.h",
-        "defines": [],
         "structs": {
             "SDL_Surface": [
                 "flags",
@@ -1013,7 +986,6 @@
     },
     {
         "file": "SDL/SDL_events.h",
-        "defines": [],
         "structs": {
             "SDL_WindowEvent": [
                 "type",
@@ -1105,8 +1077,7 @@
     },
     {
         "file": "SDL/SDL_touch.h",
-        "defines": ["SDL_TOUCH_MOUSEID"],
-        "structs": {}
+        "defines": ["SDL_TOUCH_MOUSEID"]
     },
     {
         "file": "SDL/SDL_audio.h",
@@ -1191,8 +1162,7 @@
             "UUID_VARIANT_OTHER",
             "UUID_TYPE_DCE_TIME",
             "UUID_TYPE_DCE_RANDOM"
-        ],
-        "structs": {}
+        ]
     },
     // ===========================================
     // emscripten html5 library
@@ -1575,14 +1545,24 @@
               "cancelasync",
               "locale"
             ]
-        },
-        "defines": []
+        }
     },
     {
         "file": "../lib/libc/musl/src/internal/libc.h",
         "structs": {
             "libc": [
               "global_locale"
+            ]
+        }
+    },
+    {
+        "file": "wasi/api.h",
+        "structs": {
+            "__wasi_fdstat_t": [
+                "fs_filetype",
+                "fs_flags",
+                "fs_rights_base",
+                "fs_rights_inheriting"
             ]
         },
         "defines": [
@@ -1595,18 +1575,6 @@
             "__WASI_CLOCKID_PROCESS_CPUTIME_ID",
             "__WASI_CLOCKID_THREAD_CPUTIME_ID"
         ]
-    },
-    {
-        "file": "wasi/api.h",
-        "structs": {
-            "__wasi_fdstat_t": [
-                "fs_filetype",
-                "fs_flags",
-                "fs_rights_base",
-                "fs_rights_inheriting"
-            ]
-        },
-        "defines": []
     },
     {
         "file": "emscripten/fetch.h",
@@ -1670,8 +1638,7 @@
                 "user_data",
                 "asyncify_data"
             ]
-        },
-        "defines": []
+        }
     },
     // ===========================================
     // WebGPU
@@ -1680,7 +1647,6 @@
     // ===========================================
     {
         "file": "webgpu/webgpu.h",
-        "defines": [],
         "structs": {
             "WGPUChainedStruct": [
                 "next",

@@ -441,14 +441,18 @@ def parse_json(path, header_files, structs, defines):
     data = [data]
 
   for item in data:
+    for key in item.keys():
+      if key not in ['file', 'defines', 'structs']:
+        raise 'Unexpected key in json file: %s' % key
+
     header_files.append(item['file'])
-    for name, data in item['structs'].items():
+    for name, data in item.get('structs', {}).items():
       if name in structs:
         show('WARN: Description of struct "' + name + '" in file "' + item['file'] + '" replaces an existing description!')
 
       structs[name] = data
 
-    for part in item['defines']:
+    for part in item.get('defines', []):
       if not isinstance(part, list):
         # If no type is specified, assume integer.
         part = ['i', part]
