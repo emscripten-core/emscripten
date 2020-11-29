@@ -33,7 +33,7 @@ void onerror(void* arg)
 void onload(void* arg, void* ptr, int num)
 {
   assert(expected == (int)arg);
-  printf("loaded %s\n", ptr);
+  printf("loaded %s\n", (char*)ptr);
   assert(num == strlen(SECRET)+1);
   assert(strcmp(ptr, SECRET) == 0);
   REPORT_RESULT(1);

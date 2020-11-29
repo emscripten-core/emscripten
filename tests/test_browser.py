@@ -1730,9 +1730,9 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_glgears_deriv(self):
     self.btest('hello_world_gles_deriv.c', reference='gears.png', reference_slack=2,
-               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'], outfile='something.html',
+               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'],
                message='You should see animating gears.')
-    with open('something.html') as f:
+    with open('test.html') as f:
       assert 'gl-matrix' not in f.read(), 'Should not include glMatrix when not needed'
 
   @requires_graphics_hardware
@@ -2543,7 +2543,7 @@ Module["preRun"].push(function () {
 });
 ''')
 
-    self.btest('doublestart.c', args=['--pre-js', 'pre.js', '-o', 'test.html'], expected='1')
+    self.btest('doublestart.c', args=['--pre-js', 'pre.js'], expected='1')
 
   @parameterized({
     '': ([],),
