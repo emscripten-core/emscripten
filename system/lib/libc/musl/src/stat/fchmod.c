@@ -6,8 +6,6 @@
 #include <fcntl.h>
 #include "syscall.h"
 
-void __procfdname(char *, unsigned);
-
 int fchmod(int fd, mode_t mode)
 {
 	int ret = __syscall(SYS_fchmod, fd, mode);

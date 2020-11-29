@@ -1,7 +1,5 @@
 #include <math.h>
-
-extern int __signgam;
-double __lgamma_r(double, int *);
+#include "libm.h"
 
 double lgamma(double x)
 {

@@ -92,6 +92,7 @@ unsigned sleep(unsigned);
 int pause(void);
 
 pid_t fork(void);
+pid_t _Fork(void);
 int execve(const char *, char *const [], char *const []);
 int execv(const char *, char *const []);
 int execle(const char *, const char *, ...);
@@ -120,10 +121,8 @@ gid_t getgid(void);
 gid_t getegid(void);
 int getgroups(int, gid_t []);
 int setuid(uid_t);
-int setreuid(uid_t, uid_t);
 int seteuid(uid_t);
 int setgid(gid_t);
-int setregid(gid_t, gid_t);
 int setegid(gid_t);
 
 char *getlogin(void);
@@ -140,12 +139,13 @@ long fpathconf(int, int);
 long sysconf(int);
 size_t confstr(int, char *, size_t);
 
+#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 #define F_ULOCK 0
 #define F_LOCK  1
 #define F_TLOCK 2
 #define F_TEST  3
-
-#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+int setreuid(uid_t, uid_t);
+int setregid(gid_t, gid_t);
 int lockf(int, int, off_t);
 long gethostid(void);
 int nice(int);
@@ -186,6 +186,8 @@ int acct(const char *);
 /* XXX EMSCRIPTEN long syscall(long, ...); */
 int execvpe(const char *, char *const [], char *const []);
 int issetugid(void);
+int getentropy(void *, size_t);
+extern int optreset;
 #endif
 
 #ifdef _GNU_SOURCE
@@ -198,6 +200,7 @@ char *get_current_dir_name(void);
 int syncfs(int);
 int euidaccess(const char *, int);
 int eaccess(const char *, int);
+ssize_t copy_file_range(int, off_t *, int, off_t *, size_t, unsigned);
 pid_t gettid(void);
 #endif
 
@@ -486,6 +489,8 @@ pid_t gettid(void);
 #define _CS_POSIX_V7_LPBIG_OFFBIG_LDFLAGS	1145
 #define _CS_POSIX_V7_LPBIG_OFFBIG_LIBS	1146
 #define _CS_POSIX_V7_LPBIG_OFFBIG_LINTFLAGS	1147
+#define _CS_V6_ENV	1148
+#define _CS_V7_ENV	1149
 
 #ifdef __cplusplus
 }

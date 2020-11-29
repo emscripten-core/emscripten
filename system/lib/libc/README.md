@@ -1,5 +1,9 @@
-This folder contains the musl version of libc at `/musl`. The upstream version can be found at http://www.musl-libc.org/.
-Most of the source comes from musl 1.1.15, with some exceptions listed below.
+This folder contains the musl version of libc at `/musl`. The upstream version
+can be found at http://www.musl-libc.org/.
+
+Most of the source comes from musl v1.2.2, with some exceptions listed below.
+We track these changes from upstream in https://github.com/emscripten-core/musl
+and use a script (`system/lib/update_musl.py`) to pull in updates.
 
 Some changes have been made to the version that was taken from upstream, including:
 

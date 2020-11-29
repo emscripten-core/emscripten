@@ -1,15 +1,15 @@
 #include "stdio_impl.h"
+#include <stdio_ext.h>
 
 size_t __freadahead(FILE *f)
 {
-	return f->rend - f->rpos;
+	return f->rend ? f->rend - f->rpos : 0;
 }
 
 const char *__freadptr(FILE *f, size_t *sizep)
 {
-	size_t size = f->rend - f->rpos;
-	if (!size) return 0;
-	*sizep = size;
+	if (f->rpos == f->rend) return 0;
+	*sizep = f->rend - f->rpos;
 	return (const char *)f->rpos;
 }
 

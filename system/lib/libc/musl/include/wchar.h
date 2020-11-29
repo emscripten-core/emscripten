@@ -14,6 +14,10 @@ extern "C" {
 #define __NEED_wint_t
 #define __NEED_mbstate_t
 
+#if __STDC_VERSION__ < 201112L
+#define __NEED_struct__IO_FILE
+#endif
+
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 #define __NEED_locale_t
@@ -53,7 +57,7 @@ int wcscmp (const wchar_t *, const wchar_t *);
 int wcsncmp (const wchar_t *, const wchar_t *, size_t);
 
 int wcscoll(const wchar_t *, const wchar_t *);
-size_t wcsxfrm (wchar_t *__restrict, const wchar_t *__restrict, size_t n);
+size_t wcsxfrm (wchar_t *__restrict, const wchar_t *__restrict, size_t);
 
 wchar_t *wcschr (const wchar_t *, wchar_t);
 wchar_t *wcsrchr (const wchar_t *, wchar_t);
@@ -136,6 +140,21 @@ size_t wcsftime (wchar_t *__restrict, size_t, const wchar_t *__restrict, const s
 
 #undef iswdigit
 
+#if defined(_GNU_SOURCE)
+wint_t fgetwc_unlocked (FILE *);
+wint_t getwc_unlocked (FILE *);
+wint_t getwchar_unlocked (void);
+wint_t fputwc_unlocked (wchar_t, FILE *);
+wint_t putwc_unlocked (wchar_t, FILE *);
+wint_t putwchar_unlocked (wchar_t);
+wchar_t *fgetws_unlocked (wchar_t *__restrict, int, FILE *__restrict);
+int fputws_unlocked (const wchar_t *__restrict, FILE *__restrict);
+#endif
+
+#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+size_t wcsftime_l (wchar_t *__restrict, size_t, const wchar_t *__restrict, const struct tm *__restrict, locale_t);
+#endif
+
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE)  || defined(_BSD_SOURCE)
 FILE *open_wmemstream(wchar_t **, size_t *);
@@ -150,7 +169,7 @@ int wcscasecmp_l(const wchar_t *, const wchar_t *, locale_t);
 int wcsncasecmp(const wchar_t *, const wchar_t *, size_t);
 int wcsncasecmp_l(const wchar_t *, const wchar_t *, size_t, locale_t);
 int wcscoll_l(const wchar_t *, const wchar_t *, locale_t);
-size_t wcsxfrm_l(wchar_t *__restrict, const wchar_t *__restrict, size_t n, locale_t);
+size_t wcsxfrm_l(wchar_t *__restrict, const wchar_t *__restrict, size_t, locale_t);
 #endif
 
 #if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)

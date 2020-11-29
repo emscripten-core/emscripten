@@ -18,8 +18,13 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.35
+3.0.0
 ------
+- The version of musl libc used by emscripten was upgraded from v1.1.15 to
+  v1.2.2.  There could be some minor size regressions (or gains) due to changes
+  in upstream musl code but we don't expect anything major.  Since this fairly
+  change (at least internally) we are bumping the major version of emscripten
+  to 3. (#13006)
 
 2.0.34 - 11/04/2021
 -------------------

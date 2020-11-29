@@ -5,12 +5,16 @@
 off_t __ftello_unlocked(FILE *f)
 {
 	off_t pos = f->seek(f, 0,
-		(f->flags & F_APP) && f->wpos > f->wbase
+		(f->flags & F_APP) && f->wpos != f->wbase
 		? SEEK_END : SEEK_CUR);
 	if (pos < 0) return pos;
 
 	/* Adjust for data in buffer. */
-	return pos - (f->rend - f->rpos) + (f->wpos - f->wbase);
+	if (f->rend)
+		pos += f->rpos - f->rend;
+	else if (f->wbase)
+		pos += f->wpos - f->wbase;
+	return pos;
 }
 
 off_t __ftello(FILE *f)
@@ -34,4 +38,4 @@ long ftell(FILE *f)
 
 weak_alias(__ftello, ftello);
 
-LFS64(ftello);
+weak_alias(ftello, ftello64);

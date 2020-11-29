@@ -59,7 +59,7 @@
 
 #include <complex.h>
 #include <float.h>
-#include "libm.h"
+#include "complex_impl.h"
 
 #if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
 long double complex catanl(long double complex z)
@@ -97,30 +97,18 @@ long double complex catanl(long double complex z)
 	x = creall(z);
 	y = cimagl(z);
 
-	if ((x == 0.0L) && (y > 1.0L))
-		goto ovrf;
-
 	x2 = x * x;
 	a = 1.0L - x2 - (y * y);
-	if (a == 0.0L)
-		goto ovrf;
 
 	t = atan2l(2.0L * x, a) * 0.5L;
 	w = redupil(t);
 
 	t = y - 1.0L;
 	a = x2 + (t * t);
-	if (a == 0.0L)
-		goto ovrf;
 
 	t = y + 1.0L;
 	a = (x2 + (t * t)) / a;
-	w = w + (0.25L * logl(a)) * I;
-	return w;
-
-ovrf:
-	// FIXME
-	w = LDBL_MAX + LDBL_MAX * I;
+	w = CMPLXF(w, 0.25L * logl(a));
 	return w;
 }
 #endif

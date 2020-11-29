@@ -9,8 +9,6 @@
 #include <ctype.h>
 #include "lookup.h"
 
-int __inet_aton(const char *, struct in_addr *);
-
 int __lookup_ipliteral(struct address buf[static 1], const char *name, int family)
 {
 	struct in_addr a4;

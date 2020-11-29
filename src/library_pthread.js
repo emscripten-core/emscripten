@@ -125,6 +125,26 @@ var LibraryPThread = {
     },
 #endif
 
+#if PTHREADS_DEBUG
+    detachStateToString: function(state) {
+      if (state === {{{ cDefine('DT_EXITED') }}}) return 'DT_EXITED';
+      if (state === {{{ cDefine('DT_EXITING') }}}) return 'DT_EXITING';
+      if (state === {{{ cDefine('DT_JOINABLE') }}}) return 'DT_JOINABLE';
+      if (state === {{{ cDefine('DT_DETACHED') }}}) return 'DT_DETACHED';
+      assert(false);
+    },
+#endif
+
+    setDetachState: function(thread, newstate) {
+#if PTHREADS_DEBUG
+      var oldstate = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
+      var oldname = PThread.detachStateToString(oldstate);
+      var newname = PThread.detachStateToString(newstate);
+      console.log('thread 0x' + thread.toString(16) + ' state change: ' + oldname + ' -> ' + newname);
+#endif
+      Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2, newstate);
+    },
+
     terminateAllThreads: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
@@ -278,8 +298,8 @@ var LibraryPThread = {
         } else if (cmd === 'detachedExit') {
 #if ASSERTIONS
           assert(worker.pthread);
-          var detached = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
-          assert(detached);
+          var detach_state = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
+          assert(detach_state == {{{ cDefine('DT_EXITED') }}});
 #endif
           PThread.returnWorkerToPool(worker);
         } else if (cmd === 'cancelDone') {
@@ -570,6 +590,7 @@ var LibraryPThread = {
       worker: worker,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
+      initialState: {{{ cDefine('DT_JOINABLE') }}},
       allocatedOwnStack: threadParams.allocatedOwnStack,
       // Info area for this thread in Emscripten HEAP (shared)
       threadInfoStruct: threadParams.pthread_ptr
@@ -577,12 +598,9 @@ var LibraryPThread = {
     var tis = pthread.threadInfoStruct >> 2;
     // spawnThread is always called with a zero-initialized thread struct so
     // no need to set any valudes to zero here.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detached }}} >> 2), threadParams.detached);
+    PThread.setDetachState(pthread.threadInfoStruct, threadParams.initialState);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 0/*_a_stacksize*/ >> 2), threadParams.stackSize);
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 8/*_a_stackaddr*/ >> 2), stackHigh);
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 12/*_a_detach*/ >> 2), threadParams.detached);
 
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
@@ -772,23 +790,16 @@ var LibraryPThread = {
 
     var stackSize = 0;
     var stackBase = 0;
-    // Default thread attr is PTHREAD_CREATE_JOINABLE, i.e. start as not detached.
-    var detached = 0;
+    // Default thread state is DT_JOINABLE, i.e. start as not detached.
+    var initialState = {{{ cDefine('DT_JOINABLE') }}};
     // When musl creates C11 threads it passes __ATTRP_C11_THREAD (-1) which
     // treat as if it was NULL.
     if (attr && attr != {{{ cDefine('__ATTRP_C11_THREAD') }}}) {
       stackSize = {{{ makeGetValue('attr', 0/*_a_stacksize*/, 'i32') }}};
-      // Musl has a convention that the stack size that is stored to the pthread
-      // attribute structure is always musl's #define DEFAULT_STACK_SIZE
-      // smaller than the actual created stack size. That is, stored stack size
-      // of 0 would mean a stack of DEFAULT_STACK_SIZE in size. All musl
-      // functions hide this impl detail, and offset the size transparently, so
-      // pthread_*() API user does not see this offset when operating with
-      // the pthread API. When reading the structure directly on JS side
-      // however, we need to offset the size manually here.
-      stackSize += {{{ cDefine('DEFAULT_STACK_SIZE') }}};
       stackBase = {{{ makeGetValue('attr', 8/*_a_stackaddr*/, 'i32') }}};
-      detached = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} !== 0/*PTHREAD_CREATE_JOINABLE*/;
+      if ({{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}}) {
+        initialState = {{{ cDefine('DT_DETACHED') }}};
+      }
     } else {
       // According to
       // http://man7.org/linux/man-pages/man3/pthread_create.3.html, default
@@ -822,7 +833,7 @@ var LibraryPThread = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
-      detached: detached,
+      initialState: initialState,
       startRoutine: start_routine,
       pthread_ptr: pthread_ptr,
       arg: arg,
@@ -880,13 +891,18 @@ var LibraryPThread = {
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
-      err('pthread_join attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
+      err('pthread_join attempted on thread 0x' + thread.toString(16) + ', which does not point to a valid thread, or does not exist anymore!');
       return {{{ cDefine('ESRCH') }}};
     }
-    var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
-    if (detached) {
-      err('Attempted to join thread ' + thread + ', which was already detached!');
+    var detach_state = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
+    if (detach_state == {{{ cDefine('DT_DETACHED') }}}) {
+      err('Attempted to join thread 0x' + thread.toString(16) + ', which was already detached!');
       return {{{ cDefine('EINVAL') }}}; // The thread is already detached, can no longer join it!
+    }
+
+    if (detach_state == {{{ cDefine('DT_EXITED') }}}) {
+      err('Attempted to join thread 0x' + thread.toString(16) + ', which was already joined!');
+      return {{{ cDefine('EINVAL') }}};
     }
     if (ENVIRONMENT_IS_PTHREAD && _pthread_self() == thread) {
       err('PThread ' + thread + ' is attempting to join to itself!');
@@ -904,14 +920,14 @@ var LibraryPThread = {
 #endif
 
     for (;;) {
-      var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
-      if (threadStatus == 1) { // Exited?
+      var detach_state = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}} ) >> 2);
+      if (detach_state == {{{ cDefine('DT_EXITING') }}}) { // Exiting?
         if (status) {
           var result = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.result }}} ) >> 2);
           {{{ makeSetValue('status', 0, 'result', 'i32') }}};
         }
-        // Mark the thread as detached.
-        Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1);
+        // Mark the thread as exited.
+        PThread.setDetachState(thread, {{{ cDefine('DT_EXITED') }}});
         if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
         else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
         return 0;
@@ -924,7 +940,7 @@ var LibraryPThread = {
       // runtime and launched main()), assist pthreads in performing operations
       // that they need to access the Emscripten main runtime for.
       if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
-      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
+      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.detach_state }}}, detach_state, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
     }
   },
 
@@ -977,7 +993,8 @@ var LibraryPThread = {
       err('pthread_cancel attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
       return {{{ cDefine('ESRCH') }}};
     }
-    Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
+    // Signal the thread that it needs to cancel itself.
+    Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.cancel }}}) >> 2, 1);
     if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
     else postMessage({ 'cmd': 'cancelThread', 'thread': thread});
     return 0;

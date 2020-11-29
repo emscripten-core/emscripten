@@ -9,9 +9,11 @@
 
 int main(void) {
   pthread_attr_t attr;
-  pthread_getattr_np(pthread_self(), &attr);
+  int rtn = pthread_getattr_np(pthread_self(), &attr);
+  assert(rtn == 0);
   size_t stacksize = 0;
-  pthread_attr_getstacksize(&attr, &stacksize);
+  rtn = pthread_attr_getstacksize(&attr, &stacksize);
+  assert(rtn == 0);
   printf("stack size %zd\n", stacksize);
 
   // This test is run with TOTAL_STACK=128k so we always expect that to be

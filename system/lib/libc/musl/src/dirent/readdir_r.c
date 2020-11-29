@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <string.h>
 #include "__dirent.h"
-#include "libc.h"
+#include "lock.h"
 
 int readdir_r(DIR *restrict dir, struct dirent *restrict buf, struct dirent **restrict result)
 {
@@ -26,4 +26,4 @@ int readdir_r(DIR *restrict dir, struct dirent *restrict buf, struct dirent **re
 	return 0;
 }
 
-LFS64_2(readdir_r, readdir64_r);
+weak_alias(readdir_r, readdir64_r);

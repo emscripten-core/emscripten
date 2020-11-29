@@ -1,6 +1,5 @@
 #include <termios.h>
 #include <sys/ioctl.h>
-#include "libc.h"
 #include "syscall.h"
 
 int tcdrain(int fd)

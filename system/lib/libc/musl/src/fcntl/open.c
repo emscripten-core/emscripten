@@ -1,7 +1,6 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include "syscall.h"
-#include "libc.h"
 
 int open(const char *filename, int flags, ...)
 {
@@ -23,4 +22,4 @@ int open(const char *filename, int flags, ...)
 	return __syscall_ret(fd);
 }
 
-LFS64(open);
+weak_alias(open, open64);

@@ -180,14 +180,24 @@ struct sigevent {
 	union sigval sigev_value;
 	int sigev_signo;
 	int sigev_notify;
-	void (*sigev_notify_function)(union sigval);
-	pthread_attr_t *sigev_notify_attributes;
-	char __pad[56-3*sizeof(long)];
+	union {
+		char __pad[64 - 2*sizeof(int) - sizeof(union sigval)];
+		pid_t sigev_notify_thread_id;
+		struct {
+			void (*sigev_notify_function)(union sigval);
+			pthread_attr_t *sigev_notify_attributes;
+		} __sev_thread;
+	} __sev_fields;
 };
+
+#define sigev_notify_thread_id __sev_fields.sigev_notify_thread_id
+#define sigev_notify_function __sev_fields.__sev_thread.sigev_notify_function
+#define sigev_notify_attributes __sev_fields.__sev_thread.sigev_notify_attributes
 
 #define SIGEV_SIGNAL 0
 #define SIGEV_NONE 1
 #define SIGEV_THREAD 2
+#define SIGEV_THREAD_ID 4
 
 int __libc_current_sigrtmin(void);
 int __libc_current_sigrtmax(void);
@@ -210,7 +220,7 @@ int sigpending(sigset_t *);
 int sigwait(const sigset_t *__restrict, int *__restrict);
 int sigwaitinfo(const sigset_t *__restrict, siginfo_t *__restrict);
 int sigtimedwait(const sigset_t *__restrict, siginfo_t *__restrict, const struct timespec *__restrict);
-int sigqueue(pid_t, int, const union sigval);
+int sigqueue(pid_t, int, union sigval);
 
 int pthread_sigmask(int, const sigset_t *__restrict, sigset_t *__restrict);
 int pthread_kill(pthread_t, int);
@@ -231,6 +241,9 @@ int sigrelse(int);
 void (*sigset(int, void (*)(int)))(int);
 #define TRAP_BRKPT 1
 #define TRAP_TRACE 2
+#define TRAP_BRANCH 3
+#define TRAP_HWBKPT 4
+#define TRAP_UNK 5
 #define POLL_IN 1
 #define POLL_OUT 2
 #define POLL_MSG 3
@@ -239,6 +252,8 @@ void (*sigset(int, void (*)(int)))(int);
 #define POLL_HUP 6
 #define SS_ONSTACK    1
 #define SS_DISABLE    2
+#define SS_AUTODISARM (1U << 31)
+#define SS_FLAG_BITS SS_AUTODISARM
 #endif
 
 #if defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
@@ -265,6 +280,14 @@ typedef int sig_atomic_t;
 
 void (*signal(int, void (*)(int)))(int);
 int raise(int);
+
+#if _REDIR_TIME64
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+ || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+__REDIR(sigtimedwait, __sigtimedwait_time64);
+#endif
+#endif
 
 #ifdef __cplusplus
 }

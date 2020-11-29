@@ -652,9 +652,13 @@ class SjLjLibrary(Library):
 
 
 class MuslInternalLibrary(Library):
-  includes = ['system/lib/libc/musl/src/internal']
+  includes = [
+    'system/lib/libc/musl/src/internal',
+    'system/lib/libc/musl/src/include',
+  ]
 
   cflags = [
+    '-std=c99',
     '-D_XOPEN_SOURCE=700',
     '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
   ]
@@ -732,7 +736,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
-        'ldso'
+        'ldso', 'malloc'
     ]
 
     # individual files
@@ -743,8 +747,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'alarm.c', 'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
+        'getentropy.c',
         # 'process' exclusion
-        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c'
+        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
+        '_Fork.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -760,11 +766,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         # Empty files, simply ignore them.
         'syscall_cp.c', 'tls.c',
         # TODO: Comment out (or support) within upcoming musl upgrade. See #12216.
-        # 'pthread_setname_np.c',
+        'pthread_setname_np.c',
         # TODO: No longer exists in the latest musl version.
         '__futex.c',
-        # TODO: Could be supported in the upcoming musl upgrade
-        'lock_ptc.c',
         # 'pthread_setattr_default_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
         'pthread_cancel.c',
@@ -843,11 +847,16 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'ctime.c',
           'gmtime.c',
           'localtime.c',
-          'nanosleep.c'
+          'nanosleep.c',
+          'clock_nanosleep.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
         filenames=['getpagesize.c', 'err.c'])
+
+    libc_files += files_in_path(
+        path='system/lib/libc/musl/src/linux',
+        filenames=['getdents.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/env',
@@ -872,6 +881,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/signal',
         filenames=[
+          'block.c',
           'getitimer.c',
           'killpg.c',
           'setitimer.c',
@@ -931,7 +941,7 @@ class libprintf_long_double(libc):
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
 
-  cflags = ['-Os', '-fno-builtin']
+  cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
 
   def get_files(self):
     return files_in_path(
