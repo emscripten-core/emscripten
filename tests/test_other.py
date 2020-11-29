@@ -6025,8 +6025,20 @@ high = 1234
   def test_lib_include_flags(self):
     self.run_process([EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')])
 
-  def test_dash_s(self):
+  def test_dash_s_link_flag(self):
+    # -s is also a valid link flagi.  We try to distingish between this case and when
+    # its used to set a settings based on looking at the argument that follows.
+
+    # Test the case when -s is the last flag
     self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+    # Test the case when the following flag is all uppercase but starts with a `-`
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-DFOO'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+    # Test that case when the following flag is not all uppercase
+    self.run_process([EMCC, '-s', path_from_root('tests', 'hello_world.cpp')])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_dash_s_response_file_string(self):
