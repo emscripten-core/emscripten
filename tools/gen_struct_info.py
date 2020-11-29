@@ -90,6 +90,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from tools import shared
 
 QUIET = (__name__ != '__main__')
+DEBUG = False
 
 
 def show(msg):
@@ -191,33 +192,34 @@ def gen_inspect_code(path, struct, code):
   c_ascent(code)
 
 
-def inspect_code(headers, cpp_opts, structs, defines):
+def inspect_headers(headers, cpp_opts):
   code = ['#include <stdio.h>', '#include <stddef.h>']
-  # Include all the needed headers.
-  for path in headers:
-    code.append('#include "' + path + '"')
+  for header in headers:
+    code.append('#include "' + header['name'] + '"')
 
   code.append('int main() {')
   c_descent('structs', code)
-  for name, struct in structs.items():
-    gen_inspect_code([name], struct, code)
+  for header in headers:
+    for name, struct in header['structs'].items():
+      gen_inspect_code([name], struct, code)
 
   c_ascent(code)
   c_descent('defines', code)
-  for name, type_ in defines.items():
-    # Add the necessary python type, if missing.
-    if '%' not in type_:
-      if type_[-1] in ('d', 'i', 'u'):
-        # integer
-        type_ = 'i%' + type_
-      elif type_[-1] in ('f', 'F', 'e', 'E', 'g', 'G'):
-        # float
-        type_ = 'f%' + type_
-      elif type_[-1] in ('x', 'X', 'a', 'A', 'c', 's'):
-        # hexadecimal or string
-        type_ = 's%' + type_
+  for header in headers:
+    for name, type_ in header['defines'].items():
+      # Add the necessary python type, if missing.
+      if '%' not in type_:
+        if type_[-1] in ('d', 'i', 'u'):
+          # integer
+          type_ = 'i%' + type_
+        elif type_[-1] in ('f', 'F', 'e', 'E', 'g', 'G'):
+          # float
+          type_ = 'f%' + type_
+        elif type_[-1] in ('x', 'X', 'a', 'A', 'c', 's'):
+          # hexadecimal or string
+          type_ = 's%' + type_
 
-    c_set(name, type_, name, code)
+      c_set(name, type_, name, code)
 
   code.append('return 0;')
   code.append('}')
@@ -264,7 +266,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
   if shared.Settings.LTO:
     cmd += ['-flto=' + shared.Settings.LTO]
 
-  show(cmd)
+  show(shared.shlex_join(cmd))
   try:
     subprocess.check_call(cmd, env=env)
   except subprocess.CalledProcessError as e:
@@ -285,7 +287,31 @@ def inspect_code(headers, cpp_opts, structs, defines):
   return parse_c_output(info)
 
 
-def parse_json(path, header_files, structs, defines):
+def merge_info(target, src):
+  for key, value in src['defines'].items():
+    if key in target['defines']:
+      raise Exception('duplicate define: %s' % key)
+    target['defines'][key] = value
+
+  for key, value in src['structs'].items():
+    if key in target['structs']:
+      raise Exception('duplicate struct: %s' % key)
+    target['structs'][key] = value
+
+
+def inspect_code(headers, cpp_opts):
+  if not DEBUG:
+    info = inspect_headers(headers, cpp_opts)
+  else:
+    info = {'defines': {}, 'structs': {}}
+    for header in headers:
+      merge_info(info, inspect_headers([header], cpp_opts))
+  return info
+
+
+def parse_json(path):
+  header_files = []
+
   with open(path, 'r') as stream:
     # Remove comments before loading the JSON.
     data = json.loads(re.sub(r'//.*\n', '', stream.read()))
@@ -298,22 +324,26 @@ def parse_json(path, header_files, structs, defines):
       if key not in ['file', 'defines', 'structs']:
         raise 'Unexpected key in json file: %s' % key
 
-    header_files.append(item['file'])
+    header = {'name': item['file'], 'structs': {}, 'defines': {}}
     for name, data in item.get('structs', {}).items():
-      if name in structs:
+      if name in header['structs']:
         show('WARN: Description of struct "' + name + '" in file "' + item['file'] + '" replaces an existing description!')
 
-      structs[name] = data
+      header['structs'][name] = data
 
     for part in item.get('defines', []):
       if not isinstance(part, list):
         # If no type is specified, assume integer.
         part = ['i', part]
 
-      if part[1] in defines:
+      if part[1] in header['defines']:
         show('WARN: Description of define "' + part[1] + '" in file "' + item['file'] + '" replaces an existing description!')
 
-      defines[part[1]] = part[0]
+      header['defines'][part[1]] = part[0]
+
+    header_files.append(header)
+
+  return header_files
 
 
 def output_json(obj, stream=None):
@@ -328,25 +358,17 @@ def output_json(obj, stream=None):
   stream.close()
 
 
-def filter_opts(opts):
-  # Only apply compiler options regarding syntax, includes and defines.
-  # We have to compile for the current system, we aren't compiling to bitcode after all.
-  out = []
-  for flag in opts:
-    if flag[:2] in ('-f', '-I', '-i', '-D', '-U'):
-      out.append(flag)
-
-  return out
-
-
 def main(args):
   global QUIET
 
-  default_json = shared.path_from_root('src', 'struct_info.json')
+  default_json_files = [
+      shared.path_from_root('src', 'struct_info.json'),
+      shared.path_from_root('src', 'struct_info_internal.json')
+  ]
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
   parser.add_argument('json', nargs='*',
                       help='JSON file with a list of structs and their fields (defaults to src/struct_info.json)',
-                      default=[default_json])
+                      default=default_json_files)
   parser.add_argument('-q', dest='quiet', action='store_true', default=False,
                       help='Don\'t output anything besides error messages.')
   parser.add_argument('-o', dest='output', metavar='path', default=None,
@@ -375,17 +397,16 @@ def main(args):
     cpp_opts.append('-U' + arg)
 
   # Look for structs in all passed headers.
-  header_files = []
-  structs = {}
-  defines = {}
+  info = {'defines': {}, 'structs': {}}
 
   for f in args.json:
     # This is a JSON file, parse it.
-    parse_json(f, header_files, structs, defines)
+    header_files = parse_json(f)
+    # Inspect all collected structs.
+    info_fragment = inspect_code(header_files, cpp_opts)
+    merge_info(info, info_fragment)
 
-  # Inspect all collected structs.
-  struct_info = inspect_code(header_files, cpp_opts, structs, defines)
-  output_json(struct_info, args.output)
+  output_json(info, args.output)
   return 0
 
 
