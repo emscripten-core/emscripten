@@ -1394,7 +1394,7 @@ class BrowserCore(RunnerCore):
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
-    with open(os.path.join(self.get_dir(), 'reftest.js'), 'w') as out:
+    with open('reftest.js', 'w') as out:
       with open(path_from_root('tests', 'browser_reporting.js')) as reporting:
         out.write('''
       function doReftest() {
@@ -1499,7 +1499,7 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False,
+            args=[], message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False, extra_tries=1):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
@@ -1526,6 +1526,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+    outfile = 'test.html'
     all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
@@ -1541,7 +1542,7 @@ class BrowserCore(RunnerCore):
     if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):
       print('WASM=0')
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
+                 original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')
@@ -1552,7 +1553,7 @@ class BrowserCore(RunnerCore):
         post_build = self.post_manual_reftest
       # run proxied
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
+                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], message, timeout=timeout)
 
 
 ###################################################################################################
