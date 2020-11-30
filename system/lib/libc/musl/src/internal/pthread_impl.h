@@ -29,7 +29,7 @@ struct pthread {
 	void **dtv, *unused1, *unused2;
 	uintptr_t sysinfo;
 	uintptr_t canary, canary2;
-	pid_t tid, pid;
+	pid_t tid;
 	int tsd_used, errno_val;
 	volatile int cancel, canceldisable, cancelasync;
 	int detached;
