@@ -1377,6 +1377,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_get_current']
 
+    if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
+      shared.Settings.ASYNCIFY = 1
+
     if shared.Settings.ASYNCIFY:
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
@@ -2754,8 +2757,6 @@ def do_binaryen(target, options, wasm_target):
       save_intermediate_with_wasm('postclean', wasm_target)
 
   if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
-    if not shared.Settings.ASYNCIFY:
-      exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
     building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   def preprocess_wasm2js_script():
