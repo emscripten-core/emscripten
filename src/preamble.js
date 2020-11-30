@@ -761,23 +761,35 @@ function getBinary() {
 }
 
 function getBinaryPromise() {
-  // If we don't have the binary yet, and have the Fetch api, use that;
-  // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function'
+  // If we don't have the binary yet, try to to load it asynchronously.
+  // Fetch has some additional restrictions over XHR, like it can't be used on a file:// url.
+  // (Electron apps are typically loaded from a file)
+  // So use fetch if it is available and the url is not a file, otherwise fall back to XHR
+  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
+    if (typeof fetch === 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
-      // Let's not use fetch to get objects over file:// as it's most likely Cordova which doesn't support fetch for file://
+      // Let's not use fetch to get objects over file:// as it's most likely Cordova or Electron which doesn't support fetch for file://
       && !isFileURI(wasmBinaryFile)
 #endif
-      ) {
-    return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
-      if (!response['ok']) {
-        throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
-      }
-      return response['arrayBuffer']();
-    }).catch(function () {
-      return getBinary();
-    });
+    ) {
+      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
+        if (!response['ok']) {
+          throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+        }
+        return response['arrayBuffer']();
+      }).catch(function () {
+        return getBinary();
+      });
+    } else if (readAsync) {
+      // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
+      return new Promise( function (resolve, reject) {
+        readAsync(wasmBinaryFile, function (response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
+      }).catch(function () {
+        return getBinary();
+      });;
+    }
   }
+    
   // Otherwise, getBinary should be able to get it synchronously
   return Promise.resolve().then(getBinary);
 }
