@@ -305,6 +305,8 @@ non_core_test_modes = [
   'asan',
   'lsan',
   'wasm2ss',
+  'posixtest',
+  'posixtest_browser',
 ]
 
 
@@ -1827,7 +1829,7 @@ def flattened_tests(loaded_tests):
 
 
 def suite_for_module(module, tests):
-  suite_supported = module.__name__ in ('test_core', 'test_other')
+  suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
   if not EMTEST_SAVE_DIR:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
