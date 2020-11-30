@@ -6026,7 +6026,7 @@ high = 1234
     self.run_process([EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')])
 
   def test_dash_s_link_flag(self):
-    # -s is also a valid link flagi.  We try to distingish between this case and when
+    # -s is also a valid link flag.  We try to distingish between this case and when
     # its used to set a settings based on looking at the argument that follows.
 
     # Test the case when -s is the last flag
