@@ -651,7 +651,7 @@ var LibraryPThread = {
           }
           if (canvas.transferControlToOffscreen) {
 #if GL_DEBUG
-            Module['printErr']('pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "' + name + '" (DOM id="' + canvas.id + '") from main thread to pthread');
+            err('pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "' + name + '" (DOM id="' + canvas.id + '") from main thread to pthread');
 #endif
             // Create a shared information block in heap so that we can control
             // the canvas size from any thread.
@@ -679,7 +679,7 @@ var LibraryPThread = {
             // be able to transfer control to offscreen, but WebGL can be
             // proxied from worker to main thread.
 #if !OFFSCREEN_FRAMEBUFFER
-            Module['printErr']('pthread_create: Build with -s OFFSCREEN_FRAMEBUFFER=1 to enable fallback proxying of GL commands from pthread to main thread.');
+            err('pthread_create: Build with -s OFFSCREEN_FRAMEBUFFER=1 to enable fallback proxying of GL commands from pthread to main thread.');
             return {{{ cDefine('ENOSYS') }}}; // Function not implemented, browser doesn't have support for this.
 #endif
           }
