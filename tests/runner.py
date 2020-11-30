@@ -1484,22 +1484,26 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def compile_btest(self, args):
+  def compile_btest(self, args, reporting=True):
     # add in support for reporting results. this adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-s', 'IN_TEST_HARNESS=1', '-DEMTEST_PORT_NUMBER=%d' % self.port,
-             '-I', path_from_root('tests'),
-             '-include', path_from_root('tests', 'report_result.h'),
-             path_from_root('tests', 'report_result.cpp')]
-    self.run_process([EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
+    args += ['-s', 'IN_TEST_HARNESS=1']
+    if reporting:
+      args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
+               '-I', path_from_root('tests'),
+               '-include', path_from_root('tests', 'report_result.h'),
+               path_from_root('tests', 'report_result.cpp'),
+               '--pre-js', path_from_root('tests', 'browser_reporting.js')]
+    self.run_process([EMCC] + args)
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
-            manually_trigger_reftest=False, extra_tries=1):
+            manually_trigger_reftest=False, extra_tries=1,
+            reporting=True):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
@@ -1523,7 +1527,7 @@ class BrowserCore(RunnerCore):
     args = [filepath, '-o', outfile] + args
     # print('all args:', args)
     try_delete(outfile)
-    self.compile_btest(args)
+    self.compile_btest(args, reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()
