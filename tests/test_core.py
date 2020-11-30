@@ -703,7 +703,7 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_globaldoubles.c')
 
   def test_math(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_math.cpp')
+    self.do_run_in_out_file_test('tests', 'core', 'test_math.c')
 
   def test_erf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_erf.c')
