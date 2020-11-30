@@ -687,7 +687,8 @@ def is_dash_s_for_emcc(args, i):
     arg = args[i + 1]
   else:
     arg = args[i][2:]
-  return arg.split('=')[0].isupper()
+  arg = arg.split('=')[0]
+  return arg.isidentifier() and arg.isupper()
 
 
 def parse_s_args(args):
