@@ -33,6 +33,35 @@ function demangleCSymbolName(f) {
   return f[0] == '_' ? f.substr(1) : '$' + f;
 }
 
+// Splits out items that pass filter. Returns also the original sans the filtered
+function splitter(array, filter) {
+  var splitOut = array.filter(filter);
+  var leftIn = array.filter(function(x) { return !filter(x) });
+  return { leftIn: leftIn, splitOut: splitOut };
+}
+
+// Functions that start with '$' should not be imported to asm.js/wasm module.
+// They are intended to be exclusive to JS code only.
+function isJsOnlyIdentifier(ident) {
+  return ident[0] == '$';
+}
+
+function escapeJSONKey(x) {
+  if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
+  assert(x.indexOf("'") < 0, 'cannot have internal single quotes in keys: ' + x);
+  return "'" + x + "'";
+}
+
+function stringifyWithFunctions(obj) {
+  if (typeof obj === 'function') return obj.toString();
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) {
+    return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
+  } else {
+    return '{' + keys(obj).map(function(key) { return escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key]) }).join(',') + '}';
+  }
+}
+
 // JSifier
 function JSify(data, functionsOnly) {
   var mainPass = !functionsOnly;

@@ -701,7 +701,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
 
 function makeHEAPView(which, start, end) {
   var size = parseInt(which.replace('U', '').replace('F', ''))/8;
-  var mod = size == 1 ? '' : ('>>' + log2(size));
+  var mod = size == 1 ? '' : ('>>' + Math.log2(size));
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
 }
 
