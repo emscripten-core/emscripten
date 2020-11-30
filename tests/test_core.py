@@ -7381,7 +7381,6 @@ Module['onRuntimeInitialized'] = function() {
     'unconditional': (False,),
   })
   def test_emscripten_lazy_load_code(self, conditional):
-    self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT', 1)
     self.set_setting('MALLOC', 'emmalloc')
