@@ -1373,7 +1373,7 @@ var LibraryPThread = {
     // type info here). To do that, add a "prefix" before each value that
     // indicates if it is a BigInt, which effectively doubles the number of
     // values we serialize for proxying. TODO: pack this?
-    var serializedNumCallArgs = numCallArgs * 2;
+    var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
     var args = stackAlloc(serializedNumCallArgs * 8);
     var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
