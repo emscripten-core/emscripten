@@ -435,17 +435,14 @@ if (Module['noInitialRun']) shouldRunNow = false;
 #endif // HAS_MAIN
 
 #if EXIT_RUNTIME == 0
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
-#endif
-  noExitRuntime = true;
+noExitRuntime = true;
 #endif
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-  run();
-} else {
+if (ENVIRONMENT_IS_PTHREAD) {
   PThread.initWorker();
+} else {
+  run();
 }
 #else
 run();
