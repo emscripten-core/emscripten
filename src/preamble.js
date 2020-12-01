@@ -780,7 +780,9 @@ function getBinaryPromise() {
       }).catch(function () {
         return getBinary();
       });
-    } else if (readAsync) {
+    }
+#if ENVIRONMENT_MAY_BE_WEBVIEW
+    else if (readAsync) {
       // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
       return new Promise( function (resolve, reject) {
         readAsync(wasmBinaryFile, function (response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
@@ -788,6 +790,7 @@ function getBinaryPromise() {
         return getBinary();
       });;
     }
+#endif
   }
     
   // Otherwise, getBinary should be able to get it synchronously
