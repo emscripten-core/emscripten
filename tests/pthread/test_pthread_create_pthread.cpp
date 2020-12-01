@@ -7,6 +7,7 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 volatile int result = 0;

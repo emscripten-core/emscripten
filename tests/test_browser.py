@@ -3499,6 +3499,7 @@ window.close = function() {
           };
         ''')
       src += r'''
+        #include <emscripten/em_asm.h>
         int main() {
           test_main();
           EM_ASM({
