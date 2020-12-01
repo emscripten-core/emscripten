@@ -180,7 +180,8 @@
             VERSION:'{{ release|e }}',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'{{ '' if no_search_suffix else file_suffix }}',
-            HAS_SOURCE:  {{ has_source|lower }}
+            HAS_SOURCE:  {{ has_source|lower }},
+            LINK_SUFFIX: '.html'
         };
     </script>
     {%- for scriptfile in script_files %}

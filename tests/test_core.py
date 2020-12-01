@@ -703,7 +703,7 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_globaldoubles.c')
 
   def test_math(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_math.cpp')
+    self.do_run_in_out_file_test('tests', 'core', 'test_math.c')
 
   def test_erf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_erf.c')
@@ -6970,8 +6970,6 @@ someweirdtext
 
   @no_wasm2js('TODO: source maps in wasm2js')
   def test_dwarf(self):
-    if not is_optimizing(self.emcc_args):
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/12903')
     self.emcc_args.append('-g')
 
     create_test_file('src.cpp', '''
@@ -7054,13 +7052,13 @@ someweirdtext
     self.assertLess(get_dwarf_addr(5, 9), get_dwarf_addr(6, 9))
     self.assertLess(get_dwarf_addr(6, 9), get_dwarf_addr(7, 9))
 
-    # get the wat, printing with -g which has binary offsets
+    # Get the wat, printing with -g which has binary offsets
     wat = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'),
                            wasm_filename, '-g', '--print'], stdout=PIPE).stdout
 
-    # we expect to see a pattern like this, as in both debug and opt builds
-    # there isn't much that can change with such calls to JS (they can't be
-    # reordered or anything else):
+    # We expect to see a pattern like this in optimized builds (there isn't
+    # much that can change with such calls to JS (they can't be reordered or
+    # anything else):
     #
     #   ;; code offset: 0x?
     #   (drop
@@ -7071,10 +7069,16 @@ someweirdtext
     #    )
     #   )
     #
-    # In stacky stream of instructions form, it is
+    # In the stacky stream of instructions form, it is
+    #
     #   local.get or i32.const
     #   call $out_to_js
     #   drop
+    #
+    # However, in an unoptimized build the constant may be assigned earlier in
+    # some other manner, so stop here.
+    if not is_optimizing(self.emcc_args):
+      return
 
     # get_wat_addr gets the address of one of the 3 interesting calls, by its
     # index (0,1,2).
@@ -7377,7 +7381,6 @@ Module['onRuntimeInitialized'] = function() {
     'unconditional': (False,),
   })
   def test_emscripten_lazy_load_code(self, conditional):
-    self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT', 1)
     self.set_setting('MALLOC', 'emmalloc')

@@ -1377,16 +1377,6 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def with_report_result(self, user_code):
-    report_header = path_from_root('tests', 'report_result.h')
-    report_main = open(path_from_root('tests', 'report_result.cpp')).read()
-    return f'''
-#define EMTEST_PORT_NUMBER {self.port}
-#include "{report_header}"
-{report_main}
-{user_code}
-'''
-
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.
   def reftest(self, expected, manually_trigger=False):
@@ -1394,7 +1384,7 @@ class BrowserCore(RunnerCore):
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
-    with open(os.path.join(self.get_dir(), 'reftest.js'), 'w') as out:
+    with open('reftest.js', 'w') as out:
       with open(path_from_root('tests', 'browser_reporting.js')) as reporting:
         out.write('''
       function doReftest() {
@@ -1495,25 +1485,28 @@ class BrowserCore(RunnerCore):
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
   def compile_btest(self, args):
+    # add in support for reporting results. this adds an include a header so testcases can
+    # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
+    # contains the implementation of REPORT_RESULT (we can't just include that implementation in
+    # the header as there may be multiple files being compiled here).
+    args += ['-s', 'IN_TEST_HARNESS=1', '-DEMTEST_PORT_NUMBER=%d' % self.port,
+             '-I', path_from_root('tests'),
+             '-include', path_from_root('tests', 'report_result.h'),
+             path_from_root('tests', 'report_result.cpp')]
     self.run_process([EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False,
+            args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False, extra_tries=1):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
+    if args is None:
+      args = []
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    # add in support for reporting results. this adds as an include a header so testcases can
-    # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
-    # contains the implementation of REPORT_RESULT (we can't just include that implementation in
-    # the header as there may be multiple files being compiled here).
-    args = args + ['-DEMTEST_PORT_NUMBER=%d' % self.port,
-                   '-include', path_from_root('tests', 'report_result.h'),
-                   path_from_root('tests', 'report_result.cpp')]
     if filename_is_src:
       filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
       with open(filepath, 'w') as f:
@@ -1526,10 +1519,11 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
-    # print('all args:', all_args)
+    outfile = 'test.html'
+    args = [filepath, '-o', outfile] + args
+    # print('all args:', args)
     try_delete(outfile)
-    self.compile_btest(all_args)
+    self.compile_btest(args)
     self.assertExists(outfile)
     if post_build:
       post_build()
@@ -1538,10 +1532,10 @@ class BrowserCore(RunnerCore):
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
-    if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):
+    if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):
       print('WASM=0')
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
+                 original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')
@@ -1552,7 +1546,7 @@ class BrowserCore(RunnerCore):
         post_build = self.post_manual_reftest
       # run proxied
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
+                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], message, timeout=timeout)
 
 
 ###################################################################################################

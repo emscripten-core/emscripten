@@ -6,6 +6,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <SDL/SDL_image.h>
 #include <emscripten.h>
 

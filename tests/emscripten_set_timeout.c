@@ -1,4 +1,5 @@
 #include <emscripten/html5.h>
+#include <emscripten/em_asm.h>
 #include <assert.h>
 
 int func1Executed = 0;
