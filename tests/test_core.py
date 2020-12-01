@@ -8090,6 +8090,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-fexceptions']
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'exceptions.cpp')
 
+  @node_pthreads
+  def test_pthread_exit_process(self):
+    self.add_pre_run("Module['onExit'] = function(status) { out('onExit status: ' + status); };")
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c', assert_returncode=42)
+
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
