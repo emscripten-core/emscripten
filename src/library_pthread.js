@@ -1368,12 +1368,31 @@ var LibraryPThread = {
     // Allocate a buffer, which will be copied by the C code.
     var stack = stackSave();
     // First passed parameter specifies the number of arguments to the function.
-    var args = stackAlloc(numCallArgs * 8);
+    // When BigInt support is enabled, we must handle types in a more complex
+    // way, detecting at runtime if a value is a BigInt or not (as we have no
+    // type info here). To do that, add a "prefix" before each value that
+    // indicates if it is a BigInt, which effectively doubles the number of
+    // values we serialize for proxying. TODO: pack this?
+    var serializedNumCallArgs = numCallArgs * 2;
+    var args = stackAlloc(serializedNumCallArgs * 8);
     var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
-      HEAPF64[b + i] = arguments[2 + i];
+      var arg = arguments[2 + i];
+#if WASM_BIGINT
+      if (typeof arg === 'bigint') {
+        // The prefix is non-zero to indicate a bigint.
+        HEAP64[b + 2*i] = BigInt(1);
+        HEAP64[b + 2*i + 1] = arg;
+      } else {
+        // The prefix is zero to indicate a JS Number.
+        HEAP64[b + 2*i] = BigInt(0);
+        HEAPF64[b + 2*i + 1] = arg;
+      }
+#else
+      HEAPF64[b + i] = arg;
+#endif
     }
-    var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, args, sync);
+    var ret = _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
     stackRestore(stack);
     return ret;
   },
@@ -1385,10 +1404,23 @@ var LibraryPThread = {
     'emscripten_receive_on_main_thread_js_callArgs',
     '$readAsmConstArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
+#if WASM_BIGINT
+    numCallArgs /= 2;
+#endif
     _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
     var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
+#if WASM_BIGINT
+      if (HEAP64[b + 2*i]) {
+        // It's a BigInt.
+        _emscripten_receive_on_main_thread_js_callArgs[i] = HEAP64[b + 2*i + 1];
+      } else {
+        // It's a Number.
+        _emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + 2*i + 1];
+      }
+#else
       _emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + i];
+#endif
     }
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)

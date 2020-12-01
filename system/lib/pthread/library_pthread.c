@@ -732,7 +732,7 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
   return q.returnValue.i;
 }
 
-EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(int index, int num_args, double* buffer, int sync) {
+EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
   em_queued_call q;
   em_queued_call *c;
   if (sync) {
@@ -745,16 +745,20 @@ EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(int index, 
   c->calleeDelete = 1-sync;
   c->functionEnum = EM_PROXIED_JS_FUNCTION;
   c->functionPtr = (void*)index;
-  // We write out the JS doubles into args[], which must be of appropriate size - JS will assume that.
+  // The types are only known at runtime in these calls, so we store values that
+  // must be able to contain any valid JS value, including a 64-bit BigInt if
+  // BigInt support is enabled.
   assert(sizeof(em_variant_val) == sizeof(double));
+  assert(sizeof(em_variant_val) == sizeof(int64_t));
   assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
   c->args[0].i = num_args;
   for (int i = 0; i < num_args; i++) {
-    c->args[i+1].d = buffer[i];
+    c->args[i+1].i64 = buffer[i];
   }
 
   if (sync) {
     emscripten_sync_run_in_main_thread(&q);
+    // TODO: support BigInt return values somehow.
     return q.returnValue.d;
   } else {
     // 'async' runs are fire and forget, where the caller detaches itself from the call object after
