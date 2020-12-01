@@ -210,8 +210,8 @@ If manually bisecting:
 ''')
 
   def test_emscripten_log(self):
-    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    self.compile_btest(['src.cpp', '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html'])
+    src = path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')
+    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html'])
     self.run_browser('page.html', None, '/report_result?1')
 
   def test_preload_file(self):
@@ -227,7 +227,7 @@ If manually bisecting:
     def make_main(path):
       print('make main at', path)
       path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
-      create_test_file('main.cpp', self.with_report_result(r'''
+      create_test_file('main.cpp', r'''
         #include <stdio.h>
         #include <string.h>
         #include <emscripten.h>
@@ -243,7 +243,7 @@ If manually bisecting:
           REPORT_RESULT(result);
           return 0;
         }
-        ''' % path))
+        ''' % path)
 
     test_cases = [
       # (source preload-file string, file on target FS to load)
@@ -299,7 +299,7 @@ If manually bisecting:
     absolute_assets_src_path = 'assets'.replace('\\', '/')
 
     def make_main_two_files(path1, path2, nonexistingpath):
-      create_test_file('main.cpp', self.with_report_result(r'''
+      create_test_file('main.cpp', r'''
         #include <stdio.h>
         #include <string.h>
         #include <emscripten.h>
@@ -325,7 +325,7 @@ If manually bisecting:
           REPORT_RESULT(result);
           return 0;
         }
-      ''' % (path1, path2, nonexistingpath)))
+      ''' % (path1, path2, nonexistingpath))
 
     test_cases = [
       # (source directory to embed, file1 on target FS to load, file2 on target FS to load, name of a file that *shouldn't* exist on VFS)
@@ -364,11 +364,11 @@ If manually bisecting:
 
   # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
   def test_preload_file_with_manual_data_download(self):
-    create_test_file('src.cpp', self.with_report_result(open(os.path.join(path_from_root('tests/manual_download_data.cpp'))).read()))
+    src = path_from_root('tests/manual_download_data.cpp')
 
     create_test_file('file.txt', '''Hello!''')
 
-    self.compile_btest(['src.cpp', '-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt'])
+    self.compile_btest([src, '-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt'])
     shutil.copyfile(path_from_root('tests', 'manual_download_data.html'), 'manual_download_data.html')
     self.run_browser('manual_download_data.html', 'Hello!', '/report_result?1')
 
@@ -384,7 +384,7 @@ If manually bisecting:
     open(abs_txt, 'w').write('load me right before')
 
     cpp = os.path.join(d, 'file with ' + tricky_part + '.cpp')
-    open(cpp, 'w').write(self.with_report_result(r'''
+    open(cpp, 'w').write(r'''
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
@@ -399,7 +399,7 @@ If manually bisecting:
         REPORT_RESULT(result);
         return 0;
       }
-    ''' % (txt.replace('\'', '\\\'').replace('\"', '\\"'))))
+    ''' % (txt.replace('\'', '\\\'').replace('\"', '\\"')))
 
     data_file = os.path.join(abs_d, 'file with ' + tricky_part + '.data')
     data_js_file = os.path.join(abs_d, 'file with ' + tricky_part + '.js')
@@ -410,7 +410,7 @@ If manually bisecting:
     self.run_browser(page_file, '|load me right before|.', '/report_result?0')
 
   def test_preload_caching(self):
-    create_test_file('main.cpp', self.with_report_result(r'''
+    create_test_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
@@ -435,7 +435,7 @@ If manually bisecting:
         REPORT_RESULT(result);
         return 0;
       }
-    ''' % 'somefile.txt'))
+    ''' % 'somefile.txt')
 
     create_test_file('test.js', '''
       mergeInto(LibraryManager.library, {
@@ -470,7 +470,7 @@ If manually bisecting:
 
     def make_main(path):
       print(path)
-      create_test_file('main.cpp', self.with_report_result(r'''
+      create_test_file('main.cpp', r'''
         #include <stdio.h>
         #include <string.h>
         #include <emscripten.h>
@@ -495,7 +495,7 @@ If manually bisecting:
           REPORT_RESULT(result);
           return 0;
         }
-      ''' % path))
+      ''' % path)
 
     create_test_file('test.js', '''
       mergeInto(LibraryManager.library, {
@@ -523,7 +523,7 @@ If manually bisecting:
     ensure_dir(os.path.join('subdirr', 'moar'))
     create_test_file(os.path.join('subdirr', 'data1.txt'), '1214141516171819')
     create_test_file(os.path.join('subdirr', 'moar', 'data2.txt'), '3.14159265358979')
-    create_test_file('main.cpp', self.with_report_result(r'''
+    create_test_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
@@ -547,7 +547,7 @@ If manually bisecting:
         REPORT_RESULT(result);
         return 0;
       }
-    '''))
+    ''')
 
     # by individual files
     self.compile_btest(['main.cpp', '--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/moar/data2.txt', '-o', 'page.html'])
@@ -568,7 +568,7 @@ If manually bisecting:
     # you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
     create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
-    create_test_file('main.cpp', self.with_report_result(r'''
+    create_test_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
@@ -585,7 +585,7 @@ If manually bisecting:
         REPORT_RESULT(result);
         return 0;
       }
-    '''))
+    ''')
 
     self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '--preload-file', 'subdirr/data1.txt', '-o', 'test.html'])
     shutil.move('test.data', os.path.join('cdn', 'test.data'))
@@ -595,7 +595,7 @@ If manually bisecting:
     def setup(assetLocalization):
       self.clear()
       create_test_file('data.txt', 'data')
-      create_test_file('main.cpp', self.with_report_result(r'''
+      create_test_file('main.cpp', r'''
         #include <stdio.h>
         #include <string.h>
         #include <emscripten.h>
@@ -604,7 +604,7 @@ If manually bisecting:
           REPORT_RESULT(0);
           return 0;
         }
-      '''))
+      ''')
       create_test_file('on_window_error_shell.html', r'''
       <html>
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
@@ -667,22 +667,22 @@ If manually bisecting:
   def test_sdl_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpg')
-    create_test_file('sdl_image.c', self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
+    src = path_from_root('tests', 'sdl_image.c')
 
     for mem in [0, 1]:
       for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                       ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
         self.compile_btest([
-          'sdl_image.c', '-o', 'page.html', '-O2', '-lSDL', '-lGL', '--memory-init-file', str(mem),
+          src, '-o', 'page.html', '-O2', '-lSDL', '-lGL', '--memory-init-file', str(mem),
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
         ])
         self.run_browser('page.html', '', '/report_result?600')
 
   def test_sdl_image_jpeg(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpeg')
-    create_test_file('sdl_image_jpeg.c', self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
+    src = path_from_root('tests', 'sdl_image.c')
     self.compile_btest([
-      'sdl_image_jpeg.c', '-o', 'page.html', '-lSDL', '-lGL',
+      src, '-o', 'page.html', '-lSDL', '-lGL',
       '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '--use-preload-plugins'
     ])
     self.run_browser('page.html', '', '/report_result?600')
@@ -852,9 +852,7 @@ window.close = function() {
              %s
             }
           ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
-          create_test_file('sdl_key.c', self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
-
-          self.compile_btest(['sdl_key.c', '-o', 'page.html'] + defines + async_ + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-lSDL', '-lGL'])
+          self.compile_btest([path_from_root('tests', 'sdl_key.c'), '-o', 'page.html'] + defines + async_ + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-lSDL', '-lGL'])
           self.run_browser('page.html', '', '/report_result?223092870')
 
   def test_sdl_key_proxy(self):
@@ -962,9 +960,8 @@ keydown(100);keyup(100); // trigger the end
         document.body.dispatchEvent(event);
       }
     ''')
-    create_test_file('sdl_text.c', self.with_report_result(open(path_from_root('tests', 'sdl_text.c')).read()))
 
-    self.compile_btest(['sdl_text.c', '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_mouse(self):
@@ -995,9 +992,8 @@ keydown(100);keyup(100); // trigger the end
       }
       window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
-    create_test_file('sdl_mouse.c', self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
 
-    self.compile_btest(['sdl_mouse.c', '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_mouse_offsets(self):
@@ -1073,9 +1069,8 @@ keydown(100);keyup(100); // trigger the end
         </body>
       </html>
     ''')
-    create_test_file('sdl_mouse.c', self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
 
-    self.compile_btest(['sdl_mouse.c', '-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_glut_touchevents(self):
@@ -1126,9 +1121,8 @@ keydown(100);keyup(100); // trigger the end
         gamepads[index].axes[axis] = value;
       };
     ''')
-    create_test_file('sdl_joystick.c', self.with_report_result(open(path_from_root('tests', 'sdl_joystick.c')).read()))
 
-    self.compile_btest(['sdl_joystick.c', '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?2')
 
   def test_sdl_joystick_2(self):
@@ -1166,9 +1160,8 @@ keydown(100);keyup(100); // trigger the end
         gamepads[index].axes[axis] = value;
       };
     ''')
-    create_test_file('sdl_joystick.c', self.with_report_result(open(path_from_root('tests', 'sdl_joystick.c')).read()))
 
-    self.compile_btest(['sdl_joystick.c', '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?2')
 
   @requires_graphics_hardware
@@ -1213,9 +1206,8 @@ keydown(100);keyup(100); // trigger the end
         gamepads[index].axes[axis] = value;
       };
     ''')
-    create_test_file('test_glfw_joystick.c', self.with_report_result(open(path_from_root('tests', 'test_glfw_joystick.c')).read()))
 
-    self.compile_btest(['test_glfw_joystick.c', '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-s', 'USE_GLFW=3'])
+    self.compile_btest([path_from_root('tests', 'test_glfw_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-s', 'USE_GLFW=3'])
     self.run_browser('page.html', '', '/report_result?2')
 
   @requires_graphics_hardware
@@ -1451,8 +1443,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
-    create_test_file('sdl_gl_read.c', self.with_report_result(open(path_from_root('tests', 'sdl_gl_read.c')).read()))
-    self.compile_btest(['sdl_gl_read.c', '-o', 'something.html', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_gl_read.c'), '-o', 'something.html', '-lSDL', '-lGL'])
     self.run_browser('something.html', '.', '/report_result?1')
 
   @requires_graphics_hardware
@@ -1543,9 +1534,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('test_glfw_time.c', '1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
 
   def _test_egl_base(self, *args):
-    create_test_file('test_egl.c', self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
-
-    self.compile_btest(['-O2', 'test_egl.c', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
+    self.compile_btest([path_from_root('tests', 'test_egl.c'), '-O2', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_graphics_hardware
@@ -1558,9 +1547,7 @@ keydown(100);keyup(100); // trigger the end
     self._test_egl_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1')
 
   def _test_egl_width_height_base(self, *args):
-    create_test_file('test_egl_width_height.c', self.with_report_result(open(path_from_root('tests', 'test_egl_width_height.c')).read()))
-
-    self.compile_btest(['-O2', 'test_egl_width_height.c', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
+    self.compile_btest([path_from_root('tests', 'test_egl_width_height.c'), '-O2', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
     self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
 
   def test_egl_width_height(self):
@@ -2509,7 +2496,7 @@ void *getBindBuffer() {
 
     # First run tests in Node and/or SPIDERMONKEY using self.run_js. Use closure compiler so we can check that
     # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
-    self.compile_btest(['-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js', '-luuid'])
+    self.run_process([EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js', '-luuid'])
 
     test_js_closure = open('test.js').read()
 
@@ -2710,7 +2697,7 @@ Module["preRun"].push(function () {
     for wasm in [0, 1]:
       print('wasm', wasm)
       self.clear()
-      create_test_file('src.cpp', self.with_report_result(r'''
+      create_test_file('src.cpp', r'''
         #include <stdio.h>
         #include <string.h>
         #include <assert.h>
@@ -2727,7 +2714,7 @@ Module["preRun"].push(function () {
           REPORT_RESULT(result);
           return 0;
         }
-      '''))
+      ''')
       create_test_file('data.txt', 'load me right before...')
       create_test_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
       self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
@@ -2768,19 +2755,19 @@ Module["preRun"].push(function () {
 
       # verify that the mem init request succeeded in the latter case
       if not wasm:
-        create_test_file('src.cpp', self.with_report_result(r'''
-  #include <stdio.h>
-  #include <emscripten.h>
+        create_test_file('src.cpp', r'''
+          #include <stdio.h>
+          #include <emscripten.h>
 
-  int main() {
-    int result = EM_ASM_INT({
-      return Module['memoryInitializerRequest'].status;
-    });
-    printf("memory init request: %d\n", result);
-    REPORT_RESULT(result);
-    return 0;
-  }
-      '''))
+          int main() {
+            int result = EM_ASM_INT({
+              return Module['memoryInitializerRequest'].status;
+            });
+            printf("memory init request: %d\n", result);
+            REPORT_RESULT(result);
+            return 0;
+          }
+          ''')
 
         in_html('200')
 
@@ -2799,13 +2786,12 @@ Module["preRun"].push(function () {
   def test_sdl2_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpg')
-    create_test_file('sdl2_image.c', self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
 
     for mem in [0, 1]:
       for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                       ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
         self.compile_btest([
-          'sdl2_image.c', '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
+          path_from_root('tests', 'sdl2_image.c'), '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--use-preload-plugins'
         ])
         self.run_browser('page.html', '', '/report_result?600')
@@ -2813,9 +2799,8 @@ Module["preRun"].push(function () {
   @requires_graphics_hardware
   def test_sdl2_image_jpeg(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpeg')
-    create_test_file('sdl2_image_jpeg.c', self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
     self.compile_btest([
-      'sdl2_image_jpeg.c', '-o', 'page.html',
+      path_from_root('tests', 'sdl2_image.c'), '-o', 'page.html',
       '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
     self.run_browser('page.html', '', '/report_result?600')
@@ -2855,9 +2840,8 @@ Module["preRun"].push(function () {
         document.dispatchEvent(event);
       }
     ''')
-    create_test_file('sdl2_key.c', self.with_report_result(open(path_from_root('tests', 'sdl2_key.c')).read()))
 
-    self.compile_btest(['sdl2_key.c', '-o', 'page.html', '-s', 'USE_SDL=2', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']'''])
+    self.compile_btest([path_from_root('tests', 'sdl2_key.c'), '-o', 'page.html', '-s', 'USE_SDL=2', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']'''])
     self.run_browser('page.html', '', '/report_result?37182145')
 
   def test_sdl2_text(self):
@@ -2875,9 +2859,8 @@ Module["preRun"].push(function () {
         document.body.dispatchEvent(event);
       }
     ''')
-    create_test_file('sdl2_text.c', self.with_report_result(open(path_from_root('tests', 'sdl2_text.c')).read()))
 
-    self.compile_btest(['sdl2_text.c', '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'USE_SDL=2'])
+    self.compile_btest([path_from_root('tests', 'sdl2_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_graphics_hardware
@@ -2909,9 +2892,8 @@ Module["preRun"].push(function () {
       }
       window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
-    create_test_file('sdl2_mouse.c', self.with_report_result(open(path_from_root('tests', 'sdl2_mouse.c')).read()))
 
-    self.compile_btest(['sdl2_mouse.c', '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
+    self.compile_btest([path_from_root('tests', 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_graphics_hardware
@@ -2988,9 +2970,8 @@ Module["preRun"].push(function () {
         </body>
       </html>
     ''')
-    create_test_file('sdl2_mouse.c', self.with_report_result(open(path_from_root('tests', 'sdl2_mouse.c')).read()))
 
-    self.compile_btest(['sdl2_mouse.c', '-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify', '0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
+    self.compile_btest([path_from_root('tests', 'sdl2_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify', '0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_threads
@@ -3096,8 +3077,7 @@ window.close = function() {
   @requires_graphics_hardware
   def test_sdl2_gl_read(self):
     # SDL, OpenGL, readPixels
-    create_test_file('sdl2_gl_read.c', self.with_report_result(open(path_from_root('tests', 'sdl2_gl_read.c')).read()))
-    self.compile_btest(['sdl2_gl_read.c', '-o', 'something.html', '-s', 'USE_SDL=2'])
+    self.compile_btest([path_from_root('tests', 'sdl2_gl_read.c'), '-o', 'something.html', '-s', 'USE_SDL=2'])
     self.run_browser('something.html', '.', '/report_result?1')
 
   @requires_graphics_hardware
@@ -3177,9 +3157,7 @@ window.close = function() {
   def test_sdl2_misc(self):
     self.btest('sdl2_misc.c', expected='1', args=['-s', 'USE_SDL=2'])
     print('also test building to object files first')
-    src = open(path_from_root('tests', 'sdl2_misc.c')).read()
-    create_test_file('test.c', self.with_report_result(src))
-    self.run_process([EMCC, '-c', 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o'])
+    self.run_process([EMCC, '-c', path_from_root('tests', 'sdl2_misc.c'), '-s', 'USE_SDL=2', '-o', 'test.o'])
     self.compile_btest(['test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
 
@@ -3297,8 +3275,7 @@ window.close = function() {
 
   # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s MODULARIZE=1 as well.
   def test_minimal_runtime_modularize(self):
-    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    self.compile_btest(['src.cpp', '-o', 'test.html', '-s', 'MODULARIZE=1', '-s', 'MINIMAL_RUNTIME=1'])
+    self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.html', '-s', 'MODULARIZE=1', '-s', 'MINIMAL_RUNTIME=1'])
     self.run_browser('test.html', None, '/report_result?0')
 
   @requires_sync_compilation
@@ -3337,10 +3314,8 @@ window.close = function() {
         '''),
       ]:
         print('test on', opts, args, code)
-        src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-        create_test_file('test.c', self.with_report_result(src))
         # this test is synchronous, so avoid async startup due to wasm features
-        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'SINGLE_FILE=1'] + args + opts)
+        self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'SINGLE_FILE=1'] + args + opts)
         create_test_file('a.html', '''
           <script src="a.out.js"></script>
           <script>
@@ -3400,7 +3375,7 @@ window.close = function() {
     totalMemory = 33554432
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
       # the main function simply checks that the amount of allocated heap memory is correct
-      src = r'''
+      create_test_file('test.c', r'''
         #include <stdio.h>
         #include <emscripten.h>
         int main() {
@@ -3412,8 +3387,7 @@ window.close = function() {
           REPORT_RESULT(0);
           return 0;
         }
-      ''' % totalMemory
-      create_test_file('test.c', self.with_report_result(src))
+      ''' % totalMemory)
       # generate a dummy file
       create_test_file('dummy_file', 'dummy')
       # compile the code with the modularize feature and the preload-file option enabled
@@ -3828,7 +3802,7 @@ window.close = function() {
   @requires_threads
   def test_pthread_custom_pthread_main_url(self):
     ensure_dir('cdn')
-    create_test_file('main.cpp', self.with_report_result(r'''
+    create_test_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
       #include <emscripten/emscripten.h>
@@ -3850,7 +3824,7 @@ window.close = function() {
         }
         REPORT_RESULT(result);
       }
-    '''))
+    ''')
 
     # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
     create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
@@ -4004,11 +3978,8 @@ window.close = function() {
   def test_main_thread_em_asm_blocking(self):
     create_test_file('page.html',
                      open(path_from_root('tests', 'browser', 'test_em_asm_blocking.html')).read())
-    create_test_file('wasm.cpp',
-                     self.with_report_result(
-                       open(path_from_root('tests', 'browser', 'test_em_asm_blocking.cpp')).read()))
 
-    self.compile_btest(['wasm.cpp', '-O2', '-o', 'wasm.js', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.compile_btest([path_from_root('tests', 'browser', 'test_em_asm_blocking.cpp'), '-O2', '-o', 'wasm.js', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
     self.run_browser('page.html', '', '/report_result?8')
 
   # test atomicrmw i64
@@ -4035,8 +4006,7 @@ window.close = function() {
   def test_vanilla_html_when_proxying(self):
     for opts in [0, 1, 2]:
       print(opts)
-      create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-      self.compile_btest(['src.cpp', '-o', 'test.js', '-O' + str(opts), '--proxy-to-worker'])
+      self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js', '-O' + str(opts), '--proxy-to-worker'])
       create_test_file('test.html', '<script src="test.js"></script>')
       self.run_browser('test.html', None, '/report_result?0')
 
@@ -4048,8 +4018,7 @@ window.close = function() {
       opts = ['-O' + str(o), '-s', 'WASM=0']
 
       print('plain html')
-      create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'in_flight_memfile_request.c')).read()))
-      self.compile_btest(['src.cpp', '-o', 'test.js'] + opts)
+      self.compile_btest([path_from_root('tests', 'in_flight_memfile_request.c'), '-o', 'test.js'] + opts)
       create_test_file('test.html', '<script src="test.js"></script>')
       self.run_browser('test.html', None, '/report_result?0') # never when we provide our own HTML like this.
 
@@ -4102,9 +4071,7 @@ window.close = function() {
 
   # Test that implementing Module.instantiateWasm() callback works.
   def test_manual_wasm_instantiate(self):
-    src = 'src.cpp'
-    create_test_file(src, self.with_report_result(open(os.path.join(path_from_root('tests/manual_wasm_instantiate.cpp'))).read()))
-    self.compile_btest(['src.cpp', '-o', 'manual_wasm_instantiate.js', '-s', 'BINARYEN=1'])
+    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js', '-s', 'BINARYEN=1'])
     shutil.copyfile(path_from_root('tests', 'manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
 
@@ -4112,8 +4079,7 @@ window.close = function() {
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     ensure_dir('cdn')
     create_test_file('shell2.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
-    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    self.compile_btest(['src.cpp', '--shell-file', 'shell2.html', '-o', 'test.html'])
+    self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '--shell-file', 'shell2.html', '-o', 'test.html'])
     shutil.move('test.wasm', os.path.join('cdn', 'test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
 
@@ -4536,23 +4502,20 @@ window.close = function() {
   @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_load_js_from_blob_with_pthreads(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
-    src = 'src.c'
-    create_test_file(src, self.with_report_result(open(path_from_root('tests', 'pthread', 'hello_thread.c')).read()))
-    self.compile_btest(['src.c', '-s', 'USE_PTHREADS=1', '-o', 'hello_thread_with_blob_url.js', '-s', 'WASM=0'])
+    self.compile_btest([path_from_root('tests', 'pthread', 'hello_thread.c'), '-s', 'USE_PTHREADS=1', '-o', 'hello_thread_with_blob_url.js', '-s', 'WASM=0'])
     shutil.copyfile(path_from_root('tests', 'pthread', 'main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?1')
 
   # Tests that base64 utils work in browser with no native atob function
   def test_base64_atob_fallback(self):
-    src = r'''
+    create_test_file('test.c', r'''
       #include <stdio.h>
       #include <emscripten.h>
       int main() {
         REPORT_RESULT(0);
         return 0;
       }
-    '''
-    create_test_file('test.c', self.with_report_result(src))
+    ''')
     # generate a dummy file
     create_test_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
@@ -4597,10 +4560,8 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended with locateFile
   def test_single_file_locate_file(self):
-    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-
     for wasm_enabled in [True, False]:
-      args = ['src.cpp', '-o', 'test.js', '-s', 'SINGLE_FILE=1']
+      args = [path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js', '-s', 'SINGLE_FILE=1']
 
       if not wasm_enabled:
         args += ['-s', 'WASM=0']
@@ -4626,8 +4587,7 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
-    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    self.compile_btest(['src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1'])
+    self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1'])
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     self.assertExists('test.js')
@@ -4639,8 +4599,7 @@ window.close = function() {
   # are all inside Web Workers).
   @requires_threads
   def test_pthreads_started_in_worker(self):
-    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp')).read()))
-    self.compile_btest(['src.cpp', '-o', 'test.js', '-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.compile_btest([path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), '-o', 'test.js', '-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
     create_test_file('test.html', '''
       <script>
         new Worker('test.js');
@@ -4650,22 +4609,21 @@ window.close = function() {
 
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')
-    create_test_file('page.c', self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
-    self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
+    self.compile_btest([path_from_root('tests', 'access_file_after_heap_resize.c'), '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
     # with separate file packager invocation
     self.run_process([PYTHON, FILE_PACKAGER, 'data.data', '--preload', 'test.txt', '--js-output=' + 'data.js'])
-    self.compile_btest(['page.c', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
+    self.compile_btest([path_from_root('tests', 'access_file_after_heap_resize.c'), '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
   def test_unicode_html_shell(self):
-    create_test_file('main.cpp', self.with_report_result(r'''
+    create_test_file('main.cpp', r'''
       int main() {
         REPORT_RESULT(0);
         return 0;
       }
-    '''))
+    ''')
     create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
     self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-o', 'test.html'])
     self.run_browser('test.html', None, '/report_result?0')
@@ -4677,9 +4635,7 @@ window.close = function() {
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
   def test_browser_run_from_different_directory(self):
-    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-    create_test_file('test.c', self.with_report_result(src))
-    self.compile_btest(['test.c', '-o', 'test.html', '-O3'])
+    self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.html', '-O3'])
 
     ensure_dir('subdir')
     shutil.move('test.js', os.path.join('subdir', 'test.js'))
@@ -4691,8 +4647,6 @@ window.close = function() {
 
   # Similar to `test_browser_run_from_different_directory`, but asynchronous because of `-s MODULARIZE=1`
   def test_browser_run_from_different_directory_async(self):
-    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-    create_test_file('test.c', self.with_report_result(src))
     for args, creations in [
       (['-s', 'MODULARIZE=1'], [
         'Module();',    # documented way for using modularize
@@ -4701,7 +4655,7 @@ window.close = function() {
     ]:
       print(args)
       # compile the code with the modularize feature and the preload-file option enabled
-      self.compile_btest(['test.c', '-o', 'test.js', '-O3'] + args)
+      self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js', '-O3'] + args)
       ensure_dir('subdir')
       shutil.move('test.js', os.path.join('subdir', 'test.js'))
       shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
@@ -4721,8 +4675,6 @@ window.close = function() {
   # from finding the file in a subdir, but here we at least check we do not regress compared to the
   # normal case of finding in the current dir.
   def test_browser_modularize_no_current_script(self):
-    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-    create_test_file('test.c', self.with_report_result(src))
     # test both modularize (and creating an instance) and modularize-instance
     # (which creates by itself)
     for path, args, creation in [
@@ -4733,7 +4685,7 @@ window.close = function() {
       filesystem_path = os.path.join('.', *path)
       ensure_dir(filesystem_path)
       # compile the code with the modularize feature and the preload-file option enabled
-      self.compile_btest(['test.c', '-o', 'test.js'] + args)
+      self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js'] + args)
       shutil.move('test.js', os.path.join(filesystem_path, 'test.js'))
       shutil.move('test.wasm', os.path.join(filesystem_path, 'test.wasm'))
       open(os.path.join(filesystem_path, 'test.html'), 'w').write('''
@@ -4843,9 +4795,7 @@ window.close = function() {
 
   def test_wasm2js_fallback(self):
     for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
-      src = 'src.cpp'
-      create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
-      self.compile_btest([src, '-s', 'WASM=2', '-o', 'test.html'] + args)
+      self.compile_btest([path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2', '-o', 'test.html'] + args)
 
       # First run with WebAssembly support enabled
       # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
@@ -4862,9 +4812,7 @@ window.close = function() {
 
   def test_wasm2js_fallback_on_wasm_compilation_failure(self):
     for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
-      src = 'src.cpp'
-      create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
-      self.compile_btest([src, '-s', 'WASM=2', '-o', 'test.html'] + args)
+      self.compile_btest([path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2', '-o', 'test.html'] + args)
 
       # Run without the .wasm.js file present: with Wasm support, the page should still run
       os.rename('test.wasm.js', 'test.wasm.js.unused')
