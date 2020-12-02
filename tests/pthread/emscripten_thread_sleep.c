@@ -2,6 +2,7 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <stdio.h>
 
 void Sleep(double msecs)
 {

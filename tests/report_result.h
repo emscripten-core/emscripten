@@ -10,17 +10,15 @@
 #ifndef REPORT_RESULT_H_
 #define REPORT_RESULT_H_
 
-#include <stdio.h>
-
 #ifdef __EMSCRIPTEN__
-
-#include <emscripten.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 void _ReportResult(int result, int sync);
 void _MaybeReportResult(int result, int sync);
+
 #ifdef __cplusplus
 }
 #endif
@@ -40,7 +38,9 @@ void _MaybeReportResult(int result, int sync);
 
 #else
 
+#include <stdio.h>
 #include <stdlib.h>
+
 #define REPORT_RESULT(result)       \
   do {                              \
     printf("result: %d\n", result); \

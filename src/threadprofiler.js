@@ -26,13 +26,13 @@ var emscriptenThreadProfiler = {
   updateUi: function updateUi() {
     if (typeof PThread === 'undefined') return; // Likely running threadprofiler on a singlethreaded build, or not initialized yet, ignore updating.
     var str = '';
-    var mainThread = PThread.mainThreadBlock;
+    var mainThread = _emscripten_main_browser_thread_id();
 
-    var threads = [PThread.mainThreadBlock];
+    var threads = [mainThread];
     for(var t in PThread.pthreads) threads.push(PThread.pthreads[t].threadInfoStruct);
 
     for(var i = 0; i < threads.length; ++i) {
-      var threadPtr = threads[i];//(t == PThread.mainThreadBlock ? PThread.mainThreadBlock : maiPThread.pthreads[t].threadInfoStruct;
+      var threadPtr = threads[i];//(t == mainThread ? mainThread : maiPThread.pthreads[t].threadInfoStruct;
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 20 /*C_STRUCTS.pthread.profilerBlock*/ ) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';

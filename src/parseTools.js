@@ -985,7 +985,17 @@ function makeDynCall(sig, funcPtr) {
     }
   }
   if (USE_LEGACY_DYNCALLS) {
-    return `getDynCaller("${sig}", ${funcPtr})`;
+    let dyncall = exportedAsmFunc(`dynCall_${sig}`)
+    if (sig.length > 1) {
+      let args = [];
+      for (let i = 1; i < sig.length; ++i) {
+        args.push(`a${i}`);
+      }
+      args = args.join(', ');
+      return `(function(${args}) { ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
+    } else {
+      return `(function() { ${dyncall}.call(null, ${funcPtr}); })`;
+    }
   } else {
     return `wasmTable.get(${funcPtr})`;
   }

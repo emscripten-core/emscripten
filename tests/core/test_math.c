@@ -5,17 +5,19 @@
  * found in the LICENSE file.
  */
 
+// For sincos
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <cmath>
-
-using namespace std;
+#include <math.h>
 
 int main(int argc, char **argv) {
-  printf("*%.2f,%.2f,%d", M_PI, -M_PI, (1 / 0.0) > 1e300);  // could end up as
-                                                            // infinity, or just
-                                                            // a very very big
-                                                            // number
+  printf("PI:%.2f,%.2f,%d\n", M_PI, -M_PI, (1 / 0.0) > 1e300);  // could end up as
+                                                                // infinity, or just
+                                                                // a very very big
+                                                                // number
+  printf("inf:");
   printf(",%d", isfinite(NAN) != 0);
   printf(",%d", isfinite(INFINITY) != 0);
   printf(",%d", isfinite(-INFINITY) != 0);
@@ -24,7 +26,9 @@ int main(int argc, char **argv) {
   printf(",%d", isinf(INFINITY) != 0);
   printf(",%d", isinf(-INFINITY) != 0);
   printf(",%d", isinf(12.3) != 0);
+  printf("\n");
 
+  printf("div:");
   div_t div_result = div(23, 10);
   printf(",%d", div_result.quot);
   printf(",%d", div_result.rem);
@@ -40,10 +44,10 @@ int main(int argc, char **argv) {
   div_result = div(-5, -3);
   printf(",%d", div_result.quot);
   printf(",%d", div_result.rem);
-
-
+  printf("\n");
 
   {
+    printf("modf:");
     double x,y;
     x = modf(3.2, &y);
     printf(",%1.1lf", x);
@@ -51,9 +55,19 @@ int main(int argc, char **argv) {
     x = modf(-3.2, &y);
     printf(",%1.1lf", x);
     printf(",%1.1lf", y);
+    printf("\n");
   }
 
   {
+    printf("ldexp:");
+    printf(",%1.1f", ldexp(3.0f, 3));
+    printf(",%1.1lf", ldexpf(9.0, 5));
+    printf(",%1.1Lf", ldexpl(10.0l, 2));
+    printf("\n");
+  }
+
+  {
+    printf("modff:");
     float x,y;
     x = modff(3.2, &y);
     printf(",%1.1f", x);
@@ -61,8 +75,10 @@ int main(int argc, char **argv) {
     x = modff(-3.2, &y);
     printf(",%1.1f", x);
     printf(",%1.1f", y);
+    printf("\n");
   }
 
+  printf("trig:");
   double sine = -1.0, cosine = -1.0;
   sincos(0.0, &sine, &cosine);
   printf(",%1.1lf", sine);
@@ -75,6 +91,6 @@ int main(int argc, char **argv) {
   fcosine = cosf(1.1 + argc - 1);
   printf(",%1.1f", fsine);
   printf(",%1.1f", fcosine);
-  printf("*\n");
+  printf("\n");
   return 0;
 }

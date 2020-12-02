@@ -22,9 +22,6 @@ var LibraryPThread = {
     unusedWorkers: [],
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
-    // Points to a pthread_t structure in the Emscripten main heap, allocated on
-    // demand if/when first needed.
-    // mainThreadBlock: undefined,
     initMainThreadBlock: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
@@ -47,41 +44,41 @@ var LibraryPThread = {
       withBuiltinMalloc(function () {
 #endif
 
-      PThread.mainThreadBlock = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
+      var tb = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
 
-      for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
+      for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[tb/4+i] = 0;
 
       // The pthread struct has a field that points to itself - this is used as
         // a magic ID to detect whether the pthread_t structure is 'alive'.
-      {{{ makeSetValue('PThread.mainThreadBlock', C_STRUCTS.pthread.self, 'PThread.mainThreadBlock', 'i32') }}};
+      {{{ makeSetValue('tb', C_STRUCTS.pthread.self, 'tb', 'i32') }}};
 
       // pthread struct robust_list head should point to itself.
-      var headPtr = PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.robust_list }}};
+      var headPtr = tb + {{{ C_STRUCTS.pthread.robust_list }}};
       {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
 
       // Allocate memory for thread-local storage.
       var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
       for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
-      Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
-      Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, tb); // Main thread ID.
 
       PThread.initShared();
 
 #if PTHREADS_PROFILING
-      PThread.createProfilerBlock(PThread.mainThreadBlock);
-      PThread.setThreadName(PThread.mainThreadBlock, "Browser main thread");
-      PThread.setThreadStatus(PThread.mainThreadBlock, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
-#endif
-
-#if USE_ASAN || USE_LSAN
-      });
+      PThread.createProfilerBlock(tb);
+      PThread.setThreadName(tb, "Browser main thread");
+      PThread.setThreadStatus(tb, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
 
       // Pass the thread address to the native code where they stored in wasm
       // globals which act as a form of TLS. Global constructors trying
       // to access this value will read the wrong value, but that is UB anyway.
-      __emscripten_thread_init(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-      _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
+      __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+      _emscripten_register_main_browser_thread_id(tb);
+
+#if USE_ASAN || USE_LSAN
+      });
+#endif
     },
     initWorker: function() {
       PThread.initShared();
@@ -848,7 +845,7 @@ var LibraryPThread = {
 #endif
   },
 
-  _emscripten_do_pthread_join__deps: ['$cleanupThread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self',
+  _emscripten_do_pthread_join__deps: ['$cleanupThread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self', 'emscripten_main_browser_thread_id',
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
   'emscripten_check_blocking_allowed'
 #endif
@@ -862,7 +859,7 @@ var LibraryPThread = {
       err('PThread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK;
     }
-    else if (!ENVIRONMENT_IS_PTHREAD && PThread.mainThreadBlock == thread) {
+    else if (!ENVIRONMENT_IS_PTHREAD && _emscripten_main_browser_thread_id() == thread) {
       err('Main thread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK;
     }
@@ -1451,6 +1448,10 @@ var LibraryPThread = {
   // allow pthreads to check if noExitRuntime from worker.js
   $getNoExitRuntime: function() {
     return noExitRuntime;
+  },
+
+  $invokeEntryPoint: function(ptr, arg) {
+    return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
   // When using postMessage to send an object, it is processed by the structured clone algorithm.
