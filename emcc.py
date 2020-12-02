@@ -859,8 +859,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.check_sanity(force=True)
     return code
 
-  shared.check_sanity(force=DEBUG)
-
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
     return 0
@@ -884,6 +882,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
       print(shared.shlex_join(parts[1:]))
     return 0
+
+  shared.check_sanity(force=DEBUG)
 
   def get_language_mode(args):
     return_next = False
