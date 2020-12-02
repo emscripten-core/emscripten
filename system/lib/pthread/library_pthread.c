@@ -745,12 +745,11 @@ EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(int index, 
   c->calleeDelete = 1-sync;
   c->functionEnum = EM_PROXIED_JS_FUNCTION;
   c->functionPtr = (void*)index;
+  assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
   // The types are only known at runtime in these calls, so we store values that
   // must be able to contain any valid JS value, including a 64-bit BigInt if
-  // BigInt support is enabled.
-  assert(sizeof(em_variant_val) == sizeof(double));
-  assert(sizeof(em_variant_val) == sizeof(int64_t));
-  assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
+  // BigInt support is enabled. We store to an i64, which can contain both a
+  // BigInt and a JS Number which is a 64-bit double.
   c->args[0].i = num_args;
   for (int i = 0; i < num_args; i++) {
     c->args[i+1].i64 = buffer[i];
