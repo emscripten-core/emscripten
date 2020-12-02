@@ -2400,15 +2400,17 @@ void *getBindBuffer() {
     ]:
       for mode in [[], ['-s', 'WASM=0']]:
         print('\n', filename, extra_args, mode)
+
         print('mem init, so async, call too early')
         create_test_file('post.js', post_prep + post_test + post_hook)
-        self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
+        self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode, reporting=False)
         print('sync startup, call too late')
         create_test_file('post.js', post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
+        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode, reporting=False)
+
         print('sync, runtime still alive, so all good')
         create_test_file('post.js', post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected='606', args=['--post-js', 'post.js'] + extra_args + mode)
+        self.btest(filename, expected='606', args=['--post-js', 'post.js'] + extra_args + mode, reporting=False)
 
   def test_cwrap_early(self):
     self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS=1', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js'), '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap"]'], expected='0')
@@ -4539,14 +4541,13 @@ window.close = function() {
       #include <stdio.h>
       #include <emscripten.h>
       int main() {
-        REPORT_RESULT(0);
         return 0;
       }
     ''')
     # generate a dummy file
     create_test_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-s', 'SINGLE_FILE=1'])
+    self.compile_btest(['test.c', '-s', 'EXIT_RUNTIME', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-s', 'SINGLE_FILE=1'])
     create_test_file('a.html', '''
       <script>
         atob = undefined;
@@ -4557,7 +4558,7 @@ window.close = function() {
         var foo = Foo();
       </script>
     ''')
-    self.run_browser('a.html', '...', '/report_result?0')
+    self.run_browser('a.html', '...', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
