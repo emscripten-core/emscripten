@@ -193,8 +193,12 @@ this.onmessage = function(e) {
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();
 #endif
-#if !MINIMAL_RUNTIME // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to pthreads. To exit a pthread with live runtime, use the function emscripten_unwind_to_js_event_loop() in the pthread body.
-        // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
+#if !MINIMAL_RUNTIME
+        // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
+        // pthreads. To exit a pthread with live runtime, use the function
+        // emscripten_unwind_to_js_event_loop() in the pthread body.
+        // The thread might have finished without calling pthread_exit(). If so,
+        // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
         if (!Module['getNoExitRuntime']())
 #endif
@@ -213,14 +217,26 @@ this.onmessage = function(e) {
             throw ex;
           }
 #endif
-#if MINIMAL_RUNTIME
           // ExitStatus not present in MINIMAL_RUNTIME
-          Module['PThread'].threadExit(-2);
-          throw ex; // ExitStatus not present in MINIMAL_RUNTIME
-#else
-          Module['PThread'].threadExit((ex instanceof Module['ExitStatus']) ? ex.status : -2);
-          if (!(ex instanceof Module['ExitStatus'])) throw ex;
+#if !MINIMAL_RUNTIME
+          if (ex instanceof Module['ExitStatus']) {
+            if (Module['getNoExitRuntime']()) {
+#if ASSERTIONS
+              err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
 #endif
+            } else {
+#if ASSERTIONS
+              err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), calling threadExit.');
+#endif
+              Module['PThread'].threadExit(ex.status);
+            }
+          }
+          else
+#endif
+          {
+            Module['PThread'].threadExit(-2);
+            throw ex;
+          }
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
