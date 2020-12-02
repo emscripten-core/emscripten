@@ -3782,6 +3782,10 @@ window.close = function() {
   def test_pthread_iostream(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
+  @requires_threads
+  def test_pthread_unistd_io_bigint(self):
+    self.btest(path_from_root('tests', 'unistd', 'io.c'), expected='0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'WASM_BIGINT'])
+
   # Test that the main thread is able to use pthread_set/getspecific.
   @requires_threads
   def test_pthread_setspecific_mainthread(self):

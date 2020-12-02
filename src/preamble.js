@@ -261,6 +261,10 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
+#if WASM_BIGINT
+var HEAP64;
+#endif
+
 function updateGlobalBufferAndViews(buf) {
   buffer = buf;
   Module['HEAP8'] = HEAP8 = new Int8Array(buf);
@@ -271,6 +275,9 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
+#if WASM_BIGINT
+  Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
+#endif
 }
 
 #if RELOCATABLE
