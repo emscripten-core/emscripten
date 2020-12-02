@@ -1105,10 +1105,9 @@ var LibraryBrowser = {
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$getFuncWrapper'],
   emscripten_async_load_script: function(url, onload, onerror) {
-    onload = getFuncWrapper(onload, 'v');
-    onerror = getFuncWrapper(onerror, 'v');
+    onload = {{{ makeDynCall('v', 'onload') }}};
+    onerror = {{{ makeDynCall('v', 'onerror') }}};
 
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -1197,7 +1196,7 @@ var LibraryBrowser = {
   emscripten_set_main_loop__deps: ['$setMainLoop'],
   emscripten_set_main_loop__docs: '/** @param {number|boolean=} noSetTiming */',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
-    var browserIterationFunc = function() { {{{ makeDynCall('v', 'func') }}}(); };
+    var browserIterationFunc = {{{ makeDynCall('v', 'func') }}};
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg, noSetTiming);
   },
 
@@ -1519,7 +1518,6 @@ var LibraryBrowser = {
     Browser.workers[id] = null;
   },
 
-  emscripten_call_worker__deps: ['$getFuncWrapper'],
   emscripten_call_worker__proxy: 'sync',
   emscripten_call_worker__sig: 'viiiiii',
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
@@ -1531,7 +1529,7 @@ var LibraryBrowser = {
     if (callback) {
       callbackId = info.callbacks.length;
       info.callbacks.push({
-        func: getFuncWrapper(callback, 'viii'),
+        func: {{{ makeDynCall('viii', 'callback') }}},
         arg: arg
       });
       info.awaited++;

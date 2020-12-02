@@ -3727,7 +3727,7 @@ LibraryManager.library = {
   },
 #endif
 
-  $dynCall: function (sig, ptr, args) {
+  $dynCall: function(sig, ptr, args) {
 #if USE_LEGACY_DYNCALLS
     return dynCallLegacy(sig, ptr, args);
 #else
