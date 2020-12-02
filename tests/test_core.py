@@ -3529,7 +3529,8 @@ ok
       '''
     self.do_run(src, 'float: 42.\n')
 
-  def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
+  def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[],
+                  force_c=False, need_reverse=True, auto_load=True, main_module=1, **kwargs):
     if header:
       create_test_file('header.h', header)
 
@@ -3553,7 +3554,7 @@ ok
     shutil.move(out_file, 'liblib.so')
 
     # main settings
-    self.set_setting('MAIN_MODULE')
+    self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
       self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
@@ -3572,9 +3573,12 @@ ok
     self.emcc_args = old_args
 
     if need_reverse:
-      # test the reverse as well
       print('flip')
-      self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'], force_c, need_reverse=False, **kwargs)
+      # Test the reverse as well.  There we flip the role of the side module and main module.
+      # - We add --no-entry since the side module doesn't have a `main`
+      # - We set main_module to 1 since in most cases MAIN_MODULE=2 doesn't work when flipped.
+      self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'],
+                       force_c, need_reverse=False, main_module=1,  **kwargs)
 
   def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
@@ -3591,7 +3595,7 @@ ok
       int sidey() {
         return 11;
       }
-    ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
+    ''', 'other says 11.', 'int sidey();', force_c=True, main_module=2, **kwargs)
 
   @needs_dlfcn
   def test_dylink_basics(self):
@@ -3646,7 +3650,7 @@ ok
       void* get_address() {
         return (void*)&puts;
       }
-    ''', 'success', header='void* get_address();', force_c=True)
+    ''', 'success', header='void* get_address();', force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_floats(self):
@@ -3659,7 +3663,7 @@ ok
       }
     ''', '''
       float sidey() { return 11.5; }
-    ''', 'other says 12.50', force_c=True)
+    ''', 'other says 12.50', force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_printfs(self):
@@ -3701,7 +3705,7 @@ ok
       intfunc sidey(intfunc f) { f(1); return f; }
       ''',
       expected='hello from funcptr: 1\nhello from funcptr: 0\n',
-      header='typedef void (*intfunc)(int );', force_c=True)
+      header='typedef void (*intfunc)(int );', force_c=True, main_module=2)
 
   @needs_dlfcn
   # test dynamic linking of a module with multiple function pointers, stored
@@ -3727,7 +3731,7 @@ ok
       void sidey(voidfunc f) { f(); }
       ''',
       expected='hello 0\nhello 1\nhello 2\n',
-      header='typedef void (*voidfunc)(); void sidey(voidfunc f);', force_c=True)
+      header='typedef void (*voidfunc)(); void sidey(voidfunc f);', force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_funcpointers_wrapper(self):
@@ -3776,7 +3780,7 @@ ok
       int sidey(floatfunc f) { f(56.78); return 1; }
       ''',
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
-      header='typedef float (*floatfunc)(float);', force_c=True)
+      header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_global_init(self):
@@ -3836,7 +3840,7 @@ ok
       int64_t sidey() {
         return 42;
       }
-    ''', 'other says 42.', force_c=True)
+    ''', 'other says 42.', force_c=True, main_module=2)
 
   @all_engines
   @needs_dlfcn
@@ -3922,7 +3926,7 @@ res64 - external 64\n''', header='''
       #include <stdint.h>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''', force_c=True)
+    ''', force_c=True, main_module=2)
 
   @needs_dlfcn
   @also_with_wasm_bigint
@@ -3989,7 +3993,7 @@ res64 - external 64\n''', header='''
       }
     ''', side=r'''
       int x = 123;
-    ''', expected=['extern is 123.\n'], force_c=True)
+    ''', expected=['extern is 123.\n'], force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_global_var_modded(self):
@@ -4006,7 +4010,7 @@ res64 - external 64\n''', header='''
         Initter() { x = 456; }
       };
       Initter initter;
-    ''', expected=['extern is 456.\n'])
+    ''', expected=['extern is 456.\n'], main_module=2)
 
   @needs_dlfcn
   def test_dylink_stdlib(self):
@@ -4138,7 +4142,7 @@ res64 - external 64\n''', header='''
       #include "header.h"
 
       int global_var = 12345;
-    ''', expected=['12345\n'], force_c=True)
+    ''', expected=['12345\n'], force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
