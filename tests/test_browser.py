@@ -3963,6 +3963,28 @@ window.close = function() {
   def test_pthread_asan_use_after_free(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
 
+  @requires_threads
+  def test_pthread_exit_process(self):
+    args = ['-s', 'USE_PTHREADS=1',
+            '-s', 'PROXY_TO_PTHREAD',
+            '-s', 'PTHREAD_POOL_SIZE=2',
+            '-s', 'EXIT_RUNTIME',
+            '-DEXIT_RUNTIME',
+            '-O0']
+    args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
+    self.btest(path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c'), expected='onExit status: 42', args=args)
+
+  @requires_threads
+  def test_pthread_no_exit_process(self):
+    # Same as above but without EXIT_RUNTIME.  In this case we don't expect onExit to
+    # ever be called.
+    args = ['-s', 'USE_PTHREADS=1',
+            '-s', 'PROXY_TO_PTHREAD',
+            '-s', 'PTHREAD_POOL_SIZE=2',
+            '-O0']
+    args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
+    self.btest(path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c'), expected='43', args=args)
+
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=[])

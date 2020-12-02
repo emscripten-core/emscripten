@@ -378,14 +378,22 @@ function exit(status, implicit) {
   }
 
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD && !implicit) {
+  if (!implicit) {
+    if (ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS
-    err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitProcess.');
+      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitProcess.');
 #endif
-    // When running in a pthread we propagate the exit back to the main thread
-    // where it can decide if the whole process should be shut down or not.
-    postMessage({ 'cmd': 'exitProcess', 'returnCode': status });
-    throw new ExitStatus(status);
+      // When running in a pthread we propagate the exit back to the main thread
+      // where it can decide if the whole process should be shut down or not.
+      // The pthread may have decided not to exit its own runtime, for example
+      // because it runs a main loop, but that doesn't affect the main thread.
+      postMessage({ 'cmd': 'exitProcess', 'returnCode': status });
+      throw new ExitStatus(status);
+    } else {
+#if ASSERTIONS
+      err('main thead called exit: noExitRuntime=' + noExitRuntime);
+#endif
+    }
   }
 #endif
 
@@ -448,13 +456,16 @@ if (Module['noInitialRun']) shouldRunNow = false;
 
 #if EXIT_RUNTIME == 0
 #if USE_PTHREADS
-// EXIT_RUNTIME=0 only applies to default behavior of the main browser thread.
-// Otherwise EXIT_RUNTIME=0 (the default) would mean that pthreads would never
-// exit by defualt wich would break a lot of existing code.
-// However, pthreads can still choose to set noExitRuntime explictly, or
+// EXIT_RUNTIME=0 only applies to the default behavior of the main browser
+// thread.
+// The default behaviour for pthreads is always to exit once they return
+// from their entry point (or call pthread_exit).  If we set noExitRuntime
+// to true here on pthreads they would never complete and attempt to
+// pthread_join to them would block forever.
+// pthreads can still choose to set `noExitRuntime` explicitly, or
 // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
-// thier main function.  See comment in src/worker.js for more.
-noExitRuntime = false;
+// their main function.  See comment in src/worker.js for more.
+noExitRuntime = !ENVIRONMENT_IS_PTHREAD;
 #else
 noExitRuntime = true;
 #endif
