@@ -261,7 +261,6 @@ class EmccOptions(object):
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
     # Linux & MacOS)
     self.output_eol = os.linesep
-    self.binaryen_passes = []
     self.no_entry = False
     self.shared = False
     self.relocatable = False
@@ -539,10 +538,7 @@ def cxx_to_c_compiler(cxx):
   return os.path.join(dirname, basename)
 
 
-def backend_binaryen_passes():
-  # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
-  # we run the optimizer during asm2wasm itself). use it, if not overridden.
-
+def get_binaryen_passes():
   # run the binaryen optimizer in -O2+. in -O0 we don't need it obviously, while
   # in -O1 we don't run it as the LLVM optimizer has been run, and it does the
   # great majority of the work; not running the binaryen optimizer in that case
@@ -591,29 +587,6 @@ def backend_binaryen_passes():
       passes += ['--pass-arg=asyncify-verbose']
     if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
       passes += ['--pass-arg=asyncify-ignore-indirect']
-    else:
-      # if we are not ignoring indirect calls, then we must treat invoke_* as if
-      # they are indirect calls, since that is what they do - we can't see their
-      # targets statically.
-      shared.Settings.ASYNCIFY_IMPORTS += ['invoke_*']
-    # with pthreads we may call main through the __call_main mechanism, which can
-    # therefore reach anything in the program, so mark it as possibly causing a
-    # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
-    # see what it itself calls)
-    if shared.Settings.USE_PTHREADS:
-      shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
-    # add the default imports
-    shared.Settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
-
-    # return the full import name, including module. The name may
-    # already have a module prefix; if not, we assume it is "env".
-    def get_full_import_name(name):
-      if '.' in name:
-        return name
-      return 'env.' + name
-
-    shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
-
     passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
 
     # shell escaping can be confusing; try to emit useful warnings
@@ -1886,7 +1859,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        sanitize:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
-    options.binaryen_passes += backend_binaryen_passes()
+    if shared.Settings.ASYNCIFY:
+      if not shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
+        # if we are not ignoring indirect calls, then we must treat invoke_* as if
+        # they are indirect calls, since that is what they do - we can't see their
+        # targets statically.
+        shared.Settings.ASYNCIFY_IMPORTS += ['invoke_*']
+      # with pthreads we may call main through the __call_main mechanism, which can
+      # therefore reach anything in the program, so mark it as possibly causing a
+      # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
+      # see what it itself calls)
+      if shared.Settings.USE_PTHREADS:
+        shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
+      # add the default imports
+      shared.Settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
+
+      # return the full import name, including module. The name may
+      # already have a module prefix; if not, we assume it is "env".
+      def get_full_import_name(name):
+        if '.' in name:
+          return name
+        return 'env.' + name
+
+      shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
 
     if shared.Settings.WASM2JS and shared.Settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
@@ -2696,17 +2691,18 @@ def do_binaryen(target, options, wasm_target):
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  if options.binaryen_passes or shared.Settings.GENERATE_SOURCE_MAP:
+  passes = get_binaryen_passes()
+  if passes or shared.Settings.GENERATE_SOURCE_MAP:
     # if we need to strip certain sections, and we have wasm-opt passes
     # to run anyhow, do it with them.
     if strip_debug:
-      options.binaryen_passes += ['--strip-debug']
+      passes += ['--strip-debug']
     if strip_producers:
-      options.binaryen_passes += ['--strip-producers']
+      passes += ['--strip-producers']
     building.save_intermediate(wasm_target, 'pre-byn.wasm')
     building.run_wasm_opt(wasm_target,
                           wasm_target,
-                          args=options.binaryen_passes,
+                          args=passes,
                           debug=intermediate_debug_info)
   else:
     # we are not running wasm-opt. if we need to strip certain sections
