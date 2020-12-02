@@ -1647,6 +1647,15 @@ var PURE_WASI = 0;
 // - WASM2JS (WASM=0)
 var IMPORTED_MEMORY = 0;
 
+// Generate code to loading split wasm modules.
+// This option will automatically generate two wasm files as output, one
+// with the `.orig` suffix and one without.  The default file (without
+// the suffix) when run will generate instrumentation data can later be
+// fed into wasm-split (the binaryen tool).
+// As well as this the generated JS code will contains help functions
+// to loading split modules.
+var SPLIT_MODULE = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================

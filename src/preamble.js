@@ -792,6 +792,17 @@ var wasmOffsetConverter;
 #include "wasm_offset_converter.js"
 #endif
 
+#if SPLIT_MODULE
+var splitModuleProxyHandler = {
+  'get': function(target, prop, receiver) {
+    err('placeholder function created: ' + prop);
+    return function() {
+      abort('placeholder function called: ' + prop);
+    }
+  }
+};
+#endif
+
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm() {
@@ -803,6 +814,9 @@ function createWasm() {
     'env': asmLibraryArg,
     '{{{ WASI_MODULE_NAME }}}': asmLibraryArg,
 #endif // MINIFY_WASM_IMPORTED_MODULES
+#if SPLIT_MODULE
+    'placeholder': new Proxy({}, splitModuleProxyHandler),
+#endif
 #if RELOCATABLE
     'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
     'GOT.func': new Proxy(asmLibraryArg, GOTHandler),

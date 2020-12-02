@@ -9748,3 +9748,18 @@ exec "$@"
 
   def test_syslog(self):
     self.do_other_test('test_syslog.c')
+
+  def test_split_module(self):
+    self.set_setting('SPLIT_MODULE')
+    self.emcc_args += ['-g', '-Wno-experimental']
+    self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module.post.js')]
+    self.do_other_test('test_split_module.c')
+    self.assertExists('test_split_module.wasm')
+    self.assertExists('test_split_module.wasm.orig')
+    self.assertExists('profile.data')
+
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=split@', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
+
+    os.rename('primary.wasm', 'test_split_module.wasm')
+    self.run_js('test_split_module.js')

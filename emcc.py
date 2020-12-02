@@ -672,6 +672,11 @@ def make_js_executable(script):
     pass # can fail if e.g. writing the executable to /dev/null
 
 
+def do_split_module(wasm_file):
+  os.rename(wasm_file, wasm_file + '.orig')
+  building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=['--instrument'])
+
+
 def do_replace(input_, pattern, replacement):
   if pattern not in input_:
     exit_with_error('expected to find pattern in input JS: %s' % pattern)
@@ -2350,6 +2355,10 @@ def post_link(options, in_wasm, wasm_target, target):
 
     if embed_memfile() and memfile:
       shared.try_delete(memfile)
+
+    if shared.Settings.SPLIT_MODULE:
+      diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
+      do_split_module(wasm_target)
 
     for f in generated_text_files_with_native_eols:
       tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
