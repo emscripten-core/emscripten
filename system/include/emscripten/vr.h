@@ -123,30 +123,30 @@ typedef struct VRFrameData {
     VRPose pose;
 } VRFrameData;
 
-extern int emscripten_vr_ready(void);
-extern int emscripten_vr_init(em_vr_arg_callback_func callback, void* userData);
-extern int emscripten_vr_deinit(void);
+int emscripten_vr_ready(void);
+int emscripten_vr_init(em_vr_arg_callback_func callback, void* userData);
+int emscripten_vr_deinit(void);
 
-extern int emscripten_vr_version_major(void);
-extern int emscripten_vr_version_minor(void);
+int emscripten_vr_version_major(void);
+int emscripten_vr_version_minor(void);
 
-extern int emscripten_vr_count_displays(void);
-extern VRDisplayHandle emscripten_vr_get_display_handle(int displayIndex);
+int emscripten_vr_count_displays(void);
+VRDisplayHandle emscripten_vr_get_display_handle(int displayIndex);
 
-extern int emscripten_vr_set_display_render_loop(VRDisplayHandle handle, em_vr_callback_func callback);
-extern int emscripten_vr_set_display_render_loop_arg(VRDisplayHandle handle, em_vr_arg_callback_func callback, void* arg);
-extern int emscripten_vr_cancel_display_render_loop(VRDisplayHandle handle);
+int emscripten_vr_set_display_render_loop(VRDisplayHandle handle, em_vr_callback_func callback);
+int emscripten_vr_set_display_render_loop_arg(VRDisplayHandle handle, em_vr_arg_callback_func callback, void* arg);
+int emscripten_vr_cancel_display_render_loop(VRDisplayHandle handle);
 
-extern int emscripten_vr_request_present(VRDisplayHandle handle, VRLayerInit* layerInit, int layerCount, em_vr_arg_callback_func callback, void* userData);
-extern int emscripten_vr_get_frame_data(VRDisplayHandle handle, VRFrameData* frameData);
-extern int emscripten_vr_submit_frame(VRDisplayHandle handle);
-extern int emscripten_vr_exit_present(VRDisplayHandle handle);
+int emscripten_vr_request_present(VRDisplayHandle handle, VRLayerInit* layerInit, int layerCount, em_vr_arg_callback_func callback, void* userData);
+int emscripten_vr_get_frame_data(VRDisplayHandle handle, VRFrameData* frameData);
+int emscripten_vr_submit_frame(VRDisplayHandle handle);
+int emscripten_vr_exit_present(VRDisplayHandle handle);
 
-extern const char *emscripten_vr_get_display_name(VRDisplayHandle handle);
-extern int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichEye, VREyeParameters* eyeParams);
-extern int emscripten_vr_get_display_capabilities(VRDisplayHandle handle, VRDisplayCapabilities* displayCaps);
-extern bool emscripten_vr_display_connected(VRDisplayHandle handle);
-extern bool emscripten_vr_display_presenting(VRDisplayHandle handle);
+const char *emscripten_vr_get_display_name(VRDisplayHandle handle);
+int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichEye, VREyeParameters* eyeParams);
+int emscripten_vr_get_display_capabilities(VRDisplayHandle handle, VRDisplayCapabilities* displayCaps);
+bool emscripten_vr_display_connected(VRDisplayHandle handle);
+bool emscripten_vr_display_presenting(VRDisplayHandle handle);
 
 #ifdef __cplusplus
 } // ~extern "C"
