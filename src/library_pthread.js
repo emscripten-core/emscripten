@@ -706,7 +706,9 @@ var LibraryPThread = {
     var detached = 0;
     var schedPolicy = 0; /*SCHED_OTHER*/
     var schedPrio = 0;
-    if (attr) {
+    // When musl creates C11 threads it passes __ATTRP_C11_THREAD (-1) which
+    // treat as if it was NULL.
+    if (attr && attr != {{{ cDefine('__ATTRP_C11_THREAD') }}}) {
       stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
       // Musl has a convention that the stack size that is stored to the pthread
       // attribute structure is always musl's #define DEFAULT_STACK_SIZE
@@ -961,6 +963,7 @@ var LibraryPThread = {
     return 0;
   },
 
+  pthread_detach__sig: 'vi',
   pthread_detach: function(thread) {
     if (!thread) {
       err('pthread_detach attempted on a null thread pointer!');
@@ -978,6 +981,10 @@ var LibraryPThread = {
 
     return wasDetached ? ERRNO_CODES.EINVAL : 0;
   },
+
+  // C11 threads function.
+  // TODO: remove this in favor or compiling musl/src/thread/pthread_detach.c
+  thrd_detach: 'pthread_detach',
 
   pthread_exit__deps: ['exit'],
   pthread_exit: function(status) {

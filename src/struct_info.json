@@ -1544,7 +1544,8 @@
               "cancelasync",
               "locale"
             ]
-        }
+        },
+        "defines": ["__ATTRP_C11_THREAD"]
     },
     {
         "file": "../lib/libc/musl/src/internal/libc.h",
