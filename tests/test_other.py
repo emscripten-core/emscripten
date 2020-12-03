@@ -9761,5 +9761,6 @@ exec "$@"
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
     self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=split@', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
 
+    os.remove('test_split_module.wasm')
     os.rename('primary.wasm', 'test_split_module.wasm')
     self.run_js('test_split_module.js')
