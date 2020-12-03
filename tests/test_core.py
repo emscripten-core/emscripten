@@ -4823,8 +4823,6 @@ Module = {
 
   def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
-    self.set_setting('SYSCALL_DEBUG', 1)
-    self.clear()
     orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       print(fs)

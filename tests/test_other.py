@@ -9607,7 +9607,7 @@ exec "$@"
 
   def test_SYSCALL_DEBUG(self):
     self.set_setting('SYSCALL_DEBUG')
-    self.do_runf(path_from_root('tests', 'hello_world.c'), 'syscall! fd_write')
+    self.do_runf(path_from_root('tests', 'hello_world.c'), 'syscall! fd_write: [1,')
 
   def test_LIBRARY_DEBUG(self):
     self.set_setting('LIBRARY_DEBUG')
