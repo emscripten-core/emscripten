@@ -906,7 +906,7 @@ var STRICT = 0;
 // include `_main`.
 var IGNORE_MISSING_MAIN = 1;
 
-// Automatically attempt to add archive indexes at link time to archives that 
+// Automatically attempt to add archive indexes at link time to archives that
 // don't already have them.  This can happen when GNU ar or GNU ranlib is used
 // rather than `llvm-ar` or `emar` since the former don't understand the wasm
 // object format.
@@ -964,7 +964,7 @@ var DETERMINISTIC = 0;
 // (If WASM_ASYNC_COMPILATION is off, that is, if compilation is
 // *synchronous*, then it would not make sense to return a Promise, and instead
 // the Module object itself is returned, which is ready to be used.)
-// 
+//
 // The default name of the function is `Module`, but can be changed using the
 // `EXPORT_NAME` option. We recommend renaming it to a more typical name for a
 // factory function, e.g. `createModule`.
@@ -973,14 +973,14 @@ var DETERMINISTIC = 0;
 // You use the factory function like so:
 //
 //   const module = await EXPORT_NAME();
-//   
+//
 // or:
 //
 //   let module;
 //   EXPORT_NAME().then(instance => {
 //     module = instance;
 //   });
-//   
+//
 //
 // The factory function accepts 1 parameter, an object with default values for
 // the module instance:
@@ -1015,6 +1015,10 @@ var DETERMINISTIC = 0;
 // intended usage is to add code that is optimized with the rest of the emitted
 // code, allowing better dead code elimination and minification.
 var MODULARIZE = 0;
+
+// By default, if MODULARIZE=1, emscripten will output JS to support UMD exports.
+// If OMIT_MODULE_EXPORTS=1, this code is omitted.
+var OMIT_MODULE_EXPORTS = 0;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports.
