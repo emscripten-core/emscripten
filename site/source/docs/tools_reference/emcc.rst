@@ -263,7 +263,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
 
-  *emcc* runs `tools/file_packager.py <https://github.com/emscripten-core/emscripten/blob/master/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
+  *emcc* runs `tools/file_packager <https://github.com/emscripten-core/emscripten/blob/master/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
 
   For more information about the ``--preload-file`` options, see :ref:`packaging-files`.
 

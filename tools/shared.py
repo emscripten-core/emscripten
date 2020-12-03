@@ -1002,7 +1002,7 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
-FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
+FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()
 

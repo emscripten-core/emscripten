@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -29,7 +29,7 @@ Usage:
   --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
 
-  --from-emcc Indicate that `file_packager.py` was called from `emcc.py` and will be further processed by it, so some code generation can be skipped here
+  --from-emcc Indicate that `file_packager` was called from `emcc` and will be further processed by it, so some code generation can be skipped here
 
   --js-output=FILE Writes output in FILE, if not specified, standard output is used.
 
@@ -75,7 +75,7 @@ import fnmatch
 import json
 
 if len(sys.argv) == 1:
-  print('''Usage: file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  print('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
 See the source for more details.''')
   sys.exit(0)
 
@@ -268,7 +268,7 @@ def main():
     return 1
 
   ret = ''
-  # emcc.py will add this to the output itself, so it is only needed for
+  # emcc will add this to the output itself, so it is only needed for
   # standalone calls
   if not from_emcc:
     ret = '''

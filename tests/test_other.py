@@ -2158,16 +2158,16 @@ int f() {
     create_test_file('data2.txt', 'data2')
 
     # relative path to below the current dir is invalid
-    stderr = self.expect_fail([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
+    stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
     self.assertContained('below the current directory', stderr)
 
     # relative path that ends up under us is cool
-    proc = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
     self.assertGreater(len(proc.stdout), 0)
     self.assertNotContained('below the current directory', proc.stderr)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
-    proc2 = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
+    proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
     self.assertGreater(len(proc2.stdout), 0)
     self.assertNotContained('below the current directory', proc2.stderr)
 
@@ -2181,7 +2181,7 @@ int f() {
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
 
-    self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
     orig_timestamp = os.path.getmtime('immutable.js')
@@ -2189,7 +2189,7 @@ int f() {
     # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
-    self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     # assert both file content and timestamp are the same as reference copy
     self.assertTextDataIdentical(orig_content, open('immutable.js').read())
     self.assertEqual(orig_timestamp, os.path.getmtime('immutable.js'))
@@ -2213,7 +2213,7 @@ int f() {
       return
     full = os.path.join(unicode_name, 'data.txt')
     create_test_file(full, 'data')
-    proc = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
     assert len(proc.stdout), proc.stderr
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
@@ -2222,7 +2222,7 @@ int f() {
     MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
     create_test_file('data.txt', 'data1')
     # mention when running standalone
-    err = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
     # do not mention from emcc
     err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--preload-file', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
@@ -2230,7 +2230,7 @@ int f() {
 
   def test_file_packager_returns_error_if_target_equal_to_jsoutput(self):
     MESSAGE = 'error: TARGET should not be the same value of --js-output'
-    result = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--js-output=test.data'], check=False, stdout=PIPE, stderr=PIPE)
+    result = self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.data'], check=False, stdout=PIPE, stderr=PIPE)
     self.assertEqual(result.returncode, 1)
     self.assertContained(MESSAGE, result.stderr)
 
@@ -5008,9 +5008,9 @@ int main() {
     MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
     create_test_file('huge.dat', 'a' * (1024 * 1024 * 257))
     create_test_file('tiny.dat', 'a')
-    err = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertNotContained(MESSAGE, err)
-    err = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
     self.clear()
 
