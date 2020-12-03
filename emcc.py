@@ -2389,13 +2389,13 @@ def parse_args(newargs):
         return True
       return False
 
-    def check_arg(value):
+    def check_arg(name):
       nonlocal arg_value
-      if arg.startswith(value) and '=' in arg:
+      if arg.startswith(name) and '=' in arg:
         arg_value = arg.split('=', 1)[1]
         newargs[i] = ''
         return True
-      if arg == value:
+      if arg == name:
         if len(newargs) <= i + 1:
           exit_with_error("option '%s' requires an argument" % arg)
         arg_value = newargs[i + 1]
@@ -2410,6 +2410,12 @@ def parse_args(newargs):
       rtn = arg_value
       arg_value = None
       return rtn
+
+    def consume_arg_file():
+      name = consume_arg()
+      if not os.path.isfile(name):
+        exit_with_error("'%s': file not found: '%s'" % (arg, name))
+      return name
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
@@ -2446,13 +2452,13 @@ def parse_args(newargs):
     elif check_arg('--js-transform'):
       options.js_transform = consume_arg()
     elif check_arg('--pre-js'):
-      options.pre_js += open(consume_arg()).read() + '\n'
+      options.pre_js += open(consume_arg_file()).read() + '\n'
     elif check_arg('--post-js'):
-      options.post_js += open(consume_arg()).read() + '\n'
+      options.post_js += open(consume_arg_file()).read() + '\n'
     elif check_arg('--extern-pre-js'):
-      options.extern_pre_js += open(consume_arg()).read() + '\n'
+      options.extern_pre_js += open(consume_arg_file()).read() + '\n'
     elif check_arg('--extern-post-js'):
-      options.extern_post_js += open(consume_arg()).read() + '\n'
+      options.extern_post_js += open(consume_arg_file()).read() + '\n'
     elif check_arg('--compiler-wrapper'):
       config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
@@ -2539,13 +2545,13 @@ def parse_args(newargs):
       shared.PRINT_STAGES = True
       shared.check_sanity(force=True)
     elif check_arg('--shell-file'):
-      options.shell_path = consume_arg()
+      options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
-      shared.Settings.SYSTEM_JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg())))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg_file())))
     elif check_flag('--remove-duplicates'):
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
     elif check_flag('--jcache'):

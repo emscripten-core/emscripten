@@ -7340,6 +7340,7 @@ end
   def test_noderawfs_disables_embedding(self):
     expected = '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
     base = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'NODERAWFS=1']
+    create_test_file('somefile', 'foo')
     err = self.expect_fail(base + ['--preload-file', 'somefile'])
     self.assertContained(expected, err)
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
@@ -9341,9 +9342,13 @@ int main() {
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--minifyXX'])
     self.assertContained("error: unsupported option '--minifyXX'", err)
 
-  def test_missing_argument(self):
+  def test_argument_missing(self):
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--minify'])
     self.assertContained("error: option '--minify' requires an argument", err)
+
+  def test_argument_missing_file(self):
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'foo.js'])
+    self.assertContained("emcc: error: '--pre-js': file not found: 'foo.js'", err)
 
   def test_default_to_cxx(self):
     create_test_file('foo.h', '#include <string.h>')
