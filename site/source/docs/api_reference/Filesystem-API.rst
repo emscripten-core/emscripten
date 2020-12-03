@@ -166,7 +166,7 @@ File system API
        }, '/working');
 
 
-    You can also pass in a package of files, created by ``tools/file_packager.py`` with ``--separate-metadata``. You must
+    You can also pass in a package of files, created by ``tools/file_packager`` with ``--separate-metadata``. You must
     provide the metadata as a JSON object, and the data as a blob:
 
     .. code-block:: javascript
