@@ -123,6 +123,9 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
       - emsdk-env
       - npm-install
       - run:
@@ -160,6 +163,9 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
       - emsdk-env
       - npm-install
       - run:
@@ -250,7 +256,7 @@ commands:
             EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
-            python3 tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            python3 tests/runner.py browser posixtest.test_pthread_create_1_1 skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
             python3 tests/runner.py emrun
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
@@ -261,6 +267,9 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
       - emsdk-env
       - npm-install
       - run:
@@ -282,7 +291,7 @@ commands:
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             # skip test_zzz_zzz_4GB_fail as it OOMs on the current bot
-            python3 tests/runner.py browser skip:browser.test_zzz_zzz_4GB_fail
+            python3 tests/runner.py browser posixtest.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4GB_fail
             python3 tests/runner.py emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -384,7 +393,7 @@ jobs:
     steps:
       - run-tests:
           # also add a few asan tests
-          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer"
+          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer posixtest.test_pthread_create_1_1"
   test-wasm3:
     executor: bionic
     steps:
