@@ -420,9 +420,7 @@ def emsdk_ldflags(user_args):
     return []
 
   library_paths = [
-      path_from_root('system', 'local', 'lib'),
-      path_from_root('system', 'lib'),
-      Cache.get_path(Cache.get_lib_dir())
+      Cache.get_lib_dir(absolute=True)
   ]
   ldflags = ['-L' + l for l in library_paths]
 
@@ -437,12 +435,12 @@ def emsdk_ldflags(user_args):
   return ldflags
 
 
-def emsdk_cflags(user_args, cxx):
+def emsdk_cflags(user_args):
   # Disable system C and C++ include directories, and add our own (using
   # -isystem so they are last, like system dirs, which allows projects to
   # override them)
 
-  c_opts = ['--sysroot=' + path_from_root('system')]
+  c_opts = ['--sysroot=' + Cache.get_sysroot_dir(absolute=True)]
 
   def array_contains_any_of(hay, needles):
     for n in needles:
@@ -477,24 +475,13 @@ def emsdk_cflags(user_args, cxx):
 
   sysroot_include_paths = []
 
-  if cxx:
-    sysroot_include_paths += [
-      os.path.join('/include', 'libcxx'),
-      os.path.join('/lib', 'libcxxabi', 'include'),
-    ]
-
-  # TODO: Merge the cache into the sysroot.
-  c_opts += ['-Xclang', '-isystem' + Cache.get_path('include')]
-
   sysroot_include_paths += [
     os.path.join('/include', 'compat'),
-    os.path.join('/include', 'libc'),
-    os.path.join('/lib', 'libc', 'musl', 'arch', 'emscripten'),
-    os.path.join('/local', 'include'),
+    # TODO(sbc): Ideally we wouldn't need these, we could just copy them into the sysroot/include
+    # However, clang puts its internal header directory first so it finds its internal versions
+    # first.
     os.path.join('/include', 'SSE'),
     os.path.join('/include', 'neon'),
-    os.path.join('/lib', 'compiler-rt', 'include'),
-    os.path.join('/lib', 'libunwind', 'include'),
   ]
 
   def include_directive(paths):
@@ -511,7 +498,7 @@ def get_clang_flags():
   return ['-target', get_llvm_target()]
 
 
-def get_cflags(user_args, cxx):
+def get_cflags(user_args):
   c_opts = get_clang_flags()
 
   # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
@@ -539,7 +526,7 @@ def get_cflags(user_args, cxx):
   if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
     return c_opts
 
-  return c_opts + emsdk_cflags(user_args, cxx)
+  return c_opts + emsdk_cflags(user_args)
 
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere

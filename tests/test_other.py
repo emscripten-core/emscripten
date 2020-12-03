@@ -480,10 +480,10 @@ f.close()
   def test_emcc_cflags(self):
     output = self.run_process([EMCC, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained(shared.shlex_join(shared.emsdk_cflags([], False)), flags)
+    self.assertContained(shared.shlex_join(shared.emsdk_cflags([])), flags)
     output = self.run_process([EMXX, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained(shared.shlex_join(shared.emsdk_cflags([], True)), flags)
+    self.assertContained(shared.shlex_join(shared.emsdk_cflags([])), flags)
     # check they work
     cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-o', 'out.o']
     self.run_process(cmd)
