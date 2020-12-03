@@ -1457,7 +1457,7 @@ function wrapSyscallFunction(x, library, isWasi) {
       post += 'SYSCALLS.varargs = undefined;\n';
     }
   }
-  pre += "err('syscall! " + x + "');\n";
+  pre += "err('syscall! " + x + ": [' + Array.prototype.slice.call(arguments) + ']');\n";
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
