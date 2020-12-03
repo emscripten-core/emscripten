@@ -9750,6 +9750,7 @@ exec "$@"
     self.do_other_test('test_syslog.c')
 
   def test_split_module(self):
+    self.clear()
     self.set_setting('SPLIT_MODULE')
     self.emcc_args += ['-g', '-Wno-experimental']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module.post.js')]
