@@ -86,7 +86,7 @@ def with_both_exception_handling(f):
   assert callable(f)
 
   def metafunc(self, native_exceptions):
-    if native_exceptions:
+    if native_exceptions and False: # TODO: re-enable when V8 and LLVM support the updated EH proposal
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.get_setting('WASM'):
         self.skipTest('wasm2js does not support wasm exceptions')
