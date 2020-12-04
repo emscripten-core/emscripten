@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.10: 23/04/2020
+------------------
+- Fix handling of exit() in pthreads. (#12933)
+- Added support for C11 thread API. (#9243)
 - The WebAssembly memory used by emscripten programs is now, by default, created
   in the wasm file and exported to JavaScript.  Previously we could create the
   memory in JavaScript and import it into the wasm file.  The new
