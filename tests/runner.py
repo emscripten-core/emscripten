@@ -223,28 +223,6 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
-@contextlib.contextmanager
-def js_engines_modify(replacements):
-  """A context manager that updates config.JS_ENGINES."""
-  original = config.JS_ENGINES
-  config.JS_ENGINES = replacements
-  try:
-    yield
-  finally:
-    config.JS_ENGINES = original
-
-
-@contextlib.contextmanager
-def wasm_engines_modify(replacements):
-  """A context manager that updates config.WASM_ENGINES."""
-  original = config.WASM_ENGINES
-  config.WASM_ENGINES = replacements
-  try:
-    yield
-  finally:
-    config.WASM_ENGINES = original
-
-
 def ensure_dir(dirname):
   if not os.path.isdir(dirname):
     os.makedirs(dirname)
@@ -436,9 +414,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
+    self.node_args = []
+    self.v8_args = []
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
+    self.js_engines = list(config.JS_ENGINES)
+    self.wasm_engines = list(config.WASM_ENGINES)
+    self.banned_js_engines = []
+    self.use_all_engines = EMTEST_ALL_ENGINES
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -447,8 +431,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         for filename in filenames:
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
-    self.banned_js_engines = []
-    self.use_all_engines = EMTEST_ALL_ENGINES
     if EMTEST_SAVE_DIR:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
       if os.path.exists(self.working_dir):
@@ -659,6 +641,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
     error = None
+    if not engine:
+      engine = config.JS_ENGINES[0]
+    if engine == config.NODE_JS:
+      engine = engine + self.node_args
+    if engine == config.V8_ENGINE:
+      engine = engine + self.v8_args
     if EMTEST_VERBOSE:
       print(f"Running '{filename}' under '{shared.shlex_join(engine)}'")
     try:
@@ -990,8 +978,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def filtered_js_engines(self, js_engines=None):
     if js_engines is None:
-      js_engines = config.JS_ENGINES
+      js_engines = self.js_engines
     for engine in js_engines:
+      assert engine in config.JS_ENGINES, "js engine does not exist in config.JS_ENGINES"
       assert type(engine) == list
     for engine in self.banned_js_engines:
       assert type(engine) in (list, type(None))
@@ -1047,10 +1036,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines
       # like with js engines, but for now as we bring it up, test in all of them
-      wasm_engines = config.WASM_ENGINES
-      if len(wasm_engines) == 0:
+      if not self.wasm_engines:
         logger.warning('no wasm engine was found to run the standalone part of this test')
-      engines += wasm_engines
+      engines += self.wasm_engines
       if self.get_setting('WASM2C') and not EMTEST_LACKS_NATIVE_CLANG:
         # compile the c file to a native executable.
         c = shared.unsuffixed(js_file) + '.wasm.c'
