@@ -2933,7 +2933,7 @@ Var: 42
   @needs_dlfcn
   def test_dlfcn_alignment_and_zeroing(self):
     self.prep_dlfcn_lib()
-    self.set_setting('INITIAL_MEMORY', 16 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '16mb')
     create_test_file('liblib.cpp', r'''
       extern "C" {
         int prezero = 0;
@@ -2948,7 +2948,7 @@ Var: 42
       self.emcc_args += ['--embed-file', curr]
 
     self.prep_dlfcn_main()
-    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '128mb')
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -3277,7 +3277,7 @@ ok
   @needs_dlfcn
   def test_dlfcn_mallocs(self):
     # will be exhausted without functional malloc/free
-    self.set_setting('INITIAL_MEMORY', 64 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '64mb')
 
     self.prep_dlfcn_lib()
     create_test_file('liblib.c', r'''
@@ -3464,7 +3464,7 @@ ok
     self.emcc_args += ['--embed-file', '.@/']
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', 32 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '32mb')
 
     src = r'''
       #include <dlfcn.h>
@@ -4285,7 +4285,7 @@ res64 - external 64\n''', header='''
   @needs_dlfcn
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
-    self.set_setting('INITIAL_MEMORY', 64 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '64mb')
     if not self.has_changed_setting('ASSERTIONS'):
       self.set_setting('ASSERTIONS', 2)
 
@@ -5583,7 +5583,7 @@ int main(void) {
   def test_dlmalloc_inline(self):
     self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
-    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '128mb')
 
     src = open(path_from_root('system', 'lib', 'dlmalloc.c')).read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c')).read()
     self.do_run(src, '*1,0*', args=['200', '1'], force_c=True)
@@ -5593,7 +5593,7 @@ int main(void) {
   def test_dlmalloc(self):
     self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
-    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '128mb')
 
     # Linked version
     self.do_runf(path_from_root('tests', 'dlmalloc_test.c'), '*1,0*', args=['200', '1'])
@@ -5671,7 +5671,7 @@ return malloc(size);
   def test_mmap(self):
     # ASan needs more memory, but that is set up separately
     if '-fsanitize=address' not in self.emcc_args:
-      self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+      self.set_setting('INITIAL_MEMORY', '128mb')
 
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -7900,7 +7900,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_no_error(self, name):
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
-    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
+    self.emcc_args.append('-sINITIAL_MEMORY=300mb')
     self.do_runf(path_from_root('tests', 'core', name), '', assert_returncode=NON_ZERO)
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
@@ -7970,7 +7970,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
-    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
+    self.emcc_args.append('-sINITIAL_MEMORY=300mb')
     if cflags:
       self.emcc_args += cflags
     self.do_runf(path_from_root('tests', 'core', name),
@@ -7982,7 +7982,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_js_stack_op(self):
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
-    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
+    self.emcc_args.append('-sINITIAL_MEMORY=300mb')
     self.do_runf(path_from_root('tests', 'core', 'test_asan_js_stack_op.c'),
                  expected_output='Hello, World!')
 
@@ -7990,7 +7990,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
-    self.set_setting('INITIAL_MEMORY', 314572800)
+    self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('tests', 'core', 'test_asan_api.c')
 
   @no_safe_heap('asan does not work with SAFE_HEAP')
@@ -8001,7 +8001,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-sUSE_CLOSURE_COMPILER=1')
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
-    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
+    self.emcc_args.append('-sINITIAL_MEMORY=300mb')
 
     def post(filename):
       with open(filename, 'a') as f:
@@ -8307,9 +8307,9 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': 314572800})
+asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '300mb'})
 asani = make_run('asani', emcc_args=['-fsanitize=address', '-O2', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                 settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': 314572800})
+                 settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '300mb'})
 
 # Experimental modes (not tested by CI)
 lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
