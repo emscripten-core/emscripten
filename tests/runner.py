@@ -929,7 +929,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.clear_setting('RUNTIME_LINKED_LIBS')
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', 32 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '32mb')
 
     so = '.wasm' if self.is_wasm() else '.js'
 
