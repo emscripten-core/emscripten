@@ -383,6 +383,7 @@ jobs:
       - build
       - build-libs-and-freeze
       - persist
+  # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
     executor: bionic
     steps:
