@@ -2874,7 +2874,7 @@ var %(EXPORT_NAME)s = (function() {
   with open(final_js, 'w') as f:
     f.write(src)
 
-    if not shard.Settings.OMIT_MODULE_EXPORTS:
+    if not shared.Settings.OMIT_MODULE_EXPORTS:
       # Export using a UMD style export, or ES6 exports if selected
       if shared.Settings.EXPORT_ES6:
         f.write('export default %s;' % shared.Settings.EXPORT_NAME)
