@@ -21,7 +21,7 @@ See docs/process.md for more on how version tagging works.
 Current Trunk
 -------------
 
-2.0.10: 23/04/2020
+2.0.10: 12/04/2020
 ------------------
 - Fix handling of exit() in pthreads. (#12933)
 - Added support for C11 thread API. (#9243)
@@ -35,6 +35,8 @@ Current Trunk
   it headers.  This should not effect most projects but has a minor effect the
   order of the system include paths: The root include path
   (`<emscritpen_root>/system/include`) is now always last in the include path.
+- Fix JS pthreads proxying + WASM_BIGINT (#12935)
+- Optimize makeDynCall to use dynCall_xx function directly where needed (#12741)
 
 2.0.9: 11/16/2020
 -----------------
