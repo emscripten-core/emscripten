@@ -1055,11 +1055,6 @@ var LibraryPThread = {
     if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
     else PThread.threadExit(status);
     // pthread_exit is marked noReturn, so we must not return from it.
-    if (ENVIRONMENT_IS_NODE) {
-      // exit the pthread properly on node, as a normal JS exception will halt
-      // the entire application.
-      process.exit(status);
-    }
     throw 'unwind';
   },
 
