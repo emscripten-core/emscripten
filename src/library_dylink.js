@@ -533,7 +533,7 @@ var LibraryDylink = {
       if (flags.fs) {
         var libData = flags.fs.readFile(libFile, {encoding: 'binary'});
         if (!(libData instanceof Uint8Array)) {
-          libData = new Uint8Array(lib_data);
+          libData = new Uint8Array(libData);
         }
         return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
