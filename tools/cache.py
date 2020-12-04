@@ -106,6 +106,10 @@ class Cache(object):
     else:
       cachename = os.path.join(self.dirname, shortname)
     cachename = os.path.abspath(cachename)
+    # Check for existence before taking the lock in case we can avoid the
+    # lock completely.
+    if os.path.exists(cachename) and not force:
+      return cachename
 
     self.acquire_cache_lock()
     try:
