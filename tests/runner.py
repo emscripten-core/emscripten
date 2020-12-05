@@ -17,8 +17,9 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
 
-from subprocess import PIPE, STDOUT
+from enum import Enum
 from functools import wraps
+from subprocess import PIPE, STDOUT
 import argparse
 import atexit
 import contextlib
@@ -1239,6 +1240,18 @@ def harness_server_func(in_queue, out_queue, port):
   httpd.serve_forever() # test runner will kill us
 
 
+class Reporting(Enum):
+  """When running browser tests we normally automatically include support
+  code for reporting results back to the browser.  This enum allows tests
+  to decide what type of support code they need/want.
+  """
+  NONE = 0
+  # Include the JS helpers for reporting results
+  JS_ONLY = 1
+  # Include C/C++ reporting code (REPORT_RESULT mactros) as well as JS helpers
+  FULL = 2
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
@@ -1476,26 +1489,42 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def compile_btest(self, args, reporting=True):
-    # add in support for reporting results. this adds an include a header so testcases can
+  def compile_btest(self, args, reporting=Reporting.FULL):
+    # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
     args += ['-s', 'IN_TEST_HARNESS=1']
-    if reporting:
+    if reporting != Reporting.NONE:
+      # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
-               '-I', path_from_root('tests'),
-               '-include', path_from_root('tests', 'report_result.h'),
-               path_from_root('tests', 'report_result.cpp'),
                '--pre-js', path_from_root('tests', 'browser_reporting.js')]
+      if reporting == Reporting.FULL:
+        # If C reporting (i.e. REPORT_RESULT macro) is required
+        # also compile in report_result.cpp and forice-include report_result.h
+        args += ['-I', path_from_root('tests'),
+                 '-include', path_from_root('tests', 'report_result.h'),
+                 path_from_root('tests', 'report_result.cpp')]
     self.run_process([EMCC] + self.get_emcc_args() + args)
+
+  def btest_exit(self, filename, expected, *args, **kwargs):
+      """Special case of btest that reports its result solely via exiting
+      with a give result code.
+
+      In this case we set EXIT_RUNTIME and we don't need to provide the
+      REPORT_RESULT macro to the C code.
+      """
+      self.set_setting('EXIT_RUNTIME')
+      kwargs['reporting'] = Reporting.JS_ONLY
+      kwargs['expected'] = 'exit:%s' % expected
+      return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False, extra_tries=1,
-            reporting=True):
+            reporting=Reporting.FULL):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
@@ -1519,7 +1548,7 @@ class BrowserCore(RunnerCore):
     args = [filepath, '-o', outfile] + args
     # print('all args:', args)
     try_delete(outfile)
-    self.compile_btest(args, reporting)
+    self.compile_btest(args, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()
