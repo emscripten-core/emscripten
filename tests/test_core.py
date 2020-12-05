@@ -5058,6 +5058,9 @@ main( int argv, char ** argc ) {
   def test_std_cout_new(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_std_cout_new.cpp')
 
+  def test_std_fileSystem(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_std_fileSystem.cpp')
+
   def test_std_function_incomplete_return(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_std_function_incomplete_return.cpp')
 
