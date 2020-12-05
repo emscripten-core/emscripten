@@ -63,7 +63,7 @@ void b ()
 {
   struct tiny x[3];
   struct tiny y;
-  printf("sizeof tiny: %d (3 of them: %d)\n", sizeof(y), sizeof(x));
+  printf("sizeof tiny: %zu (3 of them: %zu)\n", sizeof(y), sizeof(x));
   x[0].c = 10;
   x[1].c = 11;
   x[2].c = 12;

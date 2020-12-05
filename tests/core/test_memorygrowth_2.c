@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     buf3 = (char*)malloc(chunk);
     buf3[argc] = (int)buf2;
   }
-  if (argc % 7 == 6) printf("%d\n", memcpy(buf3, buf1, argc));
+  if (argc % 7 == 6) printf("%p\n", memcpy(buf3, buf1, argc));
   char *buf4 = (char*)malloc(100);
   float *buf5 = (float*)malloc(100);
   //printf("totalMemory: %d bufs: %d,%d,%d,%d,%d\n", totalMemory, buf1, buf2, buf3, buf4, buf5);
