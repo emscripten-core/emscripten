@@ -43,7 +43,7 @@ int main() {
     (function() {
       // exiting main should not cause any weirdness with printing
       var realPrint = out;
-      Module['extraSecretBuffer'] = '';
+      Module['extraSecretBuffer'] = "";
       out = function(x) {
         Module['extraSecretBuffer'] += x;
         realPrint(x);

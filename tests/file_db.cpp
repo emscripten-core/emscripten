@@ -30,7 +30,7 @@ int main() {
   EM_ASM(
     FS.loadFilesFromDB(['waka.txt', 'moar.txt'], function() {
       function stringy(arr) {
-        return Array.prototype.map.call(arr, function(x) { return String.fromCharCode(x) }).join('');
+        return Array.prototype.map.call(arr, function(x) { return String.fromCharCode(x) }).join("");
       }
       assert(stringy(FS.analyzePath('waka.txt').object.contents) == 'az');
       var secret = stringy(FS.analyzePath('moar.txt').object.contents);

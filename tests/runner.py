@@ -1500,7 +1500,7 @@ class BrowserCore(RunnerCore):
                '-include', path_from_root('tests', 'report_result.h'),
                path_from_root('tests', 'report_result.cpp'),
                '--pre-js', path_from_root('tests', 'browser_reporting.js')]
-    self.run_process([EMCC] + args)
+    self.run_process([EMCC] + self.get_emcc_args() + args)
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
