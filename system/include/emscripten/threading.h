@@ -393,21 +393,21 @@ void emscripten_thread_sleep(double msecs);
 // Sets the profiler status of the calling thread. This is a no-op if thread
 // profiling is not active.
 // This is an internal function and generally not intended for user code.
-// When thread profiler is not enabled (not building with --threadprofiling),
+// When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
 void emscripten_set_current_thread_status(EM_THREAD_STATUS newStatus);
 
 // Sets the profiler status of the calling thread, but only if it was in the
 // expected status beforehand.
 // This is an internal function and generally not intended for user code.
-// When thread profiler is not enabled (not building with --threadprofiling),
+// When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
 void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedStatus, EM_THREAD_STATUS newStatus);
 
 // Sets the name of the given thread. Pass pthread_self() as the thread ID to
 // set the name of the calling thread.
 // The name parameter is a UTF-8 encoded string which is truncated to 32 bytes.
-// When thread profiler is not enabled (not building with --threadprofiling),
+// When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
 void emscripten_set_thread_name(pthread_t threadId, const char *name);
 
