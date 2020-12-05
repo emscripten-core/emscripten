@@ -1488,26 +1488,45 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def compile_btest(self, args, reporting=True):
+  def compile_btest(self, args, reporting=True, native_reporting=True):
     # add in support for reporting results. this adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
     args += ['-s', 'IN_TEST_HARNESS=1']
     if reporting:
+      print("reporting")
+      # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
-               '-I', path_from_root('tests'),
-               '-include', path_from_root('tests', 'report_result.h'),
-               path_from_root('tests', 'report_result.cpp'),
                '--pre-js', path_from_root('tests', 'browser_reporting.js')]
+      if native_reporting:
+        print("native reporting")
+        # If native code reporting (i.e. REPORT_RESULT macro) is required
+        # also compiling in report_result.cpp and forice-include report_result.h
+        assert(reporting)
+        args += ['-I', path_from_root('tests'),
+                 '-include', path_from_root('tests', 'report_result.h'),
+                 path_from_root('tests', 'report_result.cpp')]
     self.run_process([EMCC] + self.get_emcc_args() + args)
+
+  def btest_exit(self, filename, expected, *args, **kwargs):
+      """Special case of btest that reports its result solely via exiting
+      with a give result code.
+
+      In this case we set EXIT_RUNTIME and we don't need to provide the
+      REPORT_RESULT macro to the native code.
+      """
+      self.set_setting('EXIT_RUNTIME')
+      kwargs['native_reporting'] = False
+      kwargs['expected'] = 'exit:%s' % expected
+      return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False, extra_tries=1,
-            reporting=True):
+            reporting=True, native_reporting=True):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
@@ -1531,7 +1550,7 @@ class BrowserCore(RunnerCore):
     args = [filepath, '-o', outfile] + args
     # print('all args:', args)
     try_delete(outfile)
-    self.compile_btest(args, reporting)
+    self.compile_btest(args, reporting=reporting, native_reporting=native_reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()

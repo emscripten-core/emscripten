@@ -1283,7 +1283,7 @@ keydown(100);keyup(100); // trigger the end
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
   def test_write_file_in_environment_web(self):
-    self.btest('write_file.cpp', '0', args=['-s', 'ENVIRONMENT=web', '-Os', '--closure', '1'])
+    self.btest_exit('write_file.c', 0, args=['-s', 'ENVIRONMENT=web', '-Os', '--closure', '1'])
 
   @unittest.skip('Skipping due to https://github.com/emscripten-core/emscripten/issues/2770')
   def test_fflush(self):
@@ -4128,10 +4128,10 @@ window.close = function() {
     self.run_browser('test.html', '', '/report_result?0')
 
   def test_utf8_textdecoder(self):
-    self.btest('benchmark_utf8.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF8ToString"]'])
+    self.btest_exit('benchmark_utf8.cpp', 0, args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF8ToString"]'])
 
   def test_utf16_textdecoder(self):
-    self.btest('benchmark_utf16.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","lengthBytesUTF16"]'])
+    self.btest_exit('benchmark_utf16.cpp', 0, args=['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","lengthBytesUTF16"]'])
 
   def test_TextDecoder(self):
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=0'])
