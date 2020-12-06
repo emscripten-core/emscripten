@@ -6,7 +6,7 @@
 
 void freeaddrinfo(struct addrinfo *p)
 {
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	// Emscripten's usage of this structure is very simple: we always allocate
 	// ai_addr, and do not use the linked list aspect at all. There is also no
 	// aliasing with aibuf.

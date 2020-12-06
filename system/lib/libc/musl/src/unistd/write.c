@@ -3,7 +3,7 @@
 
 ssize_t write(int fd, const void *buf, size_t count)
 {
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	__wasi_ciovec_t iov = {
 		.buf = buf,
 		.buf_len = count

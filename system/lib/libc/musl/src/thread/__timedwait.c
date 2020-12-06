@@ -32,10 +32,10 @@ static int __futex4_cp(volatile void *addr, int op, int val, const struct timesp
 	if (r != -ENOSYS) return r;
 	return __syscall_cp(SYS_futex, addr, op & ~FUTEX_PRIVATE, val, to);
 }
-#endif
 
 static volatile int dummy = 0;
 weak_alias(dummy, __eintr_valid_flag);
+#endif
 
 int __timedwait_cp(volatile int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
@@ -64,11 +64,13 @@ int __timedwait_cp(volatile int *addr, int val,
 	r = -__futex4_cp(addr, FUTEX_WAIT|priv, val, top);
 #endif
 	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
+#ifndef __EMSCRIPTEN__ // XXX Emscripten revert musl commit a63c0104e496f7ba78b64be3cd299b41e8cd427f
 	/* Mitigate bug in old kernels wrongly reporting EINTR for non-
 	 * interrupting (SA_RESTART) signal handlers. This is only practical
 	 * when NO interrupting signal handlers have been installed, and
 	 * works by sigaction tracking whether that's the case. */
 	if (r == EINTR && !__eintr_valid_flag) r = 0;
+#endif
 
 	return r;
 }
