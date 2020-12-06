@@ -8,8 +8,7 @@ size_t __stdio_read(FILE *f, unsigned char *buf, size_t len)
 		{ .iov_base = f->buf, .iov_len = f->buf_size }
 	};
 	ssize_t cnt;
-
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	size_t num;
 	if (__wasi_syscall_ret(__wasi_fd_read(f->fd, (struct __wasi_iovec_t*)iov, 2, &num))) {
 		num = -1;
