@@ -138,7 +138,7 @@ static int fstatat_kstat(int fd, const char *restrict path, struct stat *restric
 int fstatat(int fd, const char *restrict path, struct stat *restrict st, int flag)
 {
 	int ret;
-#ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__ // XXX Emscripten statx syscall unsupported
 	if ((fd == AT_FDCWD || *path=='/') && !flag)
 		ret = __syscall(SYS_stat, path, st);
 	else

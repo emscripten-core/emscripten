@@ -203,7 +203,7 @@ static inline void __wake(volatile void *addr, int cnt, int priv)
 	if (priv) priv = FUTEX_PRIVATE;
 	if (cnt<0) cnt = INT_MAX;
 #ifdef __EMSCRIPTEN__
-	emscripten_futex_wake(addr, (cnt)<0?INT_MAX:(cnt));
+	emscripten_futex_wake(addr, cnt);
 #else
 	__syscall(SYS_futex, addr, FUTEX_WAKE|priv, cnt) != -ENOSYS ||
 	__syscall(SYS_futex, addr, FUTEX_WAKE, cnt);
@@ -243,7 +243,7 @@ extern hidden unsigned __default_guardsize;
 
 #ifdef __EMSCRIPTEN__
 void __emscripten_init_pthread(pthread_t thread);
-#if !__EMSCRIPTEN_PTHREADS__
+#ifndef __EMSCRIPTEN_PTHREADS__
 pthread_t __emscripten_pthread_stub(void);
 #endif
 #endif

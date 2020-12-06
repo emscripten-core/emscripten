@@ -25,7 +25,7 @@ double sqrt(double x)
 {
 // XXX EMSCRIPTEN: use the wasm instruction via clang builtin
 // See https://github.com/emscripten-core/emscripten/issues/9236
-#ifdef __wasm__
+#ifdef __EMSCRIPTEN__
 	return __builtin_sqrt(x);
 #else
 	uint64_t ix, top, m;
