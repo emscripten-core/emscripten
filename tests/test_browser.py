@@ -1942,27 +1942,27 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre(self):
-    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_regal(self):
-    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_cubegeom_pre_relocatable(self):
-    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2(self):
-    self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.png'), args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre3(self):
-    self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre3.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @parameterized({
     '': ([],),
@@ -1972,16 +1972,16 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom(self, args):
     # proxy only in the simple, normal case (we can't trace GL calls when
     # proxied)
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'] + args, also_proxied=not args)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'] + args, also_proxied=not args)
 
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_threads
   @requires_graphics_hardware
   def test_cubegeom_regal_mt(self):
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
 
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
@@ -1998,84 +1998,84 @@ void *getBindBuffer() {
 ''')
     # also test -Os in wasm, which uses meta-dce, which should not break legacy gl emulation hacks
     for opts in [[], ['-O1'], ['-Os']]:
-      self.btest('cubegeom_proc.c', reference='cubegeom.png', args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+      self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_proc.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_glew(self):
-    self.btest('cubegeom_glew.c', reference='cubegeom.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lGLEW', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_glew.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lGLEW', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_color(self):
-    self.btest('cubegeom_color.c', reference='cubegeom_color.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_color.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_color.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal(self):
-    self.btest('cubegeom_normal.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-    self.btest('cubegeom_normal_dap.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
-    self.btest('cubegeom_normal_dap_far.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
-    self.btest('cubegeom_normal_dap_far_range.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_range.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
-    self.btest('cubegeom_normal_dap_far_glda.c', reference='cubegeom_normal_dap_far_glda.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_firefox('fails on CI but works locally')
   def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
-    self.btest('cubegeom_normal_dap_far_glda_quad.c', reference='cubegeom_normal_dap_far_glda_quad.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda_quad.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda_quad.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_mt(self):
-    self.btest('cubegeom_mt.c', reference='cubegeom_mt.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # multitexture
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_mt.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_mt.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # multitexture
 
   @requires_graphics_hardware
   def test_cubegeom_color2(self):
-    self.btest('cubegeom_color2.c', reference='cubegeom_color2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_color2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_color2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_texturematrix(self):
-    self.btest('cubegeom_texturematrix.c', reference='cubegeom_texturematrix.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_texturematrix.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_texturematrix.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_fog(self):
-    self.btest('cubegeom_fog.c', reference='cubegeom_fog.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_fog.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_fog.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao(self):
-    self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_regal(self):
-    self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2_vao(self):
-    self.btest('cubegeom_pre2_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_pre2_vao2(self):
-    self.btest('cubegeom_pre2_vao2.c', reference='cubegeom_pre2_vao2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_es(self):
-    self.btest('cubegeom_pre_vao_es.c', reference='cubegeom_pre_vao.png', args=['-s', 'FULL_ES2=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao_es.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'FULL_ES2=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_u4fv_2(self):
-    self.btest('cubegeom_u4fv_2.c', reference='cubegeom_u4fv_2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_u4fv_2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_u4fv_2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cube_explosion(self):
