@@ -1,7 +1,7 @@
 #include <sched.h>
 #include "syscall.h"
 
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <emscripten/threading.h>
 #include "threading_internal.h"
@@ -9,7 +9,7 @@
 
 int sched_yield()
 {
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	// SharedArrayBuffer and wasm threads do not support explicit yielding.
 	// For now we at least call `emscripten_yield` which processes the event queue
 	// (along with other essential tasks).

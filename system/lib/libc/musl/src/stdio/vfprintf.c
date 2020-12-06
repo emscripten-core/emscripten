@@ -147,7 +147,7 @@ typedef void (*pop_arg_long_double_t)(union arg *arg, va_list *ap);
 
 static void pop_arg_long_double(union arg *arg, va_list *ap)
 {
-  arg->f = va_arg(*ap, long double);
+	arg->f = va_arg(*ap, long double);
 }
 
 static void pop_arg(union arg *arg, int type, va_list *ap, pop_arg_long_double_t pop_arg_long_double)
