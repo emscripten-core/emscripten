@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
     init: function() {
       if (LZ4.codec) return;
       LZ4.codec = (function() {
-        {{{ read('mini-lz4.js') }}};
+        {{{ read('../third_party/mini-lz4.js') }}};
         return MiniLZ4;
       })();
       LZ4.CHUNK_SIZE = LZ4.codec.CHUNK_SIZE;
