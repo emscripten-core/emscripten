@@ -2,9 +2,10 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <cassert>
 
 void printResult(int value) {
-  std::cout<< value << std::endl;
+    std::cout<< "file permissions: " << value << std::endl;
 }
 
 int main() {
@@ -18,21 +19,18 @@ int main() {
   ofs.close();
 
   // check whether file exist or not
-  if (std::__fs::filesystem::exists(fileName))
-  {
-    //std::cout <<__FILE__<<" "<<__FUNCTION__ <<" "<<__LINE__<<"\n" ;
-  }
+  assert(std::__fs::filesystem::exists(fileName));
   
   // now set the permission to the file 
-  std::__fs::filesystem::permissions(fileName,std::__fs::filesystem::perms::group_read,ec);
-  if (ec) {
-     //std::cout <<__FILE__<<" "<<__FUNCTION__ <<" "<<__LINE__<< " " << ec << "\n" ;
-  }
+  // ref: https://en.cppreference.com/w/cpp/filesystem/perms to see the value of group_read
+  std::__fs::filesystem::permissions(fileName, std::__fs::filesystem::perms::group_read, ec);
+  assert(!ec);
   // Now get the File Status
   auto s = std::__fs::filesystem::status(fileName, ec);
   // Now get the file permission which was set above
-  std::__fs::filesystem::perms perm = s.permissions();
- 
-   printResult((int)perm);
+  std::__fs::filesystem::perms perm = s.permissions(); 
+
+  printResult((int)perm);
   return 0;
 }
+

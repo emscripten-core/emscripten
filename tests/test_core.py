@@ -8122,6 +8122,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/12932')
+  
   @no_asan('incompatibility with atomics')
   @node_pthreads
   def test_emscripten_atomics(self):
