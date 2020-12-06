@@ -8257,11 +8257,15 @@ def make_run(name, emcc_args, settings=None, env=None):
     self.emcc_args += emcc_args
     # avoid various compiler warnings in our test output
     self.emcc_args += [
-      '-Wno-dynamic-class-memaccess', '-Wno-format',
-      '-Wno-format-extra-args', '-Wno-format-security',
-      '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
+      '-Wno-dynamic-class-memaccess',
+      '-Wno-format',
+      '-Wno-format-extra-args',
+      '-Wno-format-security',
+      '-Wno-pointer-bool-conversion',
+      '-Wno-unused-volatile-lvalue',
       '-Wno-c++11-compat-deprecated-writable-strings',
-      '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
+      '-Wno-invalid-pp-token',
+      '-Wno-shift-negative-value'
     ]
 
   TT.setUp = setUp

@@ -155,6 +155,14 @@ class browser(BrowserCore):
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()
 
+  def setUp(self):
+    super(BrowserCore, self).setUp()
+    # avoid various compiler warnings that many browser tests currently generate
+    self.emcc_args += [
+      '-Wno-pointer-sign',
+      '-Wno-int-conversion',
+    ]
+
   def test_sdl1_in_emscripten_nonstrict_mode(self):
     if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
       self.skipTest('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
@@ -1725,7 +1733,6 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_glbook(self):
     self.emcc_args.remove('-Werror')
-    self.emcc_args += ['-Wno-pointer-sign', '-Wno-int-conversion']
     programs = self.get_library('glbook', [
       os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.o'),
       os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.o'),
@@ -1857,6 +1864,8 @@ keydown(100);keyup(100); // trigger the end
     self.btest('sdl_quit.c', '1', args=['-lSDL', '-lGL'])
 
   def test_sdl_resize(self):
+    # FIXME(https://github.com/emscripten-core/emscripten/issues/12978)
+    self.emcc_args.append('-Wno-deprecated-declarations')
     self.btest('sdl_resize.c', '1', args=['-lSDL', '-lGL'])
 
   def test_glshaderinfo(self):
@@ -4510,6 +4519,8 @@ window.close = function() {
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_threads
   def test_pthread_growth_mainthread(self):
+    self.emcc_args.remove('-Werror')
+
     def run(emcc_args=[]):
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
 
@@ -4519,6 +4530,8 @@ window.close = function() {
   # Tests memory growth in a pthread.
   @requires_threads
   def test_pthread_growth(self):
+    self.emcc_args.remove('-Werror')
+
     def run(emcc_args=[]):
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_asmjs=False)
 
