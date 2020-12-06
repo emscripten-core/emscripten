@@ -8123,6 +8123,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
   @disabled('https://github.com/emscripten-core/emscripten/issues/12932')
+  def test_std_filesystem_permissions(self):
+    self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'test_std_filesystem_permissions.pre.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_std_filesystem_permissions.cpp', assert_returncode=43)
 
   @no_asan('incompatibility with atomics')
   @node_pthreads
