@@ -56,7 +56,7 @@ static void *volatile vdso_func = (void *)cgt_init;
 
 #endif
 
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 _Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "monotonic clock must match");
 _Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "monotonic clock must match");
 

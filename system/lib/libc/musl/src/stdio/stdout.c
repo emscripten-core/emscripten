@@ -1,6 +1,6 @@
 #include "stdio_impl.h"
 
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 // Emscripten doesn't support terminal seeking.
 static off_t __emscripten_stdout_seek(FILE *f, off_t off, int whence)
 {
@@ -23,7 +23,7 @@ hidden FILE __stdout_FILE = {
 	.fd = 1,
 	.flags = F_PERM | F_NORD,
 	.lbf = '\n',
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	// avoid stout_write which adds special terminal window size handling, which emscripten doesn't support anyhow
 	.write = __stdio_write,
 	.seek = __emscripten_stdout_seek,

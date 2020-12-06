@@ -144,6 +144,16 @@ static inline long double fp_barrierl(long double x)
 }
 #endif
 
+#ifdef __EMSCRIPTEN__
+/*
+ * wasm doesn't have user-accessible floating point exceptions, so there's
+ * no point in trying to force expression evaluations to produce them.
+ */
+#define fp_force_evalf(x)
+#define fp_force_eval(x)
+#define fp_force_evall(x)
+#define FORCE_EVAL(x)
+#else
 /* fp_force_eval ensures that the input value is computed when that's
    otherwise unused.  To prevent the constant folding of the input
    expression, an additional fp_barrier may be needed or a compilation
@@ -177,13 +187,6 @@ static inline void fp_force_evall(long double x)
 }
 #endif
 
-#ifdef __EMSCRIPTEN__
-/*
- * asm.js doesn't have user-accessible floating point exceptions, so there's
- * no point in trying to force expression evaluations to produce them.
- */
-#define FORCE_EVAL(x)
-#else
 #define FORCE_EVAL(x) do {                        \
 	if (sizeof(x) == sizeof(float)) {         \
 		fp_force_evalf(x);                \

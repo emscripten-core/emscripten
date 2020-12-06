@@ -1,4 +1,4 @@
-#if !__EMSCRIPTEN__ /* Emscripten controls sbrk itself */
+#ifndef __EMSCRIPTEN__ /* Emscripten controls sbrk itself */
 #define _BSD_SOURCE
 #include <unistd.h>
 #include <stdint.h>
@@ -11,4 +11,3 @@ void *sbrk(intptr_t inc)
 	return (void *)__syscall(SYS_brk, 0);
 }
 #endif
-
