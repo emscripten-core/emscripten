@@ -84,7 +84,7 @@ int main()
     {
         int x, y, w, h;
         glfwDefaultWindowHints();
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+        glfwWindowHint(GLFW_CLIENT_API, CLIENT_API);
 
         window = glfwCreateWindow(640, 480, "glfw3.c", NULL, NULL);
         assert(window != NULL);
@@ -142,7 +142,7 @@ int main()
         window = glfwCreateWindow(640, 480, "glfw3.c", NULL, NULL);
         assert(window != NULL);
 
-        assert(glfwGetWindowAttrib(window, GLFW_CLIENT_API) == GLFW_OPENGL_ES_API);
+        assert(glfwGetWindowAttrib(window, GLFW_CLIENT_API) == CLIENT_API);
 
         assert(glfwGetWindowUserPointer(window) == NULL);
         glfwSetWindowUserPointer(window, userptr);
@@ -195,6 +195,7 @@ int main()
         glfwSetTime(0);
     }
 
+#if CLIENT_API == GLFW_OPENGL_ES_API
     {
         glfwMakeContextCurrent(window); // stub
         assert(glfwGetCurrentContext() == window);
@@ -206,6 +207,7 @@ int main()
         assert(glfwExtensionSupported("nonexistant") == 0);
         assert(glfwGetProcAddress("nonexistant") == NULL);
     }
+#endif
 
     glfwTerminate();
 
