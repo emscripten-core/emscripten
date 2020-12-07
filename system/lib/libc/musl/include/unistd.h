@@ -240,20 +240,20 @@ pid_t gettid(void);
 #define _POSIX_NO_TRUNC         1
 #define _POSIX_RAW_SOCKETS      _POSIX_VERSION
 
-#ifndef __EMSCRIPTEN__
-#define _POSIX_REALTIME_SIGNALS _POSIX_VERSION
-#else
+#ifdef __EMSCRIPTEN__
 #define _POSIX_REALTIME_SIGNALS -1
+#else
+#define _POSIX_REALTIME_SIGNALS _POSIX_VERSION
 #endif
 
 #define _POSIX_REGEXP           1
 #define _POSIX_SAVED_IDS        1
 #define _POSIX_SHELL            1
 
-#ifndef __EMSCRIPTEN__
-#define _POSIX_SPAWN            _POSIX_VERSION
-#else
+#ifdef __EMSCRIPTEN__
 #define _POSIX_SPAWN            -1
+#else
+#define _POSIX_SPAWN            _POSIX_VERSION
 #endif
 
 #define _POSIX_VDISABLE         0
@@ -263,10 +263,10 @@ pid_t gettid(void);
 #else
 #define _POSIX_THREADS          _POSIX_VERSION
 #endif
-#ifndef __EMSCRIPTEN__
-#define _POSIX_THREAD_PROCESS_SHARED _POSIX_VERSION
-#else
+#ifdef __EMSCRIPTEN__
 #define _POSIX_THREAD_PROCESS_SHARED -1
+#else
+#define _POSIX_THREAD_PROCESS_SHARED _POSIX_VERSION
 #endif
 #define _POSIX_THREAD_SAFE_FUNCTIONS _POSIX_VERSION
 #define _POSIX_THREAD_ATTR_STACKADDR _POSIX_VERSION
