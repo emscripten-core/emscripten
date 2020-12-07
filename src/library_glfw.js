@@ -1000,7 +1000,7 @@ var LibraryGLFW = {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++) {
         // no-op
       }
-      var useWebGL = (GLFW.hints[0x00022001] > 0); // Use WebGL when we are told to based on GLFW_CLIENT_API
+      var useWebGL = GLFW.hints[0x00022001] > 0; // Use WebGL when we are told to based on GLFW_CLIENT_API
       if (i == GLFW.windows.length) {
         if (useWebGL) {
           var contextAttributes = {
