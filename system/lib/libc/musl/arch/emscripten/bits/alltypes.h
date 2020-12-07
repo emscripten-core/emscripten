@@ -8,6 +8,9 @@
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__
 
+#define __BYTE_ORDER 1234
+#define __LONG_MAX 0x7fffffffL
+
 #if __GNUC__ >= 3
 #if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
 typedef __builtin_va_list va_list;
