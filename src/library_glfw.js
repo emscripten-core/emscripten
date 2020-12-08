@@ -652,7 +652,7 @@ var LibraryGLFW = {
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
                 buttons: allocate(new Array(gamepad.buttons.length), ALLOC_NORMAL),
-                axes: allocate(new Array(gamepad.axes.length*4), 'float', ALLOC_NORMAL)
+                axes: allocate(new Array(gamepad.axes.length*4), ALLOC_NORMAL)
               };
 
               if (GLFW.joystickFunc) {
