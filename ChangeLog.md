@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Add port for liblzma library (`liblzma.a`). (#12990)
 
 2.0.10: 12/04/2020
 ------------------

@@ -1197,6 +1197,9 @@ var USE_BZIP2 = 0;
 // 1 = use libjpeg from emscripten-ports
 var USE_LIBJPEG = 0;
 
+// 1 = use liblzma from emscripten-ports
+var USE_LIBLZMA = 0;
+
 // 1 = use libpng from emscripten-ports
 var USE_LIBPNG = 0;
 

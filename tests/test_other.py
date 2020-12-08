@@ -1481,6 +1481,11 @@ int f() {
     building.emcc(path_from_root('tests', 'jpeg_test.c'), ['--embed-file', 'screenshot.jpg', '-s', 'USE_LIBJPEG=1'], output_filename='a.out.js')
     self.assertContained('Image is 600 by 450 with 3 components', self.run_js('a.out.js', args=['screenshot.jpg']))
 
+  def test_liblzma(self):
+    shutil.copyfile(path_from_root('tests', 'third_party', 'liblzma', 'liblzma_test.c.xz'), 'liblzma_test.c.xz')
+    building.emcc(path_from_root('tests', 'third_party', 'liblzma', 'liblzma_test.c'), ['--embed-file', 'liblzma_test.c.xz', '-s', 'USE_LIBLZMA=1'], output_filename='a.out.js')
+    self.assertContained('c3d55d80', self.run_js('a.out.js', args=['liblzma_test.c.xz']))
+
   def test_bullet(self):
     building.emcc(path_from_root('tests', 'bullet_hello_world.cpp'), ['-s', 'USE_BULLET=1'], output_filename='a.out.js')
     self.assertContained('BULLET RUNNING', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
