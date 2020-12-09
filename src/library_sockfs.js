@@ -177,8 +177,12 @@ mergeInto(LibraryManager.library, {
             var url = '{{{ WEBSOCKET_URL }}}'.replace('#', '//');
 
             if (runtimeConfig) {
+              // Fetch runtime WebSocket URL config.
               if ('string' === typeof Module['websocket']['url']) {
-                url = Module['websocket']['url']; // Fetch runtime WebSocket URL config.
+                url = Module['websocket']['url'];
+              }
+              else if ('function' === typeof Module['websocket']['url']) {
+                url = Module['websocket']['url'](addr, port, (sock.type === {{{ cDefine('SOCK_DGRAM') }}}) ? 'udp' : 'tcp');
               }
             }
 

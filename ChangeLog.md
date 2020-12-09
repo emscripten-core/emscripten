@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- `Module['websocket']['url']` now optionally accepts a function taking
+  (addr, port, `'tcp'`/`'udp'`) as arguments allowing to dynamically generate
+  WebSocket URL. (#12995)
 
 2.0.10: 12/04/2020
 ------------------
