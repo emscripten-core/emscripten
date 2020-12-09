@@ -8117,6 +8117,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c', assert_returncode=43)
 
+  @node_pthreads
+  def test_proxy_to_pthread_exception(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('PTHREAD_POOL_SIZE', '1')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_proxy_to_pthread_exception.c', assert_returncode=NON_ZERO)
+
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 

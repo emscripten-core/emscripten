@@ -8,6 +8,9 @@ var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_register_main_browser_thread_id',
+#if PROXY_TO_PTHREAD
+                   'emscripten_proxy_main_thread_id',
+#endif
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
 #if USE_ASAN || USE_LSAN
@@ -369,6 +372,14 @@ var LibraryPThread = {
 
       worker.onerror = function(e) {
         err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+#if PROXY_TO_PTHREAD
+        // If the worker running the main thread generates an error, we want
+        // it to take down the main browser thread too.  Especially on node
+        // we want the process to exit in that case.
+        if (worker.pthread && worker.pthread.thread === _emscripten_proxy_main_thread_id()) {
+          throw e;
+        }
+#endif
       };
 
 #if ENVIRONMENT_MAY_BE_NODE

@@ -363,6 +363,8 @@ void emscripten_current_thread_process_queued_calls(void);
 
 pthread_t emscripten_main_browser_thread_id(void);
 
+pthread_t emscripten_proxy_main_thread_id(void);
+
 // Synchronously sleeps the calling thread for the given number of milliseconds.
 // Note: Calling this on the main browser thread is _very_ _very_ bad for
 // application logic throttling, because it does not save any battery, it will
