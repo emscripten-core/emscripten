@@ -186,6 +186,7 @@ def node_pthreads(f):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
     self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    f(self)
   return decorated
 
 
