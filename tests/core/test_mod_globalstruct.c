@@ -19,7 +19,7 @@ struct malloc_params mparams;
 
 int main() {
   mparams.page_size = 4096;
-  printf("*%d,%d,%d,%d*\n", mparams.page_size, page_align(1000),
+  printf("*%zu,%zu,%zu,%zu*\n", mparams.page_size, page_align(1000),
          page_align(6000), page_align(66474));
   return 0;
 }

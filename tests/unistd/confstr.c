@@ -49,13 +49,13 @@ int main() {
   char buffer[256];
 
   for (int i = 0; i < sizeof vals / sizeof vals[0]; i++) {
-    printf("ret: %d\n", confstr(vals[i], buffer, 256));
+    printf("ret: %zi\n", confstr(vals[i], buffer, 256));
     printf("%s: %s\n", names[i], buffer);
     printf("errno: %d\n\n", errno);
     errno = 0;
   }
 
-  printf("(invalid) ret: %d\n", confstr(-123, buffer, 256));
+  printf("(invalid) ret: %zi\n", confstr(-123, buffer, 256));
   printf("errno: %d\n", errno);
 
   return 0;

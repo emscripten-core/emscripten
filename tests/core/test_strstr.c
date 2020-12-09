@@ -34,6 +34,6 @@ int main() {
   printf("%d\n", !!strstr("cheezy", "_"));
 
   const char *str = "a big string";
-  printf("%d\n", strstr(str, "big") - str);
+  printf("%zu\n", strstr(str, "big") - str);
   return 0;
 }

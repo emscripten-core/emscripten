@@ -218,7 +218,7 @@ int main() {
     memset(buffer, 0, offset + 33);
     fread(buffer, 1, offset + 32, fd);
     // expect text written from mmap operation to appear at offset in the file
-    printf("/yolo/sharedoffset.txt content=%s %d\n", buffer + offset, offset);
+    printf("/yolo/sharedoffset.txt content=%s %zu\n", buffer + offset, offset);
     fclose(fd);
   }
 

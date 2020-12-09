@@ -11,7 +11,7 @@
 int main() {
   const wchar_t* wstr = L"Hello";
 
-  printf("wcslen: %d\n", wcslen(wstr));
+  printf("wcslen: %lu\n", wcslen(wstr));
 
   return 0;
 }

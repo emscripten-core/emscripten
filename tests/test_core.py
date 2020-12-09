@@ -571,7 +571,7 @@ class TestCoreBase(RunnerCore):
       {
         int base = argc-1;
         Object *o = NULL;
-        printf("%d,%d\n", sizeof(Object), sizeof(Principal));
+        printf("%zu,%zu\n", sizeof(Object), sizeof(Principal));
         printf("%d,%d,%d,%d\n", (int)&o[base].type, (int)&o[base].intg, (int)&o[base].real, (int)&o[base].name);
         printf("%d,%d,%d,%d\n", (int)&o[base+1].type, (int)&o[base+1].intg, (int)&o[base+1].real, (int)&o[base+1].name);
         Principal p, q;
@@ -621,7 +621,7 @@ class TestCoreBase(RunnerCore):
         unsigned long hold = 0;
         hold += x8;
         int y32 = hold+50;
-        printf("*%u,%u*\\n", hold, y32);
+        printf("*%lu,%d*\\n", hold, y32);
 
         // Comparisons
         x8 = 0;
@@ -949,14 +949,14 @@ base align: 0, 0, 0, 0'''])
           #define TEST(struc) \\
           { \\
             struc *s = 0; \\
-            printf("*%s: %d,%d,%d,%d<%d*\\n", #struc, (int)&(s->a), (int)&(s->b), (int)&(s->c), (int)&(s->later), sizeof(struc)); \\
+            printf("*%s: %d,%d,%d,%d<%zu*\\n", #struc, (int)&(s->a), (int)&(s->b), (int)&(s->c), (int)&(s->later), sizeof(struc)); \\
           }
           #define TEST_ARR(struc) \\
           { \\
             struc *s = 0; \\
-            printf("*%s: %d,%d,%d,%d<%d*\\n", #struc, (int)&(s->a[0]), (int)&(s->a[1]), (int)&(s->a[2]), (int)&(s->later), sizeof(struc)); \\
+            printf("*%s: %d,%d,%d,%d<%zu*\\n", #struc, (int)&(s->a[0]), (int)&(s->a[1]), (int)&(s->a[2]), (int)&(s->later), sizeof(struc)); \\
           }
-          printf("sizeofs:%d,%d\\n", sizeof(S6), sizeof(S6z));
+          printf("sizeofs:%zu,%zu\\n", sizeof(S6), sizeof(S6z));
           TEST(C___);
           TEST_ARR(Carr);
           TEST(C__w);
@@ -1690,8 +1690,8 @@ int main() {
     self.do_run(src, 'ok!')
 
   def test_stack_void(self):
+    self.emcc_args.append('-Wno-format-extra-args')
     self.set_setting('INLINING_LIMIT', 50)
-
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_void.c')
 
   def test_life(self):
@@ -1765,7 +1765,7 @@ int main() {
 
       int main() {
         const char *str = emscripten_run_script_string("'\\u2603 \\u2603 \\u2603 Hello!'");
-        printf("length of returned string: %d. Position of substring 'Hello': %d\n", strlen(str), strstr(str, "Hello")-str);
+        printf("length of returned string: %zu. Position of substring 'Hello': %zu\n", strlen(str), strstr(str, "Hello")-str);
         return 0;
       }
     '''
@@ -2176,8 +2176,8 @@ Success!''')
         int main( int argc, const char *argv[] ) {
           header h, *ph = 0;
           fatheader fh, *pfh = 0;
-          printf("*%d,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
-          printf("*%d,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
+          printf("*%zu,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
+          printf("*%zu,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
           return 0;
         }
         '''
@@ -2511,7 +2511,7 @@ The current type of b is: 9
             base *b = NULL;
             entry *e = NULL;
             chain *c = NULL;
-            printf("*%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
+            printf("*%zu,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
               sizeof(base),
               int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)),
               sizeof(hashtableentry),
@@ -2541,12 +2541,12 @@ The current type of b is: 9
           // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
           // one is aligned properly. Also handle char; char; etc. properly.
           B *b = NULL;
-          printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
+          printf("*%d,%d,%d,%d,%d,%d,%d,%d,%zu*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
                                                     int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), sizeof(B));
 
           // Part 3 - bitfields, and small structures
           Bits *b2 = NULL;
-          printf("*%d*\\n", sizeof(Bits));
+          printf("*%zu*\\n", sizeof(Bits));
 
           return 0;
         }
@@ -2940,14 +2940,12 @@ Var: 42
   def test_dlfcn_alignment_and_zeroing(self):
     self.prep_dlfcn_lib()
     self.set_setting('INITIAL_MEMORY', '16mb')
-    create_test_file('liblib.cpp', r'''
-      extern "C" {
-        int prezero = 0;
-        __attribute__((aligned(1024))) int superAligned = 12345;
-        int postzero = 0;
-      }
+    create_test_file('liblib.c', r'''
+      int prezero = 0;
+      __attribute__((aligned(1024))) int superAligned = 12345;
+      int postzero = 0;
       ''')
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('liblib.c')
     for i in range(10):
       curr = '%d.so' % i
       shutil.copyfile('liblib.so', curr)
@@ -2955,7 +2953,7 @@ Var: 42
 
     self.prep_dlfcn_main()
     self.set_setting('INITIAL_MEMORY', '128mb')
-    src = r'''
+    create_test_file('src.c', r'''
       #include <stdio.h>
       #include <stdlib.h>
       #include <string.h>
@@ -2968,7 +2966,7 @@ Var: 42
         int num = 120 * 1024 * 1024; // total is 128; we'll use 5*5 = 25 at least, so allocate pretty much all of it
         void* mem = malloc(num);
         assert(mem);
-        printf("setting this range to non-zero: %d - %d\n", int(mem), int(mem) + num);
+        printf("setting this range to non-zero: %d - %d\n", (int)mem, ((int)mem) + num);
         memset(mem, 1, num);
         EM_ASM({
           var value = HEAP8[64*1024*1024];
@@ -2988,19 +2986,19 @@ Var: 42
           printf("getting superAligned\n");
           int* superAligned = (int*)dlsym(lib_handle, "superAligned");
           assert(superAligned);
-          assert(int(superAligned) % 1024 == 0); // alignment
-          printf("checking value of superAligned, at %d\n", superAligned);
+          assert(((int)superAligned) % 1024 == 0); // alignment
+          printf("checking value of superAligned, at %p\n", superAligned);
           assert(*superAligned == 12345); // value
           printf("getting prezero\n");
           int* prezero = (int*)dlsym(lib_handle, "prezero");
           assert(prezero);
-          printf("checking value of prezero, at %d\n", prezero);
+          printf("checking value of prezero, at %p\n", prezero);
           assert(*prezero == 0);
           *prezero = 1;
           assert(*prezero != 0);
           printf("getting postzero\n");
           int* postzero = (int*)dlsym(lib_handle, "postzero");
-          printf("checking value of postzero, at %d\n", postzero);
+          printf("checking value of postzero, at %p\n", postzero);
           assert(postzero);
           printf("checking value of postzero\n");
           assert(*postzero == 0);
@@ -3010,8 +3008,8 @@ Var: 42
         printf("success.\n");
         return 0;
       }
-      '''
-    self.do_run(src, 'success.\n')
+      ''')
+    self.do_runf('src.c', 'success.\n')
 
   @needs_dlfcn
   def test_dlfcn_self(self):
@@ -3142,7 +3140,7 @@ Var: 42
         // make sure we didn't just trample the stack!
         assert(!strcmp(input, "foobar"));
 
-        snprintf(bigstack, sizeof(bigstack), input);
+        snprintf(bigstack, sizeof(bigstack), "%s", input);
         return strlen(bigstack);
       }
       ''')
@@ -4431,7 +4429,7 @@ res64 - external 64\n''', header='''
   @needs_make('mingw32-make')
   @needs_dlfcn
   def test_dylink_zlib(self):
-    self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'zlib'), '-s', 'RELOCATABLE']
+    self.emcc_args += ['-Wno-shift-negative-value', '-I' + path_from_root('tests', 'third_party', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
     self.dylink_test(main=open(path_from_root('tests', 'third_party', 'zlib', 'example.c')).read(),
                      side=zlib_archive,
@@ -4593,6 +4591,7 @@ Have even and odd!
   @is_slow_test
   def test_printf(self):
     # needs to flush stdio streams
+    self.emcc_args.append('-Wno-format')
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'printf', 'test.c')
 
@@ -5635,7 +5634,7 @@ int main(void) {
 void *
 operator new(size_t size) throw(std::bad_alloc)
 {
-printf("new %d!\\n", size);
+printf("new %zu!\\n", size);
 return malloc(size);
 }
 '''
@@ -5699,7 +5698,7 @@ return malloc(size);
 
   def test_cubescript(self):
     # uses register keyword
-    self.emcc_args.append('-std=c++03')
+    self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
     if self.run_name == 'asm3':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
@@ -5726,7 +5725,7 @@ return malloc(size);
   @is_slow_test
   def test_wasm_builtin_simd(self):
     # Improves test readability
-    self.emcc_args.append('-Wno-c++11-narrowing')
+    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-format']
     self.do_runf(path_from_root('tests', 'test_wasm_builtin_simd.cpp'), 'Success!')
     self.emcc_args.append('-munimplemented-simd128')
     self.build(path_from_root('tests', 'test_wasm_builtin_simd.cpp'))
@@ -5924,6 +5923,7 @@ return malloc(size);
     # before the LLVM change rolls in (the same LLVM change that adds the
     # warning also starts to warn on it)
     self.emcc_args += ['-Wno-unknown-warning-option']
+    self.emcc_args += ['-Wno-pointer-bool-conversion']
 
     self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'sqlite')]
 
@@ -5952,8 +5952,9 @@ return malloc(size);
 
     self.maybe_closure()
 
+    self.emcc_args.append('-Wno-shift-negative-value')
     if self.run_name == 'asm2g':
-      self.emcc_args += ['-g4'] # more source maps coverage
+      self.emcc_args.append('-g4') # more source maps coverage
 
     if use_cmake:
       make_args = []
@@ -5979,7 +5980,13 @@ return malloc(size);
     if WINDOWS and not use_cmake:
       self.skipTest("Windows cannot run configure sh scripts")
 
-    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
+    self.emcc_args += [
+        '-Wno-c++11-narrowing',
+        '-Wno-deprecated-register',
+        '-Wno-writable-strings',
+        '-Wno-shift-negative-value',
+        '-Wno-format'
+    ]
     asserts = self.get_setting('ASSERTIONS')
 
     # extra testing for ASSERTIONS == 2
@@ -7294,7 +7301,7 @@ Module['onRuntimeInitialized'] = function() {
 extern "C" {
   const char* stringf(char* param) {
     emscripten_sleep(20);
-    printf(param);
+    printf("%s", param);
     return "second";
   }
   double floatf() {
@@ -8261,18 +8268,6 @@ def make_run(name, emcc_args, settings=None, env=None):
       self.set_setting(k, v)
 
     self.emcc_args += emcc_args
-    # avoid various compiler warnings in our test output
-    self.emcc_args += [
-      '-Wno-dynamic-class-memaccess',
-      '-Wno-format',
-      '-Wno-format-extra-args',
-      '-Wno-format-security',
-      '-Wno-pointer-bool-conversion',
-      '-Wno-unused-volatile-lvalue',
-      '-Wno-c++11-compat-deprecated-writable-strings',
-      '-Wno-invalid-pp-token',
-      '-Wno-shift-negative-value'
-    ]
 
   TT.setUp = setUp
 

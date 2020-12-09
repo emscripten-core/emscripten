@@ -30,7 +30,7 @@ int main() {
 
   uintptr_t origFree = emscripten_stack_get_free();
   uintptr_t prevFree = emscripten_stack_get_free();
-  printf("Stack used: %u\n", origFree - emscripten_stack_get_free());
+  printf("Stack used: %lu\n", origFree - emscripten_stack_get_free());
   for(int i = 0; i < 10; ++i) {
     int increment_noopt = emscripten_random() >= 0 ? increment : 2;
     char *p = alloca(increment_noopt);
@@ -41,7 +41,7 @@ int main() {
     // Print something from the allocationed region to prevent whole program
     // optimizations from elminiating the alloca completely.
     printf("Val: %d\n", p[10]);
-    printf("Stack used: %u\n", origFree - emscripten_stack_get_free());
+    printf("Stack used: %zu\n", origFree - emscripten_stack_get_free());
     TestStackValidity();
   }
   return 0;

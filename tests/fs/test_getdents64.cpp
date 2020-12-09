@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
   int fd = open(".", O_RDONLY | O_DIRECTORY);
   assert(fd > 0);
 
-  printf("sizeof(dirent): %d, sizeof(buffer): %d\n", sizeof(dirent), BUF_SIZE);
+  printf("sizeof(dirent): %zu, sizeof(buffer): %zu\n", sizeof(dirent), BUF_SIZE);
 
   bool first = true;
 

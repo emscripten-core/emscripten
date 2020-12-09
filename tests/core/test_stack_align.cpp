@@ -16,7 +16,7 @@ struct Aligned {
 
 __attribute__((noinline))
 void Test(const void* p, int size) {
-  printf("align %d: %d\n", size, reinterpret_cast<size_t>(p) % size);
+  printf("align %d: %zu\n", size, reinterpret_cast<size_t>(p) % size);
 }
 
 int main() {

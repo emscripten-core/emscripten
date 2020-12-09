@@ -23,7 +23,7 @@ jmp_buf jb;
 
 __attribute__((noinline)) void bar()
 {
-  printf("before longjmp: %d\n", emscripten_stack_get_current());
+  printf("before longjmp: %ld\n", emscripten_stack_get_current());
   longjmp(jb, 1);
 }
 

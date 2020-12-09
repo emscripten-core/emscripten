@@ -20,7 +20,7 @@ void * __attribute__((noinline)) malloc(size_t size)
 {
 	++totalAllocated;
 	void *ptr = emscripten_builtin_malloc(size);
-	printf("Allocated %u bytes, got %p. %d pointers allocated total.\n", size, ptr, totalAllocated);
+	printf("Allocated %zu bytes, got %p. %d pointers allocated total.\n", size, ptr, totalAllocated);
 	return ptr;
 }
 

@@ -64,7 +64,7 @@ int main() {
   char str[] = "  0x12end";
   char* endptr;
   printf("strtol(\"  0x12end\") = %ld\n", strtol(str, &endptr, 0));
-  printf("endptr - str = %d\n", endptr - str);
+  printf("endptr - str = %zu\n", endptr - str);
   check_error();
 
   return 0;
