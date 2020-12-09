@@ -33,7 +33,7 @@ from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WIND
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from runner import env_modify, no_mac, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
-from runner import js_engines_modify, NON_ZERO
+from runner import NON_ZERO
 from tools import shared, building, utils
 import jsrun
 import clang_native
@@ -128,10 +128,10 @@ class other(RunnerCore):
   # to compile, with optional compiler and execution flags.
   # Output can be checked by seeing if literals are contained, and that a list
   # of regexes match. The return code can also be checked.
-  def do_smart_test(self, source, literals=[], regexes=[],
+  def do_smart_test(self, source, literals=[], engine=None, regexes=[],
                     emcc_args=[], run_args=[], assert_returncode=0):
     self.run_process([EMCC, source] + emcc_args)
-    seen = self.run_js('a.out.js', args=run_args, assert_returncode=assert_returncode) + '\n'
+    seen = self.run_js('a.out.js', engine=engine, args=run_args, assert_returncode=assert_returncode) + '\n'
 
     for literal in literals:
       self.assertContained([literal], seen)
@@ -8679,10 +8679,11 @@ int main(void) {
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
 
   def test_proxy_to_pthread_stack(self):
-    with js_engines_modify([config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
-      self.do_smart_test(path_from_root('tests', 'other', 'test_proxy_to_pthread_stack.c'),
-                         ['success'],
-                         emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_STACK=1048576'])
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.do_smart_test(path_from_root('tests', 'other', 'test_proxy_to_pthread_stack.c'),
+                       ['success'],
+                       engine=config.NODE_JS,
+                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_STACK=1048576'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION=1'],

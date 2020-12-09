@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config
 from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
-from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify, disabled
+from runner import env_modify, with_env_modify, disabled
 from runner import NON_ZERO
 import clang_native
 
@@ -39,8 +39,9 @@ def wasm_simd(f):
       self.skipTest('wasm2js only supports MVP for now')
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
-    with js_engines_modify([config.V8_ENGINE + ['--experimental-wasm-simd']]):
-      f(self)
+    self.v8_args.append('--experimental-wasm-simd')
+    self.js_engines = [config.V8_ENGINE]
+    f(self)
   return decorated
 
 
@@ -50,8 +51,8 @@ def bleeding_edge_wasm_backend(f):
       self.skipTest('only works in d8 for now')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
-    with js_engines_modify([config.V8_ENGINE]):
-      f(self)
+    self.js_engines = [config.V8_ENGINE]
+    f(self)
   return decorated
 
 
@@ -61,8 +62,9 @@ def also_with_wasm_bigint(f):
     f(self)
     if self.get_setting('WASM'):
       self.set_setting('WASM_BIGINT', 1)
-      with js_engines_modify([config.NODE_JS + ['--experimental-wasm-bigint']]):
-        f(self)
+      self.node_args.append('--experimental-wasm-bigint')
+      self.js_engines = [config.NODE_JS]
+      f(self)
   return decorated
 
 
@@ -93,8 +95,9 @@ def with_both_exception_handling(f):
       if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
         self.skipTest('d8 required to run wasm eh tests')
       self.emcc_args.append('-fwasm-exceptions')
-      with js_engines_modify([config.V8_ENGINE + ['--experimental-wasm-eh']]):
-        f(self)
+      self.v8_args.append('--experimental-wasm-eh')
+      self.js_engines = [config.V8_ENGINE]
+      f(self)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       f(self)
@@ -128,8 +131,8 @@ def also_with_noderawfs(func):
     func(self)
     print('noderawfs')
     self.emcc_args = orig_args + ['-s', 'NODERAWFS=1', '-DNODERAWFS']
-    with js_engines_modify([config.NODE_JS]):
-      func(self)
+    self.js_engines = [config.NODE_JS]
+    func(self)
   return decorated
 
 
@@ -156,14 +159,16 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
           # when it sees an i64 on the ffi.
           self.set_setting('WASM_BIGINT', 1)
           # if we are impure, disallow all wasm engines
-          with wasm_engines_modify([] if impure else config.WASM_ENGINES):
-            with js_engines_modify([config.NODE_JS + ['--experimental-wasm-bigint']]):
-              func(self)
-              if wasm2c:
-                print('wasm2c')
-                self.set_setting('WASM2C', 1)
-                with wasm_engines_modify([]):
-                  func(self)
+          if impure:
+            self.wasm_engines = []
+          self.js_engines = [config.NODE_JS]
+          self.node_args.append('--experimental-wasm-bigint')
+          func(self)
+          if wasm2c:
+            print('wasm2c')
+            self.set_setting('WASM2C', 1)
+            self.wasm_engines = []
+            func(self)
 
     metafunc._parameterize = {'': (False,),
                               'standalone': (True,)}
@@ -179,8 +184,8 @@ def node_pthreads(f):
       self.skipTest('asan ends up using atomics that are not yet supported in node 12')
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    with js_engines_modify([config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
-      f(self)
+    self.js_engines = [config.NODE_JS]
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
   return decorated
 
 
@@ -397,8 +402,9 @@ class TestCoreBase(RunnerCore):
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT', 1)
     self.emcc_args += ['-fexceptions']
+    self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_invoke_bigint.cpp',
-                                 js_engines=[config.NODE_JS + ['--experimental-wasm-bigint']])
+                                 js_engines=[config.NODE_JS])
 
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy.c')
