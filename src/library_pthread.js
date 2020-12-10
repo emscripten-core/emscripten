@@ -62,8 +62,6 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
       Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, tb); // Main thread ID.
 
-      PThread.initShared();
-
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(tb);
       PThread.setThreadName(tb, "Browser main thread");
@@ -81,7 +79,6 @@ var LibraryPThread = {
 #endif
     },
     initWorker: function() {
-      PThread.initShared();
 #if MODULARIZE
       // The promise resolve function typically gets called as part of the execution
       // of the Module `run`. The workers/pthreads don't execute `run` here, they
@@ -97,11 +94,6 @@ var LibraryPThread = {
       PThread['setThreadStatus'] = PThread.setThreadStatus;
       PThread['threadCancel'] = PThread.threadCancel;
       PThread['threadExit'] = PThread.threadExit;
-#endif
-    },
-    initShared: function() {
-#if ASSERTIONS
-      assert(__emscripten_main_thread_futex > 0);
 #endif
     },
     // Maps pthread_t to pthread info objects
