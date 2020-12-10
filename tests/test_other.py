@@ -8049,6 +8049,9 @@ ok.
       }
     ''', 'getpeername error: Socket not connected', assert_returncode=NON_ZERO)
 
+  def test_getsockname_addrlen(self):
+    self.do_runf(path_from_root('tests', 'sockets', 'test_getsockname_addrlen.c'), 'success')
+
   def test_getaddrinfo(self):
     self.do_runf(path_from_root('tests', 'sockets', 'test_getaddrinfo.c'), 'success')
 
