@@ -42,8 +42,5 @@ int main() {
   assert(errno == EBADF);
   errno = 0;
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
   return 0;
 }

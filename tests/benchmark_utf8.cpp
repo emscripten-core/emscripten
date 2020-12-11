@@ -64,8 +64,5 @@ int main() {
   }
   double t3 = emscripten_get_now();
   printf("OK. Time: %f (%f).\n", t, t3-t2);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }
