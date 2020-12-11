@@ -356,10 +356,6 @@ if (ENVIRONMENT_IS_PTHREAD) runtimeInitialized = true; // The runtime is hosted 
 #endif
 
 function preRun() {
-#if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
-
 #if expectToReceiveOnModule('preRun')
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];

@@ -67,7 +67,8 @@ var wasmOffsetData;
 
 this.onmessage = function(e) {
   try {
-    if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+    // Preload command that is called once per worker to parse and load the Emscripten code.
+    if (e.data.cmd === 'load') {
 #if MINIMAL_RUNTIME
       var imports = {};
 #endif
@@ -75,9 +76,11 @@ this.onmessage = function(e) {
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
 #if MODULARIZE
-      imports['wasm'] = e.data.wasmModule; // Pass the shared Wasm module in an imports object for the MODULARIZEd build.
+      // Pass the shared Wasm module in an imports object for the MODULARIZEd build.
+      imports['wasm'] = e.data.wasmModule;
 #else
-      Module['wasm'] = e.data.wasmModule; // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
+      // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
+      Module['wasm'] = e.data.wasmModule;
 #endif
 #else
       Module['wasmModule'] = e.data.wasmModule;
@@ -103,7 +106,6 @@ this.onmessage = function(e) {
         return {{{ EXPORT_NAME }}}.default(Module);
       }).then(function(instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
@@ -117,23 +119,13 @@ this.onmessage = function(e) {
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
       });
 #else
       {{{ EXPORT_NAME }}}(Module).then(function (instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
       });
 #endif
 #endif
-
-#if !MODULARIZE && !MINIMAL_RUNTIME
-      // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
-      // regular runtime and asm.js are loaded synchronously, so in those cases
-      // we are now loaded, and can post back to main thread.
-      postMessage({ 'cmd': 'loaded' });
-#endif
-
 #endif
     } else if (e.data.cmd === 'objectTransfer') {
       Module['PThread'].receiveObjectTransfer(e.data);

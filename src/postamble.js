@@ -239,6 +239,17 @@ function run(args) {
     return;
   }
 
+  preRun();
+
+  if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) {
+    postMessage({ 'cmd': 'loaded' });
+    return;
+  }
+#endif
+
 #if STACK_OVERFLOW_CHECK
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
@@ -251,10 +262,6 @@ function run(args) {
 #endif
   writeStackCookie();
 #endif
-
-  preRun();
-
-  if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
 
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
@@ -472,14 +479,10 @@ noExitRuntime = true;
 #endif
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-  run();
-} else {
-  PThread.initWorker();
-}
-#else
+if (ENVIRONMENT_IS_PTHREAD) PThread.initWorker();
+#endif
+
 run();
-#endif // USE_PTHREADS
 
 #if BUILD_AS_WORKER
 
