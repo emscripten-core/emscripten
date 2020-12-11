@@ -1,3 +1,4 @@
+// XXX Emscripten in sync with musl/arch/i386/bits/reg.h
 #undef __WORDSIZE
 #define __WORDSIZE 32
 #define EBX 0

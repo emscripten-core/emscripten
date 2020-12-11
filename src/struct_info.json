@@ -55,6 +55,7 @@
                 "st_size",
                 "st_blksize",
                 "st_blocks",
+                "st_ino",
                 {
                     "st_atim": [
                         "tv_sec",
@@ -72,8 +73,7 @@
                         "tv_sec",
                         "tv_nsec"
                     ]
-                },
-                "st_ino"
+                }
             ]
         }
     },

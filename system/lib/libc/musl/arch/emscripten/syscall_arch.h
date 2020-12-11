@@ -137,6 +137,8 @@ long SYS_IMPORT(recvfrom) __syscall371(long sockfd, long level, long optname, lo
 long SYS_IMPORT(recvmsg) __syscall372(long sockfd, long level, long optname, long optval, long optlen, long dummy);
 long SYS_IMPORT(shutdown) __syscall373(long sockfd, long level, long optname, long optval, long optlen, long dummy);
 
+#define IPC_64 0
+
 #ifdef __cplusplus
 }
 #endif

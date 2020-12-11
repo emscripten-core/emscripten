@@ -1,3 +1,4 @@
+// XXX Emscripten in sync with musl/arch/i386/bits/user.h
 #undef __WORDSIZE
 #define __WORDSIZE 32
 
@@ -41,8 +42,8 @@ struct user
 	int				u_debugreg[8];
 };
 
-#define PAGE_MASK		(~(PAGE_SIZE-1))
-#define NBPG			PAGE_SIZE
+#define PAGE_MASK		(~(PAGESIZE-1))
+#define NBPG			PAGESIZE
 #define UPAGES			1
 #define HOST_TEXT_START_ADDR	(u.start_code)
 #define HOST_STACK_END_ADDR	(u.start_stack + u.u_ssize * NBPG)
