@@ -9,17 +9,6 @@
 #define __BYTE_ORDER 1234
 #define __LONG_MAX __LONG_MAX__
 
-#if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
-typedef __builtin_va_list va_list;
-#define __DEFINED_va_list
-#endif
-
-#if defined(__NEED___isoc_va_list) && !defined(__DEFINED___isoc_va_list)
-typedef __builtin_va_list __isoc_va_list;
-#define __DEFINED___isoc_va_list
-#endif
-
-
 #ifndef __cplusplus
 #ifdef __WCHAR_TYPE__
 #if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)
@@ -132,36 +121,6 @@ typedef struct { alignas(8) long long __ll; long double __ld; } max_align_t;
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
 typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned long __s[10]; } __u; const char *_a_transferredcanvases; } pthread_attr_t;
 #define __DEFINED_pthread_attr_t
-#endif
-
-#if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void *volatile __p[6]; } __u; } pthread_mutex_t;
-#define __DEFINED_pthread_mutex_t
-#endif
-
-#if defined(__NEED_mtx_t) && !defined(__DEFINED_mtx_t)
-typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void *volatile __p[6]; } __u; } mtx_t;
-#define __DEFINED_mtx_t
-#endif
-
-#if defined(__NEED_pthread_cond_t) && !defined(__DEFINED_pthread_cond_t)
-typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } pthread_cond_t;
-#define __DEFINED_pthread_cond_t
-#endif
-
-#if defined(__NEED_cnd_t) && !defined(__DEFINED_cnd_t)
-typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } cnd_t;
-#define __DEFINED_cnd_t
-#endif
-
-#if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)
-typedef struct { union { int __i[8]; volatile int __vi[8]; void *__p[8]; } __u; } pthread_rwlock_t;
-#define __DEFINED_pthread_rwlock_t
-#endif
-
-#if defined(__NEED_pthread_barrier_t) && !defined(__DEFINED_pthread_barrier_t)
-typedef struct { union { int __i[5]; volatile int __vi[5]; void *__p[5]; } __u; } pthread_barrier_t;
-#define __DEFINED_pthread_barrier_t
 #endif
 
 #define __LITTLE_ENDIAN 1234
