@@ -128,7 +128,13 @@ function callMain(args) {
   var entryFunction = Module['__initialize'];
 #endif
 #else
+#if PROXY_TO_PTHREAD
+  // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
+  // that will call the user's real main() for the application.
+  var entryFunction = Module['_emscripten_proxy_main'];
+#else
   var entryFunction = Module['_main'];
+#endif
 #endif
 
 #if MAIN_MODULE
@@ -166,11 +172,6 @@ function callMain(args) {
     abortWrapperDepth += 2; 
 #endif
 
-#if PROXY_TO_PTHREAD
-    // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
-    // that will call the user's real main() for the application.
-    var ret = Module['_proxy_main'](argc, argv);
-#else
 #if STANDALONE_WASM
     entryFunction();
     // _start (in crt1.c) will call exit() if main return non-zero.  So we know
@@ -179,7 +180,6 @@ function callMain(args) {
 #else
     var ret = entryFunction(argc, argv);
 #endif // STANDALONE_WASM
-#endif // PROXY_TO_PTHREAD
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');

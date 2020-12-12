@@ -909,49 +909,43 @@ int llvm_atomic_load_add_i32_p0i32(int* ptr, int delta) {
 
 // Stores the memory address that the main thread is waiting on, if any. If
 // the main thread is waiting, we wake it up before waking up any workers.
-EMSCRIPTEN_KEEPALIVE
-void* _emscripten_main_thread_futex;
+EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
 
-typedef struct main_args {
-  int argc;
-  char** argv;
-} main_args;
+static int _main_argc;
+static char** _main_argv;
 
 extern int __call_main(int argc, char** argv);
 
-void* __emscripten_thread_main(void* param) {
-  emscripten_set_thread_name(pthread_self(),
-    "Application main thread"); // This is the main runtime thread for the application.
-  main_args* args = (main_args*)param;
-  return (void*)__call_main(args->argc, args->argv);
+static void* _main_thread(void* param) {
+  // This is the main runtime thread for the application.
+  emscripten_set_thread_name(pthread_self(), "Application main thread");
+  return (void*)__call_main(_main_argc, _main_argv);
 }
 
-static main_args _main_arguments;
-
-int proxy_main(int argc, char** argv) {
-  if (emscripten_has_threading_support()) {
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    // Use the size of the current stack, which is the normal size of the stack
-    // that main() would have without PROXY_TO_PTHREAD.
-    pthread_attr_setstacksize(&attr, emscripten_stack_get_base() - emscripten_stack_get_end());
-    // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
-    // should instead take a list of canvases that are specified from the command line with
-    // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.
-    emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
-    _main_arguments.argc = argc;
-    _main_arguments.argv = argv;
-    pthread_t thread;
-    int rc = pthread_create(&thread, &attr, __emscripten_thread_main, (void*)&_main_arguments);
-    pthread_attr_destroy(&attr);
-    if (rc) {
-      // Proceed by running main() on the main browser thread as a fallback.
-      return __call_main(_main_arguments.argc, _main_arguments.argv);
-    }
-    return 0;
-  } else {
-    return __call_main(_main_arguments.argc, _main_arguments.argv);
+int emscripten_proxy_main(int argc, char** argv) {
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  // Use the size of the current stack, which is the normal size of the stack
+  // that main() would have without PROXY_TO_PTHREAD.
+  pthread_attr_setstacksize(&attr, emscripten_stack_get_base() - emscripten_stack_get_end());
+  // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
+  // should instead take a list of canvases that are specified from the command line with
+  // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.
+  emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
+  _main_argc = argc;
+  _main_argv = argv;
+  pthread_t thread;
+  int rc = pthread_create(&thread, &attr, _main_thread, NULL);
+  pthread_attr_destroy(&attr);
+  // TODO(sbc): Remove this fallback.  This is still required today as a or
+  // test_html5_webgl_api which sets OFFSCREENCANVAS_SUPPORT and
+  // PROXY_TO_PTHREAD but does not set OFFSCREEN_FRAMEBUFFER.  In this case
+  // threead creation will fail on firefox (due to lack of OffscreenCanvas
+  // support) and we fall back to running the code directly on the main thread.
+  if (rc) {
+    return __call_main(argc, argv);
   }
+  return rc;
 }
 
 weak_alias(__pthread_testcancel, pthread_testcancel);
