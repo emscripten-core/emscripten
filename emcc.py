@@ -1605,7 +1605,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         building.user_requested_exports += ['exit']
 
       if shared.Settings.PROXY_TO_PTHREAD:
-        shared.Settings.EXPORTED_FUNCTIONS += ['_proxy_main']
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_proxy_main']
 
       # pthread stack setup and other necessary utilities
       def include_and_export(name):
