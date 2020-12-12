@@ -3,7 +3,7 @@
 
 void *get_pc(void) { return __builtin_return_address(0); }
 
-void magic_test_function(void) {
+int magic_test_function(void) {
   int result = EM_ASM_INT({
     function report(x) {
       var xhr = new XMLHttpRequest();
@@ -15,9 +15,9 @@ void magic_test_function(void) {
     report('magic_test_function: converted=' + converted);
     return converted == 'magic_test_function';
   }, get_pc());
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  return result;
 }
 
-int main(void) { magic_test_function(); }
+int main(void) {
+  return magic_test_function();
+}

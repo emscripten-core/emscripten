@@ -269,10 +269,6 @@ int main() {
     }
 
     printf("tests_run: %d failures: %d\n", tests_run, failures);
-
-#ifdef REPORT_RESULT
-    REPORT_RESULT(failures);
-#endif
-    return 0;
+    return failures;
 }
 
