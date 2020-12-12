@@ -2,23 +2,13 @@
  * The .h version of this file is generated from the .h.in.
  * See update_alltypes.sh.
  */
+// XXX Emscripten keep in sync with musl/arch/i386/bits/alltypes.h.in
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__
 
 #define __BYTE_ORDER 1234
 #define __LONG_MAX 0x7fffffffL
-
-#if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
-typedef __builtin_va_list va_list;
-#define __DEFINED_va_list
-#endif
-
-#if defined(__NEED___isoc_va_list) && !defined(__DEFINED___isoc_va_list)
-typedef __builtin_va_list __isoc_va_list;
-#define __DEFINED___isoc_va_list
-#endif
-
 
 #ifndef __cplusplus
 #ifdef __WCHAR_TYPE__
@@ -85,6 +75,7 @@ typedef struct { alignas(8) long long __ll; long double __ld; } max_align_t;
 
 #endif
 
+// XXX Emscripten use 32-bit time (reverts musl commit d6dcfe4d0c58856690ecbad4cf191d7c9ee1a4a8)
 #if defined(__NEED_time_t) && !defined(__DEFINED_time_t)
 typedef long time_t;
 #define __DEFINED_time_t
@@ -96,6 +87,7 @@ typedef long suseconds_t;
 #endif
 
 
+// XXX Emscripten avoid endian-specific padding (reverts musl commit 9b2921bea1d5017832e1b45d1fd64220047a9802)
 #if defined(__NEED_struct_timespec) && !defined(__DEFINED_struct_timespec)
 struct timespec { time_t tv_sec; long tv_nsec; };
 #define __DEFINED_struct_timespec
@@ -106,47 +98,11 @@ struct timespec { time_t tv_sec; long tv_nsec; };
 // For canvas transfer implementation in Emscripten, use an extra 10th control field
 // to pass a pointer to a string denoting the WebGL canvases to transfer.
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
-typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned __s[10]; } __u; } pthread_attr_t;
-#define __DEFINED_pthread_attr_t
-#endif
-
-#else
-#if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
-typedef struct { union { int __i[9]; volatile int __vi[9]; unsigned __s[9]; } __u; } pthread_attr_t;
+typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned long __s[10]; } __u; } pthread_attr_t;
 #define __DEFINED_pthread_attr_t
 #endif
 
 #endif
-#if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void *volatile __p[6]; } __u; } pthread_mutex_t;
-#define __DEFINED_pthread_mutex_t
-#endif
-
-#if defined(__NEED_mtx_t) && !defined(__DEFINED_mtx_t)
-typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void *volatile __p[6]; } __u; } mtx_t;
-#define __DEFINED_mtx_t
-#endif
-
-#if defined(__NEED_pthread_cond_t) && !defined(__DEFINED_pthread_cond_t)
-typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } pthread_cond_t;
-#define __DEFINED_pthread_cond_t
-#endif
-
-#if defined(__NEED_cnd_t) && !defined(__DEFINED_cnd_t)
-typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } cnd_t;
-#define __DEFINED_cnd_t
-#endif
-
-#if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)
-typedef struct { union { int __i[8]; volatile int __vi[8]; void *__p[8]; } __u; } pthread_rwlock_t;
-#define __DEFINED_pthread_rwlock_t
-#endif
-
-#if defined(__NEED_pthread_barrier_t) && !defined(__DEFINED_pthread_barrier_t)
-typedef struct { union { int __i[5]; volatile int __vi[5]; void *__p[5]; } __u; } pthread_barrier_t;
-#define __DEFINED_pthread_barrier_t
-#endif
-
 #define __LITTLE_ENDIAN 1234
 #define __BIG_ENDIAN 4321
 #define __USE_TIME_BITS64 1

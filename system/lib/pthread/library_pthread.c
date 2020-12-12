@@ -53,7 +53,7 @@ int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, cons
 }
 
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t* a, const char* str) {
-  a->_a_transferredcanvases = (int)str;
+  a->_a_transferredcanvases = (unsigned long)str;
   return 0;
 }
 
