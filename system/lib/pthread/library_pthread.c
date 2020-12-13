@@ -937,14 +937,6 @@ int emscripten_proxy_main(int argc, char** argv) {
   pthread_t thread;
   int rc = pthread_create(&thread, &attr, _main_thread, NULL);
   pthread_attr_destroy(&attr);
-  // TODO(sbc): Remove this fallback.  This is still required today as a or
-  // test_html5_webgl_api which sets OFFSCREENCANVAS_SUPPORT and
-  // PROXY_TO_PTHREAD but does not set OFFSCREEN_FRAMEBUFFER.  In this case
-  // threead creation will fail on firefox (due to lack of OffscreenCanvas
-  // support) and we fall back to running the code directly on the main thread.
-  if (rc) {
-    return __call_main(argc, argv);
-  }
   return rc;
 }
 
