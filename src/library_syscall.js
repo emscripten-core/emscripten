@@ -303,7 +303,7 @@ var SyscallsLibrary = {
   },
   __sys_open: function(path, flags, varargs) {
     var pathname = SYSCALLS.getStr(path);
-    var mode = SYSCALLS.get();
+    var mode = varargs ? SYSCALLS.get() : 0;
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
