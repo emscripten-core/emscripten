@@ -5,7 +5,7 @@ int __pthread_rwlock_timedwrlock(pthread_rwlock_t *restrict rw, const struct tim
 #ifdef __EMSCRIPTEN__
 	/// XXX Emscripten: The spec allows detecting when multiple write locks would deadlock, which we do here to avoid hangs.
 	/// If attempting to lock the write lock that we already own, error out.
-	if (rw->_rw_wr_owner == (int)pthread_self()) return EDEADLK;
+	if (rw->_rw_wr_owner == __pthread_self()->tid) return EDEADLK;
 #endif
 	int r, t;
 	
@@ -27,7 +27,7 @@ int __pthread_rwlock_timedwrlock(pthread_rwlock_t *restrict rw, const struct tim
 #ifdef __EMSCRIPTEN__
 	/// XXX Emscripten: The spec allows detecting when multiple write locks would deadlock, which we do here to avoid hangs.
 	/// Mark this thread as the owner of this write lock.
-	rw->_rw_wr_owner = (int)pthread_self();
+	rw->_rw_wr_owner = __pthread_self()->tid;
 #endif
 	return r;
 }
