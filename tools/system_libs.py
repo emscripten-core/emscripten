@@ -901,8 +901,9 @@ class libsockets(MuslInternalLibrary, MTLibrary):
   cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
 
   def get_files(self):
-    network_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network')
-    return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
+    return files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'network'],
+      filenames=LIBC_SOCKETS)
 
 
 class libsockets_proxy(MTLibrary):
