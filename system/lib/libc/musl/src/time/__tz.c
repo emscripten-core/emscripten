@@ -28,8 +28,10 @@ const char __utc[] = "UTC";
 static int dst_off;
 static int r0[5], r1[5];
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
 static const unsigned char *zi, *trans, *index, *types, *abbrevs, *abbrevs_end;
 static size_t map_size;
+#endif
 
 static char old_tz_buf[32];
 static char *old_tz = old_tz_buf;
@@ -104,6 +106,7 @@ static void getname(char *d, const char **p)
 	d[i<TZNAME_MAX?i:TZNAME_MAX] = 0;
 }
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
 #define VEC(...) ((const unsigned char[]){__VA_ARGS__})
 
 static uint32_t zi_read32(const unsigned char *z)
@@ -121,25 +124,37 @@ static size_t zi_dotprod(const unsigned char *z, const unsigned char *v, size_t 
 	}
 	return y;
 }
+#endif
 
 static void do_tzset()
 {
+#ifdef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
+	const char *s;
+	size_t i;
+#else
 	char buf[NAME_MAX+25], *pathname=buf+24;
 	const char *try, *s, *p;
 	const unsigned char *map = 0;
 	size_t i;
 	static const char search[] =
 		"/usr/share/zoneinfo/\0/share/zoneinfo/\0/etc/zoneinfo/\0";
+#endif
 
 	s = getenv("TZ");
+#ifdef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
+	if (!s || !*s) s = __utc;
+#else
 	if (!s) s = "/etc/localtime";
 	if (!*s) s = __utc;
+#endif
 
 	if (old_tz && !strcmp(s, old_tz)) return;
 
 	for (i=0; i<5; i++) r0[i] = r1[i] = 0;
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
 	if (zi) __munmap((void *)zi, map_size);
+#endif
 
 	/* Cache the old value of TZ to check if it has changed. Avoid
 	 * free so as not to pull it into static programs. Growth
@@ -154,6 +169,7 @@ static void do_tzset()
 	}
 	if (old_tz) memcpy(old_tz, s, i+1);
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
 	/* Non-suid can use an absolute tzfile pathname or a relative
 	 * pathame beginning with "."; in secure mode, only the
 	 * standard path will be searched. */
@@ -225,6 +241,8 @@ static void do_tzset()
 	}
 
 	if (!s) s = __utc;
+#endif
+
 	getname(std_name, &s);
 	__tzname[0] = std_name;
 	__timezone = getoff(&s);
@@ -245,6 +263,7 @@ static void do_tzset()
 	if (*s == ',') s++, getrule(&s, r1);
 }
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
 /* Search zoneinfo rules to find the one that applies to the given time,
  * and determine alternate opposite-DST-status rule that may be needed. */
 
@@ -312,6 +331,7 @@ static size_t scan_trans(long long t, int local, size_t *alt)
 
 	return index[a];
 }
+#endif
 
 static int days_in_month(int m, int is_leap)
 {
@@ -358,6 +378,7 @@ void __secs_to_zone(long long t, int local, int *isdst, long *offset, long *oppo
 
 	do_tzset();
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
 	if (zi) {
 		size_t alt, i = scan_trans(t, local, &alt);
 		if (i != -1) {
@@ -369,6 +390,7 @@ void __secs_to_zone(long long t, int local, int *isdst, long *offset, long *oppo
 			return;
 		}
 	}
+#endif
 
 	if (!__daylight) goto std;
 
@@ -421,8 +443,12 @@ const char *__tm_to_tzname(const struct tm *tm)
 	const void *p = tm->__tm_zone;
 	LOCK(lock);
 	do_tzset();
+#ifdef __EMSCRIPTEN__ // XXX Emscripten ignore default timezone from filesystem
+	if (p != __utc && p != __tzname[0] && p != __tzname[1])
+#else
 	if (p != __utc && p != __tzname[0] && p != __tzname[1] &&
 	    (!zi || (uintptr_t)p-(uintptr_t)abbrevs >= abbrevs_end - abbrevs))
+#endif
 		p = "";
 	UNLOCK(lock);
 	return p;
