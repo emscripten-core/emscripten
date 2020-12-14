@@ -5796,24 +5796,21 @@ mergeInto(LibraryManager.library, {
 #include <stdio.h>
 #include <errno.h>
 
-#define TEST_PATH "/boot/README.txt"
-
 int main(int argc, char **argv) {
-  errno = 0;
-  char *t_realpath_buf = realpath(TEST_PATH, NULL);
-  if (NULL == t_realpath_buf) {
+  char *t_realpath_buf = realpath("/boot/README.txt", NULL);
+  if (!t_realpath_buf) {
     perror("Resolve failed");
     return 1;
-  } else {
-    printf("Resolved: %s\n", t_realpath_buf);
-    free(t_realpath_buf);
-    return 0;
   }
+
+  printf("Resolved: %s\n", t_realpath_buf);
+  free(t_realpath_buf);
+  return 0;
 }
 ''')
     ensure_dir('boot')
     create_test_file(os.path.join('boot', 'README.txt'), ' ')
-    self.run_process([EMCC, 'src.c', '--embed-file', 'boot'])
+    self.run_process([EMCC, 'src.c', '-s', 'SAFE_HEAP', '--embed-file', 'boot'])
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
   def test_realpath_nodefs(self):
