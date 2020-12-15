@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config
 from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
-from runner import env_modify, with_env_modify, disabled
+from runner import env_modify, with_env_modify, disabled, node_pthreads
 from runner import NON_ZERO
 import clang_native
 
@@ -174,19 +174,6 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
                               'standalone': (True,)}
     return metafunc
 
-  return decorated
-
-
-def node_pthreads(f):
-  def decorated(self):
-    self.set_setting('USE_PTHREADS', 1)
-    if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('asan ends up using atomics that are not yet supported in node 12')
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    self.js_engines = [config.NODE_JS]
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
-    f(self)
   return decorated
 
 

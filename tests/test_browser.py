@@ -2626,6 +2626,8 @@ Module["preRun"].push(function () {
     for mode in [['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
                  ['-s', 'OFFSCREEN_FRAMEBUFFER=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
                  []]:
+      if 'OFFSCREENCANVAS_SUPPORT=1' in mode and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
+        continue
       self.btest(path_from_root('tests', 'html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode, expected='0')
 
   def test_webgl2_ubos(self):
