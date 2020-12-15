@@ -272,6 +272,23 @@ In this case you don't need to worry about ``ASYNCIFY_IMPORTS``, since it's an
 internal implementation detail of ``val::await`` and Emscripten takes care of it
 automatically.
 
+Usage with ``ccall``
+####################
+
+When calling a wasm export from JavaScript, if you use ``call`` then you will
+get Promise if it is asynchronous. You can use the Promise normally to get
+notified when the computation completes, and also receive a result if there is
+one. Note that you need to pass ``async: true`` to the ``call`` options object
+for this to work.
+
+In this example, a function "func" is called which returns a Number.
+
+.. code-block:: javascript
+
+    Module.ccall("func", "number", [], [], {async: true}).then(result => {
+      console.log("js_func: " + result);
+    });
+
 Optimizing
 ##########
 
