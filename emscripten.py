@@ -785,7 +785,7 @@ def create_module(sending, receiving, invoke_funcs, metadata):
     module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
 
   if not shared.Settings.MINIMAL_RUNTIME:
-    module.append("var asm = createWasm();\n")
+    module.append(f"var asm = createWasm('{shared.Settings.WASM_BINARY_FILE}');\n")
 
   module.append(receiving)
   module.append(invoke_wrappers)

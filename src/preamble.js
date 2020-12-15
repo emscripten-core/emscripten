@@ -735,12 +735,7 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
-var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-if (!isDataURI(wasmBinaryFile)) {
-  wasmBinaryFile = locateFile(wasmBinaryFile);
-}
-
-function getBinary() {
+function getBinary(wasmBinaryFile) {
   try {
     if (wasmBinary) {
       return new Uint8Array(wasmBinary);
@@ -767,7 +762,7 @@ function getBinary() {
   }
 }
 
-function getBinaryPromise() {
+function getBinaryPromise(wasmBinaryFile) {
   // If we don't have the binary yet, and have the Fetch api, use that;
   // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
   if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function'
@@ -782,11 +777,11 @@ function getBinaryPromise() {
       }
       return response['arrayBuffer']();
     }).catch(function () {
-      return getBinary();
+      return getBinary(wasmBinaryFile);
     });
   }
   // Otherwise, getBinary should be able to get it synchronously
-  return Promise.resolve().then(getBinary);
+  return Promise.resolve().then(function() { return getBinary(wasmBinaryFile); });
 }
 
 #if LOAD_SOURCE_MAP
@@ -812,7 +807,11 @@ var splitModuleProxyHandler = {
 
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
-function createWasm() {
+function createWasm(wasmBinaryFile) {
+  if (!isDataURI(wasmBinaryFile)) {
+    wasmBinaryFile = locateFile(wasmBinaryFile);
+  }
+
   // prepare imports
   var info = {
 #if MINIFY_WASM_IMPORTED_MODULES
@@ -945,7 +944,7 @@ function createWasm() {
 #endif
 
   function instantiateArrayBuffer(receiver) {
-    return getBinaryPromise().then(function(binary) {
+    return getBinaryPromise(wasmBinaryFile).then(function(binary) {
 #if USE_OFFSET_CONVERTER
       var result = WebAssembly.instantiate(binary, info);
       result.then(function (instance) {
@@ -1018,7 +1017,7 @@ function createWasm() {
     var module;
     var binary;
     try {
-      binary = getBinary();
+      binary = getBinary(wasmBinaryFile);
 #if NODE_CODE_CACHING
       if (ENVIRONMENT_IS_NODE) {
         var v8 = require('v8');

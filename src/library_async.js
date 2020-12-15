@@ -350,12 +350,10 @@ mergeInto(LibraryManager.library, {
 
   emscripten_lazy_load_code: function() {
     Asyncify.handleSleep(function(wakeUp) {
-      // Update the expected wasm binary file to be the lazy one.
-      wasmBinaryFile += '.lazy.wasm';
       // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
       dependenciesFulfilled = wakeUp;
       // Load the new wasm.
-      asm = createWasm();
+      asm = createWasm('{{{ WASM_BINARY_FILE }}}' + '.lazy.wasm');
     });
   },
 
