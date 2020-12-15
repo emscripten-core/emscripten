@@ -29,11 +29,11 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 				}
 				// Assist other threads by executing proxied operations that are effectively singlethreaded.
 				if (is_main_thread) emscripten_main_thread_process_queued_calls();
-				e = emscripten_futex_wait((void*)addr, val, maxMsecsSliceToSleep);
+				e = emscripten_futex_wait(addr, val, maxMsecsSliceToSleep);
 			} while(e == -ETIMEDOUT);
 		} else {
 			// Can wait in one go.
-			emscripten_futex_wait((void*)addr, val, INFINITY);
+			emscripten_futex_wait(addr, val, INFINITY);
 		}
 	}
 #else
