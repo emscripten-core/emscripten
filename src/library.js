@@ -3427,7 +3427,7 @@ LibraryManager.library = {
 #if MINIMAL_RUNTIME
     return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
 #else
-    return stringToUTF8(wasmBinaryFile, buf, length);
+    return stringToUTF8('{{{ WASM_BINARY_FILE }}}', buf, length);
 #endif
   },
 
