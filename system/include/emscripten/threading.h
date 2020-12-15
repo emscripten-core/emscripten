@@ -9,6 +9,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+
 #include <emscripten/html5.h>
 
 #ifdef __cplusplus
@@ -139,7 +140,7 @@ typedef struct em_queued_call
 {
   int functionEnum;
   void *functionPtr;
-  int operationDone;
+  _Atomic int operationDone;
   em_variant_val args[EM_QUEUED_JS_CALL_MAX_ARGS];
   em_variant_val returnValue;
 
