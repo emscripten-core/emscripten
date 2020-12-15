@@ -182,6 +182,19 @@ def requires_native_clang(func):
   return decorated
 
 
+def node_pthreads(f):
+  def decorated(self):
+    self.set_setting('USE_PTHREADS', 1)
+    if '-fsanitize=address' in self.emcc_args:
+      self.skipTest('asan ends up using atomics that are not yet supported in node 12')
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    self.js_engines = [config.NODE_JS]
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    f(self)
+  return decorated
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""

@@ -32,8 +32,8 @@ from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
-from runner import env_modify, no_mac, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
-from runner import NON_ZERO
+from runner import env_modify, no_mac, no_windows, requires_native_clang, chdir, with_env_modify
+from runner import create_test_file, parameterized, NON_ZERO, node_pthreads
 from tools import shared, building, utils
 import jsrun
 import clang_native
@@ -6674,6 +6674,7 @@ int main() {
       for a in args:
         if a == '-s':
           continue
+        a = a.replace('-s', '')
         a = a.replace('-', '')
         a = a.replace('=1', '')
         a = a.replace('=[]', '_NONE')
@@ -6760,6 +6761,10 @@ int main() {
   })
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
+
+  @node_pthreads
+  def test_metadce_minimal_pthreads(self):
+    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [], 26557)
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka'], 127740), # noqa
