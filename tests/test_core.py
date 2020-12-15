@@ -5132,10 +5132,12 @@ main( int argv, char ** argc ) {
   def test_fs_mmap(self):
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args[:]
-    for fs in ['MEMFS', 'NODEFS']:
+    for fs in ['MEMFS', 'NODEFS', 'NODERAWFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
+      if fs == 'NODERAWFS':
+        self.emcc_args += ['-sNODERAWFS=1']
       self.do_run_in_out_file_test('tests', 'fs', 'test_mmap.c')
 
   @also_with_noderawfs

@@ -20,16 +20,21 @@
 
 int main() {
   EM_ASM(
-    FS.mkdir('yolo');
+    #if !NODERAWFS
+        FS.mkdir('yolo');
+    #endif
     #if NODEFS
         FS.mount(NODEFS, { root: '.' }, 'yolo');
     #endif
-    FS.writeFile('/yolo/in.txt', 'mmap ftw!');
+    #if !NODERAWFS
+        FS.chdir('/yolo');
+    #endif
+    FS.writeFile('./in.txt', 'mmap ftw!');
   );
 
   // Use mmap to read in.txt
   {
-    const char* path = "/yolo/in.txt";
+    const char* path = "./in.txt";
     int fd = open(path, O_RDONLY);
     assert(fd != -1);
 
@@ -52,7 +57,7 @@ int main() {
   // Use mmap to write out.txt
   {
     const char* text = "written mmap";
-    const char* path = "/yolo/out.txt";
+    const char* path = "./out.txt";
 
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
     assert(fd != -1);
@@ -78,7 +83,7 @@ int main() {
   }
 
   {
-    FILE* fd = fopen("/yolo/out.txt", "r");
+    FILE* fd = fopen("./out.txt", "r");
     if (fd == NULL) {
       printf("failed to open /yolo/out.txt\n");
       return 1;
@@ -95,7 +100,7 @@ int main() {
   {
     const char* readonlytext = "readonly mmap\0";
     const char* text = "write mmap\0";
-    const char* path = "/yolo/outreadonly.txt";
+    const char* path = "./outreadonly.txt";
     size_t readonlytextsize = strlen(readonlytext);
     size_t textsize = strlen(text);
 
@@ -117,7 +122,7 @@ int main() {
   }
 
   {
-    FILE* fd = fopen("/yolo/outreadonly.txt", "r");
+    FILE* fd = fopen("./outreadonly.txt", "r");
     if (fd == NULL) {
       printf("failed to open /yolo/outreadonly.txt\n");
       return 1;
@@ -132,7 +137,7 @@ int main() {
   // MAP_PRIVATE
   {
     const char* text = "written mmap";
-    const char* path = "/yolo/private.txt";
+    const char* path = "./private.txt";
 
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
     assert(fd != -1);
@@ -158,7 +163,7 @@ int main() {
   }
 
   {
-    FILE* fd = fopen("/yolo/private.txt", "r");
+    FILE* fd = fopen("./private.txt", "r");
     if (fd == NULL) {
       printf("failed to open /yolo/private.txt\n");
       return 1;
@@ -173,7 +178,7 @@ int main() {
   // MAP_SHARED with offset
   {
     const char* text = "written shared mmap with offset";
-    const char* path = "/yolo/sharedoffset.txt";
+    const char* path = "./sharedoffset.txt";
 
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
     assert(fd != -1);
@@ -207,7 +212,7 @@ int main() {
   }
 
   {
-    FILE* fd = fopen("/yolo/sharedoffset.txt", "r");
+    FILE* fd = fopen("./sharedoffset.txt", "r");
     if (fd == NULL) {
       printf("failed to open /yolo/sharedoffset.txt\n");
       return 1;
@@ -222,7 +227,7 @@ int main() {
     fclose(fd);
   }
 
-#if !defined(NODEFS)
+#if !defined(NODEFS) && !defined(NODERAWFS)
   /**
    * MMAP to an 'over-allocated' file
    * 
@@ -233,7 +238,7 @@ int main() {
    * is not written beyond the allocated memory area for the mmap operation.
    */
   {
-    int fd = open("/yolo/overallocatedfile.txt", O_RDWR | O_CREAT, (mode_t)0600);
+    int fd = open("./overallocatedfile.txt", O_RDWR | O_CREAT, (mode_t)0600);
     assert(fd != -1);
 
     const size_t textsize = 33;
@@ -244,13 +249,13 @@ int main() {
     }
 
     EM_ASM_({
-        const stream = FS.streams.find(stream => stream.path.indexOf('/yolo/overallocatedfile.txt')>=0);
+        const stream = FS.streams.find(stream => stream.path.indexOf('overallocatedfile.txt') >= 0);
         assert(stream.node.usedBytes === $0,
-          'Used bytes on the over-allocated file (' + stream.node.usedBytes+ ') ' +
+          'Used bytes on the over-allocated file (' + stream.node.usedBytes + ') ' +
           'should be 33'
         );
         assert(stream.node.contents.length > stream.node.usedBytes,
-          'Used bytes on the over-allocated file (' + stream.node.usedBytes+ ') ' +
+          'Used bytes on the over-allocated file (' + stream.node.usedBytes + ') ' +
           'should be less than the length of the content buffer (' + stream.node.contents.length + ')'
         );
         stream.node.contents[stream.node.usedBytes] = 98; // 'b', we don't want to see this in the mmap area
