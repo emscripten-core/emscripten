@@ -76,6 +76,12 @@ disabled = {
   'test_pthread_rwlock_trywrlock_1_1': 'fails with "main: Unexpected thread state"',
   'test_pthread_spin_destroy_3_1': 'never returns',
   'test_pthread_spin_init_4_1': 'never returns',
+  'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters unsupported',
+  'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters unsupported',
+  'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters unsupported',
+  'test_pthread_attr_setschedparam_1_4': 'scheduling policy/parameters unsupported',
+  'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters unsupported',
+  'test_pthread_getschedparam_1_3': 'scheduling policy/parameters unsupported',
 }
 
 
