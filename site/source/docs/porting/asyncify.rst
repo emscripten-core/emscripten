@@ -275,11 +275,10 @@ automatically.
 Usage with ``ccall``
 ####################
 
-When calling a wasm export from JavaScript, if you use ``call`` then you will
-get Promise if it is asynchronous. You can use the Promise normally to get
-notified when the computation completes, and also receive a result if there is
-one. Note that you need to pass ``async: true`` to the ``call`` options object
-for this to work.
+To make use of an Asyncify-using wasm export from Javascript, you can use the
+``Module.ccall`` function and pass ``async: true`` to its call options object.
+``ccall`` will then return a Promise, which will resolve with the result of the
+function once the computation completes.
 
 In this example, a function "func" is called which returns a Number.
 
