@@ -15,6 +15,7 @@
 #include <math.h>
 #include <poll.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -178,6 +179,7 @@ static em_queued_call* em_queued_call_malloc() {
   }
   return call;
 }
+
 static void em_queued_call_free(em_queued_call* call) {
   if (call)
     free(call->satelliteData);
@@ -365,10 +367,11 @@ static void _do_call(em_queued_call* q) {
 
 #define CALL_QUEUE_SIZE 128
 
+// Shared data synchronized by call_queue_lock.
 typedef struct CallQueue {
   void* target_thread;
   em_queued_call** call_queue;
-  int call_queue_head; // Shared data synchronized by call_queue_lock.
+  int call_queue_head;
   int call_queue_tail;
   struct CallQueue* next;
 } CallQueue;
@@ -379,9 +382,8 @@ typedef struct CallQueue {
 static pthread_mutex_t call_queue_lock = PTHREAD_MUTEX_INITIALIZER;
 static CallQueue* callQueue_head = 0;
 
-static CallQueue* GetQueue(
-  void* target) // Not thread safe, call while having call_queue_lock obtained.
-{
+// Not thread safe, call while having call_queue_lock obtained.
+static CallQueue* GetQueue(void* target) {
   assert(target);
   CallQueue* q = callQueue_head;
   while (q && q->target_thread != target)
@@ -389,9 +391,8 @@ static CallQueue* GetQueue(
   return q;
 }
 
-static CallQueue* GetOrAllocateQueue(
-  void* target) // Not thread safe, call while having call_queue_lock obtained.
-{
+// Not thread safe, call while having call_queue_lock obtained.
+static CallQueue* GetOrAllocateQueue(void* target) {
   CallQueue* q = GetQueue(target);
   if (q)
     return q;
@@ -416,14 +417,14 @@ static CallQueue* GetOrAllocateQueue(
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
   int r;
 
-  int done = emscripten_atomic_load_u32(&call->operationDone);
+  int done = atomic_load(&call->operationDone);
   if (!done) {
     double now = emscripten_get_now();
     double waitEndTime = now + timeoutMSecs;
     emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
     while (!done && now < waitEndTime) {
       r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
-      done = emscripten_atomic_load_u32(&call->operationDone);
+      done = atomic_load(&call->operationDone);
       now = emscripten_get_now();
     }
     emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
@@ -453,8 +454,7 @@ pthread_t emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-int _emscripten_do_dispatch_to_thread(
-  pthread_t target_thread, em_queued_call* call) {
+int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
   // #if PTHREADS_DEBUG // TODO: Create a debug version of pthreads library
@@ -483,8 +483,8 @@ int _emscripten_do_dispatch_to_thread(
     q->call_queue = malloc(
       sizeof(em_queued_call*) * CALL_QUEUE_SIZE); // Shared data synchronized by call_queue_lock.
 
-  int head = emscripten_atomic_load_u32((void*)&q->call_queue_head);
-  int tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+  int head = q->call_queue_head;
+  int tail = q->call_queue_tail;
   int new_tail = (tail + 1) % CALL_QUEUE_SIZE;
 
   while (new_tail == head) { // Queue is full?
@@ -495,8 +495,8 @@ int _emscripten_do_dispatch_to_thread(
     if (target_thread == emscripten_main_browser_thread_id()) {
       emscripten_futex_wait((void*)&q->call_queue_head, head, INFINITY);
       pthread_mutex_lock(&call_queue_lock);
-      head = emscripten_atomic_load_u32((void*)&q->call_queue_head);
-      tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+      head = q->call_queue_head;
+      tail = q->call_queue_tail;
       new_tail = (tail + 1) % CALL_QUEUE_SIZE;
     } else {
       // For the queues of other threads, just drop the message.
@@ -524,10 +524,8 @@ int _emscripten_do_dispatch_to_thread(
     }
   }
 
-  emscripten_atomic_store_u32((void*)&q->call_queue_tail, new_tail);
-
+  q->call_queue_tail = new_tail;
   pthread_mutex_unlock(&call_queue_lock);
-
   return 0;
 }
 
@@ -687,8 +685,8 @@ void emscripten_current_thread_process_queued_calls() {
     return;
   }
 
-  int head = emscripten_atomic_load_u32((void*)&q->call_queue_head);
-  int tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+  int head = q->call_queue_head;
+  int tail = q->call_queue_tail;
   while (head != tail) {
     // Assume that the call is heavy, so unlock access to the call queue while it is being
     // performed.
@@ -697,8 +695,8 @@ void emscripten_current_thread_process_queued_calls() {
     pthread_mutex_lock(&call_queue_lock);
 
     head = (head + 1) % CALL_QUEUE_SIZE;
-    emscripten_atomic_store_u32((void*)&q->call_queue_head, head);
-    tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+    q->call_queue_head = head;
+    tail = q->call_queue_tail;
   }
   pthread_mutex_unlock(&call_queue_lock);
 
