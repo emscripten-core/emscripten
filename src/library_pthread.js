@@ -7,6 +7,7 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
+                   'emscripten_register_main_browser_thread_id',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
 #if USE_ASAN || USE_LSAN
@@ -569,7 +570,7 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
 
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_getschedparam', 'pthread_self', 'memalign', '$resetPrototype'],
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_getschedparam', 'pthread_self', 'memalign', '$resetPrototype', 'emscripten_sync_run_in_main_thread_4'],
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -1343,6 +1344,7 @@ var LibraryPThread = {
 #endif
   },
 
+  emscripten_proxy_to_main_thread_js__deps: ['emscripten_run_in_main_runtime_thread_js'],
   emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual

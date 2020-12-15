@@ -6764,7 +6764,7 @@ int main() {
 
   @node_pthreads
   def test_metadce_minimal_pthreads(self):
-    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [], 26557)
+    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [], 16135)
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka'], 127740), # noqa

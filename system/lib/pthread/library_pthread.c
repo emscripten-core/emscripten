@@ -431,16 +431,16 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
 
 static pthread_t main_browser_thread_id_ = 0;
 
-void EMSCRIPTEN_KEEPALIVE emscripten_register_main_browser_thread_id(
+void emscripten_register_main_browser_thread_id(
   pthread_t main_browser_thread_id) {
   main_browser_thread_id_ = main_browser_thread_id;
 }
 
-pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id() {
+pthread_t emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-int EMSCRIPTEN_KEEPALIVE do_emscripten_dispatch_to_thread(
+int _emscripten_do_dispatch_to_thread(
   pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
@@ -518,25 +518,25 @@ int EMSCRIPTEN_KEEPALIVE do_emscripten_dispatch_to_thread(
   return 0;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_async_run_in_main_thread(em_queued_call* call) {
-  do_emscripten_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
+void emscripten_async_run_in_main_thread(em_queued_call* call) {
+  _emscripten_do_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call* call) {
+void emscripten_sync_run_in_main_thread(em_queued_call* call) {
   emscripten_async_run_in_main_thread(call);
 
   // Enter to wait for the operation to complete.
   emscripten_wait_for_call_v(call, INFINITY);
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_0(int function) {
+void* emscripten_sync_run_in_main_thread_0(int function) {
   em_queued_call q = {function};
   q.returnValue.vp = 0;
   emscripten_sync_run_in_main_thread(&q);
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_1(int function, void* arg1) {
+void* emscripten_sync_run_in_main_thread_1(int function, void* arg1) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
   q.returnValue.vp = 0;
@@ -544,7 +544,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_1(int function, vo
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_2(
+void* emscripten_sync_run_in_main_thread_2(
   int function, void* arg1, void* arg2) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -554,7 +554,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_2(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_xprintf_varargs(
+void* emscripten_sync_run_in_main_thread_xprintf_varargs(
   int function, int param0, const char* format, ...) {
   va_list args;
   va_start(args, format);
@@ -577,7 +577,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_xprintf_varargs(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_3(
+void* emscripten_sync_run_in_main_thread_3(
   int function, void* arg1, void* arg2, void* arg3) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -588,7 +588,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_3(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_4(
+void* emscripten_sync_run_in_main_thread_4(
   int function, void* arg1, void* arg2, void* arg3, void* arg4) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -600,7 +600,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_4(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_5(
+void* emscripten_sync_run_in_main_thread_5(
   int function, void* arg1, void* arg2, void* arg3, void* arg4, void* arg5) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -613,7 +613,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_5(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_6(
+void* emscripten_sync_run_in_main_thread_6(
   int function, void* arg1, void* arg2, void* arg3, void* arg4, void* arg5, void* arg6) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -627,7 +627,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_6(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_7(int function, void* arg1,
+void* emscripten_sync_run_in_main_thread_7(int function, void* arg1,
   void* arg2, void* arg3, void* arg4, void* arg5, void* arg6, void* arg7) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -642,7 +642,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_7(int function, vo
   return q.returnValue.vp;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_current_thread_process_queued_calls() {
+void emscripten_current_thread_process_queued_calls() {
   // #if PTHREADS_DEBUG == 2
   //	EM_ASM(console.error('thread ' + _pthread_self() + ':
   //emscripten_current_thread_process_queued_calls(), ' + new Error().stack));
@@ -696,7 +696,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_current_thread_process_queued_calls() {
     bool_main_thread_inside_nested_process_queued_calls = 0;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls() {
+void emscripten_main_thread_process_queued_calls() {
   if (!emscripten_is_main_runtime_thread())
     return;
 
@@ -732,7 +732,7 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
   return q.returnValue.i;
 }
 
-EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
+double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
   em_queued_call q;
   em_queued_call *c;
   if (sync) {
@@ -842,7 +842,7 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
+int _emscripten_call_on_thread(
   int forceAsync,
   pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
@@ -892,12 +892,12 @@ int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   if (forceAsync) {
     EM_ASM({
       setTimeout(function() {
-        _do_emscripten_dispatch_to_thread($0, $1);
+        __emscripten_do_dispatch_to_thread($0, $1);
       }, 0);
     }, targetThread, q);
     return 0;
   } else {
-    return do_emscripten_dispatch_to_thread(targetThread, q);
+    return _emscripten_do_dispatch_to_thread(targetThread, q);
   }
 }
 
