@@ -1558,14 +1558,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # manually export them
 
       shared.Settings.EXPORTED_FUNCTIONS += [
-        '__emscripten_thread_init',
-        '_emscripten_get_global_libc',
-        '___pthread_tsd_run_dtors',
-        '_pthread_self',
         '___emscripten_pthread_data_constructor',
+        '___pthread_tsd_run_dtors',
+        '__emscripten_call_on_thread',
+        '__emscripten_do_dispatch_to_thread',
+        '__emscripten_main_thread_futex',
+        '__emscripten_thread_init',
         '_emscripten_futex_wake',
+        '_emscripten_get_global_libc',
+        '_emscripten_main_browser_thread_id',
+        '_emscripten_main_thread_process_queued_calls',
+        '_emscripten_register_main_browser_thread_id',
+        '_emscripten_run_in_main_runtime_thread_js',
         '_emscripten_stack_set_limits',
-        '_emscripten_tls_init']
+        '_emscripten_sync_run_in_main_thread_2',
+        '_emscripten_sync_run_in_main_thread_4',
+        '_emscripten_tls_init',
+        '_pthread_self',
+      ]
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'

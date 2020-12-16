@@ -68,6 +68,9 @@ var LibraryHtml5WebGL = {
 #if LibraryManager.has('library_webgl.js')
   '$GL',
 #endif
+#if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
+  'emscripten_sync_run_in_main_thread_2',
+#endif
   '$JSEvents', '_emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
