@@ -805,7 +805,7 @@ var splitModuleProxyHandler = {
       err('placeholder function called: ' + prop);
       var imports = {'primary': Module['asm']};
       var table = Module['asm']['__indirect_function_table'];
-      instantiateSync('{{{ WASM_BINARY_FILE }}}' + '.deferred', imports);
+      instantiateSync(wasmBinaryFile + '.deferred', imports);
       err('instantiated deferred module, continuing');
       return table.get(prop).apply(null, arguments);
     }

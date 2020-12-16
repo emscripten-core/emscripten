@@ -9759,7 +9759,8 @@ exec "$@"
     self.set_setting('SPLIT_MODULE')
     self.emcc_args += ['-g', '-Wno-experimental']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module.post.js')]
-    self.build('test_split_module.c')
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=[_malloc, _free]']
+    self.do_other_test('test_split_module.c')
     self.assertExists('test_split_module.wasm')
     self.assertExists('test_split_module.wasm.orig')
     self.assertExists('profile.data')
@@ -9771,4 +9772,5 @@ exec "$@"
     os.rename('primary.wasm', 'test_split_module.wasm')
     os.rename('secondary.wasm', 'test_split_module.wasm.deferred')
     result = self.run_js('test_split_module.js')
+    self.assertNotIn('writing profile', result)
     self.assertIn('Hello! answer: 42', result)
