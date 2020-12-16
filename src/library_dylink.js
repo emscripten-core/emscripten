@@ -395,22 +395,12 @@ var LibraryDylink = {
         'env': proxy,
         {{{ WASI_MODULE_NAME }}}: proxy,
       };
-#if ASSERTIONS
-      var oldTable = [];
-      for (var i = 0; i < tableBase; i++) {
-        oldTable.push(table.get(i));
-      }
-#endif
 
       function postInstantiation(instance) {
 #if ASSERTIONS
         // the table should be unchanged
         assert(table === originalTable);
         assert(table === wasmTable);
-        // the old part of the table should be unchanged
-        for (var i = 0; i < tableBase; i++) {
-          assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
-        }
         // verify that the new table region was filled in
         for (var i = 0; i < tableSize; i++) {
           assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
