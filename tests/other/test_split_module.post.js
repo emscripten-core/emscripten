@@ -7,6 +7,9 @@ function saveProfileData() {
     var profile_data = new Uint8Array(buffer, offset, len);
     nodeFS.writeFileSync('profile.data', profile_data);
   }
+
+  // Say hello *after* recording the profile so that all functions are deferred.
+  Module['asm'].say_hello();
 }
 
 addOnPostRun(saveProfileData);

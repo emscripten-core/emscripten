@@ -9759,7 +9759,7 @@ exec "$@"
     self.set_setting('SPLIT_MODULE')
     self.emcc_args += ['-g', '-Wno-experimental']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module.post.js')]
-    self.do_other_test('test_split_module.c')
+    self.build('test_split_module.c')
     self.assertExists('test_split_module.wasm')
     self.assertExists('test_split_module.wasm.orig')
     self.assertExists('profile.data')
@@ -9769,4 +9769,6 @@ exec "$@"
 
     os.remove('test_split_module.wasm')
     os.rename('primary.wasm', 'test_split_module.wasm')
-    self.run_js('test_split_module.js')
+    os.rename('secondary.wasm', 'test_split_module.wasm.deferred')
+    result = self.run_js('test_split_module.js')
+    self.assertIn('Hello! answer: 42', result)
