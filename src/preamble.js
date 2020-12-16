@@ -742,8 +742,8 @@ if (!isDataURI(wasmBinaryFile)) {
 
 function getBinary(file) {
   try {
-    if (wasmBinary) {
-      abort("BADBADBAD");
+    if (wasmBinary && file == '{{ WASM_BINARY_FILE }}') {
+      return new Uint8Array(wasmBinary);
     }
 #if SUPPORT_BASE64_EMBEDDING
     var binary = tryParseAsDataURI(file);
