@@ -5137,7 +5137,7 @@ main( int argv, char ** argc ) {
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
       if fs == 'NODERAWFS':
-        self.emcc_args += ['-sNODERAWFS=1']
+        self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
       self.do_run_in_out_file_test('tests', 'fs', 'test_mmap.c')
 
   @also_with_noderawfs

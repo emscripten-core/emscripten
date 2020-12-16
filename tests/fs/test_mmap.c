@@ -20,21 +20,16 @@
 
 int main() {
   EM_ASM(
-    #if !NODERAWFS
-        FS.mkdir('yolo');
-    #endif
+    FS.mkdir('yolo');
     #if NODEFS
         FS.mount(NODEFS, { root: '.' }, 'yolo');
     #endif
-    #if !NODERAWFS
-        FS.chdir('/yolo');
-    #endif
-    FS.writeFile('./in.txt', 'mmap ftw!');
+    FS.writeFile('yolo/in.txt', 'mmap ftw!');
   );
 
   // Use mmap to read in.txt
   {
-    const char* path = "./in.txt";
+    const char* path = "yolo/in.txt";
     int fd = open(path, O_RDONLY);
     assert(fd != -1);
 
@@ -42,7 +37,7 @@ int main() {
     char* map = (char*)mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
     assert(map != MAP_FAILED);
 
-    printf("/yolo/in.txt content=");
+    printf("yolo/in.txt content=");
     for (int i = 0; i < filesize; i++) {
         printf("%c", map[i]);
     }
@@ -57,7 +52,7 @@ int main() {
   // Use mmap to write out.txt
   {
     const char* text = "written mmap";
-    const char* path = "./out.txt";
+    const char* path = "yolo/out.txt";
 
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
     assert(fd != -1);
@@ -83,15 +78,15 @@ int main() {
   }
 
   {
-    FILE* fd = fopen("./out.txt", "r");
+    FILE* fd = fopen("yolo/out.txt", "r");
     if (fd == NULL) {
-      printf("failed to open /yolo/out.txt\n");
+      printf("failed to open yolo/out.txt\n");
       return 1;
     }
     char buffer[15];
     memset(buffer, 0, 15);
     fread(buffer, 1, 14, fd);
-    printf("/yolo/out.txt content=%s\n", buffer);
+    printf("yolo/out.txt content=%s\n", buffer);
     fclose(fd);
   }
 
@@ -100,7 +95,7 @@ int main() {
   {
     const char* readonlytext = "readonly mmap\0";
     const char* text = "write mmap\0";
-    const char* path = "./outreadonly.txt";
+    const char* path = "yolo/outreadonly.txt";
     size_t readonlytextsize = strlen(readonlytext);
     size_t textsize = strlen(text);
 
@@ -122,22 +117,22 @@ int main() {
   }
 
   {
-    FILE* fd = fopen("./outreadonly.txt", "r");
+    FILE* fd = fopen("yolo/outreadonly.txt", "r");
     if (fd == NULL) {
-      printf("failed to open /yolo/outreadonly.txt\n");
+      printf("failed to open yolo/outreadonly.txt\n");
       return 1;
     }
     char buffer[16];
     memset(buffer, 0, 16);
     fread(buffer, 1, 15, fd);
-    printf("/yolo/outreadonly.txt content=%s\n", buffer);
+    printf("yolo/outreadonly.txt content=%s\n", buffer);
     fclose(fd);
   }
 
   // MAP_PRIVATE
   {
     const char* text = "written mmap";
-    const char* path = "./private.txt";
+    const char* path = "yolo/private.txt";
 
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
     assert(fd != -1);
@@ -163,22 +158,22 @@ int main() {
   }
 
   {
-    FILE* fd = fopen("./private.txt", "r");
+    FILE* fd = fopen("yolo/private.txt", "r");
     if (fd == NULL) {
-      printf("failed to open /yolo/private.txt\n");
+      printf("failed to open yolo/private.txt\n");
       return 1;
     }
     char buffer[15];
     memset(buffer, 0, 15);
     fread(buffer, 1, 14, fd);
-    printf("/yolo/private.txt content=%s\n", buffer);
+    printf("yolo/private.txt content=%s\n", buffer);
     fclose(fd);
   }
 
   // MAP_SHARED with offset
   {
     const char* text = "written shared mmap with offset";
-    const char* path = "./sharedoffset.txt";
+    const char* path = "yolo/sharedoffset.txt";
 
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
     assert(fd != -1);
@@ -212,9 +207,9 @@ int main() {
   }
 
   {
-    FILE* fd = fopen("./sharedoffset.txt", "r");
+    FILE* fd = fopen("yolo/sharedoffset.txt", "r");
     if (fd == NULL) {
-      printf("failed to open /yolo/sharedoffset.txt\n");
+      printf("failed to open yolo/sharedoffset.txt\n");
       return 1;
     }
     size_t offset = sysconf(_SC_PAGE_SIZE) * 2;
@@ -223,7 +218,7 @@ int main() {
     memset(buffer, 0, offset + 33);
     fread(buffer, 1, offset + 32, fd);
     // expect text written from mmap operation to appear at offset in the file
-    printf("/yolo/sharedoffset.txt content=%s %zu\n", buffer + offset, offset);
+    printf("yolo/sharedoffset.txt content=%s %zu\n", buffer + offset, offset);
     fclose(fd);
   }
 
@@ -238,7 +233,7 @@ int main() {
    * is not written beyond the allocated memory area for the mmap operation.
    */
   {
-    int fd = open("./overallocatedfile.txt", O_RDWR | O_CREAT, (mode_t)0600);
+    int fd = open("yolo/overallocatedfile.txt", O_RDWR | O_CREAT, (mode_t)0600);
     assert(fd != -1);
 
     const size_t textsize = 33;
@@ -249,7 +244,7 @@ int main() {
     }
 
     EM_ASM_({
-        const stream = FS.streams.find(stream => stream.path.indexOf('overallocatedfile.txt') >= 0);
+        const stream = FS.streams.find(stream => stream.path.indexOf('yolo/overallocatedfile.txt') >= 0);
         assert(stream.node.usedBytes === $0,
           'Used bytes on the over-allocated file (' + stream.node.usedBytes + ') ' +
           'should be 33'
