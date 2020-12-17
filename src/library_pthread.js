@@ -966,47 +966,6 @@ var LibraryPThread = {
     throw 'unwind';
   },
 
-  pthread_getschedparam: function(thread, policy, schedparam) {
-    // no-op
-    return 0;
-  },
-
-  pthread_setschedparam: function(thread, policy, schedparam) {
-    // no-op
-    return 0;
-  },
-
-  // Marked as obsolescent in pthreads specification: http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_getconcurrency.html
-  pthread_getconcurrency: function() {
-    return 0;
-  },
-
-  // Marked as obsolescent in pthreads specification.
-  pthread_setconcurrency: function(new_level) {
-    // no-op
-    return 0;
-  },
-
-  pthread_mutexattr_getprioceiling: function(attr, prioceiling) {
-    // Not supported either in Emscripten or musl, return a faked value.
-    if (prioceiling) {{{ makeSetValue('prioceiling', 0, 99, 'i32') }}};
-    return 0;
-  },
-
-  pthread_mutexattr_setprioceiling: function(attr, prioceiling) {
-    // Not supported either in Emscripten or musl, return an error.
-    return ERRNO_CODES.EPERM;
-  },
-
-  pthread_getcpuclockid: function(thread, clock_id) {
-    return ERRNO_CODES.ENOENT; // pthread API recommends returning this error when "Per-thread CPU time clocks are not supported by the system."
-  },
-
-  pthread_setschedprio: function(thread, prio) {
-    // no-op
-    return 0;
-  },
-
   pthread_cleanup_push__sig: 'vii',
   pthread_cleanup_push: function(routine, arg) {
     PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });
@@ -1015,11 +974,6 @@ var LibraryPThread = {
   pthread_cleanup_pop: function(execute) {
     var routine = PThread.threadExitHandlers.pop();
     if (execute) routine();
-  },
-
-  pthread_atfork: function(prepare, parent, child) {
-    err('fork() is not supported: pthread_atfork is a no-op.');
-    return 0;
   },
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.

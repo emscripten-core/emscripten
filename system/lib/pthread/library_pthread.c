@@ -85,6 +85,19 @@ int sched_get_priority_min(int policy) {
     return 0;
 }
 
+int pthread_mutexattr_getprioceiling(const pthread_mutexattr_t *restrict attr, int *restrict prioceiling)
+{
+  // Not supported either in Emscripten or musl, return a faked value.
+  if (prioceiling) *prioceiling = 99;
+  return 0;
+}
+
+int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
+{
+  // Not supported either in Emscripten or musl, return an error.
+  return EPERM;
+}
+
 int pthread_setcancelstate(int new, int* old) {
   if (new > 1U)
     return EINVAL;

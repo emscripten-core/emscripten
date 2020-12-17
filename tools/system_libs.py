@@ -805,6 +805,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
           'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
           'pthread_setspecific.c', 'pthread_setcancelstate.c',
+          'pthread_getconcurrency.c', 'pthread_setconcurrency.c',
+          'pthread_getschedparam.c', 'pthread_setschedparam.c',
+          'pthread_setschedprio.c', 'pthread_atfork.c',
+          'pthread_getcpuclockid.c',
         ])
       libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
