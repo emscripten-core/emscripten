@@ -955,6 +955,7 @@ int main() {
         EMCC, path_from_root('tests', 'test_whole_archive_init.cpp'),
         '-O1', 'libfoo.a', '-Wl,--whole-archive', 'libmain.a', '-Wl,--no-whole-archive'])
     self.assertContained('Result: 11', self.run_js('a.out.js'))
+
   def test_link_group_bitcode(self):
     create_test_file('1.c', r'''
 int f(void);
