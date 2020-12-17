@@ -127,9 +127,10 @@ mergeInto(LibraryManager.library, {
         // this stream is created by in-memory filesystem
         return VFS.mmap(stream, address, length, position, prot, flags);
       }
-
-      // We don't currently support location hints for the address of the mapping
-      assert(address === 0);
+      if (address !== 0) {
+        // We don't currently support location hints for the address of the mapping
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+      }
 
       var ptr = mmapAlloc(length);
       FS.read(stream, HEAP8, ptr, length, position);

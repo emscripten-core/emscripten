@@ -16,7 +16,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/io.h>
-#include <sys/mman.h>
+#include <errno.h>
 
 int main() {
   EM_ASM(
@@ -203,6 +203,27 @@ int main() {
 
     assert(munmap(map, textsize) != -1);
 
+    close(fd);
+  }
+
+  // mmap with a address will fail
+  {
+    const char* path = "yolo/private.txt";
+
+    int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+    assert(fd != -1);
+
+    size_t map_size = 1 << 16;
+
+    // Reserve some address space in which to perform the experiment
+    char *alloc = (char*)mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(alloc != MAP_FAILED);
+
+    char *addr = (char*)mmap((void*)alloc, map_size, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd, 0);
+    assert(addr == MAP_FAILED && errno == EINVAL); // Emscripten
+    //assert(addr == alloc); // Native environments
+
+    assert(munmap(alloc, map_size) != -1);
     close(fd);
   }
 
