@@ -21,6 +21,7 @@ copy_dirs = [
     ('lib', 'lsan'),
     ('lib', 'ubsan'),
     ('lib', 'ubsan_minimal'),
+    ('lib', 'coverage'),
 ]
 
 def clear(dirname):

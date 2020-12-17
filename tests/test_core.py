@@ -28,6 +28,9 @@ from runner import env_modify, with_env_modify, disabled, node_pthreads
 from runner import NON_ZERO
 import clang_native
 
+LLVM_PROFDATA = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-profdata')))
+LLVM_COV = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-cov')))
+
 # decorators for limiting which modes a test can run in
 
 
@@ -3015,7 +3018,7 @@ Var: 42
     export_count = get_data_export_count('test_dlfcn_self.wasm')
     # ensure there aren't too many globals; we don't want unnamed_addr
     self.assertGreater(export_count, 20)
-    self.assertLess(export_count, 56)
+    self.assertLess(export_count, 64)
 
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):
@@ -8224,6 +8227,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['--bind', '--post-js', path_from_root('tests', 'core', 'test_abort_on_exception_post.js')]
     self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.cpp')
+
+  def test_fcoverage_mapping(self):
+    self.emcc_args += ['-fprofile-instr-generate', '-fcoverage-mapping', '-sNODERAWFS', '-sEXIT_RUNTIME']
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
+    self.assertExists('default.profraw')
+    self.run_process([LLVM_PROFDATA, 'merge', '-sparse', 'default.profraw', '-o', 'out.profdata'])
+    self.assertExists('out.profdata')
+    # TODO(sbc): fix llvm-cov so it can find the data sections in needs in the wasm file
+    # self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'])
 
 
 # Generate tests for everything

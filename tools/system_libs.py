@@ -645,9 +645,14 @@ class libcompiler_rt(MTLibrary):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = ['-O2', '-fno-builtin']
+  cflags = ['-O2', '-fno-builtin',
+            '-DCOMPILER_RT_HAS_ATOMICS=1',
+            '-DCOMPILER_RT_HAS_UNAME=1']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = glob_in_path(src_dir, '*.c')
+  profile = ['system', 'lib', 'compiler-rt', 'lib', 'profile']
+  src_files += glob_in_path(profile, '*.c')
+  src_files += glob_in_path(profile, '*.cpp')
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.S'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_limits.S'))
   src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))

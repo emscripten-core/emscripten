@@ -426,6 +426,9 @@ def emsdk_ldflags(user_args):
   ]
   ldflags = ['-L' + l for l in library_paths]
 
+  if '-fprofile-instr-generate' in user_args:
+    ldflags += ['-u', '__llvm_runtime_variable']
+
   if '-nostdlib' in user_args:
     return ldflags
 
