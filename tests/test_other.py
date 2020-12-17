@@ -9771,11 +9771,51 @@ exec "$@"
     self.assertExists('profile.data')
 
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=split@', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
+    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
 
     os.remove('test_split_module.wasm')
     os.rename('primary.wasm', 'test_split_module.wasm')
     os.rename('secondary.wasm', 'test_split_module.wasm.deferred')
     result = self.run_js('test_split_module.js')
-    self.assertNotIn('writing profile', result)
+    self.assertNotIn('profile', result)
     self.assertIn('Hello! answer: 42', result)
+
+  def test_split_main_module(self):
+    initialTableSize = 16
+
+    side_src = path_from_root('tests', 'other', 'lib_hello.c')
+    post_js = path_from_root('tests', 'other', 'test_split_module.post.js')
+
+    self.run_process([EMCC, side_src, '-sSIDE_MODULE=1', '-g', '-o', 'libhello.wasm'])
+
+    self.emcc_args += ['-g']
+    self.emcc_args += ['-sMAIN_MODULE=2']
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=[_printf]']
+    self.emcc_args += ['-sSPLIT_MODULE=1', '-Wno-experimental']
+    self.emcc_args += ['--embed-file', 'libhello.wasm']
+    self.emcc_args += ['--post-js', post_js]
+    self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
+
+    self.do_other_test('test_split_main_module.c')
+
+    self.assertExists('test_split_main_module.wasm')
+    self.assertExists('test_split_main_module.wasm.orig')
+    self.assertExists('profile.data')
+
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    self.run_process([wasm_split, '-g',
+                      'test_split_main_module.wasm.orig',
+                      '--export-prefix=%',
+                      f'--initial-table={initialTableSize}',
+                      '--profile=profile.data',
+                      '-o1', 'primary.wasm',
+                      '-o2', 'secondary.wasm',
+                      '--enable-mutable-globals'])
+
+    os.remove('test_split_main_module.wasm')
+    os.rename('primary.wasm', 'test_split_main_module.wasm')
+    os.rename('secondary.wasm', 'test_split_main_module.wasm.deferred')
+    result = self.run_js('test_split_main_module.js')
+    self.assertNotIn('profile', result)
+    self.assertIn('Hello from main!', result)
+    self.assertIn('Hello from lib!', result)

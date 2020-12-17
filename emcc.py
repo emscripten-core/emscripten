@@ -647,7 +647,10 @@ def make_js_executable(script):
 
 def do_split_module(wasm_file):
   os.rename(wasm_file, wasm_file + '.orig')
-  building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=['--instrument'])
+  args = ['--instrument']
+  if shared.Settings.INITIAL_TABLE >= 0:
+    args += ['--initial-table', str(shared.Settings.INITIAL_TABLE)]
+  building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=args)
 
 
 def do_replace(input_, pattern, replacement):

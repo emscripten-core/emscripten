@@ -67,7 +67,12 @@ var LibraryDylink = {
     err("updateGOT: " + Object.keys(exports).length);
 #endif
     for (var symName in exports) {
-      if (symName == '__cpp_exception' || symName == '__dso_handle' || symName == '__wasm_apply_relocs') {
+      if (symName == '__cpp_exception' || symName == '__dso_handle' || symName == '__wasm_apply_relocs'
+#if SPLIT_MODULE
+          // Exports synthesized by wasm-split should be prefixed with '%'
+          || symName.startsWith('%')
+#endif
+         ) {
         continue;
       }
 
@@ -116,6 +121,13 @@ var LibraryDylink = {
 
     for (var e in exports) {
       var value = exports[e];
+#if SPLIT_MODULE
+      // Do not modify exports synthesized by wasm-split
+      if (e.startsWith('%')) {
+        relocated[e] = value
+        continue;
+      }
+#endif
       if (typeof value === 'object') {
         // a breaking change in the wasm spec, globals are now objects
         // https://github.com/WebAssembly/mutable-global/issues/1
