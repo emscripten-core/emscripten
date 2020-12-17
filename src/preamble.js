@@ -826,7 +826,7 @@ function instantiateSync(file, info) {
       // Include the V8 version in the cache name, so that we don't try to
       // load cached code from another version, which fails silently (it seems
       // to load ok, but we do actually recompile the binary every time).
-      var cachedCodeFile = file + v8.cachedDataVersionTag() + '.cached';
+      var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
       cachedCodeFile = locateFile(cachedCodeFile);
       if (!nodeFS) nodeFS = require('fs');
       var hasCached = nodeFS.existsSync(cachedCodeFile);
