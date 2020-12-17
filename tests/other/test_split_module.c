@@ -1,10 +1,10 @@
 #include <stdio.h>
+#include <emscripten.h>
 
 int foo() {
   return 42;
 }
 
-int main() {
-  printf("answer: %d\n", foo());
-  return 0;
+EMSCRIPTEN_KEEPALIVE void say_hello() {
+  printf("Hello! answer: %d\n", foo());
 }
