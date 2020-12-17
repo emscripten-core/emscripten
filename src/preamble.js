@@ -872,7 +872,7 @@ function instantiateSync(file, info) {
 #if LOAD_SOURCE_MAP
   receiveSourceMapJSON(getSourceMap());
 #endif
-  return {'instance': instance, 'module': module};
+  return [instance, module];
 }
 #endif
 
@@ -1112,7 +1112,7 @@ function createWasm() {
   return {}; // no exports yet; we'll fill them in later
 #else
   var result = instantiateSync(wasmBinaryFile, info);
-  receiveInstance(result.instance, result.module);
+  receiveInstance(result[0], result[1]);
   return Module['asm']; // exports were assigned here
 #endif
 }
