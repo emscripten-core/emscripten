@@ -61,13 +61,23 @@ var LibraryDylink = {
     }
   },
 
-  $updateGOT__deps: ['$GOT'],
+  $isInternalSym: function(symName) {
+    // TODO: find a way to mark these in the binary or avoid exporting them.
+    return [
+      '__cpp_exception',
+      '__wasm_apply_data_relocs',
+      '__dso_handle',
+      '__set_stack_limits'
+    ].indexOf(symName) != -1;
+  },
+
+  $updateGOT__deps: ['$GOT', '$isInternalSym'],
   $updateGOT: function(exports) {
 #if DYLINK_DEBUG
     err("updateGOT: " + Object.keys(exports).length);
 #endif
     for (var symName in exports) {
-      if (symName == '__cpp_exception' || symName == '__dso_handle' || symName == '__wasm_apply_relocs') {
+      if (isInternalSym(symName)) {
         continue;
       }
 
@@ -410,6 +420,10 @@ var LibraryDylink = {
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
         }
+#if STACK_OVERFLOW_CHECK >= 2
+
+        moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
         // initialize the module
         var init = moduleExports['__post_instantiate'];
         if (init) {
@@ -468,7 +482,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary', '$isInternalSym'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
@@ -577,7 +591,7 @@ var LibraryDylink = {
         else {
           var curr = Module[sym], next = libModule[sym];
           // don't warn on functions - might be odr, linkonce_odr, etc.
-          if (!(typeof curr === 'function' && typeof next === 'function')) {
+          if (!(typeof curr === 'function' && typeof next === 'function') && !isInternalSym(sym)) {
             err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)");
           }
         }

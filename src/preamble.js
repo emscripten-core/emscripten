@@ -381,7 +381,7 @@ function initRuntime() {
 #endif
   runtimeInitialized = true;
 #if STACK_OVERFLOW_CHECK >= 2
-  Module['___set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end());
+  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
   {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
