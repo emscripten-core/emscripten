@@ -5,8 +5,6 @@
 #include <iostream>
 
 namespace bug {
-
-
 void init(std::string name, int count);
 int get_thing(std::string name);
 
