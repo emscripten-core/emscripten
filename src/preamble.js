@@ -777,18 +777,14 @@ function getBinaryPromise() {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
         return response['arrayBuffer']();
-      }).catch(function () {
-        return getBinary();
-      });
+      }).catch(getBinary);
     }
 #if ENVIRONMENT_MAY_BE_WEBVIEW
     else if (readAsync) {
       // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
       return new Promise( function (resolve, reject) {
         readAsync(wasmBinaryFile, function (response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
-      }).catch(function () {
-        return getBinary();
-      });;
+      }).catch(getBinary);
     }
 #endif
   }
