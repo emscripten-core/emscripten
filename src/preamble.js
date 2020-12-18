@@ -784,7 +784,7 @@ function getBinaryPromise() {
       // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
       return new Promise( function (resolve, reject) {
         readAsync(wasmBinaryFile, function (response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
-      }).catch(getBinary);
+      });
     }
 #endif
   }
