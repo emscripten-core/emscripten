@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-  read_ = function (url) {
+  read_ = function(url) {
 #if SUPPORT_BASE64_EMBEDDING
     try {
 #endif
@@ -24,7 +24,7 @@
   };
 
   if (ENVIRONMENT_IS_WORKER) {
-    readBinary = function (url) {
+    readBinary = function(url) {
 #if SUPPORT_BASE64_EMBEDDING
       try {
 #endif
