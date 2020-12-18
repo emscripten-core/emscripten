@@ -769,13 +769,12 @@ function getBinary(file) {
 function getBinaryPromise() {
   // If we don't have the binary yet, try to to load it asynchronously.
   // Fetch has some additional restrictions over XHR, like it can't be used on a file:// url.
-  // (Electron apps are typically loaded from a file)
-  // So use fetch if it is available and the url is not a file, otherwise fall back to XHR
+  // See https://github.com/github/fetch/pull/92#issuecomment-140665932
+  // Cordova or Electron apps are typically loaded from a file:// url.
+  // So use fetch if it is available and the url is not a file, otherwise fall back to XHR.
   if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
     if (typeof fetch === 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
-      // Let's not use fetch to get objects over file:// as it's most likely Cordova or Electron which doesn't support fetch for file://
-      // see https://github.com/github/fetch/pull/92#issuecomment-140665932
       && !isFileURI(wasmBinaryFile)
 #endif
     ) {
