@@ -1,6 +1,11 @@
 #include <stdint.h>
 #include <threads.h>
 
+// XXX Emscripten implements implements pthread_join directly rather than __pthread_join
+#ifdef __EMSCRIPTEN__
+#define __pthread_join pthread_join
+#endif
+
 int __pthread_join(thrd_t, void**);
 
 int thrd_join(thrd_t t, int *res)

@@ -20,7 +20,7 @@ import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
-from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER
+from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from runner import create_test_file, parameterized, ensure_dir
 from tools import building
 from tools import shared
@@ -154,6 +154,14 @@ class browser(BrowserCore):
     print()
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()
+
+  def setUp(self):
+    super(BrowserCore, self).setUp()
+    # avoid various compiler warnings that many browser tests currently generate
+    self.emcc_args += [
+      '-Wno-pointer-sign',
+      '-Wno-int-conversion',
+    ]
 
   def test_sdl1_in_emscripten_nonstrict_mode(self):
     if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
@@ -403,7 +411,7 @@ If manually bisecting:
 
     data_file = os.path.join(abs_d, 'file with ' + tricky_part + '.data')
     data_js_file = os.path.join(abs_d, 'file with ' + tricky_part + '.js')
-    self.run_process([PYTHON, FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file])
+    self.run_process([FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file])
     page_file = os.path.join(d, 'file with ' + tricky_part + '.html')
     abs_page_file = os.path.join(self.get_dir(), page_file)
     self.compile_btest([cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM=1'])
@@ -513,7 +521,7 @@ If manually bisecting:
     ''')
 
     make_main('somefile.txt')
-    self.run_process([PYTHON, FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
+    self.run_process([FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
     self.compile_btest(['main.cpp', '--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
@@ -1275,7 +1283,7 @@ keydown(100);keyup(100); // trigger the end
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
   def test_write_file_in_environment_web(self):
-    self.btest('write_file.cpp', '0', args=['-s', 'ENVIRONMENT=web', '-Os', '--closure', '1'])
+    self.btest_exit('write_file.c', 0, args=['-s', 'ENVIRONMENT=web', '-Os', '--closure', '1'])
 
   @unittest.skip('Skipping due to https://github.com/emscripten-core/emscripten/issues/2770')
   def test_fflush(self):
@@ -1349,7 +1357,7 @@ keydown(100);keyup(100); // trigger the end
     create_test_file('file1.txt', 'first')
     ensure_dir('sub')
     open(os.path.join('sub', 'file2.txt'), 'w').write('second')
-    self.run_process([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js'])
+    self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js'])
     self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
@@ -1371,7 +1379,7 @@ keydown(100);keyup(100); // trigger the end
 
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print('normal')
-    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
+    out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     open('files.js', 'wb').write(out)
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'])
     print('    opts')
@@ -1379,7 +1387,7 @@ keydown(100);keyup(100); // trigger the end
 
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print('manual')
-    subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
+    subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'])
     print('    opts')
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'])
@@ -1394,7 +1402,7 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile('file1.txt', os.path.join('files', 'file1.txt'))
     shutil.copyfile('file2.txt', os.path.join('files', 'file2.txt'))
     shutil.copyfile('file3.txt', os.path.join('files', 'file3.txt'))
-    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
+    out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
     open('files.js', 'wb').write(out)
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'])'''
 
@@ -1403,7 +1411,7 @@ keydown(100);keyup(100); // trigger the end
     # the main program, and when we are run later
 
     create_test_file('data.dat', ' ')
-    self.run_process([PYTHON, FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
+    self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
     self.btest(os.path.join('browser', 'separate_metadata_later.cpp'), '1', args=['-s', 'FORCE_FILESYSTEM=1'])
 
   def test_idbstore(self):
@@ -1725,7 +1733,6 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_glbook(self):
     self.emcc_args.remove('-Werror')
-    self.emcc_args += ['-Wno-pointer-sign', '-Wno-int-conversion']
     programs = self.get_library('glbook', [
       os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.o'),
       os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.o'),
@@ -1803,14 +1810,14 @@ keydown(100);keyup(100); // trigger the end
       create_test_file('file2.txt', 'second')
 
     setup()
-    self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
     self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
 
     # check using file packager to another dir
     self.clear()
     setup()
     ensure_dir('sub')
-    self.run_process([PYTHON, FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
+    self.run_process([FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
     shutil.copyfile(os.path.join('sub', 'test.data'), 'test.data')
     self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
 
@@ -1857,6 +1864,8 @@ keydown(100);keyup(100); // trigger the end
     self.btest('sdl_quit.c', '1', args=['-lSDL', '-lGL'])
 
   def test_sdl_resize(self):
+    # FIXME(https://github.com/emscripten-core/emscripten/issues/12978)
+    self.emcc_args.append('-Wno-deprecated-declarations')
     self.btest('sdl_resize.c', '1', args=['-lSDL', '-lGL'])
 
   def test_glshaderinfo(self):
@@ -1942,27 +1951,27 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre(self):
-    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_regal(self):
-    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_cubegeom_pre_relocatable(self):
-    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2(self):
-    self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.png'), args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre3(self):
-    self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre3.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @parameterized({
     '': ([],),
@@ -1972,16 +1981,16 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom(self, args):
     # proxy only in the simple, normal case (we can't trace GL calls when
     # proxied)
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'] + args, also_proxied=not args)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'] + args, also_proxied=not args)
 
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_threads
   @requires_graphics_hardware
   def test_cubegeom_regal_mt(self):
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
 
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
@@ -1998,84 +2007,84 @@ void *getBindBuffer() {
 ''')
     # also test -Os in wasm, which uses meta-dce, which should not break legacy gl emulation hacks
     for opts in [[], ['-O1'], ['-Os']]:
-      self.btest('cubegeom_proc.c', reference='cubegeom.png', args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+      self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_proc.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_glew(self):
-    self.btest('cubegeom_glew.c', reference='cubegeom.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lGLEW', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_glew.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lGLEW', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_color(self):
-    self.btest('cubegeom_color.c', reference='cubegeom_color.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_color.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_color.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal(self):
-    self.btest('cubegeom_normal.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-    self.btest('cubegeom_normal_dap.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
-    self.btest('cubegeom_normal_dap_far.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
-    self.btest('cubegeom_normal_dap_far_range.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_range.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
-    self.btest('cubegeom_normal_dap_far_glda.c', reference='cubegeom_normal_dap_far_glda.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_firefox('fails on CI but works locally')
   def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
-    self.btest('cubegeom_normal_dap_far_glda_quad.c', reference='cubegeom_normal_dap_far_glda_quad.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda_quad.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda_quad.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_mt(self):
-    self.btest('cubegeom_mt.c', reference='cubegeom_mt.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # multitexture
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_mt.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_mt.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # multitexture
 
   @requires_graphics_hardware
   def test_cubegeom_color2(self):
-    self.btest('cubegeom_color2.c', reference='cubegeom_color2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_color2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_color2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_texturematrix(self):
-    self.btest('cubegeom_texturematrix.c', reference='cubegeom_texturematrix.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_texturematrix.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_texturematrix.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_fog(self):
-    self.btest('cubegeom_fog.c', reference='cubegeom_fog.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_fog.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_fog.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao(self):
-    self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_regal(self):
-    self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2_vao(self):
-    self.btest('cubegeom_pre2_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_pre2_vao2(self):
-    self.btest('cubegeom_pre2_vao2.c', reference='cubegeom_pre2_vao2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_es(self):
-    self.btest('cubegeom_pre_vao_es.c', reference='cubegeom_pre_vao.png', args=['-s', 'FULL_ES2=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao_es.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'FULL_ES2=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_u4fv_2(self):
-    self.btest('cubegeom_u4fv_2.c', reference='cubegeom_u4fv_2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_u4fv_2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_u4fv_2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cube_explosion(self):
@@ -2400,15 +2409,17 @@ void *getBindBuffer() {
     ]:
       for mode in [[], ['-s', 'WASM=0']]:
         print('\n', filename, extra_args, mode)
+
         print('mem init, so async, call too early')
         create_test_file('post.js', post_prep + post_test + post_hook)
-        self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
+        self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode, reporting=Reporting.NONE)
         print('sync startup, call too late')
         create_test_file('post.js', post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
+        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode, reporting=Reporting.NONE)
+
         print('sync, runtime still alive, so all good')
         create_test_file('post.js', post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected='606', args=['--post-js', 'post.js'] + extra_args + mode)
+        self.btest(filename, expected='606', args=['--post-js', 'post.js'] + extra_args + mode, reporting=Reporting.NONE)
 
   def test_cwrap_early(self):
     self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS=1', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js'), '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap"]'], expected='0')
@@ -2615,6 +2626,8 @@ Module["preRun"].push(function () {
     for mode in [['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
                  ['-s', 'OFFSCREEN_FRAMEBUFFER=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
                  []]:
+      if 'OFFSCREENCANVAS_SUPPORT=1' in mode and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
+        continue
       self.btest(path_from_root('tests', 'html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode, expected='0')
 
   def test_webgl2_ubos(self):
@@ -2717,7 +2730,7 @@ Module["preRun"].push(function () {
       ''')
       create_test_file('data.txt', 'load me right before...')
       create_test_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
-      self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
+      self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
       # put pre.js first, then the file packager data, so locateFile is there for the file loading code
       self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1', '-s', 'WASM=' + str(wasm)])
       ensure_dir('sub')
@@ -2772,10 +2785,14 @@ Module["preRun"].push(function () {
         in_html('200')
 
   @requires_graphics_hardware
-  def test_glfw3(self):
+  @parameterized({
+    'no_gl': (['-DCLIENT_API=GLFW_NO_API'],),
+    'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API'],)
+  })
+  def test_glfw3(self, args):
     for opts in [[], ['-s', 'LEGACY_GL_EMULATION=1'], ['-Os', '--closure', '1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
+      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
   @requires_graphics_hardware
   def test_glfw_events(self):
@@ -3548,6 +3565,29 @@ window.close = function() {
 
     self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
+  def test_dynamic_link_many(self):
+    # test asynchronously loading two side modules during startup
+    create_test_file('pre.js', '''
+      Module.dynamicLibraries = ['side1.wasm', 'side2.wasm'];
+    ''')
+    create_test_file('main.c', r'''
+      int side1();
+      int side2();
+      int main() {
+        return side1() + side2();
+      }
+    ''')
+    create_test_file('side1.c', r'''
+      int side1() { return 1; }
+    ''')
+    create_test_file('side2.c', r'''
+      int side2() { return 2; }
+    ''')
+    self.run_process([EMCC, 'side1.c', '-s', 'SIDE_MODULE=1', '-o', 'side1.wasm'])
+    self.run_process([EMCC, 'side2.c', '-s', 'SIDE_MODULE=1', '-o', 'side2.wasm'])
+    self.btest_exit(self.in_dir('main.c'), '3',
+                    args=['-s', 'MAIN_MODULE=1', '--pre-js', 'pre.js'])
+
   def test_memory_growth_during_startup(self):
     create_test_file('data.dat', 'X' * (30 * 1024 * 1024))
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=16MB', '-s', 'TOTAL_STACK=16384', '--preload-file', 'data.dat'])
@@ -3561,6 +3601,13 @@ window.close = function() {
         Atomics = undefined;
       </script>
     '''))
+
+  @requires_threads
+  def test_pthread_c11_threads(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_c11_threads.c'),
+               expected='0',
+               force_c=True,
+               args=['-g4', '-std=gnu11', '-xc', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_MEMORY=64mb'])
 
   # Test that the emscripten_ atomics api functions work.
   @parameterized({
@@ -3782,6 +3829,10 @@ window.close = function() {
   def test_pthread_iostream(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
+  @requires_threads
+  def test_pthread_unistd_io_bigint(self):
+    self.btest_exit(path_from_root('tests', 'unistd', 'io.c'), 0, args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'WASM_BIGINT'])
+
   # Test that the main thread is able to use pthread_set/getspecific.
   @requires_threads
   def test_pthread_setspecific_mainthread(self):
@@ -3963,6 +4014,28 @@ window.close = function() {
   def test_pthread_asan_use_after_free(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
 
+  @requires_threads
+  def test_pthread_exit_process(self):
+    args = ['-s', 'USE_PTHREADS=1',
+            '-s', 'PROXY_TO_PTHREAD',
+            '-s', 'PTHREAD_POOL_SIZE=2',
+            '-s', 'EXIT_RUNTIME',
+            '-DEXIT_RUNTIME',
+            '-O0']
+    args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
+    self.btest(path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c'), expected='onExit status: 42', args=args)
+
+  @requires_threads
+  def test_pthread_no_exit_process(self):
+    # Same as above but without EXIT_RUNTIME.  In this case we don't expect onExit to
+    # ever be called.
+    args = ['-s', 'USE_PTHREADS=1',
+            '-s', 'PROXY_TO_PTHREAD',
+            '-s', 'PTHREAD_POOL_SIZE=2',
+            '-O0']
+    args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
+    self.btest(path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c'), expected='43', args=args)
+
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=[])
@@ -4085,10 +4158,10 @@ window.close = function() {
     self.run_browser('test.html', '', '/report_result?0')
 
   def test_utf8_textdecoder(self):
-    self.btest('benchmark_utf8.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF8ToString"]'])
+    self.btest_exit('benchmark_utf8.cpp', 0, args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF8ToString"]'])
 
   def test_utf16_textdecoder(self):
-    self.btest('benchmark_utf16.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","lengthBytesUTF16"]'])
+    self.btest_exit('benchmark_utf16.cpp', 0, args=['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","lengthBytesUTF16"]'])
 
   def test_TextDecoder(self):
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=0'])
@@ -4395,18 +4468,18 @@ window.close = function() {
   @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_close(self):
-    self.btest('unistd/close.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest_exit(path_from_root('tests', 'unistd', 'close.c'), 0, args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_access(self):
-    self.btest('unistd/access.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest_exit(path_from_root('tests', 'unistd', 'access.c'), 0, args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_unlink(self):
     # TODO: Once symlinks are supported, remove -DNO_SYMLINK=1
-    self.btest('unistd/unlink.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-DNO_SYMLINK=1'])
+    self.btest_exit(path_from_root('tests', 'unistd', 'unlink.c'), 0, args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-DNO_SYMLINK=1'])
 
   @requires_asmfs
   @requires_threads
@@ -4475,6 +4548,8 @@ window.close = function() {
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_threads
   def test_pthread_growth_mainthread(self):
+    self.emcc_args.remove('-Werror')
+
     def run(emcc_args=[]):
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
 
@@ -4484,6 +4559,8 @@ window.close = function() {
   # Tests memory growth in a pthread.
   @requires_threads
   def test_pthread_growth(self):
+    self.emcc_args.remove('-Werror')
+
     def run(emcc_args=[]):
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_asmjs=False)
 
@@ -4513,14 +4590,13 @@ window.close = function() {
       #include <stdio.h>
       #include <emscripten.h>
       int main() {
-        REPORT_RESULT(0);
         return 0;
       }
     ''')
     # generate a dummy file
     create_test_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
-    self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-s', 'SINGLE_FILE=1'])
+    self.compile_btest(['test.c', '-s', 'EXIT_RUNTIME', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-s', 'SINGLE_FILE=1'])
     create_test_file('a.html', '''
       <script>
         atob = undefined;
@@ -4531,7 +4607,7 @@ window.close = function() {
         var foo = Foo();
       </script>
     ''')
-    self.run_browser('a.html', '...', '/report_result?0')
+    self.run_browser('a.html', '...', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
@@ -4614,7 +4690,7 @@ window.close = function() {
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
     # with separate file packager invocation
-    self.run_process([PYTHON, FILE_PACKAGER, 'data.data', '--preload', 'test.txt', '--js-output=' + 'data.js'])
+    self.run_process([FILE_PACKAGER, 'data.data', '--preload', 'test.txt', '--js-output=' + 'data.js'])
     self.compile_btest([path_from_root('tests', 'access_file_after_heap_resize.c'), '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 

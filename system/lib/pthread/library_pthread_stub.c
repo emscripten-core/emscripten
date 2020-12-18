@@ -81,7 +81,7 @@ int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
   if (!max_tls_entries) {
     // First time we're called, allocate entry table.
     max_tls_entries = 4;
-    tls_entries = (struct entry_t*)malloc(max_tls_entries * sizeof(void *));
+    tls_entries = (struct entry_t*)malloc(max_tls_entries * sizeof(struct entry_t));
   }
   // Find empty spot.
   size_t entry = 0;
@@ -92,7 +92,7 @@ int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
     // No empty spots, table full: double the table.
     max_tls_entries *= 2;
     tls_entries =
-      (struct entry_t*)realloc(tls_entries, num_tls_entries * sizeof(void *));
+      (struct entry_t*)realloc(tls_entries, max_tls_entries * sizeof(struct entry_t));
   }
   if (entry == num_tls_entries) {
     // No empty spots, but table not full.

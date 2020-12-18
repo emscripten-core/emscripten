@@ -49,14 +49,14 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
 
 int Init ()
 {
-   GLbyte vShaderStr[] =  
+   const char* vShaderStr =  
       "attribute vec4 vPosition;    \n"
       "void main()                  \n"
       "{                            \n"
       "   gl_Position = vPosition;  \n"
       "}                            \n";
    
-   GLbyte fShaderStr[] =  
+   const char* fShaderStr =  
       "precision mediump float;\n"\
       "void main()                                  \n"
       "{                                            \n"

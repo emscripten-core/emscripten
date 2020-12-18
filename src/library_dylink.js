@@ -250,8 +250,8 @@ var LibraryDylink = {
 
   // Loads a side module from binary data. Returns the module's exports or a
   // progise that resolves to its exports if the loadAsync flag is set.
-  $loadSideModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler'],
-  $loadSideModule: function(binary, flags) {
+  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler'],
+  $loadWebAssemblyModule: function(binary, flags) {
     var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
     assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
     // we should see the dylink section right after the magic number and wasm version
@@ -395,22 +395,12 @@ var LibraryDylink = {
         'env': proxy,
         {{{ WASI_MODULE_NAME }}}: proxy,
       };
-#if ASSERTIONS
-      var oldTable = [];
-      for (var i = 0; i < tableBase; i++) {
-        oldTable.push(table.get(i));
-      }
-#endif
 
       function postInstantiation(instance) {
 #if ASSERTIONS
         // the table should be unchanged
         assert(table === originalTable);
         assert(table === wasmTable);
-        // the old part of the table should be unchanged
-        for (var i = 0; i < tableBase; i++) {
-          assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
-        }
         // verify that the new table region was filled in
         for (var i = 0; i < tableSize; i++) {
           assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
@@ -478,7 +468,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadSideModule', '$asmjsMangle', '$fetchBinary'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
@@ -533,7 +523,7 @@ var LibraryDylink = {
       if (flags.fs) {
         var libData = flags.fs.readFile(libFile, {encoding: 'binary'});
         if (!(libData instanceof Uint8Array)) {
-          libData = new Uint8Array(lib_data);
+          libData = new Uint8Array(libData);
         }
         return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
@@ -557,11 +547,11 @@ var LibraryDylink = {
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
         return loadLibData(lib).then(function(libData) {
-          return loadSideModule(libData, flags);
+          return loadWebAssemblyModule(libData, flags);
         });
       }
 
-      return loadSideModule(loadLibData(lib), flags);
+      return loadWebAssemblyModule(loadLibData(lib), flags);
     }
 
     // Module.symbols <- libModule.symbols (flags.global handler)

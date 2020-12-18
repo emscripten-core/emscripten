@@ -30,7 +30,7 @@ uint64_t threadCasAccumulatedReadData[NUM_THREADS] = {};
 
 int64_t rand_60()
 {
-	return (int64_t)(emscripten_random() * 0x3FFFFFFF) | ((int64_t)(emscripten_random() * 0x3FFFFFFF) << 30);
+	return (int64_t)(emscripten_random() * float(0x3FFFFFFF)) | ((int64_t)(emscripten_random() * float(0x3FFFFFFF)) << 30);
 }
 
 void *ThreadMain(void *arg)

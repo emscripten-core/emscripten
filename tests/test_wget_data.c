@@ -21,7 +21,7 @@ int main()
     printf("load %s\n", file);
     emscripten_wget_data(file, &buffer, &num, &error);
     assert(!error);
-    printf("buffer: %s\n", buffer);
+    printf("buffer: %s\n", (char*)buffer);
     assert(strstr(buffer, "emscripten") == buffer); 
 
     printf("load non-existing\n");

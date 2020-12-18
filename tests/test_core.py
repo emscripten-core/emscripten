@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config
 from runner import RunnerCore, path_from_root, requires_native_clang
 from runner import skip_if, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
-from runner import js_engines_modify, wasm_engines_modify, env_modify, with_env_modify, disabled
+from runner import env_modify, with_env_modify, disabled, node_pthreads
 from runner import NON_ZERO
 import clang_native
 
@@ -39,8 +39,9 @@ def wasm_simd(f):
       self.skipTest('wasm2js only supports MVP for now')
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
-    with js_engines_modify([config.V8_ENGINE + ['--experimental-wasm-simd']]):
-      f(self)
+    self.v8_args.append('--experimental-wasm-simd')
+    self.js_engines = [config.V8_ENGINE]
+    f(self)
   return decorated
 
 
@@ -50,8 +51,8 @@ def bleeding_edge_wasm_backend(f):
       self.skipTest('only works in d8 for now')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
-    with js_engines_modify([config.V8_ENGINE]):
-      f(self)
+    self.js_engines = [config.V8_ENGINE]
+    f(self)
   return decorated
 
 
@@ -61,8 +62,9 @@ def also_with_wasm_bigint(f):
     f(self)
     if self.get_setting('WASM'):
       self.set_setting('WASM_BIGINT', 1)
-      with js_engines_modify([config.NODE_JS + ['--experimental-wasm-bigint']]):
-        f(self)
+      self.node_args.append('--experimental-wasm-bigint')
+      self.js_engines = [config.NODE_JS]
+      f(self)
   return decorated
 
 
@@ -86,15 +88,16 @@ def with_both_exception_handling(f):
   assert callable(f)
 
   def metafunc(self, native_exceptions):
-    if native_exceptions:
+    if native_exceptions and False: # TODO: re-enable when V8 and LLVM support the updated EH proposal
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.get_setting('WASM'):
         self.skipTest('wasm2js does not support wasm exceptions')
       if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
         self.skipTest('d8 required to run wasm eh tests')
       self.emcc_args.append('-fwasm-exceptions')
-      with js_engines_modify([config.V8_ENGINE + ['--experimental-wasm-eh']]):
-        f(self)
+      self.v8_args.append('--experimental-wasm-eh')
+      self.js_engines = [config.V8_ENGINE]
+      f(self)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       f(self)
@@ -128,8 +131,8 @@ def also_with_noderawfs(func):
     func(self)
     print('noderawfs')
     self.emcc_args = orig_args + ['-s', 'NODERAWFS=1', '-DNODERAWFS']
-    with js_engines_modify([config.NODE_JS]):
-      func(self)
+    self.js_engines = [config.NODE_JS]
+    func(self)
   return decorated
 
 
@@ -156,31 +159,21 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
           # when it sees an i64 on the ffi.
           self.set_setting('WASM_BIGINT', 1)
           # if we are impure, disallow all wasm engines
-          with wasm_engines_modify([] if impure else config.WASM_ENGINES):
-            with js_engines_modify([config.NODE_JS + ['--experimental-wasm-bigint']]):
-              func(self)
-              if wasm2c:
-                print('wasm2c')
-                self.set_setting('WASM2C', 1)
-                with wasm_engines_modify([]):
-                  func(self)
+          if impure:
+            self.wasm_engines = []
+          self.js_engines = [config.NODE_JS]
+          self.node_args.append('--experimental-wasm-bigint')
+          func(self)
+          if wasm2c:
+            print('wasm2c')
+            self.set_setting('WASM2C', 1)
+            self.wasm_engines = []
+            func(self)
 
     metafunc._parameterize = {'': (False,),
                               'standalone': (True,)}
     return metafunc
 
-  return decorated
-
-
-def node_pthreads(f):
-  def decorated(self):
-    self.set_setting('USE_PTHREADS', 1)
-    if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('asan ends up using atomics that are not yet supported in node 12')
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    with js_engines_modify([config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
-      f(self)
   return decorated
 
 
@@ -397,8 +390,9 @@ class TestCoreBase(RunnerCore):
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT', 1)
     self.emcc_args += ['-fexceptions']
+    self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_invoke_bigint.cpp',
-                                 js_engines=[config.NODE_JS + ['--experimental-wasm-bigint']])
+                                 js_engines=[config.NODE_JS])
 
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy.c')
@@ -565,7 +559,7 @@ class TestCoreBase(RunnerCore):
       {
         int base = argc-1;
         Object *o = NULL;
-        printf("%d,%d\n", sizeof(Object), sizeof(Principal));
+        printf("%zu,%zu\n", sizeof(Object), sizeof(Principal));
         printf("%d,%d,%d,%d\n", (int)&o[base].type, (int)&o[base].intg, (int)&o[base].real, (int)&o[base].name);
         printf("%d,%d,%d,%d\n", (int)&o[base+1].type, (int)&o[base+1].intg, (int)&o[base+1].real, (int)&o[base+1].name);
         Principal p, q;
@@ -615,7 +609,7 @@ class TestCoreBase(RunnerCore):
         unsigned long hold = 0;
         hold += x8;
         int y32 = hold+50;
-        printf("*%u,%u*\\n", hold, y32);
+        printf("*%lu,%d*\\n", hold, y32);
 
         // Comparisons
         x8 = 0;
@@ -943,14 +937,14 @@ base align: 0, 0, 0, 0'''])
           #define TEST(struc) \\
           { \\
             struc *s = 0; \\
-            printf("*%s: %d,%d,%d,%d<%d*\\n", #struc, (int)&(s->a), (int)&(s->b), (int)&(s->c), (int)&(s->later), sizeof(struc)); \\
+            printf("*%s: %d,%d,%d,%d<%zu*\\n", #struc, (int)&(s->a), (int)&(s->b), (int)&(s->c), (int)&(s->later), sizeof(struc)); \\
           }
           #define TEST_ARR(struc) \\
           { \\
             struc *s = 0; \\
-            printf("*%s: %d,%d,%d,%d<%d*\\n", #struc, (int)&(s->a[0]), (int)&(s->a[1]), (int)&(s->a[2]), (int)&(s->later), sizeof(struc)); \\
+            printf("*%s: %d,%d,%d,%d<%zu*\\n", #struc, (int)&(s->a[0]), (int)&(s->a[1]), (int)&(s->a[2]), (int)&(s->later), sizeof(struc)); \\
           }
-          printf("sizeofs:%d,%d\\n", sizeof(S6), sizeof(S6z));
+          printf("sizeofs:%zu,%zu\\n", sizeof(S6), sizeof(S6z));
           TEST(C___);
           TEST_ARR(Carr);
           TEST(C__w);
@@ -1684,8 +1678,8 @@ int main() {
     self.do_run(src, 'ok!')
 
   def test_stack_void(self):
+    self.emcc_args.append('-Wno-format-extra-args')
     self.set_setting('INLINING_LIMIT', 50)
-
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_void.c')
 
   def test_life(self):
@@ -1759,7 +1753,7 @@ int main() {
 
       int main() {
         const char *str = emscripten_run_script_string("'\\u2603 \\u2603 \\u2603 Hello!'");
-        printf("length of returned string: %d. Position of substring 'Hello': %d\n", strlen(str), strstr(str, "Hello")-str);
+        printf("length of returned string: %zu. Position of substring 'Hello': %zu\n", strlen(str), strstr(str, "Hello")-str);
         return 0;
       }
     '''
@@ -2170,8 +2164,8 @@ Success!''')
         int main( int argc, const char *argv[] ) {
           header h, *ph = 0;
           fatheader fh, *pfh = 0;
-          printf("*%d,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
-          printf("*%d,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
+          printf("*%zu,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
+          printf("*%zu,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
           return 0;
         }
         '''
@@ -2505,7 +2499,7 @@ The current type of b is: 9
             base *b = NULL;
             entry *e = NULL;
             chain *c = NULL;
-            printf("*%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
+            printf("*%zu,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
               sizeof(base),
               int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)),
               sizeof(hashtableentry),
@@ -2535,12 +2529,12 @@ The current type of b is: 9
           // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
           // one is aligned properly. Also handle char; char; etc. properly.
           B *b = NULL;
-          printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
+          printf("*%d,%d,%d,%d,%d,%d,%d,%d,%zu*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
                                                     int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), sizeof(B));
 
           // Part 3 - bitfields, and small structures
           Bits *b2 = NULL;
-          printf("*%d*\\n", sizeof(Bits));
+          printf("*%zu*\\n", sizeof(Bits));
 
           return 0;
         }
@@ -2933,23 +2927,21 @@ Var: 42
   @needs_dlfcn
   def test_dlfcn_alignment_and_zeroing(self):
     self.prep_dlfcn_lib()
-    self.set_setting('INITIAL_MEMORY', 16 * 1024 * 1024)
-    create_test_file('liblib.cpp', r'''
-      extern "C" {
-        int prezero = 0;
-        __attribute__((aligned(1024))) int superAligned = 12345;
-        int postzero = 0;
-      }
+    self.set_setting('INITIAL_MEMORY', '16mb')
+    create_test_file('liblib.c', r'''
+      int prezero = 0;
+      __attribute__((aligned(1024))) int superAligned = 12345;
+      int postzero = 0;
       ''')
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('liblib.c')
     for i in range(10):
       curr = '%d.so' % i
       shutil.copyfile('liblib.so', curr)
       self.emcc_args += ['--embed-file', curr]
 
     self.prep_dlfcn_main()
-    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
-    src = r'''
+    self.set_setting('INITIAL_MEMORY', '128mb')
+    create_test_file('src.c', r'''
       #include <stdio.h>
       #include <stdlib.h>
       #include <string.h>
@@ -2962,7 +2954,7 @@ Var: 42
         int num = 120 * 1024 * 1024; // total is 128; we'll use 5*5 = 25 at least, so allocate pretty much all of it
         void* mem = malloc(num);
         assert(mem);
-        printf("setting this range to non-zero: %d - %d\n", int(mem), int(mem) + num);
+        printf("setting this range to non-zero: %d - %d\n", (int)mem, ((int)mem) + num);
         memset(mem, 1, num);
         EM_ASM({
           var value = HEAP8[64*1024*1024];
@@ -2982,19 +2974,19 @@ Var: 42
           printf("getting superAligned\n");
           int* superAligned = (int*)dlsym(lib_handle, "superAligned");
           assert(superAligned);
-          assert(int(superAligned) % 1024 == 0); // alignment
-          printf("checking value of superAligned, at %d\n", superAligned);
+          assert(((int)superAligned) % 1024 == 0); // alignment
+          printf("checking value of superAligned, at %p\n", superAligned);
           assert(*superAligned == 12345); // value
           printf("getting prezero\n");
           int* prezero = (int*)dlsym(lib_handle, "prezero");
           assert(prezero);
-          printf("checking value of prezero, at %d\n", prezero);
+          printf("checking value of prezero, at %p\n", prezero);
           assert(*prezero == 0);
           *prezero = 1;
           assert(*prezero != 0);
           printf("getting postzero\n");
           int* postzero = (int*)dlsym(lib_handle, "postzero");
-          printf("checking value of postzero, at %d\n", postzero);
+          printf("checking value of postzero, at %p\n", postzero);
           assert(postzero);
           printf("checking value of postzero\n");
           assert(*postzero == 0);
@@ -3004,8 +2996,8 @@ Var: 42
         printf("success.\n");
         return 0;
       }
-      '''
-    self.do_run(src, 'success.\n')
+      ''')
+    self.do_runf('src.c', 'success.\n')
 
   @needs_dlfcn
   def test_dlfcn_self(self):
@@ -3136,7 +3128,7 @@ Var: 42
         // make sure we didn't just trample the stack!
         assert(!strcmp(input, "foobar"));
 
-        snprintf(bigstack, sizeof(bigstack), input);
+        snprintf(bigstack, sizeof(bigstack), "%s", input);
         return strlen(bigstack);
       }
       ''')
@@ -3277,7 +3269,7 @@ ok
   @needs_dlfcn
   def test_dlfcn_mallocs(self):
     # will be exhausted without functional malloc/free
-    self.set_setting('INITIAL_MEMORY', 64 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '64mb')
 
     self.prep_dlfcn_lib()
     create_test_file('liblib.c', r'''
@@ -3464,7 +3456,7 @@ ok
     self.emcc_args += ['--embed-file', '.@/']
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', 32 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '32mb')
 
     src = r'''
       #include <dlfcn.h>
@@ -3529,7 +3521,8 @@ ok
       '''
     self.do_run(src, 'float: 42.\n')
 
-  def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
+  def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[],
+                  force_c=False, need_reverse=True, auto_load=True, main_module=1, **kwargs):
     if header:
       create_test_file('header.h', header)
 
@@ -3553,7 +3546,7 @@ ok
     shutil.move(out_file, 'liblib.so')
 
     # main settings
-    self.set_setting('MAIN_MODULE')
+    self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
       self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
@@ -3572,9 +3565,12 @@ ok
     self.emcc_args = old_args
 
     if need_reverse:
-      # test the reverse as well
       print('flip')
-      self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'], force_c, need_reverse=False, **kwargs)
+      # Test the reverse as well.  There we flip the role of the side module and main module.
+      # - We add --no-entry since the side module doesn't have a `main`
+      # - We set main_module to 1 since in most cases MAIN_MODULE=2 doesn't work when flipped.
+      self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'],
+                       force_c, need_reverse=False, main_module=1,  **kwargs)
 
   def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
@@ -3591,7 +3587,7 @@ ok
       int sidey() {
         return 11;
       }
-    ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
+    ''', 'other says 11.', 'int sidey();', force_c=True, main_module=2, **kwargs)
 
   @needs_dlfcn
   def test_dylink_basics(self):
@@ -3646,7 +3642,7 @@ ok
       void* get_address() {
         return (void*)&puts;
       }
-    ''', 'success', header='void* get_address();', force_c=True)
+    ''', 'success', header='void* get_address();', force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_floats(self):
@@ -3659,7 +3655,7 @@ ok
       }
     ''', '''
       float sidey() { return 11.5; }
-    ''', 'other says 12.50', force_c=True)
+    ''', 'other says 12.50', force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_printfs(self):
@@ -3701,7 +3697,7 @@ ok
       intfunc sidey(intfunc f) { f(1); return f; }
       ''',
       expected='hello from funcptr: 1\nhello from funcptr: 0\n',
-      header='typedef void (*intfunc)(int );', force_c=True)
+      header='typedef void (*intfunc)(int );', force_c=True, main_module=2)
 
   @needs_dlfcn
   # test dynamic linking of a module with multiple function pointers, stored
@@ -3727,7 +3723,7 @@ ok
       void sidey(voidfunc f) { f(); }
       ''',
       expected='hello 0\nhello 1\nhello 2\n',
-      header='typedef void (*voidfunc)(); void sidey(voidfunc f);', force_c=True)
+      header='typedef void (*voidfunc)(); void sidey(voidfunc f);', force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_funcpointers_wrapper(self):
@@ -3776,7 +3772,7 @@ ok
       int sidey(floatfunc f) { f(56.78); return 1; }
       ''',
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
-      header='typedef float (*floatfunc)(float);', force_c=True)
+      header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_global_init(self):
@@ -3836,7 +3832,7 @@ ok
       int64_t sidey() {
         return 42;
       }
-    ''', 'other says 42.', force_c=True)
+    ''', 'other says 42.', force_c=True, main_module=2)
 
   @all_engines
   @needs_dlfcn
@@ -3922,7 +3918,7 @@ res64 - external 64\n''', header='''
       #include <stdint.h>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''', force_c=True)
+    ''', force_c=True, main_module=2)
 
   @needs_dlfcn
   @also_with_wasm_bigint
@@ -3989,7 +3985,7 @@ res64 - external 64\n''', header='''
       }
     ''', side=r'''
       int x = 123;
-    ''', expected=['extern is 123.\n'], force_c=True)
+    ''', expected=['extern is 123.\n'], force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_global_var_modded(self):
@@ -4006,7 +4002,7 @@ res64 - external 64\n''', header='''
         Initter() { x = 456; }
       };
       Initter initter;
-    ''', expected=['extern is 456.\n'])
+    ''', expected=['extern is 456.\n'], main_module=2)
 
   @needs_dlfcn
   def test_dylink_stdlib(self):
@@ -4138,7 +4134,7 @@ res64 - external 64\n''', header='''
       #include "header.h"
 
       int global_var = 12345;
-    ''', expected=['12345\n'], force_c=True)
+    ''', expected=['12345\n'], force_c=True, main_module=2)
 
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
@@ -4281,7 +4277,7 @@ res64 - external 64\n''', header='''
   @needs_dlfcn
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
-    self.set_setting('INITIAL_MEMORY', 64 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '64mb')
     if not self.has_changed_setting('ASSERTIONS'):
       self.set_setting('ASSERTIONS', 2)
 
@@ -4421,7 +4417,7 @@ res64 - external 64\n''', header='''
   @needs_make('mingw32-make')
   @needs_dlfcn
   def test_dylink_zlib(self):
-    self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'zlib'), '-s', 'RELOCATABLE']
+    self.emcc_args += ['-Wno-shift-negative-value', '-I' + path_from_root('tests', 'third_party', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
     self.dylink_test(main=open(path_from_root('tests', 'third_party', 'zlib', 'example.c')).read(),
                      side=zlib_archive,
@@ -4583,6 +4579,7 @@ Have even and odd!
   @is_slow_test
   def test_printf(self):
     # needs to flush stdio streams
+    self.emcc_args.append('-Wno-format')
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'printf', 'test.c')
 
@@ -4823,8 +4820,6 @@ Module = {
 
   def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
-    self.set_setting('SYSCALL_DEBUG', 1)
-    self.clear()
     orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       print(fs)
@@ -5581,7 +5576,7 @@ int main(void) {
   def test_dlmalloc_inline(self):
     self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
-    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '128mb')
 
     src = open(path_from_root('system', 'lib', 'dlmalloc.c')).read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c')).read()
     self.do_run(src, '*1,0*', args=['200', '1'], force_c=True)
@@ -5591,7 +5586,7 @@ int main(void) {
   def test_dlmalloc(self):
     self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
-    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '128mb')
 
     # Linked version
     self.do_runf(path_from_root('tests', 'dlmalloc_test.c'), '*1,0*', args=['200', '1'])
@@ -5627,7 +5622,7 @@ int main(void) {
 void *
 operator new(size_t size) throw(std::bad_alloc)
 {
-printf("new %d!\\n", size);
+printf("new %zu!\\n", size);
 return malloc(size);
 }
 '''
@@ -5669,7 +5664,7 @@ return malloc(size);
   def test_mmap(self):
     # ASan needs more memory, but that is set up separately
     if '-fsanitize=address' not in self.emcc_args:
-      self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
+      self.set_setting('INITIAL_MEMORY', '128mb')
 
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -5691,7 +5686,7 @@ return malloc(size);
 
   def test_cubescript(self):
     # uses register keyword
-    self.emcc_args.append('-std=c++03')
+    self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
     if self.run_name == 'asm3':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
@@ -5718,7 +5713,7 @@ return malloc(size);
   @is_slow_test
   def test_wasm_builtin_simd(self):
     # Improves test readability
-    self.emcc_args.append('-Wno-c++11-narrowing')
+    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-format']
     self.do_runf(path_from_root('tests', 'test_wasm_builtin_simd.cpp'), 'Success!')
     self.emcc_args.append('-munimplemented-simd128')
     self.build(path_from_root('tests', 'test_wasm_builtin_simd.cpp'))
@@ -5916,6 +5911,7 @@ return malloc(size);
     # before the LLVM change rolls in (the same LLVM change that adds the
     # warning also starts to warn on it)
     self.emcc_args += ['-Wno-unknown-warning-option']
+    self.emcc_args += ['-Wno-pointer-bool-conversion']
 
     self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'sqlite')]
 
@@ -5944,8 +5940,9 @@ return malloc(size);
 
     self.maybe_closure()
 
+    self.emcc_args.append('-Wno-shift-negative-value')
     if self.run_name == 'asm2g':
-      self.emcc_args += ['-g4'] # more source maps coverage
+      self.emcc_args.append('-g4') # more source maps coverage
 
     if use_cmake:
       make_args = []
@@ -5971,7 +5968,13 @@ return malloc(size);
     if WINDOWS and not use_cmake:
       self.skipTest("Windows cannot run configure sh scripts")
 
-    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
+    self.emcc_args += [
+        '-Wno-c++11-narrowing',
+        '-Wno-deprecated-register',
+        '-Wno-writable-strings',
+        '-Wno-shift-negative-value',
+        '-Wno-format'
+    ]
     asserts = self.get_setting('ASSERTIONS')
 
     # extra testing for ASSERTIONS == 2
@@ -7286,7 +7289,7 @@ Module['onRuntimeInitialized'] = function() {
 extern "C" {
   const char* stringf(char* param) {
     emscripten_sleep(20);
-    printf(param);
+    printf("%s", param);
     return "second";
   }
   double floatf() {
@@ -7898,7 +7901,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_no_error(self, name):
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
-    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
+    self.emcc_args.append('-sINITIAL_MEMORY=300mb')
     self.do_runf(path_from_root('tests', 'core', name), '', assert_returncode=NON_ZERO)
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
@@ -7968,7 +7971,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
-    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
+    self.emcc_args.append('-sINITIAL_MEMORY=300mb')
     if cflags:
       self.emcc_args += cflags
     self.do_runf(path_from_root('tests', 'core', name),
@@ -7980,7 +7983,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_js_stack_op(self):
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
-    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
+    self.emcc_args.append('-sINITIAL_MEMORY=300mb')
     self.do_runf(path_from_root('tests', 'core', 'test_asan_js_stack_op.c'),
                  expected_output='Hello, World!')
 
@@ -7988,7 +7991,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
-    self.set_setting('INITIAL_MEMORY', 314572800)
+    self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('tests', 'core', 'test_asan_api.c')
 
   @no_safe_heap('asan does not work with SAFE_HEAP')
@@ -7999,7 +8002,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-sUSE_CLOSURE_COMPILER=1')
     self.emcc_args.append('-fsanitize=address')
     self.emcc_args.append('-sALLOW_MEMORY_GROWTH=1')
-    self.emcc_args.append('-sINITIAL_MEMORY=314572800')
+    self.emcc_args.append('-sINITIAL_MEMORY=300mb')
 
     def post(filename):
       with open(filename, 'a') as f:
@@ -8064,6 +8067,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
   @node_pthreads
+  def test_pthread_c11_threads(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('TOTAL_MEMORY', '64mb')
+    self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_c11_threads.c')
+
+  @node_pthreads
   def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', '2')
@@ -8089,6 +8099,23 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.emcc_args += ['-fexceptions']
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'exceptions.cpp')
+
+  @node_pthreads
+  def test_pthread_exit_process(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.set_setting('EXIT_RUNTIME')
+    self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c', assert_returncode=42)
+
+  @node_pthreads
+  @disabled('https://github.com/emscripten-core/emscripten/issues/12945')
+  def test_pthread_no_exit_process(self):
+    # Same as above but without EXIT_RUNTIME
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c', assert_returncode=43)
 
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
@@ -8229,14 +8256,6 @@ def make_run(name, emcc_args, settings=None, env=None):
       self.set_setting(k, v)
 
     self.emcc_args += emcc_args
-    # avoid various compiler warnings in our test output
-    self.emcc_args += [
-      '-Wno-dynamic-class-memaccess', '-Wno-format',
-      '-Wno-format-extra-args', '-Wno-format-security',
-      '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
-      '-Wno-c++11-compat-deprecated-writable-strings',
-      '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
-    ]
 
   TT.setUp = setUp
 
@@ -8281,9 +8300,9 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': 314572800})
+asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '300mb'})
 asani = make_run('asani', emcc_args=['-fsanitize=address', '-O2', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                 settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': 314572800})
+                 settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '300mb'})
 
 # Experimental modes (not tested by CI)
 lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})

@@ -59,25 +59,25 @@ typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
 
-extern void emscripten_run_script(const char *script);
-extern int emscripten_run_script_int(const char *script);
-extern char *emscripten_run_script_string(const char *script);
-extern void emscripten_async_run_script(const char *script, int millis);
-extern void emscripten_async_load_script(const char *script, em_callback_func onload, em_callback_func onerror);
+void emscripten_run_script(const char *script);
+int emscripten_run_script_int(const char *script);
+char *emscripten_run_script_string(const char *script);
+void emscripten_async_run_script(const char *script, int millis);
+void emscripten_async_load_script(const char *script, em_callback_func onload, em_callback_func onerror);
 
 #if __EMSCRIPTEN__
-extern void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
 
 #define EM_TIMING_SETTIMEOUT 0
 #define EM_TIMING_RAF 1
 #define EM_TIMING_SETIMMEDIATE 2
 
-extern int emscripten_set_main_loop_timing(int mode, int value);
-extern void emscripten_get_main_loop_timing(int *mode, int *value);
-extern void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
-extern void emscripten_pause_main_loop(void);
-extern void emscripten_resume_main_loop(void);
-extern void emscripten_cancel_main_loop(void);
+int emscripten_set_main_loop_timing(int mode, int value);
+void emscripten_get_main_loop_timing(int *mode, int *value);
+void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
+void emscripten_pause_main_loop(void);
+void emscripten_resume_main_loop(void);
+void emscripten_cancel_main_loop(void);
 #else
 #define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
   while (1) { func(); usleep(1000000/fps); }
@@ -88,17 +88,17 @@ extern void emscripten_cancel_main_loop(void);
 typedef void (*em_socket_callback)(int fd, void *userData);
 typedef void (*em_socket_error_callback)(int fd, int err, const char* msg, void *userData);
 
-extern void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback);
-extern void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback);
+void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
 
 
 #if __EMSCRIPTEN__
-extern void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
-extern void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
+void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
+void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 #else
 inline void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
   func(arg);
@@ -113,14 +113,14 @@ inline void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func fu
   _emscripten_push_uncounted_main_loop_blocker(func, arg, #func)
 
 #if __EMSCRIPTEN__
-extern void emscripten_set_main_loop_expected_blockers(int num);
+void emscripten_set_main_loop_expected_blockers(int num);
 #else
 inline void emscripten_set_main_loop_expected_blockers(int num) {}
 #endif
 
 
 #if __EMSCRIPTEN__
-extern void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
+void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
 #else
 inline void emscripten_async_call(em_arg_callback_func func, void *arg, int millis) {
   if (millis) SDL_Delay(millis);
@@ -129,8 +129,8 @@ inline void emscripten_async_call(em_arg_callback_func func, void *arg, int mill
 #endif
 
 
-extern void emscripten_exit_with_live_runtime(void);
-extern void emscripten_force_exit(int status);
+void emscripten_exit_with_live_runtime(void);
+void emscripten_force_exit(int status);
 
 double emscripten_get_device_pixel_ratio(void);
 

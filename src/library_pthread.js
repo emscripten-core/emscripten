@@ -7,6 +7,7 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
+                   'emscripten_register_main_browser_thread_id',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
 #if USE_ASAN || USE_LSAN
@@ -62,8 +63,6 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
       Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, tb); // Main thread ID.
 
-      PThread.initShared();
-
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(tb);
       PThread.setThreadName(tb, "Browser main thread");
@@ -81,7 +80,6 @@ var LibraryPThread = {
 #endif
     },
     initWorker: function() {
-      PThread.initShared();
 #if MODULARIZE
       // The promise resolve function typically gets called as part of the execution
       // of the Module `run`. The workers/pthreads don't execute `run` here, they
@@ -97,11 +95,6 @@ var LibraryPThread = {
       PThread['setThreadStatus'] = PThread.setThreadStatus;
       PThread['threadCancel'] = PThread.threadCancel;
       PThread['threadExit'] = PThread.threadExit;
-#endif
-    },
-    initShared: function() {
-#if ASSERTIONS
-      assert(__emscripten_main_thread_futex > 0);
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -351,17 +344,17 @@ var LibraryPThread = {
           if (detached) {
             PThread.returnWorkerToPool(worker);
           }
-#if EXIT_RUNTIME // If building with -s EXIT_RUNTIME=0, no thread will post this message, so don't even compile it in.
         } else if (cmd === 'exitProcess') {
           // A pthread has requested to exit the whole application process (runtime).
-          noExitRuntime = false;
+#if ASSERTIONS
+          err("exitProcess requested by worker");
+#endif
           try {
             exit(d['returnCode']);
           } catch (e) {
             if (e instanceof ExitStatus) return;
             throw e;
           }
-#endif
         } else if (cmd === 'cancelDone') {
           PThread.returnWorkerToPool(worker);
         } else if (cmd === 'objectTransfer') {
@@ -577,7 +570,7 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
 
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_getschedparam', 'pthread_self', 'memalign', '$resetPrototype'],
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_getschedparam', 'pthread_self', 'memalign', '$resetPrototype', 'emscripten_sync_run_in_main_thread_4'],
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -706,7 +699,9 @@ var LibraryPThread = {
     var detached = 0;
     var schedPolicy = 0; /*SCHED_OTHER*/
     var schedPrio = 0;
-    if (attr) {
+    // When musl creates C11 threads it passes __ATTRP_C11_THREAD (-1) which
+    // treat as if it was NULL.
+    if (attr && attr != {{{ cDefine('__ATTRP_C11_THREAD') }}}) {
       stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
       // Musl has a convention that the stack size that is stored to the pthread
       // attribute structure is always musl's #define DEFAULT_STACK_SIZE
@@ -961,6 +956,7 @@ var LibraryPThread = {
     return 0;
   },
 
+  pthread_detach__sig: 'vi',
   pthread_detach: function(thread) {
     if (!thread) {
       err('pthread_detach attempted on a null thread pointer!');
@@ -978,6 +974,10 @@ var LibraryPThread = {
 
     return wasDetached ? ERRNO_CODES.EINVAL : 0;
   },
+
+  // C11 threads function.
+  // TODO: remove this in favor or compiling musl/src/thread/pthread_detach.c
+  thrd_detach: 'pthread_detach',
 
   pthread_exit__deps: ['exit'],
   pthread_exit: function(status) {
@@ -1311,21 +1311,15 @@ var LibraryPThread = {
 #endif
   },
 
-  emscripten_set_thread_name_js: function(threadId, name) {
-#if PTHREADS_PROFILING
-    PThread.setThreadName(threadId, UTF8ToString(name));
-#endif
-  },
-
   // The profiler setters are defined twice, here in asm.js so that they can be #if'ed out
   // without having to pay the impact of a FFI transition for a no-op in non-profiling builds.
   emscripten_conditional_set_current_thread_status__asm: true,
   emscripten_conditional_set_current_thread_status__sig: 'vii',
   emscripten_conditional_set_current_thread_status__deps: ['emscripten_conditional_set_current_thread_status_js'],
   emscripten_conditional_set_current_thread_status: function(expectedStatus, newStatus) {
+#if PTHREADS_PROFILING
     expectedStatus = expectedStatus|0;
     newStatus = newStatus|0;
-#if PTHREADS_PROFILING
     _emscripten_conditional_set_current_thread_status_js(expectedStatus|0, newStatus|0);
 #endif
   },
@@ -1334,23 +1328,23 @@ var LibraryPThread = {
   emscripten_set_current_thread_status__sig: 'vi',
   emscripten_set_current_thread_status__deps: ['emscripten_set_current_thread_status_js'],
   emscripten_set_current_thread_status: function(newStatus) {
-    newStatus = newStatus|0;
 #if PTHREADS_PROFILING
+    newStatus = newStatus|0;
     _emscripten_set_current_thread_status_js(newStatus|0);
 #endif
   },
 
   emscripten_set_thread_name__asm: true,
   emscripten_set_thread_name__sig: 'vii',
-  emscripten_set_thread_name__deps: ['emscripten_set_thread_name_js'],
   emscripten_set_thread_name: function(threadId, name) {
+#if PTHREADS_PROFILING
     threadId = threadId|0;
     name = name|0;
-#if PTHREADS_PROFILING
-    _emscripten_set_thread_name_js(threadId|0, name|0);
+    PThread.setThreadName(threadId, UTF8ToString(name));
 #endif
   },
 
+  emscripten_proxy_to_main_thread_js__deps: ['emscripten_run_in_main_runtime_thread_js'],
   emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -1365,12 +1359,31 @@ var LibraryPThread = {
     // Allocate a buffer, which will be copied by the C code.
     var stack = stackSave();
     // First passed parameter specifies the number of arguments to the function.
-    var args = stackAlloc(numCallArgs * 8);
+    // When BigInt support is enabled, we must handle types in a more complex
+    // way, detecting at runtime if a value is a BigInt or not (as we have no
+    // type info here). To do that, add a "prefix" before each value that
+    // indicates if it is a BigInt, which effectively doubles the number of
+    // values we serialize for proxying. TODO: pack this?
+    var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
+    var args = stackAlloc(serializedNumCallArgs * 8);
     var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
-      HEAPF64[b + i] = arguments[2 + i];
+      var arg = arguments[2 + i];
+#if WASM_BIGINT
+      if (typeof arg === 'bigint') {
+        // The prefix is non-zero to indicate a bigint.
+        HEAP64[b + 2*i] = BigInt(1);
+        HEAP64[b + 2*i + 1] = arg;
+      } else {
+        // The prefix is zero to indicate a JS Number.
+        HEAP64[b + 2*i] = BigInt(0);
+        HEAPF64[b + 2*i + 1] = arg;
+      }
+#else
+      HEAPF64[b + i] = arg;
+#endif
     }
-    var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, args, sync);
+    var ret = _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
     stackRestore(stack);
     return ret;
   },
@@ -1382,10 +1395,23 @@ var LibraryPThread = {
     'emscripten_receive_on_main_thread_js_callArgs',
     '$readAsmConstArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
+#if WASM_BIGINT
+    numCallArgs /= 2;
+#endif
     _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
     var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
+#if WASM_BIGINT
+      if (HEAP64[b + 2*i]) {
+        // It's a BigInt.
+        _emscripten_receive_on_main_thread_js_callArgs[i] = HEAP64[b + 2*i + 1];
+      } else {
+        // It's a Number.
+        _emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + 2*i + 1];
+      }
+#else
       _emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + i];
+#endif
     }
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)
@@ -1416,6 +1442,10 @@ var LibraryPThread = {
   // allow pthreads to check if noExitRuntime from worker.js
   $getNoExitRuntime: function() {
     return noExitRuntime;
+  },
+
+  $invokeEntryPoint: function(ptr, arg) {
+    return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
   // When using postMessage to send an object, it is processed by the structured clone algorithm.

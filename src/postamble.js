@@ -128,7 +128,13 @@ function callMain(args) {
   var entryFunction = Module['__initialize'];
 #endif
 #else
+#if PROXY_TO_PTHREAD
+  // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
+  // that will call the user's real main() for the application.
+  var entryFunction = Module['_emscripten_proxy_main'];
+#else
   var entryFunction = Module['_main'];
+#endif
 #endif
 
 #if MAIN_MODULE
@@ -166,11 +172,6 @@ function callMain(args) {
     abortWrapperDepth += 2; 
 #endif
 
-#if PROXY_TO_PTHREAD
-    // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
-    // that will call the user's real main() for the application.
-    var ret = Module['_proxy_main'](argc, argv);
-#else
 #if STANDALONE_WASM
     entryFunction();
     // _start (in crt1.c) will call exit() if main return non-zero.  So we know
@@ -179,21 +180,24 @@ function callMain(args) {
 #else
     var ret = entryFunction(argc, argv);
 #endif // STANDALONE_WASM
-#endif // PROXY_TO_PTHREAD
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
-    // off to a pthread.
-#if !PROXY_TO_PTHREAD
+    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as
+    // execution is asynchronously handed off to a pthread.
+#if PROXY_TO_PTHREAD
+#if ASSERTIONS
+    assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
+#endif
+#else
 #if ASYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
     if (!noExitRuntime) {
 #endif // ASYNCIFY
-    // if we're not running an evented main loop, it's time to exit
+      // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
 #if ASYNCIFY
     }
@@ -377,6 +381,26 @@ function exit(status, implicit) {
     return;
   }
 
+#if USE_PTHREADS
+  if (!implicit) {
+    if (ENVIRONMENT_IS_PTHREAD) {
+#if ASSERTIONS
+      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitProcess.');
+#endif
+      // When running in a pthread we propagate the exit back to the main thread
+      // where it can decide if the whole process should be shut down or not.
+      // The pthread may have decided not to exit its own runtime, for example
+      // because it runs a main loop, but that doesn't affect the main thread.
+      postMessage({ 'cmd': 'exitProcess', 'returnCode': status });
+      throw new ExitStatus(status);
+    } else {
+#if ASSERTIONS
+      err('main thead called exit: noExitRuntime=' + noExitRuntime);
+#endif
+    }
+  }
+#endif
+
   if (noExitRuntime) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
@@ -436,9 +460,19 @@ if (Module['noInitialRun']) shouldRunNow = false;
 
 #if EXIT_RUNTIME == 0
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
+// EXIT_RUNTIME=0 only applies to the default behavior of the main browser
+// thread.
+// The default behaviour for pthreads is always to exit once they return
+// from their entry point (or call pthread_exit).  If we set noExitRuntime
+// to true here on pthreads they would never complete and attempt to
+// pthread_join to them would block forever.
+// pthreads can still choose to set `noExitRuntime` explicitly, or
+// call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
+// their main function.  See comment in src/worker.js for more.
+noExitRuntime = !ENVIRONMENT_IS_PTHREAD;
+#else
+noExitRuntime = true;
 #endif
-  noExitRuntime = true;
 #endif
 
 #if USE_PTHREADS

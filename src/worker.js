@@ -188,13 +188,17 @@ this.onmessage = function(e) {
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
         // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-        var result = Module['dynCall']('ii', e.data.start_routine, [e.data.arg]);
+        var result = Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
 
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();
 #endif
-#if !MINIMAL_RUNTIME // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to pthreads. To exit a pthread with live runtime, use the function emscripten_unwind_to_js_event_loop() in the pthread body.
-        // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
+#if !MINIMAL_RUNTIME
+        // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
+        // pthreads. To exit a pthread with live runtime, use the function
+        // emscripten_unwind_to_js_event_loop() in the pthread body.
+        // The thread might have finished without calling pthread_exit(). If so,
+        // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
         if (!Module['getNoExitRuntime']())
 #endif
@@ -203,26 +207,36 @@ this.onmessage = function(e) {
         if (ex === 'Canceled!') {
           Module['PThread'].threadCancel();
         } else if (ex != 'unwind') {
-#if MINIMAL_RUNTIME
-          // ExitStatus not present in MINIMAL_RUNTIME
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
-#else
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
-#endif
-
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
+          // FIXME(sbc): Figure out if this is still needed or useful.  Its not
+          // clear to me how this check could ever fail.  In order to get into
+          // this try/catch block at all we have already called bunch of
+          // functions on `Module`.. why is this one special?
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
             throw ex;
           }
 #endif
-          Module['_emscripten_futex_wake'](threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}}, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
-#if MINIMAL_RUNTIME
-          throw ex; // ExitStatus not present in MINIMAL_RUNTIME
-#else
-          if (!(ex instanceof Module['ExitStatus'])) throw ex;
+          // ExitStatus not present in MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
+          if (ex instanceof Module['ExitStatus']) {
+            if (Module['getNoExitRuntime']()) {
+#if ASSERTIONS
+              err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
 #endif
+            } else {
+#if ASSERTIONS
+              err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), calling threadExit.');
+#endif
+              Module['PThread'].threadExit(ex.status);
+            }
+          }
+          else
+#endif
+          {
+            Module['PThread'].threadExit(-2);
+            throw ex;
+          }
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.

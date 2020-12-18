@@ -652,7 +652,7 @@ var LibraryGLFW = {
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
                 buttons: allocate(new Array(gamepad.buttons.length), ALLOC_NORMAL),
-                axes: allocate(new Array(gamepad.axes.length*4), 'float', ALLOC_NORMAL)
+                axes: allocate(new Array(gamepad.axes.length*4), ALLOC_NORMAL)
               };
 
               if (GLFW.joystickFunc) {
@@ -1000,22 +1000,27 @@ var LibraryGLFW = {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++) {
         // no-op
       }
+      var useWebGL = GLFW.hints[0x00022001] > 0; // Use WebGL when we are told to based on GLFW_CLIENT_API
       if (i == GLFW.windows.length) {
-        var contextAttributes = {
-          antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
-          depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
-          stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
-          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS
-        }
+        if (useWebGL) {
+          var contextAttributes = {
+            antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
+            depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
+            stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
+            alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS
+          }
 #if OFFSCREEN_FRAMEBUFFER
-        // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
-        GL.enableOffscreenFramebufferAttributes(contextAttributes);
+          // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
+          GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-        Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+          Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+        } else {
+          Browser.init();
+        }
       }
 
       // If context creation failed, do not return a valid window
-      if (!Module.ctx) return 0;
+      if (!Module.ctx && useWebGL) return 0;
 
       // Get non alive id
       var win = new GLFW_Window(id, width, height, title, monitor, share);

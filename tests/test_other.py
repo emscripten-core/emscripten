@@ -32,8 +32,8 @@ from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
-from runner import env_modify, no_mac, no_windows, requires_native_clang, chdir, with_env_modify, create_test_file, parameterized
-from runner import js_engines_modify, NON_ZERO
+from runner import env_modify, no_mac, no_windows, requires_native_clang, chdir, with_env_modify
+from runner import create_test_file, parameterized, NON_ZERO, node_pthreads
 from tools import shared, building, utils
 import jsrun
 import clang_native
@@ -128,10 +128,10 @@ class other(RunnerCore):
   # to compile, with optional compiler and execution flags.
   # Output can be checked by seeing if literals are contained, and that a list
   # of regexes match. The return code can also be checked.
-  def do_smart_test(self, source, literals=[], regexes=[],
+  def do_smart_test(self, source, literals=[], engine=None, regexes=[],
                     emcc_args=[], run_args=[], assert_returncode=0):
     self.run_process([EMCC, source] + emcc_args)
-    seen = self.run_js('a.out.js', args=run_args, assert_returncode=assert_returncode) + '\n'
+    seen = self.run_js('a.out.js', engine=engine, args=run_args, assert_returncode=assert_returncode) + '\n'
 
     for literal in literals:
       self.assertContained([literal], seen)
@@ -941,6 +941,20 @@ int main() {
     # Verify the --no-whole-archive prevents the inclusion of the ctor
     self.run_process([EMCC, '-Wl,-whole-archive', '-Wl,--no-whole-archive', 'libtest.a', 'main.o'])
     self.assertContained('foo is: 0\n', self.run_js('a.out.js'))
+
+  def test_whole_archive_48156(self):
+    # Regression test for http://llvm.org/PR48156
+    # TODO: distill this test further and move to lld
+    self.run_process([EMCC, '-c', '-o', 'foo.o', '-O1',
+                      path_from_root('tests', 'test_whole_archive_foo.cpp')])
+    self.run_process([EMCC, '-c', '-o', 'main.o', '-O1',
+                      path_from_root('tests', 'test_whole_archive_main.cpp')])
+    self.run_process([EMAR, 'rc', 'libfoo.a', 'foo.o'])
+    self.run_process([EMAR, 'rc', 'libmain.a', 'main.o'])
+    self.run_process([
+        EMCC, path_from_root('tests', 'test_whole_archive_init.cpp'),
+        '-O1', 'libfoo.a', '-Wl,--whole-archive', 'libmain.a', '-Wl,--no-whole-archive'])
+    self.assertContained('Result: 11', self.run_js('a.out.js'))
 
   def test_link_group_bitcode(self):
     create_test_file('1.c', r'''
@@ -2158,16 +2172,16 @@ int f() {
     create_test_file('data2.txt', 'data2')
 
     # relative path to below the current dir is invalid
-    stderr = self.expect_fail([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
+    stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
     self.assertContained('below the current directory', stderr)
 
     # relative path that ends up under us is cool
-    proc = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
     self.assertGreater(len(proc.stdout), 0)
     self.assertNotContained('below the current directory', proc.stderr)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
-    proc2 = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
+    proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
     self.assertGreater(len(proc2.stdout), 0)
     self.assertNotContained('below the current directory', proc2.stderr)
 
@@ -2181,7 +2195,7 @@ int f() {
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
 
-    self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
     orig_timestamp = os.path.getmtime('immutable.js')
@@ -2189,7 +2203,7 @@ int f() {
     # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
-    self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     # assert both file content and timestamp are the same as reference copy
     self.assertTextDataIdentical(orig_content, open('immutable.js').read())
     self.assertEqual(orig_timestamp, os.path.getmtime('immutable.js'))
@@ -2213,7 +2227,7 @@ int f() {
       return
     full = os.path.join(unicode_name, 'data.txt')
     create_test_file(full, 'data')
-    proc = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
     assert len(proc.stdout), proc.stderr
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
@@ -2222,7 +2236,7 @@ int f() {
     MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
     create_test_file('data.txt', 'data1')
     # mention when running standalone
-    err = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
     # do not mention from emcc
     err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--preload-file', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
@@ -2230,7 +2244,7 @@ int f() {
 
   def test_file_packager_returns_error_if_target_equal_to_jsoutput(self):
     MESSAGE = 'error: TARGET should not be the same value of --js-output'
-    result = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--js-output=test.data'], check=False, stdout=PIPE, stderr=PIPE)
+    result = self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.data'], check=False, stdout=PIPE, stderr=PIPE)
     self.assertEqual(result.returncode, 1)
     self.assertContained(MESSAGE, result.stderr)
 
@@ -5008,9 +5022,9 @@ int main() {
     MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
     create_test_file('huge.dat', 'a' * (1024 * 1024 * 257))
     create_test_file('tiny.dat', 'a')
-    err = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertNotContained(MESSAGE, err)
-    err = self.run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
     self.clear()
 
@@ -5796,24 +5810,21 @@ mergeInto(LibraryManager.library, {
 #include <stdio.h>
 #include <errno.h>
 
-#define TEST_PATH "/boot/README.txt"
-
 int main(int argc, char **argv) {
-  errno = 0;
-  char *t_realpath_buf = realpath(TEST_PATH, NULL);
-  if (NULL == t_realpath_buf) {
+  char *t_realpath_buf = realpath("/boot/README.txt", NULL);
+  if (!t_realpath_buf) {
     perror("Resolve failed");
     return 1;
-  } else {
-    printf("Resolved: %s\n", t_realpath_buf);
-    free(t_realpath_buf);
-    return 0;
   }
+
+  printf("Resolved: %s\n", t_realpath_buf);
+  free(t_realpath_buf);
+  return 0;
 }
 ''')
     ensure_dir('boot')
     create_test_file(os.path.join('boot', 'README.txt'), ' ')
-    self.run_process([EMCC, 'src.c', '--embed-file', 'boot'])
+    self.run_process([EMCC, 'src.c', '-s', 'SAFE_HEAP', '--embed-file', 'boot'])
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
   def test_realpath_nodefs(self):
@@ -6677,6 +6688,7 @@ int main() {
       for a in args:
         if a == '-s':
           continue
+        a = a.replace('-s', '')
         a = a.replace('-', '')
         a = a.replace('=1', '')
         a = a.replace('=[]', '_NONE')
@@ -6763,6 +6775,10 @@ int main() {
   })
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
+
+  @node_pthreads
+  def test_metadce_minimal_pthreads(self):
+    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [], 16135)
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka'], 127740), # noqa
@@ -7340,6 +7356,7 @@ end
   def test_noderawfs_disables_embedding(self):
     expected = '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
     base = [EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'NODERAWFS=1']
+    create_test_file('somefile', 'foo')
     err = self.expect_fail(base + ['--preload-file', 'somefile'])
     self.assertContained(expected, err)
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
@@ -8048,6 +8065,9 @@ ok.
       }
     ''', 'getpeername error: Socket not connected', assert_returncode=NON_ZERO)
 
+  def test_getsockname_addrlen(self):
+    self.do_runf(path_from_root('tests', 'sockets', 'test_getsockname_addrlen.c'), 'success')
+
   def test_getaddrinfo(self):
     self.do_runf(path_from_root('tests', 'sockets', 'test_getaddrinfo.c'), 'success')
 
@@ -8678,10 +8698,11 @@ int main(void) {
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
 
   def test_proxy_to_pthread_stack(self):
-    with js_engines_modify([config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']]):
-      self.do_smart_test(path_from_root('tests', 'other', 'test_proxy_to_pthread_stack.c'),
-                         ['success'],
-                         emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_STACK=1048576'])
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.do_smart_test(path_from_root('tests', 'other', 'test_proxy_to_pthread_stack.c'),
+                       ['success'],
+                       engine=config.NODE_JS,
+                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_STACK=1048576'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION=1'],
@@ -9341,9 +9362,13 @@ int main() {
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--minifyXX'])
     self.assertContained("error: unsupported option '--minifyXX'", err)
 
-  def test_missing_argument(self):
+  def test_argument_missing(self):
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--minify'])
     self.assertContained("error: option '--minify' requires an argument", err)
+
+  def test_argument_missing_file(self):
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'foo.js'])
+    self.assertContained("emcc: error: '--pre-js': file not found: 'foo.js'", err)
 
   def test_default_to_cxx(self):
     create_test_file('foo.h', '#include <string.h>')
@@ -9607,7 +9632,7 @@ exec "$@"
 
   def test_SYSCALL_DEBUG(self):
     self.set_setting('SYSCALL_DEBUG')
-    self.do_runf(path_from_root('tests', 'hello_world.c'), 'syscall! fd_write')
+    self.do_runf(path_from_root('tests', 'hello_world.c'), 'syscall! fd_write: [1,')
 
   def test_LIBRARY_DEBUG(self):
     self.set_setting('LIBRARY_DEBUG')
@@ -9748,3 +9773,23 @@ exec "$@"
 
   def test_syslog(self):
     self.do_other_test('test_syslog.c')
+
+  def test_split_module(self):
+    self.set_setting('SPLIT_MODULE')
+    self.emcc_args += ['-g', '-Wno-experimental']
+    self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module.post.js')]
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=[_malloc, _free]']
+    self.do_other_test('test_split_module.c')
+    self.assertExists('test_split_module.wasm')
+    self.assertExists('test_split_module.wasm.orig')
+    self.assertExists('profile.data')
+
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=split@', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
+
+    os.remove('test_split_module.wasm')
+    os.rename('primary.wasm', 'test_split_module.wasm')
+    os.rename('secondary.wasm', 'test_split_module.wasm.deferred')
+    result = self.run_js('test_split_module.js')
+    self.assertNotIn('writing profile', result)
+    self.assertIn('Hello! answer: 42', result)

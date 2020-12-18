@@ -25,7 +25,7 @@ int main() {
   printf("posix_fallocate: %d\n", posix_fallocate(f, 3, 2));
   printf("errno: %d\n", errno);
   stat("/test", &s);
-  printf("st_size: %d\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   printf("\n");
   errno = 0;
@@ -33,7 +33,7 @@ int main() {
   printf("posix_fallocate2: %d\n", posix_fallocate(f, 3, 7));
   printf("errno: %d\n", errno);
   stat("/test", &s);
-  printf("st_size: %d\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
 
   return 0;

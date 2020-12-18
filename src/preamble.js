@@ -60,7 +60,7 @@ var ABORT = false;
 // set by exit() and abort().  Passed to 'onExit' handler.
 // NOTE: This is also used as the process return code code in shell environments
 // but only when noExitRuntime is false.
-var EXITSTATUS = 0;
+var EXITSTATUS;
 
 /** @type {function(*, string=)} */
 function assert(condition, text) {
@@ -261,6 +261,10 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
+#if WASM_BIGINT
+var HEAP64;
+#endif
+
 function updateGlobalBufferAndViews(buf) {
   buffer = buf;
   Module['HEAP8'] = HEAP8 = new Int8Array(buf);
@@ -271,6 +275,9 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
+#if WASM_BIGINT
+  Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
+#endif
 }
 
 #if RELOCATABLE
@@ -733,20 +740,19 @@ if (!isDataURI(wasmBinaryFile)) {
   wasmBinaryFile = locateFile(wasmBinaryFile);
 }
 
-function getBinary() {
+function getBinary(file) {
   try {
-    if (wasmBinary) {
+    if (file == wasmBinaryFile && wasmBinary) {
       return new Uint8Array(wasmBinary);
     }
-
 #if SUPPORT_BASE64_EMBEDDING
-    var binary = tryParseAsDataURI(wasmBinaryFile);
+    var binary = tryParseAsDataURI(file);
     if (binary) {
       return binary;
     }
 #endif
     if (readBinary) {
-      return readBinary(wasmBinaryFile);
+      return readBinary(file);
     } else {
 #if WASM_ASYNC_COMPILATION
       throw "both async and sync fetching of the wasm failed";
@@ -778,7 +784,9 @@ function getBinaryPromise() {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
         return response['arrayBuffer']();
-      }).catch(getBinary);
+      }).catch(function () {
+          return getBinary(wasmBinaryFile);
+      });
     }
 #if ENVIRONMENT_MAY_BE_WEBVIEW
     else {
@@ -793,7 +801,7 @@ function getBinaryPromise() {
   }
     
   // Otherwise, getBinary should be able to get it synchronously
-  return Promise.resolve().then(getBinary);
+  return Promise.resolve().then(function() { return getBinary(wasmBinaryFile); });
 }
 
 #if LOAD_SOURCE_MAP
@@ -804,6 +812,84 @@ var wasmSourceMap;
 #if USE_OFFSET_CONVERTER
 var wasmOffsetConverter;
 #include "wasm_offset_converter.js"
+#endif
+
+#if SPLIT_MODULE
+var splitModuleProxyHandler = {
+  'get': function(target, prop, receiver) {
+    return function() {
+      err('placeholder function called: ' + prop);
+      var imports = {'primary': Module['asm']};
+      var table = Module['asm']['__indirect_function_table'];
+      instantiateSync(wasmBinaryFile + '.deferred', imports);
+      err('instantiated deferred module, continuing');
+      return table.get(prop).apply(null, arguments);
+    }
+  }
+};
+#endif
+
+#if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
+function instantiateSync(file, info) {
+  var instance;
+  var module;
+  var binary;
+  try {
+    binary = getBinary(file);
+#if NODE_CODE_CACHING
+    if (ENVIRONMENT_IS_NODE) {
+      var v8 = require('v8');
+      // Include the V8 version in the cache name, so that we don't try to
+      // load cached code from another version, which fails silently (it seems
+      // to load ok, but we do actually recompile the binary every time).
+      var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
+      cachedCodeFile = locateFile(cachedCodeFile);
+      if (!nodeFS) nodeFS = require('fs');
+      var hasCached = nodeFS.existsSync(cachedCodeFile);
+      if (hasCached) {
+#if RUNTIME_LOGGING
+        err('NODE_CODE_CACHING: loading module');
+#endif
+        try {
+          module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
+        } catch (e) {
+          err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
+          // Save the new compiled code when we have it.
+          hasCached = false;
+        }
+      }
+    }
+    if (!module) {
+      module = new WebAssembly.Module(binary);
+    }
+    if (ENVIRONMENT_IS_NODE && !hasCached) {
+#if RUNTIME_LOGGING
+      err('NODE_CODE_CACHING: saving module');
+#endif
+      nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
+    }
+#else // NODE_CODE_CACHING
+    module = new WebAssembly.Module(binary);
+#endif // NODE_CODE_CACHING
+    instance = new WebAssembly.Instance(module, info);
+#if USE_OFFSET_CONVERTER
+    wasmOffsetConverter = new WasmOffsetConverter(binary, module);
+    {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+#endif
+  } catch (e) {
+    var str = e.toString();
+    err('failed to compile wasm module: ' + str);
+    if (str.indexOf('imported Memory') >= 0 ||
+        str.indexOf('memory import') >= 0) {
+      err('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).');
+    }
+    throw e;
+  }
+#if LOAD_SOURCE_MAP
+  receiveSourceMapJSON(getSourceMap());
+#endif
+  return [instance, module];
+}
 #endif
 
 // Create the wasm instance.
@@ -817,6 +903,9 @@ function createWasm() {
     'env': asmLibraryArg,
     '{{{ WASI_MODULE_NAME }}}': asmLibraryArg,
 #endif // MINIFY_WASM_IMPORTED_MODULES
+#if SPLIT_MODULE
+    'placeholder': new Proxy({}, splitModuleProxyHandler),
+#endif
 #if RELOCATABLE
     'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
     'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
@@ -1005,68 +1094,8 @@ function createWasm() {
       return instantiateArrayBuffer(receiveInstantiatedSource);
     }
   }
-#else
-  function instantiateSync() {
-    var instance;
-    var module;
-    var binary;
-    try {
-      binary = getBinary();
-#if NODE_CODE_CACHING
-      if (ENVIRONMENT_IS_NODE) {
-        var v8 = require('v8');
-        // Include the V8 version in the cache name, so that we don't try to
-        // load cached code from another version, which fails silently (it seems
-        // to load ok, but we do actually recompile the binary every time).
-        var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
-        cachedCodeFile = locateFile(cachedCodeFile);
-        if (!nodeFS) nodeFS = require('fs');
-        var hasCached = nodeFS.existsSync(cachedCodeFile);
-        if (hasCached) {
-#if RUNTIME_LOGGING
-          err('NODE_CODE_CACHING: loading module');
 #endif
-          try {
-            module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
-          } catch (e) {
-            err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
-            // Save the new compiled code when we have it.
-            hasCached = false;
-          }
-        }
-      }
-      if (!module) {
-        module = new WebAssembly.Module(binary);
-      }
-      if (ENVIRONMENT_IS_NODE && !hasCached) {
-#if RUNTIME_LOGGING
-        err('NODE_CODE_CACHING: saving module');
-#endif
-        nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
-      }
-#else // NODE_CODE_CACHING
-      module = new WebAssembly.Module(binary);
-#endif // NODE_CODE_CACHING
-      instance = new WebAssembly.Instance(module, info);
-#if USE_OFFSET_CONVERTER
-      wasmOffsetConverter = new WasmOffsetConverter(binary, module);
-      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-#endif
-    } catch (e) {
-      var str = e.toString();
-      err('failed to compile wasm module: ' + str);
-      if (str.indexOf('imported Memory') >= 0 ||
-          str.indexOf('memory import') >= 0) {
-        err('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).');
-      }
-      throw e;
-    }
-#if LOAD_SOURCE_MAP
-    receiveSourceMapJSON(getSourceMap());
-#endif
-    receiveInstance(instance, module);
-  }
-#endif
+
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
@@ -1098,7 +1127,8 @@ function createWasm() {
 #endif
   return {}; // no exports yet; we'll fill them in later
 #else
-  instantiateSync();
+  var result = instantiateSync(wasmBinaryFile, info);
+  receiveInstance(result[0], result[1]);
   return Module['asm']; // exports were assigned here
 #endif
 }

@@ -261,7 +261,6 @@ class EmccOptions(object):
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
     # Linux & MacOS)
     self.output_eol = os.linesep
-    self.binaryen_passes = []
     self.no_entry = False
     self.shared = False
     self.relocatable = False
@@ -539,10 +538,7 @@ def cxx_to_c_compiler(cxx):
   return os.path.join(dirname, basename)
 
 
-def backend_binaryen_passes():
-  # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
-  # we run the optimizer during asm2wasm itself). use it, if not overridden.
-
+def get_binaryen_passes():
   # run the binaryen optimizer in -O2+. in -O0 we don't need it obviously, while
   # in -O1 we don't run it as the LLVM optimizer has been run, and it does the
   # great majority of the work; not running the binaryen optimizer in that case
@@ -591,29 +587,6 @@ def backend_binaryen_passes():
       passes += ['--pass-arg=asyncify-verbose']
     if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
       passes += ['--pass-arg=asyncify-ignore-indirect']
-    else:
-      # if we are not ignoring indirect calls, then we must treat invoke_* as if
-      # they are indirect calls, since that is what they do - we can't see their
-      # targets statically.
-      shared.Settings.ASYNCIFY_IMPORTS += ['invoke_*']
-    # with pthreads we may call main through the __call_main mechanism, which can
-    # therefore reach anything in the program, so mark it as possibly causing a
-    # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
-    # see what it itself calls)
-    if shared.Settings.USE_PTHREADS:
-      shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
-    # add the default imports
-    shared.Settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
-
-    # return the full import name, including module. The name may
-    # already have a module prefix; if not, we assume it is "env".
-    def get_full_import_name(name):
-      if '.' in name:
-        return name
-      return 'env.' + name
-
-    shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
-
     passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
 
     # shell escaping can be confusing; try to emit useful warnings
@@ -670,6 +643,11 @@ def make_js_executable(script):
     os.chmod(script, stat.S_IMODE(os.stat(script).st_mode) | stat.S_IXUSR) # make executable
   except OSError:
     pass # can fail if e.g. writing the executable to /dev/null
+
+
+def do_split_module(wasm_file):
+  os.rename(wasm_file, wasm_file + '.orig')
+  building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=['--instrument'])
 
 
 def do_replace(input_, pattern, replacement):
@@ -859,8 +837,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.check_sanity(force=True)
     return code
 
-  shared.check_sanity(force=DEBUG)
-
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
     return 0
@@ -884,6 +860,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
       print(shared.shlex_join(parts[1:]))
     return 0
+
+  shared.check_sanity(force=DEBUG)
 
   def get_language_mode(args):
     return_next = False
@@ -1385,7 +1363,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
       shared.Settings.USE_LEGACY_DYNCALLS = 1
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDynCaller']
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']
@@ -1581,14 +1558,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # manually export them
 
       shared.Settings.EXPORTED_FUNCTIONS += [
-        '__emscripten_thread_init',
-        '_emscripten_get_global_libc',
-        '___pthread_tsd_run_dtors',
-        '_pthread_self',
         '___emscripten_pthread_data_constructor',
+        '___pthread_tsd_run_dtors',
+        '__emscripten_call_on_thread',
+        '__emscripten_do_dispatch_to_thread',
+        '__emscripten_main_thread_futex',
+        '__emscripten_thread_init',
         '_emscripten_futex_wake',
+        '_emscripten_get_global_libc',
+        '_emscripten_main_browser_thread_id',
+        '_emscripten_main_thread_process_queued_calls',
+        '_emscripten_register_main_browser_thread_id',
+        '_emscripten_run_in_main_runtime_thread_js',
         '_emscripten_stack_set_limits',
-        '_emscripten_tls_init']
+        '_emscripten_sync_run_in_main_thread_2',
+        '_emscripten_sync_run_in_main_thread_4',
+        '_emscripten_tls_init',
+        '_pthread_self',
+      ]
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1618,23 +1605,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.MINIMAL_RUNTIME or shared.Settings.EXIT_RUNTIME:
       # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
       # always does.
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$dynCall']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
 
     if shared.Settings.USE_PTHREADS:
       # memalign is used to ensure allocated thread stacks are aligned.
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign']
 
-      # dynCall is used to call pthread entry points in worker.js (as
-      # metadce does not consider worker.js, which is external, we must
-      # consider it an export, i.e., one which can never be removed).
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
-      shared.Settings.EXPORTED_FUNCTIONS += ['dynCall']
-
       if shared.Settings.MINIMAL_RUNTIME:
         building.user_requested_exports += ['exit']
 
       if shared.Settings.PROXY_TO_PTHREAD:
-        shared.Settings.EXPORTED_FUNCTIONS += ['_proxy_main']
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_proxy_main']
 
       # pthread stack setup and other necessary utilities
       def include_and_export(name):
@@ -1642,6 +1623,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORTED_FUNCTIONS += [name]
 
       include_and_export('establishStackSpace')
+      include_and_export('invokeEntryPoint')
       if not shared.Settings.MINIMAL_RUNTIME:
         # noExitRuntime does not apply to MINIMAL_RUNTIME.
         include_and_export('getNoExitRuntime')
@@ -1886,7 +1868,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        sanitize:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
-    options.binaryen_passes += backend_binaryen_passes()
+    if shared.Settings.ASYNCIFY:
+      if not shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
+        # if we are not ignoring indirect calls, then we must treat invoke_* as if
+        # they are indirect calls, since that is what they do - we can't see their
+        # targets statically.
+        shared.Settings.ASYNCIFY_IMPORTS += ['invoke_*']
+      # with pthreads we may call main through the __call_main mechanism, which can
+      # therefore reach anything in the program, so mark it as possibly causing a
+      # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
+      # see what it itself calls)
+      if shared.Settings.USE_PTHREADS:
+        shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
+      # add the default imports
+      shared.Settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
+
+      # return the full import name, including module. The name may
+      # already have a module prefix; if not, we assume it is "env".
+      def get_full_import_name(name):
+        if '.' in name:
+          return name
+        return 'env.' + name
+
+      shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
 
     if shared.Settings.WASM2JS and shared.Settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
@@ -2240,7 +2244,7 @@ def post_link(options, in_wasm, wasm_target, target):
         file_args.append('--lz4')
       if options.use_preload_plugins:
         file_args.append('--use-preload-plugins')
-      file_code = shared.check_call([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
+      file_code = shared.check_call([shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
       options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
     # Apply pre and postjs files
@@ -2357,6 +2361,10 @@ def post_link(options, in_wasm, wasm_target, target):
     if embed_memfile() and memfile:
       shared.try_delete(memfile)
 
+    if shared.Settings.SPLIT_MODULE:
+      diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
+      do_split_module(wasm_target)
+
     for f in generated_text_files_with_native_eols:
       tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
 
@@ -2391,13 +2399,13 @@ def parse_args(newargs):
         return True
       return False
 
-    def check_arg(value):
+    def check_arg(name):
       nonlocal arg_value
-      if arg.startswith(value) and '=' in arg:
+      if arg.startswith(name) and '=' in arg:
         arg_value = arg.split('=', 1)[1]
         newargs[i] = ''
         return True
-      if arg == value:
+      if arg == name:
         if len(newargs) <= i + 1:
           exit_with_error("option '%s' requires an argument" % arg)
         arg_value = newargs[i + 1]
@@ -2412,6 +2420,12 @@ def parse_args(newargs):
       rtn = arg_value
       arg_value = None
       return rtn
+
+    def consume_arg_file():
+      name = consume_arg()
+      if not os.path.isfile(name):
+        exit_with_error("'%s': file not found: '%s'" % (arg, name))
+      return name
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
@@ -2448,13 +2462,13 @@ def parse_args(newargs):
     elif check_arg('--js-transform'):
       options.js_transform = consume_arg()
     elif check_arg('--pre-js'):
-      options.pre_js += open(consume_arg()).read() + '\n'
+      options.pre_js += open(consume_arg_file()).read() + '\n'
     elif check_arg('--post-js'):
-      options.post_js += open(consume_arg()).read() + '\n'
+      options.post_js += open(consume_arg_file()).read() + '\n'
     elif check_arg('--extern-pre-js'):
-      options.extern_pre_js += open(consume_arg()).read() + '\n'
+      options.extern_pre_js += open(consume_arg_file()).read() + '\n'
     elif check_arg('--extern-post-js'):
-      options.extern_post_js += open(consume_arg()).read() + '\n'
+      options.extern_post_js += open(consume_arg_file()).read() + '\n'
     elif check_arg('--compiler-wrapper'):
       config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
@@ -2541,13 +2555,13 @@ def parse_args(newargs):
       shared.PRINT_STAGES = True
       shared.check_sanity(force=True)
     elif check_arg('--shell-file'):
-      options.shell_path = consume_arg()
+      options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
-      shared.Settings.SYSTEM_JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg())))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg_file())))
     elif check_flag('--remove-duplicates'):
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
     elif check_flag('--jcache'):
@@ -2696,17 +2710,18 @@ def do_binaryen(target, options, wasm_target):
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  if options.binaryen_passes or shared.Settings.GENERATE_SOURCE_MAP:
+  passes = get_binaryen_passes()
+  if passes or shared.Settings.GENERATE_SOURCE_MAP:
     # if we need to strip certain sections, and we have wasm-opt passes
     # to run anyhow, do it with them.
     if strip_debug:
-      options.binaryen_passes += ['--strip-debug']
+      passes += ['--strip-debug']
     if strip_producers:
-      options.binaryen_passes += ['--strip-producers']
+      passes += ['--strip-producers']
     building.save_intermediate(wasm_target, 'pre-byn.wasm')
     building.run_wasm_opt(wasm_target,
                           wasm_target,
-                          args=options.binaryen_passes,
+                          args=passes,
                           debug=intermediate_debug_info)
   else:
     # we are not running wasm-opt. if we need to strip certain sections

@@ -9,8 +9,5 @@ int main() {
 	char str[256] = {};
 	fgets(str, 255, handle);
 	printf("%s\n", str);
-#ifdef REPORT_RESULT
-	REPORT_RESULT(strcmp(str, "hello from file!"));
-#endif
-	return 0;
+	return strcmp(str, "hello from file!");
 }

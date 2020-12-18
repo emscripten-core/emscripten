@@ -37,7 +37,7 @@ uint64_t threadCasAccumulatedReadData[NUM_THREADS] = {};
 
 int rand_32()
 {
-	return (int)(emscripten_random() * 0x3FFFFFFF);
+	return (int)(emscripten_random() * float(0x3FFFFFFF));
 }
 
 void *ThreadMain(void *arg)

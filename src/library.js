@@ -694,6 +694,7 @@ LibraryManager.library = {
 
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
   // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
+  abort__sig: 'v',
   abort: function() {
 #if MINIMAL_RUNTIME
     // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
@@ -2293,16 +2294,22 @@ LibraryManager.library = {
     return { family: family, addr: addr, port: port };
   },
   _write_sockaddr__deps: ['$Sockets', '_inet_pton4_raw', '_inet_pton6_raw'],
-  _write_sockaddr: function (sa, family, addr, port) {
+  _write_sockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
         addr = __inet_pton4_raw(addr);
+        if (addrlen) {
+          {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
+        }
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'family', 'i16') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
       case {{{ cDefine('AF_INET6') }}}:
         addr = __inet_pton6_raw(addr);
+        if (addrlen) {
+          {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
+        }
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_family, 'family', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+0, 'addr[0]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+4, 'addr[1]', 'i32') }}};
@@ -2313,10 +2320,9 @@ LibraryManager.library = {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_scope_id, '0', 'i32') }}};
         break;
       default:
-        return { errno: {{{ cDefine('EAFNOSUPPORT') }}} };
+        return {{{ cDefine('EAFNOSUPPORT') }}};
     }
-    // kind of lame, but let's match _read_sockaddr's interface
-    return {};
+    return 0;
   },
 
   // We can't actually resolve hostnames in the browser, so instead
@@ -2446,7 +2452,7 @@ LibraryManager.library = {
 
     function allocaddrinfo(family, type, proto, canon, addr, port) {
       var sa, salen, ai;
-      var res;
+      var errno;
 
       salen = family === {{{ cDefine('AF_INET6') }}} ?
         {{{ C_STRUCTS.sockaddr_in6.__size__ }}} :
@@ -2455,8 +2461,8 @@ LibraryManager.library = {
         __inet_ntop6_raw(addr) :
         __inet_ntop4_raw(addr);
       sa = _malloc(salen);
-      res = __write_sockaddr(sa, family, addr, port);
-      assert(!res.errno);
+      errno = __write_sockaddr(sa, family, addr, port);
+      assert(!errno);
 
       ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
@@ -3727,7 +3733,7 @@ LibraryManager.library = {
   },
 #endif
 
-  $dynCall: function (sig, ptr, args) {
+  $dynCall: function(sig, ptr, args) {
 #if USE_LEGACY_DYNCALLS
     return dynCallLegacy(sig, ptr, args);
 #else

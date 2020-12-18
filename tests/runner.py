@@ -17,8 +17,9 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
 
-from subprocess import PIPE, STDOUT
+from enum import Enum
 from functools import wraps
+from subprocess import PIPE, STDOUT
 import argparse
 import atexit
 import contextlib
@@ -181,6 +182,19 @@ def requires_native_clang(func):
   return decorated
 
 
+def node_pthreads(f):
+  def decorated(self):
+    self.set_setting('USE_PTHREADS', 1)
+    if '-fsanitize=address' in self.emcc_args:
+      self.skipTest('asan ends up using atomics that are not yet supported in node 12')
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    self.js_engines = [config.NODE_JS]
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    f(self)
+  return decorated
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -221,28 +235,6 @@ def chdir(dir):
     yield
   finally:
     os.chdir(orig_cwd)
-
-
-@contextlib.contextmanager
-def js_engines_modify(replacements):
-  """A context manager that updates config.JS_ENGINES."""
-  original = config.JS_ENGINES
-  config.JS_ENGINES = replacements
-  try:
-    yield
-  finally:
-    config.JS_ENGINES = original
-
-
-@contextlib.contextmanager
-def wasm_engines_modify(replacements):
-  """A context manager that updates config.WASM_ENGINES."""
-  original = config.WASM_ENGINES
-  config.WASM_ENGINES = replacements
-  try:
-    yield
-  finally:
-    config.WASM_ENGINES = original
 
 
 def ensure_dir(dirname):
@@ -305,6 +297,8 @@ non_core_test_modes = [
   'asan',
   'lsan',
   'wasm2ss',
+  'posixtest',
+  'posixtest_browser',
 ]
 
 
@@ -434,9 +428,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
+    self.node_args = []
+    self.v8_args = []
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
+    self.js_engines = list(config.JS_ENGINES)
+    self.wasm_engines = list(config.WASM_ENGINES)
+    self.banned_js_engines = []
+    self.use_all_engines = EMTEST_ALL_ENGINES
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -445,8 +445,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         for filename in filenames:
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
-    self.banned_js_engines = []
-    self.use_all_engines = EMTEST_ALL_ENGINES
     if EMTEST_SAVE_DIR:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
       if os.path.exists(self.working_dir):
@@ -525,8 +523,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     for key, value in self.settings_mods.items():
       if value == 1:
         ret += ['-s', key]
+      elif type(value) == str:
+        ret += ['-s', f'{key}={value}']
       else:
-        ret += ['-s', '{}={}'.format(key, json.dumps(value))]
+        ret += ['-s', f'{key}={json.dumps(value)}']
     return ret
 
   def get_dir(self):
@@ -655,8 +655,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
     error = None
+    if not engine:
+      engine = config.JS_ENGINES[0]
+    if engine == config.NODE_JS:
+      engine = engine + self.node_args
+    if engine == config.V8_ENGINE:
+      engine = engine + self.v8_args
     if EMTEST_VERBOSE:
-      print(f"Running '{filename}' under '{engine}'")
+      print(f"Running '{filename}' under '{shared.shlex_join(engine)}'")
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=open(stdout, 'w'),
@@ -925,7 +931,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.clear_setting('RUNTIME_LINKED_LIBS')
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', 32 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', '32mb')
 
     so = '.wasm' if self.is_wasm() else '.js'
 
@@ -986,8 +992,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def filtered_js_engines(self, js_engines=None):
     if js_engines is None:
-      js_engines = config.JS_ENGINES
+      js_engines = self.js_engines
     for engine in js_engines:
+      assert engine in config.JS_ENGINES, "js engine does not exist in config.JS_ENGINES"
       assert type(engine) == list
     for engine in self.banned_js_engines:
       assert type(engine) in (list, type(None))
@@ -1043,10 +1050,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('STANDALONE_WASM'):
       # TODO once standalone wasm support is more stable, apply use_all_engines
       # like with js engines, but for now as we bring it up, test in all of them
-      wasm_engines = config.WASM_ENGINES
-      if len(wasm_engines) == 0:
+      if not self.wasm_engines:
         logger.warning('no wasm engine was found to run the standalone part of this test')
-      engines += wasm_engines
+      engines += self.wasm_engines
       if self.get_setting('WASM2C') and not EMTEST_LACKS_NATIVE_CLANG:
         # compile the c file to a native executable.
         c = shared.unsuffixed(js_file) + '.wasm.c'
@@ -1245,6 +1251,18 @@ def harness_server_func(in_queue, out_queue, port):
 
   httpd = HTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
+
+
+class Reporting(Enum):
+  """When running browser tests we normally automatically include support
+  code for reporting results back to the browser.  This enum allows tests
+  to decide what type of support code they need/want.
+  """
+  NONE = 0
+  # Include the JS helpers for reporting results
+  JS_ONLY = 1
+  # Include C/C++ reporting code (REPORT_RESULT mactros) as well as JS helpers
+  FULL = 2
 
 
 class BrowserCore(RunnerCore):
@@ -1484,22 +1502,42 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def compile_btest(self, args):
-    # add in support for reporting results. this adds an include a header so testcases can
+  def compile_btest(self, args, reporting=Reporting.FULL):
+    # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-s', 'IN_TEST_HARNESS=1', '-DEMTEST_PORT_NUMBER=%d' % self.port,
-             '-I', path_from_root('tests'),
-             '-include', path_from_root('tests', 'report_result.h'),
-             path_from_root('tests', 'report_result.cpp')]
-    self.run_process([EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
+    args += ['-s', 'IN_TEST_HARNESS=1']
+    if reporting != Reporting.NONE:
+      # For basic reporting we inject JS helper funtions to report result back to server.
+      args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
+               '--pre-js', path_from_root('tests', 'browser_reporting.js')]
+      if reporting == Reporting.FULL:
+        # If C reporting (i.e. REPORT_RESULT macro) is required
+        # also compile in report_result.cpp and forice-include report_result.h
+        args += ['-I', path_from_root('tests'),
+                 '-include', path_from_root('tests', 'report_result.h'),
+                 path_from_root('tests', 'report_result.cpp')]
+    self.run_process([EMCC] + self.get_emcc_args() + args)
+
+  def btest_exit(self, filename, expected, *args, **kwargs):
+      """Special case of btest that reports its result solely via exiting
+      with a give result code.
+
+      In this case we set EXIT_RUNTIME and we don't need to provide the
+      REPORT_RESULT macro to the C code.
+      """
+      self.set_setting('EXIT_RUNTIME')
+      kwargs['reporting'] = Reporting.JS_ONLY
+      kwargs['expected'] = 'exit:%s' % expected
+      return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
-            manually_trigger_reftest=False, extra_tries=1):
+            manually_trigger_reftest=False, extra_tries=1,
+            reporting=Reporting.FULL):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
@@ -1523,7 +1561,7 @@ class BrowserCore(RunnerCore):
     args = [filepath, '-o', outfile] + args
     # print('all args:', args)
     try_delete(outfile)
-    self.compile_btest(args)
+    self.compile_btest(args, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()
@@ -1823,7 +1861,7 @@ def flattened_tests(loaded_tests):
 
 
 def suite_for_module(module, tests):
-  suite_supported = module.__name__ in ('test_core', 'test_other')
+  suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
   if not EMTEST_SAVE_DIR:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1

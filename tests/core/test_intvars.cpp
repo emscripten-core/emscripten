@@ -31,7 +31,7 @@ int main() {
   size_t perturb;
   int ii = 0;
   for (perturb = hash;; perturb >>= 5) {
-    printf("%d:%d", ii, perturb);
+    printf("%d:%zd", ii, perturb);
     ii++;
     if (ii == 9) break;
     printf(",");

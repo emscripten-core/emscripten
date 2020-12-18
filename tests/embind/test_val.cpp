@@ -332,7 +332,7 @@ int main()
     d = undefined;
     e = 0;
     f = 1;
-    g = '';
+    g = "";
     h = '0';
     i = 'false';
   );

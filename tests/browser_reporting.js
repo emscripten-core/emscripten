@@ -1,3 +1,5 @@
+var hasModule = typeof Module === 'object' && Module;
+
 /** @param {boolean=} sync
     @param {number=} port */
 function reportResultToServer(result, sync, port) {
@@ -7,9 +9,7 @@ function reportResultToServer(result, sync, port) {
     reportErrorToServer("excessive reported results, sending " + result + ", test will fail");
   }
   reportResultToServer.reported = true;
-
   var xhr = new XMLHttpRequest();
-  var hasModule = typeof Module === 'object' && Module;
   if (hasModule && Module['pageThrewException']) result = 12345;
   xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
   xhr.send();
@@ -35,4 +35,10 @@ if (typeof window === 'object' && window) {
     xhr.open('GET', encodeURI('http://localhost:8888?exception=' + e.message + ' / ' + e.stack));
     xhr.send();
   });
+}
+
+if (hasModule) {
+  Module['onExit'] = function(status) {
+    maybeReportResultToServer('exit:' + status);
+  }
 }
