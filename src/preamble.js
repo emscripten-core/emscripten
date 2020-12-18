@@ -769,6 +769,7 @@ function getBinaryPromise() {
     if (typeof fetch === 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Let's not use fetch to get objects over file:// as it's most likely Cordova or Electron which doesn't support fetch for file://
+      // see https://github.com/github/fetch/pull/92#issuecomment-140665932
       && !isFileURI(wasmBinaryFile)
 #endif
     ) {
@@ -780,12 +781,14 @@ function getBinaryPromise() {
       }).catch(getBinary);
     }
 #if ENVIRONMENT_MAY_BE_WEBVIEW
-    else if (readAsync) {
-      // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
-      return new Promise( function(resolve, reject) {
-        readAsync(wasmBinaryFile, function(response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
-      });
-    }
+    else {
+      if (readAsync) {
+        // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
+        return new Promise(function(resolve, reject) {
+          readAsync(wasmBinaryFile, function(response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
+        });
+      }
+  }
 #endif
   }
     
