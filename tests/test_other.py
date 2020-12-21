@@ -48,6 +48,7 @@ emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 wasm_opt = os.path.join(building.get_binaryen_bin(), 'wasm-opt')
+objdump = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 
 
 class temp_directory():
@@ -112,6 +113,17 @@ def parse_wasm(filename):
       name = line.split()[1].strip('"')
       funcs.append(name)
   return imports, exports, funcs
+
+
+def read_sections_using_objdump(filename):
+  rtn = []
+  output = shared.run_process([objdump, '-h', filename], stdout=PIPE).stdout
+  for line in output.splitlines():
+    if not line.startswith('  '):
+      continue
+    parts = line.split()
+    rtn.append(parts)
+  return rtn
 
 
 class other(RunnerCore):
@@ -9872,3 +9884,19 @@ exec "$@"
     self.assertNotIn('profile', result)
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
+
+
+  def test_split_dwarf(self):
+    # TODO(sbc): test the dwo is correct/usable
+    self.run_process([EMCC, '-c', path_from_root('tests', 'core', 'test_hello_world.c'), '-g', '-gsplit-dwarf'])
+    self.assertExists('test_hello_world.o')
+    self.assertExists('test_hello_world.dwo')
+    obj_out = read_sections_using_objdump('test_hello_world.o')
+    dwo_out = read_sections_using_objdump('test_hello_world.dwo')
+    obj_info = [s for s in obj_out if s[1] == '.debug_info'][0]
+    dwo_info = [s for s in dwo_out if s[1] == '.debug_info.dwo'][0]
+    obj_size = int(obj_info[2], 16)
+    dwo_size = int(dwo_info[2], 16)
+    print('.debug_info: %d' % obj_size)
+    print('.debug_info.dwo: %d' % dwo_size)
+    self.assertGreater(dwo_size, obj_size)
