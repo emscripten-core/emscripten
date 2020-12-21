@@ -3565,6 +3565,29 @@ window.close = function() {
 
     self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
+  def test_dynamic_link_many(self):
+    # test asynchronously loading two side modules during startup
+    create_test_file('pre.js', '''
+      Module.dynamicLibraries = ['side1.wasm', 'side2.wasm'];
+    ''')
+    create_test_file('main.c', r'''
+      int side1();
+      int side2();
+      int main() {
+        return side1() + side2();
+      }
+    ''')
+    create_test_file('side1.c', r'''
+      int side1() { return 1; }
+    ''')
+    create_test_file('side2.c', r'''
+      int side2() { return 2; }
+    ''')
+    self.run_process([EMCC, 'side1.c', '-s', 'SIDE_MODULE=1', '-o', 'side1.wasm'])
+    self.run_process([EMCC, 'side2.c', '-s', 'SIDE_MODULE=1', '-o', 'side2.wasm'])
+    self.btest_exit(self.in_dir('main.c'), '3',
+                    args=['-s', 'MAIN_MODULE=1', '--pre-js', 'pre.js'])
+
   def test_memory_growth_during_startup(self):
     create_test_file('data.dat', 'X' * (30 * 1024 * 1024))
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=16MB', '-s', 'TOTAL_STACK=16384', '--preload-file', 'data.dat'])

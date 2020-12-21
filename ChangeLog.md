@@ -21,6 +21,12 @@ See docs/process.md for more on how version tagging works.
 Current Trunk
 -------------
 
+2.0.11: 12/17/2020
+------------------
+- An upstream LLVM regression with global initializer linking has been fixed
+  (#13038).
+- Remove a racy unneeded assertion about async dynamic linking (#13060).
+
 2.0.10: 12/04/2020
 ------------------
 - Fix handling of exit() in pthreads. (#12933)
