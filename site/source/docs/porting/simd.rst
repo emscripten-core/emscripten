@@ -746,7 +746,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_lddqu_si128
      - ✅ wasm_v128_load.
    * - _mm_addsub_ps
-     - ⚠️ emulated with a SIMD add+mul+const
+     - ⚠️ emulated with a SIMD add+xor+const
    * - _mm_hadd_ps
      - ⚠️ emulated with a SIMD add+two shuffles
    * - _mm_hsub_ps
@@ -756,7 +756,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_moveldup_ps
      - 💡 emulated with a general shuffle
    * - _mm_addsub_pd
-     - ⚠️ emulated with a SIMD add+mul+const
+     - ⚠️ emulated with a SIMD add+xor+const
    * - _mm_hadd_pd
      - ⚠️ emulated with a SIMD add+two shuffles
    * - _mm_hsub_pd
