@@ -7024,7 +7024,7 @@ someweirdtext
       # the file attribute is optional, but if it is present it needs to refer
       # the output file.
       self.assertPathsIdentical(map_referent, data['file'])
-    assert len(data['sources']) == 1, data['sources']
+    self.assertGreater(len(data['sources']), 1)
     self.assertPathsIdentical('src.cpp', data['sources'][0])
     if hasattr(data, 'sourcesContent'):
       # the sourcesContent attribute is optional, but if it is present it
@@ -7038,14 +7038,14 @@ someweirdtext
       mappings = encode_utf8(mappings)
     seen_lines = set()
     for m in mappings:
-      self.assertPathsIdentical('src.cpp', m['source'])
-      seen_lines.add(m['originalLine'])
+      if m['source'] == 'src.cpp':
+        seen_lines.add(m['originalLine'])
     # ensure that all the 'meaningful' lines in the original code get mapped
     # when optimizing, the binaryen optimizer may remove some of them (by inlining, etc.)
     if is_optimizing(self.emcc_args):
-      assert seen_lines.issuperset([11, 12]), seen_lines
+      self.assertTrue(seen_lines.issuperset([11, 12]), seen_lines)
     else:
-      assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
+      self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
 
   @no_wasm2js('TODO: source maps in wasm2js')
   def test_dwarf(self):
@@ -7108,7 +7108,14 @@ someweirdtext
     # ------------------ ------ ------ ------ --- ------------- -------------
     # 0x000000000000000b      5      0      3   0             0  is_stmt
     src_to_addr = {}
+    found_src_cpp = False
     for line in sections['.debug_line'].splitlines():
+      if 'name: "src.cpp"' in line:
+        found_src_cpp = True
+      if not found_src_cpp:
+        continue
+      if 'debug_line' in line:
+        break
       if line.startswith('0x'):
         while '  ' in line:
           line = line.replace('  ', ' ')
@@ -7123,7 +7130,8 @@ someweirdtext
 
     def get_dwarf_addr(line, col):
       addrs = src_to_addr[(line, col)]
-      assert len(addrs) == 1, 'we assume the simple calls have one address'
+      # we assume the simple calls have one address
+      self.assertEqual(len(addrs), 1)
       return int(addrs[0], 0)
 
     # the lines must appear in sequence (as calls to JS, the optimizer cannot
@@ -7472,7 +7480,7 @@ Module['onRuntimeInitialized'] = function() {
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
-    if not conditional and is_optimizing(self.emcc_args):
+    if not conditional and is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
       # If the call to lazy-load is unconditional, then the optimizer can dce
       # out more than half
       self.assertLess(first_size, 0.6 * second_size)
