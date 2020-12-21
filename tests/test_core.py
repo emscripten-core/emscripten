@@ -38,10 +38,10 @@ logger = logging.getLogger("test_core")
 
 def wasm_simd(f):
   def decorated(self):
-    if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
-      if os.getenv('EMTEST_NO_D8') is None:
-        raise Exception('d8 is needed to run SIMD tests, set EMTEST_NO_D8 if you want to skip them')
-      self.skipTest('wasm simd only supported in d8 for now')
+    if os.getenv('EMTEST_NO_D8'):
+      self.skipTest('Skipped because EMTEST_NO_D8 is set')
+    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
+      self.fail('wasm simd only supported in d8 but d8 is not found (set EMTEST_NO_D8 to skip these tests)')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     if '-O3' in self.emcc_args:
@@ -56,6 +56,10 @@ def wasm_simd(f):
 
 def bleeding_edge_wasm_backend(f):
   def decorated(self):
+    if os.getenv('EMTEST_NO_D8'):
+      self.skipTest('Skipped because EMTEST_NO_D8 is set')
+    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
+      self.fail('only works in d8 for now but d8 is not found (set EMTEST_NO_D8 to skip these tests)')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm2js only supports MVP for now')
     self.js_engines = [config.V8_ENGINE]
@@ -64,8 +68,6 @@ def bleeding_edge_wasm_backend(f):
 
 
 def also_with_wasm_bigint(f):
-  def decorated(self):
-    self.set_setting('WASM_BIGINT', 0)
     f(self)
     if self.is_wasm():
       self.set_setting('WASM_BIGINT')
