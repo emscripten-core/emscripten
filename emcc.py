@@ -1909,9 +1909,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                                              '_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end']
 
-    if shared.Settings.USE_PTHREADS:
-      newargs.append('-pthread')
-
     # Any "pointers" passed to JS will now be i64's, in both modes.
     if shared.Settings.MEMORY64:
       if settings_key_changes.get('WASM_BIGINT') == '0':
