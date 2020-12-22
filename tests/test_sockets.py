@@ -24,8 +24,8 @@ except Exception:
   # which is the same behavior as before.
   pass
 import clang_native
-from runner import BrowserCore, no_windows, chdir, create_test_file
-from tools import shared, config
+from runner import BrowserCore, no_windows, create_test_file
+from tools import shared, config, utils
 from tools.shared import PYTHON, EMCC, path_from_root, WINDOWS, run_process, CLANG_CC
 
 npm_checked = False
@@ -286,7 +286,7 @@ class sockets(BrowserCore):
     # this is also a good test of raw usage of emconfigure and emmake
     shared.try_delete('enet')
     shutil.copytree(path_from_root('tests', 'third_party', 'enet'), 'enet')
-    with chdir('enet'):
+    with utils.chdir('enet'):
       self.run_process([path_from_root('emconfigure'), './configure'])
       self.run_process([path_from_root('emmake'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]

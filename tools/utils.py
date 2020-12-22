@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import contextlib
 import os
 import sys
 
@@ -30,6 +31,17 @@ def safe_ensure_dirs(dirname):
     # Ignore error for already existing dirname as exist_ok does
     if not os.path.isdir(dirname):
       raise
+
+
+@contextlib.contextmanager
+def chdir(dir):
+  """A context manager that performs actions in the given directory."""
+  orig_cwd = os.getcwd()
+  os.chdir(dir)
+  try:
+    yield
+  finally:
+    os.chdir(orig_cwd)
 
 
 # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.

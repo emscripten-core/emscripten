@@ -32,7 +32,7 @@ from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
-from runner import env_modify, no_mac, no_windows, requires_native_clang, chdir, with_env_modify
+from runner import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from runner import create_test_file, parameterized, NON_ZERO, node_pthreads
 from tools import shared, building, utils
 import jsrun
@@ -2014,7 +2014,7 @@ int f() {
     # this test copies the site_scons directory alongside the test
     shutil.copytree(path_from_root('tests', 'scons'), 'test')
     shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join('test', 'site_scons'))
-    with chdir('test'):
+    with utils.chdir('test'):
       self.run_process(['scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
@@ -2026,7 +2026,7 @@ int f() {
     # uses the emscons wrapper which requires EMSCRIPTEN_TOOLPATH to find
     # site_scons
     shutil.copytree(path_from_root('tests', 'scons'), 'test')
-    with chdir('test'):
+    with utils.chdir('test'):
       self.run_process([path_from_root('emscons'), 'scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
