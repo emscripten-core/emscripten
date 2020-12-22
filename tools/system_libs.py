@@ -15,7 +15,7 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import shared, building, ports, config
+from . import shared, building, ports, config, utils
 from . import deps_info
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
@@ -1816,12 +1816,8 @@ class Ports(object):
         z = tarfile.open(fullpath, 'r:gz')
       else:
         z = zipfile.ZipFile(fullpath, 'r')
-      try:
-        cwd = os.getcwd()
-        os.chdir(fullname)
+      with utils.chdir(fullname):
         z.extractall()
-      finally:
-        os.chdir(cwd)
 
       State.unpacked = True
 

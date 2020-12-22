@@ -226,17 +226,6 @@ def with_env_modify(updates):
   return decorated
 
 
-@contextlib.contextmanager
-def chdir(dir):
-  """A context manager that performs actions in the given directory."""
-  orig_cwd = os.getcwd()
-  os.chdir(dir)
-  try:
-    yield
-  finally:
-    os.chdir(orig_cwd)
-
-
 def ensure_dir(dirname):
   if not os.path.isdir(dirname):
     os.makedirs(dirname)
