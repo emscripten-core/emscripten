@@ -1722,10 +1722,9 @@ class Ports(object):
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
-      shared.Cache.acquire_cache_lock()
       logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-      try:
+      with shared.Cache.lock():
         for local in local_ports:
           if name == local[0]:
             path = local[1]
@@ -1745,8 +1744,6 @@ class Ports(object):
               shutil.copytree(path, target)
               Ports.clear_project_build(name)
             return
-      finally:
-        shared.Cache.release_cache_lock()
 
     if is_tarbz2:
       fullpath = fullname + '.tar.bz2'
@@ -1824,8 +1821,7 @@ class Ports(object):
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
 
-    shared.Cache.acquire_cache_lock()
-    try:
+    with shared.Cache.lock():
       if not os.path.exists(fullpath):
         retrieve()
 
@@ -1842,8 +1838,6 @@ class Ports(object):
       if State.unpacked:
         # we unpacked a new version, clear the build in the cache
         Ports.clear_project_build(name)
-    finally:
-      shared.Cache.release_cache_lock()
 
   @staticmethod
   def clear_project_build(name):
