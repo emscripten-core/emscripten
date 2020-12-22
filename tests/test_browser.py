@@ -218,9 +218,8 @@ If manually bisecting:
 ''')
 
   def test_emscripten_log(self):
-    src = path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')
-    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html'])
-    self.run_browser('page.html', None, '/report_result?1')
+    self.btest_exit(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp'), 0,
+                    args=['--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4'])
 
   def test_preload_file(self):
     absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
