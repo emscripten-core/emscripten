@@ -88,7 +88,7 @@
   extern "C" _LIBUNWIND_EXPORT __typeof(name) aliasname;
 #endif
 // XXX EMSCRIPTEN
-#elif defined(__USING_WASM_EXCEPTIONS__)
+#elif defined(__EMSCRIPTEN__)
 // Nothing to do
 #else
 #error Unsupported target
