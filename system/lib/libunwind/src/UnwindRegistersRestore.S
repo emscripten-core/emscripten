@@ -1,9 +1,8 @@
 //===-------------------- UnwindRegistersRestore.S ------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -14,7 +13,7 @@
 #if !defined(__USING_SJLJ_EXCEPTIONS__)
 
 #if defined(__i386__)
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_x866jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_x866jumptoEv)
 #
 # void libunwind::Registers_x86::jumpto()
 #
@@ -61,7 +60,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_x866jumptoEv)
 
 #elif defined(__x86_64__)
 
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind16Registers_x86_646jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind16Registers_x86_646jumptoEv)
 #
 # void libunwind::Registers_x86_64::jumpto()
 #
@@ -130,7 +129,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind16Registers_x86_646jumptoEv)
 
 #elif defined(__powerpc64__)
 
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind15Registers_ppc646jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind15Registers_ppc646jumptoEv)
 //
 // void libunwind::Registers_ppc64::jumpto()
 //
@@ -395,7 +394,7 @@ Lnovec:
 
 #elif defined(__ppc__)
 
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_ppc6jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_ppc6jumptoEv)
 //
 // void libunwind::Registers_ppc::jumpto()
 //
@@ -558,7 +557,7 @@ Lnovec:
   lwz     %r3,  20(%r3)   // do r3 last
   bctr
 
-#elif defined(__arm64__) || defined(__aarch64__)
+#elif defined(__aarch64__)
 
 //
 // void libunwind::Registers_arm64::jumpto()
@@ -567,7 +566,7 @@ Lnovec:
 //  thread_state pointer is in x0
 //
   .p2align 2
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind15Registers_arm646jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind15Registers_arm646jumptoEv)
   // skip restore of x0,x1 for now
   ldp    x2, x3,  [x0, #0x010]
   ldp    x4, x5,  [x0, #0x020]
@@ -576,7 +575,8 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind15Registers_arm646jumptoEv)
   ldp    x10,x11, [x0, #0x050]
   ldp    x12,x13, [x0, #0x060]
   ldp    x14,x15, [x0, #0x070]
-  ldp    x16,x17, [x0, #0x080]
+  // x16 and x17 were clobbered by the call into the unwinder, so no point in
+  // restoring them.
   ldp    x18,x19, [x0, #0x090]
   ldp    x20,x21, [x0, #0x0A0]
   ldp    x22,x23, [x0, #0x0B0]
@@ -584,8 +584,6 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind15Registers_arm646jumptoEv)
   ldp    x26,x27, [x0, #0x0D0]
   ldp    x28,x29, [x0, #0x0E0]
   ldr    x30,     [x0, #0x100]  // restore pc into lr
-  ldr    x1,      [x0, #0x0F8]
-  mov    sp,x1                  // restore sp
 
   ldp    d0, d1,  [x0, #0x110]
   ldp    d2, d3,  [x0, #0x120]
@@ -605,12 +603,21 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind15Registers_arm646jumptoEv)
   ldr    d30,     [x0, #0x200]
   ldr    d31,     [x0, #0x208]
 
+  // Finally, restore sp. This must be done after the the last read from the
+  // context struct, because it is allocated on the stack, and an exception
+  // could clobber the de-allocated portion of the stack after sp has been
+  // restored.
+  ldr    x16,     [x0, #0x0F8]
   ldp    x0, x1,  [x0, #0x000]  // restore x0,x1
+  mov    sp,x16                 // restore sp
   ret    x30                    // jump to pc
 
 #elif defined(__arm__) && !defined(__APPLE__)
 
 #if !defined(__ARM_ARCH_ISA_ARM)
+#if (__ARM_ARCH_ISA_THUMB == 2)
+  .syntax unified
+#endif
   .thumb
 #endif
 
@@ -621,7 +628,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind15Registers_arm646jumptoEv)
 @  thread_state pointer is in r0
 @
   .p2align 2
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm20restoreCoreAndJumpToEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm20restoreCoreAndJumpToEv)
 #if !defined(__ARM_ARCH_ISA_ARM) && __ARM_ARCH_ISA_THUMB == 1
   @ r8-r11: ldm into r1-r4, then mov to r8-r11
   adds r0, #0x20
@@ -659,7 +666,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm20restoreCoreAndJu
 #if defined(__ELF__)
   .fpu vfpv3-d16
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm19restoreVFPWithFLDMDEPy)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm19restoreVFPWithFLDMDEPv)
   @ VFP and iwMMX instructions are only available when compiling with the flags
   @ that enable them. We do not want to do that in the library (because we do not
   @ want the compiler to generate instructions that access those) but this is
@@ -680,7 +687,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm19restoreVFPWithFL
 #if defined(__ELF__)
   .fpu vfpv3-d16
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm19restoreVFPWithFLDMXEPy)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm19restoreVFPWithFLDMXEPv)
   vldmia r0, {d0-d15} @ fldmiax is deprecated in ARMv7+ and now behaves like vldmia
   JMP(lr)
 
@@ -694,7 +701,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm19restoreVFPWithFL
 #if defined(__ELF__)
   .fpu vfpv3
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm12restoreVFPv3EPy)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm12restoreVFPv3EPv)
   vldmia r0, {d16-d31}
   JMP(lr)
 
@@ -710,7 +717,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm12restoreVFPv3EPy)
 #if defined(__ELF__)
   .arch armv5te
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm12restoreiWMMXEPy)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm12restoreiWMMXEPv)
   ldcl p1, cr0, [r0], #8  @ wldrd wR0, [r0], #8
   ldcl p1, cr1, [r0], #8  @ wldrd wR1, [r0], #8
   ldcl p1, cr2, [r0], #8  @ wldrd wR2, [r0], #8
@@ -739,7 +746,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm12restoreiWMMXEPy)
 #if defined(__ELF__)
   .arch armv5te
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm19restoreiWMMXControlEPj)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm19restoreiWMMXControlEPj)
   ldc2 p1, cr8, [r0], #4  @ wldrw wCGR0, [r0], #4
   ldc2 p1, cr9, [r0], #4  @ wldrw wCGR1, [r0], #4
   ldc2 p1, cr10, [r0], #4  @ wldrw wCGR2, [r0], #4
@@ -750,7 +757,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm19restoreiWMMXCont
 
 #elif defined(__or1k__)
 
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind14Registers_or1k6jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind14Registers_or1k6jumptoEv)
 #
 # void libunwind::Registers_or1k::jumpto()
 #
@@ -801,6 +808,48 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind14Registers_or1k6jumptoEv)
   l.jr     r9
    l.nop
 
+#elif defined(__hexagon__)
+# On entry:
+#  thread_state pointer is in r2
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind17Registers_hexagon6jumptoEv)
+#
+# void libunwind::Registers_hexagon::jumpto()
+#
+  r8 = memw(r0+#32)
+  r9 = memw(r0+#36)
+  r10 = memw(r0+#40)
+  r11 = memw(r0+#44)
+
+  r12 = memw(r0+#48)
+  r13 = memw(r0+#52)
+  r14 = memw(r0+#56)
+  r15 = memw(r0+#60)
+
+  r16 = memw(r0+#64)
+  r17 = memw(r0+#68)
+  r18 = memw(r0+#72)
+  r19 = memw(r0+#76)
+
+  r20 = memw(r0+#80)
+  r21 = memw(r0+#84)
+  r22 = memw(r0+#88)
+  r23 = memw(r0+#92)
+
+  r24 = memw(r0+#96)
+  r25 = memw(r0+#100)
+  r26 = memw(r0+#104)
+  r27 = memw(r0+#108)
+
+  r28 = memw(r0+#112)
+  r29 = memw(r0+#116)
+  r30 = memw(r0+#120)
+  r31 = memw(r0+#132)
+
+  r1 = memw(r0+#128)
+  c4 = r1   // Predicate register
+  r1 = memw(r0+#4)
+  r0 = memw(r0)
+  jumpr r31
 #elif defined(__mips__) && defined(_ABIO32) && _MIPS_SIM == _ABIO32
 
 //
@@ -809,7 +858,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind14Registers_or1k6jumptoEv)
 // On entry:
 //  thread state pointer is in a0 ($4)
 //
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind18Registers_mips_o326jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind18Registers_mips_o326jumptoEv)
   .set push
   .set noat
   .set noreorder
@@ -918,7 +967,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind18Registers_mips_o326jumptoEv)
 // On entry:
 //  thread state pointer is in a0 ($4)
 //
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind21Registers_mips_newabi6jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind21Registers_mips_newabi6jumptoEv)
   .set push
   .set noat
   .set noreorder
@@ -1008,7 +1057,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind21Registers_mips_newabi6jumptoEv)
 // On entry:
 //  thread_state pointer is in o0
 //
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind15Registers_sparc6jumptoEv)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind15Registers_sparc6jumptoEv)
   ta 3
   ldd [%o0 + 64],  %l0
   ldd [%o0 + 72],  %l2
@@ -1021,6 +1070,87 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind15Registers_sparc6jumptoEv)
   ld  [%o0 + 60],  %o7
   jmp %o7
    nop
+
+#elif defined(__riscv) && __riscv_xlen == 64
+
+//
+// void libunwind::Registers_riscv::jumpto()
+//
+// On entry:
+//  thread_state pointer is in a0
+//
+  .p2align 2
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind15Registers_riscv6jumptoEv)
+#if defined(__riscv_flen) && __riscv_flen == 64
+  fld    f0, (8 * 32 + 8 * 0)(a0)
+  fld    f1, (8 * 32 + 8 * 1)(a0)
+  fld    f2, (8 * 32 + 8 * 2)(a0)
+  fld    f3, (8 * 32 + 8 * 3)(a0)
+  fld    f4, (8 * 32 + 8 * 4)(a0)
+  fld    f5, (8 * 32 + 8 * 5)(a0)
+  fld    f6, (8 * 32 + 8 * 6)(a0)
+  fld    f7, (8 * 32 + 8 * 7)(a0)
+  fld    f8, (8 * 32 + 8 * 8)(a0)
+  fld    f9, (8 * 32 + 8 * 9)(a0)
+  fld    f10, (8 * 32 + 8 * 10)(a0)
+  fld    f11, (8 * 32 + 8 * 11)(a0)
+  fld    f12, (8 * 32 + 8 * 12)(a0)
+  fld    f13, (8 * 32 + 8 * 13)(a0)
+  fld    f14, (8 * 32 + 8 * 14)(a0)
+  fld    f15, (8 * 32 + 8 * 15)(a0)
+  fld    f16, (8 * 32 + 8 * 16)(a0)
+  fld    f17, (8 * 32 + 8 * 17)(a0)
+  fld    f18, (8 * 32 + 8 * 18)(a0)
+  fld    f19, (8 * 32 + 8 * 19)(a0)
+  fld    f20, (8 * 32 + 8 * 20)(a0)
+  fld    f21, (8 * 32 + 8 * 21)(a0)
+  fld    f22, (8 * 32 + 8 * 22)(a0)
+  fld    f23, (8 * 32 + 8 * 23)(a0)
+  fld    f24, (8 * 32 + 8 * 24)(a0)
+  fld    f25, (8 * 32 + 8 * 25)(a0)
+  fld    f26, (8 * 32 + 8 * 26)(a0)
+  fld    f27, (8 * 32 + 8 * 27)(a0)
+  fld    f28, (8 * 32 + 8 * 28)(a0)
+  fld    f29, (8 * 32 + 8 * 29)(a0)
+  fld    f30, (8 * 32 + 8 * 30)(a0)
+  fld    f31, (8 * 32 + 8 * 31)(a0)
+#endif
+
+  // x0 is zero
+  ld    x1, (8 * 0)(a0) // restore pc into ra
+  ld    x2, (8 * 2)(a0)
+  ld    x3, (8 * 3)(a0)
+  ld    x4, (8 * 4)(a0)
+  ld    x5, (8 * 5)(a0)
+  ld    x6, (8 * 6)(a0)
+  ld    x7, (8 * 7)(a0)
+  ld    x8, (8 * 8)(a0)
+  ld    x9, (8 * 9)(a0)
+  // skip a0 for now
+  ld    x11, (8 * 11)(a0)
+  ld    x12, (8 * 12)(a0)
+  ld    x13, (8 * 13)(a0)
+  ld    x14, (8 * 14)(a0)
+  ld    x15, (8 * 15)(a0)
+  ld    x16, (8 * 16)(a0)
+  ld    x17, (8 * 17)(a0)
+  ld    x18, (8 * 18)(a0)
+  ld    x19, (8 * 19)(a0)
+  ld    x20, (8 * 20)(a0)
+  ld    x21, (8 * 21)(a0)
+  ld    x22, (8 * 22)(a0)
+  ld    x23, (8 * 23)(a0)
+  ld    x24, (8 * 24)(a0)
+  ld    x25, (8 * 25)(a0)
+  ld    x26, (8 * 26)(a0)
+  ld    x27, (8 * 27)(a0)
+  ld    x28, (8 * 28)(a0)
+  ld    x29, (8 * 29)(a0)
+  ld    x30, (8 * 30)(a0)
+  ld    x31, (8 * 31)(a0)
+  ld    x10, (8 * 10)(a0)   // restore a0
+
+  ret                       // jump to ra
 
 #endif
 
