@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <utime.h>
 #include <sys/stat.h>
@@ -29,6 +30,11 @@ void create_file(const char *path, const char *buffer, int mode) {
   close(fd);
 }
 
+void active_sleep(int delta) {
+    time_t end = time(NULL) + delta;
+    while (time(NULL) < end);
+}
+
 void setup() {
   struct utimbuf t = {1200000000, 1200000000};
   
@@ -41,6 +47,7 @@ void setup() {
 }
 
 void cleanup() {
+  rmdir("folder/subdir");
   unlink("folder/file");
   unlink("folder/file-link");
   rmdir("folder");
@@ -49,6 +56,7 @@ void cleanup() {
 void test() {
   int err;
   struct stat s;
+  time_t t[5];
 
   // stat a folder
   memset(&s, 0, sizeof(s));
@@ -160,6 +168,24 @@ void test() {
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
+
+  // create and unlink files inside a directory and check that mtime updates
+  mkdir("folder/subdir", 0777);
+  err = stat("folder/subdir", &s);
+  t[0] = s.st_mtime;
+  active_sleep(2);
+  create_file("folder/subdir/file", "abcdef", 0777);
+  err = stat("folder/subdir", &s);
+  t[1] = s.st_mtime;
+  err = stat("folder/subdir/file", &s);
+  t[2] = s.st_mtime;
+  assert(t[1] > t[0]);
+  assert(t[2] == t[1]);
+  active_sleep(2);
+  unlink("folder/subdir/file");
+  err = stat("folder/subdir", &s);
+  t[3] = s.st_mtime;
+  assert(t[3] > t[1]);
 
   puts("success");
 }
