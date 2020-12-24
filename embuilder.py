@@ -60,6 +60,7 @@ USER_TASKS = [
     'harfbuzz',
     'icu',
     'libjpeg',
+    'liblzma',
     'libpng',
     'ogg',
     'regal',
@@ -197,6 +198,8 @@ def main():
       build_port('ogg', libname('libogg'))
     elif what == 'libjpeg':
       build_port('libjpeg', libname('libjpeg'))
+    elif what == 'liblzma':
+      build_port('liblzma', libname('liblzma'))
     elif what == 'libpng':
       build_port('libpng', libname('libpng'))
     elif what == 'sdl2':
