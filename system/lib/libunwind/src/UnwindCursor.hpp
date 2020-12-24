@@ -1,9 +1,8 @@
 //===------------------------- UnwindCursor.hpp ---------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //
 // C++ interface to lower levels of libunwind
@@ -12,7 +11,6 @@
 #ifndef __UNWINDCURSOR_HPP__
 #define __UNWINDCURSOR_HPP__
 
-#include <algorithm>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,7 +104,6 @@ private:
   static void dyldUnloadHook(const struct mach_header *mh, intptr_t slide);
   static bool _registeredForDyldUnloads;
 #endif
-  // Can't use std::vector<> here because this code is below libc++.
   static entry *_buffer;
   static entry *_bufferUsed;
   static entry *_bufferEnd;
@@ -485,6 +482,10 @@ public:
   DISPATCHER_CONTEXT *getDispatcherContext() { return &_dispContext; }
   void setDispatcherContext(DISPATCHER_CONTEXT *disp) { _dispContext = *disp; }
 
+  // libunwind does not and should not depend on C++ library which means that we
+  // need our own defition of inline placement new.
+  static void *operator new(size_t, UnwindCursor<A, R> *p) { return p; }
+
 private:
 
   pint_t getLastPC() const { return _dispContext.ControlPc; }
@@ -789,6 +790,8 @@ bool UnwindCursor<A, R>::validFloatReg(int regNum) {
   if (regNum >= UNW_ARM_D0 && regNum <= UNW_ARM_D31) return true;
 #elif defined(_LIBUNWIND_TARGET_AARCH64)
   if (regNum >= UNW_ARM64_D0 && regNum <= UNW_ARM64_D31) return true;
+#else
+  (void)regNum;
 #endif
   return false;
 }
@@ -816,6 +819,7 @@ unw_fpreg_t UnwindCursor<A, R>::getFloatReg(int regNum) {
 #elif defined(_LIBUNWIND_TARGET_AARCH64)
   return _msContext.V[regNum - UNW_ARM64_D0].D[0];
 #else
+  (void)regNum;
   _LIBUNWIND_ABORT("float registers unimplemented");
 #endif
 }
@@ -843,6 +847,8 @@ void UnwindCursor<A, R>::setFloatReg(int regNum, unw_fpreg_t value) {
 #elif defined(_LIBUNWIND_TARGET_AARCH64)
   _msContext.V[regNum - UNW_ARM64_D0].D[0] = value;
 #else
+  (void)regNum;
+  (void)value;
   _LIBUNWIND_ABORT("float registers unimplemented");
 #endif
 }
@@ -892,6 +898,10 @@ public:
   virtual void        saveVFPAsX();
 #endif
 
+  // libunwind does not and should not depend on C++ library which means that we
+  // need our own defition of inline placement new.
+  static void *operator new(size_t, UnwindCursor<A, R> *p) { return p; }
+
 private:
 
 #if defined(_LIBUNWIND_ARM_EHABI)
@@ -919,7 +929,7 @@ private:
     return DwarfInstructions<A, R>::stepWithDwarf(_addressSpace,
                                               (pint_t)this->getReg(UNW_REG_IP),
                                               (pint_t)_info.unwind_info,
-                                              _registers);
+                                              _registers, _isSignalFrame);
   }
 #endif
 
@@ -983,6 +993,12 @@ private:
 
 #if defined(_LIBUNWIND_TARGET_SPARC)
   int stepWithCompactEncoding(Registers_sparc &) { return UNW_EINVAL; }
+#endif
+
+#if defined (_LIBUNWIND_TARGET_RISCV)
+  int stepWithCompactEncoding(Registers_riscv &) {
+    return UNW_EINVAL;
+  }
 #endif
 
   bool compactSaysUseDwarf(uint32_t *offset=NULL) const {
@@ -1051,6 +1067,12 @@ private:
   bool compactSaysUseDwarf(Registers_sparc &, uint32_t *) const { return true; }
 #endif
 
+#if defined (_LIBUNWIND_TARGET_RISCV)
+  bool compactSaysUseDwarf(Registers_riscv &, uint32_t *) const {
+    return true;
+  }
+#endif
+
 #endif // defined(_LIBUNWIND_SUPPORT_COMPACT_UNWIND)
 
 #if defined(_LIBUNWIND_SUPPORT_DWARF_UNWIND)
@@ -1101,6 +1123,12 @@ private:
   }
 #endif
 
+#if defined (_LIBUNWIND_TARGET_HEXAGON)
+  compact_unwind_encoding_t dwarfEncoding(Registers_hexagon &) const {
+    return 0;
+  }
+#endif
+
 #if defined (_LIBUNWIND_TARGET_MIPS_O32)
   compact_unwind_encoding_t dwarfEncoding(Registers_mips_o32 &) const {
     return 0;
@@ -1115,6 +1143,12 @@ private:
 
 #if defined(_LIBUNWIND_TARGET_SPARC)
   compact_unwind_encoding_t dwarfEncoding(Registers_sparc &) const { return 0; }
+#endif
+
+#if defined (_LIBUNWIND_TARGET_RISCV)
+  compact_unwind_encoding_t dwarfEncoding(Registers_riscv &) const {
+    return 0;
+  }
 #endif
 
 #endif // defined(_LIBUNWIND_SUPPORT_DWARF_UNWIND)
@@ -1212,16 +1246,10 @@ template <typename A, typename R> bool UnwindCursor<A, R>::isSignalFrame() {
 #endif // defined(_LIBUNWIND_SUPPORT_SEH_UNWIND)
 
 #if defined(_LIBUNWIND_ARM_EHABI)
-struct EHABIIndexEntry {
-  uint32_t functionOffset;
-  uint32_t data;
-};
-
 template<typename A>
 struct EHABISectionIterator {
   typedef EHABISectionIterator _Self;
 
-  typedef std::random_access_iterator_tag iterator_category;
   typedef typename A::pint_t value_type;
   typedef typename A::pint_t* pointer;
   typedef typename A::pint_t& reference;
@@ -1247,12 +1275,18 @@ struct EHABISectionIterator {
   _Self operator+(size_t a) { _Self out = *this; out._i += a; return out; }
   _Self operator-(size_t a) { assert(_i >= a); _Self out = *this; out._i -= a; return out; }
 
-  size_t operator-(const _Self& other) { return _i - other._i; }
+  size_t operator-(const _Self& other) const { return _i - other._i; }
 
   bool operator==(const _Self& other) const {
     assert(_addressSpace == other._addressSpace);
     assert(_sects == other._sects);
     return _i == other._i;
+  }
+
+  bool operator!=(const _Self& other) const {
+    assert(_addressSpace == other._addressSpace);
+    assert(_sects == other._sects);
+    return _i != other._i;
   }
 
   typename A::pint_t operator*() const { return functionAddress(); }
@@ -1275,6 +1309,29 @@ struct EHABISectionIterator {
   const UnwindInfoSections* _sects;
 };
 
+namespace {
+
+template <typename A>
+EHABISectionIterator<A> EHABISectionUpperBound(
+    EHABISectionIterator<A> first,
+    EHABISectionIterator<A> last,
+    typename A::pint_t value) {
+  size_t len = last - first;
+  while (len > 0) {
+    size_t l2 = len / 2;
+    EHABISectionIterator<A> m = first + l2;
+    if (value < *m) {
+        len = l2;
+    } else {
+        first = ++m;
+        len -= l2 + 1;
+    }
+  }
+  return first;
+}
+
+}
+
 template <typename A, typename R>
 bool UnwindCursor<A, R>::getInfoFromEHABISection(
     pint_t pc,
@@ -1286,7 +1343,7 @@ bool UnwindCursor<A, R>::getInfoFromEHABISection(
   if (begin == end)
     return false;
 
-  EHABISectionIterator<A> itNextPC = std::upper_bound(begin, end, pc);
+  EHABISectionIterator<A> itNextPC = EHABISectionUpperBound(begin, end, pc);
   if (itNextPC == begin)
     return false;
   EHABISectionIterator<A> itThisPC = itNextPC - 1;
@@ -1296,8 +1353,7 @@ bool UnwindCursor<A, R>::getInfoFromEHABISection(
   // in the table, we don't really know the function extent and have to choose a
   // value for nextPC. Choosing max() will allow the range check during trace to
   // succeed.
-  pint_t nextPC = (itNextPC == end) ? std::numeric_limits<pint_t>::max()
-                                    : itNextPC.functionAddress();
+  pint_t nextPC = (itNextPC == end) ? UINTPTR_MAX : itNextPC.functionAddress();
   pint_t indexDataAddr = itThisPC.dataAddress();
 
   if (indexDataAddr == 0)
@@ -1309,7 +1365,8 @@ bool UnwindCursor<A, R>::getInfoFromEHABISection(
 
   // If the high bit is set, the exception handling table entry is inline inside
   // the index table entry on the second word (aka |indexDataAddr|). Otherwise,
-  // the table points at an offset in the exception handling table (section 5 EHABI).
+  // the table points at an offset in the exception handling table (section 5
+  // EHABI).
   pint_t exceptionTableAddr;
   uint32_t exceptionTableData;
   bool isSingleWordEHT;
@@ -1408,7 +1465,7 @@ bool UnwindCursor<A, R>::getInfoFromEHABISection(
   _info.unwind_info = exceptionTableAddr;
   _info.lsda = lsda;
   // flags is pr_cache.additional. See EHABI #7.2 for definition of bit 0.
-  _info.flags = isSingleWordEHT ? 1 : 0 | scope32 ? 0x2 : 0;  // Use enum?
+  _info.flags = (isSingleWordEHT ? 1 : 0) | (scope32 ? 0x2 : 0);  // Use enum?
 
   return true;
 }
@@ -1709,7 +1766,7 @@ bool UnwindCursor<A, R>::getInfoFromCompactEncodingSection(pint_t pc,
     --personalityIndex; // change 1-based to zero-based index
     if (personalityIndex > sectionHeader.personalityArrayCount()) {
       _LIBUNWIND_DEBUG_LOG("found encoding 0x%08X with personality index %d,  "
-                            "but personality table has only %d entires",
+                            "but personality table has only %d entries",
                             encoding, personalityIndex,
                             sectionHeader.personalityArrayCount());
       return false;
@@ -1802,6 +1859,12 @@ void UnwindCursor<A, R>::setInfoBasedOnIPRegister(bool isReturnAddress) {
   // This matches the behaviour of _Unwind_GetIP on arm.
   pc &= (pint_t)~0x1;
 #endif
+
+  // Exit early if at the top of the stack.
+  if (pc == 0) {
+    _unwindInfoMissing = true;
+    return;
+  }
 
   // If the last line of a function is a "throw" the compiler sometimes
   // emits no instructions after the call to __cxa_throw.  This means
@@ -1960,7 +2023,10 @@ int UnwindCursor<A, R>::step() {
 
 template <typename A, typename R>
 void UnwindCursor<A, R>::getInfo(unw_proc_info_t *info) {
-  *info = _info;
+  if (_unwindInfoMissing)
+    memset(info, 0, sizeof(*info));
+  else
+    *info = _info;
 }
 
 template <typename A, typename R>
