@@ -508,7 +508,7 @@ int getsockname(int socket, struct sockaddr *address, socklen_t *address_len)
   d.header.function = POSIX_SOCKET_MSG_GETSOCKNAME;
   d.socket = socket;
   d.address_len = *address_len;
-  emscripten_websocket_send_binary(bridgeSocket, &d, sizeof(d) + *address_len - MAX_SOCKADDR_SIZE);
+  emscripten_websocket_send_binary(bridgeSocket, &d, sizeof(d));
 
   wait_for_call_result(b);
   int ret = b->data->ret;
@@ -551,7 +551,7 @@ int getpeername(int socket, struct sockaddr *address, socklen_t *address_len)
   d.header.function = POSIX_SOCKET_MSG_GETPEERNAME;
   d.socket = socket;
   d.address_len = *address_len;
-  emscripten_websocket_send_binary(bridgeSocket, &d, sizeof(d) + *address_len - MAX_SOCKADDR_SIZE);
+  emscripten_websocket_send_binary(bridgeSocket, &d, sizeof(d));
 
   wait_for_call_result(b);
   int ret = b->data->ret;
