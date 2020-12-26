@@ -30,11 +30,6 @@ void create_file(const char *path, const char *buffer, int mode) {
   close(fd);
 }
 
-void active_sleep(int delta) {
-    time_t end = time(NULL) + delta;
-    while (time(NULL) < end);
-}
-
 void setup() {
   struct utimbuf t = {1200000000, 1200000000};
   
@@ -56,7 +51,7 @@ void cleanup() {
 void test() {
   int err;
   struct stat s;
-  time_t t[5];
+  struct utimbuf t = {1200000000, 1200000000};
 
   // stat a folder
   memset(&s, 0, sizeof(s));
@@ -171,21 +166,14 @@ void test() {
 
   // create and unlink files inside a directory and check that mtime updates
   mkdir("folder/subdir", 0777);
-  err = stat("folder/subdir", &s);
-  t[0] = s.st_mtime;
-  active_sleep(2);
+  utime("folder/subdir", &t);
   create_file("folder/subdir/file", "abcdef", 0777);
   err = stat("folder/subdir", &s);
-  t[1] = s.st_mtime;
-  err = stat("folder/subdir/file", &s);
-  t[2] = s.st_mtime;
-  assert(t[1] > t[0]);
-  assert(t[2] == t[1]);
-  active_sleep(2);
+  assert(s.st_mtime != 1200000000);
+  utime("folder/subdir", &t);
   unlink("folder/subdir/file");
   err = stat("folder/subdir", &s);
-  t[3] = s.st_mtime;
-  assert(t[3] > t[1]);
+  assert(s.st_mtime != 1200000000);
 
   puts("success");
 }
