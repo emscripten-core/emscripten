@@ -270,16 +270,13 @@ var SAFE_HEAP_LOG = 0;
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
 // normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-// calls not fail, this tries to convert values as best it can. In asm.js, this
-// uses doubles as the JS number type, so if you send a double to a parameter
-// accepting an int, it will be |0-d into a (signed) int. In wasm, we have i64s
-// so that is not valid, and instead we use 64 bits to represent values, as if
-// we wrote the sent value to memory and loaded the received type from the same
-// memory (using truncs/extends/ reinterprets). This means that when types do
-// not match the emulated values may differ between asm.js and wasm (and native,
-// for that matter - this is all undefined behavior). In any case, both
-// approaches appear good enough to support Python, which is the main use case
-// motivating this feature.
+// calls not fail, this tries to convert values as best it can.
+// We use 64 bits (i64) to represent values, as if we wrote the sent value to
+// memory and loaded the received type from the same memory (using
+// truncs/extends/ reinterprets). This means that when types do not match the
+// emulated values may not match (this is true of native too, for that matter -
+// this is all undefined behavior). This approaches appears good enough to
+// support Python, which is the main use case motivating this feature.
 var EMULATE_FUNCTION_POINTER_CASTS = 0;
 
 // Print out exceptions in emscriptened code. Does not work in asm.js mode
