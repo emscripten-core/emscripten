@@ -232,12 +232,12 @@ class sockets(BrowserCore):
     # generate a large string literal to use as our message
     message = ''
     for i in range(256 * 256 * 2):
-        message += str(chr(ord('a') + (i % 26)))
+      message += str(chr(ord('a') + (i % 26)))
 
     # re-write the client test with this literal (it's too big to pass via command line)
     input_filename = path_from_root('tests', 'sockets', 'test_sockets_echo_client.c')
     input = open(input_filename).read()
-    output = input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message)
+    create_test_file('test_sockets_echo_bigdata.c', input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
 
     harnesses = [
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49172), 0),
@@ -249,7 +249,7 @@ class sockets(BrowserCore):
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
+        self.btest('test_sockets_echo_bigdata.c', expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
   @no_windows('This test is Unix-specific.')
   @unittest.skip('fails on python3 - ws library may need to be updated')
