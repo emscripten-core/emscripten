@@ -3848,6 +3848,10 @@ window.close = function() {
     for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_supported.cpp'), expected='0', args=['-O3'] + args)
 
+  @requires_threads
+  def test_pthread_dispatch_after_exit(self):
+    self.btest_exit(path_from_root('tests', 'pthread', 'test_pthread_dispatch_after_exit.c'), 0, args=['-s', 'USE_PTHREADS'])
+
   # Test the operation of Module.pthreadMainPrefixURL variable
   @no_wasm_backend('uses js')
   @requires_threads

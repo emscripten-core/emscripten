@@ -168,17 +168,16 @@ this.onmessage = function(e) {
       // threads see a somewhat coherent clock across each of them
       // (+/- 0.1msecs in testing).
       Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
-      var threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['__emscripten_thread_init'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
       // Establish the stack frame for this thread in global scope
       // The stack grows downwards
       var max = e.data.stackBase;
       var top = e.data.stackBase + e.data.stackSize;
 #if ASSERTIONS
-      assert(threadInfoStruct);
+      assert(e.data.threadInfoStruct);
       assert(top != 0);
       assert(max != 0);
       assert(top > max);
@@ -241,11 +240,11 @@ this.onmessage = function(e) {
           if (ex instanceof Module['ExitStatus']) {
             if (Module['getNoExitRuntime']()) {
 #if ASSERTIONS
-              err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
+              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
 #endif
             } else {
 #if ASSERTIONS
-              err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), calling threadExit.');
+              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling threadExit.');
 #endif
               Module['PThread'].threadExit(ex.status);
             }
@@ -259,18 +258,18 @@ this.onmessage = function(e) {
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          err('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+          err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
 #endif
         }
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-      if (threadInfoStruct) {
+      if (Module['_pthread_self']()) {
         Module['PThread'].threadCancel();
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processThreadQueue') {
-      if (threadInfoStruct) { // If this thread is actually running?
+      if (Module['_pthread_self']()) { // If this thread is actually running?
         Module['_emscripten_current_thread_process_queued_calls']();
       }
     } else {

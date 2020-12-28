@@ -2369,6 +2369,10 @@ The current type of b is: 9
   def test_pthread_equal(self):
     self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_equal.cpp')
 
+  @node_pthreads
+  def test_pthread_dispatch_after_exit(self):
+    self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_dispatch_after_exit.c')
+
   def test_tcgetattr(self):
     self.do_runf(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'success')
 
