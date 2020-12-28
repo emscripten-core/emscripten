@@ -737,6 +737,7 @@ def run(args):
     if EMCC_CFLAGS:
       cmd += ' + ' + EMCC_CFLAGS
     logger.warning('invocation: ' + cmd + '  (in ' + os.getcwd() + ')')
+    logger.warning('running under python %s: %s' % (sys.version.split()[0], sys.executable))
   if EMCC_CFLAGS:
     args.extend(shlex.split(EMCC_CFLAGS))
 
@@ -868,6 +869,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # This needs to run before other cmdline flags have been parsed, so that
     # warnings are properly printed during arg parse.
     newargs = diagnostics.capture_warnings(newargs)
+
+    if 'EM_LAUNCHER' not in os.environ:
+      diagnostics.warning('launcher-script', 'emscripten python driver (emcc.py) was not run via the emcc launcher script (emcc).  While this may work, launching via any other mechansim is not officially supported.')
 
     if not config.config_file:
       diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprecated. Please use a file instead.')

@@ -8,4 +8,5 @@
   set EM_PY=python
 )
 
+@set EM_LAUNCHER=1
 @"%EM_PY%" "%~dp0\%~n0.py" %*

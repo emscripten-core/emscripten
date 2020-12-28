@@ -47,6 +47,9 @@ Current Trunk
   in any way since wasm-ld ignores unreferenced library files.  Only users
   of the `--whole-archive` linker flag (which is used when `MAIN_MODULE=1` is
   set) should be effected.
+- Emscripten will now warn if it is not run via the shell/bat launcher scripts.
+  Please use `emcc` (or `emcc.bat` on windows) rather then `python emcc.py` to
+  run python.  This warning can be disabled with `-Wno-launcher-script`.
 
 2.0.12: 01/09/2021
 ------------------
