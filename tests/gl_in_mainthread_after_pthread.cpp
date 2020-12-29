@@ -116,7 +116,6 @@ void PollThreadExit(void *)
 
 int main()
 {
-  EM_ASM(noExitRuntime = true;);
   CreateThread();
   emscripten_async_call(PollThreadExit, 0, 1000);
   return 0;

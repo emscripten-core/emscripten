@@ -2656,7 +2656,7 @@ m0.ccall('myread0','number',[],[]);
     create_test_file('proxyfs_pre.js', r'''
 if (typeof Module === 'undefined') Module = {};
 Module["noInitialRun"]=true;
-noExitRuntime=true;
+Module["noExitRuntime"]=true;
 ''')
 
     create_test_file('proxyfs_embed.txt', 'test\n')
