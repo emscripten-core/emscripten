@@ -203,11 +203,10 @@ Installation using packages
     appreciate the efforts by third parties to
     `package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/packaging.md>`_
     for users' convenience, and we'd like to help out, please get in touch if
-    you are such a packager!)
+    you are such a packager!). While these packages are not officially supported by the emscripten developers we try to
+    work with downstream packagers to ensure everything works as expected.
 
-The following is a partial list of downstream emscripten packages. While these
-packages are not officially supported by the emscripten developers we try to
-work with downstream packagers to ensure everything works as expected.
+The following is a partial list of downstream emscripten packages:
 
 **Windows**
 - package info: `emscripten` in [chocolatey](https://chocolatey.org/packages/emscripten)
