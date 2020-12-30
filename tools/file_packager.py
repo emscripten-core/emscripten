@@ -378,7 +378,7 @@ def main():
         partial = '/'.join(parts[:i + 1])
         if partial not in partial_dirs:
           code += ('''Module['FS_createPath'](%s, %s, true, true);\n'''
-                   % (json.dumps('/'+'/'.join(parts[:i])), json.dumps(parts[i])))
+                   % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
 
   if has_preloaded:
