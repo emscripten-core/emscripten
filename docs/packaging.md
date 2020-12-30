@@ -146,6 +146,10 @@ The following is a partial list of downstream emscripten packages.  While these
 packages are not officially supported by the emscripten developers we try to
 work with downstream packagers to ensure everything works as expected.
 
+**Windows**
+- package info: `emscripten` in [chocolatey](https://chocolatey.org/packages/emscripten)
+- maintainer: @aminya
+
 **Homebrew**
  - package info: https://formulae.brew.sh/formula/emscripten
  - maintainer: @chenrui333
