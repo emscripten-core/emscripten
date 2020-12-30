@@ -294,19 +294,19 @@ you can tell Asyncify to ignore indirect calls using
 If you know that some indirect calls matter and others do not, then you
 can provide a manual list of functions to Asyncify:
 
-* ``ASYNCIFY_REMOVE_LIST`` is a list of functions that do not unwind the stack.
+* ``ASYNCIFY_REMOVE`` is a list of functions that do not unwind the stack.
   Asyncify will do its normal whole-program analysis, then remove these
   functions from the list of instrumented functions.
-* ``ASYNCIFY_ADD_LIST`` is a list of functions that do unwind the stack, and
+* ``ASYNCIFY_ADD`` is a list of functions that do unwind the stack, and
   are added after doing the normal whole-program analysis. This is mostly useful
   if you use ``ASYNCIFY_IGNORE_INDIRECT`` but want to also mark some additional
   functions that need to unwind.
-* ``ASYNCIFY_ONLY_LIST`` is a list of the **only** functions that can unwind
+* ``ASYNCIFY_ONLY`` is a list of the **only** functions that can unwind
   the stack. Asyncify will instrument exactly those and no others.
 
 You can enable the ``ASYNCIFY_ADVISE`` setting, which will tell the compiler to
 output which functions it is currently instrumenting and why. You can then
-determine whether you should add any functions to ``ASYNCIFY_REMOVE_LIST`` or
+determine whether you should add any functions to ``ASYNCIFY_REMOVE`` or
 whether it would be safe to enable ``ASYNCIFY_IGNORE_INDIRECT``. Note that this
 phase of the compiler happens after many optimization phases, and several
 functions maybe be inlined already. To be safe, run it with `-O0`.
