@@ -796,7 +796,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = shared.check_call([clang, '-v'], check=False).returncode
+    code = shared.check_call([clang, '-v'] + shared.get_clang_flags(), check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -1974,7 +1974,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return get_compiler(cxx) + cflags + per_file_cflags + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
-      asflags = shared.get_asmflags()
+      asflags = shared.get_clang_flags()
       return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
 
     # preprocessor-only (-E) support

@@ -167,6 +167,7 @@ class other(RunnerCore):
       self.assertTrue(proc.stderr.startswith('emcc (Emscripten gcc/clang-like replacement'))
       self.assertContained('clang version %s' % shared.EXPECTED_LLVM_VERSION, proc.stderr)
       self.assertContained('GNU', proc.stderr)
+      self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
       self.assertNotContained('this is dangerous', proc.stderr)
 
   def test_emcc_generate_config(self):
