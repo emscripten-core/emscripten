@@ -99,6 +99,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 def check_call(cmd, *args, **kw):
   """Like `run_process` above but treat failures as fatal and exit_with_error."""
+  print_compiler_stage(cmd)
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
@@ -114,7 +115,6 @@ def run_js_tool(filename, jsargs=[], *args, **kw):
   implemented in javascript.
   """
   command = config.NODE_JS + [filename] + jsargs
-  print_compiler_stage(command)
   return check_call(command, *args, **kw).stdout
 
 
