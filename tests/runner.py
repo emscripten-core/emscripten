@@ -184,7 +184,7 @@ def requires_native_clang(func):
 
 def node_pthreads(f):
   def decorated(self):
-    self.set_setting('USE_PTHREADS', 1)
+    self.set_setting('USE_PTHREADS')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('asan ends up using atomics that are not yet supported in node 12')
     if self.get_setting('MINIMAL_RUNTIME'):
@@ -933,7 +933,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ccshared('libb.cpp', ['liba' + so])
     ccshared('libc.cpp', ['liba' + so])
 
-    self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('MAIN_MODULE')
     self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
     do_run(r'''
       extern "C" {
