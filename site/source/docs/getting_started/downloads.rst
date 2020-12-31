@@ -11,7 +11,7 @@ Download and install
 .. _sdk-installation-instructions:
 
 Installation instructions using emsdk
-=========================
+=====================================
 
 First check the :ref:`Platform-specific notes <platform-notes-installation_instructions-SDK>` below and install any prerequisites.
 
@@ -191,7 +191,7 @@ The entire Emscripten SDK is also available in the form of a `docker image
 See the Docker Hub page for more details and examples.
 
 Installation using packages
-=========================
+===========================
 
 .. note:: the `emsdk` is the only officially supported way to use
     Emscripten that is supported by the Emscripten project, and the only one
