@@ -1439,6 +1439,11 @@ int main(int argc, char **argv)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow.cpp')
 
   @with_both_exception_handling
+  def test_exceptions_rethrow_missing(self):
+    create_test_file('main.cpp', 'int main() { throw; }')
+    self.do_runf('main.cpp', 'abort(no exception to throw)', assert_returncode=NON_ZERO)
+
+  @with_both_exception_handling
   def test_bad_typeid(self):
     self.do_run(r'''
 // exception example
