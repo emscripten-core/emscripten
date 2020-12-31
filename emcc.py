@@ -1149,6 +1149,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
+    if shared.Settings.LZ4:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['LZ4']
+
     if shared.Settings.WASM2C:
       # wasm2c only makes sense with standalone wasm - there will be no JS,
       # just wasm and then C
