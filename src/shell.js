@@ -73,7 +73,7 @@ for (key in Module) {
 }
 
 var arguments_ = [];
-var thisProgram = './this.program';
+var thisProgram = document.URL;
 var quit_ = function(status, toThrow) {
   throw toThrow;
 };
