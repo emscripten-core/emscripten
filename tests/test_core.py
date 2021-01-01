@@ -729,12 +729,6 @@ class TestCoreBase(RunnerCore):
     # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
     self.do_run_in_out_file_test('tests', 'core', 'test_getgep.c')
 
-  # No compiling from C/C++ - just process an existing .o/.ll/.bc file.
-  def do_run_object(self, obj_file, expected_output=None, **kwargs):
-    js_file = os.path.basename(obj_file) + '.js'
-    building.emcc(obj_file, self.get_emcc_args(), js_file)
-    self.do_run(js_file, expected_output, no_build=True, **kwargs)
-
   def test_multiply_defined_symbols(self):
     create_test_file('a1.c', 'int f() { return 1; }')
     create_test_file('a2.c', 'void x() {}')
@@ -760,7 +754,8 @@ class TestCoreBase(RunnerCore):
 
     building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
 
-    self.do_run_object('all.o', 'result: 1')
+    building.emcc('all.o', self.get_emcc_args(), 'all.js')
+    self.do_run('all.js', 'result: 1', no_build=True)
 
   def test_if(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_if.c')
