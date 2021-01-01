@@ -1603,8 +1603,7 @@ def build_library(name,
     generated_libs = [generated_libs]
   source_dir = path_from_root('tests', name.replace('_native', ''))
 
-  temp_dir = build_dir
-  project_dir = os.path.join(temp_dir, name)
+  project_dir = os.path.join(build_dir, name)
   if os.path.exists(project_dir):
     shutil.rmtree(project_dir)
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
