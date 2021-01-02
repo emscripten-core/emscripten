@@ -205,7 +205,7 @@ class EmscriptenBenchmarker(Benchmarker):
       '-s', 'INITIAL_MEMORY=256MB',
       '-s', 'FILESYSTEM=0',
       '--closure', '1',
-      '-s', 'MINIMAL_RUNTIME=1',
+      '-s', 'MINIMAL_RUNTIME',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + LLVM_FEATURE_FLAGS + self.extra_args
@@ -951,7 +951,7 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
-                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM=1', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
@@ -1029,7 +1029,7 @@ class benchmark(runner.RunnerCore):
     src = open(path_from_root('tests', 'third_party', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
     self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + path_from_root('tests', 'third_party', 'sqlite')],
-                      emcc_args=['-s', 'FILESYSTEM=1', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      emcc_args=['-s', 'FILESYSTEM', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
                       force_c=True)
 
   def test_zzz_poppler(self):
@@ -1078,7 +1078,7 @@ class benchmark(runner.RunnerCore):
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
-                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file',
+                      emcc_args=['-s', 'FILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
                                  path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0',
                                  '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, skip_native=True)
