@@ -4820,6 +4820,9 @@ Module = {
     out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
     self.do_run_from_file(src, out, assert_identical=True)
 
+  def test_proc_self_fd(self):
+    self.do_run_in_out_file_test('tests', 'fs', 'test_proc_self_fd.c')
+
   def test_fwrite_0(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_fwrite_0.c')
 
