@@ -9416,15 +9416,11 @@ int main() {
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
-    src = path_from_root('tests', 'other', 'test_asm.c')
-    output = path_from_root('tests', 'other', 'test_asm.out')
-    self.do_run_from_file(src, output, libraries=['foo.o'])
+    self.do_run_in_out_file_test('tests', 'other', 'test_asm.c', libraries=['foo.o'])
 
   def test_assembly_preprocessed(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm_cpp.S'), '-o', 'foo.o'])
-    src = path_from_root('tests', 'other', 'test_asm.c')
-    output = path_from_root('tests', 'other', 'test_asm.out')
-    self.do_run_from_file(src, output, libraries=['foo.o'])
+    self.do_run_in_out_file_test('tests', 'other', 'test_asm.c', libraries=['foo.o'])
 
   @parameterized({
     '': (['-DUSE_KEEPALIVE'],),
