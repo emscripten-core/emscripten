@@ -1250,13 +1250,12 @@ int main(int argc, char **argv)
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
 
-    src = path_from_root('tests', 'core', 'test_exceptions_allowed.cpp')
-    output = shared.unsuffixed(src) + '.out'
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_allowed.cpp')
     size = len(open('test_exceptions_allowed.js').read())
     shutil.copyfile('test_exceptions_allowed.js', 'orig.js')
 
     # check that an empty whitelist works properly (as in, same as exceptions disabled)
+    src = path_from_root('tests', 'core', 'test_exceptions_allowed.cpp')
     empty_output = path_from_root('tests', 'core', 'test_exceptions_allowed_empty.out')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
@@ -4809,16 +4808,14 @@ Module = {
     self.do_runf(path_from_root('tests', 'fs', 'test_getdents64.cpp'), '..')
 
   def test_getdents64_special_cases(self):
-    self.banned_js_engines = [config.V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
-    src = path_from_root('tests', 'fs', 'test_getdents64_special_cases.cpp')
-    out = path_from_root('tests', 'fs', 'test_getdents64_special_cases.out')
-    self.do_run_from_file(src, out, assert_identical=True)
+    # https://bugs.chromium.org/p/v8/issues/detail?id=6881
+    self.banned_js_engines = [config.V8_ENGINE]
+    self.do_run_in_out_file_test('tests', 'fs', 'test_getdents64_special_cases.cpp')
 
   def test_getcwd_with_non_ascii_name(self):
-    self.banned_js_engines = [config.V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
-    src = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
-    out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
-    self.do_run_from_file(src, out, assert_identical=True)
+    # https://bugs.chromium.org/p/v8/issues/detail?id=6881
+    self.banned_js_engines = [config.V8_ENGINE]
+    self.do_run_in_out_file_test('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
 
   def test_fwrite_0(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_fwrite_0.c')
@@ -5107,27 +5104,19 @@ main( int argv, char ** argc ) {
     self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
 
   def test_fs_trackingdelegate(self):
-    src = path_from_root('tests', 'fs', 'test_trackingdelegate.c')
-    out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
-    self.do_run_from_file(src, out)
+    self.do_run_in_out_file_test('tests', 'fs', 'test_trackingdelegate.c')
 
   @also_with_noderawfs
   def test_fs_writeFile(self):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING'] # see issue 2334
-    src = path_from_root('tests', 'fs', 'test_writeFile.cpp')
-    out = path_from_root('tests', 'fs', 'test_writeFile.out')
-    self.do_run_from_file(src, out)
+    self.do_run_in_out_file_test('tests', 'fs', 'test_writeFile.cpp')
 
   def test_fs_write(self):
-    src = path_from_root('tests', 'fs', 'test_write.cpp')
-    out = path_from_root('tests', 'fs', 'test_write.out')
-    self.do_run_from_file(src, out)
+    self.do_run_in_out_file_test('tests', 'fs', 'test_write.cpp')
 
   @also_with_noderawfs
   def test_fs_emptyPath(self):
-    src = path_from_root('tests', 'fs', 'test_emptyPath.c')
-    out = path_from_root('tests', 'fs', 'test_emptyPath.out')
-    self.do_run_from_file(src, out)
+    self.do_run_in_out_file_test('tests', 'fs', 'test_emptyPath.c')
 
   @also_with_noderawfs
   def test_fs_append(self):
@@ -5137,12 +5126,10 @@ main( int argv, char ** argc ) {
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
-      src = path_from_root('tests', 'fs', 'test_mmap.c')
-      out = path_from_root('tests', 'fs', 'test_mmap.out')
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run_from_file(src, out)
+      self.do_run_in_out_file_test('tests', 'fs', 'test_mmap.c')
 
   @also_with_noderawfs
   def test_fs_errorstack(self):
@@ -6753,25 +6740,23 @@ someweirdtext
 
   def test_embind_float_constants(self):
     self.emcc_args += ['--bind']
-    self.do_run_from_file(path_from_root('tests', 'embind', 'test_float_constants.cpp'),
-                          path_from_root('tests', 'embind', 'test_float_constants.out'))
+    self.do_run_in_out_file_test('tests', 'embind', 'test_float_constants.cpp')
 
   def test_embind_negative_constants(self):
     self.emcc_args += ['--bind']
-    self.do_run_from_file(path_from_root('tests', 'embind', 'test_negative_constants.cpp'),
-                          path_from_root('tests', 'embind', 'test_negative_constants.out'))
+    self.do_run_in_out_file_test('tests', 'embind', 'test_negative_constants.cpp')
 
   @also_with_wasm_bigint
   def test_embind_unsigned(self):
     self.emcc_args += ['--bind']
-    self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
+    self.do_run_in_out_file_test('tests', 'embind', 'test_unsigned.cpp')
 
   def test_embind_val(self):
     self.emcc_args += ['--bind']
-    self.do_run_from_file(path_from_root('tests', 'embind', 'test_val.cpp'), path_from_root('tests', 'embind', 'test_val.out'))
+    self.do_run_in_out_file_test('tests', 'embind', 'test_val.cpp')
 
   def test_embind_no_rtti(self):
-    src = r'''
+    create_test_file('main.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
@@ -6794,9 +6779,9 @@ someweirdtext
       EMSCRIPTEN_BINDINGS(my_module) {
         emscripten::function("dotest", &test);
       }
-    '''
+    ''')
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
-    self.do_run(src, '418\ndotest returned: 42\n')
+    self.do_runf('main.cpp', '418\ndotest returned: 42\n')
 
   def test_embind_polymorphic_class_no_rtti(self):
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
@@ -7212,10 +7197,10 @@ someweirdtext
     self.do_runf(path_from_root('tests', 'test_minmax.c'), 'NAN != NAN\nSuccess!')
 
   def test_locale(self):
-    self.do_run_from_file(path_from_root('tests', 'test_locale.c'), path_from_root('tests', 'test_locale.out'))
+    self.do_run_in_out_file_test('tests', 'test_locale.c')
 
   def test_vswprintf_utf8(self):
-    self.do_run_from_file(path_from_root('tests', 'vswprintf_utf8.c'), path_from_root('tests', 'vswprintf_utf8.out'))
+    self.do_run_in_out_file_test('tests', 'vswprintf_utf8.c')
 
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   def test_async(self):
