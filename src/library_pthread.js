@@ -108,7 +108,7 @@ var LibraryPThread = {
 
       // Zero fill contents at startup.
       for (var i = 0; i < {{{ C_STRUCTS.thread_profiler_block.__size__ }}}; i += 4) Atomics.store(HEAPU32, (profilerBlock + i) >> 2, 0);
-      Atomics.store(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 2, performance.now());
+      Atomics.store(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 2, performance.now());
     },
 
     // Sets the current thread status, but only if it was in the given expected state before. This is used

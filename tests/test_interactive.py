@@ -221,7 +221,13 @@ class interactive(BrowserCore):
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])
 
   def test_threadprofiler(self):
-    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=['-O2', '--threadprofiler', '-s', 'USE_PTHREADS', '-DTEST_THREAD_PROFILING=1', '-s', 'PTHREAD_POOL_SIZE=16', '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')])
+    args = ['-O2', '--threadprofiler',
+            '-s', 'USE_PTHREADS',
+            '-DTEST_THREAD_PROFILING=1',
+            '-s', 'PTHREAD_POOL_SIZE=16',
+            '-s', 'INITIAL_MEMORY=64mb',
+            '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')]
+    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=args)
 
   # Test that event backproxying works.
   def test_html5_callbacks_on_calling_thread(self):
