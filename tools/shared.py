@@ -473,25 +473,7 @@ def emsdk_cflags(user_args):
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     c_opts += ['-D__ARM_NEON__=1']
 
-  sysroot_include_paths = []
-
-  sysroot_include_paths += [
-    os.path.join('/include', 'compat'),
-    # TODO(sbc): Ideally we wouldn't need these, we could just copy them into the sysroot/include
-    # However, clang puts its internal header directory first so it finds its internal versions
-    # first.
-    os.path.join('/include', 'SSE'),
-    os.path.join('/include', 'neon'),
-  ]
-
-  def include_directive(paths):
-    result = []
-    for path in paths:
-      result += ['-Xclang', '-iwithsysroot' + path]
-    return result
-
-  # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  return c_opts + include_directive(sysroot_include_paths)
+  return c_opts + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
 
 
 def get_clang_flags():
