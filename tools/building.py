@@ -1359,7 +1359,7 @@ def strip(infile, outfile, debug=False, producers=False):
     cmd += ['--remove-section=.debug*']
   if producers:
     cmd += ['--remove-section=producers']
-  run_process(cmd)
+  check_call(cmd)
 
 
 # extract the DWARF info from the main file, and leave the wasm with
