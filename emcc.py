@@ -781,11 +781,11 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
       revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
     if revision:
       revision = ' (%s)' % revision
-    print('''emcc (Emscripten gcc/clang-like replacement) %s%s
+    print('''%s%s
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  ''' % (shared.EMSCRIPTEN_VERSION, revision))
+  ''' % (version_string(), revision))
     return 0
 
   if run_via_emxx:
@@ -795,10 +795,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
-    print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = shared.check_call([clang, '-v'] + shared.get_clang_flags(), check=False).returncode
-    shared.check_sanity(force=True)
-    return code
+    print(version_string(), file=sys.stderr)
+    return shared.check_call([clang, '-v'] + shared.get_clang_flags(), check=False).returncode
 
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
@@ -2347,6 +2345,10 @@ def post_link(options, in_wasm, wasm_target, target):
   return 0
 
 
+def version_string():
+  return 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
+
+
 def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
@@ -2528,7 +2530,6 @@ def parse_args(newargs):
       options.ignore_dynamic_linking = True
     elif arg == '-v':
       shared.PRINT_STAGES = True
-      shared.check_sanity(force=True)
     elif check_arg('--shell-file'):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
@@ -2551,6 +2552,10 @@ def parse_args(newargs):
       system_libs.Ports.erase()
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
+      should_exit = True
+    elif check_flag('--check'):
+      print(version_string(), file=sys.stderr)
+      shared.check_sanity(force=True)
       should_exit = True
     elif check_flag('--show-ports'):
       system_libs.show_ports()
