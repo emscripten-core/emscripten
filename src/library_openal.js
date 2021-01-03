@@ -1987,10 +1987,10 @@ var LibraryOpenAL = {
     var dstfreq = c.requestedSampleRate;
     var srcfreq = c.audioCtx.sampleRate;
 
-    var fratio = srcfreq/dstfreq;
+    var fratio = srcfreq / dstfreq;
     
     if (requestedFrameCount < 0
-    ||  requestedFrameCount > c.capturedFrameCount / fratio ) 
+    ||  requestedFrameCount > (c.capturedFrameCount / fratio)) 
     {
   // if OPENAL_DEBUG
       console.error('alcCaptureSamples() with invalid bufferSize');
