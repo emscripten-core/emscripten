@@ -185,8 +185,7 @@ def requires_native_clang(func):
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS')
-    if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('asan ends up using atomics that are not yet supported in node 12')
+    self.emcc_args += ['-Wno-pthreads-mem-growth']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]

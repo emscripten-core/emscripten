@@ -8,6 +8,8 @@
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
 #include <cstddef>
+#include <cstdint>
+#define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
 
 namespace __asan {
 
@@ -74,7 +76,7 @@ INTERCEPTOR(int, pthread_create, void *thread,
     StopInitOrderChecking();
   GET_STACK_TRACE_THREAD;
   int detached = 0;
-  if (attr)
+  if (attr && attr != __ATTRP_C11_THREAD)
     pthread_attr_getdetachstate(attr, &detached);
   atomic_uintptr_t *param = (atomic_uintptr_t *)
       emscripten_builtin_malloc(sizeof(atomic_uintptr_t));
