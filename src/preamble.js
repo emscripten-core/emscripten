@@ -1117,7 +1117,7 @@ function createWasm() {
 #endif
 }
 
-// Globals used by JS i64 conversions
+// Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
 
