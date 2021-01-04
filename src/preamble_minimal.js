@@ -22,6 +22,12 @@ function abort(what) {
 #endif
 }
 
+#if SAFE_HEAP
+// Globals used by JS i64 conversions (see makeSetValue)
+var tempDouble;
+var tempI64;
+#endif
+
 var tempRet0 = 0;
 var setTempRet0 = function(value) {
   tempRet0 = value;
