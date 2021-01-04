@@ -47,15 +47,24 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   var instance = new WebAssembly.Instance(Module['wasmModule'], info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
   Module['wasmModule'] = null;
-#if LOAD_SOURCE_MAP
-  wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
-#endif
-#if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = resetPrototype(WasmOffsetConverter, wasmOffsetData);
-#endif
   receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
   return instance.exports;
 };
+#endif
+
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+// When using postMessage to send an object, it is processed by the structured clone algorithm.
+// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  for (var key in attrs) {
+    if (attrs.hasOwnProperty(key)) {
+      object[key] = attrs[key];
+    }
+  }
+  return object;
+}
 #endif
 
 #if LOAD_SOURCE_MAP
@@ -64,6 +73,16 @@ var wasmSourceMapData;
 #if USE_OFFSET_CONVERTER
 var wasmOffsetData;
 #endif
+
+function moduleLoaded() {
+#if LOAD_SOURCE_MAP
+  wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
+#endif
+#if USE_OFFSET_CONVERTER
+  wasmOffsetConverter = resetPrototype(WasmOffsetConverter, wasmOffsetData);
+#endif
+  postMessage({ 'cmd': 'loaded' });
+}
 
 this.onmessage = function(e) {
   try {
@@ -103,7 +122,7 @@ this.onmessage = function(e) {
         return {{{ EXPORT_NAME }}}.default(Module);
       }).then(function(instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
@@ -117,12 +136,12 @@ this.onmessage = function(e) {
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #else
       {{{ EXPORT_NAME }}}(Module).then(function (instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #endif
 #endif
@@ -131,7 +150,7 @@ this.onmessage = function(e) {
       // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
       // regular runtime and asm.js are loaded synchronously, so in those cases
       // we are now loaded, and can post back to main thread.
-      postMessage({ 'cmd': 'loaded' });
+      moduleLoaded();
 #endif
 
 #endif

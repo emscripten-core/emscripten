@@ -5,12 +5,12 @@
  * found in the LICENSE file.
  */
 
-#include <cassert>
-#include <cstdio>
+#include <assert.h>
+#include <stdio.h>
 
-extern "C" void *emscripten_return_address(int level);
+void *emscripten_return_address(int level);
 
-void func(void) {
+void func() {
   assert(emscripten_return_address(0) != 0);
   assert(emscripten_return_address(50) == 0);
 }
@@ -21,5 +21,5 @@ void func(void) {
 int main(int argc, char **argv) {
   assert(emscripten_return_address(50) == 0);
   func();
-  std::puts("passed");
+  puts("passed");
 }

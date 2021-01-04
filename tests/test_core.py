@@ -7753,11 +7753,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_runf(path_from_root('tests', 'test_global_initializer.cpp'), 't1 > t0: 1')
 
-  @no_wasm2js('wasm2js wasm emulation does not include custom sections')
-  @no_optimize('return address test cannot work with optimizations')
+  @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   def test_return_address(self):
-    self.emcc_args += ['-s', 'USE_OFFSET_CONVERTER']
-    self.do_runf(path_from_root('tests', 'core', 'test_return_address.cpp'), 'passed')
+    self.set_setting('USE_OFFSET_CONVERTER')
+    self.do_runf(path_from_root('tests', 'core', 'test_return_address.c'), 'passed')
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
@@ -8106,6 +8105,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c', assert_returncode=43)
+
+  @node_pthreads
+  @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
+  def test_pthread_offset_converter(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_OFFSET_CONVERTER')
+    self.do_runf(path_from_root('tests', 'core', 'test_return_address.c'), 'passed')
 
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
