@@ -185,11 +185,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 #if USE_OFFSET_CONVERTER
-  wasmOffsetConverter =
 #if USE_PTHREADS
-    ENVIRONMENT_IS_PTHREAD ? resetPrototype(WasmOffsetConverter, wasmOffsetData) :
+  if (!ENVIRONMENT_IS_PTHREAD)
 #endif
-    new WasmOffsetConverter(Module['wasm'], output.module);
+    wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -232,7 +231,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if USE_PTHREADS
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
-    postMessage({ 'cmd': 'loaded' });
+    moduleLoaded();
   }
 #endif
 
