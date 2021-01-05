@@ -70,8 +70,8 @@ var LibraryDylink = {
       '__set_stack_limits'
     ].indexOf(symName) != -1
 #if SPLIT_MODULE
-    // Exports synthesized by wasm-split should be prefixed with '%'
-        || symName.startsWith('%')
+        // Exports synthesized by wasm-split should be prefixed with '%'
+        || symName[0] == '%'
 #endif
     ;
   },
