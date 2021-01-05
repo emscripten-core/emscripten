@@ -4817,6 +4817,9 @@ Module = {
     self.banned_js_engines = [config.V8_ENGINE]
     self.do_run_in_out_file_test('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
 
+  def test_proc_self_fd(self):
+    self.do_run_in_out_file_test('tests', 'fs', 'test_proc_self_fd.c')
+
   def test_fwrite_0(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_fwrite_0.c')
 
