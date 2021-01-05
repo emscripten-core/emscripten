@@ -7389,7 +7389,7 @@ Module['onRuntimeInitialized'] = function() {
     if not conditional and is_optimizing(self.emcc_args):
       # If the call to lazy-load is unconditional, then the optimizer can dce
       # out more than half
-      self.assertLess(first_size, 0.5 * second_size)
+      self.assertLess(first_size, 0.6 * second_size)
 
     with open('emscripten_lazy_load_code.wasm', 'rb') as f:
       with open('emscripten_lazy_load_code.wasm.lazy.wasm', 'rb') as g:
