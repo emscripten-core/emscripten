@@ -176,7 +176,7 @@ def generate_config(path, first_time=False):
   llvm_root = os.path.dirname(which('llvm-dis') or '/usr/bin/llvm-dis')
   config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
-  node = which('nodejs') or which('node') or 'node'
+  node = which('node') or which('nodejs') or 'node'
   config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
 
   abspath = os.path.abspath(os.path.expanduser(path))

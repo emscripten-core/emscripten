@@ -12,14 +12,14 @@ import tempfile
 import zipfile
 from subprocess import PIPE, STDOUT
 
-from runner import RunnerCore, path_from_root, env_modify, chdir
+from runner import RunnerCore, path_from_root, env_modify
 from runner import create_test_file, ensure_dir, make_executable
 from tools.config import config_file, EM_CONFIG
 from tools.shared import PYTHON, EMCC
 from tools.shared import CANONICAL_TEMP_DIR
 from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
-from tools import shared, system_libs
+from tools import shared, system_libs, utils
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt', root=True)
 commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
@@ -521,7 +521,7 @@ fi
 
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
-    with chdir(temp_dir):
+    with utils.chdir(temp_dir):
       self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
 

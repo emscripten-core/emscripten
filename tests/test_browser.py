@@ -172,7 +172,7 @@ class browser(BrowserCore):
 
   def test_sdl1(self):
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-lSDL', '-lGL'])
-    self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL=1', '-lGL']) # is the default anyhow
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL', '-lGL']) # is the default anyhow
 
   # Deliberately named as test_zzz_* to make this test the last one
   # as this test may take the focus away from the main test window
@@ -218,9 +218,8 @@ If manually bisecting:
 ''')
 
   def test_emscripten_log(self):
-    src = path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')
-    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html'])
-    self.run_browser('page.html', None, '/report_result?1')
+    self.btest_exit(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp'), 0,
+                    args=['--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4'])
 
   def test_preload_file(self):
     absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
@@ -414,7 +413,7 @@ If manually bisecting:
     self.run_process([FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file])
     page_file = os.path.join(d, 'file with ' + tricky_part + '.html')
     abs_page_file = os.path.join(self.get_dir(), page_file)
-    self.compile_btest([cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM=1'])
+    self.compile_btest([cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM'])
     self.run_browser(page_file, '|load me right before|.', '/report_result?0')
 
   def test_preload_caching(self):
@@ -469,7 +468,7 @@ If manually bisecting:
         continue
       create_test_file('somefile.txt', '''load me right before running the code please''' + ('_' * extra_size))
       print('size:', os.path.getsize('somefile.txt'))
-      self.compile_btest(['main.cpp', '--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+      self.compile_btest(['main.cpp', '--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-s', 'ALLOW_MEMORY_GROWTH'])
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
 
@@ -522,7 +521,7 @@ If manually bisecting:
 
     make_main('somefile.txt')
     self.run_process([FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
-    self.compile_btest(['main.cpp', '--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
+    self.compile_btest(['main.cpp', '--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM'])
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
 
@@ -713,46 +712,46 @@ If manually bisecting:
   def test_sdl_stb_image(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.not')
-    self.btest('sdl_stb_image.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('sdl_stb_image.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_bpp(self):
     # load grayscale image without alpha
     self.clear()
     shutil.copyfile(path_from_root('tests', 'sdl-stb-bpp1.png'), 'screenshot.not')
-    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp1.png', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp1.png', args=['-s', 'STB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load grayscale image with alpha
     self.clear()
     shutil.copyfile(path_from_root('tests', 'sdl-stb-bpp2.png'), 'screenshot.not')
-    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp2.png', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp2.png', args=['-s', 'STB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load RGB image
     self.clear()
     shutil.copyfile(path_from_root('tests', 'sdl-stb-bpp3.png'), 'screenshot.not')
-    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp3.png', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp3.png', args=['-s', 'STB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load RGBA image
     self.clear()
     shutil.copyfile(path_from_root('tests', 'sdl-stb-bpp4.png'), 'screenshot.not')
-    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp4.png', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp4.png', args=['-s', 'STB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.not')
-    self.btest('sdl_stb_image_data.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('sdl_stb_image_data.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_cleanup(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.not')
-    self.btest('sdl_stb_image_cleanup.c', expected='0', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
+    self.btest('sdl_stb_image_cleanup.c', expected='0', args=['-s', 'STB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
 
   def test_sdl_canvas(self):
     self.clear()
-    self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL'])
+    self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL'])
     # some extra coverage
     self.clear()
-    self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-O0', '-s', 'SAFE_HEAP=1', '-lSDL', '-lGL'])
+    self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION', '-O0', '-s', 'SAFE_HEAP', '-lSDL', '-lGL'])
     self.clear()
-    self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-O2', '-s', 'SAFE_HEAP=1', '-lSDL', '-lGL'])
+    self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION', '-O2', '-s', 'SAFE_HEAP', '-lSDL', '-lGL'])
 
   def post_manual_reftest(self, reference=None):
     self.reftest(path_from_root('tests', self.reference if reference is None else reference))
@@ -784,7 +783,7 @@ window.close = function() {
   @no_wasm_backend('This modifies JS code with regexes in such a way that does not currently work in WASM2JS')
   def test_glgears_proxy(self):
     # we modify the asm.js, this is a non-wasm test
-    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-DSTATIC_GEARS=1', '-lGL', '-lglut', '-s', 'WASM=0'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING', '-DSTATIC_GEARS=1', '-lGL', '-lglut', '-s', 'WASM=0'], manual_reference=True, post_build=self.post_manual_reftest)
 
     # test noProxy option applied at runtime
 
@@ -815,7 +814,7 @@ window.close = function() {
   @requires_graphics_hardware
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
-    self.compile_btest([path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING=1', '-lGL', '-lglut'])
+    self.compile_btest([path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING', '-lGL', '-lglut'])
     shell_with_script('shell_minimal.html', 'test.html', '<script src="test.js"></script>')
     self.post_manual_reftest('gears.png')
     self.run_browser('test.html', None, '/report_result?0')
@@ -841,7 +840,7 @@ window.close = function() {
       ]:
         for async_ in [
           [],
-          ['-DTEST_SLEEP', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'] + self.get_async_args()
+          ['-DTEST_SLEEP', '-s', 'ASSERTIONS', '-s', 'SAFE_HEAP'] + self.get_async_args()
         ]:
           print(delay, defines, async_)
 
@@ -1275,11 +1274,11 @@ keydown(100);keyup(100); // trigger the end
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
-    self.btest('preinitialized_webgl_context.cpp', '5', args=['-s', 'GL_PREINITIALIZED_CONTEXT=1', '--shell-file', path_from_root('tests/preinitialized_webgl_context.html')])
+    self.btest('preinitialized_webgl_context.cpp', '5', args=['-s', 'GL_PREINITIALIZED_CONTEXT', '--shell-file', path_from_root('tests/preinitialized_webgl_context.html')])
 
   @requires_threads
   def test_emscripten_get_now(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure', '1']]:
+    for args in [[], ['-s', 'USE_PTHREADS'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure', '1']]:
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
   def test_write_file_in_environment_web(self):
@@ -1294,7 +1293,7 @@ keydown(100);keyup(100); // trigger the end
     create_test_file('moar.txt', secret)
     self.btest('file_db.cpp', '1', args=['--preload-file', 'moar.txt', '-DFIRST'])
     shutil.copyfile('test.html', 'first.html')
-    self.btest('file_db.cpp', secret, args=['-s', 'FORCE_FILESYSTEM=1'])
+    self.btest('file_db.cpp', secret, args=['-s', 'FORCE_FILESYSTEM'])
     shutil.copyfile('test.html', 'second.html')
     create_test_file('moar.txt', 'aliantha')
     self.btest('file_db.cpp', secret, args=['--preload-file', 'moar.txt']) # even with a file there, we load over it
@@ -1308,8 +1307,8 @@ keydown(100);keyup(100); // trigger the end
 
   def test_fs_idbfs_sync_force_exit(self):
     secret = str(time.time())
-    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME=1', '-DFORCE_EXIT', '-lidbfs.js'])
-    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME=1', '-DFORCE_EXIT', '-lidbfs.js'])
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -1326,13 +1325,13 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    args = ['--pre-js', 'pre.js', '-lidbfs.js', '-s', 'EXIT_RUNTIME=1'] + self.get_async_args()
+    args = ['--pre-js', 'pre.js', '-lidbfs.js', '-s', 'EXIT_RUNTIME'] + self.get_async_args()
     secret = str(time.time())
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']''', '-lidbfs.js'])
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']''', '-lidbfs.js'])
 
   def test_fs_memfs_fsync(self):
-    args = self.get_async_args() + ['-s', 'EXIT_RUNTIME=1']
+    args = self.get_async_args() + ['-s', 'EXIT_RUNTIME']
     secret = str(time.time())
     self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"'])
 
@@ -1381,18 +1380,18 @@ keydown(100);keyup(100); // trigger the end
     print('normal')
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     open('files.js', 'wb').write(out)
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'])
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM'])
     print('    opts')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'])
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM', '-O2'])
 
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print('manual')
     subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'])
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM'])
     print('    opts')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'])
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2', '--closure', '1', '-g1', '-s', 'CLOSURE_WARNINGS=quiet'])
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM', '-O2', '--closure', '1', '-g1', '-s', 'CLOSURE_WARNINGS=quiet'])
 
     '''# non-lz4 for comparison
     try:
@@ -1412,7 +1411,7 @@ keydown(100);keyup(100); // trigger the end
 
     create_test_file('data.dat', ' ')
     self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
-    self.btest(os.path.join('browser', 'separate_metadata_later.cpp'), '1', args=['-s', 'FORCE_FILESYSTEM=1'])
+    self.btest(os.path.join('browser', 'separate_metadata_later.cpp'), '1', args=['-s', 'FORCE_FILESYSTEM'])
 
   def test_idbstore(self):
     secret = str(time.time())
@@ -1431,7 +1430,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'INITIAL_MEMORY=80MB'] + self.get_async_args())
 
   def test_force_exit(self):
-    self.btest('force_exit.c', force_c=True, expected='17', args=['-s', 'EXIT_RUNTIME=1'])
+    self.btest('force_exit.c', force_c=True, expected='17', args=['-s', 'EXIT_RUNTIME'])
 
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -1463,21 +1462,21 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_ogl(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
   def test_sdl_ogl_regal(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
@@ -1485,54 +1484,54 @@ keydown(100);keyup(100); // trigger the end
     # Immediate mode with pointers
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
-               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
   def test_sdl_ogl_proc_alias(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl_proc_alias.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '-g2', '-s', 'INLINING_LIMIT=1', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'])
+               args=['-O2', '-g2', '-s', 'INLINING_LIMIT', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_fog_simple.c', reference='screenshot-fog-simple.png',
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_sdl_fog_negative(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_fog_negative.c', reference='screenshot-fog-negative.png',
-               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_sdl_fog_density(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_fog_density.c', reference='screenshot-fog-density.png',
-               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_sdl_fog_exp2(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_fog_exp2.c', reference='screenshot-fog-exp2.png',
-               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_sdl_fog_linear(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
-               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_glfw(self):
-    self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lglfw', '-lGL'])
-    self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=2', '-lglfw', '-lGL'])
+    self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION', '-lglfw', '-lGL'])
+    self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION', '-s', 'USE_GLFW=2', '-lglfw', '-lGL'])
 
   def test_glfw_minimal(self):
     self.btest('glfw_minimal.c', '1', args=['-lglfw', '-lGL'])
@@ -1552,7 +1551,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_threads
   @requires_graphics_hardware
   def test_egl_with_proxy_to_pthread(self):
-    self._test_egl_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1')
+    self._test_egl_base('-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'OFFSCREEN_FRAMEBUFFER')
 
   def _test_egl_width_height_base(self, *args):
     self.compile_btest([path_from_root('tests', 'test_egl_width_height.c'), '-O2', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
@@ -1563,7 +1562,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_threads
   def test_egl_width_height_with_proxy_to_pthread(self):
-    self._test_egl_width_height_base('-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD=1')
+    self._test_egl_width_height_base('-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD')
 
   @requires_graphics_hardware
   def test_egl_createcontext_error(self):
@@ -1660,7 +1659,7 @@ keydown(100);keyup(100); // trigger the end
     prejs_file.close()
     # vs. os.path.join(self.get_dir(), filename)
     # vs. path_from_root('tests', 'hello_world_gles.c')
-    self.compile_btest([path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_XHR_CHUNKS=1', '-o', worker_filename,
+    self.compile_btest([path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_XHR_CHUNKS', '-o', worker_filename,
                         '--pre-js', prejs_filename])
     chunkSize = 1024
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
@@ -1699,7 +1698,7 @@ keydown(100);keyup(100); // trigger the end
   def test_glgears_pthreads(self, extra_args=[]):
     # test that a program that doesn't use pthreads still works with with pthreads enabled
     # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
-    self.test_glgears(['-s', 'USE_PTHREADS=1'])
+    self.test_glgears(['-s', 'USE_PTHREADS'])
 
   @requires_graphics_hardware
   def test_glgears_long(self):
@@ -1713,14 +1712,14 @@ keydown(100);keyup(100); // trigger the end
     for full_es2 in [0, 1, 2]:
       print(full_es2)
       self.compile_btest([path_from_root('tests', 'hello_world_gles%s.c' % es2_suffix[full_es2]), '-o', 'something.html',
-                          '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1', '-lGL', '-lglut',
+                          '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING', '-lGL', '-lglut',
                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')] +
                          (['-s', 'FULL_ES2=1'] if full_es2 else []))
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
-    self.btest('full_es2_sdlproc.c', '1', args=['-s', 'GL_TESTING=1', '-DHAVE_BUILTIN_SINCOS', '-s', 'FULL_ES2=1', '-lGL', '-lSDL', '-lglut'])
+    self.btest('full_es2_sdlproc.c', '1', args=['-s', 'GL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-s', 'FULL_ES2=1', '-lGL', '-lSDL', '-lglut'])
 
   @requires_graphics_hardware
   def test_glgears_deriv(self):
@@ -1811,7 +1810,7 @@ keydown(100);keyup(100); // trigger the end
 
     setup()
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
-    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
+    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM'])
 
     # check using file packager to another dir
     self.clear()
@@ -1819,7 +1818,7 @@ keydown(100);keyup(100); // trigger the end
     ensure_dir('sub')
     self.run_process([FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
     shutil.copyfile(os.path.join('sub', 'test.data'), 'test.data')
-    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
+    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM'])
 
   def test_emscripten_api_infloop(self):
     self.btest('emscripten_api_browser_infloop.cpp', '7')
@@ -1834,7 +1833,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_threads
   def test_emscripten_main_loop(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'EXIT_RUNTIME=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'EXIT_RUNTIME']]:
       self.btest('emscripten_main_loop.cpp', '0', args=args)
 
   @requires_threads
@@ -1842,18 +1841,18 @@ keydown(100);keyup(100); // trigger the end
     for args in [
       [],
       # test pthreads + AUTO_JS_LIBRARIES mode as well
-      ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'AUTO_JS_LIBRARIES=0']
+      ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'AUTO_JS_LIBRARIES=0']
     ]:
       self.btest('emscripten_main_loop_settimeout.cpp', '1', args=args)
 
   @requires_threads
   def test_emscripten_main_loop_and_blocker(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       self.btest('emscripten_main_loop_and_blocker.cpp', '0', args=args)
 
   @requires_threads
   def test_emscripten_main_loop_setimmediate(self):
-    for args in [[], ['--proxy-to-worker'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for args in [[], ['--proxy-to-worker'], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=args)
 
   def test_fs_after_main(self):
@@ -1882,11 +1881,11 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_sdlglshader(self):
-    self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_sdlglshader2(self):
-    self.btest('sdlglshader2.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest('sdlglshader2.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_gl_glteximage(self):
@@ -1895,83 +1894,83 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'OFFSCREEN_FRAMEBUFFER']]:
       self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
 
   @requires_graphics_hardware
   def test_gl_ps(self):
     # pointers and a shader
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
+    self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
   def test_gl_ps_packed(self):
     # packed data that needs to be strided
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
+    self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
   def test_gl_ps_strides(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '--use-preload-plugins'])
+    self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_gl_ps_worker(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('gl_ps_worker.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1, also_proxied=True)
+    self.btest('gl_ps_worker.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1, also_proxied=True)
 
   @requires_graphics_hardware
   def test_gl_renderers(self):
-    self.btest('gl_renderers.c', reference='gl_renderers.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('gl_renderers.c', reference='gl_renderers.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_gl_stride(self):
-    self.btest('gl_stride.c', reference='gl_stride.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('gl_stride.c', reference='gl_stride.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_gl_vertex_buffer_pre(self):
-    self.btest('gl_vertex_buffer_pre.c', reference='gl_vertex_buffer_pre.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('gl_vertex_buffer_pre.c', reference='gl_vertex_buffer_pre.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_gl_vertex_buffer(self):
-    self.btest('gl_vertex_buffer.c', reference='gl_vertex_buffer.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], reference_slack=1)
+    self.btest('gl_vertex_buffer.c', reference='gl_vertex_buffer.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'], reference_slack=1)
 
   @requires_graphics_hardware
   def test_gles2_uniform_arrays(self):
-    self.btest('gles2_uniform_arrays.cpp', args=['-s', 'GL_ASSERTIONS=1', '-lGL', '-lSDL'], expected=['1'], also_proxied=True)
+    self.btest('gles2_uniform_arrays.cpp', args=['-s', 'GL_ASSERTIONS', '-lGL', '-lSDL'], expected=['1'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_gles2_conformance(self):
-    self.btest('gles2_conformance.cpp', args=['-s', 'GL_ASSERTIONS=1', '-lGL', '-lSDL'], expected=['1'])
+    self.btest('gles2_conformance.cpp', args=['-s', 'GL_ASSERTIONS', '-lGL', '-lSDL'], expected=['1'])
 
   @requires_graphics_hardware
   def test_matrix_identity(self):
-    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328', '2411982848'], args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328', '2411982848'], args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_regal(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'USE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_cubegeom_pre_relocatable(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL', '-s', 'RELOCATABLE'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.png'), args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.png'), args=['-s', 'GL_DEBUG', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre3(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre3.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre3.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @parameterized({
     '': ([],),
@@ -1981,16 +1980,16 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom(self, args):
     # proxy only in the simple, normal case (we can't trace GL calls when
     # proxied)
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'] + args, also_proxied=not args)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'] + args, also_proxied=not args)
 
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_threads
   @requires_graphics_hardware
   def test_cubegeom_regal_mt(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS', '-s', 'USE_REGAL', '-lGL', '-lSDL'], also_proxied=False)
 
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
@@ -2007,75 +2006,75 @@ void *getBindBuffer() {
 ''')
     # also test -Os in wasm, which uses meta-dce, which should not break legacy gl emulation hacks
     for opts in [[], ['-O1'], ['-Os']]:
-      self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_proc.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+      self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_proc.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_glew(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_glew.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lGLEW', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_glew.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lGLEW', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_color(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_color.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_color.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_color.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_color.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_range.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_range.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_firefox('fails on CI but works locally')
   def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda_quad.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda_quad.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda_quad.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_normal_dap_far_glda_quad.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_mt(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_mt.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_mt.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # multitexture
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_mt.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_mt.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL']) # multitexture
 
   @requires_graphics_hardware
   def test_cubegeom_color2(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_color2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_color2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_color2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_color2.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_texturematrix(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_texturematrix.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_texturematrix.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_texturematrix.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_texturematrix.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_fog(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_fog.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_fog.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_fog.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_fog.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_regal(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'USE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2_vao(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre_vao.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_pre2_vao2(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_pre2_vao2.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
@@ -2084,15 +2083,15 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_cubegeom_u4fv_2(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_u4fv_2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_u4fv_2.png'), args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_u4fv_2.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom_u4fv_2.png'), args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cube_explosion(self):
-    self.btest('cube_explosion.c', reference='cube_explosion.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest('cube_explosion.c', reference='cube_explosion.png', args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_glgettexenv(self):
-    self.btest('glgettexenv.c', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], expected=['1'])
+    self.btest('glgettexenv.c', args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'], expected=['1'])
 
   def test_sdl_canvas_blank(self):
     self.btest('sdl_canvas_blank.c', args=['-lSDL', '-lGL'], reference='sdl_canvas_blank.png')
@@ -2157,27 +2156,27 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   def test_glbegin_points(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('glbegin_points.c', reference='glbegin_points.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '--use-preload-plugins'])
+    self.btest('glbegin_points.c', reference='glbegin_points.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_s3tc(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.dds'), 'screenshot.dds')
-    self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_s3tc_ffp_only(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.dds'), 'screenshot.dds')
-    self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-s', 'LEGACY_GL_EMULATION=1', '-s', 'GL_FFP_ONLY=1', '-lGL', '-lSDL'])
+    self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-s', 'LEGACY_GL_EMULATION', '-s', 'GL_FFP_ONLY', '-lGL', '-lSDL'])
 
   @no_chrome('see #7117')
   @requires_graphics_hardware
   def test_aniso(self):
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-    self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
+    self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
 
   @requires_graphics_hardware
   def test_tex_nonbyte(self):
-    self.btest('tex_nonbyte.c', reference='tex_nonbyte.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('tex_nonbyte.c', reference='tex_nonbyte.png', args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_float_tex(self):
@@ -2189,11 +2188,11 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_perspective(self):
-    self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_glerror(self):
-    self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
+    self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION', '-lGL'])
 
   def test_openal_error(self):
     for args in [
@@ -2255,7 +2254,7 @@ void *getBindBuffer() {
       }
     '''
     self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
-    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL=1'], expected='76')
+    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.wasm"]', '-s', 'EXPORT_ALL'], expected='76')
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
@@ -2412,32 +2411,32 @@ void *getBindBuffer() {
 
         print('mem init, so async, call too early')
         create_test_file('post.js', post_prep + post_test + post_hook)
-        self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode, reporting=Reporting.NONE)
+        self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME'] + extra_args + mode, reporting=Reporting.NONE)
         print('sync startup, call too late')
         create_test_file('post.js', post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode, reporting=Reporting.NONE)
+        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-s', 'EXIT_RUNTIME'] + extra_args + mode, reporting=Reporting.NONE)
 
         print('sync, runtime still alive, so all good')
         create_test_file('post.js', post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
         self.btest(filename, expected='606', args=['--post-js', 'post.js'] + extra_args + mode, reporting=Reporting.NONE)
 
   def test_cwrap_early(self):
-    self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS=1', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js'), '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap"]'], expected='0')
+    self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js'), '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap"]'], expected='0')
 
   def test_worker_api(self):
-    self.compile_btest([path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]'])
+    self.compile_btest([path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-s', 'EXPORTED_FUNCTIONS=["_one"]'])
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_worker_api_2(self):
-    self.compile_btest([path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]', '--closure', '1'])
+    self.compile_btest([path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]', '--closure', '1'])
     self.btest('worker_api_2_main.cpp', args=['-O2', '--minify', '0'], expected='11')
 
   def test_worker_api_3(self):
-    self.compile_btest([path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]'])
+    self.compile_btest([path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-s', 'EXPORTED_FUNCTIONS=["_one"]'])
     self.btest('worker_api_3_main.cpp', expected='5')
 
   def test_worker_api_sleep(self):
-    self.compile_btest([path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]'] + self.get_async_args())
+    self.compile_btest([path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-s', 'EXPORTED_FUNCTIONS=["_one"]'] + self.get_async_args())
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_emscripten_async_wget2(self):
@@ -2446,8 +2445,8 @@ void *getBindBuffer() {
   # TODO: test only worked in non-fastcomp
   @unittest.skip('non-fastcomp is deprecated and fails in 3.5')
   def test_module(self):
-    self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]'])
-    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORT_ALL=1'], expected='8')
+    self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE', '-s', 'DLOPEN_SUPPORT', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]'])
+    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE', '-s', 'DLOPEN_SUPPORT', '-s', 'EXPORT_ALL'], expected='8')
 
   def test_preload_module(self):
     create_test_file('library.c', r'''
@@ -2456,7 +2455,7 @@ void *getBindBuffer() {
         return 42;
       }
     ''')
-    self.compile_btest(['library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'EXPORT_ALL=1'])
+    self.compile_btest(['library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.wasm', '-s', 'EXPORT_ALL'])
     os.rename('library.wasm', 'library.so')
     main = r'''
       #include <dlfcn.h>
@@ -2487,7 +2486,7 @@ void *getBindBuffer() {
     '''
     self.btest(
       main,
-      args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL=1'],
+      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'],
       expected='0')
 
   def test_mmap_file(self):
@@ -2528,9 +2527,9 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   def test_glew(self):
     self.btest(path_from_root('tests', 'glew.c'), args=['-lGL', '-lSDL', '-lGLEW'], expected='1')
-    self.btest(path_from_root('tests', 'glew.c'), args=['-lGL', '-lSDL', '-lGLEW', '-s', 'LEGACY_GL_EMULATION=1'], expected='1')
+    self.btest(path_from_root('tests', 'glew.c'), args=['-lGL', '-lSDL', '-lGLEW', '-s', 'LEGACY_GL_EMULATION'], expected='1')
     self.btest(path_from_root('tests', 'glew.c'), args=['-lGL', '-lSDL', '-lGLEW', '-DGLEW_MX'], expected='1')
-    self.btest(path_from_root('tests', 'glew.c'), args=['-lGL', '-lSDL', '-lGLEW', '-s', 'LEGACY_GL_EMULATION=1', '-DGLEW_MX'], expected='1')
+    self.btest(path_from_root('tests', 'glew.c'), args=['-lGL', '-lSDL', '-lGLEW', '-s', 'LEGACY_GL_EMULATION', '-DGLEW_MX'], expected='1')
 
   def test_doublestart_bug(self):
     create_test_file('pre.js', r'''
@@ -2546,7 +2545,7 @@ Module["preRun"].push(function () {
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure', '1', '-s', 'HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
-    'pthread': (['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],),
+    'pthread': (['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'],),
     'legacy': (['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0'],)
   })
   @requires_threads
@@ -2555,7 +2554,7 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_html5_gamepad(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       print(opts)
       self.btest(path_from_root('tests', 'test_gamepad.c'), args=[] + opts, expected='0')
 
@@ -2569,7 +2568,7 @@ Module["preRun"].push(function () {
   @requires_threads
   @requires_graphics_hardware
   def test_html5_webgl_create_context(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS=1']]:
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS']]:
       print(opts)
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-lGL'], expected='0')
 
@@ -2606,7 +2605,7 @@ Module["preRun"].push(function () {
   def test_webgl2(self):
     for opts in [
       ['-s', 'MIN_CHROME_VERSION=0'],
-      ['-O2', '-g1', '--closure', '1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1'],
+      ['-O2', '-g1', '--closure', '1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'],
       ['-s', 'FULL_ES2=1'],
     ]:
       print(opts)
@@ -2617,16 +2616,16 @@ Module["preRun"].push(function () {
   def test_webgl2_pthreads(self):
     # test that a program can be compiled with pthreads and render WebGL2 properly on the main thread
     # (the testcase doesn't even use threads, but is compiled with thread support).
-    self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-s', 'USE_PTHREADS=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-s', 'USE_PTHREADS'], expected='0')
 
   def test_webgl2_objects(self):
     self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
   def test_html5_webgl_api(self):
-    for mode in [['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
-                 ['-s', 'OFFSCREEN_FRAMEBUFFER=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'],
+    for mode in [['-s', 'OFFSCREENCANVAS_SUPPORT', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'],
+                 ['-s', 'OFFSCREEN_FRAMEBUFFER', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'],
                  []]:
-      if 'OFFSCREENCANVAS_SUPPORT=1' in mode and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
+      if 'OFFSCREENCANVAS_SUPPORT' in mode and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
         continue
       self.btest(path_from_root('tests', 'html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode, expected='0')
 
@@ -2660,7 +2659,7 @@ Module["preRun"].push(function () {
   # Tests that -s GL_ASSERTIONS=1 and glVertexAttribPointer with packed types works
   @requires_graphics_hardware
   def test_webgl2_packed_types(self):
-    self.btest(path_from_root('tests', 'webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'MAX_WEBGL_VERSION=2', '-s', 'GL_ASSERTIONS=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'MAX_WEBGL_VERSION=2', '-s', 'GL_ASSERTIONS'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl2_pbo(self):
@@ -2732,7 +2731,7 @@ Module["preRun"].push(function () {
       create_test_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
       self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
       # put pre.js first, then the file packager data, so locateFile is there for the file loading code
-      self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1', '-s', 'WASM=' + str(wasm)])
+      self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)])
       ensure_dir('sub')
       if wasm:
         shutil.move('page.wasm', os.path.join('sub', 'page.wasm'))
@@ -2757,7 +2756,7 @@ Module["preRun"].push(function () {
       ''')
 
       def in_html(expected, args=[]):
-        self.compile_btest(['src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1', '-s', 'FORCE_FILESYSTEM=1', '-s', 'WASM=' + str(wasm)] + args)
+        self.compile_btest(['src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP', '-s', 'ASSERTIONS', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args)
         if wasm:
           shutil.move('page.wasm', os.path.join('sub', 'page.wasm'))
         else:
@@ -2790,7 +2789,7 @@ Module["preRun"].push(function () {
     'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API'],)
   })
   def test_glfw3(self, args):
-    for opts in [[], ['-s', 'LEGACY_GL_EMULATION=1'], ['-Os', '--closure', '1']]:
+    for opts in [[], ['-s', 'LEGACY_GL_EMULATION'], ['-Os', '--closure', '1']]:
       print(opts)
       self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
@@ -2993,12 +2992,12 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_sdl2_threads(self):
-      self.btest('sdl2_threads.c', expected='4', args=['-s', 'USE_PTHREADS=1', '-s', 'USE_SDL=2', '-s', 'PROXY_TO_PTHREAD=1'])
+      self.btest('sdl2_threads.c', expected='4', args=['-s', 'USE_PTHREADS', '-s', 'USE_SDL=2', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_graphics_hardware
   def test_sdl2glshader(self):
-    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-g1', '-s', 'LEGACY_GL_EMULATION=1'])
-    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True) # XXX closure fails on proxy
+    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-g1', '-s', 'LEGACY_GL_EMULATION'])
+    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '-s', 'LEGACY_GL_EMULATION'], also_proxied=True) # XXX closure fails on proxy
 
   @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
@@ -3073,7 +3072,7 @@ window.close = function() {
 
     create_test_file('data.txt', 'datum')
 
-    self.btest('sdl2_canvas_proxy.c', reference='sdl2_canvas.png', args=['-s', 'USE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-s', 'GL_TESTING=1'], manual_reference=True, post_build=post)
+    self.btest('sdl2_canvas_proxy.c', reference='sdl2_canvas.png', args=['-s', 'USE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-s', 'GL_TESTING'], manual_reference=True, post_build=post)
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3100,48 +3099,48 @@ window.close = function() {
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
     self.btest('sdl2_glmatrixmode_texture.c', reference='sdl2_glmatrixmode_texture.png',
-               args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_SDL=2'],
+               args=['-s', 'LEGACY_GL_EMULATION', '-s', 'USE_SDL=2'],
                message='You should see a (top) red-white and (bottom) white-red image.')
 
   @requires_graphics_hardware
   def test_sdl2_gldrawelements(self):
     self.btest('sdl2_gldrawelements.c', reference='sdl2_gldrawelements.png',
-               args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_SDL=2'],
+               args=['-s', 'LEGACY_GL_EMULATION', '-s', 'USE_SDL=2'],
                message='GL drawing modes. Bottom: points, lines, line loop, line strip. Top: triangles, triangle strip, triangle fan, quad.')
 
   @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
-               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins'],
+               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_sdl2_fog_negative(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_negative.c', reference='screenshot-fog-negative.png',
-               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins'],
+               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_sdl2_fog_density(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_density.c', reference='screenshot-fog-density.png',
-               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins'],
+               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_sdl2_fog_exp2(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_exp2.c', reference='screenshot-fog-exp2.png',
-               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins'],
+               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
   def test_sdl2_fog_linear(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
-               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins'],
+               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins'],
                message='You should see an image with fog.')
 
   def test_sdl2_unwasteful(self):
@@ -3158,7 +3157,7 @@ window.close = function() {
       html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
       assert html != html2
       create_test_file('test.html', html2)
-    self.btest('sdl2_gl_frames_swap.c', reference='sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-s', 'USE_SDL=2'], manual_reference=True, post_build=post_build)
+    self.btest('sdl2_gl_frames_swap.c', reference='sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-s', 'GL_TESTING', '-s', 'USE_SDL=2'], manual_reference=True, post_build=post_build)
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
@@ -3223,7 +3222,7 @@ window.close = function() {
 
   @requires_threads
   def test_async_in_pthread(self):
-    self.btest('browser/async.cpp', '1', args=self.get_async_args() + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-g'])
+    self.btest('browser/async.cpp', '1', args=self.get_async_args() + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-g'])
 
   def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
@@ -3239,7 +3238,7 @@ window.close = function() {
   def test_async_virtual_2(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'] + self.get_async_args())
+      self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS', '-s', 'SAFE_HEAP', '-profiling'] + self.get_async_args())
 
   # Test async sleeps in the presence of invoke_* calls, which can happen with
   # longjmp or exceptions.
@@ -3257,7 +3256,7 @@ window.close = function() {
 
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
-    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1', '-lSDL'] + self.get_async_args(), timeout=90)
+    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-Os', '-s', 'ASSERTIONS', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP', '-lSDL'] + self.get_async_args(), timeout=90)
 
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-Os'] + self.get_async_args())
@@ -3282,7 +3281,7 @@ window.close = function() {
   def test_async_returnvalue(self, args):
     if '@' in str(args):
       create_test_file('filey.txt', '["sync_tunnel"]')
-    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
+    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
 
   def test_async_stack_overflow(self):
     self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
@@ -3292,7 +3291,7 @@ window.close = function() {
 
   # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s MODULARIZE=1 as well.
   def test_minimal_runtime_modularize(self):
-    self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.html', '-s', 'MODULARIZE=1', '-s', 'MINIMAL_RUNTIME=1'])
+    self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.html', '-s', 'MODULARIZE', '-s', 'MINIMAL_RUNTIME'])
     self.run_browser('test.html', None, '/report_result?0')
 
   @requires_sync_compilation
@@ -3332,7 +3331,7 @@ window.close = function() {
       ]:
         print('test on', opts, args, code)
         # this test is synchronous, so avoid async startup due to wasm features
-        self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'SINGLE_FILE=1'] + args + opts)
+        self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-s', 'MODULARIZE', '-s', 'SINGLE_FILE'] + args + opts)
         create_test_file('a.html', '''
           <script src="a.out.js"></script>
           <script>
@@ -3344,7 +3343,7 @@ window.close = function() {
   def test_modularize_network_error(self):
     test_c_path = path_from_root('tests', 'browser_test_hello_world.c')
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest([test_c_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest([test_c_path, '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3364,7 +3363,7 @@ window.close = function() {
   def test_modularize_init_error(self):
     test_cpp_path = path_from_root('tests', 'browser', 'test_modularize_init_error.cpp')
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest([test_cpp_path, '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest([test_cpp_path, '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3409,7 +3408,7 @@ window.close = function() {
       create_test_file('dummy_file', 'dummy')
       # compile the code with the modularize feature and the preload-file option enabled
       # no wasm, since this tests customizing total memory at runtime
-      self.compile_btest(['test.c', '-s', 'WASM=0', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts)
+      self.compile_btest(['test.c', '-s', 'WASM=0', '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts)
       create_test_file('a.html', '''
         <script src="a.out.js"></script>
         <script>
@@ -3469,16 +3468,16 @@ window.close = function() {
         return ret;
       }
     ''')
-    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
 
     print('wasm in worker (we can read binary data synchronously there)')
 
     create_test_file('pre.js', '''
       var Module = { dynamicLibraries: ['side.wasm'] };
   ''')
-    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '--proxy-to-worker', '-s', 'EXPORT_ALL'])
 
     print('wasm (will auto-preload since no sync binary reading)')
 
@@ -3486,7 +3485,7 @@ window.close = function() {
       Module.dynamicLibraries = ['side.wasm'];
   ''')
     # same wasm side module works
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
@@ -3561,9 +3560,9 @@ window.close = function() {
         return (const char *)glGetString(GL_EXTENSIONS);
       }
     ''')
-    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL=1'])
+    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL'])
 
-    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
 
   def test_dynamic_link_many(self):
     # test asynchronously loading two side modules during startup
@@ -3583,14 +3582,14 @@ window.close = function() {
     create_test_file('side2.c', r'''
       int side2() { return 2; }
     ''')
-    self.run_process([EMCC, 'side1.c', '-s', 'SIDE_MODULE=1', '-o', 'side1.wasm'])
-    self.run_process([EMCC, 'side2.c', '-s', 'SIDE_MODULE=1', '-o', 'side2.wasm'])
+    self.run_process([EMCC, 'side1.c', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
+    self.run_process([EMCC, 'side2.c', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), '3',
-                    args=['-s', 'MAIN_MODULE=1', '--pre-js', 'pre.js'])
+                    args=['-s', 'MAIN_MODULE', '--pre-js', 'pre.js'])
 
   def test_memory_growth_during_startup(self):
     create_test_file('data.dat', 'X' * (30 * 1024 * 1024))
-    self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=16MB', '-s', 'TOTAL_STACK=16384', '--preload-file', 'data.dat'])
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=16MB', '-s', 'TOTAL_STACK=16384', '--preload-file', 'data.dat'])
 
   # pthreads tests
 
@@ -3616,24 +3615,24 @@ window.close = function() {
   })
   @requires_threads
   def test_pthread_atomics(self, args=[]):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-g1'] + args)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
   @requires_threads
   def test_pthread_64bit_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit C++11 atomics.
   @requires_threads
   def test_pthread_64bit_cxx11_atomics(self):
     for opt in [['-O0'], ['-O3']]:
-      for pthreads in [[], ['-s', 'USE_PTHREADS=1']]:
+      for pthreads in [[], ['-s', 'USE_PTHREADS']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads)
 
   # Test c++ std::thread::hardware_concurrency()
   @requires_threads
   def test_pthread_hardware_concurrency(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_hardware_concurrency.cpp'), expected='0', args=['-O2', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE="navigator.hardwareConcurrency"'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_hardware_concurrency.cpp'), expected='0', args=['-O2', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE="navigator.hardwareConcurrency"'])
 
   @parameterized({
     'join': ('join',),
@@ -3642,16 +3641,16 @@ window.close = function() {
   @requires_threads
   def test_pthread_main_thread_blocking(self, name):
     print('Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD')
-    self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+    self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
     if name == 'join':
       print('Test that by default we just warn about blocking on the main thread.')
-      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
       print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD')
-      self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
       print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD, and even without a pool')
-      self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS=1', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
       print('Test that everything works ok when we are on a pthread.')
-      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
@@ -3661,37 +3660,37 @@ window.close = function() {
       for debug in [[], ['-g']]:
         args = opt + debug
         print(args)
-        self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # 64 bit version of the above test.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
 
   # Test that basic thread creation works.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
@@ -3701,125 +3700,125 @@ window.close = function() {
       print(args)
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
                  expected='0',
-                 args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args,
+                 args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + args,
                  extra_tries=0) # this should be 100% deterministic
     print() # new line
     test([])
     test(['-O3'])
     # TODO: re-enable minimal runtime once the flakiness is figure out,
     # https://github.com/emscripten-core/emscripten/issues/12368
-    # test(['-s', 'MINIMAL_RUNTIME=1'])
+    # test(['-s', 'MINIMAL_RUNTIME'])
 
   # Test that preallocating worker threads work.
   @requires_threads
   def test_pthread_preallocates_workers(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_preallocates_workers.cpp'), expected='0', args=['-O3', '-s', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_DELAY_LOAD=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_preallocates_workers.cpp'), expected='0', args=['-O3', '-s', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_DELAY_LOAD'])
 
   # Test that allocating a lot of threads doesn't regress. This needs to be checked manually!
   @requires_threads
   def test_pthread_large_pthread_allocation(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_large_pthread_allocation.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=128MB', '-O3', '-s', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=50'], message='Check output from test to ensure that a regression in time it takes to allocate the threads has not occurred.')
+    self.btest(path_from_root('tests', 'pthread', 'test_large_pthread_allocation.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=128MB', '-O3', '-s', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=50'], message='Check output from test to ensure that a regression in time it takes to allocate the threads has not occurred.')
 
   # Tests the -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
   def test_pthread_proxy_to_pthread(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxy_to_pthread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxy_to_pthread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Test that a pthread can spawn another pthread of its own.
   @requires_threads
   def test_pthread_create_pthread(self):
-    for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
+    for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
   @requires_threads
   def test_pthread_nested_spawns(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'])
 
   # Test that main thread can wait for a pthread to finish via pthread_join().
   @requires_threads
   def test_pthread_join(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
   def test_std_thread_detach(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-s', 'USE_PTHREADS'])
 
   # Test pthread_cancel() operation
   @requires_threads
   def test_pthread_cancel(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
   @requires_threads
   def test_pthread_kill(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
   @requires_threads
   def test_pthread_cleanup(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Tests the pthread mutex api.
   @requires_threads
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
   @requires_threads
   def test_pthread_attr_getstack(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_attr_getstack.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_attr_getstack.cpp'), expected='0', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'])
 
   # Test that memory allocation is thread-safe.
   @requires_threads
   def test_pthread_malloc(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
   @requires_threads
   def test_pthread_malloc_free(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'INITIAL_MEMORY=256MB'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'INITIAL_MEMORY=256MB'])
 
   # Test that the pthread_barrier API works ok.
   @requires_threads
   def test_pthread_barrier(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the pthread_once() function.
   @requires_threads
   def test_pthread_once(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_spawns(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--closure', '1', '-s', 'ENVIRONMENT=web,worker'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '--closure', '1', '-s', 'ENVIRONMENT=web,worker'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
   @requires_threads
   def test_pthread_volatile(self):
     for arg in [[], ['-DUSE_C_VOLATILE']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
   # Test thread-specific data (TLS).
   @requires_threads
   def test_pthread_thread_local_storage(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ASSERTIONS=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ASSERTIONS'])
 
   # Test the pthread condition variable creation and waiting.
   @requires_threads
   def test_pthread_condition_variable(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that pthreads are able to do printf.
   @requires_threads
   def test_pthread_printf(self):
     def run(debug):
-       self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'LIBRARY_DEBUG=%d' % debug])
+       self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'LIBRARY_DEBUG=%d' % debug])
 
     run(debug=True)
     run(debug=False)
@@ -3827,7 +3826,7 @@ window.close = function() {
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   @requires_threads
   def test_pthread_iostream(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   @requires_threads
   def test_pthread_unistd_io_bigint(self):
@@ -3836,17 +3835,17 @@ window.close = function() {
   # Test that the main thread is able to use pthread_set/getspecific.
   @requires_threads
   def test_pthread_setspecific_mainthread(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS'], also_asmjs=True)
 
   # Test that pthreads have access to filesystem.
   @requires_threads
   def test_pthread_file_io(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test that the pthread_create() function operates benignly in the case that threading is not supported.
   @requires_threads
   def test_pthread_supported(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8']]:
+    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_supported.cpp'), expected='0', args=['-O3'] + args)
 
   # Test the operation of Module.pthreadMainPrefixURL variable
@@ -3880,21 +3879,21 @@ window.close = function() {
 
     # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
     create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html'])
+    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test.html'])
     shutil.move('test.worker.js', os.path.join('cdn', 'test.worker.js'))
     shutil.copyfile('test.html.mem', os.path.join('cdn', 'test.html.mem'))
     self.run_browser('test.html', '', '/report_result?1')
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     create_test_file('shell2.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test2.html'])
+    self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test2.html'])
     try_delete('test.worker.js')
     self.run_browser('test2.html', '', '/report_result?1')
 
   # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
   @requires_threads
   def test_pthread_proxying_in_futex_wait(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test that sbrk() operates properly in multithreaded conditions
   @requires_threads
@@ -3903,42 +3902,42 @@ window.close = function() {
       print('aborting malloc=' + str(aborting_malloc))
       # With aborting malloc = 1, test allocating memory in threads
       # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'INITIAL_MEMORY=128MB'])
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'INITIAL_MEMORY=128MB'])
 
   # Test that -s ABORTING_MALLOC=0 works in both pthreads and non-pthreads builds. (sbrk fails gracefully)
   @requires_threads
   def test_pthread_gauge_available_memory(self):
     for opts in [[], ['-O2']]:
-      for args in [[], ['-s', 'USE_PTHREADS=1']]:
+      for args in [[], ['-s', 'USE_PTHREADS']]:
         self.btest(path_from_root('tests', 'gauge_available_memory.cpp'), expected='1', args=['-s', 'ABORTING_MALLOC=0'] + args + opts)
 
   # Test that the proxying operations of user code from pthreads to main thread work
   @requires_threads
   def test_pthread_run_on_main_thread(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test how a lot of back-to-back called proxying operations behave.
   @requires_threads
   def test_pthread_run_on_main_thread_flood(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread_flood.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread_flood.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
   def test_pthread_call_async(self):
-    self.btest(path_from_root('tests', 'pthread', 'call_async.c'), expected='1', args=['-s', 'USE_PTHREADS=1'])
+    self.btest(path_from_root('tests', 'pthread', 'call_async.c'), expected='1', args=['-s', 'USE_PTHREADS'])
 
   # Test that it is possible to synchronously call a JavaScript function on the main thread and get a return value back.
   @requires_threads
   def test_pthread_call_sync_on_main_thread(self):
-    self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
-    self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
+    self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
+    self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
     self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js'), '-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]'])
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
   def test_pthread_call_async_on_main_thread(self):
-    self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
-    self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
+    self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
+    self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
 
   # Tests that spawning a new thread does not cause a reinitialization of the global data section of the application memory area.
@@ -3946,8 +3945,8 @@ window.close = function() {
   def test_pthread_global_data_initialization(self):
     mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
-      for args in [['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')], ['-O3']]:
-        self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+      for args in [['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')], ['-O3']]:
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'PTHREAD_POOL_SIZE'])
 
   @requires_threads
   @requires_sync_compilation
@@ -3955,21 +3954,21 @@ window.close = function() {
     mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
       args = ['-s', 'WASM_ASYNC_COMPILATION=0']
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test that emscripten_get_now() reports coherent wallclock times across all pthreads, instead of each pthread independently reporting wallclock times since the launch of that pthread.
   @requires_threads
   def test_pthread_clock_drift(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_clock_drift.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_clock_drift.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
   def test_pthread_utf8_funcs(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_utf8_funcs.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_utf8_funcs.cpp'), expected='0', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all waiters
   @requires_threads
   def test_pthread_wake_all(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'INITIAL_MEMORY=64MB', '-s', 'NO_EXIT_RUNTIME=1'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'INITIAL_MEMORY=64MB', '-s', 'NO_EXIT_RUNTIME'], also_asmjs=True)
 
   # Test that stack base and max correctly bound the stack on pthreads.
   @requires_threads
@@ -4016,7 +4015,7 @@ window.close = function() {
 
   @requires_threads
   def test_pthread_exit_process(self):
-    args = ['-s', 'USE_PTHREADS=1',
+    args = ['-s', 'USE_PTHREADS',
             '-s', 'PROXY_TO_PTHREAD',
             '-s', 'PTHREAD_POOL_SIZE=2',
             '-s', 'EXIT_RUNTIME',
@@ -4029,7 +4028,7 @@ window.close = function() {
   def test_pthread_no_exit_process(self):
     # Same as above but without EXIT_RUNTIME.  In this case we don't expect onExit to
     # ever be called.
-    args = ['-s', 'USE_PTHREADS=1',
+    args = ['-s', 'USE_PTHREADS',
             '-s', 'PROXY_TO_PTHREAD',
             '-s', 'PTHREAD_POOL_SIZE=2',
             '-O0']
@@ -4042,11 +4041,11 @@ window.close = function() {
 
   @requires_threads
   def test_main_thread_em_asm_signatures_pthreads(self):
-    self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'ASSERTIONS=1'])
+    self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'ASSERTIONS'])
 
   @requires_threads
   def test_main_thread_async_em_asm(self):
-    self.btest(path_from_root('tests', 'core', 'test_main_thread_async_em_asm.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'ASSERTIONS=1'])
+    self.btest(path_from_root('tests', 'core', 'test_main_thread_async_em_asm.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'ASSERTIONS'])
 
   @requires_threads
   def test_main_thread_em_asm_blocking(self):
@@ -4061,7 +4060,7 @@ window.close = function() {
   @requires_threads
   def test_atomicrmw_i64(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
-    self.compile_btest([path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html', '-s', 'WASM=0'])
+    self.compile_btest([path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS', '-s', 'IN_TEST_HARNESS', '-o', 'test.html', '-s', 'WASM=0'])
     self.run_browser('test.html', None, '/report_result?0')
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
@@ -4133,7 +4132,7 @@ window.close = function() {
       (['-O1'], 1),
       (['-O2'], 1),
       (['-O3'], 1),
-      (['-s', 'WASM_ASYNC_COMPILATION=1'], 1), # force it on
+      (['-s', 'WASM_ASYNC_COMPILATION'], 1), # force it on
       (['-O1', '-s', 'WASM_ASYNC_COMPILATION=0'], 0), # force it off
     ]:
       print(opts, expect)
@@ -4145,7 +4144,7 @@ window.close = function() {
 
   # Test that implementing Module.instantiateWasm() callback works.
   def test_manual_wasm_instantiate(self):
-    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js', '-s', 'BINARYEN=1'])
+    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js', '-s', 'BINARYEN'])
     shutil.copyfile(path_from_root('tests', 'manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
 
@@ -4188,7 +4187,7 @@ window.close = function() {
   @requires_offscreen_canvas
   def test_webgl_offscreen_canvas_in_pthread(self):
     for args in [[], ['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING']]:
-      self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL'])
+      self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   # Tests that it is possible to render WebGL content on a <canvas> on the main thread, after it has once been used to render WebGL content in a pthread first
   # -DTEST_MAIN_THREAD_EXPLICIT_COMMIT: Test the same (WebGL on main thread after pthread), but by using explicit .commit() to swap on the main thread instead of implicit "swap when rAF ends" logic
@@ -4197,17 +4196,17 @@ window.close = function() {
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self):
     self.skipTest('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
     for args in [[], ['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT']]:
-      self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL'])
+      self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   @requires_threads
   @requires_offscreen_canvas
   def test_webgl_offscreen_canvas_only_in_pthread(self):
-    self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1'])
+    self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER'])
 
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):
-    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-s', 'FULL_ES2=1'])
+    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-s', 'FULL_ES2=1'])
 
   # Tests for WEBGL_multi_draw extension
   # For testing WebGL draft extensions like this, if using chrome as the browser,
@@ -4215,13 +4214,13 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_multi_draw(self):
     self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
-               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
     self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
-               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
     self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
-               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
     self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
-               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+               args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
 
   # Tests for base_vertex/base_instance extension
   # For testing WebGL draft extensions like this, if using chrome as the browser,
@@ -4235,7 +4234,7 @@ window.close = function() {
         self.btest('webgl_draw_base_vertex_base_instance_test.c', reference='webgl_draw_instanced_base_vertex_base_instance.png',
                    args=['-lGL',
                          '-s', 'MAX_WEBGL_VERSION=2',
-                         '-s', 'OFFSCREEN_FRAMEBUFFER=1',
+                         '-s', 'OFFSCREEN_FRAMEBUFFER',
                          '-DMULTI_DRAW=' + str(multiDraw),
                          '-DDRAW_ELEMENTS=' + str(drawElements),
                          '-DEXPLICIT_SWAP=1',
@@ -4245,9 +4244,9 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
     # Tests all the different possible versions of libgl
-    for threads in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD']]:
+    for threads in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       for version in [[], ['-s', 'FULL_ES3'], ['-s', 'FULL_ES3']]:
-        args = ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'] + threads + version
+        args = ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1'] + threads + version
         print('with args: %s' % str(args))
         self.btest('webgl_draw_triangle.c', '0', args=args)
 
@@ -4261,24 +4260,24 @@ window.close = function() {
   def test_webgl_offscreen_framebuffer_state_restoration(self):
     for args in [
         # full state restoration path on WebGL 1.0
-        ['-s', 'MAX_WEBGL_VERSION=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        ['-s', 'MAX_WEBGL_VERSION', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],
         # VAO path on WebGL 1.0
-        ['-s', 'MAX_WEBGL_VERSION=1'],
+        ['-s', 'MAX_WEBGL_VERSION'],
         ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=0'],
         # VAO path on WebGL 2.0
         ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_REQUIRE_VAO=1'],
         # full state restoration path on WebGL 2.0
-        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],
         # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
         ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
       ]:
-      cmd = args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1']
+      cmd = args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
       self.btest('webgl_offscreen_framebuffer_swap_with_bad_state.c', '0', args=cmd)
 
   # Tests that -s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1 rendering works.
   @requires_graphics_hardware
   def test_webgl_workaround_webgl_uniform_upload_bug(self):
-    self.btest('webgl_draw_triangle_with_uniform_color.c', '0', args=['-lGL', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1'])
+    self.btest('webgl_draw_triangle_with_uniform_color.c', '0', args=['-lGL', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'])
 
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware
@@ -4292,7 +4291,7 @@ window.close = function() {
   @requires_offscreen_canvas
   def test_webgl_offscreen_canvas_in_proxied_pthread(self):
     for asyncify in [0, 1]:
-      cmd = ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1']
+      cmd = ['-s', 'USE_PTHREADS', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL', '-s', 'GL_DEBUG', '-s', 'PROXY_TO_PTHREAD']
       if asyncify:
         # given the synchronous render loop here, asyncify is needed to see intermediate frames and
         # the gradual color change
@@ -4304,10 +4303,10 @@ window.close = function() {
   @requires_graphics_hardware
   @requires_offscreen_canvas
   def test_webgl_resize_offscreencanvas_from_main_thread(self):
-    for args1 in [[], ['-s', 'PROXY_TO_PTHREAD=1']]:
+    for args1 in [[], ['-s', 'PROXY_TO_PTHREAD']]:
       for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
-          cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS=1', '-lGL', '-s', 'GL_DEBUG=1']
+        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT', '-s', 'OFFSCREEN_FRAMEBUFFER']]:
+          cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS', '-lGL', '-s', 'GL_DEBUG']
           print(str(cmd))
           self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
@@ -4334,7 +4333,7 @@ window.close = function() {
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
     self.btest('fetch/to_memory.cpp',
                expected='1',
-               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-DFILE_DOES_NOT_EXIST'],
+               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'],
                also_asmjs=True)
 
     # Test the positive case when the file URL exists. (http 200)
@@ -4342,14 +4341,14 @@ window.close = function() {
     for arg in [[], ['-s', 'FETCH_SUPPORT_INDEXEDDB=0']]:
       self.btest('fetch/to_memory.cpp',
                  expected='1',
-                 args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'] + arg,
+                 args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'] + arg,
                  also_asmjs=True)
 
   def test_fetch_to_indexdb(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/to_indexeddb.cpp',
                expected='1',
-               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
+               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'],
                also_asmjs=True)
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
@@ -4357,14 +4356,14 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/cached_xhr.cpp',
                expected='1',
-               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
+               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'],
                also_asmjs=True)
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/response_headers.cpp', expected='1', args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], also_asmjs=True)
+    self.btest('fetch/response_headers.cpp', expected='1', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'], also_asmjs=True)
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   def test_fetch_stream_file(self):
@@ -4379,7 +4378,7 @@ window.close = function() {
         f.write(s)
     self.btest('fetch/stream_file.cpp',
                expected='1',
-               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'INITIAL_MEMORY=536870912'],
+               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'INITIAL_MEMORY=536870912'],
                also_asmjs=True)
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
@@ -4388,7 +4387,7 @@ window.close = function() {
   @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_sync_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/sync_xhr.cpp', expected='1', args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/sync_xhr.cpp', expected='1', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
@@ -4396,13 +4395,13 @@ window.close = function() {
   @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_implicit_append(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
   @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @requires_threads
@@ -4410,7 +4409,7 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/sync_xhr.cpp',
                expected='1',
-               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'],
+               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'],
                also_asmjs=True)
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
@@ -4418,18 +4417,18 @@ window.close = function() {
   @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/sync_fetch_in_main_thread.cpp', expected='0', args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/sync_fetch_in_main_thread.cpp', expected='0', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
   @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_idb_store(self):
-    self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS', '-s', 'FETCH', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
   @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_idb_delete(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/idb_delete.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/idb_delete.cpp', expected='0', args=['-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_asmfs
   @requires_threads
@@ -4437,65 +4436,65 @@ window.close = function() {
     # Test basic file loading and the valid character set for files.
     ensure_dir('dirrey')
     shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), os.path.join(self.get_dir(), 'dirrey', 'hello file !#$%&\'()+,-.;=@[]^_`{}~ %%.txt'))
-    self.btest('asmfs/hello_file.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('asmfs/hello_file.cpp', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_read_file_twice(self):
     shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), 'hello_file.txt')
-    self.btest('asmfs/read_file_twice.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('asmfs/read_file_twice.cpp', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_fopen_write(self):
-    self.btest('asmfs/fopen_write.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest('asmfs/fopen_write.cpp', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_mkdir_create_unlink_rmdir(self):
-    self.btest('cstdio/test_remove.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest('cstdio/test_remove.cpp', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_dirent_test_readdir(self):
-    self.btest('dirent/test_readdir.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest('dirent/test_readdir.c', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_dirent_test_readdir_empty(self):
-    self.btest('dirent/test_readdir_empty.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest('dirent/test_readdir_empty.c', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_close(self):
-    self.btest_exit(path_from_root('tests', 'unistd', 'close.c'), 0, args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest_exit(path_from_root('tests', 'unistd', 'close.c'), 0, args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_access(self):
-    self.btest_exit(path_from_root('tests', 'unistd', 'access.c'), 0, args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest_exit(path_from_root('tests', 'unistd', 'access.c'), 0, args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_unlink(self):
     # TODO: Once symlinks are supported, remove -DNO_SYMLINK=1
-    self.btest_exit(path_from_root('tests', 'unistd', 'unlink.c'), 0, args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-DNO_SYMLINK=1'])
+    self.btest_exit(path_from_root('tests', 'unistd', 'unlink.c'), 0, args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG', '-DNO_SYMLINK=1'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_test_fcntl_open(self):
-    self.btest('fcntl/test_fcntl_open.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fcntl/test_fcntl_open.c', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_asmfs
   @requires_threads
   def test_asmfs_relative_paths(self):
-    self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
+    self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
 
   @requires_threads
   def test_pthread_locale(self):
     for args in [
         [],
-        ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
+        ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'],
     ]:
       print("Testing with: ", args)
       self.btest('pthread/test_pthread_locale.c', expected='1', args=args)
@@ -4507,13 +4506,13 @@ window.close = function() {
   # Test that emscripten_get_device_pixel_ratio() is callable from pthreads (and proxies to main thread to obtain the proper window.devicePixelRatio value).
   @requires_threads
   def test_emscripten_get_device_pixel_ratio(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       self.btest('emscripten_get_device_pixel_ratio.c', expected='1', args=args)
 
   # Tests that emscripten_run_script() variants of functions work in pthreads.
   @requires_threads
   def test_pthread_run_script(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_script.cpp'), expected='1', args=['-O3'] + args)
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
@@ -4522,13 +4521,13 @@ window.close = function() {
   def test_emscripten_animate_canvas_element_size(self):
     for args in [
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'],
-      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
-      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'],
+      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
+      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'OFFSCREENCANVAS_SUPPORT'],
     ]:
-      cmd = ['-lGL', '-O3', '-g2', '--shell-file', path_from_root('tests', 'canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG=1', '--threadprofiler'] + args
+      cmd = ['-lGL', '-O3', '-g2', '--shell-file', path_from_root('tests', 'canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler'] + args
       print(' '.join(cmd))
       self.btest('canvas_animate_resize.cpp', expected='1', args=cmd)
 
@@ -4536,14 +4535,14 @@ window.close = function() {
   @requires_threads
   def test_pthread_hello_thread(self):
     for opts in [[], ['-O3']]:
-      for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
-        self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
+      for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
+        self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS'] + modularize + opts)
 
   # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
   def test_minimal_runtime_hello_pthread(self):
     for opts in [[], ['-O3']]:
-      for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule']]:
-        self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'MINIMAL_RUNTIME=1', '-s', 'USE_PTHREADS=1'] + modularize + opts)
+      for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule']]:
+        self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'MINIMAL_RUNTIME', '-s', 'USE_PTHREADS'] + modularize + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_threads
@@ -4551,10 +4550,10 @@ window.close = function() {
     self.emcc_args.remove('-Werror')
 
     def run(emcc_args=[]):
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
 
     run()
-    run(['-s', 'PROXY_TO_PTHREAD=1'])
+    run(['-s', 'PROXY_TO_PTHREAD'])
 
   # Tests memory growth in a pthread.
   @requires_threads
@@ -4562,25 +4561,25 @@ window.close = function() {
     self.emcc_args.remove('-Werror')
 
     def run(emcc_args=[]):
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_asmjs=False)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_asmjs=False)
 
     run()
-    run(['-s', 'ASSERTIONS=1'])
-    run(['-s', 'PROXY_TO_PTHREAD=1'])
+    run(['-s', 'ASSERTIONS'])
+    run(['-s', 'PROXY_TO_PTHREAD'])
 
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central
   # clock.
   @requires_threads
   def test_pthread_reltime(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_reltime.cpp'), expected='3', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_reltime.cpp'), expected='3', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
   @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_load_js_from_blob_with_pthreads(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
-    self.compile_btest([path_from_root('tests', 'pthread', 'hello_thread.c'), '-s', 'USE_PTHREADS=1', '-o', 'hello_thread_with_blob_url.js', '-s', 'WASM=0'])
+    self.compile_btest([path_from_root('tests', 'pthread', 'hello_thread.c'), '-s', 'USE_PTHREADS', '-o', 'hello_thread_with_blob_url.js', '-s', 'WASM=0'])
     shutil.copyfile(path_from_root('tests', 'pthread', 'main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?1')
 
@@ -4596,7 +4595,7 @@ window.close = function() {
     # generate a dummy file
     create_test_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
-    self.compile_btest(['test.c', '-s', 'EXIT_RUNTIME', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-s', 'SINGLE_FILE=1'])
+    self.compile_btest(['test.c', '-s', 'EXIT_RUNTIME', '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-s', 'SINGLE_FILE'])
     create_test_file('a.html', '''
       <script>
         atob = undefined;
@@ -4611,7 +4610,7 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
-    self.btest('single_file_static_initializer.cpp', '19', args=['-s', 'SINGLE_FILE=1'], also_proxied=True)
+    self.btest('single_file_static_initializer.cpp', '19', args=['-s', 'SINGLE_FILE'], also_proxied=True)
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
@@ -4622,7 +4621,7 @@ window.close = function() {
   def test_minimal_runtime_single_file_html(self):
     for wasm in [0, 1]:
       for opts in [[], ['-O3']]:
-        self.btest('single_file_static_initializer.cpp', '19', args=opts + ['-s', 'MINIMAL_RUNTIME=1', '-s', 'SINGLE_FILE=1', '-s', 'WASM=' + str(wasm)])
+        self.btest('single_file_static_initializer.cpp', '19', args=opts + ['-s', 'MINIMAL_RUNTIME', '-s', 'SINGLE_FILE', '-s', 'WASM=' + str(wasm)])
         self.assertExists('test.html')
         self.assertNotExists('test.js')
         self.assertNotExists('test.wasm')
@@ -4633,12 +4632,12 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
   def test_single_file_in_web_environment_with_closure(self):
-    self.btest('minimal_hello.c', '0', args=['-s', 'SINGLE_FILE=1', '-s', 'ENVIRONMENT=web', '-O2', '--closure', '1'])
+    self.btest('minimal_hello.c', '0', args=['-s', 'SINGLE_FILE', '-s', 'ENVIRONMENT=web', '-O2', '--closure', '1'])
 
   # Tests that SINGLE_FILE works as intended with locateFile
   def test_single_file_locate_file(self):
     for wasm_enabled in [True, False]:
-      args = [path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js', '-s', 'SINGLE_FILE=1']
+      args = [path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js', '-s', 'SINGLE_FILE']
 
       if not wasm_enabled:
         args += ['-s', 'WASM=0']
@@ -4664,7 +4663,7 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
-    self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1'])
+    self.compile_btest([path_from_root('tests', 'browser_test_hello_world.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE'])
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     self.assertExists('test.js')
@@ -4676,7 +4675,7 @@ window.close = function() {
   # are all inside Web Workers).
   @requires_threads
   def test_pthreads_started_in_worker(self):
-    self.compile_btest([path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), '-o', 'test.js', '-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.compile_btest([path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), '-o', 'test.js', '-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
     create_test_file('test.html', '''
       <script>
         new Worker('test.js');
@@ -4686,12 +4685,12 @@ window.close = function() {
 
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')
-    self.compile_btest([path_from_root('tests', 'access_file_after_heap_resize.c'), '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
+    self.compile_btest([path_from_root('tests', 'access_file_after_heap_resize.c'), '-s', 'ALLOW_MEMORY_GROWTH', '--preload-file', 'test.txt', '-o', 'page.html'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
     # with separate file packager invocation
     self.run_process([FILE_PACKAGER, 'data.data', '--preload', 'test.txt', '--js-output=' + 'data.js'])
-    self.compile_btest([path_from_root('tests', 'access_file_after_heap_resize.c'), '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
+    self.compile_btest([path_from_root('tests', 'access_file_after_heap_resize.c'), '-s', 'ALLOW_MEMORY_GROWTH', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
   def test_unicode_html_shell(self):
@@ -4708,7 +4707,7 @@ window.close = function() {
   # Tests the functionality of the emscripten_thread_sleep() function.
   @requires_threads
   def test_emscripten_thread_sleep(self):
-    self.btest(path_from_root('tests', 'pthread', 'emscripten_thread_sleep.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print"]'])
+    self.btest(path_from_root('tests', 'pthread', 'emscripten_thread_sleep.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print"]'])
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
   def test_browser_run_from_different_directory(self):
@@ -4725,7 +4724,7 @@ window.close = function() {
   # Similar to `test_browser_run_from_different_directory`, but asynchronous because of `-s MODULARIZE=1`
   def test_browser_run_from_different_directory_async(self):
     for args, creations in [
-      (['-s', 'MODULARIZE=1'], [
+      (['-s', 'MODULARIZE'], [
         'Module();',    # documented way for using modularize
         'new Module();' # not documented as working, but we support it
        ]),
@@ -4755,8 +4754,8 @@ window.close = function() {
     # test both modularize (and creating an instance) and modularize-instance
     # (which creates by itself)
     for path, args, creation in [
-      ([], ['-s', 'MODULARIZE=1'], 'Module();'),
-      (['subdir'], ['-s', 'MODULARIZE=1'], 'Module();'),
+      ([], ['-s', 'MODULARIZE'], 'Module();'),
+      (['subdir'], ['-s', 'MODULARIZE'], 'Module();'),
     ]:
       print(path, args, creation)
       filesystem_path = os.path.join('.', *path)
@@ -4789,11 +4788,11 @@ window.close = function() {
 
   @requires_threads
   def test_emscripten_set_timeout(self):
-    self.btest(path_from_root('tests', 'emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest(path_from_root('tests', 'emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
   def test_emscripten_set_timeout_loop(self):
-    self.btest(path_from_root('tests', 'emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest(path_from_root('tests', 'emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   def test_emscripten_set_immediate(self):
     self.btest(path_from_root('tests', 'emscripten_set_immediate.c'), '0')
@@ -4803,16 +4802,16 @@ window.close = function() {
 
   @requires_threads
   def test_emscripten_set_interval(self):
-    self.btest(path_from_root('tests', 'emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest(path_from_root('tests', 'emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Test emscripten_performance_now() and emscripten_date_now()
   @requires_threads
   def test_emscripten_performance_now(self):
-    self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
   def test_embind_with_pthreads(self):
-    self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   def test_embind_with_asyncify(self):
     self.btest('embind_with_asyncify.cpp', '1', args=['--bind'] + self.get_async_args())
@@ -4837,25 +4836,25 @@ window.close = function() {
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
 
   def test_no_declare_asm_module_exports_asmjs(self):
-    for minimal_runtime in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+    for minimal_runtime in [[], ['-s', 'MINIMAL_RUNTIME']]:
       self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'WASM=0'] + minimal_runtime)
 
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_no_declare_asm_module_exports_wasm_minimal_runtime(self):
-    self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'MINIMAL_RUNTIME=1'])
+    self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'MINIMAL_RUNTIME'])
 
   # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
   def test_minimal_runtime_loader_shell(self):
     args = ['-s', 'MINIMAL_RUNTIME=2']
-    for wasm in [[], ['-s', 'WASM=0', '--memory-init-file', '0'], ['-s', 'WASM=0', '--memory-init-file', '1'], ['-s', 'SINGLE_FILE=1'], ['-s', 'WASM=0', '-s', 'SINGLE_FILE=1']]:
-      for modularize in [[], ['-s', 'MODULARIZE=1']]:
+    for wasm in [[], ['-s', 'WASM=0', '--memory-init-file', '0'], ['-s', 'WASM=0', '--memory-init-file', '1'], ['-s', 'SINGLE_FILE'], ['-s', 'WASM=0', '-s', 'SINGLE_FILE']]:
+      for modularize in [[], ['-s', 'MODULARIZE']]:
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
 
   # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   def test_minimal_runtime_hello_world(self):
-    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1', '--closure', '1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1', '--closure', '1']]:
-      self.btest(path_from_root('tests', 'small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME=1'])
+    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '--closure', '1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '--closure', '1']]:
+      self.btest(path_from_root('tests', 'small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME'])
 
   @requires_threads
   def test_offset_converter(self, *args):
@@ -4868,10 +4867,10 @@ window.close = function() {
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
-    self.btest(path_from_root('tests', 'browser', 'test_emscripten_unwind_to_js_event_loop.c'), '1', args=['-s', 'NO_EXIT_RUNTIME=1'])
+    self.btest(path_from_root('tests', 'browser', 'test_emscripten_unwind_to_js_event_loop.c'), '1', args=['-s', 'NO_EXIT_RUNTIME'])
 
   def test_wasm2js_fallback(self):
-    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+    for args in [[], ['-s', 'MINIMAL_RUNTIME']]:
       self.compile_btest([path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2', '-o', 'test.html'] + args)
 
       # First run with WebAssembly support enabled
@@ -4888,7 +4887,7 @@ window.close = function() {
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
   def test_wasm2js_fallback_on_wasm_compilation_failure(self):
-    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+    for args in [[], ['-s', 'MINIMAL_RUNTIME']]:
       self.compile_btest([path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2', '-o', 'test.html'] + args)
 
       # Run without the .wasm.js file present: with Wasm support, the page should still run
@@ -4970,7 +4969,7 @@ window.close = function() {
     # you may want to adjust "ITERATIONS".
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxy_hammer.cpp'),
                expected='0',
-               args=['-s', 'USE_PTHREADS=1', '-O2', '-s', 'PROXY_TO_PTHREAD',
+               args=['-s', 'USE_PTHREADS', '-O2', '-s', 'PROXY_TO_PTHREAD',
                      '-DITERATIONS=1024', '-g1'] + args,
                timeout=10000,
                # don't run this with the default extra_tries value, as this is

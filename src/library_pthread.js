@@ -266,7 +266,7 @@ var LibraryPThread = {
       if (pthread.worker) pthread.worker.pthread = null;
     },
     returnWorkerToPool: function(worker) {
-      delete PThread.pthreads[worker.pthread.thread];
+      delete PThread.pthreads[worker.pthread.threadInfoStruct];
       //Note: worker is intentionally not terminated so the pool can dynamically grow.
       PThread.unusedWorkers.push(worker);
       PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore
@@ -340,7 +340,7 @@ var LibraryPThread = {
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'exit') {
-          var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
+          var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
           if (detached) {
             PThread.returnWorkerToPool(worker);
           }
@@ -505,7 +505,6 @@ var LibraryPThread = {
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
       allocatedOwnStack: threadParams.allocatedOwnStack,
-      thread: threadParams.pthread_ptr,
       // Info area for this thread in Emscripten HEAP (shared)
       threadInfoStruct: threadParams.pthread_ptr
     };
@@ -570,7 +569,7 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
 
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_getschedparam', 'pthread_self', 'memalign', '$resetPrototype', 'emscripten_sync_run_in_main_thread_4'],
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_getschedparam', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -1446,19 +1445,6 @@ var LibraryPThread = {
 
   $invokeEntryPoint: function(ptr, arg) {
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
-  },
-
-  // When using postMessage to send an object, it is processed by the structured clone algorithm.
-  // The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
-  // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
-  $resetPrototype: function(constructor, attrs) {
-    var object = Object.create(constructor.prototype);
-    for (var key in attrs) {
-      if (attrs.hasOwnProperty(key)) {
-        object[key] = attrs[key];
-      }
-    }
-    return object;
   },
 
   // This function is called internally to notify target thread ID that it has messages it needs to

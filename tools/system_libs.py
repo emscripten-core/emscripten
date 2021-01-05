@@ -15,7 +15,7 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import shared, building, ports, config
+from . import shared, building, ports, config, utils
 from . import deps_info
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
@@ -38,7 +38,8 @@ def files_in_path(path_components, filenames):
 
 def glob_in_path(path_components, glob_pattern, excludes=()):
   srcdir = shared.path_from_root(*path_components)
-  return [f for f in iglob(os.path.join(srcdir, glob_pattern)) if os.path.basename(f) not in excludes]
+  files = iglob(os.path.join(srcdir, glob_pattern), recursive=True)
+  return [f for f in files if os.path.basename(f) not in excludes]
 
 
 def get_all_files_under(dirname):
@@ -939,44 +940,8 @@ class libcxx(NoExceptLibrary, MTLibrary):
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
   src_dir = ['system', 'lib', 'libcxx']
-  src_files = [
-    'algorithm.cpp',
-    'any.cpp',
-    'bind.cpp',
-    'charconv.cpp',
-    'chrono.cpp',
-    'condition_variable.cpp',
-    'condition_variable_destructor.cpp',
-    'debug.cpp',
-    'exception.cpp',
-    'functional.cpp',
-    'future.cpp',
-    'hash.cpp',
-    'ios.cpp',
-    'iostream.cpp',
-    'locale.cpp',
-    'memory.cpp',
-    'mutex.cpp',
-    'mutex_destructor.cpp',
-    'new.cpp',
-    'optional.cpp',
-    'random.cpp',
-    'regex.cpp',
-    'shared_mutex.cpp',
-    'stdexcept.cpp',
-    'string.cpp',
-    'strstream.cpp',
-    'system_error.cpp',
-    'thread.cpp',
-    'typeinfo.cpp',
-    'utility.cpp',
-    'valarray.cpp',
-    'variant.cpp',
-    'vector.cpp',
-    os.path.join('experimental', 'memory_resource.cpp'),
-    os.path.join('filesystem', 'directory_iterator.cpp'),
-    os.path.join('filesystem', 'operations.cpp')
-  ]
+  src_glob = '**/*.cpp'
+  src_glob_exclude = ['locale_win32.cpp', 'thread_win32.cpp', 'support.cpp', 'int128_builtins.cpp']
 
 
 class libunwind(NoExceptLibrary, MTLibrary):
@@ -1722,10 +1687,9 @@ class Ports(object):
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
-      shared.Cache.acquire_cache_lock()
       logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-      try:
+      with shared.Cache.lock():
         for local in local_ports:
           if name == local[0]:
             path = local[1]
@@ -1745,8 +1709,6 @@ class Ports(object):
               shutil.copytree(path, target)
               Ports.clear_project_build(name)
             return
-      finally:
-        shared.Cache.release_cache_lock()
 
     if is_tarbz2:
       fullpath = fullname + '.tar.bz2'
@@ -1816,20 +1778,15 @@ class Ports(object):
         z = tarfile.open(fullpath, 'r:gz')
       else:
         z = zipfile.ZipFile(fullpath, 'r')
-      try:
-        cwd = os.getcwd()
-        os.chdir(fullname)
+      with utils.chdir(fullname):
         z.extractall()
-      finally:
-        os.chdir(cwd)
 
       State.unpacked = True
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
 
-    shared.Cache.acquire_cache_lock()
-    try:
+    with shared.Cache.lock():
       if not os.path.exists(fullpath):
         retrieve()
 
@@ -1846,8 +1803,6 @@ class Ports(object):
       if State.unpacked:
         # we unpacked a new version, clear the build in the cache
         Ports.clear_project_build(name)
-    finally:
-      shared.Cache.release_cache_lock()
 
   @staticmethod
   def clear_project_build(name):

@@ -223,6 +223,7 @@ class OFormat(Enum):
 
 class EmccOptions(object):
   def __init__(self):
+    self.output_file = None
     self.post_link = False
     self.executable = False
     self.compiler_wrapper = None
@@ -391,44 +392,6 @@ def apply_settings(changes):
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
       shared.Settings.LTO = 0 if value else 'full'
-
-
-def find_output_arg(args):
-  """Find and remove any -o arguments.  The final one takes precedence.
-  Return the final -o target along with the remaining (non-o) arguments.
-  """
-  outargs = []
-  specified_target = None
-
-  arg_count = len(args)
-  i = 0
-
-  while i < arg_count:
-    arg = args[i]
-
-    if arg == '-o':
-      if i != arg_count - 1:
-        specified_target = args[i + 1]
-      i += 2
-      continue
-
-    if arg.startswith('-o'):
-      specified_target = arg[2:]
-      i += 1
-      continue
-
-    outargs.append(arg)
-
-    if arg == '-mllvm' and i != arg_count - 1:
-      # Explicitly skip over -mllvm arguments and their values because their
-      # values could potentially start with -o and be confused for output file
-      # specifiers.
-      outargs.append(args[i + 1])
-      i += 2
-    else:
-      i += 1
-
-  return specified_target, outargs
 
 
 def is_ar_file_with_missing_index(archive_file):
@@ -834,7 +797,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = shared.check_call([clang, '-v'], check=False).returncode
+    code = shared.check_call([clang, '-v'] + shared.get_clang_flags(), check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -1099,8 +1062,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
 
-    # Check if a target is specified on the command line
-    specified_target, args = find_output_arg(args)
+    specified_target = options.output_file
 
     if os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args:
       # configure tests want a more shell-like style, where we emit return codes on exit()
@@ -1910,9 +1872,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                                              '_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end']
 
-    if shared.Settings.USE_PTHREADS:
-      newargs.append('-pthread')
-
     # Any "pointers" passed to JS will now be i64's, in both modes.
     if shared.Settings.MEMORY64:
       if settings_key_changes.get('WASM_BIGINT') == '0':
@@ -2016,7 +1975,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return get_compiler(cxx) + cflags + per_file_cflags + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
-      asflags = shared.get_asmflags()
+      asflags = shared.get_clang_flags()
       return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
 
     # preprocessor-only (-E) support
@@ -2050,8 +2009,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     def get_object_filename(input_file):
       if compile_only:
-        # In compile-only mode we don't use any temp file.   The object files are written directly
-        # to their final output locations.
+        # In compile-only mode we don't use any temp file.  The object files
+        # are written directly to their final output locations.
         if specified_target:
           assert len(input_files) == 1
           return specified_target
@@ -2068,7 +2027,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         cmd = get_clang_command_asm(input_file)
       else:
         cmd = get_clang_command(input_file)
-      cmd += ['-c', '-o', output_file]
+      if not has_dash_c:
+        cmd += ['-c']
+      cmd += ['-o', output_file]
       shared.print_compiler_stage(cmd)
       shared.check_call(cmd)
       if output_file not in ('-', os.devnull):
@@ -2385,8 +2346,13 @@ def parse_args(newargs):
   should_exit = False
   eh_enabled = False
   wasm_eh_enabled = False
+  skip = False
 
   for i in range(len(newargs)):
+    if skip:
+      skip = False
+      continue
+
     # On Windows Vista (and possibly others), excessive spaces in the command line
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     newargs[i] = newargs[i].strip()
@@ -2664,6 +2630,16 @@ def parse_args(newargs):
       options.shared = True
     elif check_flag('-r'):
       options.relocatable = True
+    elif check_arg('-o'):
+      options.output_file = consume_arg()
+    elif arg.startswith('-o'):
+      options.output_file = arg[2:]
+      newargs[i] = ''
+    elif arg == '-mllvm':
+      # Ignore the next argument rather than trying to parse it.  This is needed
+      # because llvm args could, for example, start with `-o` and we don't want
+      # to confuse that with a normal `-o` flag.
+      skip = True
 
   if should_exit:
     sys.exit(0)
