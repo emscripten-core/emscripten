@@ -795,7 +795,7 @@ function getBinaryPromise() {
           readAsync(wasmBinaryFile, function(response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
         });
       }
-  }
+    }
 #endif
   }
     
