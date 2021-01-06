@@ -766,7 +766,7 @@ def run(args):
     print('''
 ------------------------------------------------------------------
 
-emcc: supported targets: llvm bitcode, javascript, NOT elf
+emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
 (autoconf likes to see elf above to enable shared object support)
 ''')
     return 0
