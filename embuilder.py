@@ -141,8 +141,6 @@ def main():
     force = True
 
   # process tasks
-  libname = system_libs.Ports.get_lib_name
-
   auto_tasks = False
   tasks = args.targets
   if 'SYSTEM' in tasks:
@@ -182,7 +180,7 @@ def main():
         shared.Cache.erase_file('generated_struct_info.json')
       emscripten.generate_struct_info()
     elif what == 'icu':
-      build_port('icu', libname('libicuuc'))
+      build_port('icu', 'libicuuc.a')
     elif what == 'zlib':
       shared.Settings.USE_ZLIB = 1
       build_port('zlib', 'libz.a')
@@ -190,49 +188,49 @@ def main():
     elif what == 'bzip2':
       build_port('bzip2', 'libbz2.a')
     elif what == 'bullet':
-      build_port('bullet', libname('libbullet'))
+      build_port('bullet', 'libbullet.a')
     elif what == 'vorbis':
-      build_port('vorbis', libname('libvorbis'))
+      build_port('vorbis', 'libvorbis.a')
     elif what == 'ogg':
-      build_port('ogg', libname('libogg'))
+      build_port('ogg', 'libogg.a')
     elif what == 'libjpeg':
-      build_port('libjpeg', libname('libjpeg'))
+      build_port('libjpeg', 'libjpeg.a')
     elif what == 'libpng':
-      build_port('libpng', libname('libpng'))
+      build_port('libpng', 'libpng.a')
     elif what == 'sdl2':
-      build_port('sdl2', libname('libSDL2'))
+      build_port('sdl2', 'libSDL2.a')
     elif what == 'sdl2-mt':
       shared.Settings.USE_PTHREADS = 1
-      build_port('sdl2', libname('libSDL2-mt'))
+      build_port('sdl2', 'libSDL2-mt.a')
       shared.Settings.USE_PTHREADS = 0
     elif what == 'sdl2-gfx':
-      build_port('sdl2_gfx', libname('libSDL2_gfx'))
+      build_port('sdl2_gfx', 'libSDL2_gfx.a')
     elif what == 'sdl2-image':
-      build_port('sdl2_image', libname('libSDL2_image'))
+      build_port('sdl2_image', 'libSDL2_image.a')
     elif what == 'sdl2-image-png':
       shared.Settings.SDL2_IMAGE_FORMATS = ["png"]
-      build_port('sdl2_image', libname('libSDL2_image_png'))
+      build_port('sdl2_image', 'libSDL2_image_png.a')
       shared.Settings.SDL2_IMAGE_FORMATS = []
     elif what == 'sdl2-image-jpg':
       shared.Settings.SDL2_IMAGE_FORMATS = ["jpg"]
-      build_port('sdl2_image', libname('libSDL2_image_jpg'))
+      build_port('sdl2_image', 'libSDL2_image_jpg.a')
       shared.Settings.SDL2_IMAGE_FORMATS = []
     elif what == 'sdl2-net':
-      build_port('sdl2_net', libname('libSDL2_net'))
+      build_port('sdl2_net', 'libSDL2_net.a')
     elif what == 'sdl2-mixer':
       old_formats = shared.Settings.SDL2_MIXER_FORMATS
       shared.Settings.SDL2_MIXER_FORMATS = []
-      build_port('sdl2_mixer', libname('libSDL2_mixer'))
+      build_port('sdl2_mixer', 'libSDL2_mixer.a')
       shared.Settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'sdl2-mixer-ogg':
       old_formats = shared.Settings.SDL2_MIXER_FORMATS
       shared.Settings.SDL2_MIXER_FORMATS = ["ogg"]
-      build_port('sdl2_mixer', libname('libSDL2_mixer_ogg'))
+      build_port('sdl2_mixer', 'libSDL2_mixer_ogg.a')
       shared.Settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'sdl2-mixer-mp3':
       old_formats = shared.Settings.SDL2_MIXER_FORMATS
       shared.Settings.SDL2_MIXER_FORMATS = ["mp3"]
-      build_port('sdl2_mixer', libname('libSDL2_mixer_mp3'))
+      build_port('sdl2_mixer', 'libSDL2_mixer_mp3.a')
       shared.Settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a')
@@ -243,17 +241,17 @@ def main():
       build_port('harfbuzz', 'libharfbuzz-mt.a')
       shared.Settings.USE_PTHREADS = 0
     elif what == 'sdl2-ttf':
-      build_port('sdl2_ttf', libname('libSDL2_ttf'))
+      build_port('sdl2_ttf', 'libSDL2_ttf.a')
     elif what == 'cocos2d':
-      build_port('cocos2d', libname('libcocos2d'))
+      build_port('cocos2d', 'libcocos2d.a')
     elif what == 'regal':
-      build_port('regal', libname('libregal'))
+      build_port('regal', 'libregal.a')
     elif what == 'regal-mt':
       shared.Settings.USE_PTHREADS = 1
-      build_port('regal', libname('libregal-mt'))
+      build_port('regal', 'libregal-mt.a')
       shared.Settings.USE_PTHREADS = 0
     elif what == 'boost_headers':
-      build_port('boost_headers', libname('libboost_headers'))
+      build_port('boost_headers', 'libboost_headers.a')
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

@@ -1577,10 +1577,6 @@ class Ports(object):
   """
 
   @staticmethod
-  def get_lib_name(name):
-    return name + '.a'
-
-  @staticmethod
   def get_include_dir():
     dirname = shared.Cache.get_path('include')
     shared.safe_ensure_dirs(dirname)
