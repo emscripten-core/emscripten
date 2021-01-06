@@ -17,6 +17,10 @@ def needed(settings):
   return settings.USE_HARFBUZZ
 
 
+def get_lib_name(ports, settings):
+  return ports.get_lib_name('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else ''))
+
+
 def get(ports, settings, shared):
   ports.fetch_project('harfbuzz', 'https://github.com/harfbuzz/harfbuzz/releases/download/' +
                       TAG + '/harfbuzz-' + TAG + '.tar.bz2', 'harfbuzz-' + TAG, is_tarbz2=True, sha512hash=HASH)
@@ -63,11 +67,11 @@ def get(ports, settings, shared):
 
     return os.path.join(dest_path, 'libharfbuzz.a')
 
-  return [shared.Cache.get('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a', create, what='port')]
+  return [shared.Cache.get(get_lib_name(ports, settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libharfbuzz.a')
+  shared.Cache.erase_file(get_lib_name(ports, settings))
 
 
 def process_dependencies(settings):
