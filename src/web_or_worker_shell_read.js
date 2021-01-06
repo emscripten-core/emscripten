@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-  read_ = function shell_read(url) {
+  read_ = function(url) {
 #if SUPPORT_BASE64_EMBEDDING
     try {
 #endif
@@ -24,7 +24,7 @@
   };
 
   if (ENVIRONMENT_IS_WORKER) {
-    readBinary = function readBinary(url) {
+    readBinary = function(url) {
 #if SUPPORT_BASE64_EMBEDDING
       try {
 #endif
@@ -45,11 +45,11 @@
     };
   }
 
-  readAsync = function readAsync(url, onload, onerror) {
+  readAsync = function(url, onload, onerror) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
-    xhr.onload = function xhr_onload() {
+    xhr.onload = function() {
       if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
         onload(xhr.response);
         return;
