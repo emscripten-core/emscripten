@@ -220,6 +220,16 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // using i64 pointers).
 var MEMORY64 = 0;
 
+// Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
+// (and not otherwise). Normally Emscripten can determine the size of the table
+// at link time, but in SPLIT_MODULE mode, wasm-split often needs to grow the
+// table, so the table size baked into the JS for the instrumented build will be
+// too small after the module is split. This is a hack to allow users to specify
+// a large enough table size that can be consistent across both builds. This
+// setting may be removed at any time and should not be used except in
+// conjunction with SPLIT_MODULE and dynamic linking.
+var INITIAL_TABLE = -1;
+
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
 var ALLOW_TABLE_GROWTH = 0;

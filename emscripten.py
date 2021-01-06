@@ -146,7 +146,9 @@ def update_settings_glue(metadata, DEBUG):
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
     # size does not include the reserved slot at zero for the null pointer.
     # Instead we use __table_base to offset the elements by 1.
-    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize'] + 1
+    if shared.Settings.INITIAL_TABLE == -1:
+      shared.Settings.INITIAL_TABLE = metadata['tableSize'] + 1
+
   shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
 
   # Store exports for Closure compiler to be able to track these as globals in

@@ -819,10 +819,16 @@ var splitModuleProxyHandler = {
     return function() {
       err('placeholder function called: ' + prop);
       var imports = {'primary': Module['asm']};
-      var table = Module['asm']['__indirect_function_table'];
       instantiateSync(wasmBinaryFile + '.deferred', imports);
       err('instantiated deferred module, continuing');
-      return table.get(prop).apply(null, arguments);
+#if RELOCATABLE
+      // When the table is dynamically laid out, the placeholder functions names
+      // are offsets from the table base. In the main module, the table base is
+      // always 1.
+      return wasmTable.get(1 + parseInt(prop)).apply(null, arguments);
+#else
+      return wasmTable.get(prop).apply(null, arguments);
+#endif
     }
   }
 };
