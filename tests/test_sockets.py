@@ -9,7 +9,6 @@ import socket
 import shutil
 import sys
 import time
-import unittest
 from subprocess import Popen, PIPE
 
 if __name__ == '__main__':
@@ -252,14 +251,13 @@ class sockets(BrowserCore):
         self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
   @no_windows('This test is Unix-specific.')
-  @unittest.skip('fails on python3 - ws library may need to be updated')
   def test_sockets_partial(self):
     for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49180),
       CompiledServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49181)
     ]:
       with harness:
-        self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
 
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_down(self):
