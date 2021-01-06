@@ -5706,6 +5706,7 @@ return malloc(size);
 
   @wasm_simd
   @is_slow_test
+  @disabled('https://github.com/WebAssembly/binaryen/issues/3468')
   def test_wasm_builtin_simd(self):
     # Improves test readability
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-format']
@@ -5715,6 +5716,7 @@ return malloc(size);
 
   @wasm_simd
   @is_slow_test
+  @disabled('https://github.com/WebAssembly/binaryen/issues/3468')
   def test_wasm_intrinsics_simd(self):
     def run():
       self.do_runf(path_from_root('tests', 'test_wasm_intrinsics_simd.c'), 'Success!')
