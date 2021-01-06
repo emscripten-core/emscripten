@@ -1526,6 +1526,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '__emscripten_do_dispatch_to_thread',
         '__emscripten_main_thread_futex',
         '__emscripten_thread_init',
+        '_emscripten_current_thread_process_queued_calls',
         '_emscripten_futex_wake',
         '_emscripten_get_global_libc',
         '_emscripten_main_browser_thread_id',
@@ -1538,6 +1539,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '_emscripten_tls_init',
         '_pthread_self',
       ]
+      # Some of these symbols are using by worker.js but otherwise unreferenced.
+      # Because emitDCEGraph only considered the main js file, and not worker.js
+      # we have explictly mark these symbols as user-exported so that they will
+      # kept alive through DCE.
+      # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
+      # for roots.
+      building.user_requested_exports.append('_emscripten_tls_init')
+      building.user_requested_exports.append('_emscripten_current_thread_process_queued_calls')
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
