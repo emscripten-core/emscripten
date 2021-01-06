@@ -6447,10 +6447,7 @@ return malloc(size);
 
   def test_emulate_function_pointer_casts(self):
     self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
-
-    self.do_runf(path_from_root('tests', 'core', 'test_emulate_function_pointer_casts.cpp'),
-                 ('|1.266,1|',                 # asm.js, double <-> int
-                  '|1.266,1413754136|')) # wasm, reinterpret the bits
+    self.do_run_in_out_file_test(path_from_root('tests', 'core', 'test_emulate_function_pointer_casts.cpp'))
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @parameterized({
