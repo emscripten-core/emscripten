@@ -79,5 +79,6 @@ int main()
   emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
-  EM_ASM(noExitRuntime = true);
+  emscripten_exit_with_live_runtime();
+  return 0;
 }

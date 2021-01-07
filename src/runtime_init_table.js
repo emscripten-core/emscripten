@@ -1,9 +1,9 @@
 #if RELOCATABLE
 // In RELOCATABLE mode we create the table in JS.
 var wasmTable = new WebAssembly.Table({
-  'initial': {{{ WASM_TABLE_SIZE }}},
+  'initial': {{{ INITIAL_TABLE }}},
 #if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ WASM_TABLE_SIZE }}},
+  'maximum': {{{ INITIAL_TABLE }}},
 #endif
   'element': 'anyfunc'
 });

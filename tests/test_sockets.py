@@ -9,7 +9,6 @@ import socket
 import shutil
 import sys
 import time
-import unittest
 from subprocess import Popen, PIPE
 
 if __name__ == '__main__':
@@ -195,7 +194,7 @@ class sockets(BrowserCore):
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
 
   def test_sockets_echo_pthreads(self, extra_args=[]):
-    self.test_sockets_echo(['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.test_sockets_echo(['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   def test_sdl2_sockets_echo(self):
     harness = CompiledServerHarness('sdl2_net_server.c', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'], 49164)
@@ -232,12 +231,12 @@ class sockets(BrowserCore):
     # generate a large string literal to use as our message
     message = ''
     for i in range(256 * 256 * 2):
-        message += str(chr(ord('a') + (i % 26)))
+      message += str(chr(ord('a') + (i % 26)))
 
     # re-write the client test with this literal (it's too big to pass via command line)
     input_filename = path_from_root('tests', 'sockets', 'test_sockets_echo_client.c')
     input = open(input_filename).read()
-    output = input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message)
+    create_test_file('test_sockets_echo_bigdata.c', input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
 
     harnesses = [
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49172), 0),
@@ -249,17 +248,16 @@ class sockets(BrowserCore):
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
+        self.btest('test_sockets_echo_bigdata.c', expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
   @no_windows('This test is Unix-specific.')
-  @unittest.skip('fails on python3 - ws library may need to be updated')
   def test_sockets_partial(self):
     for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49180),
       CompiledServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49181)
     ]:
       with harness:
-        self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
 
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_down(self):
@@ -398,8 +396,8 @@ class sockets(BrowserCore):
       };
     ''')
 
-    self.compile_btest(['-Werror', temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
-    self.compile_btest(['-Werror', temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1'])
+    self.compile_btest(['-Werror', temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC', '-s', 'SOCKET_DEBUG'])
+    self.compile_btest(['-Werror', temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC', '-s', 'SOCKET_DEBUG'])
 
     # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
     self.run_process([NPM, 'install', path_from_root('tests', 'sockets', 'p2p')])
@@ -443,7 +441,7 @@ class sockets(BrowserCore):
         WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
       ]:
         with harness:
-          self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
+          self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
 
           out = self.run_js('client.js')
           self.assertContained('do_msg_read: read 14 bytes', out)
@@ -466,7 +464,7 @@ class sockets(BrowserCore):
           };
           ''')
 
-          self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
+          self.run_process([EMCC, '-Werror', path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
 
           out = self.run_js('client.js')
           self.assertContained('do_msg_read: read 14 bytes', out)
@@ -476,7 +474,7 @@ class sockets(BrowserCore):
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
   def test_websocket_send(self):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest(path_from_root('tests', 'websocket', 'test_websocket_send.c'), expected='101', args=['-lwebsocket', '-s', 'NO_EXIT_RUNTIME=1', '-s', 'WEBSOCKET_DEBUG=1'])
+      self.btest(path_from_root('tests', 'websocket', 'test_websocket_send.c'), expected='101', args=['-lwebsocket', '-s', 'NO_EXIT_RUNTIME', '-s', 'WEBSOCKET_DEBUG'])
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets -> POSIX sockets bridge server
   def test_posix_proxy_sockets(self):
@@ -491,4 +489,4 @@ class sockets(BrowserCore):
     with BackgroundServerProcess([proxy_server, '8080']):
       with PythonTcpEchoServerProcess('7777'):
         # Build and run the TCP echo client program with Emscripten
-        self.btest(path_from_root('tests', 'websocket', 'tcp_echo_client.cpp'), expected='101', args=['-lwebsocket', '-s', 'PROXY_POSIX_SOCKETS=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+        self.btest(path_from_root('tests', 'websocket', 'tcp_echo_client.cpp'), expected='101', args=['-lwebsocket', '-s', 'PROXY_POSIX_SOCKETS', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])

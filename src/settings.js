@@ -220,6 +220,16 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // using i64 pointers).
 var MEMORY64 = 0;
 
+// Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
+// (and not otherwise). Normally Emscripten can determine the size of the table
+// at link time, but in SPLIT_MODULE mode, wasm-split often needs to grow the
+// table, so the table size baked into the JS for the instrumented build will be
+// too small after the module is split. This is a hack to allow users to specify
+// a large enough table size that can be consistent across both builds. This
+// setting may be removed at any time and should not be used except in
+// conjunction with SPLIT_MODULE and dynamic linking.
+var INITIAL_TABLE = -1;
+
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
 var ALLOW_TABLE_GROWTH = 0;
@@ -270,16 +280,13 @@ var SAFE_HEAP_LOG = 0;
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
 // normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-// calls not fail, this tries to convert values as best it can. In asm.js, this
-// uses doubles as the JS number type, so if you send a double to a parameter
-// accepting an int, it will be |0-d into a (signed) int. In wasm, we have i64s
-// so that is not valid, and instead we use 64 bits to represent values, as if
-// we wrote the sent value to memory and loaded the received type from the same
-// memory (using truncs/extends/ reinterprets). This means that when types do
-// not match the emulated values may differ between asm.js and wasm (and native,
-// for that matter - this is all undefined behavior). In any case, both
-// approaches appear good enough to support Python, which is the main use case
-// motivating this feature.
+// calls not fail, this tries to convert values as best it can.
+// We use 64 bits (i64) to represent values, as if we wrote the sent value to
+// memory and loaded the received type from the same memory (using
+// truncs/extends/ reinterprets). This means that when types do not match the
+// emulated values may not match (this is true of native too, for that matter -
+// this is all undefined behavior). This approaches appears good enough to
+// support Python, which is the main use case motivating this feature.
 var EMULATE_FUNCTION_POINTER_CASTS = 0;
 
 // Print out exceptions in emscriptened code. Does not work in asm.js mode

@@ -324,8 +324,6 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_THREAD_ATTR_STACKADDR') }}}:
       case {{{ cDefine('_SC_THREAD_ATTR_STACKSIZE') }}}:
       case {{{ cDefine('_SC_THREAD_CPUTIME') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIO_INHERIT') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIO_PROTECT') }}}:
       case {{{ cDefine('_SC_THREAD_PROCESS_SHARED') }}}:
       case {{{ cDefine('_SC_THREAD_SAFE_FUNCTIONS') }}}:
       case {{{ cDefine('_SC_THREADS') }}}:
@@ -338,7 +336,6 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_2_LOCALEDEF') }}}:
       case {{{ cDefine('_SC_2_SW_DEV') }}}:
       case {{{ cDefine('_SC_2_VERSION') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
         return 200809;
       case {{{ cDefine('_SC_MQ_OPEN_MAX') }}}:
       case {{{ cDefine('_SC_XOPEN_STREAMS') }}}:
@@ -372,6 +369,9 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_SEM_NSEMS_MAX') }}}:
       case {{{ cDefine('_SC_SYMLOOP_MAX') }}}:
       case {{{ cDefine('_SC_TIMER_MAX') }}}:
+      case {{{ cDefine('_SC_THREAD_PRIO_INHERIT') }}}:
+      case {{{ cDefine('_SC_THREAD_PRIO_PROTECT') }}}:
+      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
         return -1;
       case {{{ cDefine('_SC_V6_ILP32_OFF32') }}}:
       case {{{ cDefine('_SC_V6_ILP32_OFFBIG') }}}:

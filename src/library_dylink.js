@@ -68,7 +68,12 @@ var LibraryDylink = {
       '__wasm_apply_data_relocs',
       '__dso_handle',
       '__set_stack_limits'
-    ].indexOf(symName) != -1;
+    ].indexOf(symName) != -1
+#if SPLIT_MODULE
+        // Exports synthesized by wasm-split should be prefixed with '%'
+        || symName[0] == '%'
+#endif
+    ;
   },
 
   $updateGOT__deps: ['$GOT', '$isInternalSym'],
@@ -126,6 +131,13 @@ var LibraryDylink = {
 
     for (var e in exports) {
       var value = exports[e];
+#if SPLIT_MODULE
+      // Do not modify exports synthesized by wasm-split
+      if (e.startsWith('%')) {
+        relocated[e] = value
+        continue;
+      }
+#endif
       if (typeof value === 'object') {
         // a breaking change in the wasm spec, globals are now objects
         // https://github.com/WebAssembly/mutable-global/issues/1

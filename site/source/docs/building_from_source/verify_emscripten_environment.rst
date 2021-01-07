@@ -13,27 +13,24 @@ Testing the environment
 Sanity tests
 ------------
 
-The first step in verifying the environment is to run Emscripten with the version command (``-v``). The command prints out information about the toolchain and runs some basic sanity tests to check that the required tools are available.
+The first step in verifying the environment is to run Emscripten with ``--check``. The option prints out information about the toolchain and runs some basic sanity tests to check that the required tools are available.
 
 Open a terminal in the directory in which you installed Emscripten (on Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`). Then call the :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` as shown::
 
-  ./emcc -v
+  ./emcc --check
 
 .. note:: On Windows, invoke the tool with **emcc** instead of **./emcc**.
 
 For example, the following output reports an installation where Java is missing:
 
 .. code-block:: none
-  :emphasize-lines: 6
+  :emphasize-lines: 3
 
-  emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) 1.21.0
-  clang version 3.3
-  Target: x86_64-pc-win32
-  Thread model: posix
-  INFO     root: (Emscripten: Running sanity checks)
-  WARNING  root: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in .emscripten
+  emcc (Emscripten GCC-like replacement + linker emulating GNU ld) 1.21.0
+  shared:INFO: (Emscripten: Running sanity checks)
+  shared:WARNING: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in .emscripten
 
-At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc -v`` should give no warnings, and if you just enter ``emcc`` (without any input files), it will give an error ::
+At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc ---check`` should give no warnings, and if you just enter ``emcc`` (without any input files), it will give an error ::
 
   emcc: error: no input files
 
@@ -64,7 +61,7 @@ Emscripten has a comprehensive test suite which may be used to further validate 
 Troubleshooting
 ===============
 
-First run ``./emcc -v`` and examine the output to find missing components. You can also try ``./emcc --clear-cache`` to empty the :ref:`compiler's internal cache <emcc-clear-cache>` and reset it to a known good state.
+First run ``./emcc --check`` and examine the output to find missing components. You can also try ``./emcc --clear-cache`` to empty the :ref:`compiler's internal cache <emcc-clear-cache>` and reset it to a known good state.
 
 
 .. _fixing-missing-components-emcc:

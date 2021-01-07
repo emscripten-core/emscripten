@@ -184,9 +184,8 @@ def requires_native_clang(func):
 
 def node_pthreads(f):
   def decorated(self):
-    self.set_setting('USE_PTHREADS', 1)
-    if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('asan ends up using atomics that are not yet supported in node 12')
+    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-pthreads-mem-growth']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
@@ -926,20 +925,24 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     def ccshared(src, linkto=[]):
       cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so] + self.get_emcc_args()
-      cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
+      cmdv += ['-s', 'SIDE_MODULE', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
       self.run_process(cmdv)
 
     ccshared('liba.cpp')
     ccshared('libb.cpp', ['liba' + so])
     ccshared('libc.cpp', ['liba' + so])
 
-    self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('MAIN_MODULE')
     self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
     do_run(r'''
+      #ifdef __cplusplus
       extern "C" {
+      #endif
       void bfunc();
       void cfunc();
+      #ifdef __cplusplus
       }
+      #endif
 
       int test_main() {
         bfunc();
@@ -1496,7 +1499,7 @@ class BrowserCore(RunnerCore):
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-s', 'IN_TEST_HARNESS=1']
+    args += ['-s', 'IN_TEST_HARNESS']
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
@@ -1530,24 +1533,17 @@ class BrowserCore(RunnerCore):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
-    # if we are provided the source and not a path, use that
-    filename_is_src = '\n' in filename
-    src = filename if filename_is_src else ''
     original_args = args[:]
-    if filename_is_src:
-      filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
-      with open(filepath, 'w') as f:
-       f.write(src)
-    else:
-      filepath = path_from_root('tests', filename)
+    if not os.path.exists(filename):
+      filename = path_from_root('tests', filename)
     if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
-        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING']
     outfile = 'test.html'
-    args = [filepath, '-o', outfile] + args
+    args += [filename, '-o', outfile]
     # print('all args:', args)
     try_delete(outfile)
     self.compile_btest(args, reporting=reporting)
@@ -1573,7 +1569,7 @@ class BrowserCore(RunnerCore):
         post_build = self.post_manual_reftest
       # run proxied
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], message, timeout=timeout)
+                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout)
 
 
 ###################################################################################################
@@ -1603,8 +1599,7 @@ def build_library(name,
     generated_libs = [generated_libs]
   source_dir = path_from_root('tests', name.replace('_native', ''))
 
-  temp_dir = build_dir
-  project_dir = os.path.join(temp_dir, name)
+  project_dir = os.path.join(build_dir, name)
   if os.path.exists(project_dir):
     shutil.rmtree(project_dir)
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above

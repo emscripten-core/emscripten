@@ -19,7 +19,7 @@ def needed(settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libvorbis')
+  libname = 'libvorbis.a'
 
   def create():
     logging.info('building port: vorbis')
@@ -40,7 +40,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libvorbis'))
+  shared.Cache.erase_file('libvorbis.a')
 
 
 def process_dependencies(settings):
