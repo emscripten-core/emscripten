@@ -104,26 +104,22 @@ App app = {
 };
 
 // frames -> bytes
-int bytesForFrames(int frames)
-{
+int bytesForFrames(int frames) {
     return frames * app.nchannels * app.sample_size;
 }
 
 // usec -> frames
-int framesForDuration(long long usec)
-{
+int framesForDuration(long long usec) {
     return (usec * app.sample_rate) / 1000000LL;
 }
 
 // usec -> bytes
-int bytesForDuration(long long usec)
-{
+int bytesForDuration(long long usec) {
     return bytesForFrames(framesForDuration(usec));
 }
 
 // frames -> usec
-long long durationForFrames(int frames)
-{
+long long durationForFrames(int frames) {
     return frames * 1000000LL / app.sample_rate;
 }
 
