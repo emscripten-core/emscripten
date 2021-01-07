@@ -18,7 +18,7 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project('giflib', f'https://vorboss.dl.sourceforge.net/project/giflib/giflib-{VERSION}.tar.gz', f'giflib-{VERSION}', sha512hash=HASH)
 
-  libname = ports.get_lib_name('libgif')
+  libname = 'libgif.a'
 
   def create():
     logging.info('building port: giflib')
@@ -39,7 +39,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libgif'))
+  shared.Cache.erase_file('libgif.a')
 
 
 def process_args(ports):
