@@ -8069,6 +8069,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_create(self):
+    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create.cpp')
 
   @node_pthreads
