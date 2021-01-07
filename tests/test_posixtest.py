@@ -51,49 +51,19 @@ def get_pthread_tests():
 engine = config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
 
 # Mark certain tests as unsupported
+# TODO: Investigate failing semaphores tests.
 unsupported = {
-  'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
-  'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
-  'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters are not supported',
-  'test_pthread_attr_setschedparam_1_4': 'scheduling policy/parameters are not supported',
-  'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters are not supported',
-  'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',
-}
-
-# Mark certain tests as not passing
-disabled = {
-  **unsupported,
-  'test_pthread_create_11_1': 'never returns',
-  'test_pthread_barrier_wait_2_1': 'never returns',
-  'test_pthread_cond_timedwait_2_6': 'never returns',
-  'test_pthread_cond_timedwait_4_3': 'never returns',
-  'test_pthread_attr_setscope_5_1': 'internally skipped (PTS_UNTESTED)',
-  'test_pthread_cond_wait_2_3': 'never returns',
-  'test_pthread_create_5_1': 'never returns',
-  'test_pthread_exit_1_2': 'never returns',
-  'test_pthread_exit_2_2': 'never returns',
-  'test_pthread_exit_3_2': 'never returns',
-  'test_pthread_exit_4_1': 'never returns',
-  'test_pthread_getcpuclockid_1_1': 'never returns',
-  'test_pthread_key_create_1_2': 'never returns',
-  'test_pthread_rwlock_rdlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedrdlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedrdlock_3_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedrdlock_5_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedwrlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedwrlock_3_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedwrlock_5_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_wrlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_trywrlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_spin_destroy_3_1': 'never returns',
-  'test_pthread_spin_init_4_1': 'never returns',
-  # Not supported tests
   'test_pthread_atfork_1_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_1_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_2_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_2_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
+  'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setschedparam_1_4': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters are not supported',
   'test_pthread_barrierattr_getpshared_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_barrier_wait_3_1': 'signals are not supported',
   'test_pthread_barrier_wait_3_2': 'signals are not supported',
@@ -127,6 +97,7 @@ disabled = {
   'test_pthread_equal_2_1': 'signals are not supported',
   'test_pthread_exit_6_1': 'lacking necessary mmap() support',
   'test_pthread_exit_6_2': 'semaphores are not supported',
+  'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',
   'test_pthread_getschedparam_4_1': 'signals are not supported',
   'test_pthread_join_6_3': 'signals are not supported',
   'test_pthread_kill_1_1': 'signals are not supported',
@@ -166,6 +137,35 @@ disabled = {
   'test_pthread_spin_init_2_2': 'shm_open and shm_unlink are not supported',
   'test_pthread_spin_lock_1_1': 'signals are not supported',
   'test_pthread_spin_lock_3_1': 'signals are not supported',
+}
+
+# Mark certain tests as not passing
+disabled = {
+  **unsupported,
+  'test_pthread_create_11_1': 'never returns',
+  'test_pthread_barrier_wait_2_1': 'never returns',
+  'test_pthread_cond_timedwait_2_6': 'never returns',
+  'test_pthread_cond_timedwait_4_3': 'never returns',
+  'test_pthread_attr_setscope_5_1': 'internally skipped (PTS_UNTESTED)',
+  'test_pthread_cond_wait_2_3': 'never returns',
+  'test_pthread_create_5_1': 'never returns',
+  'test_pthread_exit_1_2': 'never returns',
+  'test_pthread_exit_2_2': 'never returns',
+  'test_pthread_exit_3_2': 'never returns',
+  'test_pthread_exit_4_1': 'never returns',
+  'test_pthread_getcpuclockid_1_1': 'never returns',
+  'test_pthread_key_create_1_2': 'never returns',
+  'test_pthread_rwlock_rdlock_1_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_rwlock_timedrdlock_1_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_rwlock_timedrdlock_3_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_rwlock_timedrdlock_5_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_rwlock_timedwrlock_1_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_rwlock_timedwrlock_3_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_rwlock_timedwrlock_5_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_rwlock_wrlock_1_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_rwlock_trywrlock_1_1': 'fails with "main: Unexpected thread state"',
+  'test_pthread_spin_destroy_3_1': 'never returns',
+  'test_pthread_spin_init_4_1': 'never returns',
 }
 
 
