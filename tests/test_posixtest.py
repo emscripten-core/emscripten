@@ -50,8 +50,19 @@ def get_pthread_tests():
 
 engine = config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
 
+# Mark certain tests as unsupported
+unsupported = {
+  'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setschedparam_1_4': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters are not supported',
+  'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',
+}
+
 # Mark certain tests as not passing
 disabled = {
+  **unsupported,
   'test_pthread_create_11_1': 'never returns',
   'test_pthread_barrier_wait_2_1': 'never returns',
   'test_pthread_cond_timedwait_2_6': 'never returns',
@@ -78,16 +89,6 @@ disabled = {
   'test_pthread_spin_init_4_1': 'never returns',
 }
 
-# Mark certain tests as expected to fail
-xfail = {
-  'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters unsupported',
-  'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters unsupported',
-  'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters unsupported',
-  'test_pthread_attr_setschedparam_1_4': 'scheduling policy/parameters unsupported',
-  'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters unsupported',
-  'test_pthread_getschedparam_1_3': 'scheduling policy/parameters unsupported',
-}
-
 
 def make_test(name, testfile, browser):
 
@@ -106,10 +107,10 @@ def make_test(name, testfile, browser):
       # Only are only needed for browser tests of the was btest
       # injects headers using `-include` flag.
       args += ['-Wno-macro-redefined', '-D_GNU_SOURCE']
-      self.btest(testfile, args=args, expected='exit:0', xfail=name in xfail)
+      self.btest(testfile, args=args, expected='exit:0')
     else:
       self.run_process([EMCC, testfile, '-o', 'test.js'] + args)
-      self.run_js('test.js', engine=engine, xfail=name in xfail)
+      self.run_js('test.js', engine=engine)
 
   return f
 

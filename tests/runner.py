@@ -639,7 +639,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
-  def run_js(self, filename, engine=None, args=[], output_nicerizer=None, assert_returncode=0, xfail=False):
+  def run_js(self, filename, engine=None, args=[], output_nicerizer=None, assert_returncode=0):
     # use files, as PIPE can get too full and hang us
     stdout = self.in_dir('stdout')
     stderr = self.in_dir('stderr')
@@ -676,9 +676,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       print(ret, end='')
       print('-- end program output --')
       if error:
-        if xfail:
-          print('XFAIL: JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
-        elif assert_returncode == NON_ZERO:
+        if assert_returncode == NON_ZERO:
           self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
         else:
           self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
@@ -1330,7 +1328,7 @@ class BrowserCore(RunnerCore):
   #                     synchronously, so we have a timeout, which can be hit if the VM
   #                     we run on stalls temporarily), so we let each test try more than
   #                     once by default
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None, extra_tries=1, xfail=False):
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -1369,10 +1367,7 @@ class BrowserCore(RunnerCore):
           try:
             self.assertIdenticalUrlEncoded(expectedResult, output)
           except Exception as e:
-            if xfail:
-              print('XFAIL: test error (see below)')
-              print(e)
-            elif extra_tries > 0:
+            if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
               return self.run_browser(html_file, message, expectedResult, timeout, extra_tries - 1)
@@ -1531,7 +1526,7 @@ class BrowserCore(RunnerCore):
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False, extra_tries=1,
-            xfail=False, reporting=Reporting.FULL):
+            reporting=Reporting.FULL):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
@@ -1561,14 +1556,13 @@ class BrowserCore(RunnerCore):
       post_build()
     if not isinstance(expected, list):
       expected = [expected]
-    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout,
-                     extra_tries=extra_tries, xfail=xfail)
+    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):
       print('WASM=0')
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout, xfail=xfail)
+                 original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')
@@ -1579,7 +1573,7 @@ class BrowserCore(RunnerCore):
         post_build = self.post_manual_reftest
       # run proxied
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout, xfail=xfail)
+                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout)
 
 
 ###################################################################################################
