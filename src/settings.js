@@ -1194,8 +1194,8 @@ var USE_ZLIB = 0;
 // 1 = use bzip2 from emscripten-ports
 var USE_BZIP2 = 0;
 
-// 1 = use libgif from emscripten-ports
-var USE_LIBGIF = 0;
+// 1 = use giflib from emscripten-ports
+var USE_GIFLIB = 0;
 
 // 1 = use libjpeg from emscripten-ports
 var USE_LIBJPEG = 0;

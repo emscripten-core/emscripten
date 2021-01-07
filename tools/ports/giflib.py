@@ -12,26 +12,26 @@ HASH = '4550e53c21cb1191a4581e363fc9d0610da53f7898ca8320f0d3ef6711e76bdda2609c2d
 
 
 def needed(settings):
-  return settings.USE_LIBGIF
+  return settings.USE_GIFLIB
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('libgif', 'https://vorboss.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz', 'giflib-5.2.1', sha512hash=HASH)
+  ports.fetch_project('giflib', f'https://vorboss.dl.sourceforge.net/project/giflib/giflib-{VERSION}.tar.gz', f'giflib-{VERSION}', sha512hash=HASH)
 
   libname = ports.get_lib_name('libgif')
 
   def create():
-    logging.info('building port: libgif')
+    logging.info('building port: giflib')
 
-    source_path = os.path.join(ports.get_dir(), 'libgif', 'giflib-5.2.1')
-    dest_path = os.path.join(ports.get_build_dir(), 'libgif')
+    source_path = os.path.join(ports.get_dir(), 'giflib', f'giflib-{VERSION}')
+    dest_path = os.path.join(ports.get_build_dir(), 'giflib')
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
     ports.install_headers(dest_path)
 
-    final = os.path.join(ports.get_build_dir(), 'libgif', libname)
+    final = os.path.join(ports.get_build_dir(), 'giflib', libname)
     ports.build_port(dest_path, final)
     return final
 
@@ -47,4 +47,4 @@ def process_args(ports):
 
 
 def show():
-  return 'libgif (USE_LIBGIF=1; MIT license)'
+  return 'giflib (USE_GIFLIB=1; MIT license)'
