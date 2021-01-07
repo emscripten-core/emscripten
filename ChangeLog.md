@@ -23,6 +23,9 @@ Current Trunk
 
 2.0.11: 12/17/2020
 ------------------
+- `emcc -v` no longer forces the running the sanity checks.  Sanity checks
+  are always run on first use or can be forced with `--check` or by setting
+  `EMCC_DEBUG` is set in the environment.
 - An upstream LLVM regression with global initializer linking has been fixed
   (#13038).
 - Remove a racy unneeded assertion about async dynamic linking (#13060).

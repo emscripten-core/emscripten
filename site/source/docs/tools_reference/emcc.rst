@@ -323,9 +323,14 @@ Options that are modified or new in *emcc* are listed below:
 ``-v``
   Turns on verbose output.
 
-  This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` to generate intermediate files for the compiler's various stages. It will also run Emscripten's internal sanity checks on the toolchain, etc.
+  This will print the internal sub-commands run by emscripten as well as ``-v``
+  to *Clang*.
 
   .. tip:: ``emcc -v`` is a useful tool for diagnosing errors. It works with or without other arguments.
+
+``--check``
+  Runs Emscripten's internal sanity checks and reports any issues with the
+  current configuration.
 
 .. _emcc-cache:
 
