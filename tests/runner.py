@@ -56,14 +56,13 @@ import clang_native
 import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
-from tools.config import EM_CONFIG
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes, Settings, config
+from tools.shared import asbytes
 from tools.utils import MACOS, WINDOWS
-from tools import shared, line_endings, building
+from tools import shared, line_endings, building, config
 
 
 def path_from_root(*pathelems):
@@ -390,8 +389,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic library support in asan yet')
 
   def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or \
-      (self.get_setting('WASM') and not self.get_setting('WASM2JS')):
+    if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
       return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
@@ -490,10 +488,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             print('leaked file: ' + f, file=sys.stderr)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
-  def get_setting(self, key):
-    if key in self.settings_mods:
-      return self.settings_mods[key]
-    return Settings[key]
+  def get_setting(self, key, default=None):
+    return self.settings_mods.get(key, default)
 
   def set_setting(self, key, value=1):
     if value is None:
@@ -1051,7 +1047,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         # we indicate with None as the engine
         engines += [[None]]
     if len(engines) == 0:
-      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
