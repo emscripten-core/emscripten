@@ -185,8 +185,7 @@ def requires_native_clang(func):
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS')
-    if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('asan ends up using atomics that are not yet supported in node 12')
+    self.emcc_args += ['-Wno-pthreads-mem-growth']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
@@ -936,10 +935,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.set_setting('MAIN_MODULE')
     self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
     do_run(r'''
+      #ifdef __cplusplus
       extern "C" {
+      #endif
       void bfunc();
       void cfunc();
+      #ifdef __cplusplus
       }
+      #endif
 
       int test_main() {
         bfunc();
@@ -1530,16 +1533,9 @@ class BrowserCore(RunnerCore):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
-    # if we are provided the source and not a path, use that
-    filename_is_src = '\n' in filename
-    src = filename if filename_is_src else ''
     original_args = args[:]
-    if filename_is_src:
-      filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
-      with open(filepath, 'w') as f:
-       f.write(src)
-    else:
-      filepath = path_from_root('tests', filename)
+    if not os.path.exists(filename):
+      filename = path_from_root('tests', filename)
     if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
@@ -1547,7 +1543,7 @@ class BrowserCore(RunnerCore):
       if not manual_reference:
         args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING']
     outfile = 'test.html'
-    args = [filepath, '-o', outfile] + args
+    args += [filename, '-o', outfile]
     # print('all args:', args)
     try_delete(outfile)
     self.compile_btest(args, reporting=reporting)
