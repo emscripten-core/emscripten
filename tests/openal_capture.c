@@ -124,9 +124,6 @@ long long durationForFrames(int frames) {
 }
 
 void iter() {
-
-    if (!app.recorded)
-        end_test(EXIT_FAILURE);
     if(app.is_playing_back) {
         ALint state;
         alGetSourcei(app.source, AL_SOURCE_STATE, &state);
