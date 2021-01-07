@@ -21,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
-from runner import create_test_file, parameterized, ensure_dir
+from runner import create_test_file, parameterized, ensure_dir, disabled
 from tools import building
 from tools import shared
 from tools import system_libs
@@ -3171,11 +3171,16 @@ window.close = function() {
     self.btest('sdl2_custom_cursor.c', expected='1', args=['--preload-file', 'cursor.bmp', '-s', 'USE_SDL=2'])
 
   def test_sdl2_misc(self):
-    self.btest('sdl2_misc.c', expected='1', args=['-s', 'USE_SDL=2'])
-    print('also test building to object files first')
+    self.btest_exit('sdl2_misc.c', 0, args=['-s', 'USE_SDL=2'])
+
+  @disabled('https://github.com/emscripten-core/emscripten/issues/13101')
+  def test_sdl2_misc_main_module(self):
+    self.btest_exit('sdl2_misc.c', 0, args=['-s', 'USE_SDL=2', '-s', 'MAIN_MODULE'])
+
+  def test_sdl2_misc_via_object(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'sdl2_misc.c'), '-s', 'USE_SDL=2', '-o', 'test.o'])
-    self.compile_btest(['test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
-    self.run_browser('test.html', '...', '/report_result?1')
+    self.compile_btest(['test.o', '-s', 'EXIT_RUNTIME', '-s', 'USE_SDL=2', '-o', 'test.html'])
+    self.run_browser('test.html', '...', '/report_result?exit:0')
 
   @parameterized({
     'dash_s': (['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2'],),
