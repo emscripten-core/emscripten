@@ -485,9 +485,9 @@ f.close()
     flags = output.stdout.strip()
     self.assertContained(shared.shlex_join(shared.emsdk_cflags([], True)), flags)
     # check they work
-    cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
+    cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-o', 'out.o']
     self.run_process(cmd)
-    self.run_process([EMCC, 'a.bc'])
+    self.run_process([EMCC, 'out.o'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_print_search_dirs(self):
@@ -984,8 +984,8 @@ int f() {
     self.run_process([EMCC, '-o', '1.o', '-c', '1.c'])
     self.run_process([EMCC, '-o', '2.o', '-c', '2.c'])
     self.run_process([EMAR, 'crs', '2.a', '2.o'])
-    self.run_process([EMCC, '-r', '-o', 'out.bc', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
-    self.run_process([EMCC, 'out.bc'])
+    self.run_process([EMCC, '-r', '-o', 'out.o', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
+    self.run_process([EMCC, 'out.o'])
     self.assertContained('Hello', self.run_js('a.out.js'))
 
   # We deliberately ignore duplicate input files in order to allow
@@ -1202,12 +1202,12 @@ int f() {
       int f() { return 12346; }
     ''')
 
-    self.run_process([EMCC, main_name, '-c', '-o', main_name + '.bc'])
-    self.run_process([EMCC, other_name, '-c', '-o', other_name + '.bc'])
+    self.run_process([EMCC, main_name, '-c', '-o', main_name + '.o'])
+    self.run_process([EMCC, other_name, '-c', '-o', other_name + '.o'])
 
-    self.run_process([EMAR, 'cr', main_name + '.a', main_name + '.bc'])
+    self.run_process([EMAR, 'cr', main_name + '.a', main_name + '.o'])
 
-    self.run_process([EMCC, other_name + '.bc', main_name + '.a'])
+    self.run_process([EMCC, other_name + '.o', main_name + '.a'])
 
     self.assertContained('result: 12346.', self.run_js('a.out.js'))
 
@@ -4626,16 +4626,16 @@ int main(const int argc, const char * const * const argv) {
     test(['-o', 'c.html'], True)
     test(['-c'], False)
 
-  def test_dash_g_bc(self):
+  def test_dash_g_object(self):
     def test(opts):
       print(opts)
-      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts)
-      sizes = {'_': os.path.getsize('a_.bc')}
-      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts)
-      sizes['g'] = os.path.getsize('ag.bc')
-      for i in range(0, 5):
-        self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts)
-        sizes[i] = os.path.getsize('a' + str(i) + '.bc')
+      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a_.o'] + opts)
+      sizes = {'_': os.path.getsize('a_.o')}
+      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.o'] + opts)
+      sizes['g'] = os.path.getsize('ag.o')
+      for i in range(5):
+        self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.o'] + opts)
+        sizes[i] = os.path.getsize('a' + str(i) + '.o')
       print('  ', sizes)
       assert sizes['_'] == sizes[0] == sizes[1] == sizes[2], 'no debug means no llvm debug info ' + str(sizes)
       assert sizes['g'] == sizes[3] == sizes[4], '-g or -g4 means llvm debug info ' + str(sizes)
@@ -6467,16 +6467,16 @@ int main() {
 ''')
 
     # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
-    cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT', '-flto']
+    cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.o', '-s', 'INLINING_LIMIT', '-flto']
     self.run_process(cmd)
     # If foo() had been wrongly inlined above, internalizing foo and running
     # global DCE makes foo DCE'd
     opts = ['-internalize', '-internalize-public-api-list=main', '-globaldce']
-    self.run_process([shared.LLVM_OPT] + opts + ['test.bc', '-o', 'test2.bc'])
+    self.run_process([shared.LLVM_OPT] + opts + ['test.o', '-o', 'test2.o'])
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
-    syms = building.llvm_nm('test2.bc', include_internal=True)
+    syms = building.llvm_nm('test2.o', include_internal=True)
     assert 'foo' in syms.defs, 'foo() should not be inlined'
 
   def test_output_eol(self):
