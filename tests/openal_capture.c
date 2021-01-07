@@ -318,7 +318,7 @@ int main() {
         "This test will attempt to capture %f seconds "
         "worth of audio data from your default audio "
         "input device, and then play it back.\n"
-        , (float) app.duration / 1000000
+        , app.duration / 1000000.F
     );
 #ifdef __EMSCRIPTEN__
     printf(
