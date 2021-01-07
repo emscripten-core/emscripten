@@ -17,7 +17,7 @@ def needed(settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libogg')
+  libname = 'libogg.a'
 
   def create():
     logging.info('building port: ogg')
@@ -43,7 +43,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libogg'))
+  shared.Cache.erase_file('libogg.a')
 
 
 def process_args(ports):

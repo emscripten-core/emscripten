@@ -15,8 +15,8 @@ def needed(settings):
   return settings.USE_REGAL
 
 
-def get_lib_name(ports, settings):
-  return ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else ''))
+def get_lib_name(settings):
+  return 'libregal' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -134,15 +134,15 @@ def get(ports, settings, shared):
       o_s.append(o)
 
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'regal', get_lib_name(ports, settings))
+    final = os.path.join(ports.get_build_dir(), 'regal', get_lib_name(settings))
     ports.create_lib(final, o_s)
     return final
 
-  return [shared.Cache.get(get_lib_name(ports, settings), create, what='port')]
+  return [shared.Cache.get(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(get_lib_name(ports, settings))
+  shared.Cache.erase_file(get_lib_name(settings))
 
 
 def process_dependencies(settings):
