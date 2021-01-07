@@ -302,7 +302,7 @@ var LibraryPThread = {
           err("exitProcess requested by worker");
 #endif
           try {
-            exit(d['returnCode']);
+            {{{ exportedAsmFunc('_exit') }}}(d['returnCode']);
           } catch (e) {
             handleException(e);
           }

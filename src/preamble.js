@@ -401,10 +401,6 @@ function preMain() {
 #endif
 
 function exitRuntime() {
-#if ASYNCIFY && ASSERTIONS
-  // ASYNCIFY cannot be used once the runtime starts shutting down.
-  Asyncify.state = Asyncify.State.Disabled;
-#endif
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
@@ -412,7 +408,9 @@ function exitRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if EXIT_RUNTIME
+  //console.error(__ATEXIT__);
   callRuntimeCallbacks(__ATEXIT__);
+  //console.error('done exit callbacks');
   <<< ATEXITS >>>
 #endif
   runtimeExited = true;

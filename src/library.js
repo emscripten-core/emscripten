@@ -155,20 +155,6 @@ LibraryManager.library = {
     return -1;
   },
 
-  exit__sig: 'vi',
-#if MINIMAL_RUNTIME
-  // minimal runtime doesn't do any exit cleanup handling so just
-  // map exit directly to the lower-level proc_exit syscall.
-  exit: 'proc_exit',
-  $exit: 'exit',
-#else
-  exit: function(status) {
-    // void _exit(int status);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-    exit(status);
-  },
-#endif
-
   // fork, spawn, etc. all return an error as we don't support multiple
   // processes.
   fork__deps: ['$setErrNo'],
@@ -425,22 +411,6 @@ LibraryManager.library = {
   // ==========================================================================
   // stdlib.h
   // ==========================================================================
-
-#if MINIMAL_RUNTIME && !EXIT_RUNTIME
-  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
-  atexit: function(){},
-  __cxa_atexit: function(){},
-#else
-  atexit__proxy: 'sync',
-  atexit__sig: 'iii',
-  atexit: function(func, arg) {
-#if EXIT_RUNTIME
-    __ATEXIT__.unshift({ func: func, arg: arg });
-#endif
-  },
-  __cxa_atexit: 'atexit',
-
-#endif
 
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
   // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
@@ -3579,9 +3549,13 @@ LibraryManager.library = {
     throw 'unwind';
   },
 
-#if MINIMAL_RUNTIME
-  emscripten_force_exit__deps: ['exit'],
+  emscripten_force_exit__deps: [
+#if MINIMAL_RUNTIME || hasExportedFunction('_exit')
+    'exit',
+#else
+    'proc_exit'
 #endif
+  ],
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
@@ -3595,7 +3569,10 @@ LibraryManager.library = {
 #else
     noExitRuntime = false;
     runtimeKeepaliveCounter = 0;
-    exit(status);
+#if hasExportedFunction('_exit')
+    _exit(status);
+#else
+    _proc_exit(status);
 #endif
   },
 
@@ -3684,7 +3661,13 @@ LibraryManager.library = {
         if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
         else
 #endif
+#if EXIT_RUNTIME
+        //console.error("calling C exit");
         _exit(EXITSTATUS);
+#else
+        //console.error("bypassing C exit");
+        procExit(EXITSTATUS);
+#endif
       } catch (e) {
         handleException(e);
       }

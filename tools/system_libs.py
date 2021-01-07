@@ -713,8 +713,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
-        'ldso'
+        'aio', 'legacy', 'mq', 'setjmp', 'env', 'ldso'
     ]
 
     # individual files
@@ -723,7 +722,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
-        'alarm.c', 'syscall.c', 'popen.c',
+        'alarm.c', 'syscall.c', 'popen.c', 'abort.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
         # 'process' exclusion
@@ -763,7 +762,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_testcancel.c',
           'emscripten_proxy_main.c',
           'emscripten_thread_state.s',
-          'cxa_thread_atexit.c',
         ])
     else:
       ignore += ['thread']
@@ -796,6 +794,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_yield.c',
         ])
       libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
+    libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'cxa_thread_atexit.c')]
 
     # These are included in wasm_libc_rt instead
     ignore += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
@@ -1016,6 +1015,8 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
         'cxa_exception.cpp',
         'cxa_personality.cpp'
       ]
+    if not self.is_mt:
+      filenames += ['cxa_thread_atexit.cpp']
 
     return files_in_path(
         path_components=['system', 'lib', 'libcxxabi', 'src'],

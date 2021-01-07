@@ -11,7 +11,9 @@ var WasiLibrary = {
 #if MINIMAL_RUNTIME
     throw 'exit(' + code + ')';
 #else
+    //out('proc_exit');
     procExit(code);
+    //out('proc_exit done');
 #endif
   },
 

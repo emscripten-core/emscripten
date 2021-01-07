@@ -103,6 +103,7 @@ function ExitStatus(status) {
 }
 
 var calledMain = false;
+var implicitExit = false;
 
 #if STANDALONE_WASM && MAIN_READS_PARAMS
 var mainArgs = undefined;
@@ -190,8 +191,19 @@ function callMain(args) {
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
 #else
-    // if we're not running an evented main loop, it's time to exit
-    exit(ret, /* implicit = */ true);
+    //console.error("implicitExit!");
+    implicitExit = true;
+#if EXIT_RUNTIME
+    if (!keepRuntimeAlive()) {
+      // Perform a full C _exit which will end up calling procExit.
+      //console.error("calling C exit");
+      _exit(ret);
+      // unreachable
+    }
+#endif
+    //console.error("bypassing C exit");
+    procExit(ret);
+    // unreachable
   }
   catch (e) {
     // Certain exception types we do not treat as errors since they are used for
@@ -212,6 +224,7 @@ function callMain(args) {
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
+    implicitExit = false;
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
@@ -407,10 +420,9 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
-/** @param {boolean|number=} implicit */
-function exit(status, implicit) {
+function procExit(status) {
+  //console.error('procExit');
   EXITSTATUS = status;
-
 #if ASSERTIONS
 #if EXIT_RUNTIME == 0
   checkUnflushedContent();
@@ -418,10 +430,10 @@ function exit(status, implicit) {
 #endif // ASSERTIONS
 
 #if USE_PTHREADS
-  if (!implicit) {
+  if (!implicitExit) {
     if (ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS
-      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitProcess.');
+      err('Pthread 0x' + _pthread_self().toString(16) + ' called procExit(), posting exitProcess.');
 #endif
       // When running in a pthread we propagate the exit back to the main thread
       // where it can decide if the whole process should be shut down or not.
@@ -431,7 +443,7 @@ function exit(status, implicit) {
       throw new ExitStatus(status);
     } else {
 #if ASSERTIONS
-      err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
+      err('main thread called procExit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif
     }
   }
@@ -439,8 +451,8 @@ function exit(status, implicit) {
 
   if (keepRuntimeAlive()) {
 #if ASSERTIONS
-    // if exit() was called, we may warn the user if the runtime isn't actually being shut down
-    if (!implicit) {
+    // if procExit() was called, we may warn the user if the runtime isn't actually being shut down
+    if (!implicitExit) {
 #if EXIT_RUNTIME == 0
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
 #else
@@ -473,6 +485,8 @@ function procExit(code) {
 #endif
     ABORT = true;
   }
+
+  //console.error('calling quit_');
   quit_(code, new ExitStatus(code));
 }
 

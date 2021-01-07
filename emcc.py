@@ -1883,6 +1883,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '_emscripten_tls_init',
       '_pthread_self',
       '_pthread_testcancel',
+      '_pthread_self',
     ]
     # Some of these symbols are using by worker.js but otherwise unreferenced.
     # Because emitDCEGraph only considered the main js file, and not worker.js
@@ -1926,9 +1927,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.USE_PTHREADS:
     # memalign is used to ensure allocated thread stacks are aligned.
     settings.EXPORTED_FUNCTIONS += ['_memalign']
-
-    if settings.MINIMAL_RUNTIME:
-      building.user_requested_exports.add('exit')
+    # _exit is called to shutdown the process
+    settings.EXPORTED_FUNCTIONS += ['_exit']
 
     if settings.PROXY_TO_PTHREAD:
       settings.EXPORTED_FUNCTIONS += ['_emscripten_proxy_main']
@@ -2208,6 +2208,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # a higher global base is useful for optimizing load/store offsets, as it
     # enables the --post-emscripten pass
     settings.GLOBAL_BASE = 1024
+
+  if settings.EXIT_RUNTIME and not settings.STANDALONE_WASM:
+    settings.EXPORTED_FUNCTIONS += ['_exit']
 
   # various settings require malloc/free support from JS
   if settings.RELOCATABLE or \

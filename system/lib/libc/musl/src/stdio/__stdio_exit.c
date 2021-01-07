@@ -15,6 +15,7 @@ static void close_file(FILE *f)
 
 void __stdio_exit(void)
 {
+  //puts("__stdio_exit");
 	FILE *f;
 	for (f=*__ofl_lock(); f; f=f->next) close_file(f);
 	close_file(__stdin_used);
