@@ -5030,8 +5030,9 @@ main( int argv, char ** argc ) {
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_utf8_invalid(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
+    self.set_setting('MINIMAL_RUNTIME')
     for decoder_mode in [[], ['-s', 'TEXTDECODER']]:
-      self.emcc_args += ['-s', 'MINIMAL_RUNTIME'] + decoder_mode
+      self.emcc_args += decoder_mode
       print(str(decoder_mode))
       self.do_runf(path_from_root('tests', 'utf8_invalid.cpp'), 'OK.')
 
@@ -7736,15 +7737,26 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fs': (['-s', 'FORCE_FILESYSTEM'],),
     'nofs': (['-s', 'NO_FILESYSTEM'],),
   })
+  @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_hello_printf(self, args):
-    self.emcc_args = ['-s', 'MINIMAL_RUNTIME'] + args
-    self.maybe_closure()
+    self.set_setting('MINIMAL_RUNTIME')
+    self.emcc_args += args
+    # $FS is not fully compatible with MINIMAL_RUNTIME so fails with closure
+    # compiler.  lsan also pulls in $FS
+    if '-fsanitize=leak' not in self.emcc_args and 'FORCE_FILESYSTEM' not in args:
+      self.maybe_closure()
     self.do_runf(path_from_root('tests', 'hello_world.c'), 'hello, world!')
 
   # Tests that -s MINIMAL_RUNTIME=1 works well with SAFE_HEAP
+  @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_safe_heap(self):
-    self.emcc_args = ['-s', 'MINIMAL_RUNTIME', '-s', 'SAFE_HEAP']
-    self.maybe_closure()
+    self.set_setting('MINIMAL_RUNTIME')
+    self.set_setting('SAFE_HEAP')
+    # $FS is not fully compatible with MINIMAL_RUNTIME so fails with closure
+    # compiler.
+    # lsan pulls in $FS
+    if '-fsanitize=leak' not in self.emcc_args:
+      self.maybe_closure()
     self.do_runf(path_from_root('tests', 'small_hello_world.c'), 'hello')
 
   # Tests global initializer with -s MINIMAL_RUNTIME=1
