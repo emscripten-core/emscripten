@@ -3409,8 +3409,8 @@ int main() {
             output = self.run_js('a.out.js')
             exit = 1 - no_exit
             self.assertContained('hello', output)
-            assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
-            assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1' in output), 'warning should be shown'
+            self.assertContainedIf('world', output, exit or flush)
+            self.assertContainedIf('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1', output, no_exit and assertions and not flush)
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
@@ -10395,7 +10395,7 @@ exec "$@"
     exports = parse_wasm('out.wasm')[1]
     exports_linkable = parse_wasm('out_linkable.wasm')[1]
 
-    self.assertLess(len(exports), 20)
+    self.assertLess(len(exports), 30)
     self.assertGreater(len(exports_linkable), 1000)
     self.assertIn('sendmsg', exports_linkable)
     self.assertNotIn('sendmsg', exports)

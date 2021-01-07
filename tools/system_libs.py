@@ -714,8 +714,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'ipc', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
-        'ldso'
+        'aio', 'legacy', 'mq', 'setjmp', 'env', 'ldso'
     ]
 
     # individual files
@@ -724,7 +723,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
-        'alarm.c', 'syscall.c', 'popen.c',
+        'alarm.c', 'syscall.c', 'popen.c', 'abort.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
         # 'process' exclusion
@@ -844,10 +843,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
         filenames=['sched_yield.c'])
-
-    libc_files += files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
-        filenames=['_Exit.c'])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
@@ -971,6 +966,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'cxa_demangle.cpp',
       'cxa_guard.cpp',
       'cxa_handlers.cpp',
+      'cxa_thread_atexit.cpp',
       'cxa_virtual.cpp',
       'fallback_malloc.cpp',
       'stdlib_new_delete.cpp',
@@ -1412,10 +1408,7 @@ class libstandalonewasm(MuslInternalLibrary):
                    'time.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
-    exit_files = files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
-        filenames=['assert.c', 'atexit.c', 'exit.c'])
-    return base_files + time_files + exit_files
+    return base_files + time_files
 
 
 class libjsmath(Library):

@@ -152,23 +152,6 @@ LibraryManager.library = {
     return -1;
   },
 
-  exit__sig: 'vi',
-  exit: function(status) {
-#if MINIMAL_RUNTIME
-    throw 'exit(' + status + ')';
-#else
-    // void _exit(int status);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-    exit(status);
-#endif
-  },
-
-#if MINIMAL_RUNTIME
-  $exit: function(status) {
-    throw 'exit(' + status + ')';
-  },
-#endif
-
   // fork, spawn, etc. all return an error as we don't support multiple
   // processes.
   fork__deps: ['$setErrNo'],
@@ -425,36 +408,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-  _ZSt9terminatev__deps: ['exit'],
-  _ZSt9terminatev: function() {
-    _exit(-1234);
-  },
-
-#if MINIMAL_RUNTIME && !EXIT_RUNTIME
-  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
-  atexit: function(){},
-  __cxa_atexit: function(){},
-#else
-  atexit__proxy: 'sync',
-  atexit__sig: 'iii',
-  atexit: function(func, arg) {
-#if EXIT_RUNTIME
-    __ATEXIT__.unshift({ func: func, arg: arg });
-#endif
-  },
-  __cxa_atexit: 'atexit',
-
-#endif
-
-  // used in rust, clang when doing thread_local statics
-#if USE_PTHREADS
-  __cxa_thread_atexit: 'pthread_cleanup_push',
-  __cxa_thread_atexit_impl: 'pthread_cleanup_push',
-#else
-  __cxa_thread_atexit: 'atexit',
-  __cxa_thread_atexit_impl: 'atexit',
-#endif
-
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
   // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
   abort__sig: 'v',
@@ -539,6 +492,9 @@ LibraryManager.library = {
     if (_clock.start === undefined) _clock.start = Date.now();
     return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
   },
+
+  __cxa_thread_atexit_impl__sig: 'iiii',
+  __cxa_thread_atexit_impl: undefined,
 
   time__sig: 'ii',
   time: function(ptr) {
@@ -3563,6 +3519,11 @@ LibraryManager.library = {
     throw 'unwind';
   },
 
+  emscripten_force_exit__deps: [
+#if !hasExportedFunction('_exit')
+    'proc_exit'
+#endif
+  ],
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
@@ -3575,7 +3536,11 @@ LibraryManager.library = {
     noExitRuntime = false;
     runtimeKeepaliveCounter = 0;
 #endif
-    exit(status);
+#if hasExportedFunction('_exit')
+    _exit(status);
+#else
+    _proc_exit(status);
+#endif
   },
 
 #if !MINIMAL_RUNTIME
@@ -3640,11 +3605,9 @@ LibraryManager.library = {
 #endif
   },
 
-  $maybeExit__deps: ['exit',
 #if USE_PTHREADS
-    'pthread_exit',
+  $maybeExit__deps: ['pthread_exit'],
 #endif
-  ],
   $maybeExit: function() {
 #if RUNTIME_DEBUG
     err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
@@ -3658,7 +3621,13 @@ LibraryManager.library = {
         if (ENVIRONMENT_IS_PTHREAD) _pthread_exit(EXITSTATUS);
         else
 #endif
+#if EXIT_RUNTIME
+        //console.error("calling C exit");
         _exit(EXITSTATUS);
+#else
+        //console.error("bypassing C exit");
+        procExit(EXITSTATUS);
+#endif
       } catch (e) {
         if (e instanceof ExitStatus) {
           return;
