@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Stop overriding CMake default flags based on build type. This will 
+  result in builds that are more like CMake does on other platforms. You
+  may notice that `RelWithDebInfo` will now include debug info (it did not
+  before, which appears to have been an error), and that `Release` will
+  use `-O3` instead of `-O2` (which is a better choice anyhow). (#13083)
 
 2.0.11: 12/17/2020
 ------------------
