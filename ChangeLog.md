@@ -25,6 +25,7 @@ Current Trunk
   may notice that `RelWithDebInfo` will now include debug info (it did not
   before, which appears to have been an error), and that `Release` will
   use `-O3` instead of `-O2` (which is a better choice anyhow). (#13083)
+- `SDL2_ttf` now uses upstream compiled with `TTF_USE_HARFBUZ` flag.
 
 2.0.11: 12/17/2020
 ------------------
