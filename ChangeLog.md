@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- `emscripten/vr.h` and other remnants of WebVR support removed. (#13210, which
+  is a followup to #10460)
 - Stop overriding CMake default flags based on build type. This will 
   result in builds that are more like CMake does on other platforms. You
   may notice that `RelWithDebInfo` will now include debug info (it did not
