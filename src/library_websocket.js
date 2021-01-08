@@ -22,7 +22,7 @@ var LibraryWebSocket = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
 
-    HEAPU16[readyState>>1] = socket.readyState;
+    {{{ makeSetValue('readyState', '0', 'socket.readyState', 'i16') }}};
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -53,6 +53,8 @@ var LibraryWebSocket = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+    if (!extensions) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    stringToUTF8(socket.extensions, extensions, extensionsLength);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -67,6 +69,8 @@ var LibraryWebSocket = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+    if (!extensionsLength) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    {{{ makeSetValue('extensionsLength', '0', 'lengthBytesUTF8(socket.extensions)+1', 'i32') }}};
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -81,6 +85,8 @@ var LibraryWebSocket = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+    if (!protocol) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    stringToUTF8(socket.protocol, protocol, protocolLength);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -95,6 +101,8 @@ var LibraryWebSocket = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+    if (!protocolLength) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    {{{ makeSetValue('protocolLength', '0', 'lengthBytesUTF8(socket.protocol)+1', 'i32') }}};
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -109,6 +117,8 @@ var LibraryWebSocket = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+    if (!url) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    stringToUTF8(socket.url, url, urlLength);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -123,7 +133,8 @@ var LibraryWebSocket = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
-    HEAPU32[urlLength>>2] = lengthBytesUTF8(socket.url);
+    if (!urlLength) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    {{{ makeSetValue('urlLength', '0', 'lengthBytesUTF8(socket.url)+1', 'i32') }}};
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -287,18 +298,21 @@ var LibraryWebSocket = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
     }
 
-    var url = UTF8ToString(HEAP32[createAttributes>>2]);
+    var createAttrs = createAttributes>>2;
+    var url = UTF8ToString(HEAP32[createAttrs]);
+    var protocols = HEAP32[createAttrs+1];
+    // TODO: Add support for createOnMainThread==false; currently all WebSocket connections are created on the main thread.
+    // var createOnMainThread = HEAP32[createAttrs+2];
 
-    // TODO: protocols
-    // TODO: createOnMainThread
-    var socket = new WebSocket(url);
+    var socket = protocols ? new WebSocket(url, UTF8ToString(protocols).split(',')) : new WebSocket(url);
+    // We always marshal received WebSocket data back to Wasm, so enable receiving the data as arraybuffers for easy marshalling.
     socket.binaryType = 'arraybuffer';
     // TODO: While strictly not necessary, this ID would be good to be unique across all threads to avoid confusion.
     var socketId = WS.sockets.length;
     WS.sockets[socketId] = socket;
 
 #if WEBSOCKET_DEBUG
-    console.error('emscripten_websocket_new(url='+url+'): created socket ID ' + socketId + ')');
+    console.error('emscripten_websocket_new(url='+url+', protocols=' + (protocols?UTF8ToString(protocols).split(','):'null') + '): created socket ID ' + socketId + ')');
 #endif
     return socketId;
   },
@@ -375,8 +389,14 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     console.error('emscripten_websocket_close(socketId='+socketId+',code='+code+',reason='+reasonStr+')');
 #endif
-    if (!code) code = undefined;
-    socket.close(code, reasonStr);
+    // According to WebSocket specification, only close codes that are recognized have integer values
+    // 1000-4999, with 3000-3999 and 4000-4999 denoting user-specified close codes:
+    // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#Status_codes
+    // Therefore be careful to call the .close() function with exact number and types of parameters.
+    // Coerce code==0 to undefined, since Wasm->JS call can only marshal integers, and 0 is not allowed.
+    if (reason) socket.close(code || undefined, UTF8ToString(reason));
+    else if (code) socket.close(code);
+    else socket.close();
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -396,7 +416,7 @@ var LibraryWebSocket = {
     console.error('emscripten_websocket_delete(socketId='+socketId+')');
 #endif
     socket.onopen = socket.onerror = socket.onclose = socket.onmessage = null;
-    socket = null;
+    delete WS.sockets[socket];
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -421,6 +441,7 @@ var LibraryWebSocket = {
         _emscripten_websocket_delete(i);
       }
     }
+    WS.sockets = [];
   }
 }
 

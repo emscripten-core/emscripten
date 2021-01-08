@@ -18,7 +18,7 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project('libjpeg', 'https://dl.bintray.com/homebrew/mirror/jpeg-9c.tar.gz', 'jpeg-9c', sha512hash=HASH)
 
-  libname = ports.get_lib_name('libjpeg')
+  libname = 'libjpeg.a'
 
   def create():
     logging.info('building port: libjpeg')
@@ -43,11 +43,11 @@ def get(ports, settings, shared):
     )
     return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libjpeg'))
+  shared.Cache.erase_file('libjpeg.a')
 
 
 def process_args(ports):

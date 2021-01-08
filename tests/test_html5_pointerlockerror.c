@@ -94,8 +94,6 @@ int main()
   ret = emscripten_set_pointerlockerror_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, pointerlockerror_callback);
   TEST_RESULT(emscripten_set_pointerlockerror_callback);
 
-  /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means. 
-     Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
-  EM_ASM(noExitRuntime = true);
+  emscripten_exit_with_live_runtime();
   return 0;
 }

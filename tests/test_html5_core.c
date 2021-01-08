@@ -425,13 +425,11 @@ int main()
   ret = (width && height) ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED;
   TEST_RESULT(emscripten_get_screen_size);
 
-  /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means.
-     Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
-  EM_ASM(noExitRuntime = true);
-
 #ifdef REPORT_RESULT
   // Keep the page running for a moment.
   emscripten_async_call(report_result, 0, 5000);
+#else
+  emscripten_exit_with_live_runtime();
 #endif
   return 0;
 }

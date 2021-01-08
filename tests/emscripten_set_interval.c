@@ -32,5 +32,6 @@ void tick(void *userData)
 int main()
 {
 	intervalId = emscripten_set_interval(tick, 100, (void*)1);
-	EM_ASM(noExitRuntime = 1);
+	emscripten_exit_with_live_runtime();
+	return 0;
 }

@@ -4,7 +4,8 @@ $__fwritex
 $__overflow
 $__stdio_write
 $__towrite
-$__wasm_apply_relocs
+$__wasm_apply_data_relocs
+$__wasm_apply_global_relocs
 $__wasm_call_ctors
 $dlmalloc
 $fwrite

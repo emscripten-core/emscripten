@@ -128,7 +128,13 @@ function callMain(args) {
   var entryFunction = Module['__initialize'];
 #endif
 #else
+#if PROXY_TO_PTHREAD
+  // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
+  // that will call the user's real main() for the application.
+  var entryFunction = Module['_emscripten_proxy_main'];
+#else
   var entryFunction = Module['_main'];
+#endif
 #endif
 
 #if MAIN_MODULE
@@ -166,11 +172,6 @@ function callMain(args) {
     abortWrapperDepth += 2; 
 #endif
 
-#if PROXY_TO_PTHREAD
-    // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
-    // that will call the user's real main() for the application.
-    var ret = Module['_proxy_main'](argc, argv);
-#else
 #if STANDALONE_WASM
     entryFunction();
     // _start (in crt1.c) will call exit() if main return non-zero.  So we know
@@ -179,21 +180,24 @@ function callMain(args) {
 #else
     var ret = entryFunction(argc, argv);
 #endif // STANDALONE_WASM
-#endif // PROXY_TO_PTHREAD
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
-    // off to a pthread.
-#if !PROXY_TO_PTHREAD
+    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as
+    // execution is asynchronously handed off to a pthread.
+#if PROXY_TO_PTHREAD
+#if ASSERTIONS
+    assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
+#endif
+#else
 #if ASYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
     if (!noExitRuntime) {
 #endif // ASYNCIFY
-    // if we're not running an evented main loop, it's time to exit
+      // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
 #if ASYNCIFY
     }

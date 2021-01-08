@@ -377,8 +377,8 @@ def main():
       for i in range(len(parts)):
         partial = '/'.join(parts[:i + 1])
         if partial not in partial_dirs:
-          code += ('''Module['FS_createPath']('/%s', '%s', true, true);\n'''
-                   % ('/'.join(parts[:i]), parts[i]))
+          code += ('''Module['FS_createPath'](%s, %s, true, true);\n'''
+                   % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
 
   if has_preloaded:
@@ -514,8 +514,8 @@ def main():
       use_data = '''
             var compressedData = %s;
             compressedData['data'] = byteArray;
-            assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
-            LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
+            assert(typeof Module.LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
+            Module.LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
             Module['removeRunDependency']('datafile_%s');
       ''' % (meta, shared.JS.escape_for_js_string(data_target))
 

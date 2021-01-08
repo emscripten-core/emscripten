@@ -279,10 +279,12 @@ var SyscallsLibrary = {
     if (len === info.len) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var stream = FS.getStream(info.fd);
-      if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
-        SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+      if (stream) {
+        if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
+          SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+        }
+        FS.munmap(stream);
       }
-      FS.munmap(stream);
 #else
 #if ASSERTIONS
       // Without FS support, only anonymous mappings are supported.
@@ -303,7 +305,7 @@ var SyscallsLibrary = {
   },
   __sys_open: function(path, flags, varargs) {
     var pathname = SYSCALLS.getStr(path);
-    var mode = SYSCALLS.get();
+    var mode = varargs ? SYSCALLS.get() : 0;
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
@@ -583,9 +585,9 @@ var SyscallsLibrary = {
         var sock = getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
         var newsock = sock.sock_ops.accept(sock);
         if (addr) {
-          var res = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport);
+          var errno = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, addrlen);
 #if ASSERTIONS
-          assert(!res.errno);
+          assert(!errno);
 #endif
         }
         return newsock.stream.fd;
@@ -593,9 +595,9 @@ var SyscallsLibrary = {
       case 6: { // getsockname
         var sock = getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
         // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
-        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport);
+        var errno = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, addrlen);
 #if ASSERTIONS
-        assert(!res.errno);
+        assert(!errno);
 #endif
         return 0;
       }
@@ -604,9 +606,9 @@ var SyscallsLibrary = {
         if (!sock.daddr) {
           return -{{{ cDefine('ENOTCONN') }}}; // The socket is not connected.
         }
-        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport);
+        var errno = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport, addrlen);
 #if ASSERTIONS
-        assert(!res.errno);
+        assert(!errno);
 #endif
         return 0;
       }
@@ -625,9 +627,9 @@ var SyscallsLibrary = {
         var msg = sock.sock_ops.recvmsg(sock, len);
         if (!msg) return 0; // socket is closed
         if (addr) {
-          var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port);
+          var errno = __write_sockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, addrlen);
 #if ASSERTIONS
-          assert(!res.errno);
+          assert(!errno);
 #endif
         }
         HEAPU8.set(msg.buffer, buf);
@@ -705,9 +707,9 @@ var SyscallsLibrary = {
         // write the source address out
         var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
         if (name) {
-          var res = __write_sockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
+          var errno = __write_sockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
 #if ASSERTIONS
-          assert(!res.errno);
+          assert(!errno);
 #endif
         }
         // write the buffer out to the scatter-gather arrays

@@ -61,7 +61,7 @@ void do_send(int sockfd) {
   for (i = 0; i < sizeof(buffers) / sizeof(char*); i++) {
     buffer = buffers[i];
 
-    res = send(sockfd, buffer, strlen(buffer), 0);
+    res = send(sockfd, buffer, strlen(buffer), MSG_NOSIGNAL);
     if (res == -1) {
       perror("send failed");
       return;

@@ -99,6 +99,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 def check_call(cmd, *args, **kw):
   """Like `run_process` above but treat failures as fatal and exit_with_error."""
+  print_compiler_stage(cmd)
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
@@ -114,7 +115,6 @@ def run_js_tool(filename, jsargs=[], *args, **kw):
   implemented in javascript.
   """
   command = config.NODE_JS + [filename] + jsargs
-  print_compiler_stage(command)
   return check_call(command, *args, **kw).stdout
 
 
@@ -273,7 +273,7 @@ def check_sanity(force=False):
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt', root=True)
+    sanity_file = Cache.get_path('sanity.txt')
     if os.path.exists(sanity_file):
       sanity_data = open(sanity_file).read()
       if sanity_data != expected:
@@ -422,7 +422,7 @@ def emsdk_ldflags(user_args):
   library_paths = [
       path_from_root('system', 'local', 'lib'),
       path_from_root('system', 'lib'),
-      Cache.dirname
+      Cache.get_path(Cache.get_lib_dir())
   ]
   ldflags = ['-L' + l for l in library_paths]
 
@@ -507,19 +507,20 @@ def emsdk_cflags(user_args, cxx):
   return c_opts + include_directive(sysroot_include_paths)
 
 
-def get_asmflags():
+def get_clang_flags():
   return ['-target', get_llvm_target()]
 
 
 def get_cflags(user_args, cxx):
+  c_opts = get_clang_flags()
+
   # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
   # data and other nice fixes.
-  c_opts = [# '-fno-threadsafe-statics', # disabled due to issue 1289
-            '-target', get_llvm_target(),
-            '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
-            '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-            '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
-            '-D_LIBCPP_ABI_VERSION=2']
+  c_opts += [# '-fno-threadsafe-statics', # disabled due to issue 1289
+             '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
+             '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
+             '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
+             '-D_LIBCPP_ABI_VERSION=2']
 
   # For compatability with the fastcomp compiler that defined these
   c_opts += ['-Dunix',
@@ -745,11 +746,6 @@ def asmjs_mangle(name):
     return '_' + name
   else:
     return name
-
-
-def reconfigure_cache():
-  global Cache
-  Cache = cache.Cache(config.CACHE)
 
 
 class JS(object):

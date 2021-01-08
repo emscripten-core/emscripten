@@ -76,6 +76,7 @@ int main()
 
 	const char *url = "ws://localhost:8088/";
 	attr.url = url;
+	attr.protocols = "binary,base64"; // We don't really use a special protocol on the server backend in this test, but check that it can be passed.
 
 	EMSCRIPTEN_WEBSOCKET_T socket = emscripten_websocket_new(&attr);
 	if (socket <= 0)
@@ -84,10 +85,39 @@ int main()
 		exit(1);
 	}
 
+	// URL:
 	int urlLength = 0;
 	EMSCRIPTEN_RESULT res = emscripten_websocket_get_url_length(socket, &urlLength);
 	assert(res == EMSCRIPTEN_RESULT_SUCCESS);
-	assert(urlLength == strlen(url));
+	assert(urlLength == strlen(url)+1);
+
+	char *url2 = malloc(urlLength);
+	res = emscripten_websocket_get_url(socket, url2, urlLength);
+	assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+	printf("url: %s, verified: %s, length: %d\n", url, url2, urlLength);
+	assert(!strcmp(url, url2));
+
+	// Protocol:
+	int protocolLength = 0;
+	res = emscripten_websocket_get_protocol_length(socket, &protocolLength);
+	assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+	assert(protocolLength == 1); // Null byte
+
+	char *protocol = malloc(protocolLength);
+	res = emscripten_websocket_get_protocol(socket, protocol, protocolLength);
+	assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+	assert(!strcmp(protocol, "")); // We don't really use a special protocol on the server backend in this test, but test that it comes out as an empty string at least.
+
+	// Extensions:
+	int extensionsLength = 0;
+	res = emscripten_websocket_get_extensions_length(socket, &extensionsLength);
+	assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+	assert(extensionsLength == 1); // Null byte
+
+	char *extensions = malloc(extensionsLength);
+	res = emscripten_websocket_get_extensions(socket, extensions, extensionsLength);
+	assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+	assert(!strcmp(extensions, "")); // We don't really use any extensions on the server backend in this test, but test that it comes out as an empty string at least.
 
 	emscripten_websocket_set_onopen_callback(socket, (void*)42, WebSocketOpen);
 	emscripten_websocket_set_onclose_callback(socket, (void*)43, WebSocketClose);

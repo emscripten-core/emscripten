@@ -19,14 +19,27 @@ extern "C" {
 
 #define EMSCRIPTEN_WEBSOCKET_T int
 
+// Returns the WebSocket.readyState field into readyState. readyState must not be a null pointer.
 EMSCRIPTEN_RESULT emscripten_websocket_get_ready_state(EMSCRIPTEN_WEBSOCKET_T socket, unsigned short *readyState);
+
+// Returns the WebSocket.bufferedAmount field into bufferedAmount. bufferedAmount must not be a null pointer.
 EMSCRIPTEN_RESULT emscripten_websocket_get_buffered_amount(EMSCRIPTEN_WEBSOCKET_T socket, unsigned long long *bufferedAmount);
+
+// Writes the WebSocket.url field as a UTF-8 string to the memory area pointed by url. The memory area must contain at least urlLength bytes of free space. If this memory area cannot
+// fit the url string, it will be truncated. Call emscripten_websocket_get_url_length() to determine how large memory area will be required to store the url.
+// url must not be a null pointer.
+EMSCRIPTEN_RESULT emscripten_websocket_get_url(EMSCRIPTEN_WEBSOCKET_T socket, char *url, int urlLength);
+// Returns the byte length needed to store WebSocket.url string in Wasm heap. This length can be passed to emscripten_websocket_get_url as it includes the null byte in the count.
+// urlLength must not be a null pointer.
+EMSCRIPTEN_RESULT emscripten_websocket_get_url_length(EMSCRIPTEN_WEBSOCKET_T socket, int *urlLength);
+
+// Similar to emscripten_websocket_get_url(), but returns WebSocket.extensions field instead.
 EMSCRIPTEN_RESULT emscripten_websocket_get_extensions(EMSCRIPTEN_WEBSOCKET_T socket, char *extensions, int extensionsLength);
 EMSCRIPTEN_RESULT emscripten_websocket_get_extensions_length(EMSCRIPTEN_WEBSOCKET_T socket, int *extensionsLength);
+
+// Similar to emscripten_websocket_get_url(), but returns WebSocket.protocol field instead.
 EMSCRIPTEN_RESULT emscripten_websocket_get_protocol(EMSCRIPTEN_WEBSOCKET_T socket, char *protocol, int protocolLength);
 EMSCRIPTEN_RESULT emscripten_websocket_get_protocol_length(EMSCRIPTEN_WEBSOCKET_T socket, int *protocolLength);
-EMSCRIPTEN_RESULT emscripten_websocket_get_url(EMSCRIPTEN_WEBSOCKET_T socket, char *url, int urlLength);
-EMSCRIPTEN_RESULT emscripten_websocket_get_url_length(EMSCRIPTEN_WEBSOCKET_T socket, int *urlLength);
 
 typedef struct EmscriptenWebSocketOpenEvent {
   EMSCRIPTEN_WEBSOCKET_T socket;
@@ -68,8 +81,12 @@ EMSCRIPTEN_RESULT emscripten_websocket_set_onclose_callback_on_thread(EMSCRIPTEN
 #define emscripten_websocket_set_onmessage_callback(socket, userData, callback) emscripten_websocket_set_onmessage_callback_on_thread((socket), (userData), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 
 typedef struct EmscriptenWebSocketCreateAttributes {
+  // The target URL to connect to. This string can point to a stack local variable, the string is read immediately at a call to emscripten_websocket_new().
   const char *url;
-  const char **protocols;
+  // A comma-separated list of protocol strings. Set to e.g. "binary,base64" to create a WebSocket connection with two supported protocols "binary" and "base64".
+  // Be careful to avoid leading and trailing spaces, e.g. "binary, base64" may not be interpreted properly.
+  // This string can point to a stack local variable, the string is read immediately at a call to emscripten_websocket_new().
+  const char *protocols;
 
   // If true, the created socket will reside on the main browser thread. If false, the created socket is bound to the calling thread.
   // If you want to share the created EMSCRIPTEN_WEBSOCKET_T structure across multiple threads, or are running your own main loop in the

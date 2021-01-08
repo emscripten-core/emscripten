@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
@@ -70,6 +71,28 @@ int main(void)
     rv = pthread_key_delete(key);
     printf("pthread_key_delete just after created = %d\n", rv);
     assert(rv == 0);
+
+    {
+        /* Test creating multiple keys and overflowing the tls_entries array*/
+        const int n = 5;
+        int i;
+
+        pthread_key_t *keys = malloc(sizeof (pthread_key_t) * n);
+        for (i = 0; i < n; ++i) {
+            rv = pthread_key_create(&keys[i], NULL);
+            assert(rv == 0);
+            rv = pthread_setspecific(keys[i], (void*)(intptr_t)(i + 1));
+            assert(rv == 0);
+        }
+
+        for (i = 0; i < n; ++i) {
+            void *d = pthread_getspecific(keys[i]);
+            assert (i+1 == (intptr_t)d);
+            rv = pthread_key_delete(keys[i]);
+            assert(rv == 0);
+        }
+	free (keys);
+    }
 
     return 0;
 }

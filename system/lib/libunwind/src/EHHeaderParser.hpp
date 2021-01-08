@@ -1,9 +1,8 @@
 //===------------------------- EHHeaderParser.hpp -------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //
 //  Parses ELF .eh_frame_hdr sections.
@@ -109,6 +108,8 @@ bool EHHeaderParser<A>::findFDE(A &addressSpace, pint_t pc, pint_t ehHdrStart,
   if (!EHHeaderParser<A>::decodeEHHdr(addressSpace, ehHdrStart, ehHdrEnd,
                                       hdrInfo))
     return false;
+
+  if (hdrInfo.fde_count == 0) return false;
 
   size_t tableEntrySize = getTableEntrySize(hdrInfo.table_enc);
   pint_t tableEntry;

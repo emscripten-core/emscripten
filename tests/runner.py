@@ -17,8 +17,9 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
 
-from subprocess import PIPE, STDOUT
+from enum import Enum
 from functools import wraps
+from subprocess import PIPE, STDOUT
 import argparse
 import atexit
 import contextlib
@@ -55,14 +56,13 @@ import clang_native
 import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
-from tools.config import EM_CONFIG
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes, Settings, config
+from tools.shared import asbytes
 from tools.utils import MACOS, WINDOWS
-from tools import shared, line_endings, building
+from tools import shared, line_endings, building, config
 
 
 def path_from_root(*pathelems):
@@ -181,6 +181,18 @@ def requires_native_clang(func):
   return decorated
 
 
+def node_pthreads(f):
+  def decorated(self):
+    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-pthreads-mem-growth']
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    self.js_engines = [config.NODE_JS]
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    f(self)
+  return decorated
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -210,17 +222,6 @@ def with_env_modify(updates):
         return f(self)
     return modified
   return decorated
-
-
-@contextlib.contextmanager
-def chdir(dir):
-  """A context manager that performs actions in the given directory."""
-  orig_cwd = os.getcwd()
-  os.chdir(dir)
-  try:
-    yield
-  finally:
-    os.chdir(orig_cwd)
 
 
 def ensure_dir(dirname):
@@ -388,8 +389,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic library support in asan yet')
 
   def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or \
-      (self.get_setting('WASM') and not self.get_setting('WASM2JS')):
+    if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
       return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
@@ -488,10 +488,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             print('leaked file: ' + f, file=sys.stderr)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
-  def get_setting(self, key):
-    if key in self.settings_mods:
-      return self.settings_mods[key]
-    return Settings[key]
+  def get_setting(self, key, default=None):
+    return self.settings_mods.get(key, default)
 
   def set_setting(self, key, value=1):
     if value is None:
@@ -813,11 +811,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                          cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
 
   def clear(self):
-    for name in os.listdir(self.get_dir()):
-      try_delete(os.path.join(self.get_dir(), name))
+    delete_contents(self.get_dir())
     if EMSCRIPTEN_TEMP_DIR:
-      for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
-        try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
+      delete_contents(EMSCRIPTEN_TEMP_DIR)
 
   def run_process(self, cmd, check=True, **args):
     # Wrapper around shared.run_process.  This is desirable so that the tests
@@ -923,20 +919,24 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     def ccshared(src, linkto=[]):
       cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so] + self.get_emcc_args()
-      cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
+      cmdv += ['-s', 'SIDE_MODULE', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
       self.run_process(cmdv)
 
     ccshared('liba.cpp')
     ccshared('libb.cpp', ['liba' + so])
     ccshared('libc.cpp', ['liba' + so])
 
-    self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('MAIN_MODULE')
     self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
     do_run(r'''
+      #ifdef __cplusplus
       extern "C" {
+      #endif
       void bfunc();
       void cfunc();
+      #ifdef __cplusplus
       }
+      #endif
 
       int test_main() {
         bfunc();
@@ -1049,7 +1049,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         # we indicate with None as the engine
         engines += [[None]]
     if len(engines) == 0:
-      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
@@ -1237,6 +1237,18 @@ def harness_server_func(in_queue, out_queue, port):
 
   httpd = HTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
+
+
+class Reporting(Enum):
+  """When running browser tests we normally automatically include support
+  code for reporting results back to the browser.  This enum allows tests
+  to decide what type of support code they need/want.
+  """
+  NONE = 0
+  # Include the JS helpers for reporting results
+  JS_ONLY = 1
+  # Include C/C++ reporting code (REPORT_RESULT mactros) as well as JS helpers
+  FULL = 2
 
 
 class BrowserCore(RunnerCore):
@@ -1476,50 +1488,59 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def compile_btest(self, args, reporting=True):
-    # add in support for reporting results. this adds an include a header so testcases can
+  def compile_btest(self, args, reporting=Reporting.FULL):
+    # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-s', 'IN_TEST_HARNESS=1']
-    if reporting:
+    args += ['-s', 'IN_TEST_HARNESS']
+    if reporting != Reporting.NONE:
+      # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
-               '-I', path_from_root('tests'),
-               '-include', path_from_root('tests', 'report_result.h'),
-               path_from_root('tests', 'report_result.cpp'),
                '--pre-js', path_from_root('tests', 'browser_reporting.js')]
+      if reporting == Reporting.FULL:
+        # If C reporting (i.e. REPORT_RESULT macro) is required
+        # also compile in report_result.cpp and forice-include report_result.h
+        args += ['-I', path_from_root('tests'),
+                 '-include', path_from_root('tests', 'report_result.h'),
+                 path_from_root('tests', 'report_result.cpp')]
     self.run_process([EMCC] + self.get_emcc_args() + args)
+
+  def btest_exit(self, filename, expected, *args, **kwargs):
+      """Special case of btest that reports its result solely via exiting
+      with a give result code.
+
+      In this case we set EXIT_RUNTIME and we don't need to provide the
+      REPORT_RESULT macro to the C code.
+      """
+      self.set_setting('EXIT_RUNTIME')
+      kwargs['reporting'] = Reporting.JS_ONLY
+      kwargs['expected'] = 'exit:%s' % expected
+      return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False, extra_tries=1,
-            reporting=True):
+            reporting=Reporting.FULL):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
-    # if we are provided the source and not a path, use that
-    filename_is_src = '\n' in filename
-    src = filename if filename_is_src else ''
     original_args = args[:]
-    if filename_is_src:
-      filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
-      with open(filepath, 'w') as f:
-       f.write(src)
-    else:
-      filepath = path_from_root('tests', filename)
+    if not os.path.exists(filename):
+      filename = path_from_root('tests', filename)
     if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
-        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING']
     outfile = 'test.html'
-    args = [filepath, '-o', outfile] + args
+    args += [filename, '-o', outfile]
     # print('all args:', args)
     try_delete(outfile)
-    self.compile_btest(args, reporting)
+    self.compile_btest(args, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()
@@ -1542,7 +1563,7 @@ class BrowserCore(RunnerCore):
         post_build = self.post_manual_reftest
       # run proxied
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], message, timeout=timeout)
+                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout)
 
 
 ###################################################################################################
@@ -1572,8 +1593,7 @@ def build_library(name,
     generated_libs = [generated_libs]
   source_dir = path_from_root('tests', name.replace('_native', ''))
 
-  temp_dir = build_dir
-  project_dir = os.path.join(temp_dir, name)
+  project_dir = os.path.join(build_dir, name)
   if os.path.exists(project_dir):
     shutil.rmtree(project_dir)
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above

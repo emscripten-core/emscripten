@@ -21,7 +21,7 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project(
     'cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libcocos2d')
+  libname = 'libcocos2d.a'
 
   def create():
     logging.info('building port: cocos2d v3')
@@ -74,11 +74,11 @@ def get(ports, settings, shared):
 
     return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libcocos2d'))
+  shared.Cache.erase_file('libcocos2d.a')
 
 
 def process_dependencies(settings):

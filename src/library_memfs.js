@@ -89,6 +89,7 @@ mergeInto(LibraryManager.library, {
       // add the new node to the parent
       if (parent) {
         parent.contents[name] = node;
+        parent.timestamp = node.timestamp;
       }
       return node;
     },
@@ -220,12 +221,15 @@ mergeInto(LibraryManager.library, {
         }
         // do the internal rewiring
         delete old_node.parent.contents[old_node.name];
+        old_node.parent.timestamp = Date.now()
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
+        new_dir.timestamp = old_node.parent.timestamp;
         old_node.parent = new_dir;
       },
       unlink: function(parent, name) {
         delete parent.contents[name];
+        parent.timestamp = Date.now();
       },
       rmdir: function(parent, name) {
         var node = FS.lookupNode(parent, name);
@@ -233,6 +237,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
         }
         delete parent.contents[name];
+        parent.timestamp = Date.now();
       },
       readdir: function(node) {
         var entries = ['.', '..'];
@@ -348,9 +353,10 @@ mergeInto(LibraryManager.library, {
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
       mmap: function(stream, address, length, position, prot, flags) {
-        // We don't currently support location hints for the address of the mapping
-        assert(address === 0);
-
+        if (address !== 0) {
+          // We don't currently support location hints for the address of the mapping
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+        }
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }

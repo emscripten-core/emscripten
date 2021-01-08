@@ -21,7 +21,7 @@ function run() {
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
   // the application.
-  var ret = _proxy_main();
+  var ret = _emscripten_proxy_main();
 #else
   var ret = _main();
 
@@ -75,7 +75,9 @@ function initRuntime(asm) {
   writeStackCookie();
 #endif
 
-  /*** RUN_GLOBAL_INITIALIZERS(); ***/
+#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
+  asm['__wasm_call_ctors']();
+#endif
 
   {{{ getQuoted('ATINITS') }}}
 }
@@ -185,11 +187,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 #if USE_OFFSET_CONVERTER
-  wasmOffsetConverter =
 #if USE_PTHREADS
-    ENVIRONMENT_IS_PTHREAD ? resetPrototype(WasmOffsetConverter, wasmOffsetData) :
+  if (!ENVIRONMENT_IS_PTHREAD)
 #endif
-    new WasmOffsetConverter(Module['wasm'], output.module);
+    wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -232,7 +233,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if USE_PTHREADS
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
-    postMessage({ 'cmd': 'loaded' });
+    moduleLoaded();
   }
 #endif
 

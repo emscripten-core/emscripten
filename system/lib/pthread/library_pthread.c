@@ -85,6 +85,19 @@ int sched_get_priority_min(int policy) {
     return 0;
 }
 
+int pthread_mutexattr_getprioceiling(const pthread_mutexattr_t *restrict attr, int *restrict prioceiling)
+{
+  // Not supported either in Emscripten or musl, return a faked value.
+  if (prioceiling) *prioceiling = 99;
+  return 0;
+}
+
+int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
+{
+  // Not supported either in Emscripten or musl, return an error.
+  return EPERM;
+}
+
 int pthread_setcancelstate(int new, int* old) {
   if (new > 1U)
     return EINVAL;
@@ -431,16 +444,16 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
 
 static pthread_t main_browser_thread_id_ = 0;
 
-void EMSCRIPTEN_KEEPALIVE emscripten_register_main_browser_thread_id(
+void emscripten_register_main_browser_thread_id(
   pthread_t main_browser_thread_id) {
   main_browser_thread_id_ = main_browser_thread_id;
 }
 
-pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id() {
+pthread_t emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-int EMSCRIPTEN_KEEPALIVE do_emscripten_dispatch_to_thread(
+int _emscripten_do_dispatch_to_thread(
   pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
@@ -518,25 +531,25 @@ int EMSCRIPTEN_KEEPALIVE do_emscripten_dispatch_to_thread(
   return 0;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_async_run_in_main_thread(em_queued_call* call) {
-  do_emscripten_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
+void emscripten_async_run_in_main_thread(em_queued_call* call) {
+  _emscripten_do_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call* call) {
+void emscripten_sync_run_in_main_thread(em_queued_call* call) {
   emscripten_async_run_in_main_thread(call);
 
   // Enter to wait for the operation to complete.
   emscripten_wait_for_call_v(call, INFINITY);
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_0(int function) {
+void* emscripten_sync_run_in_main_thread_0(int function) {
   em_queued_call q = {function};
   q.returnValue.vp = 0;
   emscripten_sync_run_in_main_thread(&q);
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_1(int function, void* arg1) {
+void* emscripten_sync_run_in_main_thread_1(int function, void* arg1) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
   q.returnValue.vp = 0;
@@ -544,7 +557,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_1(int function, vo
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_2(
+void* emscripten_sync_run_in_main_thread_2(
   int function, void* arg1, void* arg2) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -554,7 +567,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_2(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_xprintf_varargs(
+void* emscripten_sync_run_in_main_thread_xprintf_varargs(
   int function, int param0, const char* format, ...) {
   va_list args;
   va_start(args, format);
@@ -577,7 +590,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_xprintf_varargs(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_3(
+void* emscripten_sync_run_in_main_thread_3(
   int function, void* arg1, void* arg2, void* arg3) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -588,7 +601,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_3(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_4(
+void* emscripten_sync_run_in_main_thread_4(
   int function, void* arg1, void* arg2, void* arg3, void* arg4) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -600,7 +613,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_4(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_5(
+void* emscripten_sync_run_in_main_thread_5(
   int function, void* arg1, void* arg2, void* arg3, void* arg4, void* arg5) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -613,7 +626,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_5(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_6(
+void* emscripten_sync_run_in_main_thread_6(
   int function, void* arg1, void* arg2, void* arg3, void* arg4, void* arg5, void* arg6) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -627,7 +640,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_6(
   return q.returnValue.vp;
 }
 
-void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_7(int function, void* arg1,
+void* emscripten_sync_run_in_main_thread_7(int function, void* arg1,
   void* arg2, void* arg3, void* arg4, void* arg5, void* arg6, void* arg7) {
   em_queued_call q = {function};
   q.args[0].vp = arg1;
@@ -642,7 +655,7 @@ void* EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_7(int function, vo
   return q.returnValue.vp;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_current_thread_process_queued_calls() {
+void emscripten_current_thread_process_queued_calls() {
   // #if PTHREADS_DEBUG == 2
   //	EM_ASM(console.error('thread ' + _pthread_self() + ':
   //emscripten_current_thread_process_queued_calls(), ' + new Error().stack));
@@ -696,7 +709,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_current_thread_process_queued_calls() {
     bool_main_thread_inside_nested_process_queued_calls = 0;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls() {
+void emscripten_main_thread_process_queued_calls() {
   if (!emscripten_is_main_runtime_thread())
     return;
 
@@ -732,7 +745,7 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
   return q.returnValue.i;
 }
 
-EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
+double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
   em_queued_call q;
   em_queued_call *c;
   if (sync) {
@@ -842,7 +855,7 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
+int _emscripten_call_on_thread(
   int forceAsync,
   pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
@@ -892,12 +905,12 @@ int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   if (forceAsync) {
     EM_ASM({
       setTimeout(function() {
-        _do_emscripten_dispatch_to_thread($0, $1);
+        __emscripten_do_dispatch_to_thread($0, $1);
       }, 0);
     }, targetThread, q);
     return 0;
   } else {
-    return do_emscripten_dispatch_to_thread(targetThread, q);
+    return _emscripten_do_dispatch_to_thread(targetThread, q);
   }
 }
 
@@ -909,49 +922,35 @@ int llvm_atomic_load_add_i32_p0i32(int* ptr, int delta) {
 
 // Stores the memory address that the main thread is waiting on, if any. If
 // the main thread is waiting, we wake it up before waking up any workers.
-EMSCRIPTEN_KEEPALIVE
-void* _emscripten_main_thread_futex;
+EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
 
-typedef struct main_args {
-  int argc;
-  char** argv;
-} main_args;
+static int _main_argc;
+static char** _main_argv;
 
 extern int __call_main(int argc, char** argv);
 
-void* __emscripten_thread_main(void* param) {
-  emscripten_set_thread_name(pthread_self(),
-    "Application main thread"); // This is the main runtime thread for the application.
-  main_args* args = (main_args*)param;
-  return (void*)__call_main(args->argc, args->argv);
+static void* _main_thread(void* param) {
+  // This is the main runtime thread for the application.
+  emscripten_set_thread_name(pthread_self(), "Application main thread");
+  return (void*)__call_main(_main_argc, _main_argv);
 }
 
-static main_args _main_arguments;
-
-int proxy_main(int argc, char** argv) {
-  if (emscripten_has_threading_support()) {
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    // Use the size of the current stack, which is the normal size of the stack
-    // that main() would have without PROXY_TO_PTHREAD.
-    pthread_attr_setstacksize(&attr, emscripten_stack_get_base() - emscripten_stack_get_end());
-    // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
-    // should instead take a list of canvases that are specified from the command line with
-    // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.
-    emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
-    _main_arguments.argc = argc;
-    _main_arguments.argv = argv;
-    pthread_t thread;
-    int rc = pthread_create(&thread, &attr, __emscripten_thread_main, (void*)&_main_arguments);
-    pthread_attr_destroy(&attr);
-    if (rc) {
-      // Proceed by running main() on the main browser thread as a fallback.
-      return __call_main(_main_arguments.argc, _main_arguments.argv);
-    }
-    return 0;
-  } else {
-    return __call_main(_main_arguments.argc, _main_arguments.argv);
-  }
+int emscripten_proxy_main(int argc, char** argv) {
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  // Use the size of the current stack, which is the normal size of the stack
+  // that main() would have without PROXY_TO_PTHREAD.
+  pthread_attr_setstacksize(&attr, emscripten_stack_get_base() - emscripten_stack_get_end());
+  // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
+  // should instead take a list of canvases that are specified from the command line with
+  // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.
+  emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
+  _main_argc = argc;
+  _main_argv = argv;
+  pthread_t thread;
+  int rc = pthread_create(&thread, &attr, _main_thread, NULL);
+  pthread_attr_destroy(&attr);
+  return rc;
 }
 
 weak_alias(__pthread_testcancel, pthread_testcancel);

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <utime.h>
 #include <sys/stat.h>
@@ -41,6 +42,7 @@ void setup() {
 }
 
 void cleanup() {
+  rmdir("folder/subdir");
   unlink("folder/file");
   unlink("folder/file-link");
   rmdir("folder");
@@ -49,6 +51,7 @@ void cleanup() {
 void test() {
   int err;
   struct stat s;
+  struct utimbuf t = {1200000000, 1200000000};
 
   // stat a folder
   memset(&s, 0, sizeof(s));
@@ -160,6 +163,17 @@ void test() {
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
+
+  // create and unlink files inside a directory and check that mtime updates
+  mkdir("folder/subdir", 0777);
+  utime("folder/subdir", &t);
+  create_file("folder/subdir/file", "abcdef", 0777);
+  err = stat("folder/subdir", &s);
+  assert(s.st_mtime != 1200000000);
+  utime("folder/subdir", &t);
+  unlink("folder/subdir/file");
+  err = stat("folder/subdir", &s);
+  assert(s.st_mtime != 1200000000);
 
   puts("success");
 }

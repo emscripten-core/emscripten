@@ -24,7 +24,7 @@ def get(ports, settings, shared):
   libname = 'libSDL2_image'
   if formats != '':
     libname += '_' + formats
-  libname = ports.get_lib_name(libname)
+  libname += '.a'
 
   def create():
     src_dir = os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG)
@@ -55,11 +55,11 @@ def get(ports, settings, shared):
     ports.create_lib(final, o_s)
     return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.get_path(ports.get_lib_name('libSDL2_image'))
+  shared.Cache.get_path('libSDL2_image.a')
 
 
 def process_dependencies(settings):

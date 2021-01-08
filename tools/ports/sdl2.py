@@ -14,10 +14,14 @@ def needed(settings):
   return settings.USE_SDL == 2
 
 
+def get_lib_name(settings):
+  return 'libSDL2' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+
+
 def get(ports, settings, shared):
   # get the port
   ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
-  libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
+  libname = get_lib_name(settings)
 
   def create():
     # copy includes to a location so they can be used as 'SDL2/'
@@ -82,11 +86,11 @@ def get(ports, settings, shared):
     ports.create_lib(final, o_s)
     return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libSDL2'))
+  shared.Cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

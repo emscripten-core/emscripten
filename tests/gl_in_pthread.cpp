@@ -109,7 +109,6 @@ void *mymain(void*)
 int main()
 {
 #ifdef TEST_CHAINED_WEBGL_CONTEXT_PASSING
-  EM_ASM(noExitRuntime = true;);
   pthread_attr_t attr;
   pthread_attr_init(&attr);
 #ifndef TRANSFER_TO_CHAINED_THREAD_FROM_MAIN_THREAD
@@ -124,6 +123,7 @@ int main()
 #endif
     exit(0);
   }
+  emscripten_exit_with_live_runtime();
 #else
   mymain(0);
 #endif

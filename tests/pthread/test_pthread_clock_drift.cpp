@@ -57,5 +57,5 @@ int main()
 	mainThreadTime = emscripten_get_now();
 	wake(&timeReceived);
 
-	EM_ASM(noExitRuntime=true);
+	emscripten_exit_with_live_runtime();
 }
