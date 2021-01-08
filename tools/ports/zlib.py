@@ -44,7 +44,7 @@ def get(ports, settings, shared):
     ports.create_lib(final, o_s)
     return final
 
-  return [shared.Cache.get('libz.a', create, what='port')]
+  return [shared.Cache.get_lib('libz.a', create, what='port')]
 
 
 def clear(ports, settings, shared):

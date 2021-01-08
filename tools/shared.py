@@ -273,7 +273,7 @@ def check_sanity(force=False):
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt', root=True)
+    sanity_file = Cache.get_path('sanity.txt')
     if os.path.exists(sanity_file):
       sanity_data = open(sanity_file).read()
       if sanity_data != expected:
@@ -422,7 +422,7 @@ def emsdk_ldflags(user_args):
   library_paths = [
       path_from_root('system', 'local', 'lib'),
       path_from_root('system', 'lib'),
-      Cache.dirname
+      Cache.get_path(Cache.get_lib_dir())
   ]
   ldflags = ['-L' + l for l in library_paths]
 
@@ -746,11 +746,6 @@ def asmjs_mangle(name):
     return '_' + name
   else:
     return name
-
-
-def reconfigure_cache():
-  global Cache
-  Cache = cache.Cache(config.CACHE)
 
 
 class JS(object):

@@ -327,7 +327,7 @@ class Library(object):
     return True
 
   def erase(self):
-    shared.Cache.erase_file(self.get_filename())
+    shared.Cache.erase_file(shared.Cache.get_lib_name(self.get_filename()))
 
   def get_path(self):
     """
@@ -335,7 +335,7 @@ class Library(object):
 
     This will trigger a build if this library is not in the cache.
     """
-    return shared.Cache.get(self.get_filename(), self.build)
+    return shared.Cache.get_lib(self.get_filename(), self.build)
 
   def get_files(self):
     """
@@ -1582,7 +1582,7 @@ class Ports(object):
 
   @staticmethod
   def get_include_dir():
-    dirname = shared.Cache.get_path('include')
+    dirname = shared.Cache.get_include_dir()
     shared.safe_ensure_dirs(dirname)
     return dirname
 

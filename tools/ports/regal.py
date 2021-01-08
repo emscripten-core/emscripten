@@ -138,7 +138,7 @@ def get(ports, settings, shared):
     ports.create_lib(final, o_s)
     return final
 
-  return [shared.Cache.get(get_lib_name(settings), create, what='port')]
+  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
