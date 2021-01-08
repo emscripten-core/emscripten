@@ -60,7 +60,7 @@ def also_with_wasm_bigint(f):
   def decorated(self):
     self.set_setting('WASM_BIGINT', 0)
     f(self)
-    if self.get_setting('WASM'):
+    if self.is_wasm():
       self.set_setting('WASM_BIGINT')
       self.node_args.append('--experimental-wasm-bigint')
       self.js_engines = [config.NODE_JS]
@@ -90,7 +90,7 @@ def with_both_exception_handling(f):
   def metafunc(self, native_exceptions):
     if native_exceptions and False: # TODO: re-enable when V8 and LLVM support the updated EH proposal
       # Wasm EH is currently supported only in wasm backend and V8
-      if not self.get_setting('WASM'):
+      if not self.is_wasm():
         self.skipTest('wasm2js does not support wasm exceptions')
       if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
         self.skipTest('d8 required to run wasm eh tests')
@@ -138,8 +138,8 @@ def also_with_noderawfs(func):
 
 
 def can_do_standalone(self):
-  return self.get_setting('WASM') and \
-      self.get_setting('STACK_OVERFLOW_CHECK') < 2 and \
+  return self.is_wasm() and \
+      self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       not self.get_setting('SAFE_HEAP') and \
       '-fsanitize=address' not in self.emcc_args
@@ -257,7 +257,7 @@ no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 
 class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
-    return not self.get_setting('WASM')
+    return self.get_setting('WASM') == 0
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
@@ -1133,7 +1133,7 @@ int main() {
       # TODO: Node currently returns 0 for unhandled promise rejections.
       # Switch this to True when they change their default
       expect_fail = False
-      if self.get_setting('WASM') == 0:
+      if not self.is_wasm():
         expect_fail = True
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=NON_ZERO if expect_fail else 0)
 
@@ -1786,7 +1786,7 @@ int main() {
   def test_emscripten_get_compiler_setting(self):
     src = path_from_root('tests', 'core', 'emscripten_get_compiler_setting.c')
     output = shared.unsuffixed(src) + '.out'
-    old = self.get_setting('ASSERTIONS')
+    old = self.get_setting('ASSERTIONS', 1)
     # with assertions, a nice message is shown
     self.set_setting('ASSERTIONS')
     self.do_runf(src, 'You must build with -s RETAIN_COMPILER_SETTINGS=1', assert_returncode=NON_ZERO)
@@ -1919,7 +1919,7 @@ int main(int argc, char **argv) {
     'linked': (['-s', 'MAIN_MODULE'],),
   })
   def test_em_js(self, args):
-    if 'MAIN_MODULE' in args and self.get_setting('WASM') == 0:
+    if 'MAIN_MODULE' in args and not self.is_wasm():
       self.skipTest('main module support for non-wasm')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
@@ -1938,7 +1938,7 @@ int main(int argc, char **argv) {
     src = path_from_root('tests', 'core', 'test_memorygrowth.c')
     # Fail without memory growth
     expect_fail = False
-    if self.get_setting('WASM') == 0:
+    if not self.is_wasm():
       expect_fail = True
     self.do_runf(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
     # Win with it
@@ -2562,7 +2562,7 @@ The current type of b is: 9
     self.emcc_args += ['--pre-js', 'lib_so_pre.js']
 
   def build_dlfcn_lib(self, filename):
-    if self.get_setting('WASM'):
+    if self.is_wasm():
       # emcc emits a wasm in this case
       self.build(filename, js_outfile=False)
       shutil.move(shared.unsuffixed(filename) + '.wasm', 'liblib.so')
@@ -5427,7 +5427,7 @@ PORT: 3979
       shutil.copy2('src.js', 'src.js.previous')
 
       # Same but for the wasm file.
-      if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
+      if self.is_wasm() and not self.get_setting('WASM2JS'):
         if os.path.exists('src.wasm.previous'):
           self.assertBinaryEqual('src.wasm', 'src.wasm.previous')
         shutil.copy2('src.wasm', 'src.wasm.previous')
@@ -5976,7 +5976,7 @@ return malloc(size);
         '-Wno-shift-negative-value',
         '-Wno-format'
     ]
-    asserts = self.get_setting('ASSERTIONS')
+    asserts = self.get_setting('ASSERTIONS', 0)
 
     # extra testing for ASSERTIONS == 2
     self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
@@ -6509,7 +6509,7 @@ return malloc(size);
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
-    if not self.get_setting('WASM'):
+    if not self.is_wasm():
       self.skipTest('this test uses wasm binaries')
 
     print('leave printf in ctor')
@@ -6912,7 +6912,7 @@ someweirdtext
                   self.get_emcc_args(),
                   out_filename,
                   stderr=PIPE)
-    map_referent = out_filename if not self.get_setting('WASM') else wasm_filename
+    map_referent = out_filename if not self.is_wasm() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.
     # this is worth checking because the parser AST swaps strings for token
@@ -7456,7 +7456,7 @@ Module['onRuntimeInitialized'] = function() {
   # Test basic wasm2js functionality in all core compilation modes.
   @no_asan('no wasm2js support yet in asan')
   def test_wasm2js(self):
-    if self.get_setting('WASM') == 0:
+    if not self.is_wasm():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world.c')
@@ -7471,7 +7471,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_asan('no wasm2js support yet in asan')
   def test_maybe_wasm2js(self):
-    if self.get_setting('WASM') == 0:
+    if not self.is_wasm():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('MAYBE_WASM2JS')
     # see that running as wasm works
@@ -7492,7 +7492,7 @@ Module['onRuntimeInitialized'] = function() {
     'minimal_runtime': (['-s', 'MINIMAL_RUNTIME'],),
   })
   def test_wasm2js_fallback(self, args):
-    if self.get_setting('WASM') == 0:
+    if not self.is_wasm():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
     cmd = [EMCC, path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2'] + args
@@ -7777,7 +7777,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    if self.get_setting('WASM') == 0:
+    if not self.is_wasm():
       if is_optimizing(self.emcc_args):
         self.skipTest('test can only be run without optimizations on asm.js')
       # Need to use `-g` to get proper line numbers in asm.js
@@ -7789,7 +7789,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    if self.get_setting('WASM') == 0:
+    if not self.is_wasm():
       if is_optimizing(self.emcc_args):
         self.skipTest('test can only be run without optimizations on asm.js')
       # Need to use `-g` to get proper line numbers in asm.js
@@ -7879,7 +7879,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ALLOW_MEMORY_GROWTH')
 
     if g_flag == '-g4':
-      if not self.get_setting('WASM'):
+      if not self.is_wasm():
         self.skipTest('wasm2js has no source map support')
       elif '-Oz' in self.emcc_args:
         self.skipTest('-Oz breaks stack traces')
@@ -7971,7 +7971,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if '-Oz' in self.emcc_args:
       self.skipTest('-Oz breaks source maps')
 
-    if not self.get_setting('WASM'):
+    if not self.is_wasm():
       self.skipTest('wasm2js has no ASan support')
 
     self.emcc_args.append('-fsanitize=address')

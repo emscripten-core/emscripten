@@ -20,9 +20,10 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
 
 from tools import shared
+from tools import config
 
 # can add flags like --no-threads --ion-offthread-compile=off
-engine = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
+engine = eval('config.' + sys.argv[1]) if len(sys.argv) > 1 else config.JS_ENGINES[0]
 
 print('testing js engine', engine)
 
