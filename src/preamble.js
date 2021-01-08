@@ -1067,6 +1067,12 @@ function createWasm() {
 #endif
 #endif // WASM == 2
 
+#if ASSERTIONS
+      // Warn on some common problems.
+      if (isFileURI(wasmBinaryFile)) {
+        err(`warning: Loading from a file URI (${wasmBinaryFile}) is not supported in most browsers.`);
+      }
+#endif
       abort(reason);
     });
   }
