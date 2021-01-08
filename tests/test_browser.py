@@ -1593,7 +1593,7 @@ keydown(100);keyup(100); // trigger the end
     for file_data in [1, 0]:
       cmd = [EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else [])
       print(cmd)
-      subprocess.check_call(cmd)
+      self.run_process(cmd)
       self.assertExists('worker.js')
       self.run_browser('main.html', '', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
