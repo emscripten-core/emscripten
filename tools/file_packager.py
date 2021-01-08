@@ -514,8 +514,8 @@ def main():
       use_data = '''
             var compressedData = %s;
             compressedData['data'] = byteArray;
-            assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
-            LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
+            assert(typeof Module.LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
+            Module.LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
             Module['removeRunDependency']('datafile_%s');
       ''' % (meta, shared.JS.escape_for_js_string(data_target))
 
