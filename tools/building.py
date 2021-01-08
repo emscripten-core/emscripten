@@ -1132,13 +1132,6 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
           'name': 'emcc$export$' + export,
           'reaches': []
         })
-  # Because emitDCEGraph only looks at the main js file, and not the worker
-  # we have to explictly add module exported here that are accessed from the
-  # worker, in order to keep them alive through this DCE.
-  # TODO: Find a more robust way to do this, perhaps by also scanning worker.js
-  # for roots.
-  if Settings.USE_PTHREADS:
-    user_requested_exports.append('_emscripten_tls_init')
   # ensure that functions expected to be exported to the outside are roots
   for item in graph:
     if 'export' in item:
@@ -1359,7 +1352,7 @@ def strip(infile, outfile, debug=False, producers=False):
     cmd += ['--remove-section=.debug*']
   if producers:
     cmd += ['--remove-section=producers']
-  run_process(cmd)
+  check_call(cmd)
 
 
 # extract the DWARF info from the main file, and leave the wasm with

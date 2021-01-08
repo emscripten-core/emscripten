@@ -279,10 +279,12 @@ var SyscallsLibrary = {
     if (len === info.len) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var stream = FS.getStream(info.fd);
-      if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
-        SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+      if (stream) {
+        if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
+          SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+        }
+        FS.munmap(stream);
       }
-      FS.munmap(stream);
 #else
 #if ASSERTIONS
       // Without FS support, only anonymous mappings are supported.

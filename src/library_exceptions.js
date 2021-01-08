@@ -261,6 +261,9 @@ var LibraryExceptions = {
   __cxa_rethrow__sig: 'v',
   __cxa_rethrow: function() {
     var catchInfo = exceptionCaught.pop();
+    if (!catchInfo) {
+      abort('no exception to throw');
+    }
     var info = catchInfo.get_exception_info();
     var ptr = catchInfo.get_base_ptr();
     if (!info.get_rethrown()) {

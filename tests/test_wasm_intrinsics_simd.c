@@ -518,18 +518,6 @@ v128_t TESTFN i32x4_mul(v128_t x, v128_t y) {
 v128_t TESTFN i64x2_neg(v128_t vec) {
   return wasm_i64x2_neg(vec);
 }
-
-#ifdef __wasm_unimplemented_simd128__
-
-bool TESTFN i64x2_any_true(v128_t vec) {
-  return wasm_i64x2_any_true(vec);
-}
-bool TESTFN i64x2_all_true(v128_t vec) {
-  return wasm_i64x2_all_true(vec);
-}
-
-#endif // __wasm_unimplemented_simd128__
-
 v128_t TESTFN i64x2_shl(v128_t vec, int32_t shift) {
   return wasm_i64x2_shl(vec, shift);
 }
@@ -1576,12 +1564,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
 
   // i64x2 arithmetic
   expect_vec(i64x2_neg((v128_t)i64x2(0x8000000000000000, 42)), i64x2(0x8000000000000000, -42));
-  /* expect_eq(i64x2_any_true((v128_t)i64x2(0, 0)), 0); */
-  /* expect_eq(i64x2_any_true((v128_t)i64x2(1, 0)), 1); */
-  /* expect_eq(i64x2_any_true((v128_t)i64x2(1, 1)), 1); */
-  /* expect_eq(i64x2_all_true((v128_t)i64x2(0, 0)), 0); */
-  /* expect_eq(i64x2_all_true((v128_t)i64x2(1, 0)), 0); */
-  /* expect_eq(i64x2_all_true((v128_t)i64x2(1, 1)), 1); */
 
   expect_vec(i64x2_shl((v128_t)i64x2(1, 0x8000000000000000), 1), i64x2(2, 0));
   expect_vec(i64x2_shl((v128_t)i64x2(1, 0x8000000000000000), 64), i64x2(1, 0x8000000000000000));

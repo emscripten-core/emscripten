@@ -17,12 +17,12 @@ int thread_main(void* arg) {
   return 42;
 }
 
-int run_with_exit() {
+int run_with_exit(void* arg) {
   thrd_yield();
   thrd_exit(43);
 }
 
-int main() {
+int main(int argc, char* argv[]) {
   int result = 0;
   printf("thrd_current: %p\n", thrd_current());
 

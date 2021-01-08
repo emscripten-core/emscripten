@@ -26,7 +26,7 @@ def get(ports, settings, shared):
   libname = 'libSDL2_mixer'
   if formats != '':
     libname += '_' + formats
-  libname = ports.get_lib_name(libname)
+  libname += '.a'
 
   def create():
     logging.info('building port: sdl2_mixer')
@@ -80,7 +80,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libSDL2_mixer'))
+  shared.Cache.erase_file('libSDL2_mixer.a')
 
 
 def process_dependencies(settings):

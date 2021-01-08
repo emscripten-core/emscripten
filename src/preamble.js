@@ -767,23 +767,38 @@ function getBinary(file) {
 }
 
 function getBinaryPromise() {
-  // If we don't have the binary yet, and have the Fetch api, use that;
-  // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function'
+  // If we don't have the binary yet, try to to load it asynchronously.
+  // Fetch has some additional restrictions over XHR, like it can't be used on a file:// url.
+  // See https://github.com/github/fetch/pull/92#issuecomment-140665932
+  // Cordova or Electron apps are typically loaded from a file:// url.
+  // So use fetch if it is available and the url is not a file, otherwise fall back to XHR.
+  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
+    if (typeof fetch === 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
-      // Let's not use fetch to get objects over file:// as it's most likely Cordova which doesn't support fetch for file://
       && !isFileURI(wasmBinaryFile)
 #endif
-      ) {
-    return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
-      if (!response['ok']) {
-        throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+    ) {
+      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
+        if (!response['ok']) {
+          throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+        }
+        return response['arrayBuffer']();
+      }).catch(function () {
+          return getBinary(wasmBinaryFile);
+      });
+    }
+#if ENVIRONMENT_MAY_BE_WEBVIEW
+    else {
+      if (readAsync) {
+        // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
+        return new Promise(function(resolve, reject) {
+          readAsync(wasmBinaryFile, function(response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
+        });
       }
-      return response['arrayBuffer']();
-    }).catch(function () {
-      return getBinary(wasmBinaryFile);
-    });
+    }
+#endif
   }
+    
   // Otherwise, getBinary should be able to get it synchronously
   return Promise.resolve().then(function() { return getBinary(wasmBinaryFile); });
 }
@@ -804,10 +819,16 @@ var splitModuleProxyHandler = {
     return function() {
       err('placeholder function called: ' + prop);
       var imports = {'primary': Module['asm']};
-      var table = Module['asm']['__indirect_function_table'];
       instantiateSync(wasmBinaryFile + '.deferred', imports);
       err('instantiated deferred module, continuing');
-      return table.get(prop).apply(null, arguments);
+#if RELOCATABLE
+      // When the table is dynamically laid out, the placeholder functions names
+      // are offsets from the table base. In the main module, the table base is
+      // always 1.
+      return wasmTable.get(1 + parseInt(prop)).apply(null, arguments);
+#else
+      return wasmTable.get(prop).apply(null, arguments);
+#endif
     }
   }
 };
@@ -1117,7 +1138,7 @@ function createWasm() {
 #endif
 }
 
-// Globals used by JS i64 conversions
+// Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
 
