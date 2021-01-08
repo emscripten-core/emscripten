@@ -129,13 +129,9 @@ def main():
 
   if args.lto:
     shared.Settings.LTO = "full"
-    # Reconfigure the cache dir to reflect the change
-    shared.reconfigure_cache()
 
   if args.pic:
     shared.Settings.RELOCATABLE = 1
-    # Reconfigure the cache dir to reflect the change
-    shared.reconfigure_cache()
 
   if args.force:
     force = True

@@ -1331,10 +1331,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']
 
-    # Reconfigure the cache now that settings have been applied. Some settings
-    # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
-    shared.reconfigure_cache()
-
     if not compile_only and not options.post_link:
       ldflags = shared.emsdk_ldflags(newargs)
       for f in ldflags:
