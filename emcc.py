@@ -610,7 +610,8 @@ def make_js_executable(script):
 
 def do_split_module(wasm_file):
   os.rename(wasm_file, wasm_file + '.orig')
-  building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=['--instrument'])
+  args = ['--instrument']
+  building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=args)
 
 
 def do_replace(input_, pattern, replacement):
@@ -766,7 +767,7 @@ def run(args):
     print('''
 ------------------------------------------------------------------
 
-emcc: supported targets: llvm bitcode, javascript, NOT elf
+emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
 (autoconf likes to see elf above to enable shared object support)
 ''')
     return 0
@@ -781,11 +782,11 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
       revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
     if revision:
       revision = ' (%s)' % revision
-    print('''emcc (Emscripten gcc/clang-like replacement) %s%s
+    print('''%s%s
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  ''' % (shared.EMSCRIPTEN_VERSION, revision))
+  ''' % (version_string(), revision))
     return 0
 
   if run_via_emxx:
@@ -795,10 +796,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
-    print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = shared.check_call([clang, '-v'] + shared.get_clang_flags(), check=False).returncode
-    shared.check_sanity(force=True)
-    return code
+    print(version_string(), file=sys.stderr)
+    return shared.check_call([clang, '-v'] + shared.get_clang_flags(), check=False).returncode
 
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
@@ -1529,6 +1528,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '__emscripten_do_dispatch_to_thread',
         '__emscripten_main_thread_futex',
         '__emscripten_thread_init',
+        '_emscripten_current_thread_process_queued_calls',
         '_emscripten_futex_wake',
         '_emscripten_get_global_libc',
         '_emscripten_main_browser_thread_id',
@@ -1541,6 +1541,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '_emscripten_tls_init',
         '_pthread_self',
       ]
+      # Some of these symbols are using by worker.js but otherwise unreferenced.
+      # Because emitDCEGraph only considered the main js file, and not worker.js
+      # we have explictly mark these symbols as user-exported so that they will
+      # kept alive through DCE.
+      # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
+      # for roots.
+      building.user_requested_exports.append('_emscripten_tls_init')
+      building.user_requested_exports.append('_emscripten_current_thread_process_queued_calls')
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1990,10 +1998,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # output the dependency rule. Warning: clang and gcc behave differently
         # with -MF! (clang seems to not recognize it)
         logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-        shared.print_compiler_stage(cmd)
-        rtn = run_process(cmd, check=False).returncode
-        if rtn:
-          return rtn
+        shared.check_call(cmd)
       return 0
 
     # Precompiled headers support
@@ -2006,8 +2011,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if specified_target:
           cmd += ['-o', specified_target]
         logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
-        shared.print_compiler_stage(cmd)
-        return run_process(cmd, check=False).returncode
+        shared.check_call(cmd)
+        return 0
 
     def get_object_filename(input_file):
       if compile_only:
@@ -2032,7 +2037,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not has_dash_c:
         cmd += ['-c']
       cmd += ['-o', output_file]
-      shared.print_compiler_stage(cmd)
       shared.check_call(cmd)
       if output_file not in ('-', os.devnull):
         assert os.path.exists(output_file)
@@ -2341,6 +2345,10 @@ def post_link(options, in_wasm, wasm_target, target):
   return 0
 
 
+def version_string():
+  return 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
+
+
 def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
@@ -2522,7 +2530,6 @@ def parse_args(newargs):
       options.ignore_dynamic_linking = True
     elif arg == '-v':
       shared.PRINT_STAGES = True
-      shared.check_sanity(force=True)
     elif check_arg('--shell-file'):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
@@ -2545,6 +2552,10 @@ def parse_args(newargs):
       system_libs.Ports.erase()
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
+      should_exit = True
+    elif check_flag('--check'):
+      print(version_string(), file=sys.stderr)
+      shared.check_sanity(force=True)
       should_exit = True
     elif check_flag('--show-ports'):
       system_libs.show_ports()

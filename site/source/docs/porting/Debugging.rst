@@ -57,7 +57,7 @@ directory (e.g. **/tmp** on UNIX).
 
 The debug logs can be analysed to profile and review the changes that were made in each step.
 
-.. note:: The debug mode can also be enabled by specifying the :ref:`verbose output <debugging-emcc-v>` compiler flag (``emcc -v``).
+.. note:: The more limited amount of debug information can also be enabled by specifying the :ref:`verbose output <debugging-emcc-v>` compiler flag (``emcc -v``).
 
 
 .. _debugging-compilation-settings:
@@ -121,10 +121,8 @@ Emscripten also supports some of Clang's sanitizers, such as :ref:`sanitizer_ubs
 emcc verbose output
 ===================
 
-Compiling with the :ref:`emcc -v <emcc-verbose>` option passes ``-v`` to LLVM and runs Emscripten's internal sanity checks on the toolchain.
-
-The verbose mode also enables Emscripten's :ref:`debugging-EMCC_DEBUG` to generate intermediate files for the compiler’s various stages.
-
+Compiling with the :ref:`emcc -v <emcc-verbose>` will cause Emscripten to output
+the sub-command that it runs as well as passes ``-v`` to Clang.
 
 .. _debugging-manual-debugging:
 

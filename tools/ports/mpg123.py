@@ -17,7 +17,7 @@ def needed(settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('mpg123', 'https://www.mpg123.de/download/mpg123-1.26.2.tar.bz2', 'mpg123-' + TAG, is_tarbz2=True, sha512hash=HASH)
-  libname = ports.get_lib_name('libmpg123')
+  libname = 'libmpg123.a'
 
   def create():
     logging.info('building port: mpg123')
@@ -97,7 +97,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libmpg123'))
+  shared.Cache.erase_file('libmpg123.a')
 
 
 def process_args(ports):

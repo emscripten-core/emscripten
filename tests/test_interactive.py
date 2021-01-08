@@ -6,14 +6,13 @@
 import json
 import os
 import shutil
-from subprocess import Popen
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
 
 from runner import parameterized
 from runner import BrowserCore, path_from_root
-from tools.shared import EMCC, WINDOWS
+from tools.shared import WINDOWS
 from tools.utils import which
 
 
@@ -73,7 +72,7 @@ class interactive(BrowserCore):
     #        depended on fragile SDL1/SDL2 mixing, which stopped working with
     #        7a5744d754e00bec4422405a1a94f60b8e53c8fc (which just uncovered
     #        the existing problem)
-    # Popen([EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
+    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
     # self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_mix_channels(self):
@@ -183,13 +182,16 @@ class interactive(BrowserCore):
     self.btest('openal_capture.c', expected='0')
 
   def get_freealut_library(self):
+    self.emcc_args += ['-Wno-pointer-sign']
     if WINDOWS and which('cmake'):
-      return self.get_library('freealut', os.path.join('hello_world.bc'), configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
+      return self.get_library(os.path.join('third_party', 'freealut'), 'libalut.a', configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
     else:
-      return self.get_library('freealut', [os.path.join('examples', '.libs', 'hello_world.bc'), os.path.join('src', '.libs', 'libalut.a')], make_args=['EXEEXT=.bc'])
+      return self.get_library(os.path.join('third_party', 'freealut'), os.path.join('src', '.libs', 'libalut.a'), configure_args=['--disable-shared'])
 
   def test_freealut(self):
-    Popen([EMCC, '-O2'] + self.get_freealut_library() + ['-o', 'page.html']).communicate()
+    src = path_from_root('tests', 'third_party', 'freealut', 'examples', 'hello_world.c')
+    inc = path_from_root('tests', 'third_party', 'freealut', 'include')
+    self.compile_btest([src, '-O2', '-o', 'page.html', '-I' + inc] + self.get_freealut_library())
     self.run_browser('page.html', 'You should hear "Hello World!"')
 
   def test_vr(self):
@@ -221,7 +223,13 @@ class interactive(BrowserCore):
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])
 
   def test_threadprofiler(self):
-    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=['-O2', '--threadprofiler', '-s', 'USE_PTHREADS', '-DTEST_THREAD_PROFILING=1', '-s', 'PTHREAD_POOL_SIZE=16', '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')])
+    args = ['-O2', '--threadprofiler',
+            '-s', 'USE_PTHREADS',
+            '-DTEST_THREAD_PROFILING=1',
+            '-s', 'PTHREAD_POOL_SIZE=16',
+            '-s', 'INITIAL_MEMORY=64mb',
+            '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')]
+    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=args)
 
   # Test that event backproxying works.
   def test_html5_callbacks_on_calling_thread(self):

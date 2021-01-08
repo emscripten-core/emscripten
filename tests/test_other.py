@@ -170,6 +170,14 @@ class other(RunnerCore):
       self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
       self.assertNotContained('this is dangerous', proc.stderr)
 
+  def test_emcc_check(self):
+    proc = self.run_process([EMCC, '--check'], stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.stdout, '')
+    self.assertContained('emcc (Emscripten gcc/clang-like replacement', proc.stderr)
+    self.assertContained('Running sanity checks', proc.stderr)
+    proc = self.run_process([EMCC, '--check'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('Running sanity checks', proc.stderr)
+
   def test_emcc_generate_config(self):
     for compiler in [EMCC, EMXX]:
       config_path = './emscripten_config'
@@ -227,7 +235,7 @@ class other(RunnerCore):
     # --version
     output = self.run_process([compiler, '--version'], stdout=PIPE, stderr=PIPE)
     output = output.stdout.replace('\r', '')
-    self.assertContained('emcc (Emscripten gcc/clang-like replacement)', output)
+    self.assertContained('emcc (Emscripten gcc/clang-like replacement', output)
     self.assertContained('''Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -477,9 +485,9 @@ f.close()
     flags = output.stdout.strip()
     self.assertContained(shared.shlex_join(shared.emsdk_cflags([], True)), flags)
     # check they work
-    cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
+    cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-o', 'out.o']
     self.run_process(cmd)
-    self.run_process([EMCC, 'a.bc'])
+    self.run_process([EMCC, 'out.o'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_print_search_dirs(self):
@@ -976,8 +984,8 @@ int f() {
     self.run_process([EMCC, '-o', '1.o', '-c', '1.c'])
     self.run_process([EMCC, '-o', '2.o', '-c', '2.c'])
     self.run_process([EMAR, 'crs', '2.a', '2.o'])
-    self.run_process([EMCC, '-r', '-o', 'out.bc', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
-    self.run_process([EMCC, 'out.bc'])
+    self.run_process([EMCC, '-r', '-o', 'out.o', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
+    self.run_process([EMCC, 'out.o'])
     self.assertContained('Hello', self.run_js('a.out.js'))
 
   # We deliberately ignore duplicate input files in order to allow
@@ -1194,12 +1202,12 @@ int f() {
       int f() { return 12346; }
     ''')
 
-    self.run_process([EMCC, main_name, '-c', '-o', main_name + '.bc'])
-    self.run_process([EMCC, other_name, '-c', '-o', other_name + '.bc'])
+    self.run_process([EMCC, main_name, '-c', '-o', main_name + '.o'])
+    self.run_process([EMCC, other_name, '-c', '-o', other_name + '.o'])
 
-    self.run_process([EMAR, 'cr', main_name + '.a', main_name + '.bc'])
+    self.run_process([EMAR, 'cr', main_name + '.a', main_name + '.o'])
 
-    self.run_process([EMCC, other_name + '.bc', main_name + '.a'])
+    self.run_process([EMCC, other_name + '.o', main_name + '.a'])
 
     self.assertContained('result: 12346.', self.run_js('a.out.js'))
 
@@ -2230,8 +2238,19 @@ int f() {
     create_test_file(full, 'data')
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
     assert len(proc.stdout), proc.stderr
-    assert unicode_name in proc.stdout, proc.stdout
+    assert json.dumps(unicode_name) in proc.stdout, proc.stdout
     print(len(proc.stderr))
+
+  def test_file_packager_directory_with_single_quote(self):
+    single_quote_name = "direc'tory"
+    ensure_dir(single_quote_name)
+    full = os.path.join(single_quote_name, 'data.txt')
+    create_test_file(full, 'data')
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
+    assert len(proc.stdout), proc.stderr
+    # ensure not invalid JavaScript
+    assert "'direc'tory'" not in proc.stdout
+    assert json.dumps("direc'tory") in proc.stdout
 
   def test_file_packager_mention_FORCE_FILESYSTEM(self):
     MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
@@ -2656,7 +2675,7 @@ m0.ccall('myread0','number',[],[]);
     create_test_file('proxyfs_pre.js', r'''
 if (typeof Module === 'undefined') Module = {};
 Module["noInitialRun"]=true;
-noExitRuntime=true;
+Module["noExitRuntime"]=true;
 ''')
 
     create_test_file('proxyfs_embed.txt', 'test\n')
@@ -4618,16 +4637,16 @@ int main(const int argc, const char * const * const argv) {
     test(['-o', 'c.html'], True)
     test(['-c'], False)
 
-  def test_dash_g_bc(self):
+  def test_dash_g_object(self):
     def test(opts):
       print(opts)
-      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts)
-      sizes = {'_': os.path.getsize('a_.bc')}
-      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts)
-      sizes['g'] = os.path.getsize('ag.bc')
-      for i in range(0, 5):
-        self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts)
-        sizes[i] = os.path.getsize('a' + str(i) + '.bc')
+      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a_.o'] + opts)
+      sizes = {'_': os.path.getsize('a_.o')}
+      self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.o'] + opts)
+      sizes['g'] = os.path.getsize('ag.o')
+      for i in range(5):
+        self.run_process([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.o'] + opts)
+        sizes[i] = os.path.getsize('a' + str(i) + '.o')
       print('  ', sizes)
       assert sizes['_'] == sizes[0] == sizes[1] == sizes[2], 'no debug means no llvm debug info ' + str(sizes)
       assert sizes['g'] == sizes[3] == sizes[4], '-g or -g4 means llvm debug info ' + str(sizes)
@@ -6459,16 +6478,16 @@ int main() {
 ''')
 
     # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
-    cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT', '-flto']
+    cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.o', '-s', 'INLINING_LIMIT', '-flto']
     self.run_process(cmd)
     # If foo() had been wrongly inlined above, internalizing foo and running
     # global DCE makes foo DCE'd
     opts = ['-internalize', '-internalize-public-api-list=main', '-globaldce']
-    self.run_process([shared.LLVM_OPT] + opts + ['test.bc', '-o', 'test2.bc'])
+    self.run_process([shared.LLVM_OPT] + opts + ['test.o', '-o', 'test2.o'])
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
-    syms = building.llvm_nm('test2.bc', include_internal=True)
+    syms = building.llvm_nm('test2.o', include_internal=True)
     assert 'foo' in syms.defs, 'foo() should not be inlined'
 
   def test_output_eol(self):
@@ -8781,7 +8800,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5627), 150)
+    self.assertLess(abs(changed - 5872), 150)
 
   def test_llvm_includes(self):
     create_test_file('atomics.c', '#include <stdatomic.h>')
@@ -9782,11 +9801,51 @@ exec "$@"
     self.assertExists('profile.data')
 
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=split@', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
+    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
 
     os.remove('test_split_module.wasm')
     os.rename('primary.wasm', 'test_split_module.wasm')
     os.rename('secondary.wasm', 'test_split_module.wasm.deferred')
     result = self.run_js('test_split_module.js')
-    self.assertNotIn('writing profile', result)
+    self.assertNotIn('profile', result)
     self.assertIn('Hello! answer: 42', result)
+
+  def test_split_main_module(self):
+    initialTableSize = 16
+
+    side_src = path_from_root('tests', 'other', 'lib_hello.c')
+    post_js = path_from_root('tests', 'other', 'test_split_module.post.js')
+
+    self.run_process([EMCC, side_src, '-sSIDE_MODULE=1', '-g', '-o', 'libhello.wasm'])
+
+    self.emcc_args += ['-g']
+    self.emcc_args += ['-sMAIN_MODULE=2']
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=[_printf]']
+    self.emcc_args += ['-sSPLIT_MODULE=1', '-Wno-experimental']
+    self.emcc_args += ['--embed-file', 'libhello.wasm']
+    self.emcc_args += ['--post-js', post_js]
+    self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
+
+    self.do_other_test('test_split_main_module.c')
+
+    self.assertExists('test_split_main_module.wasm')
+    self.assertExists('test_split_main_module.wasm.orig')
+    self.assertExists('profile.data')
+
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    self.run_process([wasm_split, '-g',
+                      'test_split_main_module.wasm.orig',
+                      '--export-prefix=%',
+                      f'--initial-table={initialTableSize}',
+                      '--profile=profile.data',
+                      '-o1', 'primary.wasm',
+                      '-o2', 'secondary.wasm',
+                      '--enable-mutable-globals'])
+
+    os.remove('test_split_main_module.wasm')
+    os.rename('primary.wasm', 'test_split_main_module.wasm')
+    os.rename('secondary.wasm', 'test_split_main_module.wasm.deferred')
+    result = self.run_js('test_split_main_module.js')
+    self.assertNotIn('profile', result)
+    self.assertIn('Hello from main!', result)
+    self.assertIn('Hello from lib!', result)
