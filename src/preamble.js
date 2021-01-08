@@ -351,6 +351,13 @@ var __ATPOSTRUN__ = []; // functions called after the main() is called
 var runtimeInitialized = false;
 var runtimeExited = false;
 
+#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD)
+#endif
+__ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
+#endif
+
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) runtimeInitialized = true; // The runtime is hosted in the main thread, and bits shared to pthreads via SharedArrayBuffer. No need to init again in pthread.
 #endif
