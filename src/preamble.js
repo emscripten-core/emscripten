@@ -563,16 +563,8 @@ function removeRunDependency(id) {
     var callbacks = onDependenciesFulfilled;
     onDependenciesFulfilled = [];
     for (var i = 0; i < callbacks.length; i++) {
-      resolves[i]();
+      callbacks[i]();
     }
-  }
-}
-
-function waitRunDependencies() {
-  if (runDependencies == 0) {
-    return Promise.resolve();
-  } else {
-    return new Promise(r => onDependenciesFulfilled.push(r));
   }
 }
 
