@@ -20,8 +20,11 @@
 
 #include <stdio.h>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
+#include <type_traits>
+#include <utility>
 
 #define EMSCRIPTEN_ALWAYS_INLINE __attribute__((always_inline))
 
