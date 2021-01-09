@@ -353,7 +353,7 @@ mergeInto(LibraryManager.library, {
       // Update the expected wasm binary file to be the lazy one.
       wasmBinaryFile += '.lazy.wasm';
       // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
-      dependenciesFulfilled = wakeUp;
+      onDependenciesFulfilled.push(wakeUp);
       // Load the new wasm.
       asm = createWasm();
     });

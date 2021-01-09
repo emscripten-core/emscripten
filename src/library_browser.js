@@ -1122,7 +1122,7 @@ var LibraryBrowser = {
     if (onload) {
       script.onload = function script_onload() {
         if (runDependencies > 0) {
-          dependenciesFulfilled = onload;
+          onDependenciesFulfilled.push(onload);
         } else {
           onload();
         }

@@ -475,8 +475,7 @@ function addOnPostRun(cb) {
 // the dependencies are met.
 var runDependencies = 0;
 var runDependencyWatcher = null;
-var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
-var waitDependenciesResolves = [];
+var onDependenciesFulfilled = []; // functions to call all run dependencies are fulfilled
 #if ASSERTIONS
 var runDependencyTracking = {};
 #endif
@@ -560,14 +559,10 @@ function removeRunDependency(id) {
       clearInterval(runDependencyWatcher);
       runDependencyWatcher = null;
     }
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback(); // can add another dependenciesFulfilled
-    }
-    var resolves = waitDependenciesResolves;
-    waitDependenciesResolves = [];
-    for (var i = 0; i < resolves.length; i++) {
+    // Copy and set null in case callbacks add to onDependenciesFulfilled
+    var callbacks = onDependenciesFulfilled;
+    onDependenciesFulfilled = [];
+    for (var i = 0; i < callbacks.length; i++) {
       resolves[i]();
     }
   }
@@ -577,7 +572,7 @@ function waitRunDependencies() {
   if (runDependencies == 0) {
     return Promise.resolve();
   } else {
-    return new Promise(r => waitDependenciesResolves.push(r));
+    return new Promise(r => onDependenciesFulfilled.push(r));
   }
 }
 
