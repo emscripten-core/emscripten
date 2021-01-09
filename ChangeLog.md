@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.12: 01/09/2021
+------------------
 - `emscripten/vr.h` and other remnants of WebVR support removed. (#13210, which
   is a followup to #10460)
 - Stop overriding CMake default flags based on build type. This will 
