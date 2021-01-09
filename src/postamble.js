@@ -108,10 +108,10 @@ var calledMain = false;
 var mainArgs = undefined;
 #endif
 
-onDependenciesFulfilled.push(function runCaller() {
+onDependenciesFulfilled(function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
   if (!calledRun) run();
-  if (!calledRun) onDependenciesFulfilled.push(runCaller); // try this again later, after new deps are fulfilled
+  if (!calledRun) onDependenciesFulfilled(runCaller); // try this again later, after new deps are fulfilled
 });
 
 #if HAS_MAIN

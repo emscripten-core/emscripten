@@ -411,6 +411,7 @@ function exportRuntime() {
     'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
+    'onDependenciesFulfilled',
     'FS_createFolder',
     'FS_createPath',
     'FS_createDataFile',
