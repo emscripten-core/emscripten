@@ -691,10 +691,10 @@ fi
     # the --lto flag makes us build wasm-bc
     self.do([EMCC, '--clear-cache'])
     self.run_process([EMBUILDER, 'build', 'libemmalloc'])
-    self.assertExists(os.path.join(config.CACHE, 'wasm'))
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten'))
     self.do([EMCC, '--clear-cache'])
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
-    self.assertExists(os.path.join(config.CACHE, 'wasm-lto'))
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lto'))
 
   def test_binaryen_version(self):
     restore_and_set_up()

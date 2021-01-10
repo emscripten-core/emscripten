@@ -1331,12 +1331,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']
 
-    if not compile_only and not options.post_link:
-      ldflags = shared.emsdk_ldflags(newargs)
-      for f in ldflags:
-        newargs.append(f)
-        add_link_flag(len(newargs), f)
-
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
     newargs = [x for x in newargs if x not in shared.SIMD_INTEL_FEATURE_TOWER and x not in shared.SIMD_NEON_FLAGS]
@@ -1950,6 +1944,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
     cflags = calc_cflags(options)
+    system_libs.ensure_sysroot()
     system_libs.add_ports_cflags(cflags, shared.Settings)
 
     def use_cxx(src):
@@ -1976,9 +1971,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return CC
 
     def get_clang_command(src_file):
-      cxx = use_cxx(src_file)
-      per_file_cflags = shared.get_cflags(args, cxx)
-      return get_compiler(cxx) + cflags + per_file_cflags + compile_args + [src_file]
+      per_file_cflags = shared.get_cflags(args)
+      return get_compiler(use_cxx(src_file)) + cflags + per_file_cflags + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
       asflags = shared.get_clang_flags()
@@ -2069,6 +2063,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if specified_target and specified_target.startswith('-'):
     exit_with_error('invalid output filename: `%s`' % specified_target)
+
+  ldflags = shared.emsdk_ldflags(newargs)
+  for f in ldflags:
+    add_link_flag(sys.maxsize, f)
 
   using_lld = not (link_to_object and shared.Settings.LTO)
   link_flags = filter_link_flags(link_flags, using_lld)

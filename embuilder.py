@@ -171,6 +171,10 @@ def main():
       if force:
         library.erase()
       library.get_path()
+    elif what == 'sysroot':
+      if force:
+        shared.Cache.erase_file('sysroot_install.stamp')
+      system_libs.ensure_sysroot()
     elif what == 'struct_info':
       if force:
         shared.Cache.erase_file('generated_struct_info.json')

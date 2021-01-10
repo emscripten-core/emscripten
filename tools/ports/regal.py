@@ -46,7 +46,7 @@ def get(ports, settings, shared):
 
     # includes
     source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include', 'GL')
-    ports.install_header_dir(source_path_include)
+    ports.install_headers(source_path_include, target='GL')
 
     # build
     srcs_regal = ['regal/RegalShaderInstance.cpp',
