@@ -383,7 +383,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dlfcn with memory growth (without wasm)')
-    if not self.get_setting('WASM'):
+    if not self.is_wasm():
       self.skipTest('no dynamic library support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
