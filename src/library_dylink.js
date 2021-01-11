@@ -270,52 +270,121 @@ var LibraryDylink = {
     });
   },
 
-  // Loads a side module from binary data. Returns the module's exports or a
-  // progise that resolves to its exports if the loadAsync flag is set.
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler'],
-  $loadWebAssemblyModule: function(binary, flags) {
-    var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
-    assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
-    // we should see the dylink section right after the magic number and wasm version
-    assert(binary[8] === 0, 'need the dylink section to be first')
-    var next = 9;
-    function getLEB() {
+  $asmjsMangle: function(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  },
+
+  $getsideModuleCustomSection: function(binary) {
+    var customSection = {
+      memorySize : -1,
+      memoryAlign : -1,
+      tableSize : -1,
+      tableAlign : -1
+    }
+    var next = 0;
+    function getLEB(byteArray) {
       var ret = 0;
       var mul = 1;
       while (1) {
-        var byte = binary[next++];
+        var byte = byteArray[next++];
         ret += ((byte & 0x7f) * mul);
         mul *= 0x80;
         if (!(byte & 0x80)) break;
       }
       return ret;
     }
-    var sectionSize = getLEB();
-    assert(binary[next] === 6);                 next++; // size of "dylink" string
-    assert(binary[next] === 'd'.charCodeAt(0)); next++;
-    assert(binary[next] === 'y'.charCodeAt(0)); next++;
-    assert(binary[next] === 'l'.charCodeAt(0)); next++;
-    assert(binary[next] === 'i'.charCodeAt(0)); next++;
-    assert(binary[next] === 'n'.charCodeAt(0)); next++;
-    assert(binary[next] === 'k'.charCodeAt(0)); next++;
-    var memorySize = getLEB();
-    var memoryAlign = getLEB();
-    var tableSize = getLEB();
-    var tableAlign = getLEB();
 
-    // shared libraries this module needs. We need to load them first, so that
-    // current module could resolve its imports. (see tools/shared.py
-    // WebAssembly.make_shared_library() for "dylink" section extension format)
-    var neededDynlibsCount = getLEB();
-    var neededDynlibs = [];
-    for (var i = 0; i < neededDynlibsCount; ++i) {
-      var nameLen = getLEB();
-      var nameUTF8 = binary.subarray(next, next + nameLen);
-      next += nameLen;
-      var name = UTF8ArrayToString(nameUTF8, 0);
-      neededDynlibs.push(name);
+    function populateCustomSection(byteArray){
+      customSection.memorySize = getLEB(byteArray);
+      customSection.memoryAlign = getLEB(byteArray);
+      customSection.tableSize = getLEB(byteArray);
+      customSection.tableAlign = getLEB(byteArray);
+      // shared libraries this module needs. We need to load them first, so that
+      // current module could resolve its imports. (see tools/shared.py
+      // WebAssembly.make_shared_library() for "dylink" section extension format)
+      var neededDynlibsCount = getLEB(byteArray);
+      customSection.neededDynlibs = [];
+      for (var i = 0; i < neededDynlibsCount; ++i) {
+        var nameLen = getLEB();
+        var nameUTF8 = byteArray.subarray(next, next + nameLen);
+        next += nameLen;
+        var name = UTF8ArrayToString(nameUTF8, 0);
+        customSection.neededDynlibs.push(name);
+      }
     }
 
+    if(binary instanceof WebAssembly.Module){
+      var dylinkSection = WebAssembly.Module.customSections(compiledWasm, "dylink");
+      assert(dylinkSection.length != 0, 'need dylink section');
+      var dylinkSectionInt8 = new Int8Array(dylinkSection[0]);
+      populateCustomSection(dylinkSectionInt8);
+      return customSection;
+    }
+    else{
+      var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
+      assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
+      // we should see the dylink section right after the magic number and wasm version
+      assert(binary[8] === 0, 'need the dylink section to be first')
+      next = 9;
+      getLEB(binary); //section size
+      assert(binary[next] === 6);                 next++; // size of "dylink" string
+      assert(binary[next] === 'd'.charCodeAt(0)); next++;
+      assert(binary[next] === 'y'.charCodeAt(0)); next++;
+      assert(binary[next] === 'l'.charCodeAt(0)); next++;
+      assert(binary[next] === 'i'.charCodeAt(0)); next++;
+      assert(binary[next] === 'n'.charCodeAt(0)); next++;
+      assert(binary[next] === 'k'.charCodeAt(0)); next++;
+
+      populateCustomSection(binary);
+      return customSection;
+    }
+  },
+
+  // Module.symbols <- libModule.symbols (flags.global handler)
+  $mergeLibSymbols__deps: ['$asmjsMangle'],
+  $mergeLibSymbols: function(libModule) {
+    // add symbols into global namespace TODO: weak linking etc.
+    for (var sym in libModule) {
+      if (!libModule.hasOwnProperty(sym)) {
+        continue;
+      }
+
+      // When RTLD_GLOBAL is enable, the symbols defined by this shared object will be made
+      // available for symbol resolution of subsequently loaded shared objects.
+      //
+      // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
+
+      var module_sym = asmjsMangle(sym);
+
+      if (!Module.hasOwnProperty(module_sym)) {
+        Module[module_sym] = libModule[sym];
+      }
+#if ASSERTIONS == 2
+      else {
+        var curr = Module[sym], next = libModule[sym];
+        // don't warn on functions - might be odr, linkonce_odr, etc.
+        if (!(typeof curr === 'function' && typeof next === 'function')) {
+          err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+        }
+      }
+#endif
+    }
+  },
+
+  // Loads a side module from binary data
+  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle'],
+  $loadWebAssemblyModule: function(binary, flags) {
+    var customSection = getsideModuleCustomSection(binary);
+    var memorySize = customSection.memorySize;
+    var memoryAlign = customSection.memoryAlign;
+    var tableSize = customSection.tableSize;
+    var tableAlign = customSection.tableAlign;
+    // if binary is compiled wasm
+    flags.compiledWasm = binary instanceof WebAssembly.Module;
+    if(flags.loadAsync && flags.compiledWasm){
+      err("error: Async loading of compiled WebAssembly Module note supported");
+    }
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
     function loadModule() {
@@ -453,6 +522,10 @@ var LibraryDylink = {
         return WebAssembly.instantiate(binary, info).then(function(result) {
           return postInstantiation(result.instance);
         });
+      } else {
+        var module = flags.compiledWasm ? binary : new WebAssembly.Module(binary);
+        var instance = new WebAssembly.Instance(module, info);
+        return postInstantiation(instance, moduleLocal);
       }
 
       var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
@@ -578,37 +651,6 @@ var LibraryDylink = {
       }
 
       return loadWebAssemblyModule(loadLibData(lib), flags);
-    }
-
-    // Module.symbols <- libModule.symbols (flags.global handler)
-    function mergeLibSymbols(libModule) {
-      // add symbols into global namespace TODO: weak linking etc.
-      for (var sym in libModule) {
-        if (!libModule.hasOwnProperty(sym)) {
-          continue;
-        }
-
-        // When RTLD_GLOBAL is enable, the symbols defined by this shared object will be made
-        // available for symbol resolution of subsequently loaded shared objects.
-        //
-        // We should copy the symbols (which include methods and variables) from
-        // SIDE_MODULE to MAIN_MODULE.
-
-        var module_sym = asmjsMangle(sym);
-
-        if (!Module.hasOwnProperty(module_sym)) {
-          Module[module_sym] = libModule[sym];
-        }
-#if ASSERTIONS == 2
-        else {
-          var curr = Module[sym], next = libModule[sym];
-          // don't warn on functions - might be odr, linkonce_odr, etc.
-          if (!(typeof curr === 'function' && typeof next === 'function') && !isInternalSym(sym)) {
-            err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)");
-          }
-        }
-#endif
-      }
     }
 
     // module for lib is loaded - update the dso & global namespace
