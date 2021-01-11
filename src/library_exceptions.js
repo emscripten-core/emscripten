@@ -429,8 +429,7 @@ var LibraryExceptions = {
     {{{ makeStructuralReturn(['catchInfo.ptr', 'thrownType']) }}};
   },
 
-  __resumeException__deps: [function() { '$exceptionLast', '$CatchInfo',
-                                        Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
+  __resumeException__deps: ['$exceptionLast', '$CatchInfo'],
   __resumeException: function(catchInfoPtr) {
     var catchInfo = new CatchInfo(catchInfoPtr);
     var ptr = catchInfo.get_base_ptr();
