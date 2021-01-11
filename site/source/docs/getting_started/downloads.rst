@@ -6,24 +6,12 @@ Download and install
 
 .. note:: You can also :ref:`build Emscripten from source <installing-from-source>` if you prefer that to downloading binaries using the emsdk.
 
-.. note:: There are additional ways to install Emscripten than the instructions
-    below, for example, using Homebrew on MacOS, the package manager on your linux
-    distro. However, the emsdk is the only officially supported way to use
-    Emscripten that is supported by the Emscripten project, and the only one
-    that we constantly test
-    (`emsdk CI <https://github.com/emscripten-core/emsdk/blob/master/.circleci/config.yml>`_,
-    `Emscripten GitHub CI <https://github.com/emscripten-core/emscripten/blob/master/.circleci/config.yml>`_,
-    `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_). (While we
-    don't officially support other ways of getting Emscripten, we definitely
-    appreciate the efforts by third parties to
-    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/packaging.md>`_
-    for users' convenience, and we'd like to help out, please get in touch if
-    you are such a packager!)
+.. tip:: if you like to install emscripten using the **unofficial** packages instead of the **officially supported** emsdk, see the bottom of the page.
 
 .. _sdk-installation-instructions:
 
-Installation instructions
-=========================
+Installation instructions using emsdk
+=====================================
 
 First check the :ref:`Platform-specific notes <platform-notes-installation_instructions-SDK>` below and install any prerequisites.
 
@@ -201,3 +189,37 @@ The entire Emscripten SDK is also available in the form of a `docker image
     emscripten/emsdk emcc helloworld.cpp -o helloworld.js
 
 See the Docker Hub page for more details and examples.
+
+Installation using packages
+===========================
+
+.. note:: the `emsdk` is the only officially supported way to use
+    Emscripten that is supported by the Emscripten project, and the only one
+    that we constantly test
+    (`emsdk CI <https://github.com/emscripten-core/emsdk/blob/master/.circleci/config.yml>`_,
+    `Emscripten GitHub CI <https://github.com/emscripten-core/emscripten/blob/master/.circleci/config.yml>`_,
+    `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_). (While we
+    don't officially support other ways of getting Emscripten, we definitely
+    appreciate the efforts by third parties to
+    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/packaging.md>`_
+    for users' convenience, and we'd like to help out, please get in touch if
+    you are such a packager!). While these packages are not officially supported by the emscripten developers we try to
+    work with downstream packagers to ensure everything works as expected.
+
+The following is a partial list of downstream emscripten packages:
+
+**Windows**
+- package info: `emscripten` in [chocolatey](https://chocolatey.org/packages/emscripten)
+- maintainer: @aminya
+
+**Homebrew**
+ - package info: https://formulae.brew.sh/formula/emscripten
+ - maintainer: @chenrui333
+
+**Arch Linux**
+ - package info: https://github.com/archlinux/svntogit-community/tree/packages/emscripten/trunk
+ - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>
+
+**Gentoo Linux** (custom overlay)
+ - package info: `dev-util/emscripten` in [darthgandalf-overlay](https://github.com/DarthGandalf/gentoo-overlay)
+ - maintainer: @DarthGandalf
