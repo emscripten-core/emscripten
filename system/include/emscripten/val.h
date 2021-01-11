@@ -14,6 +14,8 @@
 #include <stdint.h> // uintptr_t
 #include <emscripten/wire.h>
 #include <array>
+#include <string>
+#include <utility>
 #include <vector>
 
 
