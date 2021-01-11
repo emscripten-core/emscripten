@@ -293,6 +293,9 @@ var LibraryPThread = {
     // the case when doing something like free(), which just needs the malloc
     // lock to be released.
     runWithoutMainThreadQueuedCalls: function(func) {
+#if ASSERTIONS
+      assert(PThread.mainThreadBlock, 'runWithoutMainThreadQueuedCalls must be done on the main thread');
+#endif
       // Re-register the main thread block as if we not the main thread. That
       // makes emscripten_main_thread_process_queued_calls() not process queued
       // calls for that thread.
