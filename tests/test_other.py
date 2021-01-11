@@ -9713,6 +9713,14 @@ exec "$@"
     proc = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--js-library=lib.js'], stderr=PIPE)
     self.assertContained('warning: use of #ifdef in js library.  Use #if instead.', proc.stderr)
 
+  def test_jslib_mangling(self):
+    create_test_file('lib.js', '''
+      mergeInto(LibraryManager.library, {
+       $__foo: function() { return 43; },
+      });
+      ''')
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--js-library=lib.js', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$__foo]'])
+
   def test_wasm2js_no_dynamic_linking(self):
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
       err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-sMAIN_MODULE', '-sWASM=0'])
