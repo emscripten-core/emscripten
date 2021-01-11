@@ -4055,7 +4055,7 @@ window.close = function() {
 
   @requires_threads
   def test_main_thread_async_em_asm(self):
-    self.btest_exit(path_from_root('tests', 'core', 'test_main_thread_async_em_asm.cpp'), 0, args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'ASSERTIONS'])
+    self.btest_exit(path_from_root('tests', 'core', 'test_main_thread_async_em_asm.cpp'), expected=0, args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'ASSERTIONS'])
 
   @requires_threads
   def test_main_thread_em_asm_blocking(self):
