@@ -1226,11 +1226,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Note the exports the user requested
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
+    def default_setting(name, new_default):
+      if name not in settings_key_changes:
+        setattr(shared.Settings, name, new_default)
+
     # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
     # implies full stack overflow checks (unless the user specifically set
     # something else)
-    if shared.Settings.ASSERTIONS and 'STACK_OVERFLOW_CHECK' not in settings_key_changes:
-      shared.Settings.STACK_OVERFLOW_CHECK = max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK)
+    if shared.Settings.ASSERTIONS:
+      default_setting('STACK_OVERFLOW_CHECK',  max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK))
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
       # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
@@ -1239,11 +1243,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.IGNORE_MISSING_MAIN = 0
 
     if shared.Settings.STRICT:
-      shared.Settings.STRICT_JS = 1
-      shared.Settings.AUTO_JS_LIBRARIES = 0
-      shared.Settings.AUTO_ARCHIVE_INDEXES = 0
-      shared.Settings.IGNORE_MISSING_MAIN = 0
-      shared.Settings.DEFAULT_TO_CXX = 0
+      default_setting('STRICT_JS', 1)
+      default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('AUTO_ARCHIVE_INDEXES', 0)
+      default_setting('IGNORE_MISSING_MAIN', 0)
+      default_setting('DEFAULT_TO_CXX', 0)
 
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
     # tools/autodebugger).  Note that this will disable inclusion of libraries. This
@@ -1492,12 +1496,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
 
-    if shared.Settings.ALLOW_MEMORY_GROWTH and 'ABORTING_MALLOC=1' not in settings_changes:
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
       # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
       # the behavior of trying to grow and returning 0 from malloc on failure, like
       # a standard system would. However, if the user sets the flag it
       # overrides that.
-      shared.Settings.ABORTING_MALLOC = 0
+      default_setting('ABORTING_MALLOC', 0)
 
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:
