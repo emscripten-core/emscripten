@@ -1923,7 +1923,6 @@ def copytree_exist_ok(src, dest):
 def install_system_headers():
   install_dirs = {
     ('include',): '',
-    ('include', 'compat'): 'compat',
     ('lib', 'compiler-rt', 'include'): '',
     ('lib', 'libunwind', 'include'): '',
     ('lib', 'libc', 'musl', 'arch', 'emscripten'): '',
