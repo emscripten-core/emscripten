@@ -57,6 +57,7 @@ USER_TASKS = [
     'bzip2',
     'cocos2d',
     'freetype',
+    'giflib',
     'harfbuzz',
     'icu',
     'libjpeg',
