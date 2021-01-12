@@ -1752,6 +1752,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           '___global_base'
       ]
 
+    if shared.Settings.USE_OFFSET_CONVERTER and shared.Settings.USE_PTHREADS:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['WasmOffsetConverter']
+
     if sanitize & UBSAN_SANITIZERS:
       if '-fsanitize-minimal-runtime' in newargs:
         shared.Settings.UBSAN_RUNTIME = 1
@@ -1808,6 +1811,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if sanitize and '-g4' in args:
       shared.Settings.LOAD_SOURCE_MAP = 1
+
+    if shared.Settings.LOAD_SOURCE_MAP and shared.Settings.USE_PTHREADS:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['WasmSourceMap']
 
     if shared.Settings.GLOBAL_BASE == -1:
       # default if nothing else sets it
