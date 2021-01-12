@@ -83,14 +83,6 @@ var LibraryPThread = {
 #endif
     },
     initWorker: function() {
-#if MODULARIZE
-      // The promise resolve function typically gets called as part of the execution
-      // of the Module `run`. The workers/pthreads don't execute `run` here, they
-      // call `run` in response to a message at a later time, so the creation
-      // promise can be resolved, marking the pthread-Module as initialized.
-      readyPromiseResolve(Module);
-#endif // MODULARIZE
-
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
       // things.
@@ -1186,7 +1178,7 @@ var LibraryPThread = {
   },
 
   __call_main: function(argc, argv) {
-    var returnCode = _main(argc, argv);
+    var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
     if (!noExitRuntime) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
