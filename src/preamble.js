@@ -1070,7 +1070,7 @@ function createWasm() {
 #if ASSERTIONS
       // Warn on some common problems.
       if (isFileURI(wasmBinaryFile)) {
-        err(`warning: Loading from a file URI (${wasmBinaryFile}) is not supported in most browsers.`);
+        err('warning: Loading from a file URI (' + wasmBinaryFile + ') is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing');
       }
 #endif
       abort(reason);
