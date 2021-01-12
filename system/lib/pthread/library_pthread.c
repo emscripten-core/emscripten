@@ -709,8 +709,13 @@ void emscripten_current_thread_process_queued_calls() {
     bool_main_thread_inside_nested_process_queued_calls = 0;
 }
 
+// At times when we disallow the main thread to process queued calls, this will
+// be set to 0.
+int _emscripten_allow_main_runtime_queued_calls = 1;
+
 void emscripten_main_thread_process_queued_calls() {
-  if (!emscripten_is_main_runtime_thread())
+  if (!emscripten_is_main_runtime_thread() ||
+      !_emscripten_allow_main_runtime_queued_calls)
     return;
 
   emscripten_current_thread_process_queued_calls();

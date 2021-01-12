@@ -1523,6 +1523,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '__emscripten_main_thread_futex',
         '__emscripten_thread_init',
         '_emscripten_current_thread_process_queued_calls',
+        '__emscripten_allow_main_runtime_queued_calls',
         '_emscripten_futex_wake',
         '_emscripten_get_global_libc',
         '_emscripten_main_browser_thread_id',

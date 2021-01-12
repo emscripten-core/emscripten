@@ -72,9 +72,9 @@ var LibraryPThread = {
       // Pass the thread address to the native code where they stored in wasm
       // globals which act as a form of TLS. Global constructors trying
       // to access this value will read the wrong value, but that is UB anyway.
-      PThread.mainThreadBlock = tb;
       __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
       _emscripten_register_main_browser_thread_id(tb);
+      PThread.mainRuntimeThread = true;
 
 #if USE_ASAN || USE_LSAN
       });
@@ -294,20 +294,14 @@ var LibraryPThread = {
     // lock to be released.
     runWithoutMainThreadQueuedCalls: function(func) {
 #if ASSERTIONS
-      assert(PThread.mainThreadBlock, 'runWithoutMainThreadQueuedCalls must be done on the main thread');
+      assert(PThread.mainRuntimeThread, 'runWithoutMainThreadQueuedCalls must be done on the main runtime thread');
+      assert(__emscripten_allow_main_runtime_queued_calls);
 #endif
-      // Re-register the main thread block as if we not the main thread. That
-      // makes emscripten_main_thread_process_queued_calls() not process queued
-      // calls for that thread.
-      var isMainBrowserThread = !ENVIRONMENT_IS_WORKER;
-      var isMainRuntimeThread = 0;
-      __emscripten_thread_init(PThread.mainThreadBlock, isMainBrowserThread, isMainRuntimeThread);
+      HEAP32[__emscripten_allow_main_runtime_queued_calls >> 2] = 0;
       try {
         func();
       } finally {
-        // Re-register ourselves normally again.
-        isMainRuntimeThread = 1;
-        __emscripten_thread_init(PThread.mainThreadBlock, isMainBrowserThread, isMainRuntimeThread);
+        HEAP32[__emscripten_allow_main_runtime_queued_calls >> 2] = 1;
       }
     },
     receiveObjectTransfer: function(data) {
