@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
       })();
       LZ4.CHUNK_SIZE = LZ4.codec.CHUNK_SIZE;
     },
-    loadPackage: function (pack) {
+    loadPackage: function (pack, preloadPlugin) {
       LZ4.init();
       var compressedData = pack['compressedData'];
       if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
@@ -42,6 +42,26 @@ mergeInto(LibraryManager.library, {
           end: file.end,
         });
       });
+      if (preloadPlugin) {
+        Browser.init();
+        pack['metadata'].files.forEach(function(file) {
+          var handled = false;
+          var fullname = file.filename;
+          Module['preloadPlugins'].forEach(function(plugin) {
+            if (handled) return;
+            if (plugin['canHandle'](fullname)) {
+              var dep = getUniqueRunDependency('fp ' + fullname);
+              addRunDependency(dep);
+              var finish = function() {
+                removeRunDependency(dep);
+              }
+              var byteArray = FS.readFile(fullname);
+              plugin['handle'](byteArray, fullname, finish, finish);
+              handled = true;
+            }
+          });
+        });
+      }
     },
     createNode: function (parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);

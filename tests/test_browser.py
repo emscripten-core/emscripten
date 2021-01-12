@@ -2418,7 +2418,11 @@ void *getBindBuffer() {
     self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], expected='8')
 
-  def test_preload_module(self):
+  @parameterized({
+    'non-lz4': ([],),
+    'lz4': (['-s', 'LZ4'],)
+  })
+  def test_preload_module(self, args):
     create_test_file('library.c', r'''
       #include <stdio.h>
       int library_func() {
@@ -2452,7 +2456,7 @@ void *getBindBuffer() {
     ''')
     self.btest_exit(
       'main.c',
-      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'],
+      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'] + args,
       expected='0')
 
   def test_mmap_file(self):
