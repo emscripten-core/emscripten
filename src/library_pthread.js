@@ -74,7 +74,9 @@ var LibraryPThread = {
       // to access this value will read the wrong value, but that is UB anyway.
       __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
       _emscripten_register_main_browser_thread_id(tb);
+#if ASSERTIONS
       PThread.mainRuntimeThread = true;
+#endif
 
 #if USE_ASAN || USE_LSAN
       });
