@@ -1148,6 +1148,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
+    if shared.Settings.LZ4:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['LZ4']
+
     if shared.Settings.WASM2C:
       # wasm2c only makes sense with standalone wasm - there will be no JS,
       # just wasm and then C
@@ -1223,11 +1226,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Note the exports the user requested
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
+    def default_setting(name, new_default):
+      if name not in settings_key_changes:
+        setattr(shared.Settings, name, new_default)
+
     # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
     # implies full stack overflow checks (unless the user specifically set
     # something else)
-    if shared.Settings.ASSERTIONS and 'STACK_OVERFLOW_CHECK' not in settings_key_changes:
-      shared.Settings.STACK_OVERFLOW_CHECK = max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK)
+    if shared.Settings.ASSERTIONS:
+      default_setting('STACK_OVERFLOW_CHECK',  max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK))
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
       # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
@@ -1236,11 +1243,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.IGNORE_MISSING_MAIN = 0
 
     if shared.Settings.STRICT:
-      shared.Settings.STRICT_JS = 1
-      shared.Settings.AUTO_JS_LIBRARIES = 0
-      shared.Settings.AUTO_ARCHIVE_INDEXES = 0
-      shared.Settings.IGNORE_MISSING_MAIN = 0
-      shared.Settings.DEFAULT_TO_CXX = 0
+      default_setting('STRICT_JS', 1)
+      default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('AUTO_ARCHIVE_INDEXES', 0)
+      default_setting('IGNORE_MISSING_MAIN', 0)
+      default_setting('DEFAULT_TO_CXX', 0)
 
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
     # tools/autodebugger).  Note that this will disable inclusion of libraries. This
@@ -1327,16 +1334,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']
-
-    # Reconfigure the cache now that settings have been applied. Some settings
-    # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
-    shared.reconfigure_cache()
-
-    if not compile_only and not options.post_link:
-      ldflags = shared.emsdk_ldflags(newargs)
-      for f in ldflags:
-        newargs.append(f)
-        add_link_flag(len(newargs), f)
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
@@ -1499,12 +1496,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
 
-    if shared.Settings.ALLOW_MEMORY_GROWTH and 'ABORTING_MALLOC=1' not in settings_changes:
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
       # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
       # the behavior of trying to grow and returning 0 from malloc on failure, like
       # a standard system would. However, if the user sets the flag it
       # overrides that.
-      shared.Settings.ABORTING_MALLOC = 0
+      default_setting('ABORTING_MALLOC', 0)
 
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:
@@ -1951,6 +1948,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
     cflags = calc_cflags(options)
+    system_libs.ensure_sysroot()
     system_libs.add_ports_cflags(cflags, shared.Settings)
 
     def use_cxx(src):
@@ -1977,9 +1975,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return CC
 
     def get_clang_command(src_file):
-      cxx = use_cxx(src_file)
-      per_file_cflags = shared.get_cflags(args, cxx)
-      return get_compiler(cxx) + cflags + per_file_cflags + compile_args + [src_file]
+      per_file_cflags = shared.get_cflags(args)
+      return get_compiler(use_cxx(src_file)) + cflags + per_file_cflags + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
       asflags = shared.get_clang_flags()
@@ -1995,10 +1992,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # output the dependency rule. Warning: clang and gcc behave differently
         # with -MF! (clang seems to not recognize it)
         logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-        shared.print_compiler_stage(cmd)
-        rtn = run_process(cmd, check=False).returncode
-        if rtn:
-          return rtn
+        shared.check_call(cmd)
       return 0
 
     # Precompiled headers support
@@ -2011,8 +2005,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if specified_target:
           cmd += ['-o', specified_target]
         logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
-        shared.print_compiler_stage(cmd)
-        return run_process(cmd, check=False).returncode
+        shared.check_call(cmd)
+        return 0
 
     def get_object_filename(input_file):
       if compile_only:
@@ -2037,7 +2031,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not has_dash_c:
         cmd += ['-c']
       cmd += ['-o', output_file]
-      shared.print_compiler_stage(cmd)
       shared.check_call(cmd)
       if output_file not in ('-', os.devnull):
         assert os.path.exists(output_file)
@@ -2074,6 +2067,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if specified_target and specified_target.startswith('-'):
     exit_with_error('invalid output filename: `%s`' % specified_target)
+
+  ldflags = shared.emsdk_ldflags(newargs)
+  for f in ldflags:
+    add_link_flag(sys.maxsize, f)
 
   using_lld = not (link_to_object and shared.Settings.LTO)
   link_flags = filter_link_flags(link_flags, using_lld)

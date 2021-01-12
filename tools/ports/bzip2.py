@@ -47,7 +47,7 @@ def get(ports, settings, shared):
     ports.install_headers(source_path)
     return final
 
-  return [shared.Cache.get('libbz2.a', create, what='port')]
+  return [shared.Cache.get_lib('libbz2.a', create, what='port')]
 
 
 def clear(ports, settings, shared):

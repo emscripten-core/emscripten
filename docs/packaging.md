@@ -142,18 +142,4 @@ embuilder build ALL --pic --lto
 Existing Packages
 -----------------
 
-The following is a partial list of downstream emscripten packages.  While these
-packages are not officially supported by the emscripten developers we try to
-work with downstream packagers to ensure everything works as expected.
-
-**Homebrew**
- - package info: https://formulae.brew.sh/formula/emscripten
- - maintainer: @chenrui333
-
-**Arch Linux**
- - package info: https://github.com/archlinux/svntogit-community/tree/packages/emscripten/trunk
- - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>
-
-**Gentoo Linux** (custom overlay)
- - package info: `dev-util/emscripten` in [darthgandalf-overlay](https://github.com/DarthGandalf/gentoo-overlay)
- - maintainer: @DarthGandalf
+See https://emscripten.org/docs/getting_started/downloads.html#installation-using-packages

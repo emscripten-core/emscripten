@@ -76,7 +76,7 @@ def get(ports, settings, shared):
     ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
     return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):

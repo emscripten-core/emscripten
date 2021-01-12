@@ -109,7 +109,7 @@ def get(ports, settings, shared):
                              target=os.path.join('freetype2', 'freetype'))
     return final
 
-  return [shared.Cache.get('libfreetype.a', create, what='port')]
+  return [shared.Cache.get_lib('libfreetype.a', create, what='port')]
 
 
 def clear(ports, settings, shared):

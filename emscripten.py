@@ -34,15 +34,14 @@ if STDERR_FILE:
   logger.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
   STDERR_FILE = open(STDERR_FILE, 'w')
 
+WASM_INIT_FUNC = '__wasm_call_ctors'
 
-def compute_minimal_runtime_initializer_and_exports(post, initializers, exports, receiving):
-  # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
-  post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in initializers]))
 
+def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
-  exports_that_are_not_initializers = [x for x in exports if x not in initializers]
+  exports_that_are_not_initializers = [x for x in exports if x not in WASM_INIT_FUNC]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
   post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
@@ -115,11 +114,11 @@ def update_settings_glue(metadata, DEBUG):
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
-  implemented_funcs = [x[1:] for x in metadata['implementedFunctions']]
-  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(implemented_funcs))
+  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
 
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
-  shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
+  # With the wasm backend the set of implemented functions is identical to the set of exports
+  shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
 
   if metadata['asmConsts']:
     # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
@@ -359,16 +358,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
 
   # memory and global initializers
 
-  # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
-  if not shared.Settings.MINIMAL_RUNTIME:
-    global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
-    # In regular runtime, global initializers are recorded in an __ATINIT__ array.
-    global_initializers = '__ATINIT__.push(%s);' % global_initializers
-    if shared.Settings.USE_PTHREADS:
-      global_initializers = 'if (!ENVIRONMENT_IS_PTHREAD) ' + global_initializers
-
-    pre += '\n' + global_initializers + '\n'
-
   if shared.Settings.RELOCATABLE:
     static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
     memory = Memory(static_bump)
@@ -398,10 +387,10 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
 
     invoke_funcs = metadata['invokeFuncs']
     sending = create_sending(invoke_funcs, metadata)
-    receiving = create_receiving(exports, metadata['initializers'])
+    receiving = create_receiving(exports)
 
     if shared.Settings.MINIMAL_RUNTIME:
-      post = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
+      post = compute_minimal_runtime_initializer_and_exports(post, exports, receiving)
       receiving = ''
 
     module = create_module(sending, receiving, invoke_funcs, metadata)
@@ -731,13 +720,13 @@ var %(mangled)s = Module["%(mangled)s"] = asm["%(name)s"]
   return wrappers
 
 
-def create_receiving(exports, initializers):
+def create_receiving(exports):
   # When not declaring asm exports this section is empty and we instead programatically export
   # symbols on the global object by calling exportAsmFunctions after initialization
   if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
-  exports_that_are_not_initializers = [x for x in exports if x not in initializers]
+  exports_that_are_not_initializers = [x for x in exports if x != WASM_INIT_FUNC]
 
   receiving = []
 
@@ -803,12 +792,9 @@ def load_metadata_wasm(metadata_raw, DEBUG):
 
   metadata = {
     'declares': [],
-    'implementedFunctions': [],
     'externs': [],
-    'simd': False, # Obsolete, always False
     'staticBump': 0,
     'tableSize': 0,
-    'initializers': [],
     'exports': [],
     'namedGlobals': {},
     'emJsFuncs': {},
@@ -817,9 +803,12 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'features': [],
     'mainReadsParams': 1,
   }
+  legacy_keys = set(['implementedFunctions', 'initializers', 'simd'])
 
   assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
+    if key in legacy_keys:
+      continue
     # json.loads returns `unicode` for strings but other code in this file
     # generally works with utf8 encoded `str` objects, and they don't alwasy
     # mix well.  e.g. s.replace(x, y) will blow up is `s` a uts8 str containing
@@ -832,11 +821,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
-  if not shared.Settings.MINIMAL_RUNTIME:
-    # In regular runtime initializers call the global var version of the export, so they get the mangled name.
-    # In MINIMAL_RUNTIME, the initializers are called directly off the export object for minimal code size.
-    metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
-
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
@@ -847,10 +831,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in shared.Settings.EXPORTED_FUNCTIONS]
   building.user_requested_exports += unexpected_exports
-
-  # With the wasm backend the set of implemented functions is identical to the set of exports
-  # Set this key here simply so that the shared code that handle it.
-  metadata['implementedFunctions'] = [asmjs_mangle(x) for x in metadata['exports']]
 
   return metadata
 
