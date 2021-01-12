@@ -8139,6 +8139,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_OFFSET_CONVERTER')
     self.do_runf(path_from_root('tests', 'core', 'test_return_address.c'), 'passed')
 
+  @node_pthreads
+  @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
+  def test_pthread_offset_converter_modularize(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_OFFSET_CONVERTER')
+    self.set_setting('MODULARIZE')
+    create_test_file('post.js', 'var m = require("./test_return_address.js"); m();')
+    self.emcc_args += ['--extern-post-js', 'post.js', '-s', 'EXPORT_NAME=foo']
+    self.do_runf(path_from_root('tests', 'core', 'test_return_address.c'), 'passed')
+
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics.c')
 
