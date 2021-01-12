@@ -8080,6 +8080,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('INITIAL_MEMORY', '64mb')
     self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_c11_threads.c')
 
+  @no_asan('flakey errors that must be fixed, https://github.com/emscripten-core/emscripten/issues/12985')
   @node_pthreads
   def test_pthread_cxx_threads(self):
     self.set_setting('PROXY_TO_PTHREAD')
