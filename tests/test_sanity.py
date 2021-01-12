@@ -21,7 +21,7 @@ from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs, utils
 
-SANITY_FILE = shared.Cache.get_path('sanity.txt', root=True)
+SANITY_FILE = shared.Cache.get_path('sanity.txt')
 commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
 
@@ -411,31 +411,29 @@ fi
     self.do([EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
 
   def test_emcc_caching(self):
-    BUILDING_MESSAGE = 'generating system library: X'
+    BUILDING_MESSAGE = 'generating system library: %s'
 
     restore_and_set_up()
     self.erase_cache()
 
     # Building a file that *does* need something *should* trigger cache
     # generation, but only the first time
-    libname = 'libc++'
+    libname = Cache.get_lib_name('libc++.a')
     for i in range(3):
       print(i)
       self.clear()
       output = self.do([EMCC, '-O' + str(i), path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
       print('\n\n\n', output)
-      self.assertContainedIf(BUILDING_MESSAGE.replace('X', libname), output, i == 0)
+      self.assertContainedIf(BUILDING_MESSAGE % libname, output, i == 0)
       self.assertContained('hello, world!', self.run_js('a.out.js'))
       self.assertExists(Cache.dirname)
-      full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
-      self.assertExists(os.path.join(Cache.dirname, full_libname))
+      self.assertExists(os.path.join(Cache.dirname, libname))
 
   def test_cache_clearing_manual(self):
     # Manual cache clearing
     restore_and_set_up()
     self.ensure_cache()
     self.assertTrue(os.path.exists(Cache.dirname))
-    self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([EMCC, '--clear-cache'])
     self.assertIn('clearing cache', output)
     self.assertIn(SANITY_MESSAGE, output)
@@ -459,12 +457,10 @@ fi
     self.erase_cache()
     self.ensure_cache()
     self.assertTrue(os.path.exists(Cache.dirname))
-    self.assertTrue(os.path.exists(Cache.root_dirname))
     # changing config file should not clear cache
     add_to_config('FROZEN_CACHE = True')
     self.do([EMCC])
     self.assertTrue(os.path.exists(Cache.dirname))
-    self.assertTrue(os.path.exists(Cache.root_dirname))
     # building libraries is disallowed
     output = self.do([EMBUILDER, 'build', 'libemmalloc'])
     self.assertIn('FROZEN_CACHE disallows building system libs', output)
@@ -483,6 +479,7 @@ fi
       }
       ''')
     cache_dir_name = self.in_dir('test_cache')
+    libname = Cache.get_lib_name('libc.a')
     with env_modify({'EM_CACHE': cache_dir_name}):
       tasks = []
       num_times_libc_was_built = 0
@@ -491,13 +488,13 @@ fi
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)
-        if 'generating system library: libc' in p.stdout:
+        if 'generating system library: ' + libname in p.stdout:
           num_times_libc_was_built += 1
 
     # The cache directory must exist after the build
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc
-    self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm', 'libc.a')))
+    self.assertTrue(os.path.exists(os.path.join(cache_dir_name, libname)))
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
 
@@ -531,12 +528,11 @@ fi
     restore_and_set_up()
 
     # listing ports
-
     out = self.do([EMCC, '--show-ports'])
-    assert 'Available ports:' in out, out
-    assert 'SDL2' in out, out
-    assert 'SDL2_image' in out, out
-    assert 'SDL2_net' in out, out
+    self.assertContained('Available ports:', out)
+    self.assertContained('SDL2', out)
+    self.assertContained('SDL2_image', out)
+    self.assertContained('SDL2_net', out)
 
     # using ports
     RETRIEVING_MESSAGE = 'retrieving port'
@@ -551,27 +547,27 @@ fi
         try_delete(PORTS_DIR)
       else:
         self.do([EMCC, '--clear-ports'])
-      assert not os.path.exists(PORTS_DIR)
+      self.assertNotExists(PORTS_DIR)
 
       # Building a file that doesn't need ports should not trigger anything
       output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
       assert RETRIEVING_MESSAGE not in output, output
       assert BUILDING_MESSAGE not in output
       print('no', output)
-      assert not os.path.exists(PORTS_DIR)
+      self.assertNotExists(PORTS_DIR)
 
       def first_use():
         output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-        assert RETRIEVING_MESSAGE in output, output
-        assert BUILDING_MESSAGE in output, output
+        self.assertContained(RETRIEVING_MESSAGE, output)
+        self.assertContained(BUILDING_MESSAGE, output)
         self.assertExists(PORTS_DIR)
         print('yes', output)
 
       def second_use():
         # Using it again avoids retrieve and build
         output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-        assert RETRIEVING_MESSAGE not in output, output
-        assert BUILDING_MESSAGE not in output, output
+        self.assertNotContained(RETRIEVING_MESSAGE, output)
+        self.assertNotContained(BUILDING_MESSAGE, output)
 
       # Building a file that need a port does trigger stuff
       first_use()
@@ -695,10 +691,10 @@ fi
     # the --lto flag makes us build wasm-bc
     self.do([EMCC, '--clear-cache'])
     self.run_process([EMBUILDER, 'build', 'libemmalloc'])
-    self.assertExists(os.path.join(config.CACHE, 'wasm'))
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten'))
     self.do([EMCC, '--clear-cache'])
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
-    self.assertExists(os.path.join(config.CACHE, 'wasm-lto'))
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lto'))
 
   def test_binaryen_version(self):
     restore_and_set_up()

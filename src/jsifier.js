@@ -28,11 +28,6 @@ function mangleCSymbolName(f) {
   return f[0] == '$' ? f.substr(1) : '_' + f;
 }
 
-// Reverses C/JS name mangling: _foo -> foo, and foo -> $foo.
-function demangleCSymbolName(f) {
-  return f[0] == '_' ? f.substr(1) : '$' + f;
-}
-
 // Splits out items that pass filter. Returns also the original sans the filtered
 function splitter(array, filter) {
   var splitOut = array.filter(filter);
@@ -87,7 +82,8 @@ function JSify(data, functionsOnly) {
     }
     libFuncsToInclude.forEach(function(ident) {
       data.functionStubs.push({
-        ident: mangleCSymbolName(ident)
+        identOrig: ident,
+        identMangled: mangleCSymbolName(ident)
       });
     });
   }
@@ -118,30 +114,31 @@ function JSify(data, functionsOnly) {
     // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
     // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
     // that variadically processes all of these functions using JS 'arguments' object.
-    if (item.ident.startsWith('___cxa_find_matching_catch_')) {
+    if (item.identMangled.startsWith('___cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
-      var num = +item.ident.split('_').slice(-1)[0];
+      var num = +item.identMangled.split('_').slice(-1)[0];
       addCxaCatch(num);
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
     }
 
-    function addFromLibrary(ident, dependent) {
+    function addFromLibrary(item, dependent) {
+      // dependencies can be JS functions, which we just run
+      if (typeof item == 'function') return item();
+
+      var ident = item.identOrig;
+      var finalName = item.identMangled;
+
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
-
-      // dependencies can be JS functions, which we just run
-      if (typeof ident == 'function') return ident();
 
       // don't process any special identifiers. These are looked up when processing the base name of the identifier.
       if (isJsLibraryConfigIdentifier(ident)) {
         return '';
       }
-
-      var finalName = mangleCSymbolName(ident);
 
       // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
       if (finalName in IMPLEMENTED_FUNCTIONS) {
@@ -182,13 +179,11 @@ function JSify(data, functionsOnly) {
           // (not useful to warn/error multiple times)
           LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          var realIdent = ident;
-
-          var target = "Module['" + mangleCSymbolName(realIdent) + "']";
+          var target = "Module['" + finalName + "']";
           var assertion = '';
           if (ASSERTIONS) {
             var what = 'function';
-            assertion += 'if (!' + target + ') abort("external symbol \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+            assertion += 'if (!' + target + ') abort("external symbol \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
 
           }
           var functionBody = assertion + "return " + target + ".apply(null, arguments);";
@@ -274,9 +269,14 @@ function JSify(data, functionsOnly) {
           }
         });
       });
-      if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
+      if (VERBOSE) {
+        printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
+      }
       var identDependents = ident + "__deps: ['" + deps.join("','")+"']";
       function addDependency(dep) {
+        if (typeof dep !== 'function') {
+          dep = {identOrig: dep, identMangled: mangleCSymbolName(dep)};
+        }
         return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
       }
       var depsText = (deps ? deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') + '\n' : '');
@@ -332,8 +332,7 @@ function JSify(data, functionsOnly) {
     }
 
     itemsDict.functionStub.push(item);
-    var shortident = demangleCSymbolName(item.ident);
-    item.JS = addFromLibrary(shortident, 'top-level compiled C/C++ code');
+    item.JS = addFromLibrary(item, 'top-level compiled C/C++ code');
   }
 
   // Final combiner

@@ -75,7 +75,9 @@ function initRuntime(asm) {
   writeStackCookie();
 #endif
 
-  /*** RUN_GLOBAL_INITIALIZERS(); ***/
+#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
+  asm['__wasm_call_ctors']();
+#endif
 
   {{{ getQuoted('ATINITS') }}}
 }

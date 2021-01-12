@@ -45,22 +45,22 @@ def main():
     return 1
 
   try:
-    os.mkdir(path.join(emdir, "system", "include", "neon"))
+    os.mkdir(path.join(emdir, "system", "include", "compat"))
   except FileExistsError:
-    if not path.isdir(path.join(emdir, "system", "include", "neon")):
-      print("system/include/neon exists and is not a directory, exiting...")
+    if not path.isdir(path.join(emdir, "system", "include", "compat")):
+      print("system/include/compat exists and is not a directory, exiting...")
       return 1
 
-  with open(path.join(emdir, "system", "include", "neon", "arm_neon.h"), "wb+") as f:
+  with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "wb+") as f:
     try:
       f.write(b"#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
       f.write(b"#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
       f.write(neon_h_buf)
       f.write(b"#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
       f.write(b"#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
-      print("'system/include/neon/arm_neon.h' updated")
+      print("'system/include/compat/arm_neon.h' updated")
     except Exception:
-      print("error writing 'system/include/neon/arm_neon.h'")
+      print("error writing 'system/include/compat/arm_neon.h'")
       return 1
 
   return 0

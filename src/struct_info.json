@@ -1414,77 +1414,6 @@
             ]
         }
     },
-    // ===========================================
-    // emscripten VR library
-    // ===========================================
-    {
-        "file": "emscripten/vr.h",
-        "defines": [
-            "VR_EYE_LEFT",
-            "VR_EYE_RIGHT",
-
-            "VR_POSE_POSITION",
-            "VR_POSE_LINEAR_VELOCITY",
-            "VR_POSE_LINEAR_ACCELERATION",
-            "VR_POSE_ORIENTATION",
-            "VR_POSE_ANGULAR_VELOCITY",
-            "VR_POSE_ANGULAR_ACCELERATION"
-        ],
-        "structs": {
-            "VRVector3": [
-              "x",
-              "y",
-              "z"
-            ],
-            "VRQuaternion": [
-              "x",
-              "y",
-              "z",
-              "w"
-            ],
-            "VRPose": [
-                { "position": [ "x", "y", "z" ] },
-                { "linearVelocity": [ "x", "y", "z" ] },
-                { "linearAcceleration": [ "x", "y", "z" ] },
-                { "orientation": [ "x", "y", "z", "w" ] },
-                { "angularVelocity": [ "x", "y", "z" ] },
-                { "angularAcceleration": [ "x", "y", "z" ] },
-                "poseFlags"
-            ],
-            "VRFrameData": [
-                "leftProjectionMatrix",
-                "leftViewMatrix",
-                "rightProjectionMatrix",
-                "rightViewMatrix",
-                { "pose": [
-                    { "position": [ "x", "y", "z" ] },
-                    { "linearVelocity": [ "x", "y", "z" ] },
-                    { "linearAcceleration": [ "x", "y", "z" ] },
-                    { "orientation": [ "x", "y", "z", "w" ] },
-                    { "angularVelocity": [ "x", "y", "z" ] },
-                    { "angularAcceleration": [ "x", "y", "z" ] },
-                    "poseFlags"
-                ] },
-                "timestamp"
-            ],
-            "VREyeParameters": [
-                { "offset": [ "x", "y", "z" ] },
-                "renderWidth",
-                "renderHeight"
-            ],
-            "VRDisplayCapabilities": [
-                "hasPosition",
-                "hasExternalDisplay",
-                "canPresent",
-                "maxLayers"
-            ],
-            "VRLayerInit": [
-                "source",
-                "leftBounds",
-                "rightBounds"
-            ]
-        }
-    },
     {
         "file": "emscripten/threading.h",
         "structs": {
@@ -1525,7 +1454,7 @@
             ]
     },
     {
-        "file": "../lib/libc/musl/src/internal/pthread_impl.h",
+        "file": "system/lib/libc/musl/src/internal/pthread_impl.h",
         "structs": {
             "pthread": [
               "threadStatus",
@@ -1548,7 +1477,7 @@
         "defines": ["__ATTRP_C11_THREAD"]
     },
     {
-        "file": "../lib/libc/musl/src/internal/libc.h",
+        "file": "system/lib/libc/musl/src/internal/libc.h",
         "structs": {
             "libc": [
               "global_locale"

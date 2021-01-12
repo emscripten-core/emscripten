@@ -98,6 +98,10 @@ to use a local webserver. For example, Python has one built in,
 ``python -m http.server`` in Python 3 or ``python -m SimpleHTTPServer``
 in Python 2. After doing that, you can visit ``http://localhost:8000/``.
 
+When doing quick local testing, another option than a local webserver is to
+bundle everything into a single file, using ``-s SINGLE_FILE`` (as then no XHRs
+will be made to ``file://`` URLs).
+
 Otherwise, to debug this, look for an error reported on the page itself, or in the browser devtools (web console and network tab), or in your webserver's logging.
 
 

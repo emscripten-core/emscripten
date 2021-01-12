@@ -93,7 +93,7 @@ def get(ports, settings, shared):
     ports.install_headers(libmpg123_path, pattern="*123.h", target='')
     return output_path
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):

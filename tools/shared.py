@@ -33,7 +33,7 @@ from . import config
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 98
+EXPECTED_BINARYEN_VERSION = 99
 EXPECTED_LLVM_VERSION = "12.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -99,6 +99,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 def check_call(cmd, *args, **kw):
   """Like `run_process` above but treat failures as fatal and exit_with_error."""
+  print_compiler_stage(cmd)
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
@@ -114,7 +115,6 @@ def run_js_tool(filename, jsargs=[], *args, **kw):
   implemented in javascript.
   """
   command = config.NODE_JS + [filename] + jsargs
-  print_compiler_stage(command)
   return check_call(command, *args, **kw).stdout
 
 
@@ -273,7 +273,7 @@ def check_sanity(force=False):
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt', root=True)
+    sanity_file = Cache.get_path('sanity.txt')
     if os.path.exists(sanity_file):
       sanity_data = open(sanity_file).read()
       if sanity_data != expected:
@@ -420,9 +420,7 @@ def emsdk_ldflags(user_args):
     return []
 
   library_paths = [
-      path_from_root('system', 'local', 'lib'),
-      path_from_root('system', 'lib'),
-      Cache.dirname
+      Cache.get_lib_dir(absolute=True)
   ]
   ldflags = ['-L' + l for l in library_paths]
 
@@ -437,12 +435,12 @@ def emsdk_ldflags(user_args):
   return ldflags
 
 
-def emsdk_cflags(user_args, cxx):
+def emsdk_cflags(user_args):
   # Disable system C and C++ include directories, and add our own (using
   # -isystem so they are last, like system dirs, which allows projects to
   # override them)
 
-  c_opts = ['--sysroot=' + path_from_root('system')]
+  c_opts = ['--sysroot=' + Cache.get_sysroot_dir(absolute=True)]
 
   def array_contains_any_of(hay, needles):
     for n in needles:
@@ -475,43 +473,14 @@ def emsdk_cflags(user_args, cxx):
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     c_opts += ['-D__ARM_NEON__=1']
 
-  sysroot_include_paths = []
-
-  if cxx:
-    sysroot_include_paths += [
-      os.path.join('/include', 'libcxx'),
-      os.path.join('/lib', 'libcxxabi', 'include'),
-    ]
-
-  # TODO: Merge the cache into the sysroot.
-  c_opts += ['-Xclang', '-isystem' + Cache.get_path('include')]
-
-  sysroot_include_paths += [
-    os.path.join('/include', 'compat'),
-    os.path.join('/include', 'libc'),
-    os.path.join('/lib', 'libc', 'musl', 'arch', 'emscripten'),
-    os.path.join('/local', 'include'),
-    os.path.join('/include', 'SSE'),
-    os.path.join('/include', 'neon'),
-    os.path.join('/lib', 'compiler-rt', 'include'),
-    os.path.join('/lib', 'libunwind', 'include'),
-  ]
-
-  def include_directive(paths):
-    result = []
-    for path in paths:
-      result += ['-Xclang', '-iwithsysroot' + path]
-    return result
-
-  # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  return c_opts + include_directive(sysroot_include_paths)
+  return c_opts + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
 
 
 def get_clang_flags():
   return ['-target', get_llvm_target()]
 
 
-def get_cflags(user_args, cxx):
+def get_cflags(user_args):
   c_opts = get_clang_flags()
 
   # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
@@ -539,7 +508,7 @@ def get_cflags(user_args, cxx):
   if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
     return c_opts
 
-  return c_opts + emsdk_cflags(user_args, cxx)
+  return c_opts + emsdk_cflags(user_args)
 
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
@@ -746,11 +715,6 @@ def asmjs_mangle(name):
     return '_' + name
   else:
     return name
-
-
-def reconfigure_cache():
-  global Cache
-  Cache = cache.Cache(config.CACHE)
 
 
 class JS(object):

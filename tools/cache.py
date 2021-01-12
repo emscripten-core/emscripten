@@ -24,22 +24,9 @@ class Cache:
   # acquired.
   EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS', '0'))
 
-  def __init__(self, dirname, use_subdir=True):
+  def __init__(self, dirname):
     # figure out the root directory for all caching
     dirname = os.path.normpath(dirname)
-    self.root_dirname = dirname
-
-    # if relevant, use a subdir of the cache
-    if use_subdir:
-      subdir = 'wasm'
-      if shared.Settings.LTO:
-        subdir += '-lto'
-      if shared.Settings.RELOCATABLE:
-        subdir += '-pic'
-      if shared.Settings.MEMORY64:
-        subdir += '-memory64'
-      dirname = os.path.join(dirname, subdir)
-
     self.dirname = dirname
     self.acquired_count = 0
 
@@ -90,14 +77,42 @@ class Cache:
 
   def erase(self):
     with self.lock():
-      if os.path.exists(self.root_dirname):
-        for f in os.listdir(self.root_dirname):
-          tempfiles.try_delete(os.path.join(self.root_dirname, f))
+      if os.path.exists(self.dirname):
+        for f in os.listdir(self.dirname):
+          tempfiles.try_delete(os.path.join(self.dirname, f))
 
-  def get_path(self, shortname, root=False):
-    if root:
-      return os.path.join(self.root_dirname, shortname)
-    return os.path.join(self.dirname, shortname)
+  def get_path(self, name):
+    return os.path.join(self.dirname, name)
+
+  def get_sysroot_dir(self, absolute):
+    if absolute:
+      return os.path.join(self.dirname, 'sysroot')
+    return 'sysroot'
+
+  def get_include_dir(self):
+    return os.path.join(self.get_sysroot_dir(absolute=True), 'include')
+
+  def get_lib_dir(self, absolute):
+    path = os.path.join(self.get_sysroot_dir(absolute=absolute), 'lib')
+    if shared.Settings.MEMORY64:
+      path = os.path.join(path, 'wasm64-emscripten')
+    else:
+      path = os.path.join(path, 'wasm32-emscripten')
+    # if relevant, use a subdir of the cache
+    subdir = []
+    if shared.Settings.LTO:
+      subdir.append('lto')
+    if shared.Settings.RELOCATABLE:
+      subdir.append('pic')
+    if subdir:
+      path = os.path.join(path, '-'.join(subdir))
+    return path
+
+  def get_lib_name(self, name):
+    return os.path.join(self.get_lib_dir(absolute=False), name)
+
+  def erase_lib(self, name):
+    self.erase_file(self.get_lib_name(name))
 
   def erase_file(self, shortname):
     name = os.path.join(self.dirname, shortname)
@@ -105,13 +120,14 @@ class Cache:
       logging.info('Cache: deleting cached file: %s', name)
       tempfiles.try_delete(name)
 
+  def get_lib(self, libname, *args, **kwargs):
+    name = self.get_lib_name(libname)
+    return self.get(name, *args, **kwargs)
+
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, what=None, force=False, root=False):
-    if root:
-      cachename = os.path.join(self.root_dirname, shortname)
-    else:
-      cachename = os.path.join(self.dirname, shortname)
+  def get(self, shortname, creator, what=None, force=False):
+    cachename = os.path.join(self.dirname, shortname)
     cachename = os.path.abspath(cachename)
     # Check for existence before taking the lock in case we can avoid the
     # lock completely.

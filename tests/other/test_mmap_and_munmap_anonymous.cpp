@@ -82,10 +82,6 @@ int main() {
 
     printf("tests_run: %d\n", tests_run);
     printf("failures: %d\n", failures);
-
-#ifdef REPORT_RESULT
-    REPORT_RESULT(failures);
-#endif
-    return 0;
+    return failures;
 }
 

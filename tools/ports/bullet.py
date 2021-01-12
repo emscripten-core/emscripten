@@ -50,7 +50,7 @@ def get(ports, settings, shared):
     ports.build_port(src_path, final, includes=includes, exclude_dirs=['MiniCL'])
     return final
 
-  return [shared.Cache.get(libname, create)]
+  return [shared.Cache.get_lib(libname, create)]
 
 
 def clear(ports, settings, shared):
