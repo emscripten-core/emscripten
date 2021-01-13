@@ -1703,10 +1703,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct.c')
 
   def test_sizeof(self):
-      # Has invalid writes between printouts
-      self.set_setting('SAFE_HEAP', 0)
-
-      self.do_run_in_out_file_test('tests', 'core', 'test_sizeof.cpp')
+    self.do_run_in_out_file_test('tests', 'core', 'test_sizeof.cpp')
 
   def test_llvm_used(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used.c')
