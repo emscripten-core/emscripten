@@ -1703,10 +1703,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct.c')
 
   def test_sizeof(self):
-      # Has invalid writes between printouts
-      self.set_setting('SAFE_HEAP', 0)
-
-      self.do_run_in_out_file_test('tests', 'core', 'test_sizeof.cpp')
+    self.do_run_in_out_file_test('tests', 'core', 'test_sizeof.cpp')
 
   def test_llvm_used(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used.c')
@@ -8080,6 +8077,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('INITIAL_MEMORY', '64mb')
     self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_c11_threads.c')
 
+  @no_asan('flakey errors that must be fixed, https://github.com/emscripten-core/emscripten/issues/12985')
+  @node_pthreads
+  def test_pthread_cxx_threads(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.clear_setting('ALLOW_MEMORY_GROWTH')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_cxx_threads.cpp')
+
   @node_pthreads
   def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
@@ -8130,6 +8135,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
+    self.do_runf(path_from_root('tests', 'core', 'test_return_address.c'), 'passed')
+
+  @node_pthreads
+  @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
+  def test_pthread_offset_converter_modularize(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_OFFSET_CONVERTER')
+    self.set_setting('MODULARIZE')
+    create_test_file('post.js', 'var m = require("./test_return_address.js"); m();')
+    self.emcc_args += ['--extern-post-js', 'post.js', '-s', 'EXPORT_NAME=foo']
     self.do_runf(path_from_root('tests', 'core', 'test_return_address.c'), 'passed')
 
   def test_emscripten_atomics_stub(self):
