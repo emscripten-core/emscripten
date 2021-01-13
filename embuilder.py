@@ -57,6 +57,7 @@ USER_TASKS = [
     'bzip2',
     'cocos2d',
     'freetype',
+    'giflib',
     'harfbuzz',
     'icu',
     'libjpeg',
@@ -193,6 +194,8 @@ def main():
       build_port('vorbis', 'libvorbis.a')
     elif what == 'ogg':
       build_port('ogg', 'libogg.a')
+    elif what == 'giflib':
+      build_port('giflib', 'libgif.a')
     elif what == 'libjpeg':
       build_port('libjpeg', 'libjpeg.a')
     elif what == 'libpng':
