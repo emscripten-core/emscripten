@@ -13,5 +13,12 @@ assert(false, "library_bootstrap.js only designed for use with BOOTSTRAPPING_STR
 
 assert(!LibraryManager.library);
 LibraryManager.library = {
-  $callRuntimeCallbacks: function() {}
+  $callRuntimeCallbacks: function(callbacks) {
+    while (callbacks.length > 0) {
+      var callback = callbacks.shift();
+      if (typeof callback == 'function') {
+        callback(Module);
+      }
+    }
+  }
 };

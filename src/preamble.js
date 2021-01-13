@@ -578,6 +578,24 @@ addOnPreRun(reportUndefinedSymbols);
 #endif
 #endif
 
+#if STACK_OVERFLOW_CHECK
+function stackCheckInit() {
+  // emscripten_stack_init is normally called automatically during
+  // __wasm_call_ctors.  See system/lib/compiler-rt/stack_limits.S.
+  // However, we need to get these values before even running any of the
+  // ctors so we call it redundantly here.
+  // TODO(sbc): Move writeStackCookie to native to to avoid this.
+#if RELOCATABLE
+  _emscripten_stack_set_limits({{{ getQuoted('STACK_BASE') }}}, {{{ getQuoted('STACK_MAX') }}});
+#else
+  _emscripten_stack_init();
+#endif
+  writeStackCookie();
+}
+
+addOnPreRun(stackCheckInit);
+#endif
+
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')

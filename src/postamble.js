@@ -232,21 +232,6 @@ function callMain(args) {
 }
 #endif // HAS_MAIN
 
-#if STACK_OVERFLOW_CHECK
-function stackCheckInit() {
-  // This is normally called automatically during __wasm_call_ctors but need to
-  // get these values before even running any of the ctors so we call it redundantly
-  // here.
-  // TODO(sbc): Move writeStackCookie to native to to avoid this.
-#if RELOCATABLE
-  _emscripten_stack_set_limits({{{ getQuoted('STACK_BASE') }}}, {{{ getQuoted('STACK_MAX') }}});
-#else
-  _emscripten_stack_init();
-#endif
-  writeStackCookie();
-}
-#endif
-
 /** @type {function(Array=)} */
 function run(args) {
   args = args || arguments_;
@@ -257,10 +242,6 @@ function run(args) {
 #endif
     return;
   }
-
-#if STACK_OVERFLOW_CHECK
-  stackCheckInit();
-#endif
 
   preRun();
 
