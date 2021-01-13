@@ -16,7 +16,7 @@ voidfunc onefunc;
 intfunc twofunc;
 
 void next(const char *x) {
-  lib_handle = dlopen("themodule.js", RTLD_NOW);
+  lib_handle = dlopen("thelib.wasm", RTLD_NOW);
   assert(lib_handle != NULL);
 
   onefunc = (voidfunc)dlsym(lib_handle, "one");
@@ -40,7 +40,7 @@ void next(const char *x) {
 }
 
 int main() {
-  emscripten_async_wget("module.js", "themodule.js", next, NULL);
+  emscripten_async_wget("lib.wasm", "thelib.wasm", next, NULL);
   
   return 0;
 }

@@ -9,7 +9,6 @@ import json
 import multiprocessing
 import os
 import random
-import re
 import shlex
 import shutil
 import subprocess
@@ -780,38 +779,6 @@ window.close = function() {
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
 
   @requires_graphics_hardware
-  @no_wasm_backend('This modifies JS code with regexes in such a way that does not currently work in WASM2JS')
-  def test_glgears_proxy(self):
-    # we modify the asm.js, this is a non-wasm test
-    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING', '-DSTATIC_GEARS=1', '-lGL', '-lglut', '-s', 'WASM=0'], manual_reference=True, post_build=self.post_manual_reftest)
-
-    # test noProxy option applied at runtime
-
-    # run normally (duplicates above test, but verifies we can run outside of the btest harness
-    self.run_browser('test.html', None, ['/report_result?0'])
-
-    # run with noProxy
-    self.run_browser('test.html?noProxy', None, ['/report_result?0'])
-
-    def copy(to, js_mod, html_mod=lambda x: x):
-      create_test_file(to + '.html', html_mod(open('test.html').read().replace('test.js', to + '.js')))
-      create_test_file(to + '.js', js_mod(open('test.js').read()))
-
-    # run with noProxy, but make main thread fail
-    copy('two', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:%s/report_result?999");xhr.send(); return; }' % self.port, original),
-         lambda original: original.replace('function doReftest() {', 'function doReftest() { return; ')) # don't reftest on main thread, it would race
-    self.run_browser('two.html?noProxy', None, ['/report_result?999'])
-    copy('two', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:%s/report_result?999");xhr.send(); return; }' % self.port, original))
-    self.run_browser('two.html', None, ['/report_result?0']) # this is still cool
-
-    # run without noProxy, so proxy, but make worker fail
-    copy('three', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:%s/report_result?999");xhr.send(); return; }' % self.port, original),
-         lambda original: original.replace('function doReftest() {', 'function doReftest() { return; ')) # don't reftest on main thread, it would race
-    self.run_browser('three.html', None, ['/report_result?999'])
-    copy('three', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:%s/report_result?999");xhr.send(); return; }' % self.port, original))
-    self.run_browser('three.html?noProxy', None, ['/report_result?0']) # this is still cool
-
-  @requires_graphics_hardware
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     self.compile_btest([path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING', '-lGL', '-lglut'])
@@ -1284,9 +1251,8 @@ keydown(100);keyup(100); // trigger the end
   def test_write_file_in_environment_web(self):
     self.btest_exit('write_file.c', 0, args=['-s', 'ENVIRONMENT=web', '-Os', '--closure', '1'])
 
-  @unittest.skip('Skipping due to https://github.com/emscripten-core/emscripten/issues/2770')
   def test_fflush(self):
-    self.btest('test_fflush.cpp', '0', args=['--shell-file', path_from_root('tests', 'test_fflush.html')])
+    self.btest('test_fflush.cpp', '0', args=['-s', 'EXIT_RUNTIME', '--shell-file', path_from_root('tests', 'test_fflush.html')], reporting=Reporting.NONE)
 
   def test_file_db(self):
     secret = str(time.time())
@@ -2448,11 +2414,9 @@ void *getBindBuffer() {
   def test_emscripten_async_wget2(self):
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
-  # TODO: test only worked in non-fastcomp
-  @unittest.skip('non-fastcomp is deprecated and fails in 3.5')
   def test_module(self):
-    self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE', '-s', 'DLOPEN_SUPPORT', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]'])
-    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE', '-s', 'DLOPEN_SUPPORT', '-s', 'EXPORT_ALL'], expected='8')
+    self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
+    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], expected='8')
 
   def test_preload_module(self):
     create_test_file('library.c', r'''
@@ -3392,7 +3356,6 @@ window.close = function() {
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
-  @no_wasm_backend('cannot customize INITIAL_MEMORY in wasm at runtime')
   def test_modularize_and_preload_files(self):
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
@@ -4065,14 +4028,6 @@ window.close = function() {
     self.compile_btest([path_from_root('tests', 'browser', 'test_em_asm_blocking.cpp'), '-O2', '-o', 'wasm.js', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
     self.run_browser('page.html', '', '/report_result?8')
 
-  # test atomicrmw i64
-  @no_wasm_backend('uses an asm.js .ll file')
-  @requires_threads
-  def test_atomicrmw_i64(self):
-    # TODO: enable this with wasm, currently pthreads/atomics have limitations
-    self.compile_btest([path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS', '-s', 'IN_TEST_HARNESS', '-o', 'test.html', '-s', 'WASM=0'])
-    self.run_browser('test.html', None, '/report_result?0')
-
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'])
@@ -4093,7 +4048,6 @@ window.close = function() {
       create_test_file('test.html', '<script src="test.js"></script>')
       self.run_browser('test.html', None, '/report_result?0')
 
-  @no_wasm_backend('mem init file')
   def test_in_flight_memfile_request(self):
     # test the XHR for an asm.js mem init file being in flight already
     for o in [0, 1, 2]:
@@ -4203,8 +4157,8 @@ window.close = function() {
   # -DTEST_MAIN_THREAD_EXPLICIT_COMMIT: Test the same (WebGL on main thread after pthread), but by using explicit .commit() to swap on the main thread instead of implicit "swap when rAF ends" logic
   @requires_threads
   @requires_offscreen_canvas
+  @disabled('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self):
-    self.skipTest('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
     for args in [[], ['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT']]:
       self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL'])
 
@@ -4331,12 +4285,12 @@ window.close = function() {
                '-s', 'GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
         self.btest('webgl2_simple_enable_extensions.c', expected='0', args=cmd)
 
-  # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
+  # Tests the feature that shell html page can preallocate the typed array and place it
+  # to Module.buffer before loading the script page.
   # In this build mode, the -s INITIAL_MEMORY=xxx option will be ignored.
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
-  @no_wasm_backend('asm.js feature')
   def test_preallocated_heap(self):
-    self.btest('test_preallocated_heap.cpp', expected='1', args=['-s', 'WASM=0', '-s', 'INITIAL_MEMORY=16MB', '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
+    self.btest_exit('test_preallocated_heap.cpp', expected='0', args=['-s', 'WASM=0', '-s', 'INITIAL_MEMORY=16MB', '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   def test_fetch_to_memory(self):
@@ -4394,18 +4348,16 @@ window.close = function() {
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
-  @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_sync_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/sync_xhr.cpp', expected='1', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest('fetch/sync_xhr.cpp', expected='1', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
   @requires_threads
-  @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_implicit_append(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
   @requires_threads
@@ -4586,10 +4538,9 @@ window.close = function() {
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
-  @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_load_js_from_blob_with_pthreads(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
-    self.compile_btest([path_from_root('tests', 'pthread', 'hello_thread.c'), '-s', 'USE_PTHREADS', '-o', 'hello_thread_with_blob_url.js', '-s', 'WASM=0'])
+    self.compile_btest([path_from_root('tests', 'pthread', 'hello_thread.c'), '-s', 'USE_PTHREADS', '-o', 'hello_thread_with_blob_url.js'])
     shutil.copyfile(path_from_root('tests', 'pthread', 'main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?1')
 
@@ -4849,7 +4800,6 @@ window.close = function() {
     for minimal_runtime in [[], ['-s', 'MINIMAL_RUNTIME']]:
       self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'WASM=0'] + minimal_runtime)
 
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_no_declare_asm_module_exports_wasm_minimal_runtime(self):
     self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'MINIMAL_RUNTIME'])
 
@@ -4967,7 +4917,7 @@ window.close = function() {
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
     self.do_run_in_out_file_test('tests', 'browser', 'test_4GB_fail.cpp', js_engines=[config.V8_ENGINE])
 
-  @unittest.skip("only run this manually, to test for race conditions")
+  @disabled("only run this manually, to test for race conditions")
   @parameterized({
     'normal': ([],),
     'assertions': (['-s', 'ASSERTIONS'],)
