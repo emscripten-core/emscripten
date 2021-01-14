@@ -1756,6 +1756,7 @@ var LibraryOpenAL = {
         return buffers[0].length;
       },
       capturePlayhead: 0, // current write position, in sample frames
+      captureReadhead: 0,
       capturedFrameCount: 0
     };
 
@@ -1982,8 +1983,14 @@ var LibraryOpenAL = {
     // Also, spec says :
     //   Requesting more sample frames than are currently available is 
     //   an error.
+
+    var dstfreq = c.requestedSampleRate;
+    var srcfreq = c.audioCtx.sampleRate;
+
+    var fratio = srcfreq / dstfreq;
+    
     if (requestedFrameCount < 0
-    ||  requestedFrameCount > c.capturedFrameCount) 
+    ||  requestedFrameCount > (c.capturedFrameCount / fratio)) 
     {
   // if OPENAL_DEBUG
       console.error('alcCaptureSamples() with invalid bufferSize');
@@ -2014,16 +2021,14 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-
-    var dstfreq = c.requestedSampleRate;
-    var srcfreq = c.audioCtx.sampleRate;
-
-    if (srcfreq == dstfreq) {
+    
+    // If fratio is an integer we don't need linear resampling, just skip samples
+    if (Math.floor(fratio) == fratio) {
       for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
         for (var chan = 0; chan < c.buffers.length; ++chan, ++i) {
-          var src_i = (frame_i + c.capturePlayhead) % c.capturedFrameCount;
-          setSample(i, c.buffers[chan][src_i]);
+          setSample(i, c.buffers[chan][c.captureReadhead]);
         }
+        c.captureReadhead = (fratio + c.captureReadhead) % c.bufferFrameCapacity;
       }
     } else {
       // Perform linear resampling.
@@ -2032,23 +2037,16 @@ var LibraryOpenAL = {
       // We don't use OfflineAudioContexts for this: See the discussion at
       // https://github.com/jpernst/emscripten/issues/2#issuecomment-312729735
       // if you're curious about why.
-
-      var lerp = function(from, to, progress) {
-        return (1 - progress) * from + progress * to;
-      };
-
       for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
-
-        var t = frame_i / dstfreq; // Most exact time for the current output sample
-        var src_i = (Math.floor(t*srcfreq) + c.capturePlayhead) % c.capturedFrameCount;
-        var src_next_i = (src_i+1) % c.capturedFrameCount;
-        var between = t*srcfreq - src_i; //(t - src_i/srcfreq) / ((src_i+1)/srcfreq - src_i/srcfreq);
-
+        var lefti = Math.floor(c.captureReadhead);
+        var righti = Math.ceil(c.captureReadhead);
+        var d = c.captureReadhead - lefti;
         for (var chan = 0; chan < c.buffers.length; ++chan, ++i) {
-          var cb = c.buffers[chan];
-          var sample = lerp(cb[src_i], cb[src_next_i], between);
-          setSample(i, sample);
+          var lefts = c.buffers[chan][lefti];
+          var rights = c.buffers[chan][righti];
+          setSample(i, (1 - d) * lefts + d * rights);
         }
+        c.captureReadhead = (c.captureReadhead + fratio) % c.bufferFrameCapacity;
       }
     }
 
