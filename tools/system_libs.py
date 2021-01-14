@@ -1035,10 +1035,6 @@ class libmalloc(MTLibrary):
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
-    if self.memvalidate:
-      name += '-memvalidate'
-    if self.verbose:
-      name += '-verbose'
     return name
 
   def can_use(self):
@@ -1064,7 +1060,10 @@ class libmalloc(MTLibrary):
   def variations(cls):
     combos = super(libmalloc, cls).variations()
     return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
-            [dict(malloc='emmalloc', **combo) for combo in combos])
+            [dict(malloc='emmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc-memvalidate-verbose', **combo) for combo in combos if combo['memvalidate'] and combo['verbose']] +
+            [dict(malloc='emmalloc-memvalidate', **combo) for combo in combos if combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
 
 
 class libal(Library):
