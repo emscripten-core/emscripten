@@ -433,8 +433,7 @@ var LibraryDylink = {
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
-
-        moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end());
+        moduleExports['__set_stack_limits']({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
 #endif
         // initialize the module
         var init = moduleExports['__post_instantiate'];
