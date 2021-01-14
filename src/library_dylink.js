@@ -380,7 +380,7 @@ var LibraryDylink = {
     // if binary is compiled wasm
     flags.compiledWasm = binary instanceof WebAssembly.Module;
     if(flags.loadAsync && flags.compiledWasm){
-      err("error: Async loading of compiled WebAssembly Module note supported");
+      err("error: Async loading of compiled WebAssembly Module not supported");
     }
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
@@ -519,13 +519,10 @@ var LibraryDylink = {
         return WebAssembly.instantiate(binary, info).then(function(result) {
           return postInstantiation(result.instance);
         });
-      } else {
-        var module = flags.compiledWasm ? binary : new WebAssembly.Module(binary);
-        var instance = new WebAssembly.Instance(module, info);
-        return postInstantiation(instance, moduleLocal);
-      }
+      } 
 
-      var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+      var module = flags.compiledWasm ? binary : new WebAssembly.Module(binary);
+      var instance = new WebAssembly.Instance(module, info);
       return postInstantiation(instance);
     }
 
