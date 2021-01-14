@@ -1040,13 +1040,6 @@ function addAtExit(code) {
   }
 }
 
-// Some things, like the dynamic and stack bases, will be computed later and
-// applied. Return them as {{{ STR }}} for that replacing later.
-
-function getQuoted(str) {
-  return '{{{ ' + str + ' }}}';
-}
-
 function makeRetainedCompilerSettings() {
   var ignore = set('STRUCT_INFO');
   if (STRICT) {

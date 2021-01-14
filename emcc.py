@@ -2829,7 +2829,7 @@ def do_binaryen(target, options, wasm_target):
     js = open(final_js).read()
 
     if shared.Settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_target, 'rb').read()))
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(open(wasm_target, 'rb').read()))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)

@@ -393,7 +393,7 @@ function initRuntime() {
 #endif
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
-  {{{ getQuoted('ATINITS') }}}
+  <<< ATINITS >>>
   callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -404,7 +404,7 @@ function preMain() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  {{{ getQuoted('ATMAINS') }}}
+  <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
 
@@ -417,7 +417,7 @@ function exitRuntime() {
 #endif
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
-  {{{ getQuoted('ATEXITS') }}}
+  <<< ATEXITS >>>
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
