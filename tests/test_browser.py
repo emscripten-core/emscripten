@@ -4928,6 +4928,13 @@ window.close = function() {
                expected='5121',
                args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', path_from_root('tests', 'test_override_system_js_lib_symbol.js')])
 
+  # Tests that emmalloc supports up to 4GB Wasm heaps.
+  @no_firefox('no 4GB support yet')
+  def test_emmalloc_4gb(self):
+    self.btest(path_from_root('tests', 'mem_growth.cpp'),
+               expected='-65536', # == 4*1024*1024*1024 - 65536 casted to signed
+               args=['-s', 'MALLOC=emmalloc', '-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=4GB'])
+
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_4GB(self):
     # TODO Convert to an actual browser test when it reaches stable.

@@ -108,6 +108,8 @@ var TOTAL_STACK = 5*1024*1024;
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
 //  * emmalloc - a simple and compact malloc designed for emscripten
+//  * emmalloc-debug - use emmalloc, but add extra debug checks
+//  * emmalloc-debug-log - use emmalloc, but do very verbose debug logging
 //  * none     - no malloc() implementation is provided, but you must implement
 //               malloc() and free() yourself.
 // dlmalloc is necessary for split memory and other special modes, and will be

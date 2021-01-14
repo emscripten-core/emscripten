@@ -988,25 +988,31 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'none'):
-      raise Exception('malloc must be one of "emmalloc", "dlmalloc" or "none", see settings.js')
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-debug-log', 'none'):
+      raise Exception('malloc must be one of "emmalloc", "emmalloc-debug", "emmalloc-debug-log", "dlmalloc" or "none", see settings.js')
 
     self.is_debug = kwargs.pop('is_debug')
     self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
-    self.use_64bit_ops = kwargs.pop('use_64bit_ops')
 
     super(libmalloc, self).__init__(**kwargs)
 
   def get_files(self):
     malloc = shared.path_from_root('system', 'lib', {
-      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
+      'dlmalloc': 'dlmalloc.c',
+      'emmalloc': 'emmalloc.cpp',
+      'emmalloc-debug': 'emmalloc.cpp',
+      'emmalloc-debug-log': 'emmalloc.cpp'
     }[self.malloc])
     sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
     return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super(libmalloc, self).get_cflags()
+    if self.malloc == 'emmalloc-debug':
+      cflags += ['-DEMMALLOC_DEBUG']
+    if self.malloc == 'emmalloc-debug-log':
+      cflags += ['-DEMMALLOC_DEBUG', '-DEMMALLOC_DEBUG_LOG']
     if self.is_debug:
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
       # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
@@ -1016,8 +1022,6 @@ class libmalloc(MTLibrary):
       cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
-    if self.use_64bit_ops:
-      cflags += ['-DEMMALLOC_USE_64BIT_OPS=1']
     return cflags
 
   def get_base_name_prefix(self):
@@ -1032,8 +1036,6 @@ class libmalloc(MTLibrary):
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
-    if self.use_64bit_ops:
-      name += '-64bit'
     return name
 
   def can_use(self):
@@ -1041,7 +1043,7 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'use_64bit_ops']
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1050,14 +1052,13 @@ class libmalloc(MTLibrary):
       is_debug=shared.Settings.ASSERTIONS >= 2,
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
-      use_64bit_ops=shared.Settings.MALLOC == 'emmalloc' and (shared.Settings.WASM == 1 or shared.Settings.WASM2JS == 0),
       **kwargs
     )
 
   @classmethod
   def variations(cls):
     combos = super(libmalloc, cls).variations()
-    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['use_64bit_ops']] +
+    return ([dict(malloc='dlmalloc', **combo) for combo in combos] +
             [dict(malloc='emmalloc', **combo) for combo in combos])
 
 
