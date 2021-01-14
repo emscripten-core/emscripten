@@ -1073,7 +1073,7 @@ class libgl(MTLibrary):
   name = 'libgl'
 
   src_dir = ['system', 'lib', 'gl']
-  src_glob = '*.c'
+  src_files = ['gl.c', 'webgl1.c']
 
   cflags = ['-Oz']
 
@@ -1082,6 +1082,10 @@ class libgl(MTLibrary):
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
     self.is_full_es3 = kwargs.pop('is_full_es3')
+    if self.is_webgl2 or self.is_full_es3:
+      # Don't use append or += here, otherwise we end up adding to
+      # the class member.
+      self.src_files = self.src_files + ['webgl2.c']
     super(libgl, self).__init__(**kwargs)
 
   def get_base_name(self):
