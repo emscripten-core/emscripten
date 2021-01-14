@@ -275,7 +275,8 @@ var LibraryDylink = {
       memorySize : -1,
       memoryAlign : -1,
       tableSize : -1,
-      tableAlign : -1
+      tableAlign : -1,
+      neededDynlibs: []
     }
     var next = 0;
     function getLEB(byteArray) {
@@ -299,7 +300,6 @@ var LibraryDylink = {
       // current module could resolve its imports. (see tools/shared.py
       // WebAssembly.make_shared_library() for "dylink" section extension format)
       var neededDynlibsCount = getLEB(byteArray);
-      customSection.neededDynlibs = [];
       for (var i = 0; i < neededDynlibsCount; ++i) {
         var nameLen = getLEB();
         var nameUTF8 = byteArray.subarray(next, next + nameLen);
@@ -376,6 +376,7 @@ var LibraryDylink = {
     var memoryAlign = customSection.memoryAlign;
     var tableSize = customSection.tableSize;
     var tableAlign = customSection.tableAlign;
+    var neededDynlibs = customSection.neededDynlibs;
     // if binary is compiled wasm
     flags.compiledWasm = binary instanceof WebAssembly.Module;
     if(flags.loadAsync && flags.compiledWasm){
