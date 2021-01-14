@@ -5998,7 +5998,7 @@ return malloc(size);
       FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
     };
     Module.postRun = function() {
-      var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
+      var FileData = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents['filename-1.ppm']));
       out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
     };
     ''')
@@ -6035,7 +6035,7 @@ return malloc(size);
       create_test_file('pre.js', """
         Module.preRun = function() { FS.createDataFile('/', 'image.j2k', %s, true, false, false); };
         Module.postRun = function() {
-          out('Data: ' + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.analyzePath('image.raw').object)));
+          out('Data: ' + JSON.stringify(Array.from(MEMFS.getFileDataAsTypedArray(FS.analyzePath('image.raw').object))));
         };
         """ % line_splitter(str(image_bytes)))
 
