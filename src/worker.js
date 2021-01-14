@@ -81,7 +81,6 @@ function moduleLoaded() {
 #if USE_OFFSET_CONVERTER
   wasmOffsetConverter = resetPrototype(Module['WasmOffsetConverter'], wasmOffsetData);
 #endif
-  postMessage({ 'cmd': 'loaded' });
 }
 
 this.onmessage = function(e) {

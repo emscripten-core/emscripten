@@ -574,11 +574,6 @@ Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
 #if MAIN_MODULE
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
-addOnPreRun(preloadDylibs);
-#else
-#if RELOCATABLE
-addOnPreRun(reportUndefinedSymbols);
-#endif
 #endif
 
 /** @param {string|number=} what */
