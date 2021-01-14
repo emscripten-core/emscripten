@@ -94,10 +94,10 @@ var EXIT_RUNTIME = 0;
 
 // How to represent the initial memory content.
 // 0: embed a base64 string literal representing the initial memory data
-// 1: create a *.mem file containing the binary data of the initial memory;
+// 1: memory init done inside wasm of via a *.mem binary data file
 
 //    use the --memory-init-file command line switch to select this method
-var MEM_INIT_METHOD = 0;
+var MEM_INIT_METHOD = 1;
 
 // The total stack size. There is no way to enlarge the stack, so this
 // value must be large enough for the program's requirements. If

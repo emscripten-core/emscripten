@@ -113,7 +113,7 @@ var PTHREAD_WORKER_FILE = '';
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-var MEM_INIT_IN_WASM = 0;
+var MEM_INIT_IN_WASM = 1;
 
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)

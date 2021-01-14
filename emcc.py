@@ -908,9 +908,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     elif type(options.llvm_opts) == int:
       options.llvm_opts = ['-O%d' % options.llvm_opts]
 
-    if options.memory_init_file is None:
-      options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
-
     # TODO: support source maps with js_transform
     if options.js_transform and shared.Settings.GENERATE_SOURCE_MAP:
       logger.warning('disabling source maps because a js transform is being done')
@@ -1287,10 +1284,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$preloadDylibs']
-    elif shared.Settings.SIDE_MODULE:
-      assert not shared.Settings.MAIN_MODULE
-      # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
-      options.memory_init_file = False
+      if shared.Settings.SIDE_MODULE:
+        exit_with_error('SIDE_MODULE and MODULE_MODULE are mutually exclusive')
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
@@ -1711,24 +1706,33 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
-    if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
+    if 'MEM_INIT_METHOD' in settings_key_changes:
       exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
+
+    if options.memory_init_file:
+      if not shared.Settings.WASM2JS:
+        exit_with_error('--memory-init-file only works with JavaScript output')
+      if shared.Settings.SINGLE_FILE:
+        exit_with_error('--memory-init-file is not compatible with SINGLE_FILE')
+      # pthreads we must keep the memory segments in the wasm as they will be
+      # passive segments which the .mem format cannot handle.
+      if shared.Settings.USE_PTHREADS:
+        exit_with_error('--memory-init-file is not compatible with pthreads')
+      if shared.Settings.SIDE_MODULE:
+        # memory init file is not supported with side modules, must be executable
+        # synchronously (for dlopen)
+        exit_with_error('--memory_init_file is not supported with SIDE_MODULE')
 
     if shared.Settings.WASM2JS:
       shared.Settings.MAYBE_WASM2JS = 1
       # when using wasm2js, if the memory segments are in the wasm then they
       # end up converted by wasm2js into base64 encoded JS. alternatively, we
       # can use a .mem file like asm.js used to.
-      # generally we follow what the options tell us to do (which is to use
-      # a .mem file in most cases, since it is binary & compact). however, for
-      # pthreads we must keep the memory segments in the wasm as they will be
-      # passive segments which the .mem format cannot handle.
-      shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE or shared.Settings.USE_PTHREADS
-    else:
-      # wasm includes the mem init in the wasm binary. The exception is
-      # wasm2js, which behaves more like js.
-      options.memory_init_file = True
-      shared.Settings.MEM_INIT_IN_WASM = True
+      # For optimized builds we use a .mem file, since it is binary & compact.
+      if options.memory_init_file or (options.memory_init_file is None and shared.Settings.OPT_LEVEL >= 2):
+        shared.Settings.MEM_INIT_IN_WASM = False
+      else:
+        shared.Settings.MEM_INIT_METHOD = 0
 
     # wasm side modules have suffix .wasm
     if shared.Settings.SIDE_MODULE and target.endswith('.js'):
@@ -2183,11 +2187,6 @@ def post_link(options, in_wasm, wasm_target, target):
   with ToolchainProfiler.profile_block('emscript'):
     # Emscripten
     logger.debug('emscript')
-    if options.memory_init_file:
-      shared.Settings.MEM_INIT_METHOD = 1
-    else:
-      assert shared.Settings.MEM_INIT_METHOD != 1
-
     if embed_memfile():
       shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
