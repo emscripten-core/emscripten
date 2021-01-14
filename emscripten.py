@@ -205,22 +205,12 @@ def compile_settings(temp_files):
   return glue, forwarded_data
 
 
-class Memory():
-  def __init__(self, static_bump):
-    stack_low = align_memory(shared.Settings.GLOBAL_BASE + static_bump)
-    stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
-    self.stack_base = stack_high
-    self.stack_max = stack_low
-    self.dynamic_base = align_memory(stack_high)
-
-
-def apply_memory(js, memory):
-  # Apply the statically-at-compile-time computed memory locations.
-  # Write it all out
-  js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
-  js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
-  js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
-  return js
+def set_memory(static_bump):
+  stack_low = align_memory(shared.Settings.GLOBAL_BASE + static_bump)
+  stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
+  shared.Settings.STACK_BASE = stack_high
+  shared.Settings.STACK_MAX = stack_low
+  shared.Settings.HEAP_BASE = align_memory(stack_high)
 
 
 def report_missing_symbols(all_implemented, pre):
@@ -330,6 +320,13 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
     logger.debug('emscript: js compiler glue')
     t = time.time()
 
+  # memory and global initializers
+
+  if shared.Settings.RELOCATABLE:
+    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
+    set_memory(static_bump)
+    logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', shared.Settings.STACK_BASE, shared.Settings.STACK_MAX, shared.Settings.HEAP_BASE)
+
   glue, forwarded_data = compile_settings(temp_files)
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -355,16 +352,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
     return
-
-  # memory and global initializers
-
-  if shared.Settings.RELOCATABLE:
-    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
-    memory = Memory(static_bump)
-    logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d', memory.stack_base, memory.stack_max, memory.dynamic_base)
-
-    pre = apply_memory(pre, memory)
-    post = apply_memory(post, memory)
 
   pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
   post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part

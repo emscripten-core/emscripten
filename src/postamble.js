@@ -239,7 +239,7 @@ function stackCheckInit() {
   // here.
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
 #if RELOCATABLE
-  _emscripten_stack_set_limits({{{ getQuoted('STACK_BASE') }}}, {{{ getQuoted('STACK_MAX') }}});
+  _emscripten_stack_set_limits({{{ STACK_BASE }}}, {{{ STACK_MAX }}});
 #else
   _emscripten_stack_init();
 #endif
