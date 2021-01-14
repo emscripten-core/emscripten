@@ -270,7 +270,7 @@ var LibraryDylink = {
     });
   },
 
-  $getsideModuleCustomSection: function(binary) {
+  $getSideModuleCustomSection: function(binary) {
     var customSection = {
       memorySize : -1,
       memoryAlign : -1,
@@ -369,9 +369,9 @@ var LibraryDylink = {
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler'],
+  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', 'getSideModuleCustomSection'],
   $loadWebAssemblyModule: function(binary, flags) {
-    var customSection = getsideModuleCustomSection(binary);
+    var customSection = getSideModuleCustomSection(binary);
     var memorySize = customSection.memorySize;
     var memoryAlign = customSection.memoryAlign;
     var tableSize = customSection.tableSize;
@@ -563,7 +563,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary', '$isInternalSym'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
