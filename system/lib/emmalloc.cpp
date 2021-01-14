@@ -861,7 +861,7 @@ void emmalloc_free(void *ptr)
 
   // Check merging with left side
   uint32_t prevRegionSizeField = ((uint32_t*)region)[-1];
-  uint32_t prevRegionSize = prevRegionSize & FREE_REGION_FLAG;
+  uint32_t prevRegionSize = prevRegionSizeField & ~FREE_REGION_FLAG;
   if (prevRegionSizeField != prevRegionSize) // Previous region is free?
   {
     Region *prevRegion = (Region*)((uint8_t*)region - prevRegionSize);
