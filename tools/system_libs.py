@@ -988,34 +988,32 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-debug-log', 'none'):
-      raise Exception('malloc must be one of "emmalloc", "emmalloc-debug", "emmalloc-debug-log", "dlmalloc" or "none", see settings.js')
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'none'):
+      raise Exception('malloc must be one of "emmalloc[-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
-    self.is_debug = kwargs.pop('is_debug')
     self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
+    self.memvalidate = kwargs.pop('memvalidate')
+    self.verbose = kwargs.pop('verbose')
+    self.is_debug = kwargs.pop('is_debug') or self.memvalidate or self.verbose
 
     super(libmalloc, self).__init__(**kwargs)
 
   def get_files(self):
     malloc = shared.path_from_root('system', 'lib', {
-      'dlmalloc': 'dlmalloc.c',
-      'emmalloc': 'emmalloc.cpp',
-      'emmalloc-debug': 'emmalloc.cpp',
-      'emmalloc-debug-log': 'emmalloc.cpp'
+      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp',
     }[self.malloc])
     sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
     return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super(libmalloc, self).get_cflags()
-    if self.malloc == 'emmalloc-debug':
-      cflags += ['-DEMMALLOC_DEBUG']
-    if self.malloc == 'emmalloc-debug-log':
-      cflags += ['-DEMMALLOC_DEBUG', '-DEMMALLOC_DEBUG_LOG']
+    if self.memvalidate:
+      cflags += ['-DEMMALLOC_MEMVALIDATE']
+    if self.verbose:
+      cflags += ['-DEMMALLOC_VERBOSE']
     if self.is_debug:
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
-      # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
     if not self.use_errno:
@@ -1029,13 +1027,17 @@ class libmalloc(MTLibrary):
 
   def get_base_name(self):
     name = super(libmalloc, self).get_base_name()
-    if self.is_debug:
+    if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
     if not self.use_errno:
       # emmalloc doesn't actually use errno, but it's easier to build it again
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
+    if self.memvalidate:
+      name += '-memvalidate'
+    if self.verbose:
+      name += '-verbose'
     return name
 
   def can_use(self):
@@ -1043,7 +1045,7 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing']
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1052,13 +1054,15 @@ class libmalloc(MTLibrary):
       is_debug=shared.Settings.ASSERTIONS >= 2,
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
+      memvalidate='memvalidate' in shared.Settings.MALLOC,
+      verbose='verbose' in shared.Settings.MALLOC,
       **kwargs
     )
 
   @classmethod
   def variations(cls):
     combos = super(libmalloc, cls).variations()
-    return ([dict(malloc='dlmalloc', **combo) for combo in combos] +
+    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
             [dict(malloc='emmalloc', **combo) for combo in combos])
 
 

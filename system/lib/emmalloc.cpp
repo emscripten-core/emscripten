@@ -31,9 +31,9 @@
  * Debugging:
  *
  *  - If not NDEBUG, runtime assert()s are in use.
- *  - If EMMALLOC_DEBUG is defined, a large amount of extra checks are done.
- *  - If EMMALLOC_DEBUG_LOG is defined, a lot of operations are logged
- *    out, in addition to EMMALLOC_DEBUG.
+ *  - If EMMALLOC_MEMVALIDATE is defined, a large amount of extra checks are done.
+ *  - If EMMALLOC_VERBOSE is defined, a lot of operations are logged
+ *    out, in addition to EMMALLOC_MEMVALIDATE.
  *  - Debugging and logging directly uses console.log via uses EM_ASM, not
  *    printf etc., to minimize any risk of debugging or logging depending on
  *    malloc.
@@ -445,11 +445,11 @@ int emmalloc_validate_memory_regions()
 
 static bool claim_more_memory(size_t numBytes)
 {
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory(numBytes='+($0>>>0)+ ')'), numBytes);
 #endif
 
-#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_MEMVALIDATE
   validate_memory_regions();
 #endif
 
@@ -457,12 +457,12 @@ static bool claim_more_memory(size_t numBytes)
   uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
   if ((intptr_t)startPtr == -1)
   {
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
     MAIN_THREAD_ASYNC_EM_ASM(console.error('claim_more_memory: sbrk failed!'));
 #endif
     return false;
   }
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory: claimed 0x' + ($0>>>0).toString(16) + ' - 0x' + ($1>>>0).toString(16) + ' (' + ($2>>>0) + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
 #endif
   assert(HAS_ALIGNMENT(startPtr, 4));
@@ -534,7 +534,7 @@ static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_mall
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
     freeRegionBuckets[i].prev = freeRegionBuckets[i].next = &freeRegionBuckets[i];
 
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('initialize_malloc_heap()'));
 #endif
 
@@ -614,7 +614,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   emscripten_trace_record_allocation(freeRegion, freeRegion->size);
 #endif
 
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_allocate - succeeded allocating memory, region ptr=0x' + ($0>>>0).toString(16) + ', align=' + $1 + ', payload size=' + ($2>>>0) + ' bytes)'), freeRegion, alignment, size);
 #endif
 
@@ -641,17 +641,17 @@ static void *allocate_memory(size_t alignment, size_t size)
 {
   ASSERT_MALLOC_IS_ACQUIRED();
 
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('allocate_memory(align=' + $0 + ', size=' + ($1>>>0) + ' bytes)'), alignment, size);
 #endif
 
-#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_MEMVALIDATE
   validate_memory_regions();
 #endif
 
   if (!IS_POWER_OF_2(alignment))
   {
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
     MAIN_THREAD_ASYNC_EM_ASM(console.log('Allocation failed: alignment not power of 2!'));
 #endif
     return 0;
@@ -757,7 +757,7 @@ static void *allocate_memory(size_t alignment, size_t size)
     freeRegion = freeRegion->next;
   }
 
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('Could not find a free memory block!'));
 #endif
 
@@ -823,14 +823,14 @@ size_t EMMALLOC_EXPORT malloc_usable_size(void *ptr)
 
 void emmalloc_free(void *ptr)
 {
-#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_MEMVALIDATE
   emmalloc_validate_memory_regions();
 #endif
 
   if (!ptr)
     return;
 
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('free(ptr=0x'+($0>>>0).toString(16)+')'), ptr);
 #endif
 
@@ -841,7 +841,7 @@ void emmalloc_free(void *ptr)
   MALLOC_ACQUIRE();
 
   uint32_t size = region->size;
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   if (size < sizeof(Region) || !region_is_in_use(region))
   {
     if (debug_region_is_consistent(region))
@@ -886,7 +886,7 @@ void emmalloc_free(void *ptr)
 
   MALLOC_RELEASE();
 
-#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_MEMVALIDATE
   emmalloc_validate_memory_regions();
 #endif
 }
@@ -905,7 +905,7 @@ static int attempt_region_resize(Region *region, size_t size)
   assert(size > 0);
   assert(HAS_ALIGNMENT(size, sizeof(uint32_t)));
 
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize(region=0x' + ($0>>>0).toString(16) + ', size=' + ($1>>>0) + ' bytes)'), region, size);
 #endif
 
@@ -957,7 +957,7 @@ static int attempt_region_resize(Region *region, size_t size)
       return 1;
     }
   }
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize failed.'));
 #endif
   return 0;
@@ -973,7 +973,7 @@ static int acquire_and_attempt_region_resize(Region *region, size_t size)
 
 void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
 {
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('aligned_realloc(ptr=0x' + ($0>>>0).toString(16) + ', alignment=' + $1 + ', size=' + ($2>>>0)), ptr, alignment, size);
 #endif
 
