@@ -270,11 +270,6 @@ var LibraryDylink = {
     });
   },
 
-  $asmjsMangle: function(x) {
-    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
-    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-  },
-
   $getsideModuleCustomSection: function(binary) {
     var customSection = {
       memorySize : -1,
@@ -372,8 +367,9 @@ var LibraryDylink = {
     }
   },
 
-  // Loads a side module from binary data
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$asmjsMangle'],
+  // Loads a side module from binary data or compiled Module. Returns the module's exports or a
+  // promise that resolves to its exports if the loadAsync flag is set.
+  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler'],
   $loadWebAssemblyModule: function(binary, flags) {
     var customSection = getsideModuleCustomSection(binary);
     var memorySize = customSection.memorySize;
