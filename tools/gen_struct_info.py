@@ -246,6 +246,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
                                     '-O0',
                                     '-Werror',
                                     '-Wno-format',
+                                    '-I', shared.path_from_root(),
                                     '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                     '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
                                     '-s', 'STRICT=1',

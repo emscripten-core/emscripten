@@ -75,7 +75,9 @@ function initRuntime(asm) {
   writeStackCookie();
 #endif
 
-  /*** RUN_GLOBAL_INITIALIZERS(); ***/
+#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
+  asm['__wasm_call_ctors']();
+#endif
 
   {{{ getQuoted('ATINITS') }}}
 }
@@ -232,6 +234,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
     moduleLoaded();
+    postMessage({ 'cmd': 'loaded' });
   }
 #endif
 

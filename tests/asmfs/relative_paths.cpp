@@ -32,8 +32,5 @@ int main()
   fread(str, 1, 5, file); assert(errno == 0);
   ret = fclose(file); assert(ret == 0); assert(errno == 0);
   assert(!strcmp(str, "test"));
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

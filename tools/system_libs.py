@@ -83,6 +83,10 @@ def run_one_command(cmd):
 
 
 def run_build_commands(commands):
+  # Before running a set of build commands make sure the common sysroot
+  # headers are installed.  This prevents each sub-process from attempting
+  # to setup the sysroot itself.
+  ensure_sysroot()
   cores = min(len(commands), building.get_num_cores())
   if cores <= 1:
     for command in commands:
@@ -327,7 +331,7 @@ class Library(object):
     return True
 
   def erase(self):
-    shared.Cache.erase_file(self.get_filename())
+    shared.Cache.erase_file(shared.Cache.get_lib_name(self.get_filename()))
 
   def get_path(self):
     """
@@ -335,7 +339,7 @@ class Library(object):
 
     This will trigger a build if this library is not in the cache.
     """
-    return shared.Cache.get(self.get_filename(), self.build)
+    return shared.Cache.get_lib(self.get_filename(), self.build)
 
   def get_files(self):
     """
@@ -943,7 +947,7 @@ class libcxx(NoExceptLibrary, MTLibrary):
   cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
-  src_dir = ['system', 'lib', 'libcxx']
+  src_dir = ['system', 'lib', 'libcxx', 'src']
   src_glob = '**/*.cpp'
   src_glob_exclude = ['locale_win32.cpp', 'thread_win32.cpp', 'support.cpp', 'int128_builtins.cpp']
 
@@ -952,6 +956,9 @@ class libunwind(NoExceptLibrary, MTLibrary):
   name = 'libunwind'
   cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
   src_dir = ['system', 'lib', 'libunwind', 'src']
+  # Without this we can't build libunwind since it will pickup the unwind.h
+  # that is part of llvm (which is not compatible for some reason).
+  includes = [['system', 'lib', 'libunwind', 'include']]
   src_files = ['Unwind-wasm.cpp']
 
   def __init__(self, **kwargs):
@@ -1582,7 +1589,7 @@ class Ports(object):
 
   @staticmethod
   def get_include_dir():
-    dirname = shared.Cache.get_path('include')
+    dirname = shared.Cache.get_include_dir()
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -1883,7 +1890,7 @@ def build_port(port_name, settings):
 def add_ports_cflags(args, settings):
   # Legacy SDL1 port is not actually a port at all but builtin
   if settings.USE_SDL == 1:
-    args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
+    args += ['-Xclang', '-iwithsysroot/include/SDL']
 
   needed = get_needed_ports(settings)
 
@@ -1900,3 +1907,45 @@ def show_ports():
   print('Available ports:')
   for port in ports.ports:
     print('   ', port.show())
+
+
+# Once we require python 3.8 we can use shutil.copytree with
+# dirs_exist_ok=True and remove this function.
+def copytree_exist_ok(src, dest):
+  with utils.chdir(src):
+    for dirname, dirs, files in os.walk('.'):
+      destdir = os.path.join(dest, dirname)
+      utils.safe_ensure_dirs(destdir)
+      for f in files:
+        shared.safe_copy(os.path.join(src, dirname, f), os.path.join(destdir, f))
+
+
+def install_system_headers():
+  install_dirs = {
+    ('include',): '',
+    ('lib', 'compiler-rt', 'include'): '',
+    ('lib', 'libunwind', 'include'): '',
+    ('lib', 'libc', 'musl', 'arch', 'emscripten'): '',
+    ('lib', 'libc', 'musl', 'include'): '',
+    ('lib', 'libcxx', 'include'): os.path.join('c++', 'v1'),
+    ('lib', 'libcxxabi', 'include'): os.path.join('c++', 'v1'),
+  }
+
+  target_include_dir = shared.Cache.get_include_dir()
+  for src, dest in install_dirs.items():
+    src = shared.path_from_root('system', *src)
+    dest = os.path.join(target_include_dir, dest)
+    copytree_exist_ok(src, dest)
+
+  # Create a stamp file that signal the the header have been installed
+  # Removing this file, or running `emcc --clear-cache` or running
+  # `./embuilder build sysroot --force` will cause the re-installation of
+  # the system headers.
+  stamp = shared.Cache.get_path('sysroot_install.stamp')
+  with open(stamp, 'w') as f:
+    f.write('x')
+  return stamp
+
+
+def ensure_sysroot():
+  shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')

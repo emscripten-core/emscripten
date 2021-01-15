@@ -57,6 +57,7 @@ USER_TASKS = [
     'bzip2',
     'cocos2d',
     'freetype',
+    'giflib',
     'harfbuzz',
     'icu',
     'libjpeg',
@@ -129,13 +130,9 @@ def main():
 
   if args.lto:
     shared.Settings.LTO = "full"
-    # Reconfigure the cache dir to reflect the change
-    shared.reconfigure_cache()
 
   if args.pic:
     shared.Settings.RELOCATABLE = 1
-    # Reconfigure the cache dir to reflect the change
-    shared.reconfigure_cache()
 
   if args.force:
     force = True
@@ -156,16 +153,9 @@ def main():
     tasks = SYSTEM_TASKS + USER_TASKS
     auto_tasks = True
   if auto_tasks:
-    skip_tasks = []
-    if shared.Settings.RELOCATABLE:
-      # we don't support PIC + pthreads yet
-      for task in SYSTEM_TASKS + USER_TASKS:
-        if '-mt' in task:
-          skip_tasks.append(task)
-      print('Skipping building of %s, because we don\'t support threads and PIC code.' % ', '.join(skip_tasks))
     # cocos2d: must be ported, errors on
     # "Cannot recognize the target platform; are you targeting an unsupported platform?"
-    skip_tasks += ['cocos2d']
+    skip_tasks = ['cocos2d']
     tasks = [x for x in tasks if x not in skip_tasks]
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
@@ -175,6 +165,10 @@ def main():
       if force:
         library.erase()
       library.get_path()
+    elif what == 'sysroot':
+      if force:
+        shared.Cache.erase_file('sysroot_install.stamp')
+      system_libs.ensure_sysroot()
     elif what == 'struct_info':
       if force:
         shared.Cache.erase_file('generated_struct_info.json')
@@ -193,6 +187,8 @@ def main():
       build_port('vorbis', 'libvorbis.a')
     elif what == 'ogg':
       build_port('ogg', 'libogg.a')
+    elif what == 'giflib':
+      build_port('giflib', 'libgif.a')
     elif what == 'libjpeg':
       build_port('libjpeg', 'libjpeg.a')
     elif what == 'libpng':

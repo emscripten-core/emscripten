@@ -32,7 +32,7 @@ def get(ports, settings, shared):
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + TAG)
     dest_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
 
-    freetype_lib = shared.Cache.get_path('libfreetype.a')
+    freetype_lib = shared.Cache.get_path(shared.Cache.get_lib_name('libfreetype.a'))
     freetype_include = os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')
     freetype_include_dirs = freetype_include + ';' + os.path.join(freetype_include, 'config')
 
@@ -67,7 +67,7 @@ def get(ports, settings, shared):
 
     return os.path.join(dest_path, 'libharfbuzz.a')
 
-  return [shared.Cache.get(get_lib_name(settings), create, what='port')]
+  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):

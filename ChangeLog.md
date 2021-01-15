@@ -20,6 +20,14 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Emscripten now builds a complete sysroot inside the EM_CACHE directory.
+  This includes the system headers which get copied into place there rather
+  than adding a sequence of extra include directories.
+
+2.0.12: 01/09/2021
+------------------
+- `emscripten/vr.h` and other remnants of WebVR support removed. (#13210, which
+  is a followup to #10460)
 - Stop overriding CMake default flags based on build type. This will 
   result in builds that are more like CMake does on other platforms. You
   may notice that `RelWithDebInfo` will now include debug info (it did not

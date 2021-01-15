@@ -36,7 +36,7 @@ def get(ports, settings, shared):
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
     return final
 
-  return [shared.Cache.get(libname, create)]
+  return [shared.Cache.get_lib(libname, create)]
 
 
 def clear(ports, settings, shared):
