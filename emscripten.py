@@ -163,9 +163,9 @@ def update_settings_glue(metadata, DEBUG):
 
 
 def apply_static_code_hooks(forwarded_json, code):
-  code = code.replace('{{{ ATINITS }}}', str(forwarded_json['ATINITS']))
-  code = code.replace('{{{ ATMAINS }}}', str(forwarded_json['ATMAINS']))
-  code = code.replace('{{{ ATEXITS }}}', str(forwarded_json['ATEXITS']))
+  code = code.replace('<<< ATINITS >>>', str(forwarded_json['ATINITS']))
+  code = code.replace('<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+  code = code.replace('<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
   return code
 
 

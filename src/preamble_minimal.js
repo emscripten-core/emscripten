@@ -55,7 +55,7 @@ if (Module['doWasm2JS']) {
 
 #if SINGLE_FILE && WASM == 1 && !WASM2JS
 #include "base64Decode.js"
-Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
+Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
 #include "runtime_functions.js"
