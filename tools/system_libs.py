@@ -528,7 +528,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super(MTLibrary, self).get_cflags()
     if self.is_mt:
-      cflags += ['-s', 'USE_PTHREADS=1', '-DUSE_THREADS']
+      cflags += ['-s', 'USE_PTHREADS']
     return cflags
 
   def get_base_name(self):
