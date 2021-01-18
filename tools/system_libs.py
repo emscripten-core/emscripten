@@ -754,7 +754,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
-        filenames=['extras.c', 'wasi-helpers.c'])
+        filenames=['extras.c', 'wasi-helpers.c', 'emscripten_pthread.c'])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
@@ -772,6 +772,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_yield.c',
           'call_once.c',
         ])
+
+    libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')
 
     if self.is_mt:
       libc_files += files_in_path(
