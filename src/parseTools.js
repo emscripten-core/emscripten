@@ -1058,8 +1058,7 @@ function makeRetainedCompilerSettings() {
   return ret;
 }
 
-// In wasm, the heap size must be a multiple of 64KB.
-// In asm.js, it must be a multiple of 16MB.
+// In wasm, the heap size must be a multiple of 64KiB.
 var WASM_PAGE_SIZE = 65536;
 
 // Page size reported by some POSIX calls, mostly filesystem. This does not
