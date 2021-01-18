@@ -1931,6 +1931,10 @@ def install_system_headers():
     ('include',): '',
     ('lib', 'compiler-rt', 'include'): '',
     ('lib', 'libunwind', 'include'): '',
+    # Copy the generic arch files first then
+    ('lib', 'libc', 'musl', 'arch', 'generic'): '',
+    # Then overlay the emscripten directory on top.
+    # This mimicks how musl itself installs its headers.
     ('lib', 'libc', 'musl', 'arch', 'emscripten'): '',
     ('lib', 'libc', 'musl', 'include'): '',
     ('lib', 'libcxx', 'include'): os.path.join('c++', 'v1'),

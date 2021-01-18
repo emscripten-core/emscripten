@@ -1,5 +1,4 @@
-struct msghdr
-{
+struct msghdr {
 	void *msg_name;
 	socklen_t msg_namelen;
 	struct iovec *msg_iov;
@@ -9,8 +8,7 @@ struct msghdr
 	int msg_flags;
 };
 
-struct cmsghdr
-{
+struct cmsghdr {
 	socklen_t cmsg_len;
 	int cmsg_level;
 	int cmsg_type;

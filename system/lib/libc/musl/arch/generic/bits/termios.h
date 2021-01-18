@@ -1,5 +1,4 @@
-struct termios
-{
+struct termios {
 	tcflag_t c_iflag;
 	tcflag_t c_oflag;
 	tcflag_t c_cflag;
@@ -42,6 +41,7 @@ struct termios
 #define IXANY   0004000
 #define IXOFF   0010000
 #define IMAXBEL 0020000
+#define IUTF8   0040000
 
 #define OPOST  0000001
 #define OLCUC  0000002
@@ -74,9 +74,6 @@ struct termios
 #define VTDLY  0040000
 #define VT0    0000000
 #define VT1    0040000
-
-/* ?? */
-#define XTABS  0014000
 
 #define B0       0000000
 #define B50      0000001
@@ -111,8 +108,6 @@ struct termios
 #define B3500000 0010016
 #define B4000000 0010017
 
-#define CBAUD    0010017
-
 #define CSIZE  0000060
 #define CS5    0000000
 #define CS6    0000020
@@ -125,8 +120,6 @@ struct termios
 #define HUPCL  0002000
 #define CLOCAL 0004000
 
-#define CRTSCTS  020000000000
-
 #define ISIG   0000001
 #define ICANON 0000002
 #define ECHO   0000010
@@ -136,15 +129,6 @@ struct termios
 #define NOFLSH 0000200
 #define TOSTOP 0000400
 #define IEXTEN 0100000
-
-/* Extensions? */
-#define CBAUDEX 0010000
-#define ECHOCTL 0001000
-#define ECHOPRT 0002000
-#define ECHOKE 0004000
-#define FLUSHO 0010000
-#define PENDIN 0040000
-#define EXTPROC 0200000
 
 #define TCOOFF 0
 #define TCOON  1
@@ -158,3 +142,23 @@ struct termios
 #define TCSANOW   0
 #define TCSADRAIN 1
 #define TCSAFLUSH 2
+
+#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+#define EXTA    0000016
+#define EXTB    0000017
+#define CBAUD   0010017
+#define CBAUDEX 0010000
+#define CIBAUD  002003600000
+#define CMSPAR  010000000000
+#define CRTSCTS 020000000000
+
+#define XCASE   0000004
+#define ECHOCTL 0001000
+#define ECHOPRT 0002000
+#define ECHOKE  0004000
+#define FLUSHO  0010000
+#define PENDIN  0040000
+#define EXTPROC 0200000
+
+#define XTABS  0014000
+#endif

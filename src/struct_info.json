@@ -882,7 +882,7 @@
         ]
     },
     {
-        "file": "bits/mman.h",
+        "file": "sys/mman.h",
         "defines": [
             "MAP_ANONYMOUS",
             "MAP_FAILED",
