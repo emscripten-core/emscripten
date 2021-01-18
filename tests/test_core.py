@@ -4949,6 +4949,9 @@ main( int argv, char ** argc ) {
     self.do_runf(path_from_root('tests', 'stat', 'test_stat.c'), 'success')
     self.verify_in_strict_mode('test_stat.js')
 
+  def test_fstatat(self):
+    self.do_runf(path_from_root('tests', 'stat', 'test_fstatat.c'), 'success')
+
   def test_stat_chmod(self):
     self.do_runf(path_from_root('tests', 'stat', 'test_chmod.c'), 'success')
 

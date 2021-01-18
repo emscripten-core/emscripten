@@ -3762,15 +3762,15 @@ int main(int argc, char **argv) {
     const char *path = argv[i];
     struct stat path_stat;
     if (stat(path, &path_stat) != 0) {
-      printf("Failed to stat path: %s; errno=%d\n", path, errno);
+      printf("Failed to stat path: '%s'; errno=%d\n", path, errno);
     } else {
-      printf("ok on %s\n", path);
+      printf("stat success on '%s'\n", path);
     }
   }
 }
     ''')
-    self.do_runf('src.cpp', r'''Failed to stat path: /a; errno=44
-Failed to stat path: ; errno=44
+    self.do_runf('src.cpp', r'''Failed to stat path: '/a'; errno=44
+Failed to stat path: ''; errno=44
 ''', args=['/a', ''])
 
   def test_symlink_silly(self):
