@@ -341,7 +341,7 @@ public:
     std::shared_ptr<StringHolder> get() const {
         return ptr_;
     }
-    
+
     void set(std::shared_ptr<StringHolder> p) {
         ptr_ = p;
     }
@@ -988,11 +988,11 @@ public:
     UniquePtrToConstructor(std::unique_ptr<int> p)
         : value(*p)
     {}
-    
+
     int getValue() const {
         return value;
     }
-    
+
 private:
     int value;
 };
@@ -1412,7 +1412,7 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
             self.AbstractClass::passVal(v);
         }))
         ;
-    
+
     function("getAbstractClass", &getAbstractClass);
     function("callAbstractMethod", &callAbstractMethod);
     function("callOptionalMethod", &callOptionalMethod);
@@ -1500,7 +1500,7 @@ public:
     ~CustomSmartPtr() {
         verify();
         std::fill(d_, d_ + N_, Deleted);
-        
+
         if (ptr_ && --ptr_->refcount == 0) {
             delete ptr_;
         }
@@ -1751,6 +1751,16 @@ ConstructFromFunctor<I> construct_from_functor_mixin(const val& v, int i)
     return {v, i};
 }
 
+struct ConstructFromFunction {
+  bool optionA;
+  ConstructFromFunction(bool optionA_): optionA{optionA_} {};
+};
+
+ConstructFromFunction* ConstructFromFunctionConstructor(emscripten::val value) {
+  bool optionA = (value.as<bool>() && value["optionA"].as<bool>());
+  return new ConstructFromFunction(optionA);
+}
+
 EMSCRIPTEN_BINDINGS(tests) {
     register_vector<int>("IntegerVector");
     register_vector<char>("CharVector");
@@ -1873,6 +1883,10 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("getA", &ConstructFromFunctor<2>::getA)
         ;
 
+    class_<ConstructFromFunction>("ConstructFromFunction")
+        .constructor<emscripten::val>(&ConstructFromFunctionConstructor)
+        ;
+
     class_<ValHolder>("ValHolder")
         .smart_ptr<std::shared_ptr<ValHolder>>("std::shared_ptr<ValHolder>")
         .constructor<val>()
@@ -1929,7 +1943,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("get", &StringHolder::get)
         .function("get_const_ref", &StringHolder::get_const_ref)
         ;
-    
+
     class_<SharedPtrHolder>("SharedPtrHolder")
         .constructor<>()
         .function("get", &SharedPtrHolder::get)
@@ -2002,7 +2016,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .property("member", &SecondBase::member)
         .property("secondBaseMember", &SecondBase::secondBaseMember)
         ;
-    
+
 
     class_<DerivedHolder>("DerivedHolder")
         .constructor<>()
@@ -2017,7 +2031,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .constructor<>()
         .function("getClassName", &SiblingDerived::getClassName)
         ;
-    
+
     class_<MultiplyDerived, base<Base>>("MultiplyDerived")
         .smart_ptr<std::shared_ptr<MultiplyDerived>>("shared_ptr<MultiplyDerived>")
         .constructor<>()
@@ -2094,7 +2108,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .constructor<>()
         .function("getClassName", &PolyDiamondBase::getClassName)
         ;
-    
+
     class_<PolyDiamondDerived>("PolyDiamondDerived")
         .smart_ptr<std::shared_ptr<PolyDiamondDerived>>("shared_ptr<PolyDiamondDerived>")
         .constructor<>()
@@ -2339,10 +2353,10 @@ public:
 class MultipleOverloads {
 public:
     MultipleOverloads() {}
-    
+
     int value;
     static int staticValue;
-    
+
     int Func(int i) {
         assert(i == 10);
         value = 1;
@@ -2358,7 +2372,7 @@ public:
     int WhichFuncCalled() const {
         return value;
     }
-    
+
     static int StaticFunc(int i) {
         assert(i == 10);
         staticValue = 1;
@@ -2381,7 +2395,7 @@ int MultipleOverloads::staticValue = 0;
 class MultipleOverloadsDerived : public MultipleOverloads {
 public:
     MultipleOverloadsDerived() {}
-        
+
     int Func(int i, int j, int k) {
         assert(i == 30);
         assert(j == 30);
@@ -2397,7 +2411,7 @@ public:
         value = 4;
         return 4;
     }
-    
+
     static int StaticFunc(int i, int j, int k) {
         assert(i == 30);
         assert(j == 30);
@@ -2476,14 +2490,14 @@ EMSCRIPTEN_BINDINGS(overloads) {
         .constructor<int, int, int>()
         .function("WhichCtorCalled", &MultipleCtors::WhichCtorCalled)
         ;
-        
+
     class_<MultipleSmartCtors>("MultipleSmartCtors")
         .smart_ptr<std::shared_ptr<MultipleSmartCtors>>("shared_ptr<MultipleSmartCtors>")
         .constructor(&std::make_shared<MultipleSmartCtors, int>)
         .constructor(&std::make_shared<MultipleSmartCtors, int, int>)
         .function("WhichCtorCalled", &MultipleSmartCtors::WhichCtorCalled)
         ;
-        
+
     class_<MultipleOverloads>("MultipleOverloads")
         .constructor<>()
         .function("Func", select_overload<int(int)>(&MultipleOverloads::Func))
@@ -2560,7 +2574,7 @@ EMSCRIPTEN_BINDINGS(order) {
         .field("first", &OrderedStruct::first)
         .field("second", &OrderedStruct::second)
         ;
-    
+
     class_<SecondElement>("SecondElement")
         ;
 
@@ -2644,7 +2658,7 @@ EMSCRIPTEN_BINDINGS(incomplete) {
 class Noncopyable {
     Noncopyable(const Noncopyable&) = delete;
     Noncopyable& operator=(const Noncopyable&) = delete;
-    
+
 public:
     Noncopyable() {}
     Noncopyable(Noncopyable&& other) {
@@ -2709,7 +2723,7 @@ EMSCRIPTEN_BINDINGS(constants) {
     constant("VALUE_OBJECT_CONSTANT", sv);
 }
 
-class DerivedWithOffset : public DummyDataToTestPointerAdjustment, public Base {    
+class DerivedWithOffset : public DummyDataToTestPointerAdjustment, public Base {
 };
 
 std::shared_ptr<Base> return_Base_from_DerivedWithOffset(std::shared_ptr<DerivedWithOffset> ptr) {
