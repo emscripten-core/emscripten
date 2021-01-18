@@ -569,8 +569,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + \
-        ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
+    cmd = compiler + [filename, '-o', output, '-I.'] + self.get_emcc_args(main_file=True) + \
         ['-I' + include for include in includes] + \
         libraries
 
