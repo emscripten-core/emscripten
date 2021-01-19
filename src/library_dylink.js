@@ -514,7 +514,7 @@ var LibraryDylink = {
       if (flags.loadAsync) {
         if (binary instanceof WebAssembly.Module) {
           var instance = new WebAssembly.Instance(binary, info);
-          return Promise.resolve(postInstantiation(instance))
+          return Promise.resolve(postInstantiation(instance));
         }
         return WebAssembly.instantiate(binary, info).then(function(result) {
           return postInstantiation(result.instance);
