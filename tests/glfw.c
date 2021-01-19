@@ -50,12 +50,12 @@ int main(void)
   emscripten_set_main_loop (Iteration, 0, 1);
   Shut_Down(0);
 }
- 
+
 void Init()
 {
   const int window_width = 800,
            window_height = 600;
- 
+
   if (glfwInit() != GL_TRUE)
     Shut_Down(1);
 
@@ -71,7 +71,7 @@ void Init()
                   0, 0, 0, GLFW_WINDOW) != GL_TRUE)
     Shut_Down(1);
   glfwSetWindowTitle("The GLFW Window");
- 
+
   glfwSetKeyCallback(OnKeyPressed);
   glfwSetCharCallback(OnCharPressed);
   glfwSetWindowCloseCallback(OnClose);
@@ -85,23 +85,23 @@ void Init()
   glfwSetMouseWheelCallback(OnMouseWheel);
   glfwSetMousePosCallback(OnMouseMove);
   glfwSetMouseButtonCallback(OnMouseClick);
-  
+
   // set the projection matrix to a normal frustum with a max depth of 50
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   float aspect_ratio = ((float)window_height) / window_width;
   glFrustum(.5, -.5, -.5 * aspect_ratio, .5 * aspect_ratio, 1, 50);
   glMatrixMode(GL_MODELVIEW);
-  
+
   PullInfo();
 }
- 
+
 void Shut_Down(int return_code)
 {
   glfwTerminate();
   exit(return_code);
 }
- 
+
 void Iteration()
 {
     // calculate time elapsed, and the amount by which stuff rotates
@@ -114,7 +114,7 @@ void Iteration()
       rotate_y -= delta_rotate;
     // z axis always rotates
     rotate_z += delta_rotate;
- 
+
     // clear the buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // draw the figure
@@ -128,7 +128,7 @@ void Iteration()
     // swap back and front buffers
     glfwSwapBuffers();
 }
- 
+
 void Draw(void)
 {
   int width, height, x;
@@ -360,64 +360,64 @@ void OnMouseWheel( int pos ){
 
 void PullInfo(){
   printf("================================================================================\n");
-  
+
   int major, minor, rev;
   glfwGetVersion(&major, &minor, &rev);
   printf("GLFW version is %i.%i.%i\n", major, minor, rev);
-  
+
   int width, height;
   glfwGetWindowSize(&width, &height);
   printf("Window size is %i %i\n", width, height);
-  
+
   int status = glfwGetKey(GLFW_KEY_LCTRL);
   if(status == GLFW_PRESS)
     printf("Left control is pressed\n");
   else
     printf("Left control is released\n");
-    
+
   status = glfwGetMouseButton(GLFW_MOUSE_BUTTON_1);
   if(status == GLFW_PRESS)
     printf("Mouse button 1 is pressed\n");
   else
     printf("Mouse button 1 is released\n");
-    
+
   int x, y;
   glfwGetMousePos(&x, &y);
   printf("Mouse position is %i %i\n", x, y);
-  
+
   int wheel = glfwGetMouseWheel();
   printf("Mouse wheel pos is %i\n", wheel);
-  
+
   double time = glfwGetTime();
   printf("Time is %f\n", time);
-  
+
   glfwGetGLVersion(&major, &minor, &rev);
   printf("GL version is %i.%i.%i\n", major, minor, rev);
-  
+
   int proc = glfwGetNumberOfProcessors();
   printf("%i processors are available\n", proc);
-  
+
   unsigned int i;
   for(i = 0; i<nb_params; i++)
     printf(" - %-27s : %i\n", GetParamName(params[i]), glfwGetWindowParam(params[i]));
-  
+
   const char* extension = "WEBGL_compressed_texture_s3tc";
-  printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");  
-  
+  printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");
+
   extension = "GL_EXT_framebuffer_object";
   printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");
-  
+
   extension = "glBindBuffer";
   void* proc_addr = glfwGetProcAddress(extension);
   printf("'%s' extension proc address is %p.\n", extension, proc_addr);
-  
+
   printf("Sleeping 1 sec...\n");
   glfwSleep(1);
   printf("...Done.\n");
-  
+
   printf("================================================================================\n");
-  
-#ifdef REPORT_RESULT  
+
+#ifdef REPORT_RESULT
   REPORT_RESULT(1);
 #endif
 }

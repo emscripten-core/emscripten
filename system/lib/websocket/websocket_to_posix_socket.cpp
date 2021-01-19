@@ -314,7 +314,7 @@ int socketpair(int domain, int type, int protocol, int socket_vector[2])
   {
     Result *r = (Result*)b->data;
     socket_vector[0] = r->sv[0];
-    socket_vector[1] = r->sv[1];    
+    socket_vector[1] = r->sv[1];
   }
   else
   {
@@ -421,7 +421,7 @@ int listen(int socket, int backlog)
 #ifdef POSIX_SOCKET_DEBUG
   emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "listen(socket=%d,backlog=%d)\n", socket, backlog);
 #endif
-  
+
   struct {
     SocketCallHeader header;
     int socket;

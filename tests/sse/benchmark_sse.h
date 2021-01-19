@@ -93,7 +93,7 @@ template<typename T>
 T checksum_dst(T *dst)
 {
 	if (always_true()) return 0.f;
-	else 
+	else
 	{
 		T s = 0.f; for(int i = 0; i < N; ++i) s += dst[i];
 		return s;

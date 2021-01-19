@@ -11,3 +11,9 @@ system/ linguist-vendored
 
 AUTHORS merge=union
 ChangeLog.md merge=union
+
+# line endings
+* text=auto eol=lf
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
+*.{vcxproj,vcxproj.filters} text eol=crlf

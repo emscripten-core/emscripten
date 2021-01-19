@@ -40,7 +40,7 @@ int main() {
   glfwSetErrorCallback(error_callback);
   if (!glfwInit())
   {
-    printf("Could not create window. Test failed.\n");      
+    printf("Could not create window. Test failed.\n");
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);
 #endif
@@ -50,7 +50,7 @@ int main() {
   g_window = glfwCreateWindow(600, 450, "GLFW pointerlock test", NULL, NULL);
   if (!g_window)
   {
-    printf("Could not create window. Test failed.\n");      
+    printf("Could not create window. Test failed.\n");
 #ifdef REPORT_RESULT
     REPORT_RESULT(result);
 #endif

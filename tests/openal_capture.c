@@ -134,12 +134,12 @@ void iter() {
         if(state != AL_STOPPED)
             return;
 #endif
-   
+
         alDeleteSources(1, &app.source);
         alDeleteBuffers(1, &app.buffer);
         alcMakeContextCurrent(NULL);
         alcDestroyContext(app.context);
-        alcCloseDevice(app.playback_device); 
+        alcCloseDevice(app.playback_device);
         end_test(EXIT_SUCCESS);
     }
 
@@ -149,10 +149,10 @@ void iter() {
     // take samples when the buffer is at least filled for 1/3 of its size
     if (ncaptured < app.buffer_size / 3)
         return;
-    
+
     const int target = framesForDuration(app.duration);
     ALCint readSize = ncaptured;
-    
+
     // check if there are more frames than what's needed
     if (app.captured + readSize > target)
         readSize = target - app.captured;
@@ -163,21 +163,21 @@ void iter() {
         fprintf(stderr, "alcCaptureSamples() yielded an error, but wasn't supposed to! (%x, %s)\n", err, alcGetString(NULL, err));
         end_test(EXIT_FAILURE);
     }
-    
+
     app.captured += readSize;
-    
+
     if (app.captured < target)
         return;
     else if (app.captured > target) {
         fprintf(stderr, "Captured frames exeedes expectations!\n");
         end_test(EXIT_FAILURE);
     }
-    
-    
+
+
     // This was here to see if alcCaptureSamples() would reset the number of
     // available captured samples as a side-effect.
     // Turns out, it does (on Linux with OpenAL-Soft).
-    // That's important to know because this behaviour, while reasonably 
+    // That's important to know because this behaviour, while reasonably
     // expected, isn't documented anywhere.
     /*
     {
@@ -267,13 +267,13 @@ void ignite() {
     app.capture_device = alcCaptureOpenDevice(
         app.capture_device_name, app.sample_rate, app.format, app.buffer_size
     );
-    
+
     if(!app.capture_device) {
         ALCenum err = alcGetError(app.capture_device);
-        fprintf(stderr, 
+        fprintf(stderr,
             "alcCaptureOpenDevice(\"%s\", sample_rate=%u, format=%s, "
-            "buffer_size=%u) failed with ALC error %x (%s)\n", 
-            app.capture_device_name, 
+            "buffer_size=%u) failed with ALC error %x (%s)\n",
+            app.capture_device_name,
             (unsigned) app.sample_rate, alformat_string(app.format),
             (unsigned) app.buffer_size,
             (unsigned) err, alcGetString(NULL, err)
@@ -299,7 +299,7 @@ void ignite() {
         fprintf(stderr, "Out of memory!\n");
         end_test(EXIT_FAILURE);
     }
-    
+
     alcCaptureStart(app.capture_device);
 
 #ifdef __EMSCRIPTEN__

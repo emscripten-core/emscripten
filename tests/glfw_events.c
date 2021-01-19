@@ -215,12 +215,12 @@
                 canvas.dispatchEvent(keyboardEvent);
             };
         ));
-        
+
         glfwInit();
 
         #if USE_GLFW == 2
             glfwOpenWindow(WIDTH, HEIGHT, 5, 6, 5, 0, 0, 0, GLFW_WINDOW); // != GL_TRUE)
-            
+
             glfwSetMousePosCallback(on_mouse_move);
             glfwSetCharCallback(on_char_callback);
         #else

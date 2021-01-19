@@ -60,7 +60,7 @@ void SendHandshake(int fd, const char *request)
   printf("hashing key: \"%s\"\n", key);
   SHA1(sha1, key, (int)strlen(key));
 
-  char handshakeMsg[] = 
+  char handshakeMsg[] =
     "HTTP/1.1 101 Switching Protocols\r\n"
     "Upgrade: websocket\r\n"
     "Connection: Upgrade\r\n"

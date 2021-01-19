@@ -59,7 +59,7 @@ void RunTest(int testVariant)
 
     int loc = glGetUniformLocation(program, "colors");
     assert(loc != -1);
-    // In previous Emscripten GL layer code, calling glGetUniformLocation would do extra caching operations that interacts how glUniform** after that will work, 
+    // In previous Emscripten GL layer code, calling glGetUniformLocation would do extra caching operations that interacts how glUniform** after that will work,
     // so to exhibit extra issues in old code (and to keep new code from regressing), must test both with and without excess glGetUniformLocation calls.
     if ((testVariant&1) != 0)
     {

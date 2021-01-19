@@ -84,7 +84,7 @@ EM_BOOL keyup_callback_on_application_main_thread(int eventType, const Emscripte
     if (!saw_keydown_event_on_enter_key_on_main_browser_thread)
     {
       printf("Test failed! KeyUp event came through, but a KeyDown event should have first been processed on the main browser thread!\n");
-      ReportResult(12347); // FAIL      
+      ReportResult(12347); // FAIL
     }
     if (saw_keypress_event_on_enter_key)
     {

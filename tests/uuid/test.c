@@ -25,7 +25,7 @@ int isUUID(char* p, int upper) {
         return 1;
     } else {
         return 0;
-    }   
+    }
 }
 
 int main() {

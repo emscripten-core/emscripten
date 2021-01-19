@@ -803,7 +803,7 @@ function getBinaryPromise() {
     }
 #endif
   }
-    
+
   // Otherwise, getBinary should be able to get it synchronously
   return Promise.resolve().then(function() { return getBinary(wasmBinaryFile); });
 }

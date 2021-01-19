@@ -11,7 +11,7 @@
  *
  *  - Pointers are 32-bit.
  *  - Maximum individual allocation size is 2GB-1 bytes (2147483647 bytes)
- *  - sbrk() is used to claim new memory (sbrk handles geometric/linear 
+ *  - sbrk() is used to claim new memory (sbrk handles geometric/linear
  *  - overallocation growth)
  *  - sbrk() can be used by other code outside emmalloc.
  *  - sbrk() is very fast in most cases (internal wasm call).
@@ -647,9 +647,9 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   // Next, we need to decide whether this region is so large that it should be split into two regions,
   // one representing the newly used memory area, and at the high end a remaining leftover free area.
   // This splitting to two is done always if there is enough space for the high end to fit a region.
-  // Carve 'size' bytes of payload off this region. So, 
+  // Carve 'size' bytes of payload off this region. So,
   // [sz prev next sz]
-  // becomes 
+  // becomes
   // [sz payload sz] [sz prev next sz]
   if (sizeof(Region) + REGION_HEADER_SIZE + size <= freeRegion->size)
   {
@@ -1227,7 +1227,7 @@ struct mallinfo emmalloc_mallinfo()
 
   // Walk through all the heap blocks to report the following data:
   // The "highwater mark" for allocated space—that is, the maximum amount of
-  // space that was ever allocated. Emmalloc does not want to pay code to 
+  // space that was ever allocated. Emmalloc does not want to pay code to
   // track this, so this is only reported from current allocation data, and
   // may not be accurate.
   info.usmblks = 0;

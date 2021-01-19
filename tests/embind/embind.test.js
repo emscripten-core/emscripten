@@ -436,7 +436,7 @@ module({
             var e = cm.emval_test_take_and_return_std_string((new Int8Array([65, 66, 67, 68])).buffer);
             assert.equal('ABCD', e);
         });
-        
+
         test("can pass Uint8Array to std::basic_string<unsigned char>", function() {
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8Array([65, 66, 67, 68]));
             assert.equal('ABCD', e);
@@ -470,7 +470,7 @@ module({
             var e = cm.emval_test_take_and_return_std_string(string);
             assert.equal(string, e);
         });
-        
+
         var utf16TestString = String.fromCharCode(10) +
             String.fromCharCode(1234) +
             String.fromCharCode(2345) +
@@ -512,12 +512,12 @@ module({
                 cm.force_memory_growth();
                 assert.equal("get_literal_wstring", cm.get_literal_wstring());
             });
-            
+
             test("can access a literal u16string after a memory growth", function() {
                 cm.force_memory_growth();
                 assert.equal("get_literal_u16string", cm.get_literal_u16string());
             });
-            
+
             test("can access a literal u32string after a memory growth", function() {
                 cm.force_memory_growth();
                 assert.equal("get_literal_u32string", cm.get_literal_u32string());
@@ -2013,7 +2013,7 @@ module({
             assert.equal(10, instance.property);
             instance.delete();
         });
-        
+
         test("pass derived object to c++", function() {
             var Implementation = cm.AbstractClass.extend("Implementation", {
                 abstractMethod: function() {

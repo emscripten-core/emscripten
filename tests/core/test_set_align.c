@@ -7,16 +7,16 @@
 
 #include <stdio.h>
 #include <emscripten.h>
- 
+
 volatile char data[16];
- 
+
 __attribute__((noinline)) void *get_aligned(int align)
 {
   char *ptr = (char*)(((int)(data + 7)) & ~7); // Make 8-byte aligned
   ptr += align; // Now 'align' aligned
   return (void*)ptr;
 }
- 
+
 int main()
 {
   emscripten_align4_double *d4 = (emscripten_align4_double*)get_aligned(4);

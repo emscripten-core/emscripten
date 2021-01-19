@@ -36,10 +36,10 @@ int loop1()
 int loop2()
 {
   printf("loop2\n");
-  
+
   unsigned i;
   int r = 0;
-   
+
   // method 2: SDL_PumpEvents
   SDL_PumpEvents();
 
@@ -53,7 +53,7 @@ int loop2()
 int alphakey()
 {
   printf("alpha\n");
-  
+
   unsigned i;
   int r = 0;
 
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window *window;
   SDL_CreateWindow("window", 0, 0, 600, 450, 0);
-    
+
   emscripten_run_script("keydown(37);"); // left
   result += loop1();
   emscripten_run_script("keydown(39);"); // right

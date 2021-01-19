@@ -11,7 +11,7 @@ const char *str = "this is static data";
 
 int main() {
 #ifdef REPORT_RESULT
-  REPORT_RESULT(strlen(str + 
+  REPORT_RESULT(strlen(str +
     // throw off optimization
     (int)(emscripten_get_now() / 10000.0)));
 #endif

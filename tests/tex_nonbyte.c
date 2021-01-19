@@ -113,11 +113,11 @@ int main(int argc, char *argv[])
         printf("Unable to set video mode: %s\n", SDL_GetError());
         return 1;
     }
-    
+
     // Set the OpenGL state after creating the context with SDL_SetVideoMode
 
     glClearColor( 0, 0, 0, 0 );
-    
+
 #ifndef __EMSCRIPTEN__
     glEnable( GL_TEXTURE_2D ); // Need this to display a texture XXX unnecessary in OpenGL ES 2.0/WebGL
 #endif
@@ -133,17 +133,17 @@ int main(int argc, char *argv[])
 
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity();
-    
+
     // Load the OpenGL texture
 
     GLuint texture; // Texture object handle
-  
+
     // Have OpenGL generate a texture object handle for us
     glGenTextures( 1, &texture );
 
     // Bind the texture object
     glBindTexture( GL_TEXTURE_2D, texture );
-    
+
     // Set the texture's stretching properties
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
@@ -155,12 +155,12 @@ int main(int argc, char *argv[])
         pixels[w*y + x] = ((x*32)/w) | ((((w-x)*(h-y)*64)/(w*h)) << 5) | (((y*32)/h) << 11);
 
     // Edit the texture object's image data using the information SDL_Surface gives us
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, 
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, w, h, 0,
                   GL_RGB, GL_UNSIGNED_SHORT_5_6_5, pixels );
-    
+
     // Clear the screen before drawing
     glClear( GL_COLOR_BUFFER_BIT );
-    
+
     shaders();
 
     // Bind the texture to which subsequent calls refer to
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
     glDisableClientState(GL_VERTEX_ARRAY);
 
     SDL_GL_SwapBuffers();
-    
+
 #ifndef __EMSCRIPTEN__
     // Wait for 3 seconds to give us a chance to see the image
     SDL_Delay(3000);
@@ -199,9 +199,9 @@ int main(int argc, char *argv[])
 
     // Now we can delete the OpenGL texture and close down SDL
     glDeleteTextures( 1, &texture );
-    
+
     SDL_Quit();
-    
+
     return 0;
 }
 

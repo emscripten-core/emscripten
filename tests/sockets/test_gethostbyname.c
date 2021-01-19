@@ -26,7 +26,7 @@ int main() {
   const char *res;
   char buffer[2048];
   int err;
-  
+
   // gethostbyname_r calls the same stuff as gethostbyname, so we'll test the
   // more complicated one.
   // resolve the hostname to an actual address

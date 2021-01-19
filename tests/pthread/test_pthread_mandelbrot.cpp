@@ -226,7 +226,7 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
             __m128 diverged = _mm_cmpgt_ps(len, four);
             __m128 divergedNow = _mm_and_ps(diverged, oldIterating);
             oldIterating = _mm_andnot_ps(divergedNow, oldIterating);
-            //__m128 diverged = _mm_cmpge_ps(len, _mm_set1_ps(0)); 
+            //__m128 diverged = _mm_cmpge_ps(len, _mm_set1_ps(0));
             //__m128 old = _mm_loadu_ps((float*)d+X);
 
             if (any_ps(divergedNow))
@@ -433,9 +433,9 @@ void main_tick()
           break;
         case SDL_KEYUP:
           switch (event.key.keysym.sym) {
-            case SDLK_RIGHT: 
+            case SDLK_RIGHT:
             case SDLK_LEFT: hScroll = 0.f; break;
-            case SDLK_DOWN: 
+            case SDLK_DOWN:
             case SDLK_UP: vScroll = 0.f; break;
             case SDLK_a:
             case SDLK_z: zoom = 0.f; break;

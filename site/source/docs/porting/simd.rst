@@ -1017,7 +1017,7 @@ The following table highlights the availability and expected performance of diff
 Only the 128-bit wide instructions from AVX instruction set are available. 256-bit wide AVX instructions are not provided.
 
 
-====================================================== 
+======================================================
 Compiling SIMD code targeting ARM NEON instruction set
 ======================================================
 
@@ -1071,9 +1071,9 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
      - ⚫ Not implemented, will trigger compiler error
    * - vaddv
      - ⚫ Not implemented, will trigger compiler error
-   * - vaddw 
+   * - vaddw
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vand 
+   * - vand
      - native
    * - vbic
      - ⚫ Not implemented, will trigger compiler error
@@ -1101,13 +1101,13 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
      - ⚫ Not implemented, will trigger compiler error
    * - vclt
      - native
-   * - vcltz 
+   * - vcltz
      - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcnt
      - ⚫ Not implemented, will trigger compiler error
    * - vclz
      - ⚫ Not implemented, will trigger compiler error
-   * - vcombine 
+   * - vcombine
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vcreate
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1145,7 +1145,7 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
      - native
    * - vminv
      - ⚫ Not implemented, will trigger compiler error
-   * - vmla 
+   * - vmla
      - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmlal
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1157,9 +1157,9 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
      - native
    * - vmul
      - native
-   * - vmul_n 
+   * - vmul_n
      - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
-   * - vmull 
+   * - vmull
      - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_n
      - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
@@ -1177,7 +1177,7 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpadd
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vpaddl 
+   * - vpaddl
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpmax
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1189,11 +1189,11 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
      - ⚫ Not implemented, will trigger compiler error
    * - vqabsb
      - ⚫ Not implemented, will trigger compiler error
-   * - vqadd 
+   * - vqadd
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vqaddb
      - ⚫ Not implemented, will trigger compiler error
-   * - vqdmulh  
+   * - vqdmulh
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqneg
      - ⚫ Not implemented, will trigger compiler error

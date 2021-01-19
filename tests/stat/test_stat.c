@@ -32,7 +32,7 @@ void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   struct utimbuf t = {1200000000, 1200000000};
-  
+
   mkdir("folder", 0777);
   create_file("folder/file", "abcdef", 0777);
   symlink("file", "folder/file-link");

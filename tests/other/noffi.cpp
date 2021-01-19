@@ -23,7 +23,7 @@ uint64_t getbigint(){
     return 1152921504606846975 + ran;
 }
 int main()
-{   
+{
     float safeY = 0.0f;
     uint64_t mybig = 0;
 

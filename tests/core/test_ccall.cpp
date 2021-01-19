@@ -16,8 +16,8 @@ const char *get_string() { return "hello world"; }
 void print_int(int x) { printf("%d\n", x); }
 void print_float(float x) { printf("%.2f\n", x); }
 void print_string(char *x) { printf("%s\n", x); }
-void print_bool(bool x) { 
-  if (x) printf("true\n"); 
+void print_bool(bool x) {
+  if (x) printf("true\n");
   else if (!x) printf("false\n");
 }
 int multi(int x, float y, int z, char *str) {

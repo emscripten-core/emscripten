@@ -64,7 +64,7 @@ int main()
 {
     // Short non-ascii name
     doPositiveTest(u8"абвгд");
-    
+
     // Long non-ascii name
     const auto longStr = "abcde" + makeLongStr(u8"абвгд", 25);
     assert(longStr.length() == 255);

@@ -14,9 +14,9 @@
 #include "test_webgl_context_attributes_common.c"
 
 int main(int argc, char *argv[]) {
-    
-    checkContextAttributesSupport(); 
-    
+
+    checkContextAttributesSupport();
+
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -29,14 +29,14 @@ int main(int argc, char *argv[]) {
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
 #endif
-    
+
 #ifdef DEPTH_ACTIVATED
     depthActivated = true;
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
 #else
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
 #endif
-    
+
 #ifdef STENCIL_ACTIVATED
     stencilActivated = true;
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 #else
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
 #endif
-    
+
     SDL_Window *sdlWindow = SDL_CreateWindow("test",
 					   SDL_WINDOWPOS_UNDEFINED,
 					   SDL_WINDOWPOS_UNDEFINED,
@@ -61,10 +61,10 @@ int main(int argc, char *argv[]) {
 
     glewInit();
     initGlObjects();
-    
+
     draw();
-        
+
     REPORT_RESULT(result);
-    
+
     return 0;
 }

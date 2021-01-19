@@ -120,7 +120,7 @@ void test() {
   err = rename("dir/hicsuntdracones/empty", "dir/hicsuntdracones/renamed");
   assert(err == -1);
   assert(errno == ENOENT);
-  
+
   err = rename("dir/subdir4/", "dir/subdir5/");
   assert(!err);
 

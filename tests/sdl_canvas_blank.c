@@ -15,7 +15,7 @@ int main() {
 
   if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
   if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
-  SDL_Flip(screen); 
+  SDL_Flip(screen);
 
   SDL_Quit();
 

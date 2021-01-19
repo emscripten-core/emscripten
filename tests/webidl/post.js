@@ -270,7 +270,7 @@ if (isMemoryGrowthAllowed) {
     intArray = intArray.concat(intArray);
     storeArray.setArray(intArray);
   }
-  
+
   // Make sure the array was copied to the newly allocated HEAP
   var numCopiedEntries = 0;
   for (var i = 0; i < intArray.length; i++) {

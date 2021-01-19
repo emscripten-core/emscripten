@@ -190,7 +190,7 @@ int main() {
     perror("inet_pton failed");
     finish(EXIT_FAILURE);
   }
-  
+
   res = connect(server.fd, (struct sockaddr *)&addr, sizeof(addr));
   if (res == -1 && errno != EINPROGRESS) {
     perror("connect failed");

@@ -75,7 +75,7 @@ void CreateThread()
     REPORT_RESULT(1); // But report success, so that runs on non-supporting browsers don't raise noisy errors.
 #endif
     exit(0);
-  }  
+  }
   if (rc)
   {
     printf("Failed to create thread! error: %d\n", rc);

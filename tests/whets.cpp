@@ -7,7 +7,7 @@
 *
 *  XXX modified by emscripten to be slower, to not slow down test runner
 *
-*  Document:         Whets.c 
+*  Document:         Whets.c
 *  File Group:       Classic Benchmarks
 *  Creation Date:    6 November 1996
 *  Revision Date:    6 November 2010 Ubuntu Version for PCs
@@ -18,7 +18,7 @@
 *
 *  Abstract:         C or C++ version of Whetstone one of the
 *                    Classic Numeric Benchmarks with example
-*                    results on P3 to P6 based PCs.        
+*                    results on P3 to P6 based PCs.
 *
 *  Contributor:      roy@roylongbottom.org.uk
 *
@@ -53,7 +53,7 @@
 *
 *     This version is set to run for 10 seconds using high
 *     resolution timer.
-*       
+*
 ************************************************************
 *
 *     The original benchmark had a single variable I which
@@ -163,7 +163,7 @@
 * MWIPS                                          28.462            100.134
 *
 *  Note different numeric results to single precision. Slight variations
-*  are normal with different compilers and sometimes optimisation levels. 
+*  are normal with different compilers and sometimes optimisation levels.
 *
 **************************************************************************/
 
@@ -175,10 +175,10 @@
 #endif
 
 #include <math.h>       /* for sin, exp etc.           */
-#include <stdio.h>      /* standard I/O                */ 
+#include <stdio.h>      /* standard I/O                */
 #include <string.h>     /* for strcpy - 3 occurrences  */
 #include <stdlib.h>     /* for exit   - 1 occurrence   */
-#include <time.h> 
+#include <time.h>
 
 /*  #include "cpuidh.h" */
 
@@ -186,7 +186,7 @@
 
 /* #define DP */
 
-#ifdef DP 
+#ifdef DP
 #define SPDP double
 #define Precision "Double"
 #else
@@ -196,7 +196,7 @@
 
 #define opt "Opt 3 64 Bit"
 
-void whetstones(long xtra, long x100, int calibrate);  
+void whetstones(long xtra, long x100, int calibrate);
 void pa(SPDP e[4], SPDP t, SPDP t2);
 void po(SPDP e1[4], long j, long k, long l);
 void p3(SPDP *x, SPDP *y, SPDP *z, SPDP t, SPDP t1, SPDP t2);
@@ -329,7 +329,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		mwips = 0;
-	}  
+	}
 
 	printf("%39.3f%19.3f\n\n",mwips,TimeUsed);
 
@@ -339,19 +339,19 @@ int main(int argc, char *argv[])
 	printf ("A new results file, whets.txt,  will have been created in the same\n");
 	printf ("directory as the .EXE files, if one did not already exist.\n\n");
 
-	return 0;             
+	return 0;
 }
 
 void whetstones(long xtra, long x100, int calibrate)
 {
 
 	long n1,n2,n3,n4,n5,n6,n7,n8,i,ix,n1mult;
-	SPDP x,y,z;              
+	SPDP x,y,z;
 	long j,k,l;
 	SPDP e1[4];
 
 	SPDP t =  0.49999975;
-	SPDP t0 = t;        
+	SPDP t0 = t;
 	SPDP t1 = 0.50000025;
 	SPDP t2 = 2.0;
 
@@ -386,7 +386,7 @@ void whetstones(long xtra, long x100, int calibrate)
 			}
 			t = 1.0 - t;
 		}
-		t =  t0;                    
+		t =  t0;
 	}
 	end_time();
 	secs = secs/(SPDP)(n1mult);
@@ -398,7 +398,7 @@ void whetstones(long xtra, long x100, int calibrate)
 	start_time();
 	{
 		for (ix=0; ix<xtra; ix++)
-		{ 
+		{
 			for(i=0; i<n2; i++)
 			{
 				pa(e1,t,t2);
@@ -587,8 +587,8 @@ void pout(const char title[18], float ops, int type, SPDP checknum,
 		results[section] = checknum;
 	}
 	if (calibrate == 0)
-	{              
-		printf("%s %24.17f    ",headings[section],results[section]);    
+	{
+		printf("%s %24.17f    ",headings[section],results[section]);
 
 		if (type == 1)
 		{
@@ -603,7 +603,7 @@ void pout(const char title[18], float ops, int type, SPDP checknum,
 			loop_mops[section] = 99999;
 			loop_mflops[section] = mflops;
 			printf(" %9.3f          %9.3f\n",
-				loop_mflops[section], loop_time[section]);                
+				loop_mflops[section], loop_time[section]);
 		}
 		else
 		{
@@ -616,7 +616,7 @@ void pout(const char title[18], float ops, int type, SPDP checknum,
 				mops = 0;
 			}
 			loop_mops[section] = mops;
-			loop_mflops[section] = 0;                 
+			loop_mflops[section] = 0;
 			printf("           %9.3f%9.3f\n",
 				loop_mops[section], loop_time[section]);
 		}

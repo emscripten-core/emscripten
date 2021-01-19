@@ -169,7 +169,7 @@ function callMain(args) {
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth += 2; 
+    abortWrapperDepth += 2;
 #endif
 
 #if STANDALONE_WASM
@@ -226,7 +226,7 @@ function callMain(args) {
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth -= 2; 
+    abortWrapperDepth -= 2;
 #endif
   }
 }

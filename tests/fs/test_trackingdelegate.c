@@ -24,7 +24,7 @@ int main() {
     FS.trackingDelegate['onDeletePath'] = function(path) {
       out('Deleted "' + path + '"');
     };
-    FS.trackingDelegate['onOpenFile'] = function(path, flags) { 
+    FS.trackingDelegate['onOpenFile'] = function(path, flags) {
       out('Opened "' + path + '" with flags ' + flags);
     };
     FS.trackingDelegate['onWriteToFile'] = function(path) {

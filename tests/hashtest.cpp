@@ -21,7 +21,7 @@ struct ltstr
 int main()
 {
   map<const char*, int, ltstr> months;
-  
+
   months["january"] = 31;
   months["february"] = 28;
   months["march"] = 31;
@@ -34,12 +34,12 @@ int main()
   months["october"] = 31;
   months["november"] = 30;
   months["december"] = 31;
-  
+
   //cout << "june -> " << months["june"] << endl;
   printf("june -> %d\n", months["june"]);
   map<const char*, int, ltstr>::iterator cur  = months.find("june");
   map<const char*, int, ltstr>::iterator prev = cur;
-  map<const char*, int, ltstr>::iterator next = cur;    
+  map<const char*, int, ltstr>::iterator next = cur;
   ++next;
   --prev;
   //cout << "Previous (in alphabetical order) is " << (*prev).first << endl;

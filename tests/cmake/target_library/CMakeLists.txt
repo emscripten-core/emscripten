@@ -4,7 +4,7 @@ project(test_cmake)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../cpp_lib ${CMAKE_CURRENT_BINARY_DIR}/cpp_lib)
 
-option(BUILD_SHARED_LIBS "Build with shared libraries." OFF) 
+option(BUILD_SHARED_LIBS "Build with shared libraries." OFF)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	SET(linkFlags "-g4")

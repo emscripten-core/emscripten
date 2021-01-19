@@ -24,7 +24,7 @@
     {
         // get framebuffer status from opengl
         GLenum status = glCheckFramebufferStatus( target );
-        
+
         // debug output of the framebuffer status
         switch( status )
         {
@@ -60,7 +60,7 @@
                 printf("****  IsFramebufferValid()  Unknown validation error: %#08x\n", (uint32_t)status );
                 break;
         }
-        
+
         return status == GL_FRAMEBUFFER_COMPLETE;
     }
 
@@ -180,7 +180,7 @@ int main()
     }
 
     GL_CALL( glBindFramebuffer( GL_READ_FRAMEBUFFER, 0 ) );
-    GL_CALL( glBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 ) );  
+    GL_CALL( glBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 ) );
 
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);

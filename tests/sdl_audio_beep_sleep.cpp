@@ -245,7 +245,7 @@ int main(int argc, char** argv) {
   SDL_Init(SDL_INIT_AUDIO);
 
   nextTest();
-   
+
 #ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(update, 60, 0);
 #else

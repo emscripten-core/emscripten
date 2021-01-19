@@ -18,7 +18,7 @@ int BatchFile::ReadLine(char * line) {
   return 1;
 }
 
-BatchFile b; 
+BatchFile b;
 
 BatchFile *bf = &b;
 

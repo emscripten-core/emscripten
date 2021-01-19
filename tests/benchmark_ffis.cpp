@@ -44,7 +44,7 @@ double averageBestPercentileMsecs(double p)
   int numSamples = (int)(totalRuns*p);
   for(int i = 0; i < numSamples; ++i)
     acc += allTicks[i];
-  return acc * 1000.0 / numSamples / ticks_per_sec(); 
+  return acc * 1000.0 / numSamples / ticks_per_sec();
 }
 
 double averageWorstPercentileMsecs(double p)
@@ -53,7 +53,7 @@ double averageWorstPercentileMsecs(double p)
   int numSamples = (int)(totalRuns*p);
   for(int i = 0; i < numSamples; ++i)
     acc += allTicks[totalRuns-1-i];
-  return acc * 1000.0 / numSamples / ticks_per_sec(); 
+  return acc * 1000.0 / numSamples / ticks_per_sec();
 }
 
 int counter = 0;

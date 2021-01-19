@@ -178,7 +178,7 @@ function _move_gameobjects_benchmark_embind_js() {
     for(i = 0; i < N; ++i) {
         objects.push(Module['create_game_object']());
     }
-    
+
     var a = _emscripten_get_now();
     for(i = 0; i < N; ++i) {
         var t = objects[i]['GetTransform']();
@@ -189,7 +189,7 @@ function _move_gameobjects_benchmark_embind_js() {
         t['delete']();
     }
     var b = _emscripten_get_now();
-    
+
     var accum = [0,0,0];
     for(i = 0; i < N; ++i) {
         var t = objects[i]['GetTransform']();
@@ -197,7 +197,7 @@ function _move_gameobjects_benchmark_embind_js() {
         t['delete']();
         objects[i]['delete']();
     }
-    
+
     out("JS embind move_gameobjects " + N + " iters: " + (b-a) + " msecs. Result: " + (accum[0] + accum[1] + accum[2]));
 }
 
@@ -207,18 +207,18 @@ function _pass_gameobject_ptr_benchmark_embind_js() {
     for(i = 0; i < N; ++i) {
         objects.push(Module['create_game_object']());
     }
-    
+
     var a = _emscripten_get_now();
     for(i = 0; i < N; ++i) {
         var t = Module['pass_gameobject_ptr'](objects[i]);
         t['delete']();
     }
     var b = _emscripten_get_now();
-    
+
     for(i = 0; i < N; ++i) {
         objects[i]['delete']();
     }
-    
+
     out("JS embind pass_gameobject_ptr " + N + " iters: " + (b-a) + " msecs.");
 }
 

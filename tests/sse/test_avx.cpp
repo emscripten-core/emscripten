@@ -23,7 +23,7 @@ int main()
 {
 	assert(numInterestingFloats % 4 == 0);
 	assert(numInterestingInts % 4 == 0);
-	assert(numInterestingDoubles % 4 == 0);	
+	assert(numInterestingDoubles % 4 == 0);
 
 	Ret_FloatPtr(__m128, _mm_broadcast_ss, 1, 1);
 	Ret_M128d_M128d_Tint_5bits(__m128d, _mm_cmp_pd);

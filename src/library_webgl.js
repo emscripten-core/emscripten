@@ -629,7 +629,7 @@ var LibraryGL = {
 #if MIN_WEBGL_VERSION >= 2
       var ctx = canvas.getContext("webgl2", webGLContextAttributes);
 #else
-      var ctx = 
+      var ctx =
 #if MAX_WEBGL_VERSION >= 2
         (webGLContextAttributes.majorVersion > 1)
         ?

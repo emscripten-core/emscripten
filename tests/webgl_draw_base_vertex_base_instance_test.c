@@ -67,7 +67,7 @@ int main()
 #ifdef EXPLICIT_SWAP
   attrs.explicitSwapControl = 1;
 #endif
-  
+
   GLboolean extAvailable = emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(ctx);
   extAvailable &= emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(ctx);
 

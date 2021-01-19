@@ -378,7 +378,7 @@ main(void){
 
   if (errors)
     exit (1);
-  
+
   printf("ALL OK\n");
 
   return 0;

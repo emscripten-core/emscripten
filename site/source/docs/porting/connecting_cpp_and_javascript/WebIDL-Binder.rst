@@ -172,7 +172,7 @@ Attributes
 Object attributes are defined in IDL using the ``attribute`` keyword. These can then be accessed in JavaScript using either ``get_foo()``/``set_foo()`` accessor methods, or directly as a property of the object.
 
 .. code-block:: cpp
-	
+
 	// C++
 	int attr;
 
@@ -210,7 +210,7 @@ Undecorated argument and return values of a custom type in the IDL are assumed t
 
   // WebIDL
   MyClass process(MyClass input);
-  
+
 This assumption isn't true for base types like void,int,bool,DOMString,etc.
 
 References should be decorated using ``[Ref]``:

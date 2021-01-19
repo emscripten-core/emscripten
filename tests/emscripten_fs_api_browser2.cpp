@@ -9,7 +9,7 @@
 #include <string.h>
 #include <SDL/SDL.h>
 #include "SDL/SDL_image.h"
- 
+
 extern "C" {
 
 int result = 1;
@@ -33,7 +33,7 @@ void onLoaded(const char* file) {
     result = 0;
     printf("!exists: %s\n", file);
   }
-  
+
   get_count++;
   printf("onLoaded %s\n", file);
 
@@ -50,14 +50,14 @@ void onError(const char* file) {
 
 int main() {
   emscripten_async_wget(
-    "http://localhost:8888/test.html", 
+    "http://localhost:8888/test.html",
     "/tmp/test.html",
     onLoaded,
     onError);
 
   // get another file to the same place
   emscripten_async_wget(
-    "http://localhost:8888/test.js", 
+    "http://localhost:8888/test.js",
     "/tmp/test.html",
     onLoaded,
     onError);

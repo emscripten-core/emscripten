@@ -324,7 +324,7 @@ int main()
 {
 	assert(numInterestingFloats % 4 == 0);
 	assert(numInterestingInts % 4 == 0);
-	assert(numInterestingDoubles % 4 == 0);	
+	assert(numInterestingDoubles % 4 == 0);
 
 	test_arithmetic();
 	test_cast();
@@ -341,7 +341,7 @@ int main()
 	test_shift();
 	test_specialmath();
 	test_store();
-	test_swizzle();	
+	test_swizzle();
 
 #ifdef __EMSCRIPTEN__
 	_mm_undefined_si128();

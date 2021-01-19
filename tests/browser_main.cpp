@@ -41,7 +41,7 @@ void next(const char *x) {
 
 int main() {
   emscripten_async_wget("lib.wasm", "thelib.wasm", next, NULL);
-  
+
   return 0;
 }
 

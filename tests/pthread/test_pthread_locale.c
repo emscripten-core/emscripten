@@ -26,7 +26,7 @@ locale_t do_test() {
   return loc;
 }
 
-void *thread_test(void *t) 
+void *thread_test(void *t)
 {
   puts("Doing test in child thread");
   pthread_exit((void*)do_test());

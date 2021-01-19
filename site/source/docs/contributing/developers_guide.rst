@@ -30,7 +30,7 @@ binaries with a checkout of the core Emscripten repository, simply by calling
 ``emcc.py`` from that checkout, and it will use the binaries from the emsdk.
 
 If you do want to contribute to LLVM or Binaryen, or to test modifications
-to them, you can 
+to them, you can
 :ref:`build them from source <installing-from-source>`.
 
 Repositories and branches of interest

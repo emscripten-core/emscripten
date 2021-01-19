@@ -26,7 +26,7 @@ void success()
 void test() {
 
   int fd;
-  
+
 #if FIRST
 
   // for each file, we first make sure it doesn't currently exist
@@ -57,7 +57,7 @@ void test() {
     if (close(fd) != 0)
       result = -7000 - errno;
   }
-  
+
   // a file whose contents are random-ish string set by the test_browser.py file
   if ((stat("/working1/moar.txt", &st) != -1) || (errno != ENOENT))
     result = -8000 - errno;
@@ -100,7 +100,7 @@ void test() {
     if (unlink("/working1/waka.txt") != 0)
       result = -19000 - errno;
   }
-  
+
   // does the random-ish file exist and does it contain SECRET?
   fd = open("/working1/moar.txt", O_RDONLY);
   if (fd == -1)
@@ -152,7 +152,7 @@ int main() {
   EM_ASM(
     FS.mkdir('/working1');
     FS.mount(IDBFS, {}, '/working1');
-    
+
     // sync from persisted state into memory and then
     // run the 'test' function
     FS.syncfs(true, function (err) {

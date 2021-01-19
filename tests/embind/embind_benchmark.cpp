@@ -87,7 +87,7 @@ public:
     Vec3 __attribute__((noinline)) GetPosition() const { return pos; }
     Vec3 __attribute__((noinline)) GetRotation() const { return rot; }
     float __attribute__((noinline)) GetScale() const { return scale; }
-    
+
     void __attribute__((noinline)) SetPosition(const Vec3 &pos_) { pos = pos_; }
     void __attribute__((noinline)) SetRotation(const Vec3 &rot_) { rot = rot_; }
     void __attribute__((noinline)) SetScale(float scale_) { scale = scale_; }
@@ -102,7 +102,7 @@ public:
         transform = std::make_shared<Transform>();
     }
     std::shared_ptr<Transform> transform;
-    
+
     TransformPtr __attribute__((noinline)) GetTransform() const { return transform; }
 };
 typedef std::shared_ptr<GameObject> GameObjectPtr;
@@ -249,11 +249,11 @@ void callInterface3(unsigned N, Interface& o) {
 EMSCRIPTEN_BINDINGS(benchmark)
 {
     using namespace emscripten;
-    
+
     class_<GameObject>("GameObject")
         .smart_ptr<GameObjectPtr>("GameObjectPtr")
         .function("GetTransform", &GameObject::GetTransform);
-        
+
     class_<Transform>("Transform")
         .smart_ptr<TransformPtr>("TransformPtr")
         .function("GetPosition", &Transform::GetPosition)
@@ -262,22 +262,22 @@ EMSCRIPTEN_BINDINGS(benchmark)
         .function("SetPosition", &Transform::SetPosition)
         .function("SetRotation", &Transform::SetRotation)
         .function("SetScale", &Transform::SetScale);
-        
+
     value_array<Vec3>("Vec3")
         .element(&Vec3::x)
         .element(&Vec3::y)
         .element(&Vec3::z);
-        
+
     function("create_game_object", &create_game_object);
     function("pass_gameobject_ptr", &pass_gameobject_ptr);
     function("add", &add);
-    
+
     function("get_counter", &get_counter);
     function("increment_counter", &increment_counter);
     function("returns_input", &returns_input);
     function("sum_int", &sum_int);
     function("sum_float", &sum_float);
-    
+
     class_<Foo>("Foo")
         .constructor<>()
         .function("incr_global_counter", &Foo::incr_global_counter)
@@ -427,7 +427,7 @@ void __attribute__((noinline)) move_gameobjects_benchmark()
     GameObjectPtr objects[N];
     for(int i = 0; i < N; ++i)
         objects[i] = create_game_object();
-    
+
     volatile float t = emscripten_get_now();
     for(int i = 0; i < N; ++i)
     {
@@ -451,7 +451,7 @@ void __attribute__((noinline)) pass_gameobject_ptr_benchmark()
     GameObjectPtr objects[N];
     for(int i = 0; i < N; ++i)
         objects[i] = create_game_object();
-    
+
     volatile float t = emscripten_get_now();
     for(int i = 0; i < N; ++i)
     {

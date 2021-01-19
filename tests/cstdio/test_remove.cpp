@@ -40,7 +40,7 @@ void cleanup() {
 
 void test() {
   int err;
-  
+
   err = std::remove("dir/file");
   assert(!err);
 

@@ -28,7 +28,7 @@ Current Trunk
 ------------------
 - `emscripten/vr.h` and other remnants of WebVR support removed. (#13210, which
   is a followup to #10460)
-- Stop overriding CMake default flags based on build type. This will 
+- Stop overriding CMake default flags based on build type. This will
   result in builds that are more like CMake does on other platforms. You
   may notice that `RelWithDebInfo` will now include debug info (it did not
   before, which appears to have been an error), and that `Release` will
@@ -216,7 +216,7 @@ Current Trunk
   is encountered. This makes the Emscripten program behave more like a native
   program where the OS would terminate the process and no further code can be
   executed when an unhandled exception (e.g. out-of-bounds memory access) happens.
-  Once the program aborts any exported function calls will fail with a "program 
+  Once the program aborts any exported function calls will fail with a "program
   has already aborted" exception to prevent calls into code with a potentially
   corrupted program state.
 - Use `__indirect_function_table` as the import name for the table, which is

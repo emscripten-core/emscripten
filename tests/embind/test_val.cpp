@@ -71,13 +71,13 @@ EMSCRIPTEN_BINDINGS(test_bindings)
 int main()
 {
   printf("start\n");
-  
+
   test("val array()");
   val::global().set("a", val::array());
   ensure_js("a instanceof Array");
   ensure_js_not("a instanceof Boolean");
   ensure_js_not("a instanceof Number");
-  
+
   test("template<typename T> val array(const std::vector<T> vec)");
   vector<val> vec1;
   vec1.push_back(val(11));
@@ -103,28 +103,28 @@ int main()
   ensure_js("a[1] == 1");
   ensure_js("a[2] == 3");
   ensure_js_not("a[2] == 2");
-  
+
   test("val object()");
   val::global().set("a", val::object());
   ensure_js("a instanceof Object");
-  
+
   test("val undefined()");
   val::global().set("a", val::undefined());
   ensure_js("a == undefined");
   ensure_js("a != false");
-    
+
   test("val null()");
   val::global().set("a", val::null());
   ensure_js("a == null");
   ensure_js("a != false");
-  
+
   test("val global(const char* name = 0)");
   // best we can probably do is ensure that calling it does not raise an exception
   val::global();
   pass();
   val::global("addEventListener");
   pass();
-  
+
   test("template<typename T> explicit val(T&& value)");
   val::global().set("a", val(false));
   ensure_js("a == false");
@@ -134,11 +134,11 @@ int main()
   ensure_js("a == 1");
   val::global().set("a", val(string("1")));
   ensure_js("a == '1'");
-  
+
   test("val(const char* v)");
   val::global().set("a", val("1"));
   ensure_js("a == '1'");
-  
+
   test("bool isNull()");
   EM_ASM(
     a = null;
@@ -146,7 +146,7 @@ int main()
   );
   ensure(val::global("a").isNull());
   ensure_not(val::global("b").isNull());
-  
+
   test("bool isUndefined()");
   EM_ASM(
     a = undefined;
@@ -154,7 +154,7 @@ int main()
   );
   ensure(val::global("a").isUndefined());
   ensure_not(val::global("b").isUndefined());
-  
+
   test("bool isTrue()");
   EM_ASM(
     a = true;
@@ -164,7 +164,7 @@ int main()
   ensure(val::global("a").isTrue());
   ensure_not(val::global("b").isTrue());
   ensure_not(val::global("c").isTrue());
-  
+
   test("bool isFalse()");
   EM_ASM(
     a = false;
@@ -174,7 +174,7 @@ int main()
   ensure(val::global("a").isFalse());
   ensure_not(val::global("b").isFalse());
   ensure_not(val::global("c").isFalse());
-  
+
   test("bool isNumber()");
   EM_ASM(
     a = 1;
@@ -184,7 +184,7 @@ int main()
   ensure(val::global("a").isNumber());
   ensure(val::global("b").isNumber());
   ensure_not(val::global("c").isNumber());
-  
+
   test("bool isString()");
   EM_ASM(
     a = '1';
@@ -194,7 +194,7 @@ int main()
   ensure(val::global("a").isString());
   ensure_not(val::global("b").isString());
   ensure_not(val::global("c").isString());
-  
+
   test("bool isArray()");
   EM_ASM(
     a = [];
@@ -206,7 +206,7 @@ int main()
   ensure(val::global("b").isArray());
   ensure_not(val::global("c").isArray());
   ensure_not(val::global("d").isArray());
-  
+
   test("bool equals(const val& v)");
   EM_ASM(
     a = 1;
@@ -221,8 +221,8 @@ int main()
   ensure(val::global("a").equals(val::global("d")));
   ensure(val::global("a").equals(val::global("e")));
   ensure_not(val::global("c").equals(val::global("d")));
-  
-  
+
+
   test("bool operator==(const val& v)");
   EM_ASM(
     a = 1;
@@ -237,7 +237,7 @@ int main()
   ensure(val::global("a") == val::global("d"));
   ensure(val::global("a") == val::global("e"));
   ensure_not(val::global("c") == val::global("d"));
-  
+
   test("bool operator!=(const val& v)");
   EM_ASM(
     a = 1;
@@ -252,7 +252,7 @@ int main()
   ensure_not(val::global("a") != val::global("d"));
   ensure_not(val::global("a") != val::global("e"));
   ensure(val::global("c") != val::global("d"));
-  
+
   test("bool strictlyEquals(const val& v)");
   EM_ASM(
     a = 1;
@@ -267,7 +267,7 @@ int main()
   ensure_not(val::global("a").strictlyEquals(val::global("d")));
   ensure_not(val::global("a").strictlyEquals(val::global("e")));
   ensure_not(val::global("c").strictlyEquals(val::global("d")));
-  
+
   test("bool operator>(const val& v)");
   EM_ASM(
     a = 1;
@@ -281,7 +281,7 @@ int main()
   ensure_not(val::global("a") > val::global("d"));
   ensure(val::global("c") > val::global("a"));
   ensure(val::global("d") > val::global("a"));
-  
+
   test("bool operator>= (const val& v)");
   EM_ASM(
     a = 1;
@@ -295,7 +295,7 @@ int main()
   ensure_not(val::global("a") >= val::global("d"));
   ensure(val::global("c") >= val::global("a"));
   ensure(val::global("d") >= val::global("a"));
-  
+
   test("bool operator<(const val& v)");
   EM_ASM(
     a = 1;
@@ -309,7 +309,7 @@ int main()
   ensure(val::global("a") < val::global("d"));
   ensure_not(val::global("c") < val::global("a"));
   ensure_not(val::global("d") < val::global("a"));
-  
+
   test("bool operator<= (const val& v)");
   EM_ASM(
     a = 1;
@@ -347,7 +347,7 @@ int main()
   ensure(!val::global("i") == false);
   ensure(!!val::global("a") == true);
   ensure(!!val::global("b") == false);
-  
+
   test("template<typename... Args> val new_(Args&&... args)");
   EM_ASM(
     A = function ()
@@ -369,20 +369,20 @@ int main()
   ensure_js("a instanceof A");
   ensure_js("a.arg1 == 2");
   ensure_js("a.arg2 == 'b'");
-  
+
   test("template<typename T> val operator[](const T& key)");
   EM_ASM(
     a = 2;
   );
   ensure(val::global()["a"].as<int>() == 2);
   ensure_not(val::global()["a"].as<int>() == 3);
-  
+
   test("template<typename K> void set(const K& key, const val& v)");
   val::global().set("a", val(2));
   ensure_js("a == 2");
   val::global().set("a", val(3));
   ensure_js("a == 3");
-  
+
   test("template<typename K, typename V> void set(const K& key, const V& value)");
   val::global().set("a", NULL);
   ensure_js("a == 0");
@@ -392,7 +392,7 @@ int main()
   ensure_js("a == 2");
   val::global().set("a", "b");
   ensure_js("a == 'b'");
-  
+
   test("template<typename... Args> val operator()(Args&&... args)");
   EM_ASM(
     f = function ()
@@ -414,7 +414,7 @@ int main()
   );
   ensure(val::global("f1")(val(2),val("3")).as<int>() == 2);
   ensure(val::global("f2")(val(2),val("3")).as<string>() == "3");
-  
+
   test("template<typename ReturnValue, typename... Args> ReturnValue call(const char* name, Args&&... args)");
   EM_ASM(
     C = function ()
@@ -432,7 +432,7 @@ int main()
     c = new C;
   );
   ensure(val::global("c").call<int>("method", val(2)) == 2);
-  
+
   test("template<typename T, typename ...Policies> T as(Policies...)");
   EM_ASM(
     a = 1;
@@ -442,8 +442,8 @@ int main()
   ensure(val::global("a").as<double>() == (double)1.0);
   ensure_not(val::global("a").as<double>() == (double)1.1);
   ensure(val::global("b").as<string>() == "b");
-  
-  // test: 
+
+  // test:
   // val typeof()
   #if __STRICT_ANSI__
     EM_ASM(
@@ -471,7 +471,7 @@ int main()
       printf("test:\nval typeof()\nfail\n");
     }
   #endif
-  
+
   test("val typeOf()");
   EM_ASM(
     a = undefined;
@@ -499,7 +499,7 @@ int main()
   ensure(val("2").typeOf().as<string>() == "string");
   ensure(val::global().call<val>("Symbol").typeOf().as<string>() == "symbol");
   ensure(val::object().typeOf().as<string>() == "object");
-  
+
   test("bool instanceof(const val& v)");
   EM_ASM(
     A = function() {};
@@ -508,7 +508,7 @@ int main()
   );
   ensure(val::global("a").instanceof(val::global("A")));
   ensure_not(val::global("a").instanceof(val::global("B")));
-  
+
   test("bool in(const val& v)");
   EM_ASM(
     // can't declare like this because i get:
@@ -521,7 +521,7 @@ int main()
   );
   ensure(val("c").in(val::global("a")));
   ensure_not(val("d").in(val::global("a")));
-  
+
   test("template<typename T> bool delete_(const T& property)");
   EM_ASM(
     a = {};
@@ -546,7 +546,7 @@ int main()
   ensure_js_not("0 in a");
   ensure_js_not("1 in a");
   ensure_js_not("'c' in a");
-  
+
   test("void throw_() const");
   EM_ASM(
     test_val_throw_ = function(error)
@@ -569,7 +569,7 @@ int main()
   ensure_js("test_val_throw_(2)");
   ensure_js("test_val_throw_('message')");
   ensure_js("test_val_throw_(new TypeError('message'))");
-  
+
   // this test should probably go elsewhere as it is not a member of val
   test("template<typename T> std::vector<T> vecFromJSArray(const val& v)");
   EM_ASM(
@@ -588,9 +588,9 @@ int main()
   ensure(aAsArray.at(1).as<string>() == "42");
   ensure(aAsArray.at(2).as<string>() == "b");
   ensure(aAsArray.size() == 4);
-  
+
   test("template<typename T> std::vector<T> convertJSArrayToNumberVector(const val& v)");
-  
+
   const std::vector<float>& aAsNumberVectorFloat = convertJSArrayToNumberVector<float>(val::global("a"));
   ensure(aAsNumberVectorFloat.size() == 4);
 
@@ -598,7 +598,7 @@ int main()
   ensure(aAsNumberVectorFloat.at(1) == 42.f);     // String containing numbers are converted correctly
   ensure(std::isnan(aAsNumberVectorFloat.at(2))); // NaN returned if can not be converted for floats
   ensure(aAsNumberVectorFloat.at(3) == 100000.f); // Date returns milliseconds since epoch
-  
+
   const std::vector<uint32_t>& aAsNumberVectorUint32_t = convertJSArrayToNumberVector<uint32_t>(val::global("a"));
   ensure(aAsNumberVectorUint32_t.size() == 4);
 
@@ -606,7 +606,7 @@ int main()
   ensure(aAsNumberVectorUint32_t.at(1) == 42);     // String containing numbers are converted correctly
   ensure(aAsNumberVectorUint32_t.at(2) == 0);      // 0 is returned if can not be converted for integers
   ensure(aAsNumberVectorUint32_t.at(3) == 100000); // Date returns milliseconds since epoch
-  
+
   printf("end\n");
   return 0;
 }

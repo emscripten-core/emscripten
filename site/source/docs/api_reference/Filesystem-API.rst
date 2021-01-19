@@ -766,12 +766,12 @@ Paths
 .. js:function:: FS.analyzePath(path, dontResolveLastLink)
 
   Looks up the incoming path and returns an object containing information about
-  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more 
-  information about given path and its parent. If any error occurs it won't 
+  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more
+  information about given path and its parent. If any error occurs it won't
   throw but returns an ``error`` property.
 
   :param string path: The incoming path.
-  :param boolean dontResolveLastLink: If true, don't follow the last component 
+  :param boolean dontResolveLastLink: If true, don't follow the last component
     if it is a symlink.
 
   :returns: an object with the format:
@@ -780,13 +780,13 @@ Paths
 
       {
         isRoot: boolean,
-        exists: boolean, 
-        error: Error, 
-        name: string, 
-        path: resolved_path, 
+        exists: boolean,
+        error: Error,
+        name: string,
+        path: resolved_path,
         object: resolved_node,
-        parentExists: boolean, 
-        parentPath: resolved_parent_path, 
+        parentExists: boolean,
+        parentPath: resolved_parent_path,
         parentObject: resolved_parent_node
       }
 

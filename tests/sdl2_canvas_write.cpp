@@ -6,7 +6,7 @@
 #include <SDL.h>
 #include <emscripten.h>
 
-static void sdlError(const char *str) 
+static void sdlError(const char *str)
 {
     fprintf(stderr, "Error at %s: %s\n", str, SDL_GetError());
     emscripten_force_exit(1);
@@ -39,8 +39,8 @@ int verify(void) {
         var idx = 0;
         for (var y = 0; y < 256; y++) {
             for (var x = 0; x < 256; x++) {
-                if (data[idx    ] !== x || 
-                    data[idx + 1] !== (x ^ y) || 
+                if (data[idx    ] !== x ||
+                    data[idx + 1] !== (x ^ y) ||
                     data[idx + 2] !== y ||
                     data[idx + 3] !== 255) {
                     return 1;

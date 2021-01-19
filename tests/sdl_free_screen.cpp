@@ -25,7 +25,7 @@ extern "C" int main(int argc, char** argv) {
     }
   }
   if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
-  SDL_Flip(screen); 
+  SDL_Flip(screen);
 
   SDL_Quit();
 

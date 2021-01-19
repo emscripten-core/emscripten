@@ -1612,7 +1612,7 @@ case 0x8820 /* GL_RGBA_FLOAT_MODE_ARB */: return "GL_RGBA_FLOAT_MODE_ARB (0x8820
 //case 0x891B /* GL_CLAMP_FRAGMENT_COLOR_ARB */: return "GL_CLAMP_FRAGMENT_COLOR_ARB (0x891B)";
 //case 0x891C /* GL_CLAMP_READ_COLOR_ARB */: return "GL_CLAMP_READ_COLOR_ARB (0x891C)";
 //case 0x891D /* GL_FIXED_ONLY_ARB */: return "GL_FIXED_ONLY_ARB (0x891D)";
-	
+
 	/* -------------------------- GL_ARB_compatibility ------------------------- */
 
 

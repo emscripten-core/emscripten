@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     assert(colora[2] == colorb[2]);
     assert(colora[3] == colorb[3]);
     SDL_Quit();
-    
+
 #ifdef REPORT_RESULT
     REPORT_RESULT(1);
 #endif

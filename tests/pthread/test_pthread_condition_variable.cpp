@@ -18,7 +18,7 @@ int     thread_ids[3] = {0,1,2};
 pthread_mutex_t count_mutex;
 pthread_cond_t count_threshold_cv;
 
-void *inc_count(void *t) 
+void *inc_count(void *t)
 {
   int i;
   long my_id = (long)t;
@@ -27,17 +27,17 @@ void *inc_count(void *t)
     pthread_mutex_lock(&count_mutex);
     count++;
 
-    /* 
+    /*
     Check the value of count and signal waiting thread when condition is
-    reached.  Note that this occurs while mutex is locked. 
+    reached.  Note that this occurs while mutex is locked.
     */
     if (count == COUNT_LIMIT) {
       pthread_cond_signal(&count_threshold_cv);
- //     printf("inc_count(): thread %ld, count = %d  Threshold reached.\n", 
+ //     printf("inc_count(): thread %ld, count = %d  Threshold reached.\n",
  //            my_id, count);
       EM_ASM(out('inc_count(): thread ' + $0 + ', count = ' + $1 + ', Threshold reached.'), my_id, count);
       }
-//    printf("inc_count(): thread %ld, count = %d, unlocking mutex\n", 
+//    printf("inc_count(): thread %ld, count = %d, unlocking mutex\n",
 //	   my_id, count);
     EM_ASM(out('inc_count(): thread ' + $0 + ', count = ' + $1 + ', unlocking mutex.'), my_id, count);
     pthread_mutex_unlock(&count_mutex);
@@ -48,7 +48,7 @@ void *inc_count(void *t)
   pthread_exit(NULL);
 }
 
-void *watch_count(void *t) 
+void *watch_count(void *t)
 {
   long my_id = (long)t;
 
@@ -56,11 +56,11 @@ void *watch_count(void *t)
   EM_ASM(out('Starting watch_count(): thread ' + $0), my_id);
 
   /*
-  Lock mutex and wait for signal.  Note that the pthread_cond_wait 
-  routine will automatically and atomically unlock mutex while it waits. 
+  Lock mutex and wait for signal.  Note that the pthread_cond_wait
+  routine will automatically and atomically unlock mutex while it waits.
   Also, note that if COUNT_LIMIT is reached before this routine is run by
   the waiting thread, the loop will be skipped to prevent pthread_cond_wait
-  from never returning. 
+  from never returning.
   */
   pthread_mutex_lock(&count_mutex);
   while (count<COUNT_LIMIT) {

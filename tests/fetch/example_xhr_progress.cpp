@@ -23,7 +23,7 @@ void downloadFailed(emscripten_fetch_t *fetch)
 void downloadProgress(emscripten_fetch_t *fetch)
 {
   printf("Downloading %s.. %.2f%s complete. HTTP readyState: %d. HTTP status: %d.\n"
-    "HTTP statusText: %s. Received chunk [%llu, %llu[\n", 
+    "HTTP statusText: %s. Received chunk [%llu, %llu[\n",
     fetch->url, (fetch->totalBytes > 0) ? ((fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes) : (double)(fetch->dataOffset + fetch->numBytes),
     (fetch->totalBytes > 0) ? "%" : " bytes",
     fetch->readyState, fetch->status, fetch->statusText,

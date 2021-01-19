@@ -14,13 +14,13 @@ int main(int argc, char**argv)
    printf("value = real %.2f imag %.2f\n",creal(z1),cimag(z1));
    float abs_value = cabsf(z1);
    printf("abs = %.2f\n",abs_value);
-   float complex z2 =  conjf(z1); 
+   float complex z2 =  conjf(z1);
    printf("value = real %.2f imag %.2f\n",creal(z2),cimag(z2));
-   float complex z3 =  cexpf(z1); 
+   float complex z3 =  cexpf(z1);
    printf("value = real %.2f imag %.2f\n",creal(z3),cimag(z3));
-   float complex z4 =  conj(z1); 
+   float complex z4 =  conj(z1);
    printf("value = real %.2f imag %.2f\n",creal(z4),cimag(z4));
-   float complex z5 =  cargf(z1); 
+   float complex z5 =  cargf(z1);
    printf("value = real %.2f imag %.2f\n",creal(z5),cimag(z5));
    float complex z6 = 0.5 + 0.5 * I;
    float complex z7 = 0.5 - 0.5 * I;
