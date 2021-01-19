@@ -22,7 +22,7 @@ void mouseCB(int button, int state, int x, int y)
 {
     if(button == 3)
     {
-      wheel_up = 1;   
+      wheel_up = 1;
     }
     else if (button == 4)
     {
@@ -52,11 +52,11 @@ int main(int argc, char *argv[])
         }
     ));
 
-    
+
     glutInit(&argc, argv);
 
     glutMouseFunc(&mouseCB);
-    
+
     // inject wheel up event (delta > 0)
     emscripten_run_script("Module.injectWheelEvent(100, 100, 1)");
     if (wheel_up) {
@@ -67,9 +67,9 @@ int main(int argc, char *argv[])
     if (wheel_down) {
       printf("%s\n", "mouse wheel down event received");
     }
-    
+
     result = wheel_up && wheel_down;
-  
+
     REPORT_RESULT(result);
     return 0;
 }

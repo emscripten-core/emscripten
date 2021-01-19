@@ -23,7 +23,7 @@ void report_result()
 
 void finish(void*)
 {
-  report_result();  
+  report_result();
 }
 
 EM_BOOL context_lost(int eventType, const void *reserved, void *userData)

@@ -22,7 +22,7 @@ int main()
     emscripten_wget_data(file, &buffer, &num, &error);
     assert(!error);
     printf("buffer: %s\n", (char*)buffer);
-    assert(strstr(buffer, "emscripten") == buffer); 
+    assert(strstr(buffer, "emscripten") == buffer);
 
     printf("load non-existing\n");
     emscripten_wget_data("doesnotexist", &buffer, &num, &error);

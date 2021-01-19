@@ -109,14 +109,14 @@ class HelloWorld : public cocos2d::Layer
 {
 public:
     // Here's a difference. Method 'init' in cocos2d-x returns bool, instead of returning 'id' in cocos2d-iphone
-    virtual bool init();  
+    virtual bool init();
 
     // there's no 'id' in cpp, so we recommend returning the class instance pointer
     static cocos2d::Scene* scene();
-    
+
     // a selector callback
     void menuCloseCallback(Object* sender);
-    
+
     // implement the "static node()" method manually
     CREATE_FUNC(HelloWorld);
 };
@@ -131,7 +131,7 @@ Scene* HelloWorld::scene()
 {
     // 'scene' is an autorelease object
     Scene *scene = Scene::create();
-    
+
     // 'layer' is an autorelease object
     HelloWorld *layer = HelloWorld::create();
 
@@ -151,7 +151,7 @@ bool HelloWorld::init()
     {
         return false;
     }
-    
+
     Size visibleSize = Director::getInstance()->getVisibleSize();
     Point origin = Director::getInstance()->getVisibleOrigin();
 
@@ -164,7 +164,7 @@ bool HelloWorld::init()
                                         "CloseNormal.png",
                                         "CloseSelected.png",
                                         CC_CALLBACK_1(HelloWorld::menuCloseCallback,this));
-    
+
     closeItem->setPosition(origin + Point(visibleSize) - Point(closeItem->getContentSize() / 2));
 
     // create menu, it's an autorelease object
@@ -177,9 +177,9 @@ bool HelloWorld::init()
 
     // add a label shows "Hello World"
     // create and initialize a label
-    
+
     LabelTTF* label = LabelTTF::create("Hello World", "Arial", TITLE_FONT_SIZE);
-    
+
     // position the label on the center of the screen
     label->setPosition(Point(origin.x + visibleSize.width/2,
                             origin.y + visibleSize.height - label->getContentSize().height));
@@ -195,7 +195,7 @@ bool HelloWorld::init()
 
     // add the sprite as a child to this layer
     this->addChild(sprite, 0);
-    
+
     return true;
 }
 
@@ -219,7 +219,7 @@ AppDelegate::AppDelegate() {
 
 }
 
-AppDelegate::~AppDelegate() 
+AppDelegate::~AppDelegate()
 {
 }
 
@@ -229,14 +229,14 @@ bool AppDelegate::applicationDidFinishLaunching() {
     EGLView* glView = EGLView::getInstance();
 
     director->setOpenGLView(glView);
-    
+
     Size size = director->getWinSize();
 
     // Set the design resolution
     glView->setDesignResolutionSize(designResolutionSize.width, designResolutionSize.height, ResolutionPolicy::NO_BORDER);
 
 	Size frameSize = glView->getFrameSize();
-    
+
     vector<string> searchPath;
 
     // In this demo, we select resource according to the frame's height.
@@ -255,7 +255,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
     else if (frameSize.height > smallResource.size.height)
     {
         searchPath.push_back(mediumResource.directory);
-        
+
         director->setContentScaleFactor(MIN(mediumResource.size.height/designResolutionSize.height, mediumResource.size.width/designResolutionSize.width));
     }
     // if the frame's height is smaller than the height of medium resource size, select small resource.
@@ -265,10 +265,10 @@ bool AppDelegate::applicationDidFinishLaunching() {
 
         director->setContentScaleFactor(MIN(smallResource.size.height/designResolutionSize.height, smallResource.size.width/designResolutionSize.width));
     }
-    
+
     // set searching path
     FileUtils::getInstance()->setSearchPaths(searchPath);
-	
+
     // turn on display FPS
     director->setDisplayStats(false);
 

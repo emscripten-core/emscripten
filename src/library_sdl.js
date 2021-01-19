@@ -1350,7 +1350,7 @@ var LibrarySDL = {
 
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
-  SDL_Init__docs: '/** @param{number=} initFlags */', 
+  SDL_Init__docs: '/** @param{number=} initFlags */',
   SDL_Init: function(initFlags) {
     SDL.startTime = Date.now();
     SDL.initFlags = initFlags;

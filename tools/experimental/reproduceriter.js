@@ -205,7 +205,7 @@ var Recorder = (function() {
         console.log('mean frame   : ' + mean + ' ms');
         console.log('frame std dev: ' + Math.sqrt(meanSquared - (mean*mean)) + ' ms');
         console.log('max frame    : ' + maxTime + ' ms');
-      });    
+      });
     });
     // Finish
     recorder.finish = function() {

@@ -23,7 +23,7 @@ int main()
 {
 	assert(numInterestingFloats % 4 == 0);
 	assert(numInterestingInts % 4 == 0);
-	assert(numInterestingDoubles % 4 == 0);	
+	assert(numInterestingDoubles % 4 == 0);
 
 	Ret_M128i(__m128i, _mm_abs_epi8);
 	Ret_M128i(__m128i, _mm_abs_epi16);

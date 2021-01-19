@@ -23,7 +23,7 @@ int main()
         buf[BUFSIZE-1] = 0;
         for(int i = 0; i < BUFSIZE; ++i)
             buf[i] = tolower(buf[i]);
-        if(strstr(buf, "emscripten")) 
+        if(strstr(buf, "emscripten"))
             result = 1;
         fclose(f);
     }

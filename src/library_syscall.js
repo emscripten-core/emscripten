@@ -676,7 +676,7 @@ var SyscallsLibrary = {
         for (var i = 0; i < num; i++) {
           var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
           var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-          for (var j = 0; j < iovlen; j++) {  
+          for (var j = 0; j < iovlen; j++) {
             view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
           }
         }
@@ -807,7 +807,7 @@ var SyscallsLibrary = {
 #endif
 
     var total = 0;
-    
+
     var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
         srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
     var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
@@ -874,7 +874,7 @@ var SyscallsLibrary = {
       {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
       {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
     }
-    
+
     return total;
   },
   __sys_msync: function(addr, len, flags) {
@@ -1363,7 +1363,7 @@ var SyscallsLibrary = {
     nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
     FS.utime(path, atime, mtime);
-    return 0;  
+    return 0;
   },
   __sys_fallocate: function(fd, mode, off_low, off_high, len_low, len_high) {
     var stream = SYSCALLS.getStreamFromFD(fd)

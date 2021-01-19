@@ -11,7 +11,7 @@
 #include "SDL/SDL_image.h"
 #include <sys/stat.h>
 #include <unistd.h>
- 
+
 extern "C" {
 
 int result = 1;
@@ -89,7 +89,7 @@ void onLoaded(const char* file) {
     result = 0;
     printf("!exists: %s\n", file);
   }
-  
+
   get_count++;
   printf("onLoaded %s\n", file);
 }
@@ -105,13 +105,13 @@ void onError(const char* file) {
 
 int main() {
   emscripten_async_wget(
-    "http://localhost:8888/this_is_not_a_file", 
+    "http://localhost:8888/this_is_not_a_file",
     "/tmp/null",
     onLoaded,
     onError);
 
   emscripten_async_wget(
-    "http://localhost:8888/test.html", 
+    "http://localhost:8888/test.html",
     "/tmp/test.html",
     onLoaded,
     onError);
@@ -143,7 +143,7 @@ int main() {
   char name[40];
   strcpy(name, "/tmp/screen_shot.png"); // test for issue #2349, name being free'd
   emscripten_async_wget(
-    "http://localhost:8888/screenshot.png", 
+    "http://localhost:8888/screenshot.png",
     name,
     onLoaded,
     onError);

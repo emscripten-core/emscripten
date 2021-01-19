@@ -25,10 +25,10 @@ int main() {
 
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *dst = SDL_SetVideoMode(width, height, 32, SDL_HWSURFACE);
-  SDL_Surface *src = SDL_CreateRGBSurface(0, width, height, 32, 
-    0x000000ff, 
-    0x0000ff00, 
-    0x00ff0000, 
+  SDL_Surface *src = SDL_CreateRGBSurface(0, width, height, 32,
+    0x000000ff,
+    0x0000ff00,
+    0x00ff0000,
     0xff000000);
 
   /* Fill dst with yellow color */

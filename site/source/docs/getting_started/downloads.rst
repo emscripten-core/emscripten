@@ -70,7 +70,7 @@ There are also "tip-of-tree builds", which are the very latest code that passes 
 
   ::
 
-    # Get a tip-of-tree 
+    # Get a tip-of-tree
     ./emsdk install tot
 
 (In the above examples we installed the various targets; remember to also ``activate`` them as in the full example from earlier.)

@@ -198,6 +198,6 @@ int main() {
   printf("isgraph('5'): %d\n", isgraph('5'));
   printf("isgraph('.'): %d\n", isgraph('.'));
   printf("isgraph(183): %d\n", isgraph(183));
- 
+
   return 0;
 }

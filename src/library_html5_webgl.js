@@ -31,10 +31,10 @@ var LibraryHtml5WebGL = {
     }
 
     HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)] = 
+    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)] =
+    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)] =
+    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)] =
+    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)] =
     HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)] = 1;
 
 #if USE_PTHREADS
@@ -611,7 +611,7 @@ function handleWebGLProxying(funcs) {
     } else if (targetingOffscreenFramebuffer) {
       // When targeting only OFFSCREEN_FRAMEBUFFER, unconditionally proxy all GL calls to
       // main thread.
-      funcs[i + '__proxy'] = 'sync';        
+      funcs[i + '__proxy'] = 'sync';
     } else {
       // Building without OFFSCREENCANVAS_SUPPORT or OFFSCREEN_FRAMEBUFFER; or building
       // with OFFSCREENCANVAS_SUPPORT and no OFFSCREEN_FRAMEBUFFER: the application

@@ -67,20 +67,20 @@ void on_file_drop(GLFWwindow *window, int count, const char **paths) {
 int main() {
   if (!glfwInit())
   {
-    printf("Could not create window. Test failed.\n");      
+    printf("Could not create window. Test failed.\n");
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);
-#endif      
+#endif
     return -1;
   }
   glfwWindowHint(GLFW_RESIZABLE , 1);
   g_window = glfwCreateWindow(600, 450, "GLFW drop file", NULL, NULL);
   if (!g_window)
   {
-    printf("Could not create window. Test failed.\n");      
+    printf("Could not create window. Test failed.\n");
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);
-#endif           
+#endif
     glfwTerminate();
     return -1;
   }

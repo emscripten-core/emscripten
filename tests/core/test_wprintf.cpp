@@ -59,15 +59,15 @@ int main ()
    PrintWide ( str, wcslen(str) );
    PrintWide ( str, wcslen(str) );
    PrintWide ( str, wcslen(str) );
-  
-  
+
+
    wchar_t long_str[] = L"test string has %d wide characters.\n"
      "Internally the variadic print functions use a 256 char buffer, so this is a string that's longer than 256 chars, "
      "so in case this breaks we have a test case. As discovered in #9305 vswprintf had been broken for some time, "
      "but was never picked up as the test strings were all shorter then 256 chars. So hopefully this long rambly string "
      "will help guard against that bug being re-introduced.\n";
    PrintBigWide ( long_str, wcslen(long_str) );
-  
+
    wprintf (L"Characters: %lc %lc \n", L'a', 65);
    wprintf (L"Decimals: %d %ld\n", 1977, 650000L);
    wprintf (L"Preceding with blanks: %10d \n", 1977);

@@ -18,15 +18,15 @@ Creating the compiler configuration file
 The settings file is created the first time a user runs :ref:`emcc <emccdoc>` (or any of the other Emscripten tools):
 
 1. Navigate to the directory where you cloned the Emscripten repository.
-2. Enter the command: 
+2. Enter the command:
 
 	::
-	
+
 		./emcc --help
 
 	You should get a ``Welcome to Emscripten!`` message. Behind the scenes, Emscripten generates a file called ``.emscripten`` in your home folder.
-	
-	
+
+
 Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java).
 
 In most cases it is necessary to edit the generated file and modify at least the
@@ -57,28 +57,28 @@ Compiler configuration file-format
 The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user installed python to the **C:/Python27/** directory, then the file might have the line: ::
 
 	PYTHON = 'C:\\Python38\\python.exe'
-	
+
 
 The default *emcc* configuration file often gets the paths from environment variables if defined. If no variable is defined the system will also attempt to find "system executables". For example:  ::
 
 	PYTHON = os.path.expanduser(os.getenv('PYTHON', 'C:\\Python38\\python.exe'))
 
-You can find out the other variable names from the default *.emscripten* file or the :ref:`example here <compiler-configuration-file>`. 
+You can find out the other variable names from the default *.emscripten* file or the :ref:`example here <compiler-configuration-file>`.
 
 Editing the compiler configuration file
 =======================================
 
 The compiler configuration file can be edited with the text editor of your choice. As stated above, most default settings are likely to be correct. If you're building manually from source, you are most likely to have to update the variable ``LLVM_ROOT``
 
-		
+
 #. Edit the variable ``LLVM_ROOT`` to point to the directory where you built the LLVM binaries, such as:
-   
+
 	::
-   
+
 		LLVM_ROOT = os.path.expanduser(os.getenv('LLVM', '/home/ubuntu/a-path/llvm/build/bin'))
 
 	.. note:: Use forward slashes!
 
 .. comment .. The settings are now correct in the configuration file, but the paths and environment variables are not set in the command prompt/terminal. **HamishW** Follow up with Jukka on this.
- 
+
 After setting those paths, run ``emcc`` again. It should again perform the sanity checks to test the specified paths. There are further validation tests available at :ref:`verifying-the-emscripten-environment`.

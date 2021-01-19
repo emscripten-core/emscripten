@@ -40,9 +40,9 @@ void EMSCRIPTEN_KEEPALIVE count_threads(int num_threads_spawned, int num_threads
 			REPORT_RESULT(num_workers);
 	}
 #else
-	std::cout << 
-		"Worker pool size: " << num_workers << 
-		", Number of threads spawned: " << num_threads_spawned 
+	std::cout <<
+		"Worker pool size: " << num_workers <<
+		", Number of threads spawned: " << num_threads_spawned
 	<< "." << std::endl;
 	assert(num_threads_spawned_extra != 0);
 	assert(num_workers < num_threads_spawned);
@@ -57,12 +57,12 @@ int main(int argc, char** argv) {
 		const max_thread_check = 5;		//fail the test if the number of threads doesn't go down after checking this many times
 		const threads_to_spawn = 3;
 		let threads_to_spawn_extra = 0;
-		
+
 		//Spawn some detached threads
 		for (let i=0; i<threads_to_spawn; i++) {
 			setTimeout(() => { _spawn_a_thread(); }, i*100);
 		}
-		
+
 		//Check if a worker is free every threads_to_spawn*100 ms, or until max_thread_check is exceeded
 		const SpawnMoreThreads = setInterval(() => {
 			if (PThread.unusedWorkers.length > 0) {	//Spawn a thread if a worker is available

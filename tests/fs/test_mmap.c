@@ -102,12 +102,12 @@ int main() {
     int fd = open(path, O_RDWR | O_CREAT, (mode_t)0600);
     // write contents to the file ( we don't want this to be overwritten on munmap )
     assert(write(fd, readonlytext, readonlytextsize) != -1);
-    close(fd);    
+    close(fd);
 
     fd = open(path, O_RDWR);
     char *map = (char*)mmap(0, textsize, PROT_READ, MAP_SHARED, fd, 0);
     assert(map != MAP_FAILED);
-    
+
     for (size_t i = 0; i < textsize; i++) {
       map[i] = text[i];
     }
@@ -234,7 +234,7 @@ int main() {
       return 1;
     }
     size_t offset = sysconf(_SC_PAGE_SIZE) * 2;
-    
+
     char buffer[offset + 33];
     memset(buffer, 0, offset + 33);
     fread(buffer, 1, offset + 32, fd);
@@ -246,10 +246,10 @@ int main() {
 #if !defined(NODEFS) && !defined(NODERAWFS)
   /**
    * MMAP to an 'over-allocated' file
-   * 
+   *
    * When appending to a file, the buffer size is increased in chunks, and so the actual length
    * of the file could be less than the buffer size.
-   * 
+   *
    * When using mmap for an over-allocated file, we have to make sure that content from the buffer
    * is not written beyond the allocated memory area for the mmap operation.
    */

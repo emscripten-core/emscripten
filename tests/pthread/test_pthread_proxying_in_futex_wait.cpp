@@ -57,7 +57,7 @@ int main()
 #endif
 		exit(1);
 	}
-	pthread_join(thread, 0);		
+	pthread_join(thread, 0);
 
 #ifdef REPORT_RESULT
 	REPORT_RESULT(result);

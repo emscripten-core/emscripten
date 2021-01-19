@@ -29,7 +29,7 @@ REDISTRIBUTION OF THIS SOFTWARE.
 // GL_ARB_shading_language_100, GL_ARB_shader_objects, GL_ARB_fragment_shader, GL_ARB_vertex_shader
 PFNGLCREATEPROGRAMOBJECTARBPROC       glCreateProgramObject_      = NULL;
 PFNGLDELETEOBJECTARBPROC              glDeleteObject_             = NULL;
-PFNGLUSEPROGRAMOBJECTARBPROC          glUseProgramObject_         = NULL; 
+PFNGLUSEPROGRAMOBJECTARBPROC          glUseProgramObject_         = NULL;
 PFNGLCREATESHADEROBJECTARBPROC        glCreateShaderObject_       = NULL;
 PFNGLSHADERSOURCEARBPROC              glShaderSource_             = NULL;
 PFNGLCOMPILESHADERARBPROC             glCompileShader_            = NULL;
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     screen = SDL_SetVideoMode( 640, 480, 16, SDL_OPENGL );
     assert(screen);
-    
+
     glClearColor(0, 0, 0, 0);
     glViewport(0, 0, 640, 480);
     glMatrixMode(GL_PROJECTION);
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
     glEnd();
 
     SDL_GL_SwapBuffers();
-    
+
 #ifdef REPORT_RESULT
     REPORT_RESULT(1);
 #endif

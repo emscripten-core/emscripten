@@ -21,7 +21,7 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
   printf("eventType: %d, mouseEvent: %p, userData: %p, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, movement: (%ld,%ld), canvas: (%ld,%ld)\n",
     eventType, e, userData,
     e->screenX, e->screenY, e->clientX, e->clientY,
-    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
+    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "",
     e->button, e->buttons, e->movementX, e->movementY, e->canvasX, e->canvasY);
   assert(threadId && threadId == registeringThreadId);
   assert(userData == (void*)0x42);

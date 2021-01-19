@@ -483,7 +483,7 @@ strings, so it accepts ``[a]`` or ``[a,b]`` etc.).
 
 
 Why do I get a Python ``SyntaxError: invalid syntax`` on ``file=..`` or on a string starting with ``f'..'``?
-============================================================================================================ 
+============================================================================================================
 
 Emscripten requires a recent-enough version of Python. An older Python version,
 like ``2.*``, will not support the print statement by default, so it will error on

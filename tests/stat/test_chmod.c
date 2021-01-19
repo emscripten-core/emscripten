@@ -47,7 +47,7 @@ void test() {
   int err;
   int lastctime;
   struct stat s;
-  
+
   //
   // chmod a file
   //

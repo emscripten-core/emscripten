@@ -11,7 +11,7 @@
 static SDL_Window *window;
 static SDL_Surface *surface;
 
-static void sdlError(const char *str) 
+static void sdlError(const char *str)
 {
     fprintf(stderr, "Error at %s: %s\n", str, SDL_GetError());
     emscripten_force_exit(1);

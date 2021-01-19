@@ -23,7 +23,7 @@ int main()
 {
 	assert(numInterestingFloats % 4 == 0);
 	assert(numInterestingInts % 4 == 0);
-	assert(numInterestingDoubles % 4 == 0);	
+	assert(numInterestingDoubles % 4 == 0);
 
 	testNaNBits = false;
 	Ret_M128d_M128d(__m128d, _mm_addsub_pd);

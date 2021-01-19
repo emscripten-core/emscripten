@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
   printf("%f\n", ret);
   sscanf("3.4", "%f", &ret);
   printf("%f\n", ret);
-  
+
   // Expected results:
   // LANG=C ./a.out: 1 / 3.4
   // LANG=fr_FR.UTF-8 ./a.out: 1,2 / 3

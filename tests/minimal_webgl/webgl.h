@@ -20,7 +20,7 @@ void fill_char(float x0, float y0, float r, float g, float b, float a, unsigned 
 // Draws a string of text on screen at position (x0,y0). spacing: letter spacing. charSize: font size. shadow: if true, applies a drop shadow.
 void fill_text(float x0, float y0, float r, float g, float b, float a, const char *str, float spacing, int charSize, int shadow);
 
-// Draws an image from given url to pixel coordinates x0,y0, applying uniform scaling factor scale, modulated with rgba. 
+// Draws an image from given url to pixel coordinates x0,y0, applying uniform scaling factor scale, modulated with rgba.
 void fill_image(float x0, float y0, float scale, float r, float g, float b, float a, const char *url);
 
 #ifdef __cplusplus

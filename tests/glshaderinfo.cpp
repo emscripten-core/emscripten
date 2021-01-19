@@ -32,10 +32,10 @@ int main(int argc, char *argv[])
 
    glutCreateWindow("es2gears");
 
-   GLint shaderCompiler; 
+   GLint shaderCompiler;
    glGetIntegerv(GL_SHADER_COMPILER, &shaderCompiler);
 
-   GLint numShaderBinaryFormats; 
+   GLint numShaderBinaryFormats;
    glGetIntegerv(GL_NUM_SHADER_BINARY_FORMATS, &numShaderBinaryFormats);
 
    printf("%d,%d\n", shaderCompiler, numShaderBinaryFormats);

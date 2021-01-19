@@ -22,7 +22,7 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
 {
    GLuint shader;
    GLint compiled;
-   
+
    shader = glCreateShader ( type );
    if ( shader == 0 )
    	return 0;
@@ -30,7 +30,7 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
    glShaderSource ( shader, 1, &shaderSrc, NULL );
    glCompileShader ( shader );
    glGetShaderiv ( shader, GL_COMPILE_STATUS, &compiled );
-   if ( !compiled ) 
+   if ( !compiled )
    {
       GLint infoLen = 0;
       glGetShaderiv ( shader, GL_INFO_LOG_LENGTH, &infoLen );
@@ -38,7 +38,7 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
       {
          char* infoLog = malloc (sizeof(char) * infoLen );
          glGetShaderInfoLog ( shader, infoLen, NULL, infoLog );
-         printf ( "Error compiling shader:\n%s\n", infoLog );            
+         printf ( "Error compiling shader:\n%s\n", infoLog );
          free ( infoLog );
       }
       glDeleteShader ( shader );
@@ -49,14 +49,14 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
 
 int Init ()
 {
-   const char* vShaderStr =  
+   const char* vShaderStr =
       "attribute vec4 vPosition;    \n"
       "void main()                  \n"
       "{                            \n"
       "   gl_Position = vPosition;  \n"
       "}                            \n";
-   
-   const char* fShaderStr =  
+
+   const char* fShaderStr =
       "precision mediump float;\n"\
       "void main()                                  \n"
       "{                                            \n"
@@ -79,7 +79,7 @@ int Init ()
    glBindAttribLocation ( programObject, 0, "vPosition" );
    glLinkProgram ( programObject );
    glGetProgramiv ( programObject, GL_LINK_STATUS, &linked );
-   if ( !linked ) 
+   if ( !linked )
    {
       GLint infoLen = 0;
       glGetProgramiv ( programObject, GL_INFO_LOG_LENGTH, &infoLen );
@@ -87,7 +87,7 @@ int Init ()
       {
          char* infoLog = malloc (sizeof(char) * infoLen );
          glGetProgramInfoLog ( programObject, infoLen, NULL, infoLog );
-         printf ( "Error linking program:\n%s\n", infoLog );            
+         printf ( "Error linking program:\n%s\n", infoLog );
          free ( infoLog );
       }
       glDeleteProgram ( programObject );
@@ -103,7 +103,7 @@ int Init ()
 //
 void Draw ()
 {
-   GLfloat vVertices[] = {  0.0f,  0.5f, 0.0f, 
+   GLfloat vVertices[] = {  0.0f,  0.5f, 0.0f,
                            -0.5f, -0.5f, 0.0f,
                             0.5f, -0.5f, 0.0f };
 
@@ -112,7 +112,7 @@ void Draw ()
    glGenBuffers(1, &vertexPosObject);
    glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
    glBufferData(GL_ARRAY_BUFFER, 9*4, vVertices, GL_STATIC_DRAW);
-   
+
    glViewport ( 0, 0, width, height );
    glClear ( GL_COLOR_BUFFER_BIT );
    glUseProgram ( programObject );

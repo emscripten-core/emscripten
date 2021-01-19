@@ -22,7 +22,7 @@ int main() {
   tzset();
   printf("tzname[0] set: %d\n", strlen(tzname[0]) >= 3);
   printf("tzname[1] set: %d\n", strlen(tzname[1]) >= 3);
-  
+
   // Verify gmtime() creates correct struct.
   tm_ptr = gmtime(&xmas2002);
   printf("sec: %d\n", tm_ptr->tm_sec);
@@ -36,7 +36,7 @@ int main() {
   printf("dst: %d\n", tm_ptr->tm_isdst);
   printf("off: %ld\n", (long)tm_ptr->tm_gmtoff);
   printf("zone: %s\n", tm_ptr->tm_zone);
-  
+
   // Verify timegm() reverses gmtime; run through an entire year in half hours.
   int timegmOk = 1;
   for (int i = 0; i < 2*24*266; ++i) {
@@ -51,14 +51,14 @@ int main() {
       timegmOk = 0;
   }
   printf("timegm <-> gmtime: %d\n", timegmOk);
-  
+
   // Verify gmtime_r() doesn't clobber static data.
   time_t t1 = 0;
   struct tm tm1;
   gmtime_r(&t1, &tm1);
   printf("old year still: %d\n", tm_ptr->tm_year);
   printf("new year: %d\n", tm1.tm_year);
-  
+
   // Verify localtime() picks up timezone data.
   struct tm tm_winter, tm_summer;
   if (localtime_r(&xmas2002, &tm_winter) != &tm_winter) printf("localtime_r failed\n");

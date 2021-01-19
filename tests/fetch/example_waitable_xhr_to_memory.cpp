@@ -28,7 +28,7 @@ int main()
     printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
     // The data is now available at fetch->data[0] through fetch->data[fetch->numBytes-1];
   } else {
-    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);    
+    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);
   }
   emscripten_fetch_close(fetch);
 }

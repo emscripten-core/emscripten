@@ -11,9 +11,9 @@
 #include <emscripten/html5.h>
 
 static inline const char *emscripten_event_type_to_string(int eventType) {
-  const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize", 
-    "scroll", "blur", "focus", "focusin", "focusout", "deviceorientation", "devicemotion", "orientationchange", "fullscreenchange", "pointerlockchange", 
-    "visibilitychange", "touchstart", "touchend", "touchmove", "touchcancel", "gamepadconnected", "gamepaddisconnected", "beforeunload", 
+  const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize",
+    "scroll", "blur", "focus", "focusin", "focusout", "deviceorientation", "devicemotion", "orientationchange", "fullscreenchange", "pointerlockchange",
+    "visibilitychange", "touchstart", "touchend", "touchmove", "touchcancel", "gamepadconnected", "gamepaddisconnected", "beforeunload",
     "batterychargingchange", "batterylevelchange", "webglcontextlost", "webglcontextrestored", "mouseenter", "mouseleave", "mouseover", "mouseout", "(invalid)" };
   ++eventType;
   if (eventType < 0) eventType = 0;
@@ -41,8 +41,8 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
 EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
 {
   printf("%s, key: \"%s\", code: \"%s\", location: %lu,%s%s%s%s repeat: %d, locale: \"%s\", char: \"%s\", charCode: %lu, keyCode: %lu, which: %lu\n",
-    emscripten_event_type_to_string(eventType), e->key, e->code, e->location, 
-    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
+    emscripten_event_type_to_string(eventType), e->key, e->code, e->location,
+    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "",
     e->repeat, e->locale, e->charValue, e->charCode, e->keyCode, e->which);
 
   if (eventType == EMSCRIPTEN_EVENT_KEYPRESS && (!strcmp(e->key, "f") || e->which == 102)) {
@@ -92,7 +92,7 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
 {
   printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, movement: (%ld,%ld), canvas: (%ld,%ld)\n",
     emscripten_event_type_to_string(eventType), e->screenX, e->screenY, e->clientX, e->clientY,
-    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
+    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "",
     e->button, e->buttons, e->movementX, e->movementY, e->canvasX, e->canvasY);
 
   return 0;
@@ -102,7 +102,7 @@ EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userD
 {
   printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, canvas: (%ld,%ld), delta:(%g,%g,%g), deltaMode:%lu\n",
     emscripten_event_type_to_string(eventType), e->mouse.screenX, e->mouse.screenY, e->mouse.clientX, e->mouse.clientY,
-    e->mouse.ctrlKey ? " CTRL" : "", e->mouse.shiftKey ? " SHIFT" : "", e->mouse.altKey ? " ALT" : "", e->mouse.metaKey ? " META" : "", 
+    e->mouse.ctrlKey ? " CTRL" : "", e->mouse.shiftKey ? " SHIFT" : "", e->mouse.altKey ? " ALT" : "", e->mouse.metaKey ? " META" : "",
     e->mouse.button, e->mouse.buttons, e->mouse.canvasX, e->mouse.canvasY,
     (float)e->deltaX, (float)e->deltaY, (float)e->deltaZ, e->deltaMode);
 
@@ -135,7 +135,7 @@ EM_BOOL deviceorientation_callback(int eventType, const EmscriptenDeviceOrientat
 EM_BOOL devicemotion_callback(int eventType, const EmscriptenDeviceMotionEvent *e, void *userData)
 {
   printf("%s, accel: (%g, %g, %g), accelInclGravity: (%g, %g, %g), rotationRate: (%g, %g, %g), supportedFields: %s %s %s\n",
-    emscripten_event_type_to_string(eventType), 
+    emscripten_event_type_to_string(eventType),
     e->accelerationX, e->accelerationY, e->accelerationZ,
     e->accelerationIncludingGravityX, e->accelerationIncludingGravityY, e->accelerationIncludingGravityZ,
     e->rotationRateAlpha, e->rotationRateBeta, e->rotationRateGamma,
@@ -187,7 +187,7 @@ EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userD
     printf("  %ld: screen: (%ld,%ld), client: (%ld,%ld), page: (%ld,%ld), isChanged: %d, onTarget: %d, canvas: (%ld, %ld)\n",
       t->identifier, t->screenX, t->screenY, t->clientX, t->clientY, t->pageX, t->pageY, t->isChanged, t->onTarget, t->canvasX, t->canvasY);
   }
-  
+
   return 0;
 }
 
@@ -306,7 +306,7 @@ int main()
     orientationchange_callback(EMSCRIPTEN_EVENT_ORIENTATIONCHANGE, &oce, 0);
   }
 
-  int newOrientation = (oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY 
+  int newOrientation = (oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY
   || oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY) ? EMSCRIPTEN_ORIENTATION_LANDSCAPE_PRIMARY : EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY;
   // Test locking of orientation.
   ret = emscripten_lock_orientation(newOrientation);
@@ -365,8 +365,8 @@ int main()
   TEST_RESULT(emscripten_exit_pointerlock);
 
   int vibratePattern[] = {
-    150, 500, 
-    300, 500, 
+    150, 500,
+    300, 500,
     450
   };
   ret = emscripten_vibrate_pattern(vibratePattern, sizeof(vibratePattern)/sizeof(vibratePattern[0]));

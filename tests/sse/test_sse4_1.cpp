@@ -24,7 +24,7 @@ void test_round()
 	Ret_M128d(__m128d, _mm_ceil_pd);
 	Ret_M128(__m128, _mm_ceil_ps);
 	Ret_M128d_M128d(__m128d, _mm_ceil_sd);
-	Ret_M128_M128(__m128, _mm_ceil_ss);	
+	Ret_M128_M128(__m128, _mm_ceil_ss);
 	Ret_M128d(__m128d, _mm_floor_pd);
 	Ret_M128(__m128, _mm_floor_ps);
 	Ret_M128d_M128d(__m128d, _mm_floor_sd);
@@ -39,7 +39,7 @@ int main()
 {
 	assert(numInterestingFloats % 4 == 0);
 	assert(numInterestingInts % 4 == 0);
-	assert(numInterestingDoubles % 4 == 0);	
+	assert(numInterestingDoubles % 4 == 0);
 
 	test_round();
 

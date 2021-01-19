@@ -95,7 +95,7 @@ extern MUTEX_T webSocketSendLock;
 
 void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes)
 {
-  // Guard send() calls to the client_fd socket so that two threads won't ever race to send to the 
+  // Guard send() calls to the client_fd socket so that two threads won't ever race to send to the
   // same socket. (This could be per-socket, currently global for simplicity)
   LOCK_MUTEX(&webSocketSendLock);
   uint8_t headerData[sizeof(WebSocketMessageHeader) + 8/*possible extended length*/] = {};

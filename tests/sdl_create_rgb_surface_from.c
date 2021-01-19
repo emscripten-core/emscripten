@@ -27,10 +27,10 @@ int main() {
 
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(width, height, 32, SDL_HWSURFACE);
-  SDL_Surface *image = SDL_CreateRGBSurfaceFrom(pixels, width, height, 32, width * 4, 
-    0x000000ff, 
-    0x0000ff00, 
-    0x00ff0000, 
+  SDL_Surface *image = SDL_CreateRGBSurfaceFrom(pixels, width, height, 32, width * 4,
+    0x000000ff,
+    0x0000ff00,
+    0x00ff0000,
     0xff000000);
 
   SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, 255, 0, 0));

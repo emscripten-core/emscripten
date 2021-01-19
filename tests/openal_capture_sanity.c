@@ -10,7 +10,7 @@
 // checks some basic conformance to expectations w.r.t the spec.
 //
 // Wishlist:
-// - Any operation a closed device should fail; 
+// - Any operation a closed device should fail;
 // - Trying to open multiple devices with the same name at the same time
 //   and different settings should be fine;
 
@@ -54,7 +54,7 @@ static const ALCuint SAMPLE_RATES[] = {
 };
 
 static const ALenum FORMATS[] = {
-    AL_FORMAT_MONO8, 
+    AL_FORMAT_MONO8,
     AL_FORMAT_MONO16,
     AL_FORMAT_STEREO8,
     AL_FORMAT_STEREO16,
@@ -83,7 +83,7 @@ static const char* alformat_string(ALenum format) {
 static void check_device_sanity_with_params(const char *name, ALCuint sample_rate, ALenum format, ALCsizei buffer_size) {
 
     printf(
-        "Testing \"%s\" @%uHz with %u sample-frames (format: %s)...\n", 
+        "Testing \"%s\" @%uHz with %u sample-frames (format: %s)...\n",
         name, (unsigned)sample_rate, (unsigned) buffer_size,
         alformat_string(format)
     );
@@ -107,8 +107,8 @@ static void check_device_sanity_with_params(const char *name, ALCuint sample_rat
     ALCenum err = alcGetError(dev);
     fprintf(stderr,
         "alcCaptureOpenDevice(\"%s\", sample_rate=%u, format=%s, "
-        "buffer_size=%u) failed with ALC error %x (%s)\n", 
-        name, (unsigned)sample_rate, alformat_string(format), 
+        "buffer_size=%u) failed with ALC error %x (%s)\n",
+        name, (unsigned)sample_rate, alformat_string(format),
         (unsigned) buffer_size,
         (unsigned) err, alcGetString(NULL, err)
     );

@@ -100,7 +100,7 @@ struct Test t[NUM_THREADS] = {};
 pthread_t thread[NUM_THREADS];
 
 void RunTest(int test)
-{	
+{
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 4*1024);

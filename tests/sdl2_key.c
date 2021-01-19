@@ -13,7 +13,7 @@ int result = 1;
 
 int EventHandler(void *userdata, SDL_Event *event) {
   int mod;
-  
+
   switch(event->type) {
     case SDL_KEYUP:
       break;

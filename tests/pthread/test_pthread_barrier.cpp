@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 
     // Barrier initialization
     int ret = pthread_barrier_init(&barr, NULL, THREADS);
-    assert(ret == 0); 
+    assert(ret == 0);
 
     for(int i = 0; i < THREADS; ++i) pthread_create(&thr[i], NULL, &thread_main, (void*)i);
     if (emscripten_has_threading_support())

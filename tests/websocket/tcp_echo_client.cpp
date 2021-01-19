@@ -11,7 +11,7 @@
 #include <emscripten.h>
 #include <emscripten/websocket.h>
 #include <emscripten/threading.h>
- 
+
 EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;
 
 extern "C" {
@@ -110,7 +110,7 @@ int main(int argc , char *argv[])
       puts("recv failed");
       break;
     }
-     
+
     puts("Server reply: ");
     puts(server_reply);
   }

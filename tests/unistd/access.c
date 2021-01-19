@@ -53,7 +53,7 @@ int main() {
   }
 
   EM_ASM({FS.writeFile('filetorename',  'renametest');});
-  
+
   rename("filetorename", "renamedfile");
 
   errno = 0;

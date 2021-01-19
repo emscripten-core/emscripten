@@ -8,13 +8,13 @@
 
 var LibraryOpenAL = {
   // ************************************************************************
-  // ** INTERNALS 
+  // ** INTERNALS
   // ************************************************************************
 
   $AL__deps: ['$Browser'],
   $AL: {
     // ------------------------------------------------------
-    // -- Constants 
+    // -- Constants
     // ------------------------------------------------------
 
     QUEUE_INTERVAL: 25,
@@ -1125,7 +1125,7 @@ var LibraryOpenAL = {
         return src.type;
       case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
         return src.spatialize;
-      case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+      case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
         var length = 0;
         var bytesPerFrame = 0;
         for (var i = 0; i < src.bufQueue.length; i++) {
@@ -1503,7 +1503,7 @@ var LibraryOpenAL = {
         src.spatialize = value;
         AL.initSourcePanner(src);
         break;
-      case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+      case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
       case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
       case 0x200B /* AL_SEC_LENGTH_SOFT */:
 #if OPENAL_DEBUG
@@ -1598,7 +1598,7 @@ var LibraryOpenAL = {
   },
 
   // ***************************************************************************
-  // ** ALC API 
+  // ** ALC API
   // ***************************************************************************
 
   // -------------------------------------------------------
@@ -1640,12 +1640,12 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    navigator.getUserMedia = navigator.getUserMedia 
-      || navigator.webkitGetUserMedia 
-      || navigator.mozGetUserMedia 
+    navigator.getUserMedia = navigator.getUserMedia
+      || navigator.webkitGetUserMedia
+      || navigator.mozGetUserMedia
       || navigator.msGetUserMedia;
-    var has_getUserMedia = navigator.getUserMedia 
-      || (navigator.mediaDevices 
+    var has_getUserMedia = navigator.getUserMedia
+      || (navigator.mediaDevices
       &&  navigator.mediaDevices.getUserMedia);
 
     if (!has_getUserMedia) {
@@ -1944,7 +1944,7 @@ var LibraryOpenAL = {
       console.warn('Redundant call to alcCaptureStart()');
 #endif
       // NOTE: Spec says (emphasis mine):
-      //     The amount of audio samples available after **restarting** a 
+      //     The amount of audio samples available after **restarting** a
       //     stopped capture device is reset to zero.
       // So redundant calls to alcCaptureStart() must have no effect.
       return;
@@ -1968,7 +1968,7 @@ var LibraryOpenAL = {
     c.isCapturing = false;
   },
 
-  // The OpenAL spec hints that implementations are allowed to 
+  // The OpenAL spec hints that implementations are allowed to
   // 'defer resampling and other conversions' up until this point.
   //
   // The last parameter is actually 'number of sample frames', so was
@@ -1981,16 +1981,16 @@ var LibraryOpenAL = {
 
     // ALCsizei is actually 32-bit signed int, so could be negative
     // Also, spec says :
-    //   Requesting more sample frames than are currently available is 
+    //   Requesting more sample frames than are currently available is
     //   an error.
 
     var dstfreq = c.requestedSampleRate;
     var srcfreq = c.audioCtx.sampleRate;
 
     var fratio = srcfreq / dstfreq;
-    
+
     if (requestedFrameCount < 0
-    ||  requestedFrameCount > (c.capturedFrameCount / fratio)) 
+    ||  requestedFrameCount > (c.capturedFrameCount / fratio))
     {
   // if OPENAL_DEBUG
       console.error('alcCaptureSamples() with invalid bufferSize');
@@ -1998,7 +1998,7 @@ var LibraryOpenAL = {
       AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
       return;
     }
-    
+
     function setF32Sample(i, sample) {
       {{{ makeSetValue('pFrames', '4*i', 'sample', 'float') }}};
     }
@@ -2015,13 +2015,13 @@ var LibraryOpenAL = {
     case 'f32': setSample = setF32Sample; break;
     case 'i16': setSample = setI16Sample; break;
     case 'u8' : setSample = setU8Sample ; break;
-    default: 
+    default:
 #if OPENAL_DEBUG
       console.error('Internal error: Unknown sample type \''+c.requestedSampleType+'\'');
 #endif
       return;
     }
-    
+
     // If fratio is an integer we don't need linear resampling, just skip samples
     if (Math.floor(fratio) == fratio) {
       for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
@@ -2451,7 +2451,7 @@ var LibraryOpenAL = {
       ret = AL.CAPTURE_DEVICE_NAME;
       break;
     case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
-      if (deviceId === 0) 
+      if (deviceId === 0)
         ret = AL.CAPTURE_DEVICE_NAME.concat('\0');
         else {
         var c = AL.requireValidCaptureDevice(deviceId, 'alcGetString');
@@ -2459,7 +2459,7 @@ var LibraryOpenAL = {
           return 0;
         }
         ret = c.deviceName;
-      }  
+      }
       break;
     case 0x1006 /* ALC_EXTENSIONS */:
       if (!deviceId) {
@@ -2755,7 +2755,7 @@ var LibraryOpenAL = {
   },
 
   // ***************************************************************************
-  // ** AL API 
+  // ** AL API
   // ***************************************************************************
 
   // -------------------------------------------------------
@@ -4628,7 +4628,7 @@ var LibraryOpenAL = {
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x1027 /* AL_SOURCE_TYPE */:
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-    case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+    case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case 0xD000 /* AL_DISTANCE_MODEL */:
       {{{ makeSetValue('pValue', '0', 'val', 'i32') }}};
@@ -4706,7 +4706,7 @@ var LibraryOpenAL = {
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x1027 /* AL_SOURCE_TYPE */:
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-    case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+    case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case 0xD000 /* AL_DISTANCE_MODEL */:
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
@@ -4836,7 +4836,7 @@ var LibraryOpenAL = {
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-    case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+    case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case 0xD000 /* AL_DISTANCE_MODEL */:
       AL.setSourceParam('alSourcei', sourceId, param, value);
@@ -4895,7 +4895,7 @@ var LibraryOpenAL = {
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-    case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+    case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case 0xD000 /* AL_DISTANCE_MODEL */:
       var val = {{{ makeGetValue('pValues', '0', 'i32') }}};

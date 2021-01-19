@@ -60,6 +60,6 @@ int main() {
       printf("failed to open file %s\n", path);
     }
   }
-  
+
   return 0;
 }

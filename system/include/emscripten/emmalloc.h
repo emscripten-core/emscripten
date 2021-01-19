@@ -31,7 +31,7 @@ size_t malloc_usable_size(void *ptr);
 size_t emmalloc_usable_size(void *ptr);
 
 // Frees a memory pointer allocated with any of
-// emmalloc_memalign, emmalloc_malloc, 
+// emmalloc_memalign, emmalloc_malloc,
 void free(void *ptr);
 void emmalloc_free(void *ptr);
 void emscripten_builtin_free(void *ptr);
@@ -59,7 +59,7 @@ void *emmalloc_realloc_uninitialized(void *ptr, size_t size);
 
 // Like realloc(), but allows specifying the alignment to allocate to. This function cannot
 // be used to change the alignment of an existing allocation, but the original pointer should
-// be aligned to the given alignment already. 
+// be aligned to the given alignment already.
 void *aligned_realloc(void *ptr, size_t alignment, size_t size);
 void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size);
 

@@ -105,7 +105,7 @@ int main()
       Module['canvas'].parentElement.appendChild(canvas2);
       canvas2.id = 'customCanvas';
     );
-    
+
     assert(emscripten_webgl_get_current_context() == 0);
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#customCanvas", &attrs);
     assert(context > 0); // Must have received a valid context.
@@ -146,7 +146,7 @@ int main()
     printf("RGBA: %d%d%d%d, Depth: %d, Stencil: %d, Samples: %d\n",
       GetInt(GL_RED_BITS), GetInt(GL_GREEN_BITS), GetInt(GL_BLUE_BITS), GetInt(GL_ALPHA_BITS),
       numDepthBits, numStencilBits, numSamples);
-    
+
     if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
     {
       numDepthBits = 0;
@@ -193,7 +193,7 @@ int main()
       canvas2.parentElement.removeChild(canvas2);
     );
   }
-  
+
   // result will be reported when mainLoop completes
   emscripten_set_main_loop(loop, 0, 0);
 

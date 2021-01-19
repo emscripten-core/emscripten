@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 
   SDL_LockSurface(screen);
 
-  SDL_FillRect(screen, NULL, 0x000088); 
+  SDL_FillRect(screen, NULL, 0x000088);
 
   for (int i = 0; i < 40; ++i) {
     int x0 = rand() % SCREEN_W;

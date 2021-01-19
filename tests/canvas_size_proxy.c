@@ -8,7 +8,7 @@
 #include <math.h>
 #include <emscripten/html5.h>
 
-int main() 
+int main()
 {
     int result = 0;
     double w, h;

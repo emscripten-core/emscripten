@@ -24,7 +24,7 @@ int main()
     printf("Money Grouping: %s\n", locale->mon_grouping);
     printf("Positive sign: %s\n", locale->positive_sign);
     printf("Negative sign: %s\n", locale->negative_sign);
-    
+
     // If no runtime errors, assume the test passed.
     printf("Locale tests passed.\n");
     return 0;

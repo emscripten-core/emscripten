@@ -15,7 +15,7 @@
 
 template<typename TYPE, typename UNSIGNED_TYPE> void test(TYPE mask0, TYPE mask1, TYPE mask2) {
     typedef TYPE dog;
-    
+
     const TYPE numMemoryOrders = 6;
     std::memory_order memoryOrder[numMemoryOrders] = {
         std::memory_order_relaxed,
@@ -126,7 +126,7 @@ int main() {
     printf("\n64 bits\n\n");
     test<long long, unsigned long long>(0xFFFFFFFFFFFFFFFF, 0xF0F0F0F0F0F0F0F0, 0x0F0F0F0F0F0F0F0F);
 
-    // test atomic_flag (should also have memory_orders, but probably doesn't matter 
+    // test atomic_flag (should also have memory_orders, but probably doesn't matter
     // to find the missing atomic functions)
     std::atomic_flag af;
     af.clear();

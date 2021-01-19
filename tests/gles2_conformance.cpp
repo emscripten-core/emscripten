@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
     // Converting enums to booleans or floats would be odd, so test that the following report a GL_INVALID_ENUM.
     glGetBooleanv(GL_SHADER_BINARY_FORMATS, &b);
-    assert(glGetError() == GL_INVALID_ENUM);    
+    assert(glGetError() == GL_INVALID_ENUM);
     glGetFloatv(GL_SHADER_BINARY_FORMATS, &f);
     assert(glGetError() == GL_INVALID_ENUM);
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     glGetFloatv(GL_SHADER_COMPILER, &f);
     assert(glGetError() == GL_NO_ERROR);
     assert(f == 1.f);
-    
+
 #ifdef REPORT_RESULT
     REPORT_RESULT(result);
 #endif

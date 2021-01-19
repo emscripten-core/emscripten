@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     SDL_BlitSurface (text, NULL, screen, &dest);
   }
 
-  SDL_Flip(screen); 
+  SDL_Flip(screen);
 
   SDL_LockSurface(screen);
 

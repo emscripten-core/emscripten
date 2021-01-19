@@ -28,7 +28,7 @@ void runtest() {
       do_throw2();
     }
     catch( std::runtime_error ) {
-      printf("- Caught expected\n"); 
+      printf("- Caught expected\n");
     }
   }
   else { printf("- not allowed\n"); }

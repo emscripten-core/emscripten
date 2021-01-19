@@ -483,7 +483,7 @@ function isModuleAsmUse(node) { // Module['asm'][..string..]
          node.object.type === 'MemberExpression' &&
          node.object.object.type === 'Identifier' &&
          node.object.object.name === 'Module' &&
-         node.object.property.type === 'Literal' && 
+         node.object.property.type === 'Literal' &&
          node.object.property.value === 'asm' &&
          isLiteralString(node.property);
 }

@@ -70,7 +70,7 @@ int main() {
 			if (numBytesWritten != 5*2) throw 'stringToUTF16 wrote an invalid length ' + numBytesWritten;
 		}, wstr.c_str(), memory, 6*sizeof(utf16));
 		assert(memory[5] == 0);
-		
+
 		delete[] memory;
 	}
 

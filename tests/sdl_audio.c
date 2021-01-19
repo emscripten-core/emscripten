@@ -72,8 +72,8 @@ int main(int argc, char **argv) {
   {
       music = Mix_LoadMUS("the_entertainer.ogg");
   }
-  
-  
+
+
   sound2 = Mix_LoadWAV("sound2.wav");
   assert(sound2);
 

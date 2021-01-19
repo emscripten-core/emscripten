@@ -36,7 +36,7 @@ int loop2()
 {
    unsigned i;
    int r = 0;
-   
+
    // method 2: SDL_PumpEvents
    SDL_PumpEvents();
 

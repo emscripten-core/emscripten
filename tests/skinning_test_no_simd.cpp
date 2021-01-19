@@ -92,7 +92,7 @@ struct Influence
     weight = 0.0f;
     lastInfluenceForThisVertex = 0;
   }
-  
+
   Influence(unsigned b, float w, bool last) {
     boneId = b;
     weight = w;

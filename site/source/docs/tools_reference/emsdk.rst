@@ -156,7 +156,7 @@ How do I install a tool/SDK version?
 Use the ``install`` argument to download and install a new tool or SDK version: ::
 
   ./emsdk install <tool/sdk name>
-  
+
 For example: ::
 
   ./emsdk install sdk-1.38.21-64bit

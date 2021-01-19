@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
   SDL_Rect rect = { 200, 200, 175, 125 };
   SDL_FillRect(screen, &rect, SDL_MapRGBA(screen->format, 0x22, 0x22, 0xff, 0xff));
 
-  SDL_Flip(screen); 
+  SDL_Flip(screen);
 
   SDL_LockSurface(screen);
 
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   printf("you should see two lines of text in different colors and a blue rectangle\n");
 
   SDL_UnlockSurface(screen);
-  
+
   SDL_Quit();
 
   printf("done.\n");

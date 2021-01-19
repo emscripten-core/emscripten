@@ -37,13 +37,13 @@ if( isset($_GET['url']) ) {
 			echo 'For empty file ' . $fileName;
 			die();
 		} else {
-			header("POST ".$fileName." HTTP/1.1\r\n");	
+			header("POST ".$fileName." HTTP/1.1\r\n");
 			header('Content-Description: File Transfer');
 			header('Content-Transfer-Encoding: binary');
 			header('Content-Disposition: attachment; filename="' . basename($fileName) . "\";");
 			header('Content-Type: application/octet-stream');
 			header('Content-Length: '.$fSize);
-			
+
 			header('Expires: 0');
 			header('Cache-Control: must-revalidate');
 			header('Pragma: public');
@@ -63,7 +63,7 @@ if( isset($_GET['url']) ) {
 */
 // http://..../download.php?url=
 std::string http::cross_domain = "";
-		
+
 
 //----------------------------------------------------------------------------------------
 // HTTP CLASS
@@ -107,22 +107,22 @@ void http::runRequest(const char* page, int assync) {
 	_status = ST_PENDING;
 	_assync = (AssyncMode)assync;
 	_progressValue = 0;
-	
+
 	std::string url = cross_domain;
 	url += _hostname + _page;
-	
+
 	if (_hostname.size() > 0  && _page.size() > 0) {
-	
+
 		printf("URL : %s\n",url.c_str());
 		printf("REQUEST : %s\n",(_request==REQUEST_GET) ? "GET":"POST");
 		printf("PARAMS : %s\n",_param.c_str());
-		
+
 		if (_targetFileName.size() == 0 ) {
 			_targetFileName = format("prepare%d",_uid);
 		}
 
 		_handle = emscripten_async_wget2(url.c_str(), _targetFileName.c_str(), (_request==REQUEST_GET) ? "GET":"POST", _param.c_str(), this, http::onLoaded, http::onError, http::onProgress);
-	
+
 	} else {
 		_error = format("malformed url : %s\n",url.c_str());
 		_content = "";
@@ -195,14 +195,14 @@ void http::onProgress(int progress) {
 }
 
 void http::onLoaded(const char* file) {
-	
+
 	if (strstr(file,"prepare")) {
 		FILE* f = fopen(file,"rb");
 		if (f) {
-			fseek (f, 0, SEEK_END); 
+			fseek (f, 0, SEEK_END);
     		int size=ftell (f);
-    		fseek (f, 0, SEEK_SET);  
-    		 
+    		fseek (f, 0, SEEK_SET);
+
 			char* data = new char[size];
 			fread(data,size,1,f);
 			_content = data;
@@ -221,9 +221,9 @@ void http::onLoaded(const char* file) {
 }
 
 void http::onError(int error) {
-	
+
 	printf("Error status : %d\n",error);
-	
+
 	_error = "";
 	_content = "";
 	_status = ST_FAILED;
@@ -243,27 +243,27 @@ void wait_https() {
 }
 
 void wait_http(void* request) {
-	http* req = reinterpret_cast<http*>(request); 
+	http* req = reinterpret_cast<http*>(request);
 	if (req != 0) {
     	if (req->getStatus() == http::ST_PENDING) {
 			if ((int)req->getProgress()>0) {
 				printf("Progress Request n°%d : %d\n",req->getId(),(int)req->getProgress());
 			}
 			emscripten_async_call(wait_http,request,500);
-			
+
     	} else {
-			if (req->getStatus() == http::ST_OK) { 
+			if (req->getStatus() == http::ST_OK) {
 				printf("Success Request n°%d : %s\n",req->getId(),req->getContent());
 			} else if (req->getStatus() == http::ST_ABORTED) {
 				printf("Aborted Request n°%d", req->getId());
 			} else {
 				printf("Error Request n°%d : %s\n",req->getId(), req->getError());
     		}
-    		
+
   			num_request --;
     	}
   	} else {
-		num_request --;  	
+		num_request --;
   	}
 }
 
@@ -295,6 +295,6 @@ int main() {
 	num_request ++;
 	emscripten_async_call(wait_http,http4,500);
 	*/
-	
+
     emscripten_set_main_loop(wait_https, 0, 0);
 }

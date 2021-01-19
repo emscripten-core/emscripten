@@ -15,7 +15,7 @@ int64_t foobar(int64_t x, int y) {
   }
   return x + y; // use the int parameter too, to show they are all handled
 }
-  
+
 int main() {
   int64_t x;
   try {

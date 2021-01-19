@@ -40,7 +40,7 @@ void mainloop() {
     printf("Successfully transitioned to fullscreen mode!\n");
     wasFullscreen = isInFullscreen;
   }
-  
+
   if (wasFullscreen && !isInFullscreen) {
     printf("Exited fullscreen. Test succeeded.\n");
 #ifdef REPORT_RESULT

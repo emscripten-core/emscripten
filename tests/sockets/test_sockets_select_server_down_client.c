@@ -41,7 +41,7 @@ void iter() {
   fd_set sett;
   FD_ZERO(&sett);
   FD_SET(sockfd, &sett);
-  
+
   // currently, we've connected to a closed server port.
   // the initial async connect "succeeded" and select
   // should say that the socket is ready for a non-blocking
@@ -68,7 +68,7 @@ void iter() {
 
 // This is for testing a websocket connection to a closed server port.
 // The connect call will succeed (due to the asynchronous websocket
-// behavior) but once the underlying websocket system realized that 
+// behavior) but once the underlying websocket system realized that
 // the connection cannot be established, the next select call will fail.
 int main() {
   struct sockaddr_in addr;
@@ -101,7 +101,7 @@ int main() {
 #else
   while (1) iter();
 #endif
-  
+
   return EXIT_FAILURE;
 }
 

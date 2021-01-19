@@ -36,12 +36,12 @@ double ucastd(uint64_t t) { return *(double*)&t; }
 // Data used in test. Store them global and access via a getter to confuse optimizer to not "solve" the whole test suite at compile-time,
 // so that the operation will actually be performed at runtime, and not at compile-time. (Testing the capacity of the compiler to perform
 // SIMD ops at compile-time would be interesting as well, but that's for another test)
-float interesting_floats_[] = { -INFINITY, -FLT_MAX, -2.5f, -1.5f, -1.4f, -1.0f, -0.5f, -0.2f, -FLT_MIN, -0.f, 0.f, 
+float interesting_floats_[] = { -INFINITY, -FLT_MAX, -2.5f, -1.5f, -1.4f, -1.0f, -0.5f, -0.2f, -FLT_MIN, -0.f, 0.f,
                                 1.401298464e-45f, FLT_MIN, 0.3f, 0.5f, 0.8f, 1.0f, 1.5f, 2.5f, 3.5f, 3.6f, FLT_MAX, INFINITY, NAN,
                                 ucastf(0x01020304), ucastf(0x80000000), ucastf(0x7FFFFFFF), ucastf(0xFFFFFFFF)
                             };
 
-double interesting_doubles_[] = { -INFINITY, -FLT_MAX, -2.5, -1.5, -1.4, -1.0, -0.5, -0.2, -FLT_MIN, -0.0, 0.0, 
+double interesting_doubles_[] = { -INFINITY, -FLT_MAX, -2.5, -1.5, -1.4, -1.0, -0.5, -0.2, -FLT_MIN, -0.0, 0.0,
                                 1.401298464e-45, FLT_MIN, 0.3, 0.5, 0.8, 1.0, 1.5, 2.5, 3.5, 3.6, FLT_MAX, INFINITY, NAN,
                                 ucastd(0x0102030405060708ULL), ucastd(0x8000000000000000ULL),
                                 ucastd(0x7FFFFFFFFFFFFFFFULL), ucastd(0xFFFFFFFFFFFFFFFFULL)

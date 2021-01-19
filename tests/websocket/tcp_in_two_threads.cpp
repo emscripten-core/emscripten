@@ -12,7 +12,7 @@
 #include <emscripten.h>
 #include <emscripten/websocket.h>
 #include <emscripten/threading.h>
- 
+
 EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;
 
 extern "C" {
@@ -101,7 +101,7 @@ void *recv_thread(void *arg)
       pthread_exit((void*)1);
     }
     printf("Recv() done\n");
-     
+
     puts("Server reply: ");
     puts(server_reply);
     emscripten_atomic_sub_u32(&pendingMessages, 1);

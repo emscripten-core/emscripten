@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten/emscripten.h>
-#define GLFW_INCLUDE_ES2 
+#define GLFW_INCLUDE_ES2
 #include <GL/glfw.h>
 
 int main() {
@@ -25,7 +25,7 @@ int main() {
           printf("glfwOpenWindow() success\n");
         }
     }
-#ifdef REPORT_RESULT  
+#ifdef REPORT_RESULT
     REPORT_RESULT(1);
 #endif
     return EXIT_SUCCESS;

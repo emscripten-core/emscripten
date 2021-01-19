@@ -34,7 +34,7 @@ void windowSizeCallback(GLFWwindow* window, int width, int height) {
     printf("Successfully transitioned to fullscreen mode!\n");
     wasFullscreen = isInFullscreen;
   }
-  
+
   if (wasFullscreen && !isInFullscreen) {
     printf("Exited fullscreen. Test succeeded.\n");
 #ifdef REPORT_RESULT
@@ -43,7 +43,7 @@ void windowSizeCallback(GLFWwindow* window, int width, int height) {
     wasFullscreen = isInFullscreen;
     emscripten_cancel_main_loop();
     return;
-  }  
+  }
 }
 
 int main() {
@@ -51,20 +51,20 @@ int main() {
   glfwSetErrorCallback(error_callback);
   if (!glfwInit())
   {
-    printf("Could not create window. Test failed.\n");      
+    printf("Could not create window. Test failed.\n");
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);
-#endif      
+#endif
     return -1;
   }
   glfwWindowHint(GLFW_RESIZABLE , 1);
   g_window = glfwCreateWindow(600, 450, "GLFW resizing test - windowed", NULL, NULL);
   if (!g_window)
   {
-    printf("Could not create window. Test failed.\n");      
+    printf("Could not create window. Test failed.\n");
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);
-#endif           
+#endif
     glfwTerminate();
     return -1;
   }

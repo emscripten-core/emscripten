@@ -2,7 +2,7 @@
 Module['preRun'].push(function() {
   console.log('preRun');
   // it is ok to call cwrap before the runtime is loaded. we don't need the code
-  // and everything to be ready, since cwrap just prepares to call code, it 
+  // and everything to be ready, since cwrap just prepares to call code, it
   // doesn't actually call it
   var wrappedAdd = Module['cwrap']('add', 'number', ['number', 'number']);
   // but to call the compiled code, we must wait for the runtime

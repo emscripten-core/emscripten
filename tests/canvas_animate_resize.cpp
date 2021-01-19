@@ -103,7 +103,7 @@ void init()
   glShaderSource(vs, 1, &vsCode, NULL);
   glCompileShader(vs);
 
-  const char *fsCode = 
+  const char *fsCode =
     "varying lowp vec2 tex;"
     "uniform highp float t;"
     "uniform sampler2D sampler;"
