@@ -46,16 +46,23 @@
 #define TIOCSETD	0x5423
 #define TIOCGETD	0x5424
 #define TCSBRKP		0x5425
-#define TIOCTTYGSTRUCT	0x5426
 #define TIOCSBRK	0x5427
 #define TIOCCBRK	0x5428
 #define TIOCGSID	0x5429
+#define TIOCGRS485	0x542E
+#define TIOCSRS485	0x542F
 #define TIOCGPTN	0x80045430
 #define TIOCSPTLCK	0x40045431
+#define TIOCGDEV	0x80045432
 #define TCGETX		0x5432
 #define TCSETX		0x5433
 #define TCSETXF		0x5434
 #define TCSETXW		0x5435
+#define TIOCSIG		0x40045436
+#define TIOCVHANGUP	0x5437
+#define TIOCGPKT	0x80045438
+#define TIOCGPTLCK	0x80045439
+#define TIOCGEXCL	0x80045440
 
 #define FIONCLEX	0x5450
 #define FIOCLEX		0x5451
@@ -72,8 +79,6 @@
 
 #define TIOCMIWAIT	0x545C
 #define TIOCGICOUNT	0x545D
-#define TIOCGHAYESESP   0x545E
-#define TIOCSHAYESESP   0x545F
 #define FIOQSIZE	0x5460
 
 #define TIOCPKT_DATA		 0
@@ -108,7 +113,6 @@ struct winsize {
 #define TIOCM_OUT1      0x2000
 #define TIOCM_OUT2      0x4000
 #define TIOCM_LOOP      0x8000
-#define TIOCM_MODEM_BITS TIOCM_OUT2
 
 #define N_TTY           0
 #define N_SLIP          1
@@ -157,6 +161,7 @@ struct winsize {
 #define SIOCSIFMEM      0x8920
 #define SIOCGIFMTU      0x8921
 #define SIOCSIFMTU      0x8922
+#define SIOCSIFNAME     0x8923
 #define SIOCSIFHWADDR   0x8924
 #define SIOCGIFENCAP    0x8925
 #define SIOCSIFENCAP    0x8926
@@ -195,3 +200,5 @@ struct winsize {
 
 #define SIOCDEVPRIVATE		0x89F0
 #define SIOCPROTOPRIVATE	0x89E0
+
+#include <bits/ioctl_fix.h>
