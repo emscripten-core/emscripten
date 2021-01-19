@@ -1462,7 +1462,6 @@
               "profilerBlock",
               "self",
               "tsd",
-              "tsd_used",
               "detached",
               "stack",
               "stack_size",
