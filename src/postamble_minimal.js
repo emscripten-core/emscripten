@@ -123,6 +123,9 @@ function loadWasmModuleToWorkers() {
 /*** ASM_MODULE_EXPORTS_DECLARES ***/
 #endif
 
+/*** STATIC_DYNCALL_SIG_FUNCTIONS ***/
+
+
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
 // Firefox 52 added Wasm support, but only Firefox 58 added instantiateStreaming.
@@ -222,7 +225,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   initRuntime(asm);
 #if USE_PTHREADS && PTHREAD_POOL_SIZE
   if (!ENVIRONMENT_IS_PTHREAD) loadWasmModuleToWorkers();
-#if !PTHREAD_POOL_DELAY_LOAD  
+#if !PTHREAD_POOL_DELAY_LOAD
   else
 #endif
     ready();

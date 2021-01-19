@@ -8270,6 +8270,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MAIN_MODULE')
     self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
 
+  def test_dyncalls(self):
+    self.emcc_args += ['--js-library', path_from_root('tests', 'test_dyncalls.js')]
+    self.do_run_in_out_file_test('tests', 'test_dyncalls.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):

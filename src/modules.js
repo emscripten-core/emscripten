@@ -62,6 +62,7 @@ var LibraryManager = {
     // Core system libraries (always linked against)
     var libraries = [
       'library.js',
+      'library_dyncall.js',
       'library_stack.js',
       'library_formatString.js',
       'library_math.js',

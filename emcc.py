@@ -1282,6 +1282,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('Invalid option -s CLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % shared.Settings.CLOSURE_WARNINGS)
 
+    # Calling function pointers from JS libraries is default runtime functionality, so always include the functionality. (to be DCEd if not used)
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
       if shared.Settings.MAIN_MODULE == 1:
@@ -2420,11 +2423,13 @@ def parse_args(newargs):
         options.llvm_opts = ['-Os']
         options.requested_level = 2
         shared.Settings.SHRINK_LEVEL = 1
+        shared.Settings.USE_LEGACY_DYNCALLS = 0 # In -Os builds, use a more size compact, but slower 'wasmTable.get()' method of accessing function pointers
         settings_changes.append('INLINING_LIMIT=50')
       elif options.requested_level == 'z':
         options.llvm_opts = ['-Oz']
         options.requested_level = 2
         shared.Settings.SHRINK_LEVEL = 2
+        shared.Settings.USE_LEGACY_DYNCALLS = 0 # In -Oz builds, use a more size compact, but slower 'wasmTable.get()' method of accessing function pointers
         settings_changes.append('INLINING_LIMIT=25')
       shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):

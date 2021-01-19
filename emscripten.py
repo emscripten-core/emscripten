@@ -37,6 +37,23 @@ if STDERR_FILE:
 WASM_INIT_FUNC = '__wasm_call_ctors'
 
 
+def make_wasm_table_static_dyncaller(func):
+  sig = func.replace('dynCall_', '')
+  ret = '' if sig[0] == 'v' else 'return '
+  args = '' # 'a0, a1, a2, ..., aN'
+  ptr_args = '' # 'ptr, a0, a1, a2, ..., aN'
+  i = 0
+  while i < len(sig)-1:
+    if i > 0: args += ', '
+    args += 'a' + str(i)
+    i += 1
+  ptr_args = ('ptr, ' + args) if len(args) > 0 else 'ptr'
+
+  dyncall = ('dyncalls["' + sig + '"]') if shared.Settings.MINIMAL_RUNTIME else ('Module["' + func + '"]')
+  wasmTableGet = 'wasmTableGet' if shared.Settings.SHRINK_LEVEL == 0 else 'wasmTable.get'
+  return 'function ' + func + '(' + ptr_args + ') { ' + ret + dyncall + '(' + ptr_args + '); }\n'
+
+
 def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
@@ -44,7 +61,21 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   exports_that_are_not_initializers = [x for x in exports if x not in WASM_INIT_FUNC]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
+
+  static_dyncall_sig_functions = ''
+
+  if shared.Settings.USE_LEGACY_DYNCALLS or not shared.Settings.WASM_BIGINT:
+    if len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
+      exports_that_are_not_initializers += ['dynCalls = {}']
+  else:
+    for x in exports_that_are_not_initializers:
+      if x.startswith('dynCall_'):
+        static_dyncall_sig_functions += make_wasm_table_static_dyncaller(x) + '\n'
+
+    exports_that_are_not_initializers = [x for x in exports_that_are_not_initializers if not x.startswith('dynCall_')]
+
   post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
+  post = post.replace('/*** STATIC_DYNCALL_SIG_FUNCTIONS ***/', static_dyncall_sig_functions)
 
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
   post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
@@ -401,7 +432,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
-  if shared.Settings.USE_LEGACY_DYNCALLS:
+  if True:##shared.Settings.USE_LEGACY_DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
   else:
@@ -697,6 +728,8 @@ def create_receiving(exports):
     return ''
 
   exports_that_are_not_initializers = [x for x in exports if x != WASM_INIT_FUNC]
+  if not shared.Settings.USE_LEGACY_DYNCALLS and shared.Settings.WASM_BIGINT:
+    exports_that_are_not_initializers = [x for x in exports_that_are_not_initializers if not x.startswith('dynCall_')]
 
   receiving = []
 
@@ -710,7 +743,10 @@ def create_receiving(exports):
       # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
       # var asm = output.instance.exports;
       # _main = asm["_main"];
-      receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
+      for s in exports_that_are_not_initializers:
+        mangled = asmjs_mangle(s)
+        dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if shared.Settings.USE_LEGACY_DYNCALLS or not shared.Settings.WASM_BIGINT and mangled.startswith('dynCall_') else ''
+        receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:
       if shared.Settings.MINIMAL_RUNTIME:
         # In wasm2js exports can be directly processed at top level, i.e.
