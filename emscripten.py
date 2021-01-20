@@ -43,14 +43,14 @@ def make_wasm_table_static_dyncaller(func):
   args = '' # 'a0, a1, a2, ..., aN'
   ptr_args = '' # 'ptr, a0, a1, a2, ..., aN'
   i = 0
-  while i < len(sig)-1:
-    if i > 0: args += ', '
+  while i < len(sig) - 1:
+    if i > 0:
+      args += ', '
     args += 'a' + str(i)
     i += 1
   ptr_args = ('ptr, ' + args) if len(args) > 0 else 'ptr'
 
   dyncall = ('dyncalls["' + sig + '"]') if shared.Settings.MINIMAL_RUNTIME else ('Module["' + func + '"]')
-  wasmTableGet = 'wasmTableGet' if shared.Settings.SHRINK_LEVEL == 0 else 'wasmTable.get'
   return 'function ' + func + '(' + ptr_args + ') { ' + ret + dyncall + '(' + ptr_args + '); }\n'
 
 
@@ -433,7 +433,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.WASM_BIGINT and not shared.Settings.WASM_DYNCALLS: # TODO: This may be troublematic?
     args.append('--bigint')
-  if True:##shared.Settings.USE_LEGACY_DYNCALLS:
+  if shared.Settings.WASM_DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
   else:
