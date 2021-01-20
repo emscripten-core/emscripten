@@ -702,8 +702,7 @@ f.close()
         #endif
         int main() { puts("hello"); }
         ''')
-      self.run_process([EMCC, 'simple' + suffix])
-      self.assertContained('hello', self.run_js('a.out.js'))
+      self.do_runf('simple' + suffix, 'hello')
 
       create_test_file('with_include' + suffix, '#include <stdio.h>\nint main() { puts("hello"); }')
       err = self.expect_fail([EMCC, 'with_include' + suffix])
@@ -3770,12 +3769,9 @@ int main(int argc, char **argv) {
   }
 }
     ''')
-    self.run_process([EMCC, 'src.cpp'])
-
-    # cannot stat ""
-    self.assertContained(r'''Failed to stat path: /a; errno=44
+    self.do_runf('src.cpp', r'''Failed to stat path: /a; errno=44
 Failed to stat path: ; errno=44
-''', self.run_js('a.out.js', args=['/a', '']))
+''', args=['/a', ''])
 
   def test_symlink_silly(self):
     create_test_file('src.cpp', r'''
@@ -3936,10 +3932,8 @@ int main()
   return 0;
 }
     ''')
-    self.run_process([EMCC, 'src.cpp'])
-
     # cannot symlink nonexistents
-    self.assertContained(r'''Before:
+    self.do_runf('src.cpp', r'''Before:
 dir
   a
   b
@@ -3954,7 +3948,7 @@ Unlinking d
 Unlinking e
 After:
 dir
-''', self.run_js('a.out.js', args=['', 'abc']))
+''', args=['', 'abc'])
 
   def test_emversion(self):
     create_test_file('src.cpp', r'''
@@ -4287,8 +4281,7 @@ int main()
     self.assertContained('ok!', self.run_js('a.out.js'))
 
   def test_strptime_symmetry(self):
-    building.emcc(path_from_root('tests', 'strptime_symmetry.cpp'), output_filename='a.out.js')
-    self.assertContained('TEST PASSED', self.run_js('a.out.js'))
+    self.do_runf(path_from_root('tests', 'strptime_symmetry.cpp'), 'TEST PASSED')
 
   def test_truncate_from_0(self):
     create_test_file('src.cpp', r'''
@@ -4393,8 +4386,7 @@ int main()
   return 0;
 }
 ''')
-    self.run_process([EMCC, 'src.cpp'])
-    self.assertContained(r'''Creating file: /tmp/file with content=This is some content
+    self.do_runf('src.cpp', r'''Creating file: /tmp/file with content=This is some content
 Size of file is: 20
 Truncating file=/tmp/file to length=32
 Size of file is: 32
@@ -4404,7 +4396,7 @@ Truncating file=/tmp/file to length=0
 Size of file is: 0
 Truncating file=/tmp/file to length=32
 Size of file is: 32
-''', self.run_js('a.out.js'))
+''')
 
   def test_create_readonly(self):
     create_test_file('src.cpp', r'''
@@ -4475,12 +4467,11 @@ int main() {
                      "exists and is read-only.\n\n");
 }
 ''')
-    self.run_process([EMCC, 'src.cpp'])
-    self.assertContained(r'''Creating file: /tmp/file with content of size=292
+    self.do_runf('src.cpp', r'''Creating file: /tmp/file with content of size=292
 Data written to file=/tmp/file; successfully wrote 292 bytes
 Creating file: /tmp/file with content of size=79
 Failed to open file for writing: /tmp/file; errno=2; Permission denied
-''', self.run_js('a.out.js'))
+''')
 
   def test_embed_file_large(self):
     # If such long files are encoded on one line,
@@ -4569,9 +4560,8 @@ int main(const int argc, const char * const * const argv) {
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
     create_test_file('preamble.js', r'''navigator = {};
       navigator.languages = [ "fr-FR", "fr", "en-US", "en" ];''')
-    self.run_process([EMCC, '--pre-js', 'preamble.js',
-                      path_from_root('tests', 'test_browser_language_detection.c')])
-    self.assertContained('fr_FR.UTF-8', self.run_js('a.out.js'))
+    self.emcc_args += ['--pre-js', 'preamble.js']
+    self.do_runf(path_from_root('tests', 'test_browser_language_detection.c'), 'fr_FR.UTF-8')
 
   def test_js_main(self):
     # try to add a main() from JS, at runtime. this is not supported (the
@@ -4583,9 +4573,8 @@ int main(const int argc, const char * const * const argv) {
       };
     ''')
     create_test_file('src.cpp', '')
-    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre_main.js'])
-    self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
-                         self.run_js('a.out.js', assert_returncode=NON_ZERO))
+    self.emcc_args += ['--pre-js', 'pre_main.js']
+    self.do_runf('src.cpp', 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]', assert_returncode=NON_ZERO)
 
   def test_locale_wrong(self):
     create_test_file('src.cpp', r'''
@@ -4676,8 +4665,8 @@ int main(const int argc, const char * const * const argv) {
     self.assertLess(no_size, 360000)
 
   def test_no_filesystem_libcxx(self):
-    self.run_process([EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'FILESYSTEM=0'])
-    self.assertContained('hello, world!', self.run_js('a.out.js'))
+    self.set_setting('FILESYSTEM', 0)
+    self.do_runf(path_from_root('tests', 'hello_libcxx.cpp'), 'hello, world!')
 
   @is_slow_test
   def test_no_nuthin(self):
@@ -4721,7 +4710,8 @@ int main(const int argc, const char * const * const argv) {
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')])
     self.assertNotContained(BROWSER_INIT, open('a.out.js').read())
 
-    self.run_process([EMCC, path_from_root('tests', 'browser_main_loop.c')]) # uses emscripten_set_main_loop, which needs Browser
+    # uses emscripten_set_main_loop, which needs Browser
+    self.run_process([EMCC, path_from_root('tests', 'browser_main_loop.c')])
     self.assertContained(BROWSER_INIT, open('a.out.js').read())
 
   def test_EXPORTED_RUNTIME_METHODS(self):
@@ -4797,8 +4787,7 @@ int main() {
   return fail;
 }
 ''')
-    self.run_process([EMCC, 'src.cpp'])
-    self.assertContained(r'''pass: mkdir("path", 0777) == 0
+    self.do_runf('src.cpp', r'''pass: mkdir("path", 0777) == 0
 pass: close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0
 pass: stat("path", &st) == 0
 pass: st.st_mode = 0777
@@ -4813,7 +4802,7 @@ pass: error == ENOTDIR
 pass: lstat("path/file/impossible", &st) == -1
 info: errno=54 Not a directory
 pass: error == ENOTDIR
-''', self.run_js('a.out.js'))
+''')
 
   def test_link_with_a_static(self):
     create_test_file('x.c', r'''
@@ -4953,7 +4942,6 @@ public:
 
 Descriptor desc;
     ''')
-    try_delete('a.out.js')
     self.run_process([EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL'])
     self.assertExists('a.out.js')
 
@@ -5002,10 +4990,10 @@ print(os.environ.get('NM'))
     ]:
       print(args, expected)
       out = self.run_process([PYTHON, path_from_root('system', 'bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
-      assert expected in out, out
+      self.assertContained(expected, out)
       print('via emmake')
       out = self.run_process([emmake, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
-      assert expected in out, out
+      self.assertContained(expected, out)
 
   def test_module_onexit(self):
     create_test_file('src.cpp', r'''
@@ -5017,7 +5005,6 @@ int main() {
   return 14;
 }
 ''')
-    try_delete('a.out.js')
     self.run_process([EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME'])
     self.assertContained('exiting now, status 14', self.run_js('a.out.js', assert_returncode=14))
 
@@ -6592,12 +6579,12 @@ int main() {
 
     # Must be a multiple of 64KB
     ret = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=33554433']) # 32MB + 1 byte
-    self.assertContained('INITIAL_MEMORY must be a multiple of 64KB', ret)
+    self.assertContained('INITIAL_MEMORY must be a multiple of WebAssembly page size (64KiB)', ret)
 
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MAXIMUM_MEMORY=33MB'])
 
     ret = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MAXIMUM_MEMORY=34603009']) # 33MB + 1 byte
-    self.assertContained('MAXIMUM_MEMORY must be a multiple of 64KB', ret)
+    self.assertContained('MAXIMUM_MEMORY must be a multiple of WebAssembly page size (64KiB)', ret)
 
   def test_invalid_output_dir(self):
     ret = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('NONEXISTING_DIRECTORY', 'out.js')])
@@ -7553,11 +7540,9 @@ int main() {
     'profiling': ['--profiling'] # -g4 --profiling should still emit a source map; see #8584
   })
   def test_check_sourcemapurl_default(self, *args):
-    print(args)
     if not self.is_wasm():
       self.skipTest('only supported with wasm')
 
-    try_delete('a.wasm.map')
     self.run_process([EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'] + list(args))
     output = open('a.wasm', 'rb').read()
     # has sourceMappingURL section content and points to 'a.wasm.map' file

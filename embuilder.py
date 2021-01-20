@@ -153,16 +153,9 @@ def main():
     tasks = SYSTEM_TASKS + USER_TASKS
     auto_tasks = True
   if auto_tasks:
-    skip_tasks = []
-    if shared.Settings.RELOCATABLE:
-      # we don't support PIC + pthreads yet
-      for task in SYSTEM_TASKS + USER_TASKS:
-        if '-mt' in task:
-          skip_tasks.append(task)
-      print('Skipping building of %s, because we don\'t support threads and PIC code.' % ', '.join(skip_tasks))
     # cocos2d: must be ported, errors on
     # "Cannot recognize the target platform; are you targeting an unsupported platform?"
-    skip_tasks += ['cocos2d']
+    skip_tasks = ['cocos2d']
     tasks = [x for x in tasks if x not in skip_tasks]
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:

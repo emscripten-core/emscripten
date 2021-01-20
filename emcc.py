@@ -1453,8 +1453,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
     if shared.Settings.RELOCATABLE:
-      shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
-      shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
+      default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
+      default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
@@ -1611,28 +1611,32 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.MINIMAL_RUNTIME:
           shared.Settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
-      if shared.Settings.LINKABLE:
-        exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
       if shared.Settings.SIDE_MODULE:
-        exit_with_error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS>0!')
-      if shared.Settings.MAIN_MODULE:
-        exit_with_error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS>0!')
+        diagnostics.warning('experimental', '-s SIDE_MODULE + pthreads is experimental')
+      elif shared.Settings.MAIN_MODULE:
+        diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
+      elif shared.Settings.LINKABLE:
+        diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
+
       if shared.Settings.PROXY_TO_WORKER:
         exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
     else:
       if shared.Settings.PROXY_TO_PTHREAD:
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
-    if shared.Settings.INITIAL_MEMORY % 65536 != 0:
-      exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
+    def check_memory_setting(setting):
+      if shared.Settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
+        exit_with_error(f'{setting} must be a multiple of WebAssembly page size (64KiB), was {shared.Settings[setting]}')
+
+    check_memory_setting('INITIAL_MEMORY')
     if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
       exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
     if shared.Settings.INITIAL_MEMORY < shared.Settings.TOTAL_STACK:
-      exit_with_error('INITIAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.INITIAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
-    if shared.Settings.MAXIMUM_MEMORY != -1 and shared.Settings.MAXIMUM_MEMORY % 65536 != 0:
-      exit_with_error('MAXIMUM_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.MAXIMUM_MEMORY))
-    if shared.Settings.MEMORY_GROWTH_LINEAR_STEP != -1 and shared.Settings.MEMORY_GROWTH_LINEAR_STEP % 65536 != 0:
-      exit_with_error('MEMORY_GROWTH_LINEAR_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_LINEAR_STEP))
+      exit_with_error(f'INITIAL_MEMORY must be larger than TOTAL_STACK, was {shared.Settings.INITIAL_MEMORY} (TOTAL_STACK={shared.Settings.TOTAL_STACK})')
+    if shared.Settings.MAXIMUM_MEMORY != -1:
+      check_memory_setting('MAXIMUM_MEMORY')
+    if shared.Settings.MEMORY_GROWTH_LINEAR_STEP != -1:
+      check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
     if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.MAXIMUM_MEMORY == -1:
       exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
@@ -2828,7 +2832,7 @@ def do_binaryen(target, options, wasm_target):
     js = open(final_js).read()
 
     if shared.Settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_target, 'rb').read()))
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(open(wasm_target, 'rb').read()))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)

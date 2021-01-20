@@ -569,10 +569,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + \
-        ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
-        ['-I' + include for include in includes] + \
-        libraries
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + libraries
+    if shared.suffix(filename) not in ('.i', '.ii'):
+      # Add the location of the test file to include path.
+      cmd += ['-I.']
+      cmd += ['-I' + include for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)

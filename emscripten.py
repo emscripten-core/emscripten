@@ -162,27 +162,11 @@ def update_settings_glue(metadata, DEBUG):
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
 
 
-# static code hooks
-class StaticCodeHooks:
-  atinits = []
-  atmains = []
-  atexits = []
-
-
-def apply_static_code_hooks(code):
-  code = code.replace('{{{ ATINITS }}}', StaticCodeHooks.atinits)
-  code = code.replace('{{{ ATMAINS }}}', StaticCodeHooks.atmains)
-  code = code.replace('{{{ ATEXITS }}}', StaticCodeHooks.atexits)
+def apply_static_code_hooks(forwarded_json, code):
+  code = code.replace('<<< ATINITS >>>', str(forwarded_json['ATINITS']))
+  code = code.replace('<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+  code = code.replace('<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
   return code
-
-
-def apply_forwarded_data(forwarded_data):
-  forwarded_json = json.loads(forwarded_data)
-  # Be aware of JS static allocations
-  # Be aware of JS static code hooks
-  StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
-  StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
-  StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
 
 
 def compile_settings(temp_files):
@@ -199,28 +183,15 @@ def compile_settings(temp_files):
                              cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
-
-  apply_forwarded_data(forwarded_data)
-
   return glue, forwarded_data
 
 
-class Memory():
-  def __init__(self, static_bump):
-    stack_low = align_memory(shared.Settings.GLOBAL_BASE + static_bump)
-    stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
-    self.stack_base = stack_high
-    self.stack_max = stack_low
-    self.dynamic_base = align_memory(stack_high)
-
-
-def apply_memory(js, memory):
-  # Apply the statically-at-compile-time computed memory locations.
-  # Write it all out
-  js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
-  js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
-  js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
-  return js
+def set_memory(static_bump):
+  stack_low = align_memory(shared.Settings.GLOBAL_BASE + static_bump)
+  stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
+  shared.Settings.STACK_BASE = stack_high
+  shared.Settings.STACK_MAX = stack_low
+  shared.Settings.HEAP_BASE = align_memory(stack_high)
 
 
 def report_missing_symbols(all_implemented, pre):
@@ -330,6 +301,13 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
     logger.debug('emscript: js compiler glue')
     t = time.time()
 
+  # memory and global initializers
+
+  if shared.Settings.RELOCATABLE:
+    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
+    set_memory(static_bump)
+    logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', shared.Settings.STACK_BASE, shared.Settings.STACK_MAX, shared.Settings.HEAP_BASE)
+
   glue, forwarded_data = compile_settings(temp_files)
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -356,18 +334,10 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
-  # memory and global initializers
-
-  if shared.Settings.RELOCATABLE:
-    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
-    memory = Memory(static_bump)
-    logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d', memory.stack_base, memory.stack_max, memory.dynamic_base)
-
-    pre = apply_memory(pre, memory)
-    post = apply_memory(post, memory)
-
-  pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
-  post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
+  # In regular runtime, atinits etc. exist in the preamble part
+  pre = apply_static_code_hooks(forwarded_json, pre)
+  # In MINIMAL_RUNTIME, atinit exists in the postamble part
+  post = apply_static_code_hooks(forwarded_json, post)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']

@@ -419,40 +419,41 @@ def main():
           Module['removeRunDependency']('fp ' + that.name);
   '''
 
-    # Data requests - for getting a block of data out of the big archive - have
-    # a similar API to XHRs
-    code += '''
-      /** @constructor */
-      function DataRequest(start, end, audio) {
-        this.start = start;
-        this.end = end;
-        this.audio = audio;
-      }
-      DataRequest.prototype = {
-        requests: {},
-        open: function(mode, name) {
-          this.name = name;
-          this.requests[name] = this;
-          Module['addRunDependency']('fp ' + this.name);
-        },
-        send: function() {},
-        onload: function() {
-          var byteArray = this.byteArray.subarray(this.start, this.end);
-          this.finish(byteArray);
-        },
-        finish: function(byteArray) {
-          var that = this;
-  %s
-          this.requests[this.name] = null;
-        }
-      };
-  %s
-    ''' % (create_preloaded if use_preload_plugins else create_data, '''
-          var files = metadata['files'];
-          for (var i = 0; i < files.length; ++i) {
-            new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+    if not lz4:
+        # Data requests - for getting a block of data out of the big archive - have
+        # a similar API to XHRs
+        code += '''
+          /** @constructor */
+          function DataRequest(start, end, audio) {
+            this.start = start;
+            this.end = end;
+            this.audio = audio;
           }
-  ''' if not lz4 else '')
+          DataRequest.prototype = {
+            requests: {},
+            open: function(mode, name) {
+              this.name = name;
+              this.requests[name] = this;
+              Module['addRunDependency']('fp ' + this.name);
+            },
+            send: function() {},
+            onload: function() {
+              var byteArray = this.byteArray.subarray(this.start, this.end);
+              this.finish(byteArray);
+            },
+            finish: function(byteArray) {
+              var that = this;
+      %s
+              this.requests[this.name] = null;
+            }
+          };
+      %s
+        ''' % (create_preloaded if use_preload_plugins else create_data, '''
+              var files = metadata['files'];
+              for (var i = 0; i < files.length; ++i) {
+                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+              }
+      ''')
 
   counter = 0
   for file_ in data_files:

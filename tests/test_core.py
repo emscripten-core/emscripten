@@ -5998,7 +5998,7 @@ return malloc(size);
       FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
     };
     Module.postRun = function() {
-      var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
+      var FileData = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents['filename-1.ppm']));
       out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
     };
     ''')
@@ -6035,7 +6035,7 @@ return malloc(size);
       create_test_file('pre.js', """
         Module.preRun = function() { FS.createDataFile('/', 'image.j2k', %s, true, false, false); };
         Module.postRun = function() {
-          out('Data: ' + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.analyzePath('image.raw').object)));
+          out('Data: ' + JSON.stringify(Array.from(MEMFS.getFileDataAsTypedArray(FS.analyzePath('image.raw').object))));
         };
         """ % line_splitter(str(image_bytes)))
 
@@ -8163,6 +8163,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS')
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_futexes.c')
 
+  @needs_dlfcn
+  @node_pthreads
+  def test_pthread_dynamic_linking(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_basic_dylink_test()
+
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
@@ -8256,6 +8264,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['--bind', '--post-js', path_from_root('tests', 'core', 'test_abort_on_exception_post.js')]
     self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.cpp')
+
+  @needs_dlfcn
+  def test_gl_main_module(self):
+    self.set_setting('MAIN_MODULE')
+    self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
 
 
 # Generate tests for everything

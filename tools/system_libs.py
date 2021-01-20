@@ -528,7 +528,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super(MTLibrary, self).get_cflags()
     if self.is_mt:
-      cflags += ['-s', 'USE_PTHREADS=1', '-DUSE_THREADS']
+      cflags += ['-s', 'USE_PTHREADS']
     return cflags
 
   def get_base_name(self):
@@ -754,7 +754,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
-        filenames=['extras.c', 'wasi-helpers.c'])
+        filenames=['extras.c', 'wasi-helpers.c', 'emscripten_pthread.c'])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
@@ -772,6 +772,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_yield.c',
           'call_once.c',
         ])
+
+    libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')
 
     if self.is_mt:
       libc_files += files_in_path(
@@ -1073,7 +1075,7 @@ class libgl(MTLibrary):
   name = 'libgl'
 
   src_dir = ['system', 'lib', 'gl']
-  src_glob = '*.c'
+  src_files = ['gl.c', 'webgl1.c']
 
   cflags = ['-Oz']
 
@@ -1082,6 +1084,10 @@ class libgl(MTLibrary):
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
     self.is_full_es3 = kwargs.pop('is_full_es3')
+    if self.is_webgl2 or self.is_full_es3:
+      # Don't use append or += here, otherwise we end up adding to
+      # the class member.
+      self.src_files = self.src_files + ['webgl2.c']
     super(libgl, self).__init__(**kwargs)
 
   def get_base_name(self):
@@ -1925,6 +1931,10 @@ def install_system_headers():
     ('include',): '',
     ('lib', 'compiler-rt', 'include'): '',
     ('lib', 'libunwind', 'include'): '',
+    # Copy the generic arch files first then
+    ('lib', 'libc', 'musl', 'arch', 'generic'): '',
+    # Then overlay the emscripten directory on top.
+    # This mimicks how musl itself installs its headers.
     ('lib', 'libc', 'musl', 'arch', 'emscripten'): '',
     ('lib', 'libc', 'musl', 'include'): '',
     ('lib', 'libcxx', 'include'): os.path.join('c++', 'v1'),

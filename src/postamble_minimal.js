@@ -27,7 +27,7 @@ function run() {
 
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
-  {{{ getQuoted('ATEXITS') }}}
+  <<< ATEXITS >>>
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
@@ -79,7 +79,7 @@ function initRuntime(asm) {
   asm['__wasm_call_ctors']();
 #endif
 
-  {{{ getQuoted('ATINITS') }}}
+  <<< ATINITS >>>
 }
 
 // Initialize wasm (asynchronous)
@@ -234,6 +234,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
     moduleLoaded();
+    postMessage({ 'cmd': 'loaded' });
   }
 #endif
 
