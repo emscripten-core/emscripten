@@ -131,7 +131,8 @@
             "O_WRONLY",
             "AT_FDCWD",
             "AT_SYMLINK_NOFOLLOW",
-            "AT_REMOVEDIR"
+            "AT_REMOVEDIR",
+            "AT_EMPTY_PATH"
         ],
         "structs": {
             "flock": [
