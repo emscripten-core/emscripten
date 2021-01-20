@@ -9857,3 +9857,11 @@ exec "$@"
     self.assertNotIn('profile', result)
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
+
+  def test_gen_struct_info(self):
+    # This tests is fragile and will need updating any time any of the refereced
+    # structs or defines change.   However its easy to rebaseline with
+    # EMTEST_REBASELINE and it prrevents regressions or unintended changes
+    # to the output json.
+    self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
+    self.assertFileContents(path_from_root('tests/reference_struct_info.json'), open('out.json').read())
