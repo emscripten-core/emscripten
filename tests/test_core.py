@@ -4353,6 +4353,37 @@ res64 - external 64\n''', header='''
       print('check warnings')
       full = self.run_js('src.js')
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
+  
+  @needs_dlfcn
+  def test_dylink_load_compiled_side_module(self):
+    self.set_setting('INITIAL_MEMORY', '64mb')
+    if not self.has_changed_setting('ASSERTIONS'):
+      self.set_setting('ASSERTIONS', 2)
+
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      extern int sidef();
+      int main() {
+        EM_ASM({
+          var libData = fs.readFile(libFile, {encoding: 'binary'});
+          if (!(libData instanceof Uint8Array)) {
+            libData = new Uint8Array(libData);
+          }
+          var compiledModule = new WebAssembly.Module(libData);
+          var sideExports = loadWebAssemblyModule(compiledModule, {loadAsync: false, nodelete: true})
+          mergeLibSymbols(sideExports);
+        });
+        printf("sidef: %%d.\n", sidef());
+      }
+    ''',
+                     side=r'''
+      #include <stdio.h>
+      int sidef() { return 10; }
+    ''',
+                     expected=['sidef: 10'],
+                     # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
+                     need_reverse=not self.is_wasm())
 
   @needs_dlfcn
   def test_dylink_dso_needed(self):
