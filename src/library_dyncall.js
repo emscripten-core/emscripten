@@ -1,7 +1,4 @@
 mergeInto(LibraryManager.library, {
-  {{{ (function() { global.wbind = function() { return SHRINK_LEVEL == 0 ? 'wbind' : 'wasmTable.get'; }; return null; })(); }}}
-  {{{ (function() { global.getDynCaller = function(sig) { return MINIMAL_RUNTIME ? `dynCalls[${sig}]` : `Module["dynCall_"+${sig}]`; }; return null; })(); }}}
-
 #if SHRINK_LEVEL == 0
   // A mirror copy of contents of wasmTable in JS side, to avoid relatively
   // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
