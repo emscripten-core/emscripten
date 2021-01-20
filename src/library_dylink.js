@@ -310,6 +310,7 @@ var LibraryDylink = {
         var name = UTF8ArrayToString(nameUTF8, 0);
         customSection.neededDynlibs.push(name);
       }
+      return customSection;
     }
 
     if (binary instanceof WebAssembly.Module) {
