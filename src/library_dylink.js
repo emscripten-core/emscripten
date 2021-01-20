@@ -369,9 +369,9 @@ var LibraryDylink = {
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getSideModuleCustomSection'],
+  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata'],
   $loadWebAssemblyModule: function(binary, flags) {
-    var customSection = getSideModuleCustomSection(binary);
+    var customSection = getDylinkMetadata(binary);
     var memorySize = customSection.memorySize;
     var memoryAlign = customSection.memoryAlign;
     var tableSize = customSection.tableSize;
