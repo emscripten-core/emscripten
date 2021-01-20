@@ -31,6 +31,7 @@
         "AI_V4MAPPED": 8,
         "ALT_DIGITS": 131119,
         "AM_STR": 131110,
+        "AT_EMPTY_PATH": 4096,
         "AT_FDCWD": -100,
         "AT_REMOVEDIR": 512,
         "AT_SYMLINK_NOFOLLOW": 256,
