@@ -33,7 +33,7 @@ mergeInto(LibraryManager.library, {
   // A helper that binds a wasm function into a form that can be called by passing all
   // the parameters in an array, e.g. wbindArray(func)([param1, param2, ..., paramN]).
   $wbindArray: function(funcPtr) {
-    var func = {{{wbind()}}}(funcPtr);
+    var func = {{{ wbind() }}}(funcPtr);
     return func.length
       ? function(args) { return func.apply(null, args); }
       : function() { return func(); }
@@ -43,16 +43,16 @@ mergeInto(LibraryManager.library, {
   // A helper that returns a function that can be used to invoke function pointers, i.e.
   // getDynCaller('vi')(funcPtr, myInt);
   $getDynCaller: function(sig, funcPtr) {
-    return {{{getDynCaller('sig')}}};
+    return {{{ getDynCaller('sig') }}};
   },
 
   $bindDynCall: function(sig, funcPtr) {
     // For int64 signatures, use the dynCall_sig dispatch mechanism.
     if (sig.includes('j')) return function(args) {
-      return {{{getDynCaller('sig')}}}.apply(null, [funcPtr].concat(args));
+      return {{{ getDynCaller('sig') }}}.apply(null, [funcPtr].concat(args));
     }
     // For non-int64 signatures, invoke via the wasm table.
-    var func = {{{wbind()}}}(funcPtr);
+    var func = {{{ wbind() }}}(funcPtr);
     return func.length
       ? function(args) { return func.apply(null, args); }
       : function() { return func(); }
@@ -67,11 +67,11 @@ mergeInto(LibraryManager.library, {
 #else
     // For int64 signatures, use the dynCall_sig dispatch mechanism.
     if (sig.includes('j')) {
-      return {{{getDynCaller('sig')}}}.apply(null, [funcPtr].concat(args));
+      return {{{ getDynCaller('sig') }}}.apply(null, [funcPtr].concat(args));
     }
 
     // For non-int64 signatures, invoke via the wasm table.
-    return {{{wbind()}}}(funcPtr).apply(null, args);
+    return {{{ wbind() }}}(funcPtr).apply(null, args);
 #endif
   },
 #endif
