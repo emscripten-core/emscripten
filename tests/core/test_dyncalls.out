@@ -1,0 +1,18 @@
+vijdf: i=1,jlo=2,jhi=3,d=4,f=5
+vijdf: i=2,jlo=3,jhi=4,d=5,f=6
+vijdf: i=3,jlo=4,jhi=5,d=6,f=7
+vijdf: i=4,jlo=5,jhi=6,d=7,f=8
+vijdf: i=5,jlo=6,jhi=7,d=8,f=9
+vijdf: i=6,jlo=7,jhi=8,d=9,f=10
+iii: i=1,j=2
+iii returned 42
+iii: i=2,j=3
+iii returned 42
+iii: i=3,j=4
+iii returned 42
+iii: i=4,j=5
+iii returned 42
+iii: i=5,j=6
+iii returned 42
+iii: i=6,j=7
+iii returned 42

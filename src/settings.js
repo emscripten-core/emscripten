@@ -1145,6 +1145,10 @@ var BINARYEN_EXTRA_PASSES = "";
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 var WASM_ASYNC_COMPILATION = 1;
 
+// If true, enables emitting dynCall() and dynCall_sig() based function pointer
+// invokers to call function pointers from JS to Wasm.
+var WASM_DYNCALLS = 1;
+
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need
 // to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
 // an i64 is used.

@@ -1,6 +1,6 @@
 mergeInto(LibraryManager.library, {
   {{{ (function() { global.wbind = function() { return SHRINK_LEVEL == 0 ? 'wbind' : 'wasmTable.get'; }; return null; })(); }}}
-  {{{ (function() { global.getDynCaller = function(sig) { return MINIMAL_RUNTIME ? `dynCalls[${sig}]` : `Module["dynCall_${sig}]`; }; return null; })(); }}}
+  {{{ (function() { global.getDynCaller = function(sig) { return MINIMAL_RUNTIME ? `dynCalls[${sig}]` : `Module["dynCall_"+${sig}]`; }; return null; })(); }}}
 
 #if SHRINK_LEVEL == 0
   // A mirror copy of contents of wasmTable in JS side, to avoid relatively
@@ -17,8 +17,10 @@ mergeInto(LibraryManager.library, {
     return func;
   },
 
+#if WASM_DYNCALLS
   $dynCall__deps: ['$wbind'],
   $bindDynCall__deps: ['$wbind'],
+#endif
   $wbindArray__deps: ['$wbind'],
 #else
   $wbind: function(funcPtr) {
@@ -37,6 +39,7 @@ mergeInto(LibraryManager.library, {
       : function() { return func(); }
   },
 
+#if WASM_DYNCALLS
   // A helper that returns a function that can be used to invoke function pointers, i.e.
   // getDynCaller('vi')(funcPtr, myInt);
   $getDynCaller: function(sig, funcPtr) {
@@ -55,7 +58,13 @@ mergeInto(LibraryManager.library, {
       : function() { return func(); }
   },
 
+#if SHRINK_LEVEL
+  $dynCall__deps: ['$bindDynCall'],
+#endif
   $dynCall: function(sig, funcPtr, args) {
+#if SHRINK_LEVEL
+    return bindDynCall(sig, funcPtr)(args);
+#else
     // For int64 signatures, use the dynCall_sig dispatch mechanism.
     if (sig.includes('j')) {
       return {{{getDynCaller('sig')}}}.apply(null, [funcPtr].concat(args));
@@ -63,5 +72,7 @@ mergeInto(LibraryManager.library, {
 
     // For non-int64 signatures, invoke via the wasm table.
     return {{{wbind()}}}(funcPtr).apply(null, args);
-  }
+#endif
+  },
+#endif
 });

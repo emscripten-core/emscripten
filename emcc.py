@@ -1283,7 +1283,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('Invalid option -s CLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % shared.Settings.CLOSURE_WARNINGS)
 
     # Calling function pointers from JS libraries is default runtime functionality, so always include the functionality. (to be DCEd if not used)
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+    if shared.Settings.WASM_DYNCALLS:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
@@ -1710,7 +1711,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.USE_PTHREADS or shared.Settings.RELOCATABLE or shared.Settings.ASYNCIFY_LAZY_LOAD_CODE or shared.Settings.WASM2JS:
       shared.Settings.IMPORTED_MEMORY = 1
 
-    if shared.Settings.WASM_BIGINT:
+    if shared.Settings.WASM_BIGINT and not shared.Settings.WASM_DYNCALLS:
       shared.Settings.LEGALIZE_JS_FFI = 0
 
     shared.Settings.GENERATE_SOURCE_MAP = shared.Settings.DEBUG_LEVEL >= 4 and not shared.Settings.SINGLE_FILE

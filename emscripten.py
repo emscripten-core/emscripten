@@ -64,7 +64,7 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
 
   static_dyncall_sig_functions = ''
 
-  if shared.Settings.USE_LEGACY_DYNCALLS or not shared.Settings.WASM_BIGINT:
+  if shared.Settings.WASM_DYNCALLS:
     if len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
       exports_that_are_not_initializers += ['dynCalls = {}']
   else:
@@ -75,7 +75,8 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
     exports_that_are_not_initializers = [x for x in exports_that_are_not_initializers if not x.startswith('dynCall_')]
 
   post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
-  post = post.replace('/*** STATIC_DYNCALL_SIG_FUNCTIONS ***/', static_dyncall_sig_functions)
+# TODO: Check codegen again
+#  post = post.replace('/*** STATIC_DYNCALL_SIG_FUNCTIONS ***/', static_dyncall_sig_functions)
 
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
   post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
@@ -430,7 +431,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
   # (which matches what llvm+lld has given us)
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.ASYNCIFY_ADD or shared.Settings.ASYNCIFY_ADVISE or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.PROFILING_FUNCS:
     args.append('-g')
-  if shared.Settings.WASM_BIGINT:
+  if shared.Settings.WASM_BIGINT and not shared.Settings.WASM_DYNCALLS: # TODO: This may be troublematic?
     args.append('--bigint')
   if True:##shared.Settings.USE_LEGACY_DYNCALLS:
     # we need to add all dyncalls to the wasm
@@ -728,7 +729,9 @@ def create_receiving(exports):
     return ''
 
   exports_that_are_not_initializers = [x for x in exports if x != WASM_INIT_FUNC]
-  if not shared.Settings.USE_LEGACY_DYNCALLS and shared.Settings.WASM_BIGINT:
+
+  # If we are not building with dynCall() support, filter out all the dynCall_ exports.
+  if not shared.Settings.WASM_DYNCALLS:
     exports_that_are_not_initializers = [x for x in exports_that_are_not_initializers if not x.startswith('dynCall_')]
 
   receiving = []
@@ -745,7 +748,7 @@ def create_receiving(exports):
       # _main = asm["_main"];
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
-        dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if shared.Settings.USE_LEGACY_DYNCALLS or not shared.Settings.WASM_BIGINT and mangled.startswith('dynCall_') else ''
+        dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if shared.Settings.WASM_DYNCALLS and mangled.startswith('dynCall_') else ''
         receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:
       if shared.Settings.MINIMAL_RUNTIME:
