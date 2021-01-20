@@ -4366,15 +4366,15 @@ res64 - external 64\n''', header='''
       extern int sidef();
       int main() {
         EM_ASM({
-          var libData = fs.readFile(libFile, {encoding: 'binary'});
+          var libData = fs.readFile('liblib.so', {encoding: 'binary'});
           if (!(libData instanceof Uint8Array)) {
             libData = new Uint8Array(libData);
           }
           var compiledModule = new WebAssembly.Module(libData);
-          var sideExports = loadWebAssemblyModule(compiledModule, {loadAsync: false, nodelete: true})
+          var sideExports = loadWebAssemblyModule(compiledModule, {loadAsync: false, nodelete: true});
           mergeLibSymbols(sideExports);
         });
-        printf("sidef: %%d.\n", sidef());
+        printf("sidef: %d.\n", sidef());
       }
     ''',
                      side=r'''
