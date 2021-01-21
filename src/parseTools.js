@@ -819,20 +819,26 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
 
 function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
   assert(type);
-  if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
-  switch(type) {
-    case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
-    case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
-    case '<4 x i32>':
-    case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-    case 'double': return ['HEAPF64'];
-    case '<4 x float>':
-    case 'float': return ['HEAPF32'];
-    default: {
-      throw 'what, exactly, can we do for unknown types in TA2?! ' + [new Error().stack, ptr, type, allowMultiple, unsigned];
-    }
+  if (isPointerType(type)) {
+    type = 'i32'; // Hardcoded 32-bit
   }
-  return [];
+  switch (type) {
+    case 'i1':
+    case 'i8':
+      return [unsigned ? 'HEAPU8' : 'HEAP8'];
+    case 'i16':
+      return [unsigned ? 'HEAPU16' : 'HEAP16'];
+    case '<4 x i32>':
+    case 'i32':
+    case 'i64':
+      return [unsigned ? 'HEAPU32' : 'HEAP32'];
+    case 'double':
+      return ['HEAPF64'];
+    case '<4 x float>':
+    case 'float':
+      return ['HEAPF32'];
+  }
+  assert(false, 'bad heap type: ' + type);
 }
 
 function makeGetTempRet0() {
