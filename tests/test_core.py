@@ -4353,7 +4353,7 @@ res64 - external 64\n''', header='''
       print('check warnings')
       full = self.run_js('src.js')
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
-  
+
   @needs_dlfcn
   def test_dylink_load_compiled_side_module(self):
     self.set_setting('FORCE_FILESYSTEM')
