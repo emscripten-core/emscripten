@@ -530,6 +530,7 @@ var asmPrintCounter = 0;
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
+  assert(!forceAsm, "forceAsm is no longer supported");
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -584,11 +585,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
       return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
-  var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
-  if (forceAsm) {
-    ret = asmCoercion(ret, type);
-  }
-  return ret;
+  return makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
 }
 
 //! @param ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
@@ -602,6 +599,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+  assert(!forcedAlign, "forcedAlign is no longer supported");
   sep = sep || ';';
   if (isStructType(type)) {
     var typeData = Types.types[type];
