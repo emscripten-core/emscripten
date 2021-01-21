@@ -36,9 +36,9 @@ public:
     thread.join();
   }
 
-  // Run some work. This is a synchronous call, but the thread can do async work
-  // for us. To allow us to know when the async work finishes, the worker is
-  // given a function to call at that time.
+  // Run some work on thread. This is a synchronous call, but the thread can do
+  // async work for us. To allow us to know when the async work finishes, the
+  // worker is given a function to call at that time.
   void doWork(std::function<void(Callback)> newWork) {
     // Send the work over.
     {
@@ -70,7 +70,6 @@ private:
   std::unique_lock<std::mutex> childLock;
 
   static void* threadMain(void* arg) {
-    // Take the lock that the child will have all through its lifetime.
     auto* parent = (SyncToAsync*)arg;
     emscripten_async_call(threadIter, arg, 0);
     return 0;
