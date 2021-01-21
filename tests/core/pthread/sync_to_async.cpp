@@ -148,4 +148,5 @@ int main() {
     std::cout << "  Hello again from sync C++\n";
     resume();
   });
+  return 0;
 }
