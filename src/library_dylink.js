@@ -304,7 +304,7 @@ var LibraryDylink = {
       // WebAssembly.make_shared_library() for "dylink" section extension format)
       var neededDynlibsCount = getLEB(byteArray);
       for (var i = 0; i < neededDynlibsCount; ++i) {
-        var nameLen = getLEB();
+        var nameLen = getLEB(byteArray);
         var nameUTF8 = byteArray.subarray(next, next + nameLen);
         next += nameLen;
         var name = UTF8ArrayToString(nameUTF8, 0);
