@@ -578,9 +578,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
-    var printType = type;
-    if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
-    if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
       return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type, unsigned ? 'u' : undefined);
     }
@@ -655,9 +652,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
-    var printType = type;
-    if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
-    if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
       return 'SAFE_HEAP_STORE' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
     }
