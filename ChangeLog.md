@@ -23,6 +23,11 @@ Current Trunk
 - Emscripten now builds a complete sysroot inside the EM_CACHE directory.
   This includes the system headers which get copied into place there rather
   than adding a sequence of extra include directories.
+- Add back support for calling the legacy dynCall_sig() API to invoke function
+  pointers to wasm functions from JavaScript. Pass -s USE_LEGACY_DYNCALLS=1
+  to include that functionality in the build. This fixes a regression that
+  started in Aug 31st 2020 (Emscripten 2.0.2) in #12059. Also implement
+  support for dynCall() in MINIMAL_RUNTIME builds. (#13296)
 
 2.0.12: 01/09/2021
 ------------------
@@ -207,6 +212,7 @@ Current Trunk
 
       {{{ makeDynCall('sig', 'ptr') }}} (arg1, arg2);
 
+  See PR #12059 for details.
 - The native optimizer and the corresponding config setting
   (`EMSCRIPTEN_NATIVE_OPTIMIZER`) have been removed (it was only relevant to
   asmjs/fastcomp backend).
