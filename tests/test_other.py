@@ -439,6 +439,28 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.run_process([EMCC, 'combined.o', '-o', 'combined.o.js'])
     self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
 
+  def test_combining_object_files_from_archive(self):
+    # Compiling two files with -c will generate separate object files
+    self.run_process([EMCC, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.c'), '-c'])
+    self.assertExists('twopart_main.o')
+    self.assertExists('twopart_side.o')
+
+    # Combining object files into a library archive should work
+    self.run_process([EMAR, 'crs', 'combined.a', 'twopart_main.o', 'twopart_side.o'])
+    self.assertExists('combined.a')
+
+    # Combining library archive into an object should yield a valid object, using the `-r` flag
+    self.run_process([EMCC, '-r', '-o', 'combined.o', '-Wl,--whole-archive', 'combined.a'])
+    self.assertIsObjectFile('combined.o')
+
+    # Should be two symbols (and in the wasm backend, also __original_main)
+    syms = building.llvm_nm('combined.o')
+    self.assertIn('main', syms.defs)
+    self.assertEqual(len(syms.defs), 3)
+
+    self.run_process([EMCC, 'combined.o', '-o', 'combined.o.js'])
+    self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
+
   def test_js_transform(self):
     with open('t.py', 'w') as f:
       f.write('''
@@ -1443,7 +1465,7 @@ int f() {
       # Build libfile normally into an .so
       self.run_process([EMCC, os.path.join('libdir', 'libfile.cpp'), '-shared', '-o', os.path.join('libdir', 'libfile.so' + lib_suffix)])
       # Build libother and dynamically link it to libfile
-      self.run_process([EMCC, os.path.join('libdir', 'libother.cpp')] + link_flags + ['-shared', '-o', os.path.join('libdir', 'libother.so')])
+      self.run_process([EMCC, '-Llibdir', os.path.join('libdir', 'libother.cpp')] + link_flags + ['-shared', '-o', os.path.join('libdir', 'libother.so')])
       # Build the main file, linking in both the libs
       self.run_process([EMCC, '-Llibdir', os.path.join('main.cpp')] + link_flags + ['-lother', '-c'])
       print('...')
