@@ -405,7 +405,8 @@ fi
 
   def assertCacheEmpty(self):
     if os.path.exists(Cache.dirname):
-      self.assertEqual(os.listdir(Cache.dirname), [])
+      # The cache is considered empty if it contains no files at all or just the cache.lock
+      self.assertIn(os.listdir(Cache.dirname), ([], ['cache.lock']))
 
   def ensure_cache(self):
     self.do([EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
