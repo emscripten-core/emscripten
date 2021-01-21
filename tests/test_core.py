@@ -8270,6 +8270,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MAIN_MODULE')
     self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
 
+  def test_dyncalls(self):
+    self.set_setting('USE_LEGACY_DYNCALLS')
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+
+  @no_asan('asan does not yet work in MINIMAL_RUNTIME')
+  def test_dyncalls_minimal_runtime(self):
+    self.set_setting('USE_LEGACY_DYNCALLS')
+    self.set_setting('MINIMAL_RUNTIME')
+    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):

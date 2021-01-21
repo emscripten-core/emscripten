@@ -3699,7 +3699,12 @@ LibraryManager.library = {
 #if USE_LEGACY_DYNCALLS || !WASM_BIGINT
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
+#if MINIMAL_RUNTIME
+    assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
+    assert(typeof dynCalls !== 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"] linker flag to include it!');
+#else
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
     if (args && args.length) {
       // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
       assert(args.length === sig.substring(1).replace(/j/g, '--').length);
@@ -3708,9 +3713,9 @@ LibraryManager.library = {
     }
 #endif
     if (args && args.length) {
-      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
+      return {{{ getDynCaller('sig') }}}.apply(null, [ptr].concat(args));
     }
-    return Module['dynCall_' + sig].call(null, ptr);
+    return {{{ getDynCaller('sig') }}}.call(null, ptr);
   },
   $dynCall__deps: ['$dynCallLegacy'],
 
