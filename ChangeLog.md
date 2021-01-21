@@ -24,7 +24,7 @@ Current Trunk
   This includes the system headers which get copied into place there rather
   than adding a sequence of extra include directories.
 - Add back support for calling the legacy dynCall_sig() API to invoke function
-  pointers to wasm functions from JavaScript. Pass -s USE_LEGACY_DYNCALLS=1
+  pointers to wasm functions from JavaScript. Pass -s DYNCALLS=1
   to include that functionality in the build. This fixes a regression that
   started in Aug 31st 2020 (Emscripten 2.0.2) in #12059. Also implement
   support for dynCall() in MINIMAL_RUNTIME builds. (#13296)

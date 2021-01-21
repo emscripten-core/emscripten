@@ -978,13 +978,13 @@ function makeDynCall(sig, funcPtr) {
     }
     args = args.join(', ');
 
-    if (USE_LEGACY_DYNCALLS) {
+    if (DYNCALLS) {
       return `(function(cb, ${args}) { return getDynCaller("${sig}", cb)(${args}) })`;
     } else {
       return `(function(cb, ${args}) { return wasmTable.get(cb)(${args}) })`;
     }
   }
-  if (USE_LEGACY_DYNCALLS) {
+  if (DYNCALLS) {
     let dyncall = exportedAsmFunc(`dynCall_${sig}`)
     if (sig.length > 1) {
       let args = [];

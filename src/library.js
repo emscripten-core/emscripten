@@ -3696,7 +3696,7 @@ LibraryManager.library = {
     });
   },
 
-#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
@@ -3724,7 +3724,7 @@ LibraryManager.library = {
   // back to this function if needed.
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
-#if !USE_LEGACY_DYNCALLS
+#if !DYNCALLS
     assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
 #endif
     var argCache = [];
@@ -3739,7 +3739,7 @@ LibraryManager.library = {
 #endif
 
   $dynCall: function(sig, ptr, args) {
-#if USE_LEGACY_DYNCALLS
+#if DYNCALLS
     return dynCallLegacy(sig, ptr, args);
 #else
 #if !WASM_BIGINT

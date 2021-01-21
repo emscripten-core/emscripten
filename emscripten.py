@@ -46,7 +46,7 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
 
   # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
-  if shared.Settings.USE_LEGACY_DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
+  if shared.Settings.DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
     exports_that_are_not_initializers += ['dynCalls = {}']
 
   post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
@@ -406,7 +406,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
-  if shared.Settings.USE_LEGACY_DYNCALLS:
+  if shared.Settings.DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
   else:
@@ -717,7 +717,7 @@ def create_receiving(exports):
       # _main = asm["_main"];
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
-        generate_dyncall_assignment = shared.Settings.USE_LEGACY_DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+        generate_dyncall_assignment = shared.Settings.DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
         receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:

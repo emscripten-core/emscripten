@@ -1147,7 +1147,7 @@ var WASM_ASYNC_COMPILATION = 1;
 
 // If set to 1, the legacy dynCall() and dynCall_sig() API is made available
 // to caller.
-var USE_LEGACY_DYNCALLS = 0;
+var DYNCALLS = 0;
 
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need
 // to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
