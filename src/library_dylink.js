@@ -339,7 +339,7 @@ var LibraryDylink = {
 
   // Module.symbols <- libModule.symbols (flags.global handler)
   $mergeLibSymbols__deps: ['$asmjsMangle'],
-  $mergeLibSymbols: function(libModule, lib) {
+  $mergeLibSymbols: function(libModule, libName) {
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in libModule) {
       if (!libModule.hasOwnProperty(sym)) {
@@ -361,7 +361,7 @@ var LibraryDylink = {
         var curr = Module[sym], next = libModule[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr === 'function' && typeof next === 'function')) {
-          err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+          err("warning: symbol '" + sym + "' from '" + libName + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
         }
       }
 #endif
@@ -372,12 +372,12 @@ var LibraryDylink = {
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata'],
   $loadWebAssemblyModule: function(binary, flags) {
-    var customSection = getDylinkMetadata(binary);
-    var memorySize = customSection.memorySize;
-    var memoryAlign = customSection.memoryAlign;
-    var tableSize = customSection.tableSize;
-    var tableAlign = customSection.tableAlign;
-    var neededDynlibs = customSection.neededDynlibs;
+    var metadata = getDylinkMetadata(binary);
+    var memorySize = metadata.memorySize;
+    var memoryAlign = metadata.memoryAlign;
+    var tableSize = metadata.tableSize;
+    var tableAlign = metadata.tableAlign;
+    var neededDynlibs = metadata.neededDynlibs;
 
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.

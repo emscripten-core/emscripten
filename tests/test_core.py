@@ -4359,8 +4359,6 @@ res64 - external 64\n''', header='''
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args.append('-lnodefs.js')
     self.set_setting('INITIAL_MEMORY', '64mb')
-    if not self.has_changed_setting('ASSERTIONS'):
-      self.set_setting('ASSERTIONS', 2)
 
     self.dylink_test(main=r'''
       #include <stdio.h>
