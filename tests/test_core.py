@@ -4356,6 +4356,8 @@ res64 - external 64\n''', header='''
   
   @needs_dlfcn
   def test_dylink_load_compiled_side_module(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args.append('-lnodefs.js')
     self.set_setting('INITIAL_MEMORY', '64mb')
     if not self.has_changed_setting('ASSERTIONS'):
       self.set_setting('ASSERTIONS', 2)
@@ -4366,13 +4368,15 @@ res64 - external 64\n''', header='''
       extern int sidef();
       int main() {
         EM_ASM({
-          var libData = fs.readFile('liblib.so', {encoding: 'binary'});
+          FS.mkdir('/working');
+          FS.mount(NODEFS,{ root: '.' }, '/working');
+          var libData = FS.readFile('/working/liblib.so', {encoding: 'binary'});
           if (!(libData instanceof Uint8Array)) {
             libData = new Uint8Array(libData);
           }
           var compiledModule = new WebAssembly.Module(libData);
           var sideExports = loadWebAssemblyModule(compiledModule, {loadAsync: false, nodelete: true});
-          mergeLibSymbols(sideExports);
+          mergeLibSymbols(sideExports, 'liblib.so');
         });
         printf("sidef: %d.\n", sidef());
       }
@@ -4383,7 +4387,8 @@ res64 - external 64\n''', header='''
     ''',
                      expected=['sidef: 10'],
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=not self.is_wasm())
+                     need_reverse=not self.is_wasm(),
+                     auto_load=False)
 
   @needs_dlfcn
   def test_dylink_dso_needed(self):

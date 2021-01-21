@@ -314,7 +314,7 @@ var LibraryDylink = {
     }
 
     if (binary instanceof WebAssembly.Module) {
-      var dylinkSection = WebAssembly.Module.customSections(compiledWasm, "dylink");
+      var dylinkSection = WebAssembly.Module.customSections(binary, "dylink");
       assert(dylinkSection.length != 0, 'need dylink section');
       var dylinkSectionInt8 = new Int8Array(dylinkSection[0]);
       return parseDylinkSection(dylinkSectionInt8);
@@ -339,7 +339,7 @@ var LibraryDylink = {
 
   // Module.symbols <- libModule.symbols (flags.global handler)
   $mergeLibSymbols__deps: ['$asmjsMangle'],
-  $mergeLibSymbols: function(libModule) {
+  $mergeLibSymbols: function(libModule, lib) {
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in libModule) {
       if (!libModule.hasOwnProperty(sym)) {
@@ -588,7 +588,7 @@ var LibraryDylink = {
         dso.global = true;
         if (dso.module !== 'loading') {
           // ^^^ if module is 'loading' - symbols merging will be eventually done by the loader.
-          mergeLibSymbols(dso.module)
+          mergeLibSymbols(dso.module, lib)
         }
       }
       // same for "nodelete"
@@ -650,7 +650,7 @@ var LibraryDylink = {
     // module for lib is loaded - update the dso & global namespace
     function moduleLoaded(libModule) {
       if (dso.global) {
-        mergeLibSymbols(libModule);
+        mergeLibSymbols(libModule, lib);
       }
       dso.module = libModule;
     }
