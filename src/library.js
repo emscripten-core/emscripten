@@ -3712,10 +3712,12 @@ LibraryManager.library = {
       assert(sig.length == 1);
     }
 #endif
-    if (args && args.length) {
-      return {{{ getDynCaller('sig') }}}.apply(null, [ptr].concat(args));
-    }
-    return {{{ getDynCaller('sig') }}}.call(null, ptr);
+#if MINIMAL_RUNTIME
+    var f = dynCalls[sig];
+#else
+    var f = Module["dynCall_" + sig];
+#endif
+    return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
   $dynCall__deps: ['$dynCallLegacy'],
 

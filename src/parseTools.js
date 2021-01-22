@@ -1253,8 +1253,3 @@ function makeMalloc(source, param) {
   }
   return `abort('malloc was not included, but is needed in ${source}. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');`
 }
-
-function getDynCaller(sig) {
-  return MINIMAL_RUNTIME ? `dynCalls[${sig}]` : `Module["dynCall_"+${sig}]`;
-}
-
