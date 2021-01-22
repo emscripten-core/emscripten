@@ -149,7 +149,6 @@ class Cache:
           what = 'system asset'
       message = 'generating ' + what + ': ' + shortname + '... (this will be cached in "' + cachename + '" for subsequent builds)'
       logger.info(message)
-      self.ensure()
       temp = creator()
       if os.path.normcase(temp) != os.path.normcase(cachename):
         utils.safe_ensure_dirs(os.path.dirname(cachename))

@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Fix race condition when running many emcc processes after clearing the cache.
+  The processes would race to run the sanity checks and could interfere with
+  each other (#13299).
 - Emscripten now builds a complete sysroot inside the EM_CACHE directory.
   This includes the system headers which get copied into place there rather
   than adding a sequence of extra include directories.
