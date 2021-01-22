@@ -1244,6 +1244,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       default_setting('IGNORE_MISSING_MAIN', 0)
       default_setting('DEFAULT_TO_CXX', 0)
 
+    # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
+    # in -Oz builds, since custom decoder for UTF-8 takes up space.
+    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS:
+      default_setting('TEXTDECODER', 2)
+
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
     # tools/autodebugger).  Note that this will disable inclusion of libraries. This
     # is useful because including dlmalloc makes it hard to compare native and js
