@@ -3726,7 +3726,7 @@ LibraryManager.library = {
   // back to this function if needed.
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
-#if !DYNCALLS
+#if ASSERTIONS && !DYNCALLS
     assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
 #endif
     var argCache = [];

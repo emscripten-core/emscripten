@@ -1145,7 +1145,7 @@ var BINARYEN_EXTRA_PASSES = "";
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 var WASM_ASYNC_COMPILATION = 1;
 
-// If set to 1, the legacy dynCall() and dynCall_sig() API is made available
+// If set to 1, the dynCall() and dynCall_sig() API is made available
 // to caller.
 var DYNCALLS = 0;
 

@@ -715,9 +715,9 @@ def create_receiving(exports):
       # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
       # var asm = output.instance.exports;
       # _main = asm["_main"];
+      generate_dyncall_assignment = shared.Settings.DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
-        generate_dyncall_assignment = shared.Settings.DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
         receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:
