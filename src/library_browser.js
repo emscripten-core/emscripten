@@ -479,13 +479,6 @@ var LibraryBrowser = {
       RAF(func);
     },
 
-    // generic abort-aware wrapper for an async callback
-    safeCallback: function(func) {
-      return function() {
-        if (!ABORT) return func.apply(null, arguments);
-      };
-    },
-
     // abort and pause-aware versions TODO: build main loop on top of this?
 
     safeRequestAnimationFrame: function(func) {
@@ -497,13 +490,6 @@ var LibraryBrowser = {
     safeSetTimeout: function(func, timeout) {
       noExitRuntime = true;
       return setTimeout(function() {
-        if (ABORT) return;
-        func();
-      }, timeout);
-    },
-    safeSetInterval: function(func, timeout) {
-      noExitRuntime = true;
-      return setInterval(function() {
         if (ABORT) return;
         func();
       }, timeout);

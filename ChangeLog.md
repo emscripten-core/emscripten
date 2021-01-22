@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Remove unused `Browser.safeSetInterval` and `Browser.safeCallback`.  These
+  didn't any callers in emscripten itself or any testing.  If there are users of
+  these functions we could re-enable them with some testing.
 - Fix race condition when running many emcc processes after clearing the cache.
   The processes would race to run the sanity checks and could interfere with
   each other (#13299).
