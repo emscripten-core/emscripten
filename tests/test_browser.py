@@ -4928,15 +4928,8 @@ window.close = function() {
                expected='5121',
                args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', path_from_root('tests', 'test_override_system_js_lib_symbol.js')])
 
-  # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
-  def test_emmalloc_4gb(self):
-    self.btest(path_from_root('tests', 'mem_growth.cpp'),
-               expected='-65536', # == 4*1024*1024*1024 - 65536 casted to signed
-               args=['-s', 'MALLOC=emmalloc', '-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=4GB'])
-
-  @no_firefox('no 4GB support yet')
-  def test_zzz_zzz_4GB(self):
+  def test_zzz_zzz_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
     #      means we don't compete for memory with anything else (and run it
@@ -4948,8 +4941,29 @@ window.close = function() {
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
     self.do_run_in_out_file_test('tests', 'browser', 'test_4GB.cpp', js_engines=[config.V8_ENGINE])
 
+  # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
-  def test_zzz_zzz_2GB_fail(self):
+  def test_zzz_zzz_emmalloc_4gb(self):
+    self.btest(path_from_root('tests', 'mem_growth.cpp'),
+               expected='-65536', # == 4*1024*1024*1024 - 65536 casted to signed
+               args=['-s', 'MALLOC=emmalloc', '-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=4GB'])
+
+  # Test that it is possible to malloc() a huge 3GB memory block in 4GB mode using emmalloc.
+  # Also test emmalloc-memvalidate and emmalloc-memvalidate-verbose build configurations.
+  @no_firefox('no 4GB support yet')
+  def test_emmalloc_3GB(self):
+    def test(args):
+      self.btest(path_from_root('tests', 'alloc_3gb.cpp'),
+                 expected='0',
+                 args=['-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + args)
+
+    test(['-s', 'MALLOC=emmalloc'])
+    test(['-s', 'MALLOC=emmalloc-debug'])
+    test(['-s', 'MALLOC=emmalloc-memvalidate'])
+    test(['-s', 'MALLOC=emmalloc-memvalidate-verbose'])
+
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
     #      means we don't compete for memory with anything else (and run it
@@ -4962,7 +4976,7 @@ window.close = function() {
     self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail.cpp', js_engines=[config.V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
-  def test_zzz_zzz_4GB_fail(self):
+  def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
     #      means we don't compete for memory with anything else (and run it

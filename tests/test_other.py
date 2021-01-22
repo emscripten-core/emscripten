@@ -5992,15 +5992,6 @@ Resolved: "/" => "/"
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=1GB'])
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB'])
 
-  # Test that it is possible to malloc() a huge 3GB memory block in 4GB mode using dlmalloc or emmalloc.
-  # Also test emmalloc-memvalidate and emmalloc-memvalidate-verbose build configurations.
-  def test_alloc_3GB(self):
-    self.run_process([EMCC, path_from_root('tests', 'alloc_3gb.cpp'), '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH=1'])
-    self.run_process([EMCC, path_from_root('tests', 'alloc_3gb.cpp'), '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MALLOC=emmalloc'])
-    self.run_process([EMCC, path_from_root('tests', 'alloc_3gb.cpp'), '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MALLOC=emmalloc-debug'])
-    self.run_process([EMCC, path_from_root('tests', 'alloc_3gb.cpp'), '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MALLOC=emmalloc-memvalidate'])
-    self.run_process([EMCC, path_from_root('tests', 'alloc_3gb.cpp'), '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MALLOC=emmalloc-memvalidate-verbose'])
-
   def test_2GB_plus(self):
     # when the heap size can be over 2GB, we rewrite pointers to be unsigned
     def test(page_diff):

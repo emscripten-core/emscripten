@@ -857,7 +857,7 @@ base align: 0, 0, 0, 0'''])
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too
     self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-fno-builtin', '-g'] + list(args)
+    self.emcc_args += ['-fno-builtin'] + list(args)
 
     self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
                 open(path_from_root('system', 'lib', 'sbrk.c')).read() +
