@@ -269,6 +269,8 @@ See docs/process.md for more on how version tagging works.
 - Deprecate `-g4`, which is a little confusing as it does not do more than `-g3`
   but instead emits source maps instead of DWARF. `-g4` will now warn. A new
   flag `-gsource-map` enables source maps without warning.
+- Added a new JS runtime API wbind() and wbindArray() that can be used to bind
+  to function pointers from wasm code. (#13844)
 - In order to behave more like clang and gcc, emscripten no longer
   supports some nonstandard methods of library lookup (that worked
   unintentionally and were untested and not documented):
