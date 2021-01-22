@@ -3129,14 +3129,14 @@ window.close = function() {
   def test_sdl2_ttf(self):
     shutil.copy2(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), self.get_dir())
     self.btest('sdl2_ttf.c', reference='sdl2_ttf.png',
-               args=['-O2', '-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_HARFBUZZ=1', '--embed-file', 'LiberationSansBold.ttf'],
+               args=['-O2', '-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'],
                message='You should see colorful "hello" and "world" in the window')
 
   @requires_graphics_hardware
   def test_sdl2_ttf_rtl(self):
     shutil.copy2(path_from_root('tests', 'third_party', 'notofont', 'NotoNaskhArabic-Regular.ttf'), self.get_dir())
     self.btest('sdl2_ttf_rtl.c', reference='sdl2_ttf_rtl.png',
-               args=['-O2', '-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_HARFBUZZ=1', '--embed-file', 'NotoNaskhArabic-Regular.ttf'],
+               args=['-O2', '-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'],
                message='You should see colorful "سلام" and "جهان" with shaped Arabic script in the window')
 
   def test_sdl2_custom_cursor(self):
