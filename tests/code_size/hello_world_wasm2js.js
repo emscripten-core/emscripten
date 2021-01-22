@@ -61,9 +61,9 @@ var k = {
             function p() {}
             var o = r([]);
             return {
-                b: o,
-                c: p,
-                d: q
+                b: p,
+                c: q,
+                d: o
             };
         }
         return s(t);
