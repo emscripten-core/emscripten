@@ -248,7 +248,7 @@ class sockets(BrowserCore):
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest('test_sockets_echo_bigdata.c', expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
+        self.btest('test_sockets_echo_bigdata.c', expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram])
 
   @no_windows('This test is Unix-specific.')
   def test_sockets_partial(self):
