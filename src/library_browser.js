@@ -488,51 +488,24 @@ var LibraryBrowser = {
 
     // abort and pause-aware versions TODO: build main loop on top of this?
 
-    allowAsyncCallbacks: true,
-    queuedAsyncCallbacks: [],
-
-    pauseAsyncCallbacks: function() {
-      Browser.allowAsyncCallbacks = false;
-    },
-    resumeAsyncCallbacks: function() { // marks future callbacks as ok to execute, and synchronously runs any remaining ones right now
-      Browser.allowAsyncCallbacks = true;
-      if (Browser.queuedAsyncCallbacks.length > 0) {
-        var callbacks = Browser.queuedAsyncCallbacks;
-        Browser.queuedAsyncCallbacks = [];
-        callbacks.forEach(function(func) {
-          func();
-        });
-      }
-    },
-
     safeRequestAnimationFrame: function(func) {
       return Browser.requestAnimationFrame(function() {
         if (ABORT) return;
-        if (Browser.allowAsyncCallbacks) {
-          func();
-        } else {
-          Browser.queuedAsyncCallbacks.push(func);
-        }
+        func();
       });
     },
     safeSetTimeout: function(func, timeout) {
       noExitRuntime = true;
       return setTimeout(function() {
         if (ABORT) return;
-        if (Browser.allowAsyncCallbacks) {
-          func();
-        } else {
-          Browser.queuedAsyncCallbacks.push(func);
-        }
+        func();
       }, timeout);
     },
     safeSetInterval: function(func, timeout) {
       noExitRuntime = true;
       return setInterval(function() {
         if (ABORT) return;
-        if (Browser.allowAsyncCallbacks) {
-          func();
-        } // drop it on the floor otherwise, next interval will kick in
+        func();
       }, timeout);
     },
 
