@@ -460,9 +460,11 @@ var LibraryDylink = {
 
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
-      return Promise.all(neededDynlibs.map(function(dynNeeded) {
-        return loadDynamicLibrary(dynNeeded, flags);
-      })).then(function() {
+      return neededDynlibs.reduce(function(chain, dynNeeded) {
+        return chain.then(function() {
+          return loadDynamicLibrary(dynNeeded, flags);
+        });
+      }, Promise.resolve()).then(function() {
         return loadModule();
       });
     }
@@ -650,9 +652,11 @@ var LibraryDylink = {
     if (!readBinary) {
       // we can't read binary data synchronously, so preload
       addRunDependency('preloadDylibs');
-      Promise.all(libs.map(function(lib) {
-        return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
-      })).then(function() {
+      libs.reduce(function(chain, lib) {
+        return chain.then(function() {
+          return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
+        });
+      }, Promise.resolve()).then(function() {
         // we got them all, wonderful
         removeRunDependency('preloadDylibs');
         reportUndefinedSymbols();
