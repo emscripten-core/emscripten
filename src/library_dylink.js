@@ -46,7 +46,7 @@ var LibraryDylink = {
 
   $GOT: {},
 
-  // Greate globals to each imported symbol.  These are all initialized to zero
+  // Create globals to each imported symbol.  These are all initialized to zero
   // and get assigned later in `updateGOT`
   $GOTHandler__deps: ['$GOT'],
   $GOTHandler: {
@@ -217,7 +217,7 @@ var LibraryDylink = {
     loadedLibNames: {},
   },
 
-  // Dynmamic version of shared.py:make_invoke.  This is needed for invokes
+  // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
   $createInvokeFunction: function(sig) {
@@ -258,7 +258,7 @@ var LibraryDylink = {
     return ret;
   },
 
-  // fetchBinary fetches binaray data @ url. (async)
+  // fetchBinary fetches binary data @ url. (async)
   $fetchBinary: function(url) {
     return fetch(url, { credentials: 'same-origin' }).then(function(response) {
       if (!response['ok']) {
@@ -271,7 +271,7 @@ var LibraryDylink = {
   },
 
   // Loads a side module from binary data. Returns the module's exports or a
-  // progise that resolves to its exports if the loadAsync flag is set.
+  // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler'],
   $loadWebAssemblyModule: function(binary, flags) {
     var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
