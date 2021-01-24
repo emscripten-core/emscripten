@@ -453,8 +453,8 @@ pthread_t emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-int _emscripten_do_dispatch_to_thread(
-  pthread_t target_thread, em_queued_call* call) {
+int _emscripten_do_dispatch_to_thread_global(
+  pthread_t target_thread, em_queued_call* call, int drop) {
   assert(call);
 
   // #if PTHREADS_DEBUG // TODO: Create a debug version of pthreads library
@@ -492,7 +492,7 @@ int _emscripten_do_dispatch_to_thread(
 
     // If queue of the main browser thread is full, then we wait. (never drop messages for the main
     // browser thread)
-    if (target_thread == emscripten_main_browser_thread_id()) {
+    if (target_thread == emscripten_main_browser_thread_id() || drop == 0) {
       emscripten_futex_wait((void*)&q->call_queue_head, head, INFINITY);
       pthread_mutex_lock(&call_queue_lock);
       head = emscripten_atomic_load_u32((void*)&q->call_queue_head);
@@ -529,6 +529,11 @@ int _emscripten_do_dispatch_to_thread(
   pthread_mutex_unlock(&call_queue_lock);
 
   return 0;
+}
+
+int _emscripten_do_dispatch_to_thread(
+  pthread_t target_thread, em_queued_call* call) {
+  return _emscripten_do_dispatch_to_thread_global(target_thread, call, 1);
 }
 
 void emscripten_async_run_in_main_thread(em_queued_call* call) {
@@ -907,13 +912,20 @@ int _emscripten_call_on_thread(
   q->calleeDelete = 1;
   // The called function will not be async if we are on the same thread; force
   // async if the user asked for that.
-  if (forceAsync) {
+  if (forceAsync == 1) {
     EM_ASM({
       setTimeout(function() {
         __emscripten_do_dispatch_to_thread($0, $1);
       }, 0);
     }, targetThread, q);
     return 0;
+  } else if (forceAsync == 2) {
+    q->calleeDelete = 0;
+    _emscripten_do_dispatch_to_thread_global(targetThread, q, 0);
+    emscripten_wait_for_call_v(q, INFINITY);
+    int res = q->returnValue.i;
+    em_queued_call_free(q);
+    return res;
   } else {
     return _emscripten_do_dispatch_to_thread(targetThread, q);
   }

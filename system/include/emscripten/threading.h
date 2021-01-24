@@ -346,6 +346,10 @@ int _emscripten_call_on_thread(int force_async, pthread_t target_thread, EM_FUNC
 // but may be simpler to reason about in some cases.
 #define emscripten_dispatch_to_thread_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(1, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
 
+// Similar to emscripten_dispatch_to_thread, but always runs the
+// function synchronously, even if on the same thread.
+#define emscripten_dispatch_to_thread_sync(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(2, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);
 
