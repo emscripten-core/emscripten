@@ -1668,6 +1668,28 @@
                 "sampler",
                 "textureView"
             ],
+            "WGPUBufferBindingLayout": [
+                "nextInChain",
+                "type",
+                "hasDynamicOffset",
+                "minBindingSize"
+            ],
+            "WGPUSamplerBindingLayout": [
+                "nextInChain",
+                "type"
+            ],
+            "WGPUTextureBindingLayout": [
+                "nextInChain",
+                "sampleType",
+                "viewDimension",
+                "multisampled"
+            ],
+            "WGPUStorageTextureBindingLayout": [
+                "nextInChain",
+                "access",
+                "format",
+                "viewDimension"
+            ],
             "WGPUBindGroupLayoutEntry": [
                 "binding",
                 "visibility",
@@ -1676,7 +1698,11 @@
                 "minBufferBindingSize",
                 "viewDimension",
                 "textureComponentType",
-                "storageTextureFormat"
+                "storageTextureFormat",
+                "buffer",
+                "sampler",
+                "texture",
+                "storageTexture"
             ],
             "WGPUBlendDescriptor": [
                 "operation",
@@ -1899,7 +1925,8 @@
                 "nextInChain",
                 "texture",
                 "mipLevel",
-                "origin"
+                "origin",
+                "aspect"
             ],
             "WGPUTextureDescriptor": [
                 "nextInChain",
