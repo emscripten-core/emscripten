@@ -167,10 +167,10 @@ var LibraryWebGPU = {
 
     makeColor: function(ptr) {
       return {
-        "r": {{{ makeGetValue('ptr', 0, 'float') }}},
-        "g": {{{ makeGetValue('ptr', 4, 'float') }}},
-        "b": {{{ makeGetValue('ptr', 8, 'float') }}},
-        "a": {{{ makeGetValue('ptr', 12, 'float') }}},
+        "r": {{{ makeGetValue('ptr', 0, 'double') }}},
+        "g": {{{ makeGetValue('ptr', 8, 'double') }}},
+        "b": {{{ makeGetValue('ptr', 16, 'double') }}},
+        "a": {{{ makeGetValue('ptr', 24, 'double') }}},
       };
     },
 
