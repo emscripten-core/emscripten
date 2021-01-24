@@ -35,7 +35,7 @@ def get(ports, settings, shared):
     ports.build_port(dest_path, final)
     return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
