@@ -43,6 +43,8 @@ MINIMAL_TASKS = [
     'libdlmalloc-debug',
     'libemmalloc',
     'libemmalloc-64bit',
+    'libgl',
+    'libhtml5',
     'libsockets',
     'libc_rt_wasm',
     'struct_info',

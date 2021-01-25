@@ -299,20 +299,6 @@ class Library(object):
     if not self.name:
       raise NotImplementedError('Cannot instantiate an abstract library')
 
-    # Read .symbols file if it exists. This first tries to read a symbols file
-    # with the same basename with the library file name (e.g.
-    # libc++-mt.symbols), and if there isn't one, it tries to read the 'default'
-    # symbol file, which does not have any optional suffices (e.g.
-    # libc++.symbols).
-    basename = shared.unsuffixed(self.get_filename())
-    symbols_dir = shared.path_from_root('system', 'lib', 'symbols', 'wasm')
-    symbols_file = os.path.join(symbols_dir, basename + '.symbols')
-    default_symbols_file = os.path.join(symbols_dir, self.name + '.symbols')
-    if os.path.isfile(symbols_file):
-      self.symbols = read_symbols(symbols_file)
-    elif os.path.isfile(default_symbols_file):
-      self.symbols = read_symbols(default_symbols_file)
-
   def can_use(self):
     """
     Whether this library can be used in the current environment.
@@ -1474,35 +1460,10 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
       add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
-    # These libraries get included automatically based the symbols needed by the input file.
-    # Other system libraries are simply included by default.
-    for libname in ['libgl', 'libal', 'libhtml5']:
-      if libname in already_included:
-        continue
-      lib = system_libs_map[libname]
-      force_this = lib.name in force_include
-      if not force_this:
-        need_syms = set()
-        has_syms = set()
-        for symbols in symbolses:
-          if shared.Settings.VERBOSE:
-            logger.debug('undefs: ' + str(symbols.undefs))
-          for library_symbol in lib.symbols:
-            if library_symbol in symbols.undefs:
-              need_syms.add(library_symbol)
-            if library_symbol in symbols.defs:
-              has_syms.add(library_symbol)
-        for haz in has_syms:
-          if haz in need_syms:
-            # remove symbols that are supplied by another of the inputs
-            need_syms.remove(haz)
-        if shared.Settings.VERBOSE:
-          logger.debug('considering %s: we need %s and have %s' % (lib.name, str(need_syms), str(has_syms)))
-        if not len(need_syms):
-          continue
-
-      # We need to build and link the library in
-      add_library(lib)
+    if shared.Settings.AUTO_NATIVE_LIBRARIES:
+      add_library(system_libs_map['libgl'])
+      add_library(system_libs_map['libal'])
+      add_library(system_libs_map['libhtml5'])
 
     sanitize = shared.Settings.USE_LSAN or shared.Settings.USE_ASAN or shared.Settings.UBSAN_RUNTIME
 

@@ -1245,6 +1245,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.STRICT:
       default_setting('STRICT_JS', 1)
       default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('AUTO_NATIVE_LIBRARIES', 0)
       default_setting('AUTO_ARCHIVE_INDEXES', 0)
       default_setting('IGNORE_MISSING_MAIN', 0)
       default_setting('DEFAULT_TO_CXX', 0)
