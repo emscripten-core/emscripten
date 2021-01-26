@@ -280,7 +280,7 @@ you get information from ``dlmalloc`` about current allocations. For example
 usage, see
 `the test <https://github.com/emscripten-core/emscripten/blob/9bb322f8a7ee89d6ac67e828b9c7a7022ddf8de2/tests/mallinfo.cpp>`_.
 
-Emscripten also has a ``--memoryprofiler`` option that the displays memory usage
+Emscripten also has a ``--memoryprofiler`` option that displays memory usage
 in a visual manner, letting you see how fragmented it is and so forth. To use
 it, you can do something like
 
