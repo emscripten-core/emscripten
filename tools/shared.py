@@ -278,8 +278,8 @@ def check_sanity(force=False):
       if os.path.exists(sanity_file):
         sanity_data = open(sanity_file).read()
         if sanity_data != expected:
-          logger.info('old sanity: %s' % sanity_data)
-          logger.info('new sanity: %s' % expected)
+          logger.debug('old sanity: %s' % sanity_data)
+          logger.debug('new sanity: %s' % expected)
           if config.FROZEN_CACHE:
             logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
           else:
