@@ -1245,6 +1245,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.STRICT:
       default_setting('STRICT_JS', 1)
       default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('AUTO_NATIVE_LIBRARIES', 0)
       default_setting('AUTO_ARCHIVE_INDEXES', 0)
       default_setting('IGNORE_MISSING_MAIN', 0)
       default_setting('DEFAULT_TO_CXX', 0)
@@ -2097,12 +2098,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if link_to_object:
     with ToolchainProfiler.profile_block('linking to object file'):
       logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
-      if len(temp_files) == 1:
-        temp_file = temp_files[0][1]
-        # skip running the linker and just copy the object file
-        safe_copy(temp_file, target)
-      else:
-        building.link_to_object(linker_inputs, target)
+      building.link_to_object(linker_inputs, target)
       logger.debug('stopping after linking to object file')
       return 0
 

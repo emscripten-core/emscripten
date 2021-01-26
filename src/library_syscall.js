@@ -25,20 +25,26 @@ var SyscallsLibrary = {
     umask: 0x1FF,  // S_IRWXU | S_IRWXG | S_IRWXO
 
     // shared utilities
-    calculateAt: function(dirfd, path) {
-      if (path[0] !== '/') {
-        // relative path
-        var dir;
-        if (dirfd === {{{ cDefine('AT_FDCWD') }}}) {
-          dir = FS.cwd();
-        } else {
-          var dirstream = FS.getStream(dirfd);
-          if (!dirstream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
-          dir = dirstream.path;
-        }
-        path = PATH.join2(dir, path);
+    calculateAt: function(dirfd, path, allowEmpty) {
+      if (path[0] === '/') {
+        return path;
       }
-      return path;
+      // relative path
+      var dir;
+      if (dirfd === {{{ cDefine('AT_FDCWD') }}}) {
+        dir = FS.cwd();
+      } else {
+        var dirstream = FS.getStream(dirfd);
+        if (!dirstream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+        dir = dirstream.path;
+      }
+      if (path.length == 0) {
+        if (!allowEmpty) {
+          throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});;
+        }
+        return dir;
+      }
+      return PATH.join2(dir, path);
     },
 
     doStat: function(func, path, buf) {
@@ -1273,11 +1279,12 @@ var SyscallsLibrary = {
   __sys_fstatat64: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
-    flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
+    var allowEmpty = flags & {{{ cDefine('AT_EMPTY_PATH') }}};
+    flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') | cDefine('AT_EMPTY_PATH') }}});
 #if ASSERTIONS
     assert(!flags, flags);
 #endif
-    path = SYSCALLS.calculateAt(dirfd, path);
+    path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
   },
   __sys_unlinkat: function(dirfd, path, flags) {

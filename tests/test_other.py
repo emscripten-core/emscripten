@@ -439,6 +439,28 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.run_process([EMCC, 'combined.o', '-o', 'combined.o.js'])
     self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
 
+  def test_combining_object_files_from_archive(self):
+    # Compiling two files with -c will generate separate object files
+    self.run_process([EMCC, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.c'), '-c'])
+    self.assertExists('twopart_main.o')
+    self.assertExists('twopart_side.o')
+
+    # Combining object files into a library archive should work
+    self.run_process([EMAR, 'crs', 'combined.a', 'twopart_main.o', 'twopart_side.o'])
+    self.assertExists('combined.a')
+
+    # Combining library archive into an object should yield a valid object, using the `-r` flag
+    self.run_process([EMCC, '-r', '-o', 'combined.o', '-Wl,--whole-archive', 'combined.a'])
+    self.assertIsObjectFile('combined.o')
+
+    # Should be two symbols (and in the wasm backend, also __original_main)
+    syms = building.llvm_nm('combined.o')
+    self.assertIn('main', syms.defs)
+    self.assertEqual(len(syms.defs), 3)
+
+    self.run_process([EMCC, 'combined.o', '-o', 'combined.o.js'])
+    self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
+
   def test_js_transform(self):
     with open('t.py', 'w') as f:
       f.write('''
@@ -1443,7 +1465,7 @@ int f() {
       # Build libfile normally into an .so
       self.run_process([EMCC, os.path.join('libdir', 'libfile.cpp'), '-shared', '-o', os.path.join('libdir', 'libfile.so' + lib_suffix)])
       # Build libother and dynamically link it to libfile
-      self.run_process([EMCC, os.path.join('libdir', 'libother.cpp')] + link_flags + ['-shared', '-o', os.path.join('libdir', 'libother.so')])
+      self.run_process([EMCC, '-Llibdir', os.path.join('libdir', 'libother.cpp')] + link_flags + ['-shared', '-o', os.path.join('libdir', 'libother.so')])
       # Build the main file, linking in both the libs
       self.run_process([EMCC, '-Llibdir', os.path.join('main.cpp')] + link_flags + ['-lother', '-c'])
       print('...')
@@ -3762,15 +3784,15 @@ int main(int argc, char **argv) {
     const char *path = argv[i];
     struct stat path_stat;
     if (stat(path, &path_stat) != 0) {
-      printf("Failed to stat path: %s; errno=%d\n", path, errno);
+      printf("Failed to stat path: '%s'; errno=%d\n", path, errno);
     } else {
-      printf("ok on %s\n", path);
+      printf("stat success on '%s'\n", path);
     }
   }
 }
     ''')
-    self.do_runf('src.cpp', r'''Failed to stat path: /a; errno=44
-Failed to stat path: ; errno=44
+    self.do_runf('src.cpp', r'''Failed to stat path: '/a'; errno=44
+Failed to stat path: ''; errno=44
 ''', args=['/a', ''])
 
   def test_symlink_silly(self):
@@ -8079,6 +8101,9 @@ ok.
   def test_getsockname_addrlen(self):
     self.do_runf(path_from_root('tests', 'sockets', 'test_getsockname_addrlen.c'), 'success')
 
+  def test_sin_zero(self):
+    self.do_runf(path_from_root('tests', 'sockets', 'test_sin_zero.c'), 'success')
+
   def test_getaddrinfo(self):
     self.do_runf(path_from_root('tests', 'sockets', 'test_getaddrinfo.c'), 'success')
 
@@ -9857,3 +9882,11 @@ exec "$@"
     self.assertNotIn('profile', result)
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
+
+  def test_gen_struct_info(self):
+    # This tests is fragile and will need updating any time any of the refereced
+    # structs or defines change.   However its easy to rebaseline with
+    # EMTEST_REBASELINE and it prrevents regressions or unintended changes
+    # to the output json.
+    self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
+    self.assertFileContents(path_from_root('tests/reference_struct_info.json'), open('out.json').read())

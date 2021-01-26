@@ -509,7 +509,7 @@ function asmFloatToInt(x) {
 function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
   // Cannot use makeGetValue because it uses us
   // this is a unique case where we *can* use HEAPF64
-  var slab = type == 'double' ? 'HEAPF64' : makeGetSlabs(null, type)[0];
+  var heap = getHeapForType(type);
   var ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type)*i);
   var offset;
   if (type == 'double') {
@@ -517,7 +517,7 @@ function makeGetTempDouble(i, type, forSet) { // get an aliased part of the temp
   } else {
     offset = getHeapOffset(ptr, type);
   }
-  var ret = slab + '[' + offset + ']';
+  var ret = heap + '[' + offset + ']';
   if (!forSet) ret = asmCoercion(ret, type);
   return ret;
 }
@@ -530,6 +530,7 @@ var asmPrintCounter = 0;
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
+  assert(!forceAsm, "forceAsm is no longer supported");
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -577,18 +578,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
-    var printType = type;
-    if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
-    if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
       return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
-  var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
-  if (forceAsm) {
-    ret = asmCoercion(ret, type);
-  }
-  return ret;
+  return getHeapForType(type, unsigned) + '[' + getHeapOffset(offset, type) + ']';
 }
 
 //! @param ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
@@ -602,6 +596,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+  assert(!forcedAlign, "forcedAlign is no longer supported");
   sep = sep || ';';
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -657,14 +652,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
-    var printType = type;
-    if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
-    if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
       return 'SAFE_HEAP_STORE' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
     }
   }
-  return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join(sep);
+  return getHeapForType(type) + '[' + getHeapOffset(offset, type) + '] = ' + value;
 }
 
 var UNROLL_LOOP_MAX = 8;
@@ -817,22 +809,28 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
   return getFastValue(ptr, '+', pos, 'i32');
 }
 
-function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
+function getHeapForType(type, unsigned) {
   assert(type);
-  if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
-  switch(type) {
-    case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
-    case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
-    case '<4 x i32>':
-    case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-    case 'double': return ['HEAPF64'];
-    case '<4 x float>':
-    case 'float': return ['HEAPF32'];
-    default: {
-      throw 'what, exactly, can we do for unknown types in TA2?! ' + [new Error().stack, ptr, type, allowMultiple, unsigned];
-    }
+  if (isPointerType(type)) {
+    type = 'i32'; // Hardcoded 32-bit
   }
-  return [];
+  switch (type) {
+    case 'i1':
+    case 'i8':
+      return unsigned ? 'HEAPU8' : 'HEAP8';
+    case 'i16':
+      return unsigned ? 'HEAPU16' : 'HEAP16';
+    case '<4 x i32>':
+    case 'i32':
+    case 'i64':
+      return unsigned ? 'HEAPU32' : 'HEAP32';
+    case 'double':
+      return 'HEAPF64';
+    case '<4 x float>':
+    case 'float':
+      return 'HEAPF32';
+  }
+  assert(false, 'bad heap type: ' + type);
 }
 
 function makeGetTempRet0() {
