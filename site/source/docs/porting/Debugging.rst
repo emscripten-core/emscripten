@@ -258,9 +258,9 @@ Profiling
 Speed
 -----
 
-To profile your code for speed, build with ``--profiling``, then run the code in
-the browser's devtools profiler. You should then be able to see in which
-functions is most of the time spent.
+To profile your code for speed, build with :ref:`profiling info <emcc-profiling>`,
+then run the code in the browser's devtools profiler. You should then be able to
+see in which functions is most of the time spent.
 
 .. _debugging-profiling-memory:
 
