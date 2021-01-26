@@ -677,6 +677,14 @@ fi
     # Unless --force is specified
     self.assertContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc', '--force']))
 
+  def test_embuilder_force_port(self):
+    restore_and_set_up()
+    self.do([EMBUILDER, 'build', 'zlib'])
+    # Second time it should not generate anything
+    self.assertNotContained('generating port', self.do([EMBUILDER, 'build', 'zlib']))
+    # Unless --force is specified
+    self.assertContained('generating port', self.do([EMBUILDER, 'build', 'zlib', '--force']))
+
   def test_embuilder_wasm_backend(self):
     restore_and_set_up()
     # the --lto flag makes us build wasm-bc

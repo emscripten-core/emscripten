@@ -101,7 +101,7 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 
 def build_port(port_name, lib_name):
   if force:
-    shared.Cache.erase_file(lib_name)
+    shared.Cache.erase_file(shared.Cache.get_lib_name(lib_name))
 
   system_libs.build_port(port_name, shared.Settings)
 

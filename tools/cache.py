@@ -117,7 +117,7 @@ class Cache:
   def erase_file(self, shortname):
     name = os.path.join(self.dirname, shortname)
     if os.path.exists(name):
-      logging.info('Cache: deleting cached file: %s', name)
+      logger.info('deleting cached file: %s', name)
       tempfiles.try_delete(name)
 
   def get_lib(self, libname, *args, **kwargs):
