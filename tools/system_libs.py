@@ -1696,10 +1696,6 @@ class Ports(object):
       logger.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 
-    class State(object):
-      retrieved = False
-      unpacked = False
-
     def retrieve():
       # retrieve from remote server
       logger.info('retrieving port: ' + name + ' from ' + url)
@@ -1724,7 +1720,6 @@ class Ports(object):
           shared.exit_with_error('Unexpected hash: ' + actual_hash + '\n'
                                  'If you are updating the port, please update the hash in the port module.')
       open(fullpath, 'wb').write(data)
-      State.retrieved = True
 
     def check_tag():
       if is_tarbz2:
@@ -1755,28 +1750,28 @@ class Ports(object):
       with utils.chdir(fullname):
         z.extractall()
 
-      State.unpacked = True
+    # before acquiring the lock we have an early out if the port already exists
+    if os.path.exists(fullpath) and check_tag():
+      return
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-
     with shared.Cache.lock():
-      if not os.path.exists(fullpath):
-        retrieve()
-
-      if not os.path.exists(fullname):
-        unpack()
-
-      if not check_tag():
+      if os.path.exists(fullpath):
+        # Another early out in case another process build the library while we were
+        # waiting for the lock
+        if check_tag():
+          return
+        # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
         shared.try_delete(fullname)
         shared.try_delete(fullpath)
-        retrieve()
-        unpack()
 
-      if State.unpacked:
-        # we unpacked a new version, clear the build in the cache
-        Ports.clear_project_build(name)
+      retrieve()
+      unpack()
+
+      # we unpacked a new version, clear the build in the cache
+      Ports.clear_project_build(name)
 
   @staticmethod
   def clear_project_build(name):
