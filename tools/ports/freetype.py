@@ -17,7 +17,7 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG, sha512hash=HASH)
 
-  def create():
+  def create(final):
     ports.clear_project_build('freetype')
 
     source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
@@ -101,13 +101,11 @@ def get(ports, settings, shared):
       o_s.append(o)
 
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'freetype', 'libfreetype.a')
     shared.try_delete(final)
     shared.run_process([shared.LLVM_AR, 'rc', final] + o_s)
 
     ports.install_header_dir(os.path.join(dest_path, 'include'),
                              target=os.path.join('freetype2', 'freetype'))
-    return final
 
   return [shared.Cache.get_lib('libfreetype.a', create, what='port')]
 

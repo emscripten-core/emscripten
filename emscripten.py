@@ -827,11 +827,9 @@ def normalize_line_endings(text):
 def generate_struct_info():
   generated_struct_info_name = 'generated_struct_info.json'
 
-  def generate_struct_info():
+  def generate_struct_info(out):
     with ToolchainProfiler.profile_block('gen_struct_info'):
-      out = shared.Cache.get_path(generated_struct_info_name)
       gen_struct_info.main(['-q', '-o', out])
-      return out
 
   shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
 

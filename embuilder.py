@@ -250,6 +250,8 @@ def main():
       shared.Settings.USE_PTHREADS = 0
     elif what == 'boost_headers':
       build_port('boost_headers', 'libboost_headers.a')
+    elif what == 'mpg123':
+      build_port('mpg123', 'libmpg123.a')
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

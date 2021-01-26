@@ -17,9 +17,8 @@ def needed(settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('sdl2_ttf', 'https://hg.libsdl.org/SDL_ttf/archive/' + TAG + '.zip', 'SDL_ttf-' + TAG, sha512hash=HASH)
-  libname = 'libSDL2_ttf.a'
 
-  def create():
+  def create(final):
     src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL_ttf-' + TAG)
     ports.install_headers(src_root, target='SDL2')
 
@@ -37,11 +36,9 @@ def get(ports, settings, shared):
 
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2_ttf', libname)
     ports.create_lib(final, o_s)
-    return final
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.Cache.get_lib('libSDL2_ttf.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
