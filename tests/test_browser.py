@@ -3557,33 +3557,43 @@ window.close = function() {
                     args=['-s', 'MAIN_MODULE', '--pre-js', 'pre.js'])
 
   def test_dynamic_link_pthread_many(self):
-    # test asynchronously loading two side modules during startup
-    # they should always load in the same order
+    # Test asynchronously loading two side modules during startup
+    # They should always load in the same order
+    # Verify that function pointers in the browser's main thread
+    # reffer to the same function as in a pthread worker.
+
+    # The main thread function table is populated asynchronously
+    # in the browser's main thread. However, it should still be
+    # populated in the same order as in a pthread worker to
+    # guarantee function pointer interop.
     create_test_file('main.cpp', r'''
-      #include <assert.h>
       #include <thread>
-      extern "C" int side1();
-      extern "C" int side2();
+      int side1();
+      int side2();
       int main() {
         auto side1_ptr = &side1;
         auto side2_ptr = &side2;
+        // Don't join the thread since this is running in the
+        // browser's main thread.
         std::thread([=]{
           REPORT_RESULT(int(
-            side1_ptr() == 1 &&
-            side2_ptr() == 2
+            side1_ptr == &side1 &&
+            side2_ptr == &side2
           ));
         }).detach();
         return 0;
       }
     ''')
+
+    # The browser will try to load side1 first.
     # Use a big payload in side1 so that it takes longer to load than side2
     create_test_file('side1.cpp', r'''
       char const * payload1 = "''' + str(list(range(1, int(1e5)))) + r'''";
-      extern "C" int side1() { return 1; }
+      int side1() { return 1; }
     ''')
     create_test_file('side2.cpp', r'''
       char const * payload2 = "0";
-      extern "C" int side2() { return 2; }
+      int side2() { return 2; }
     ''')
     self.run_process([EMCC, 'side1.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
     self.run_process([EMCC, 'side2.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
