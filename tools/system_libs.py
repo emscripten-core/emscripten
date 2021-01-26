@@ -1708,15 +1708,9 @@ class Ports(object):
         response = requests.get(url)
         data = response.content
       except ImportError:
-        try:
-          from urllib.request import urlopen
-          f = urlopen(url)
-          data = f.read()
-        except ImportError:
-          # Python 2 compatibility
-          from urllib2 import urlopen
-          f = urlopen(url)
-          data = f.read()
+        from urllib.request import urlopen
+        f = urlopen(url)
+        data = f.read()
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
@@ -1741,19 +1735,7 @@ class Ports(object):
     def unpack():
       logger.info('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
-
-      # TODO: Someday when we are using Python 3, we might want to change the
-      # code below to use shlib.unpack_archive
-      # e.g.: shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      # (https://docs.python.org/3/library/shutil.html#shutil.unpack_archive)
-      if is_tarbz2:
-        z = tarfile.open(fullpath, 'r:bz2')
-      elif url.endswith('.tar.gz'):
-        z = tarfile.open(fullpath, 'r:gz')
-      else:
-        z = zipfile.ZipFile(fullpath, 'r')
-      with utils.chdir(fullname):
-        z.extractall()
+      shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
 
       State.unpacked = True
 
