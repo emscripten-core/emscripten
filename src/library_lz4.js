@@ -42,6 +42,11 @@ mergeInto(LibraryManager.library, {
           end: file.end,
         });
       });
+      // Preload files if necessary. This code is largely similar to
+      // createPreloadedFile in library_fs.js. However, a main difference here
+      // is that we only decompress the file if it can be preloaded.
+      // Abstracting out the common parts seems to be more effort than it is
+      // worth.
       if (preloadPlugin) {
         Browser.init();
         pack['metadata'].files.forEach(function(file) {
