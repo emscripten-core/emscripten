@@ -4949,6 +4949,9 @@ main( int argv, char ** argc ) {
     self.do_runf(path_from_root('tests', 'stat', 'test_stat.c'), 'success')
     self.verify_in_strict_mode('test_stat.js')
 
+  def test_fstatat(self):
+    self.do_runf(path_from_root('tests', 'stat', 'test_fstatat.c'), 'success')
+
   def test_stat_chmod(self):
     self.do_runf(path_from_root('tests', 'stat', 'test_chmod.c'), 'success')
 
@@ -8264,6 +8267,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['--bind', '--post-js', path_from_root('tests', 'core', 'test_abort_on_exception_post.js')]
     self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.cpp')
+
+  @needs_dlfcn
+  def test_gl_main_module(self):
+    self.set_setting('MAIN_MODULE')
+    self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
 
 
 # Generate tests for everything

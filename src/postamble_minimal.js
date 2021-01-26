@@ -27,7 +27,7 @@ function run() {
 
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
-  {{{ getQuoted('ATEXITS') }}}
+  <<< ATEXITS >>>
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
@@ -79,7 +79,7 @@ function initRuntime(asm) {
   asm['__wasm_call_ctors']();
 #endif
 
-  {{{ getQuoted('ATINITS') }}}
+  <<< ATINITS >>>
 }
 
 // Initialize wasm (asynchronous)

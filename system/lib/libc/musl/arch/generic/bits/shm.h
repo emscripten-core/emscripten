@@ -1,7 +1,6 @@
 #define SHMLBA 4096
 
-struct shmid_ds
-{
+struct shmid_ds {
 	struct ipc_perm shm_perm;
 	size_t shm_segsz;
 	time_t shm_atime;
@@ -16,3 +15,14 @@ struct shmid_ds
 	unsigned long __pad1;
 	unsigned long __pad2;
 };
+
+struct shminfo {
+	unsigned long shmmax, shmmin, shmmni, shmseg, shmall, __unused[4];
+};
+
+struct shm_info {
+	int __used_ids;
+	unsigned long shm_tot, shm_rss, shm_swp;
+	unsigned long __swap_attempts, __swap_successes;
+};
+

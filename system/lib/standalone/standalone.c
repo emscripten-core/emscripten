@@ -6,13 +6,14 @@
  */
 
 #include <assert.h>
-#include <emscripten.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
+#include <emscripten.h>
+#include <emscripten/heap.h>
 #include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
 
@@ -113,8 +114,6 @@ void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_
   }
   return dest;
 }
-
-static const int WASM_PAGE_SIZE = 65536;
 
 extern void emscripten_notify_memory_growth(size_t memory_index);
 
