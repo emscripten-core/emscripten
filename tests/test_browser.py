@@ -3132,6 +3132,13 @@ window.close = function() {
                args=['-O2', '-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'],
                message='You should see colorful "hello" and "world" in the window')
 
+  @requires_graphics_hardware
+  def test_sdl2_ttf_rtl(self):
+    shutil.copy2(path_from_root('tests', 'third_party', 'notofont', 'NotoNaskhArabic-Regular.ttf'), self.get_dir())
+    self.btest('sdl2_ttf_rtl.c', reference='sdl2_ttf_rtl.png',
+               args=['-O2', '-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'],
+               message='You should see colorful "سلام" and "جهان" with shaped Arabic script in the window')
+
   def test_sdl2_custom_cursor(self):
     shutil.copyfile(path_from_root('tests', 'cursor.bmp'), 'cursor.bmp')
     self.btest('sdl2_custom_cursor.c', expected='1', args=['--preload-file', 'cursor.bmp', '-s', 'USE_SDL=2'])

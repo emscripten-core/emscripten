@@ -26,6 +26,7 @@ Current Trunk
 - Emscripten now builds a complete sysroot inside the EM_CACHE directory.
   This includes the system headers which get copied into place there rather
   than adding a sequence of extra include directories.
+- `SDL2_ttf` now uses upstream compiled with `TTF_USE_HARFBUZ` flag.
 - The system for linking native libraries on demand (based on the symbols
   present in input object files) has been removed.  Libraries such as libgl,
   libal, and libhtml5 are now included on the link line by default unless
