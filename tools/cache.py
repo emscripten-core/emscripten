@@ -6,7 +6,6 @@
 import contextlib
 import logging
 import os
-import shutil
 from . import tempfiles, filelock, config, utils
 
 logger = logging.getLogger('cache')
@@ -149,10 +148,9 @@ class Cache:
           what = 'system asset'
       message = 'generating ' + what + ': ' + shortname + '... (this will be cached in "' + cachename + '" for subsequent builds)'
       logger.info(message)
-      temp = creator()
-      if os.path.normcase(temp) != os.path.normcase(cachename):
-        utils.safe_ensure_dirs(os.path.dirname(cachename))
-        shutil.copyfile(temp, cachename)
+      utils.safe_ensure_dirs(os.path.dirname(cachename))
+      creator(cachename)
+      assert os.path.exists(cachename)
       logger.info(' - ok')
 
     return cachename
