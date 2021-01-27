@@ -5333,14 +5333,15 @@ int main(int argc, char** argv) {
       ''')
 
     self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
-    self.do_smart_test('main.cpp', ['success'], emcc_args=[
-      '-pthread', '-Wno-experimental',
-      '-s', 'PROXY_TO_PTHREAD',
-      '-s', 'EXIT_RUNTIME=1',
-      '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
-      '-s', 'MAIN_MODULE=1',
-      '-s', 'ASSERTIONS=2'
-    ])
+    self.do_smart_test('main.cpp', ['success'],
+      emcc_args=[
+        '-pthread', '-Wno-experimental',
+        '-s', 'PROXY_TO_PTHREAD',
+        '-s', 'EXIT_RUNTIME=1',
+        '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
+        '-s', 'MAIN_MODULE=1',
+        '-s', 'ASSERTIONS=2'
+      ])
 
   def test_ld_library_path(self):
     create_test_file('hello1.c', r'''
