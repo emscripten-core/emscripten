@@ -2412,7 +2412,7 @@ void *getBindBuffer() {
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_emscripten_async_wget2(self):
-    self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
+    self.btest('test_emscripten_async_wget2.cpp', expected='0')
 
   def test_module(self):
     self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
