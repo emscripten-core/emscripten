@@ -902,6 +902,7 @@ var LINKABLE = 0;
 //   * STRICT_JS is enabled.
 //   * IGNORE_MISSING_MAIN is disabled.
 //   * AUTO_JS_LIBRARIES is disabled.
+//   * AUTO_NATIVE_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
 // [compile+link]
@@ -1430,6 +1431,11 @@ var SINGLE_FILE = 0;
 // need to explicitly specify -lfoo.js in at link time in order to access
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
+
+// Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
+// and libhtml5.   If this is disabled it is necessary to explcitly add
+// e.g. -lhtml5 and also to first build the library using `embuilder`.
+var AUTO_NATIVE_LIBRARIES = 1;
 
 // Specifies the oldest major version of Firefox to target. I.e. all Firefox
 // versions >= MIN_FIREFOX_VERSION

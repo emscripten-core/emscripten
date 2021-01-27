@@ -2314,7 +2314,9 @@ var LibraryOpenAL = {
   },
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
+  alcProcessContext__sig: 'vi',
   alcProcessContext: function(contextId) {},
+  alcSuspendContext__sig: 'vi',
   alcSuspendContext: function(contextId) {},
 
   alcIsExtensionPresent__proxy: 'sync',

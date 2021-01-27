@@ -131,7 +131,8 @@
             "O_WRONLY",
             "AT_FDCWD",
             "AT_SYMLINK_NOFOLLOW",
-            "AT_REMOVEDIR"
+            "AT_REMOVEDIR",
+            "AT_EMPTY_PATH"
         ],
         "structs": {
             "flock": [
@@ -198,6 +199,20 @@
         }
     },
     {
+        "file": "sys/time.h",
+        "structs": {
+            "timezone": [
+                "tz_minuteswest",
+                "tz_dsttime"
+            ],
+            "timeval": [
+                "tv_sec",
+                "tv_usec"
+            ]
+        },
+        "defines": []
+    },
+    {
         "file": "time.h",
         "defines": [
             ["li", "CLOCKS_PER_SEC"],
@@ -207,10 +222,6 @@
             "CLOCK_MONOTONIC_RAW"
         ],
         "structs": {
-            "timezone": [
-                "tz_minuteswest",
-                "tz_dsttime"
-            ],
             "tm": [
                 "tm_sec",
                 "tm_min",
@@ -241,10 +252,6 @@
             "timespec": [
                 "tv_sec",
                 "tv_nsec"
-            ],
-            "timeval": [
-                "tv_sec",
-                "tv_usec"
             ]
         }
     },
@@ -792,7 +799,9 @@
             "EBADR",
             "EISCONN",
             "ENOTBLK",
-            "EOVERFLOW"
+            "EOVERFLOW",
+            "EACCES",
+            "EEXIST"
         ]
     },
     {
@@ -865,13 +874,6 @@
         ]
     },
     {
-        "file": "arpa/tftp.h",
-        "defines": [
-            "EACCES",
-            "EEXIST"
-        ]
-    },
-    {
         "file": "sys/stat.h",
         "defines": [
             "S_IALLUGO",
@@ -882,7 +884,7 @@
         ]
     },
     {
-        "file": "bits/mman.h",
+        "file": "sys/mman.h",
         "defines": [
             "MAP_ANONYMOUS",
             "MAP_FAILED",
@@ -1452,37 +1454,6 @@
             "EM_FUNC_SIG_PARAM_B",
             "EM_FUNC_SIG_PARAM_F2I"
             ]
-    },
-    {
-        "file": "system/lib/libc/musl/src/internal/pthread_impl.h",
-        "structs": {
-            "pthread": [
-              "threadStatus",
-              "threadExitCode",
-              "profilerBlock",
-              "self",
-              "tsd",
-              "tsd_used",
-              "detached",
-              "stack",
-              "stack_size",
-              "attr",
-              "robust_list",
-              "tid",
-              "canceldisable",
-              "cancelasync",
-              "locale"
-            ]
-        },
-        "defines": ["__ATTRP_C11_THREAD"]
-    },
-    {
-        "file": "system/lib/libc/musl/src/internal/libc.h",
-        "structs": {
-            "libc": [
-              "global_locale"
-            ]
-        }
     },
     {
         "file": "wasi/api.h",

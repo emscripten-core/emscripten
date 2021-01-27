@@ -116,7 +116,7 @@ void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
   uptr stk_top;
   GetThreadStackTopAndBottom(true, &stk_top, stk_addr);
   *stk_size = stk_top - *stk_addr;
-#ifdef USE_THREADS
+#ifdef __EMSCRIPTEN_PTHREADS__
   *tls_addr = (uptr) __builtin_wasm_tls_base();
   *tls_size = __builtin_wasm_tls_size();
 #else

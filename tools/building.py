@@ -161,6 +161,10 @@ def clear():
 
 
 def get_num_cores():
+  if DEBUG:
+    # When in EMCC_DEBUG mode, only use a single core to avoid interleaving
+    # logging output and keeps things more deterministic.
+    return 1
   return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
 
 
@@ -172,10 +176,6 @@ def get_multiprocessing_pool():
   global multiprocessing_pool
   if not multiprocessing_pool:
     cores = get_num_cores()
-    if DEBUG:
-      # When in EMCC_DEBUG mode, only use a single core in the pool, so that
-      # logging is not all jumbled up.
-      cores = 1
 
     # If running with one core only, create a mock instance of a pool that does not
     # actually spawn any new subprocesses. Very useful for internal debugging.
