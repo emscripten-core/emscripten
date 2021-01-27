@@ -217,7 +217,7 @@ this.onmessage = function(e) {
         // The thread might have finished without calling pthread_exit(). If so,
         // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        if (!Module['getNoExitRuntime']())
+        if (!Module['keepRuntimeAlive']())
 #endif
           Module['PThread'].threadExit(result);
       } catch(ex) {
@@ -237,7 +237,7 @@ this.onmessage = function(e) {
           // ExitStatus not present in MINIMAL_RUNTIME
 #if !MINIMAL_RUNTIME
           if (ex instanceof Module['ExitStatus']) {
-            if (Module['getNoExitRuntime']()) {
+            if (Module['keepRuntimeAlive']()) {
 #if ASSERTIONS
               err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
 #endif

@@ -16,6 +16,8 @@ void final(void*) {
   assert(frame == 20);
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);
+#else
+  exit(0);
 #endif
 }
 
@@ -23,6 +25,8 @@ void looper() {
   if (blockerExecuted == false) {
 #ifdef REPORT_RESULT
     REPORT_RESULT(1);
+#else
+    exit(1);
 #endif
   }
 

@@ -90,6 +90,8 @@ void emscripten_set_main_loop_expected_blockers(int num);
 
 void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
 
+void emscripten_runtime_keepalive_push(void);
+void emscripten_runtime_keepalive_pop(void);
 void emscripten_exit_with_live_runtime(void);
 void emscripten_force_exit(int status);
 

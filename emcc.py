@@ -1479,7 +1479,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.MINIMAL_RUNTIME:
       # In non-MINIMAL_RUNTIME, the core runtime depends on these functions to be present. (In MINIMAL_RUNTIME, they are
       # no longer always bundled in)
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$keepRuntimeAlive',
+        '$demangle',
+        '$demangleAll',
+        '$jsStackTrace',
+        '$stackTrace'
+      ]
 
     if shared.Settings.FILESYSTEM:
       # to flush streams on FS exit, we need to be able to call fflush
@@ -1599,7 +1605,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       include_and_export('invokeEntryPoint')
       if not shared.Settings.MINIMAL_RUNTIME:
         # noExitRuntime does not apply to MINIMAL_RUNTIME.
-        include_and_export('getNoExitRuntime')
+        include_and_export('keepRuntimeAlive')
 
       if shared.Settings.MODULARIZE:
         if shared.Settings.EXPORT_NAME == 'Module':

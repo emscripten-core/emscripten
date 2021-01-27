@@ -3781,6 +3781,106 @@ LibraryManager.library = {
       }
     }
   },
+
+  // Callable in pthread without __proxy needed.
+  emscripten_exit_with_live_runtime__sig: 'v',
+  emscripten_exit_with_live_runtime__deps: ['emscripten_runtime_keepalive_push'],
+  emscripten_exit_with_live_runtime: function() {
+    _emscripten_runtime_keepalive_push();
+    throw 'unwind';
+  },
+
+  emscripten_force_exit__deps: ['$runtimeKeepaliveCounter'],
+  emscripten_force_exit__proxy: 'sync',
+  emscripten_force_exit__sig: 'vi',
+  emscripten_force_exit: function(status) {
+#if EXIT_RUNTIME == 0
+#if ASSERTIONS
+    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
+#endif
+#endif
+    noExitRuntime = false;
+    runtimeKeepaliveCounter = 0;
+    exit(status);
+  },
+
+  $runtimeKeepaliveCounter: 0,
+
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
+  $keepRuntimeAlive: function() {
+    return noExitRuntime || runtimeKeepaliveCounter > 0;
+  },
+
+  // Callable in pthread without __proxy needed.
+  emscripten_runtime_keepalive_push__sig: 'v',
+  emscripten_runtime_keepalive_push__deps: ['$runtimeKeepaliveCounter'],
+  emscripten_runtime_keepalive_push: function() {
+    runtimeKeepaliveCounter += 1;
+#if RUNTIME_DEBUG
+    err('emscripten_runtime_keepalive_push -> counter=' + runtimeKeepaliveCounter);
+#endif
+  },
+
+  emscripten_runtime_keepalive_pop__sig: 'v',
+  emscripten_runtime_keepalive_pop__deps: ['$runtimeKeepaliveCounter'],
+  emscripten_runtime_keepalive_pop: function() {
+#if ASSERTIONS
+    assert(runtimeKeepaliveCounter > 0);
+#endif
+    runtimeKeepaliveCounter -= 1;
+#if RUNTIME_DEBUG
+    err('emscripten_runtime_keepalive_pop -> counter=' + runtimeKeepaliveCounter);
+#endif
+  },
+
+  // Used to call user callbacks from the embedder / event loop.  For example
+  // setTimeout or any other kind of event handler that calls into user case
+  // needs to use this wrapper.
+  //
+  // The job of this wrapper is the handle emscripten-specfic exceptions such
+  // as ExitStatus and 'unwind' and prevent these from escaping to the top
+  // level.
+  $callUserCallback__deps: ['$maybeExit'],
+  $callUserCallback: function(func) {
+    if (ABORT) {
+#if ASSERTIONS
+      err('user callback triggered after application aborted.  Ignoring.');
+      return;
+#endif
+    }
+    try {
+      func();
+    } catch (e) {
+      if (e instanceof ExitStatus) {
+        return;
+      } else if (e !== 'unwind') {
+        // And actual unexpected user-exectpion occured
+        if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
+        throw e;
+      }
+    }
+    maybeExit();
+  },
+
+  $maybeExit__deps: ['exit'],
+  $maybeExit: function() {
+#if RUNTIME_DEBUG
+    err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
+#endif
+    if (!keepRuntimeAlive()) {
+#if RUNTIME_DEBUG
+      err('maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
+#endif
+      try {
+        _exit(EXITSTATUS);
+      } catch (e) {
+        if (e instanceof ExitStatus) {
+          return;
+        }
+        throw e;
+      }
+    }
+  }
 };
 
 function autoAddDeps(object, name) {

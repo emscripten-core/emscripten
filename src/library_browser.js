@@ -6,7 +6,13 @@
 
 // Utilities for browser environments
 var LibraryBrowser = {
-  $Browser__deps: ['$setMainLoop', 'emscripten_set_main_loop_timing'],
+  $Browser__deps: [
+    '$setMainLoop',
+    '$callUserCallback',
+    'emscripten_set_main_loop_timing',
+    'emscripten_runtime_keepalive_push',
+    'emscripten_runtime_keepalive_pop'
+  ],
   $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) { Browser.requestFullscreen(lockPointer, resizeCanvas) };\n' + // exports
 #if ASSERTIONS
                      'Module["requestFullScreen"] = function Module_requestFullScreen() { Browser.requestFullScreen() };\n' +
@@ -69,25 +75,13 @@ var LibraryBrowser = {
         }
       },
       runIter: function(func) {
-        if (ABORT) return;
         if (Module['preMainLoop']) {
           var preRet = Module['preMainLoop']();
           if (preRet === false) {
             return; // |return false| skips a frame
           }
         }
-        try {
-          func();
-        } catch (e) {
-          if (e instanceof ExitStatus) {
-            return;
-          } else if (e == 'unwind') {
-            return;
-          } else {
-            if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
-            throw e;
-          }
-        }
+        callUserCallback(func);
         if (Module['postMainLoop']) Module['postMainLoop']();
       }
     },
@@ -489,16 +483,17 @@ var LibraryBrowser = {
     // abort and pause-aware versions TODO: build main loop on top of this?
 
     safeRequestAnimationFrame: function(func) {
+      _emscripten_runtime_keepalive_push();
       return Browser.requestAnimationFrame(function() {
-        if (ABORT) return;
-        func();
+        _emscripten_runtime_keepalive_pop();
+        callUserCallback(func);
       });
     },
     safeSetTimeout: function(func, timeout) {
-      noExitRuntime = true;
+      _emscripten_runtime_keepalive_push();
       return setTimeout(function() {
-        if (ABORT) return;
-        func();
+        _emscripten_runtime_keepalive_pop();
+        callUserCallback(func);
       }, timeout);
     },
 
@@ -783,17 +778,18 @@ var LibraryBrowser = {
     }
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS'],
+  emscripten_async_wget__deps: ['$PATH_FS', 'emscripten_runtime_keepalive_push', 'emscripten_runtime_keepalive_pop'],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget__sig: 'viiii',
   emscripten_async_wget: function(url, file, onload, onerror) {
-    noExitRuntime = true;
+    _emscripten_runtime_keepalive_push();
 
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
     _file = PATH_FS.resolve(_file);
     function doCallback(callback) {
       if (callback) {
+        _emscripten_runtime_keepalive_pop();
         var stack = stackSave();
         {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
         stackRestore(stack);
@@ -866,11 +862,11 @@ var LibraryBrowser = {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
-  emscripten_async_wget2__deps: ['$PATH_FS'],
+  emscripten_async_wget2__deps: ['$PATH_FS', 'emscripten_runtime_keepalive_push', 'emscripten_runtime_keepalive_pop'],
   emscripten_async_wget2__proxy: 'sync',
   emscripten_async_wget2__sig: 'iiiiiiiii',
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
-    noExitRuntime = true;
+    _emscripten_runtime_keepalive_push();
 
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
@@ -889,6 +885,7 @@ var LibraryBrowser = {
 
     // LOAD
     http.onload = function http_onload(e) {
+      _emscripten_runtime_keepalive_pop();
       if (http.status >= 200 && http.status < 300) {
         // if a file exists there, we overwrite it
         try {
@@ -912,6 +909,7 @@ var LibraryBrowser = {
 
     // ERROR
     http.onerror = function http_onerror(e) {
+      _emscripten_runtime_keepalive_pop();
       if (onerror) {{{ makeDynCall('viii', 'onerror') }}}(handle, arg, http.status);
       delete Browser.wgetRequests[handle];
     };
@@ -926,6 +924,7 @@ var LibraryBrowser = {
 
     // ABORT
     http.onabort = function http_onabort(e) {
+      _emscripten_runtime_keepalive_pop();
       delete Browser.wgetRequests[handle];
     };
 
@@ -1009,11 +1008,11 @@ var LibraryBrowser = {
     }
   },
 
-  emscripten_run_preload_plugins__deps: ['$PATH'],
+  emscripten_run_preload_plugins__deps: ['$PATH', 'emscripten_runtime_keepalive_push', 'emscripten_runtime_keepalive_pop'],
   emscripten_run_preload_plugins__proxy: 'sync',
   emscripten_run_preload_plugins__sig: 'iiii',
   emscripten_run_preload_plugins: function(file, onload, onerror) {
-    noExitRuntime = true;
+    _emscripten_runtime_keepalive_push();
 
     var _file = UTF8ToString(file);
     var data = FS.analyzePath(_file);
@@ -1023,9 +1022,11 @@ var LibraryBrowser = {
       PATH.basename(_file),
       new Uint8Array(data.object.contents), true, true,
       function() {
+        _emscripten_runtime_keepalive_pop();
         if (onload) {{{ makeDynCall('vi', 'onload') }}}(file);
       },
       function() {
+        _emscripten_runtime_keepalive_pop();
         if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(file);
       },
       true // don'tCreateFile - it's already there
@@ -1033,10 +1034,11 @@ var LibraryBrowser = {
     return 0;
   },
 
+  emscripten_run_preload_plugins_data__deps: ['emscripten_runtime_keepalive_push', 'emscripten_runtime_keepalive_pop'],
   emscripten_run_preload_plugins_data__proxy: 'sync',
   emscripten_run_preload_plugins_data__sig: 'viiiiii',
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
-    noExitRuntime = true;
+    _emscripten_runtime_keepalive_push();
 
     var _suffix = UTF8ToString(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
@@ -1050,9 +1052,11 @@ var LibraryBrowser = {
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
+        _emscripten_runtime_keepalive_pop();
         if (onload) {{{ makeDynCall('vii', 'onload') }}}(arg, cname);
       },
       function() {
+        _emscripten_runtime_keepalive_pop();
         if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
       },
       true // don'tCreateFile - it's already there
@@ -1062,8 +1066,6 @@ var LibraryBrowser = {
   // Callable from pthread, executes in pthread context.
   emscripten_async_run_script__deps: ['emscripten_run_script'],
   emscripten_async_run_script: function(script, millis) {
-    noExitRuntime = true;
-
     // TODO: cache these to avoid generating garbage
     Browser.safeSetTimeout(function() {
       _emscripten_run_script(script);
@@ -1081,12 +1083,13 @@ var LibraryBrowser = {
       return onerror ? onerror() : undefined;
     }
 #endif
-    noExitRuntime = true;
+    _emscripten_runtime_keepalive_push();
 
     assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
     var script = document.createElement('script');
     if (onload) {
       script.onload = function script_onload() {
+        _emscripten_runtime_keepalive_pop();
         if (runDependencies > 0) {
           dependenciesFulfilled = onload;
         } else {
@@ -1094,7 +1097,12 @@ var LibraryBrowser = {
         }
       };
     }
-    if (onerror) script.onerror = onerror;
+    if (onerror) {
+      script.onerror = function() {
+        _emscripten_runtime_keepalive_pop();
+        onerror();
+      }
+    }
     script.src = UTF8ToString(url);
     document.body.appendChild(script);
   },
@@ -1117,6 +1125,10 @@ var LibraryBrowser = {
       return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
     }
 
+    if (!Browser.mainLoop.timingSet) {
+      _emscripten_runtime_keepalive_push();
+      Browser.mainLoop.timingSet = true;
+    }
     if (mode == 0 /*EM_TIMING_SETTIMEOUT*/) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setTimeout() {
         var timeUntilNextTick = Math.max(0, Browser.mainLoop.tickStartTime + value - _emscripten_get_now())|0;
@@ -1166,14 +1178,13 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
+  $setMainLoop__deps: [
+    'emscripten_set_main_loop_timing', 'emscripten_get_now', 'emscripten_runtime_keepalive_push', '$maybeExit',
 #if OFFSCREEN_FRAMEBUFFER
-  $setMainLoop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now', 'emscripten_webgl_commit_frame'],
-#else
-  $setMainLoop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now'],
+    'emscripten_webgl_commit_frame'
 #endif
+  ],
   $setMainLoop: function(browserIterationFunc, fps, simulateInfiniteLoop, arg, noSetTiming) {
-    noExitRuntime = true;
-
     assert(!Browser.mainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
 
     Browser.mainLoop.func = browserIterationFunc;
@@ -1194,6 +1205,7 @@ var LibraryBrowser = {
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
 #endif
 
+    Browser.mainLoop.timingSet = false;
     Browser.mainLoop.runner = function Browser_mainLoop_runner() {
       if (ABORT) return;
       if (Browser.mainLoop.queue.length > 0) {
@@ -1215,14 +1227,28 @@ var LibraryBrowser = {
         Browser.mainLoop.updateStatus();
 
         // catches pause/resume main loop from blocker execution
-        if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
+        if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
+#if RUNTIME_DEBUG
+          err('main loop exiting..');
+#endif
+          _emscripten_runtime_keepalive_pop();
+          maybeExit();
+          return;
+        }
 
         setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
 
       // catch pauses from non-main loop sources
-      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
+      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
+#if RUNTIME_DEBUG
+        err('main loop exiting..');
+#endif
+        _emscripten_runtime_keepalive_pop();
+        maybeExit();
+        return;
+      }
 
       // Implement very basic swap interval control
       Browser.mainLoop.currentFrameNumber = Browser.mainLoop.currentFrameNumber + 1 | 0;
@@ -1270,7 +1296,14 @@ var LibraryBrowser = {
 #endif
 
       // catch pauses from the main loop itself
-      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
+      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
+#if RUNTIME_DEBUG
+        err('main loop exiting..');
+#endif
+        _emscripten_runtime_keepalive_pop();
+        maybeExit();
+        return;
+      }
 
       // Queue new audio data. This is important to be right after the main loop invocation, so that we will immediately be able
       // to queue the newest produced audio samples.
@@ -1341,8 +1374,6 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_async_call: function(func, arg, millis) {
-    noExitRuntime = true;
-
     function wrapper() {
       {{{ makeDynCall('vi', 'func') }}}(arg);
     }
@@ -1352,24 +1383,6 @@ var LibraryBrowser = {
     } else {
       Browser.safeRequestAnimationFrame(wrapper);
     }
-  },
-
-  // Callable in pthread without __proxy needed.
-  emscripten_exit_with_live_runtime: function() {
-    noExitRuntime = true;
-    throw 'unwind';
-  },
-
-  emscripten_force_exit__proxy: 'sync',
-  emscripten_force_exit__sig: 'vi',
-  emscripten_force_exit: function(status) {
-#if EXIT_RUNTIME == 0
-#if ASSERTIONS
-    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
-#endif
-#endif
-    noExitRuntime = false;
-    exit(status);
   },
 
   emscripten_get_window_title__proxy: 'sync',
@@ -1455,6 +1468,7 @@ var LibraryBrowser = {
       if (msg.data['finalResponse']) {
         info.awaited--;
         info.callbacks[callbackId] = null; // TODO: reuse callbackIds, compress this
+        _emscripten_runtime_keepalive_pop();
       }
       var data = msg.data['data'];
       if (data) {
@@ -1485,13 +1499,13 @@ var LibraryBrowser = {
 
   emscripten_call_worker__proxy: 'sync',
   emscripten_call_worker__sig: 'viiiiii',
+  emscripten_call_worker__deps: ['emscripten_runtime_keepalive_push'],
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
-    noExitRuntime = true; // should we only do this if there is a callback?
-
     funcName = UTF8ToString(funcName);
     var info = Browser.workers[id];
     var callbackId = -1;
     if (callback) {
+      _emscripten_runtime_keepalive_push();
       callbackId = info.callbacks.length;
       info.callbacks.push({
         func: {{{ makeDynCall('viii', 'callback') }}},

@@ -27,29 +27,26 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     }
     return elems;
 }
+
 std::vector<std::string> split(const std::string &s, char delim) {
     std::vector<std::string> elems;
     split(s, delim, elems);
     return elems;
 }
 
-GLint GetInt(GLenum param)
-{
+GLint GetInt(GLenum param) {
   GLint value;
   glGetIntegerv(param, &value);
   return value;
 }
 
 void final(void*) {
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  exit(0);
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
 
-void loop()
-{
+void loop() {
   EMSCRIPTEN_RESULT res;
   if (!context) {
     // new rendering frame started without a context
@@ -77,21 +74,19 @@ void loop()
   }
 }
 
-int main()
-{
-  bool first = true;
+int main() {
   EmscriptenWebGLContextAttributes attrs;
   int depth = 0;
   int stencil = 0;
   int antialias = 0;
 #ifndef NO_DEPTH
-  for(depth = 0; depth <= 1; ++depth)
+  for (depth = 0; depth <= 1; ++depth)
 #endif
 #ifndef NO_STENCIL
-  for(stencil = 0; stencil <= 1; ++stencil)
+  for (stencil = 0; stencil <= 1; ++stencil)
 #endif
 #ifndef NO_ANTIALIAS
-  for(antialias = 0; antialias <= 1; ++antialias)
+  for (antialias = 0; antialias <= 1; ++antialias)
 #endif
   {
     emscripten_webgl_init_context_attributes(&attrs);
@@ -105,7 +100,7 @@ int main()
       Module['canvas'].parentElement.appendChild(canvas2);
       canvas2.id = 'customCanvas';
     );
-    
+
     assert(emscripten_webgl_get_current_context() == 0);
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#customCanvas", &attrs);
     assert(context > 0); // Must have received a valid context.
@@ -146,9 +141,8 @@ int main()
     printf("RGBA: %d%d%d%d, Depth: %d, Stencil: %d, Samples: %d\n",
       GetInt(GL_RED_BITS), GetInt(GL_GREEN_BITS), GetInt(GL_BLUE_BITS), GetInt(GL_ALPHA_BITS),
       numDepthBits, numStencilBits, numSamples);
-    
-    if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
-    {
+
+    if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1) {
       numDepthBits = 0;
       printf("Applying workaround to ignore Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=982477\n");
     }
@@ -193,11 +187,8 @@ int main()
       canvas2.parentElement.removeChild(canvas2);
     );
   }
-  
+
   // result will be reported when mainLoop completes
   emscripten_set_main_loop(loop, 0, 0);
-
-#ifndef REPORT_RESULT
   return 0;
-#endif
 }

@@ -1805,8 +1805,8 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_threads
   def test_emscripten_main_loop(self):
-    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'EXIT_RUNTIME']]:
-      self.btest('emscripten_main_loop.cpp', '0', args=args)
+    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
+      self.btest_exit('emscripten_main_loop.cpp', 110, args=args)
 
   @requires_threads
   def test_emscripten_main_loop_settimeout(self):
@@ -1821,6 +1821,10 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_main_loop_and_blocker(self):
     for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       self.btest('emscripten_main_loop_and_blocker.cpp', '0', args=args)
+
+  @requires_threads
+  def test_emscripten_main_loop_and_blocker_exit(self):
+    self.btest_exit('emscripten_main_loop_and_blocker.cpp', 0)
 
   @requires_threads
   def test_emscripten_main_loop_setimmediate(self):
@@ -2525,7 +2529,7 @@ Module["preRun"].push(function () {
   def test_html5_webgl_create_context_no_antialias(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'], expected='0')
+      self.btest_exit(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'], expected='0')
 
   # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
   @requires_threads
@@ -2533,10 +2537,11 @@ Module["preRun"].push(function () {
   def test_html5_webgl_create_context(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS']]:
       print(opts)
-      self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-lGL'], expected='0')
+      self.btest_exit(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-lGL'], expected='0')
 
   @requires_graphics_hardware
-  # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/4556:
+  # creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   def test_html5_webgl_create_context2(self):
     self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), expected='0')
 
@@ -4295,13 +4300,20 @@ window.close = function() {
   def test_preallocated_heap(self):
     self.btest_exit('test_preallocated_heap.cpp', expected='0', args=['-s', 'WASM=0', '-s', 'INITIAL_MEMORY=16MB', '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
 
-  # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
+  # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to
+  # IndexedDB.
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
     self.btest('fetch/to_memory.cpp',
-               expected='1',
+               expected='404',
                args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'],
                also_asmjs=True)
+
+    # Test both with btest (manual error reporting) and with btest_exit (tests that exit
+    # is working when called from a fetch callback).
+    self.btest_exit('fetch/to_memory.cpp',
+                    expected='404',
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'])
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
@@ -4310,6 +4322,9 @@ window.close = function() {
                  expected='1',
                  args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'] + arg,
                  also_asmjs=True)
+      self.btest_exit('fetch/to_memory.cpp',
+                      expected='1',
+                      args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'] + arg)
 
   def test_fetch_to_indexdb(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
