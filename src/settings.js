@@ -1146,6 +1146,10 @@ var BINARYEN_EXTRA_PASSES = "";
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 var WASM_ASYNC_COMPILATION = 1;
 
+// If set to 1, the dynCall() and dynCall_sig() API is made available
+// to caller.
+var DYNCALLS = 0;
+
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need
 // to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
 // an i64 is used.

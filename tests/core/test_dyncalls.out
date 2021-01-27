@@ -1,0 +1,6 @@
+vijdf: i=1,jlo=2,jhi=3,d=4,f=5
+vijdf: i=2,jlo=3,jhi=4,d=5,f=6
+iii: i=1,j=2
+iii returned 42
+iii: i=2,j=3
+iii returned 42
