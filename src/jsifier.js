@@ -28,15 +28,10 @@ function mangleCSymbolName(f) {
   return f[0] == '$' ? f.substr(1) : '_' + f;
 }
 
-// Reverses C/JS name mangling: _foo -> foo, and foo -> $foo.
-function demangleCSymbolName(f) {
-  return f[0] == '_' ? f.substr(1) : '$' + f;
-}
-
 // Splits out items that pass filter. Returns also the original sans the filtered
 function splitter(array, filter) {
   var splitOut = array.filter(filter);
-  var leftIn = array.filter(function(x) { return !filter(x) });
+  var leftIn = array.filter((x) => !filter(x));
   return { leftIn: leftIn, splitOut: splitOut };
 }
 
@@ -58,7 +53,7 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   } else {
-    return '{' + keys(obj).map(function(key) { return escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key]) }).join(',') + '}';
+    return '{' + keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
   }
 }
 
@@ -85,9 +80,10 @@ function JSify(data, functionsOnly) {
     } else {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
-    libFuncsToInclude.forEach(function(ident) {
+    libFuncsToInclude.forEach((ident) => {
       data.functionStubs.push({
-        ident: mangleCSymbolName(ident)
+        identOrig: ident,
+        identMangled: mangleCSymbolName(ident)
       });
     });
   }
@@ -103,7 +99,7 @@ function JSify(data, functionsOnly) {
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG) {
-      snippet = modifyFunction(snippet, function(name, args, body) {
+      snippet = modifyFunction(snippet, (name, args, body) => {
         return 'function ' + name + '(' + args + ') {\n' +
                'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
                 body +
@@ -118,30 +114,31 @@ function JSify(data, functionsOnly) {
     // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
     // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
     // that variadically processes all of these functions using JS 'arguments' object.
-    if (item.ident.startsWith('___cxa_find_matching_catch_')) {
+    if (item.identMangled.startsWith('___cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
-      var num = +item.ident.split('_').slice(-1)[0];
+      var num = +item.identMangled.split('_').slice(-1)[0];
       addCxaCatch(num);
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
     }
 
-    function addFromLibrary(ident, dependent) {
+    function addFromLibrary(item, dependent) {
+      // dependencies can be JS functions, which we just run
+      if (typeof item == 'function') return item();
+
+      var ident = item.identOrig;
+      var finalName = item.identMangled;
+
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
-
-      // dependencies can be JS functions, which we just run
-      if (typeof ident == 'function') return ident();
 
       // don't process any special identifiers. These are looked up when processing the base name of the identifier.
       if (isJsLibraryConfigIdentifier(ident)) {
         return '';
       }
-
-      var finalName = mangleCSymbolName(ident);
 
       // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
       if (finalName in IMPLEMENTED_FUNCTIONS) {
@@ -182,13 +179,11 @@ function JSify(data, functionsOnly) {
           // (not useful to warn/error multiple times)
           LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          var realIdent = ident;
-
-          var target = "Module['" + mangleCSymbolName(realIdent) + "']";
+          var target = "Module['" + finalName + "']";
           var assertion = '';
           if (ASSERTIONS) {
             var what = 'function';
-            assertion += 'if (!' + target + ') abort("external symbol \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+            assertion += 'if (!' + target + ') abort("external symbol \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
 
           }
           var functionBody = assertion + "return " + target + ".apply(null, arguments);";
@@ -205,7 +200,7 @@ function JSify(data, functionsOnly) {
         error('JS library directive ' + ident + '__deps=' + deps.toString() + ' is of type ' + typeof deps + ', but it should be an array!');
         return;
       }
-      deps.forEach(function(dep) {
+      deps.forEach((dep) => {
         if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #if in src/library*.js)');
       });
       var isFunction = false;
@@ -267,19 +262,24 @@ function JSify(data, functionsOnly) {
       // In asm, dependencies implemented in C might be needed by JS library functions.
       // We don't know yet if they are implemented in C or not. To be safe, export such
       // special cases.
-      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach(function(special) {
-        deps.forEach(function(dep) {
+      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach((special) => {
+        deps.forEach((dep) => {
           if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
             EXPORTED_FUNCTIONS[dep] = 1;
           }
         });
       });
-      if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
+      if (VERBOSE) {
+        printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
+      }
       var identDependents = ident + "__deps: ['" + deps.join("','")+"']";
       function addDependency(dep) {
+        if (typeof dep !== 'function') {
+          dep = {identOrig: dep, identMangled: mangleCSymbolName(dep)};
+        }
         return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
       }
-      var depsText = (deps ? deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') + '\n' : '');
+      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -290,7 +290,7 @@ function JSify(data, functionsOnly) {
           }
           var sync = proxyingMode === 'sync';
           assert(typeof original === 'function');
-          contentText = modifyFunction(snippet, function(name, args, body) {
+          contentText = modifyFunction(snippet, (name, args, body) => {
             return 'function ' + name + '(' + args + ') {\n' +
                    'if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + (args ? ', ' : '') + args + ');\n' + body + '}\n';
           });
@@ -332,14 +332,13 @@ function JSify(data, functionsOnly) {
     }
 
     itemsDict.functionStub.push(item);
-    var shortident = demangleCSymbolName(item.ident);
-    item.JS = addFromLibrary(shortident, 'top-level compiled C/C++ code');
+    item.JS = addFromLibrary(item, 'top-level compiled C/C++ code');
   }
 
   // Final combiner
 
   function finalCombiner() {
-    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, function(x) { return x.ident && x.dependencies });
+    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, (x) => x.ident && x.dependencies);
     itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
     var orderedPostSets = splitPostSets.splitOut;
 
@@ -364,7 +363,7 @@ function JSify(data, functionsOnly) {
 
     if (!mainPass) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
-      print(generated.map(function(item) { return item.JS; }).join('\n'));
+      print(generated.map((item) => item.JS).join('\n'));
       return;
     }
 
@@ -390,7 +389,7 @@ function JSify(data, functionsOnly) {
     globalsData = null;
 
     var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
-    generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+    generated.forEach((item) => print(indentify(item.JS || '', 2)));
 
     legalizedI64s = legalizedI64sDefault;
 

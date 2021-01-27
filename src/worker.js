@@ -76,12 +76,11 @@ var wasmOffsetData;
 
 function moduleLoaded() {
 #if LOAD_SOURCE_MAP
-  wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
+  wasmSourceMap = resetPrototype(Module['WasmSourceMap'], wasmSourceMapData);
 #endif
 #if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = resetPrototype(WasmOffsetConverter, wasmOffsetData);
+  wasmOffsetConverter = resetPrototype(Module['WasmOffsetConverter'], wasmOffsetData);
 #endif
-  postMessage({ 'cmd': 'loaded' });
 }
 
 this.onmessage = function(e) {

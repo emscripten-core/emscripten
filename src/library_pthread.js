@@ -74,20 +74,15 @@ var LibraryPThread = {
       // to access this value will read the wrong value, but that is UB anyway.
       __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
       _emscripten_register_main_browser_thread_id(tb);
+#if ASSERTIONS
+      PThread.mainRuntimeThread = true;
+#endif
 
 #if USE_ASAN || USE_LSAN
       });
 #endif
     },
     initWorker: function() {
-#if MODULARIZE
-      // The promise resolve function typically gets called as part of the execution
-      // of the Module `run`. The workers/pthreads don't execute `run` here, they
-      // call `run` in response to a message at a later time, so the creation
-      // promise can be resolved, marking the pthread-Module as initialized.
-      readyPromiseResolve(Module);
-#endif // MODULARIZE
-
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
       // things.
@@ -266,13 +261,42 @@ var LibraryPThread = {
       if (pthread.worker) pthread.worker.pthread = null;
     },
     returnWorkerToPool: function(worker) {
-      delete PThread.pthreads[worker.pthread.threadInfoStruct];
-      //Note: worker is intentionally not terminated so the pool can dynamically grow.
-      PThread.unusedWorkers.push(worker);
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore
-      PThread.freeThreadData(worker.pthread);
-      // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
-      worker.pthread = undefined;
+      // We don't want to run main thread queued calls here, since we are doing
+      // some operations that leave the worker queue in an invalid state until
+      // we are completely done (it would be bad if free() ends up calling a
+      // queued pthread_create which looks at the global data structures we are
+      // modifying).
+      PThread.runWithoutMainThreadQueuedCalls(function() {
+        delete PThread.pthreads[worker.pthread.threadInfoStruct];
+        //Note: worker is intentionally not terminated so the pool can dynamically grow.
+        PThread.unusedWorkers.push(worker);
+        PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore
+        PThread.freeThreadData(worker.pthread);
+        // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+        worker.pthread = undefined;
+      });
+    },
+    // Runs a function with processing of queued calls to the main thread
+    // disabled. This is useful to avoid something like free() ending up waiting
+    // for a lock, then running processing events, and those events can end up
+    // doing things that interfere with what we were doing before (for example,
+    // if we are tearing down a thread, calling free to erase its data could
+    // end up calling a proxied pthread_create, which gets a free worker, and
+    // can interfere).
+    // This is only safe to call if we do not need queued calls to run. That is
+    // the case when doing something like free(), which just needs the malloc
+    // lock to be released.
+    runWithoutMainThreadQueuedCalls: function(func) {
+#if ASSERTIONS
+      assert(PThread.mainRuntimeThread, 'runWithoutMainThreadQueuedCalls must be done on the main runtime thread');
+      assert(__emscripten_allow_main_runtime_queued_calls);
+#endif
+      HEAP32[__emscripten_allow_main_runtime_queued_calls >> 2] = 0;
+      try {
+        func();
+      } finally {
+        HEAP32[__emscripten_allow_main_runtime_queued_calls >> 2] = 1;
+      }
     },
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
@@ -509,12 +533,10 @@ var LibraryPThread = {
       threadInfoStruct: threadParams.pthread_ptr
     };
     var tis = pthread.threadInfoStruct >> 2;
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.threadStatus }}} >> 2), 0); // threadStatus <- 0, meaning not yet exited.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.threadExitCode }}} >> 2), 0); // threadExitCode <- 0.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.profilerBlock }}} >> 2), 0); // profilerBlock <- 0.
+    // spawnThread is always called with a zero-initialized thread struct so
+    // no need to set any valudes to zero here.
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detached }}} >> 2), threadParams.detached);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tsd }}} >> 2), tlsMemory); // Init thread-local-storage memory array.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tsd_used }}} >> 2), 0); // Mark initial status to unused.
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tid }}} >> 2), pthread.threadInfoStruct); // Main thread ID.
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
@@ -1154,7 +1176,7 @@ var LibraryPThread = {
   },
 
   __call_main: function(argc, argv) {
-    var returnCode = _main(argc, argv);
+    var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
     if (!noExitRuntime) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.

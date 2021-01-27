@@ -299,20 +299,6 @@ class Library(object):
     if not self.name:
       raise NotImplementedError('Cannot instantiate an abstract library')
 
-    # Read .symbols file if it exists. This first tries to read a symbols file
-    # with the same basename with the library file name (e.g.
-    # libc++-mt.symbols), and if there isn't one, it tries to read the 'default'
-    # symbol file, which does not have any optional suffices (e.g.
-    # libc++.symbols).
-    basename = shared.unsuffixed(self.get_filename())
-    symbols_dir = shared.path_from_root('system', 'lib', 'symbols', 'wasm')
-    symbols_file = os.path.join(symbols_dir, basename + '.symbols')
-    default_symbols_file = os.path.join(symbols_dir, self.name + '.symbols')
-    if os.path.isfile(symbols_file):
-      self.symbols = read_symbols(symbols_file)
-    elif os.path.isfile(default_symbols_file):
-      self.symbols = read_symbols(default_symbols_file)
-
   def can_use(self):
     """
     Whether this library can be used in the current environment.
@@ -528,7 +514,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super(MTLibrary, self).get_cflags()
     if self.is_mt:
-      cflags += ['-s', 'USE_PTHREADS=1', '-DUSE_THREADS']
+      cflags += ['-s', 'USE_PTHREADS']
     return cflags
 
   def get_base_name(self):
@@ -754,7 +740,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
-        filenames=['extras.c', 'wasi-helpers.c'])
+        filenames=['extras.c', 'wasi-helpers.c', 'emscripten_pthread.c'])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
@@ -772,6 +758,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_yield.c',
           'call_once.c',
         ])
+
+    libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')
 
     if self.is_mt:
       libc_files += files_in_path(
@@ -947,7 +935,7 @@ class libcxx(NoExceptLibrary, MTLibrary):
   cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
-  src_dir = ['system', 'lib', 'libcxx']
+  src_dir = ['system', 'lib', 'libcxx', 'src']
   src_glob = '**/*.cpp'
   src_glob_exclude = ['locale_win32.cpp', 'thread_win32.cpp', 'support.cpp', 'int128_builtins.cpp']
 
@@ -1078,7 +1066,7 @@ class libgl(MTLibrary):
   name = 'libgl'
 
   src_dir = ['system', 'lib', 'gl']
-  src_glob = '*.c'
+  src_files = ['gl.c', 'webgl1.c']
 
   cflags = ['-Oz']
 
@@ -1087,6 +1075,10 @@ class libgl(MTLibrary):
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
     self.is_full_es3 = kwargs.pop('is_full_es3')
+    if self.is_webgl2 or self.is_full_es3:
+      # Don't use append or += here, otherwise we end up adding to
+      # the class member.
+      self.src_files = self.src_files + ['webgl2.c']
     super(libgl, self).__init__(**kwargs)
 
   def get_base_name(self):
@@ -1473,35 +1465,10 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
       add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
-    # These libraries get included automatically based the symbols needed by the input file.
-    # Other system libraries are simply included by default.
-    for libname in ['libgl', 'libal', 'libhtml5']:
-      if libname in already_included:
-        continue
-      lib = system_libs_map[libname]
-      force_this = lib.name in force_include
-      if not force_this:
-        need_syms = set()
-        has_syms = set()
-        for symbols in symbolses:
-          if shared.Settings.VERBOSE:
-            logger.debug('undefs: ' + str(symbols.undefs))
-          for library_symbol in lib.symbols:
-            if library_symbol in symbols.undefs:
-              need_syms.add(library_symbol)
-            if library_symbol in symbols.defs:
-              has_syms.add(library_symbol)
-        for haz in has_syms:
-          if haz in need_syms:
-            # remove symbols that are supplied by another of the inputs
-            need_syms.remove(haz)
-        if shared.Settings.VERBOSE:
-          logger.debug('considering %s: we need %s and have %s' % (lib.name, str(need_syms), str(has_syms)))
-        if not len(need_syms):
-          continue
-
-      # We need to build and link the library in
-      add_library(lib)
+    if shared.Settings.AUTO_NATIVE_LIBRARIES:
+      add_library(system_libs_map['libgl'])
+      add_library(system_libs_map['libal'])
+      add_library(system_libs_map['libhtml5'])
 
     sanitize = shared.Settings.USE_LSAN or shared.Settings.USE_ASAN or shared.Settings.UBSAN_RUNTIME
 
@@ -1734,10 +1701,6 @@ class Ports(object):
       logger.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 
-    class State(object):
-      retrieved = False
-      unpacked = False
-
     def retrieve():
       # retrieve from remote server
       logger.info('retrieving port: ' + name + ' from ' + url)
@@ -1746,15 +1709,9 @@ class Ports(object):
         response = requests.get(url)
         data = response.content
       except ImportError:
-        try:
-          from urllib.request import urlopen
-          f = urlopen(url)
-          data = f.read()
-        except ImportError:
-          # Python 2 compatibility
-          from urllib2 import urlopen
-          f = urlopen(url)
-          data = f.read()
+        from urllib.request import urlopen
+        f = urlopen(url)
+        data = f.read()
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
@@ -1762,7 +1719,6 @@ class Ports(object):
           shared.exit_with_error('Unexpected hash: ' + actual_hash + '\n'
                                  'If you are updating the port, please update the hash in the port module.')
       open(fullpath, 'wb').write(data)
-      State.retrieved = True
 
     def check_tag():
       if is_tarbz2:
@@ -1779,42 +1735,30 @@ class Ports(object):
     def unpack():
       logger.info('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
+      shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
 
-      # TODO: Someday when we are using Python 3, we might want to change the
-      # code below to use shlib.unpack_archive
-      # e.g.: shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      # (https://docs.python.org/3/library/shutil.html#shutil.unpack_archive)
-      if is_tarbz2:
-        z = tarfile.open(fullpath, 'r:bz2')
-      elif url.endswith('.tar.gz'):
-        z = tarfile.open(fullpath, 'r:gz')
-      else:
-        z = zipfile.ZipFile(fullpath, 'r')
-      with utils.chdir(fullname):
-        z.extractall()
-
-      State.unpacked = True
+    # before acquiring the lock we have an early out if the port already exists
+    if os.path.exists(fullpath) and check_tag():
+      return
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-
     with shared.Cache.lock():
-      if not os.path.exists(fullpath):
-        retrieve()
-
-      if not os.path.exists(fullname):
-        unpack()
-
-      if not check_tag():
+      if os.path.exists(fullpath):
+        # Another early out in case another process build the library while we were
+        # waiting for the lock
+        if check_tag():
+          return
+        # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
         shared.try_delete(fullname)
         shared.try_delete(fullpath)
-        retrieve()
-        unpack()
 
-      if State.unpacked:
-        # we unpacked a new version, clear the build in the cache
-        Ports.clear_project_build(name)
+      retrieve()
+      unpack()
+
+      # we unpacked a new version, clear the build in the cache
+      Ports.clear_project_build(name)
 
   @staticmethod
   def clear_project_build(name):
@@ -1929,12 +1873,14 @@ def install_system_headers():
   install_dirs = {
     ('include',): '',
     ('lib', 'compiler-rt', 'include'): '',
-    ('include', 'compat'): 'compat',
     ('lib', 'libunwind', 'include'): '',
+    # Copy the generic arch files first then
+    ('lib', 'libc', 'musl', 'arch', 'generic'): '',
+    # Then overlay the emscripten directory on top.
+    # This mimicks how musl itself installs its headers.
     ('lib', 'libc', 'musl', 'arch', 'emscripten'): '',
-    ('lib', 'libcxx'): '',
-    ('include', 'libc'): '',
-    ('include', 'libcxx'): os.path.join('c++', 'v1'),
+    ('lib', 'libc', 'musl', 'include'): '',
+    ('lib', 'libcxx', 'include'): os.path.join('c++', 'v1'),
     ('lib', 'libcxxabi', 'include'): os.path.join('c++', 'v1'),
   }
 
@@ -1943,10 +1889,6 @@ def install_system_headers():
     src = shared.path_from_root('system', *src)
     dest = os.path.join(target_include_dir, dest)
     copytree_exist_ok(src, dest)
-
-  # TODO(sbc): Move these headers back into thier respecive source trees
-  for dirname in ['libc', 'libcxx']:
-    shutil.rmtree(os.path.join(target_include_dir, dirname))
 
   # Create a stamp file that signal the the header have been installed
   # Removing this file, or running `emcc --clear-cache` or running

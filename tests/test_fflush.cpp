@@ -15,4 +15,5 @@ int main()
     fflush(stdout);
     fprintf(stderr, "hello from stderr too!");
     fflush(stderr);
+    return 0;
 }

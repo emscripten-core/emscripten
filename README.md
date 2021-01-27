@@ -1,6 +1,6 @@
 ![emscripten logo](media/switch_logo.png)
 
-Main project page: <http://emscripten.org>
+Main project page: <https://emscripten.org>
 
 GitHub CI status: [![CircleCI](https://circleci.com/gh/emscripten-core/emscripten.svg?style=svg)](https://circleci.com/gh/emscripten-core/emscripten/tree/master)
 

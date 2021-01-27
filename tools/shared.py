@@ -33,7 +33,7 @@ from . import config
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 98
+EXPECTED_BINARYEN_VERSION = 99
 EXPECTED_LLVM_VERSION = "12.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -274,47 +274,47 @@ def check_sanity(force=False):
     expected = generate_sanity()
 
     sanity_file = Cache.get_path('sanity.txt')
-    if os.path.exists(sanity_file):
-      sanity_data = open(sanity_file).read()
-      if sanity_data != expected:
-        logger.debug('old sanity: %s' % sanity_data)
-        logger.debug('new sanity: %s' % expected)
-        if config.FROZEN_CACHE:
-          logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
+    with Cache.lock():
+      if os.path.exists(sanity_file):
+        sanity_data = open(sanity_file).read()
+        if sanity_data != expected:
+          logger.debug('old sanity: %s' % sanity_data)
+          logger.debug('new sanity: %s' % expected)
+          if config.FROZEN_CACHE:
+            logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
+          else:
+            logger.info('(Emscripten: config changed, clearing cache)')
+            Cache.erase()
+            # the check actually failed, so definitely write out the sanity file, to
+            # avoid others later seeing failures too
+            force = False
         else:
-          logger.info('(Emscripten: config changed, clearing cache)')
-          Cache.erase()
-          # the check actually failed, so definitely write out the sanity file, to
-          # avoid others later seeing failures too
-          force = False
+          if force:
+            logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
+          else:
+            logger.debug(f'sanity file up-to-date: {sanity_file}')
+            return # all is well
       else:
-        if force:
-          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
-        else:
-          logger.debug(f'sanity file up-to-date: {sanity_file}')
-          return # all is well
-    else:
-      logger.debug(f'sanity file not found: {sanity_file}')
+        logger.debug(f'sanity file not found: {sanity_file}')
 
-    # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-    check_node_version()
+      # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+      check_node_version()
 
-    llvm_ok = check_llvm()
+      llvm_ok = check_llvm()
 
-    if os.environ.get('EM_IGNORE_SANITY'):
-      logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
-      return
+      if os.environ.get('EM_IGNORE_SANITY'):
+        logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
+        return
 
-    if not llvm_ok:
-      exit_with_error('failing sanity checks due to previous llvm failure')
+      if not llvm_ok:
+        exit_with_error('failing sanity checks due to previous llvm failure')
 
-    perform_sanity_checks()
+      perform_sanity_checks()
 
-    if not force:
-      # Only create/update this file if the sanity check succeeded, i.e., we got here
-      Cache.ensure()
-      with open(sanity_file, 'w') as f:
-        f.write(expected)
+      if not force:
+        # Only create/update this file if the sanity check succeeded, i.e., we got here
+        with open(sanity_file, 'w') as f:
+          f.write(expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -473,25 +473,7 @@ def emsdk_cflags(user_args):
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     c_opts += ['-D__ARM_NEON__=1']
 
-  sysroot_include_paths = []
-
-  sysroot_include_paths += [
-    os.path.join('/include', 'compat'),
-    # TODO(sbc): Ideally we wouldn't need these, we could just copy them into the sysroot/include
-    # However, clang puts its internal header directory first so it finds its internal versions
-    # first.
-    os.path.join('/include', 'SSE'),
-    os.path.join('/include', 'neon'),
-  ]
-
-  def include_directive(paths):
-    result = []
-    for path in paths:
-      result += ['-Xclang', '-iwithsysroot' + path]
-    return result
-
-  # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  return c_opts + include_directive(sysroot_include_paths)
+  return c_opts + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
 
 
 def get_clang_flags():

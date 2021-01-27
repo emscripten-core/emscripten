@@ -70,10 +70,10 @@ var k = {
     }(k);
 }).exports;
 
-l = n.d;
+l = n.c;
 
 f.set(new Uint8Array(b.mem), 1024);
 
-n.c();
+n.b();
 
 l();

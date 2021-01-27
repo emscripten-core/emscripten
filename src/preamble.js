@@ -281,14 +281,14 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 #if RELOCATABLE
-var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ getQuoted('STACK_BASE') }}});
+var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ STACK_BASE }}});
 
 // To support such allocations during startup, track them on __heap_base and
 // then when the main module is loaded it reads that value and uses it to
 // initialize sbrk (the main module is relocatable itself, and so it does not
 // have __heap_base hardcoded into it - it receives it from JS as an extern
 // global, basically).
-Module['___heap_base'] = {{{ getQuoted('HEAP_BASE') }}};
+Module['___heap_base'] = {{{ HEAP_BASE }}};
 #endif // RELOCATABLE
 
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
@@ -388,9 +388,12 @@ function initRuntime() {
 #endif
   runtimeInitialized = true;
 #if STACK_OVERFLOW_CHECK >= 2
+#if RUNTIME_LOGGING
+  err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
+#endif
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
-  {{{ getQuoted('ATINITS') }}}
+  <<< ATINITS >>>
   callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -401,7 +404,7 @@ function preMain() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  {{{ getQuoted('ATMAINS') }}}
+  <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
 
@@ -414,7 +417,7 @@ function exitRuntime() {
 #endif
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
-  {{{ getQuoted('ATEXITS') }}}
+  <<< ATEXITS >>>
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
@@ -571,11 +574,6 @@ Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
 #if MAIN_MODULE
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
-addOnPreRun(preloadDylibs);
-#else
-#if RELOCATABLE
-addOnPreRun(reportUndefinedSymbols);
-#endif
 #endif
 
 /** @param {string|number=} what */
@@ -1067,6 +1065,12 @@ function createWasm() {
 #endif
 #endif // WASM == 2
 
+#if ASSERTIONS
+      // Warn on some common problems.
+      if (isFileURI(wasmBinaryFile)) {
+        err('warning: Loading from a file URI (' + wasmBinaryFile + ') is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing');
+      }
+#endif
       abort(reason);
     });
   }

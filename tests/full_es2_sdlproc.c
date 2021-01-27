@@ -731,7 +731,5 @@ main(int argc, char *argv[])
    gears_init();
    gears_draw();
 
-   REPORT_RESULT(1);
-
-   return 0;
+   return 1;
 }

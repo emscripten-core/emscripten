@@ -184,3 +184,9 @@ var STRUCT_INFO = '';
 var MEMORYPROFILER = 0;
 
 var GENERATE_SOURCE_MAP = 0;
+
+// Memory layout.  These are only used/set in RELOCATABLE builds.  Otherwise
+// memory layout is fixed in the wasm binary at link time.
+var STACK_BASE = 0;
+var STACK_MAX = 0;
+var HEAP_BASE = 0;
