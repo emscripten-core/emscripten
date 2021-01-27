@@ -338,7 +338,7 @@ function _IntToHex(x) {
   if (x <= 9) {
     return String.fromCharCode('0'.charCodeAt(0) + x);
   }
-    return String.fromCharCode('A'.charCodeAt(0) + x - 10);
+  return String.fromCharCode('A'.charCodeAt(0) + x - 10);
 }
 
 function IEEEUnHex(stringy) {
@@ -359,8 +359,8 @@ function IEEEUnHex(stringy) {
     if (a == 0 && b == 0) {
       return neg ? '-Infinity' : 'Infinity';
     }
-      return 'NaN';
-    }
+    return 'NaN';
+  }
   e -= 1023; // offset
   const absolute = ((((a | 0x100000) * 1.0) / Math.pow(2, 52 - 32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e));
   return (absolute * (neg ? -1 : 1)).toString();
@@ -406,23 +406,23 @@ function splitI64(value, floatConversion) {
   if (floatConversion) lowInput = asmFloatToInt(lowInput);
   const low = lowInput + '>>>0';
   const high = makeInlineCalculation(
-    asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
-      '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
+      asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
+        '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
         asmCoercion('Math.min(' + asmCoercion('Math.floor((VALUE)/' +
         asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' +
         asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
         ' : ' +
         asmFloatToInt(asmCoercion('Math.ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' +
         asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
-      ')' +
-    ' : 0',
-    value,
+        ')' +
+      ' : 0',
+      value,
       'tempDouble',
   );
   if (legalizedI64s) {
     return [low, high];
   }
-    return makeI64(low, high);
+  return makeI64(low, high);
 }
 
 // Misc
@@ -435,7 +435,7 @@ function indentify(text, indent) {
     indent = '';
     for (let i = 0; i < len; i++) {
       indent += ' ';
-  }
+    }
   }
   return text.replace(/\n/g, '\n' + indent);
 }
@@ -450,7 +450,7 @@ function getHeapOffset(offset, type) {
   if (Runtime.getNativeFieldSize(type) > 4 && type == 'i64') {
     // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
     type = 'i32';
-    }
+  }
 
   const sz = Runtime.getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
@@ -481,7 +481,7 @@ function asmEnsureFloat(value, type) {
   if (type in Compiletime.FLOAT_TYPES) {
     return ensureDot(value);
   }
-    return value;
+  return value;
 }
 
 function asmCoercion(value, type, signedness) {
@@ -852,7 +852,7 @@ function getHeapForType(type, unsigned) {
     case '<4 x float>':
     case 'float':
       return 'HEAPF32';
-    }
+  }
   assert(false, 'bad heap type: ' + type);
 }
 
@@ -912,7 +912,7 @@ function makeSignOp(value, type, op, force, ignore) {
         if (op === 're') {
           return '(' + value + '|0)';
         } else {
-          return '(' + value +  '>>>0)';
+          return '(' + value + '>>>0)';
         }
       } else if (bits < 32) {
         if (op === 're') {
@@ -1080,10 +1080,10 @@ function makeRetainedCompilerSettings() {
   const ret = {};
   for (const x in global) {
     if (!(x in ignore) && x[0] !== '_' && x == x.toUpperCase()) {
-    try {
+      try {
         if (typeof global[x] === 'number' || typeof global[x] === 'string' || this.isArray()) {
           ret[x] = global[x];
-  }
+        }
       } catch (e) {}
     }
   }
@@ -1218,8 +1218,8 @@ function makeAsmImportsAccessInPthread(variable) {
     // MINIMAL_RUNTIME uses 'imports' as the name for the imports object in MODULARIZE builds.
     return `imports['${variable}']`;
   }
-    // In non-MODULARIZE builds, can access the imports from global scope.
-    return variable;
+  // In non-MODULARIZE builds, can access the imports from global scope.
+  return variable;
 }
 
 function hasExportedFunction(func) {
@@ -1232,7 +1232,7 @@ function defineI64Param(name) {
   if (WASM_BIGINT) {
     return name + '_bigint';
   }
-    return name + '_low, ' + name + '_high';
+  return name + '_low, ' + name + '_high';
 }
 
 function receiveI64ParamAsI32s(name) {
@@ -1244,14 +1244,14 @@ function receiveI64ParamAsI32s(name) {
     //  * terser needs to be upgraded
     return `var ${name}_low = Number(${name}_bigint & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name}_bigint >> BigInt(32)) | 0;`;
   }
-    return '';
+  return '';
 }
 
 function sendI64Argument(low, high) {
   if (WASM_BIGINT) {
     return 'BigInt(low) | (BigInt(high) << BigInt(32))';
   }
-    return low + ', ' + high;
+  return low + ', ' + high;
 }
 
 // Add assertions to catch common errors when using the Promise object we
