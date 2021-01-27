@@ -13,7 +13,7 @@ let currentlyParsedFilename = '';
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
 function processMacros(text) {
-  return text.replace(/{{{([^}]|}(?!}))+}}}/g, function(str) {
+  return text.replace(/{{{([^}]|}(?!}))+}}}/g, (str) => {
     str = str.substr(3, str.length - 6);
     try {
       const ret = eval(str);
@@ -235,7 +235,7 @@ function isFunctionDef(token, out) {
   if (!token.tokens) return false;
   let fail = false;
   const segments = splitTokenList(token.tokens);
-  segments.forEach(function(segment) {
+  segments.forEach((segment) => {
     const subtext = segment[0].text;
     fail = fail || segment.length > 1 || !(isType(subtext) || subtext == '...');
   });
@@ -681,7 +681,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
   sep = sep || ';';
   function unroll(type, num, jump) {
     jump = jump || 1;
-    return range(num).map(function(i) {
+    return range(num).map((i) => {
       return makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type);
     }).join(sep);
   }
@@ -698,7 +698,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
   src = stripCorrections(src);
   // and in the heap assignment expression
   const ret = [];
-  [4, 2, 1].forEach(function(possibleAlign) {
+  [4, 2, 1].forEach((possibleAlign) => {
     if (num == 0) return;
     if (align >= possibleAlign) {
       ret.push(unroll('i' + (possibleAlign * 8), Math.floor(num / possibleAlign), possibleAlign));
@@ -1266,7 +1266,7 @@ function addReadyPromiseAssertions(promise) {
   // Also warn on onRuntimeInitialized which might be a common pattern with
   // older MODULARIZE-using codebases.
   properties.push('onRuntimeInitialized');
-  return properties.map(function(property) {
+  return properties.map((property) => {
     const warningEnding = `${property} on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js`;
     return `
       if (!Object.getOwnPropertyDescriptor(${promise}, '${property}')) {
