@@ -195,7 +195,7 @@ function callMain(args) {
 #if ASYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
-    if (!noExitRuntime) {
+    if (!keepRuntimeAlive()) {
 #endif // ASYNCIFY
       // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
@@ -210,7 +210,6 @@ function callMain(args) {
       return;
     } else if (e == 'unwind') {
       // running an evented main loop, don't immediately exit
-      noExitRuntime = true;
       return;
     } else {
       var toLog = e;
@@ -418,6 +417,8 @@ function checkUnflushedContent() {
 
 /** @param {boolean|number=} implicit */
 function exit(status, implicit) {
+  EXITSTATUS = status;
+
 #if ASSERTIONS
 #if EXIT_RUNTIME == 0
   checkUnflushedContent();
@@ -428,7 +429,7 @@ function exit(status, implicit) {
   // don't need to do anything here and can just leave. if the status is
   // non-zero, though, then we need to report it.
   // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && noExitRuntime && status === 0) {
+  if (implicit && keepRuntimeAlive() && status === 0) {
     return;
   }
 
@@ -446,20 +447,20 @@ function exit(status, implicit) {
       throw new ExitStatus(status);
     } else {
 #if ASSERTIONS
-      err('main thead called exit: noExitRuntime=' + noExitRuntime);
+      err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif
     }
   }
 #endif
 
-  if (noExitRuntime) {
+  if (keepRuntimeAlive()) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
 #if EXIT_RUNTIME == 0
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
 #else
-      var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
+      var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
 #endif // EXIT_RUNTIME
 #if MODULARIZE
       readyPromiseReject(msg);
@@ -471,8 +472,6 @@ function exit(status, implicit) {
 #if USE_PTHREADS
     PThread.terminateAllThreads();
 #endif
-
-    EXITSTATUS = status;
 
     exitRuntime();
 

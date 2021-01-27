@@ -732,8 +732,16 @@ mergeInto(LibraryManager.library, {
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
+#if !MINIMAL_RUNTIME
+  $_setNetworkCallback__deps: [
+    '$runtimeKeepalivePush',
+    '$runtimeKeepalivePop'
+  ],
+#endif
   $_setNetworkCallback: function(event, userData, callback) {
     function _callback(data) {
+      {{{ runtimeKeepalivePop() }}}
+      if (!callback) return;
       try {
         if (event === 'error') {
           var sp = stackSave();
@@ -753,8 +761,8 @@ mergeInto(LibraryManager.library, {
       }
     };
 
-    noExitRuntime = true;
-    Module['websocket']['on'](event, callback ? _callback : null);
+    {{{ runtimeKeepalivePush() }}}
+    Module['websocket']['on'](event, _callback);
   },
   emscripten_set_socket_error_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_error_callback: function(userData, callback) {

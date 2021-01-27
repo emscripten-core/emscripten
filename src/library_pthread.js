@@ -90,6 +90,7 @@ var LibraryPThread = {
       PThread['setThreadStatus'] = PThread.setThreadStatus;
       PThread['threadCancel'] = PThread.threadCancel;
       PThread['threadExit'] = PThread.threadExit;
+      PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -195,6 +196,10 @@ var LibraryPThread = {
 
       // Not hosting a pthread anymore in this worker, reset the info structures to null.
       __emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
+    },
+
+    setExitStatus: function(status) {
+      EXITSTATUS = status;
     },
 
     // Called when we are performing a pthread_exit(), either explicitly called
@@ -1219,7 +1224,7 @@ var LibraryPThread = {
   __call_main: function(argc, argv) {
     var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
-    if (!noExitRuntime) {
+    if (!keepRuntimeAlive()) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
 #if ASSERTIONS
       out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
@@ -1373,11 +1378,6 @@ var LibraryPThread = {
     // current position of the stack.
     writeStackCookie();
 #endif
-  },
-
-  // allow pthreads to check if noExitRuntime from worker.js
-  $getNoExitRuntime: function() {
-    return noExitRuntime;
   },
 
   $invokeEntryPoint: function(ptr, arg) {

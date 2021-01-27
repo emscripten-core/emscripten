@@ -214,16 +214,21 @@ this.onmessage = function(e) {
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();
 #endif
-#if !MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME
         // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
         // pthreads. To exit a pthread with live runtime, use the function
         // emscripten_unwind_to_js_event_loop() in the pthread body.
         // The thread might have finished without calling pthread_exit(). If so,
         // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        if (!Module['getNoExitRuntime']())
-#endif
+        Module['PThread'].threadExit(result);
+#else
+        if (Module['keepRuntimeAlive']()) {
+          Module['PThread'].setExitStatus(result);
+        } else {
           Module['PThread'].threadExit(result);
+        }
+#endif
       } catch(ex) {
         if (ex === 'Canceled!') {
           Module['PThread'].threadCancel();
@@ -241,7 +246,7 @@ this.onmessage = function(e) {
           // ExitStatus not present in MINIMAL_RUNTIME
 #if !MINIMAL_RUNTIME
           if (ex instanceof Module['ExitStatus']) {
-            if (Module['getNoExitRuntime']()) {
+            if (Module['keepRuntimeAlive']()) {
 #if ASSERTIONS
               err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
 #endif
