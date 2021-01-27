@@ -20,7 +20,11 @@ mergeInto(LibraryManager.library, {
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError'],
+  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop'
+#endif
+  ],
   $Asyncify: {
     State: {
       Normal: 0,
@@ -130,7 +134,9 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
         err('ASYNCIFY: stop unwind');
 #endif
+        {{{ runtimeKeepalivePush(); }}}
         Asyncify.state = Asyncify.State.Normal;
+        // Keep the runtime alive so that a re-wind can be done later.
         runAndAbortIfError(Module['_asyncify_stop_unwind']);
         if (typeof Fibers !== 'undefined') {
           Fibers.trampoline();
@@ -178,14 +184,22 @@ mergeInto(LibraryManager.library, {
       return func;
     },
 
+    doRewind: function(ptr) {
+      var start = Asyncify.getDataRewindFunc(ptr);
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY: start:', start);
+#endif
+      // Once we have rewound and the stack we no longer need to artificially keep
+      // the runtime alive.
+      {{{ runtimeKeepalivePop(); }}}
+      return start();
+    },
+
     handleSleep: function(startAsync) {
 #if ASSERTIONS
       assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
 #endif
       if (ABORT) return;
-#if !MINIMAL_RUNTIME
-      noExitRuntime = true;
-#endif
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY: handleSleep ' + Asyncify.state);
 #endif
@@ -223,11 +237,7 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
-          var start = Asyncify.getDataRewindFunc(Asyncify.currData);
-#if ASYNCIFY_DEBUG
-          err('ASYNCIFY: start:', start);
-#endif
-          var asyncWasmReturnValue = start();
+          var asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
           if (!Asyncify.currData) {
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
@@ -273,7 +283,7 @@ mergeInto(LibraryManager.library, {
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
         Asyncify.sleepCallbacks.forEach(function(func) {
-          func();
+          callUserCallback(func);
         });
       } else {
         abort('invalid state: ' + Asyncify.state);
@@ -421,11 +431,7 @@ mergeInto(LibraryManager.library, {
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
         Module['_asyncify_start_rewind'](asyncifyData);
-        var start = Asyncify.getDataRewindFunc(asyncifyData);
-#if ASYNCIFY_DEBUG
-        err('ASYNCIFY/FIBER: start: ' + start);
-#endif
-        start();
+        Asyncify.doRewind(asyncifyData);
       }
     },
   },
@@ -460,9 +466,6 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
-#if !MINIMAL_RUNTIME
-    noExitRuntime = true;
-#endif
 #if ASYNCIFY_DEBUG
     err('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
 #endif
