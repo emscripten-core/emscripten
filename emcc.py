@@ -1246,6 +1246,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
     # in -Oz builds, since custom decoder for UTF-8 takes up space.
+    # In pthreads enabled builds, TEXTDECODER==2 may not work, see
+    # https://github.com/whatwg/encoding/issues/172
     if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS:
       default_setting('TEXTDECODER', 2)
 
@@ -1512,7 +1514,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('USE_PTHREADS=2 is not longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-      # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
+      # UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
       newargs += ['-pthread']
