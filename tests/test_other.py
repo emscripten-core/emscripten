@@ -9595,7 +9595,7 @@ int main() {
 
   @parameterized({
     '': ([],),
-    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME', '-s', 'SUPPORT_ERRNO=1'],),
   })
   def test_support_errno(self, args):
     self.emcc_args += args
