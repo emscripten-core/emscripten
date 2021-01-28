@@ -6502,8 +6502,8 @@ int main() {
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
-    syms = building.llvm_nm('test2.o', include_internal=True)
-    assert 'foo' in syms.defs, 'foo() should not be inlined'
+    output = self.run_process([shared.LLVM_NM, 'test2.o'], stdout=PIPE).stdout
+    self.assertContained('foo', output)
 
   def test_output_eol(self):
     for params in [[], ['--proxy-to-worker'], ['--proxy-to-worker', '-s', 'WASM=0']]:
