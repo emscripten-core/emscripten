@@ -7900,6 +7900,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp'),
                  post_build=modify_env, assert_all=True, expected_output=expected_output)
 
+  def test_ubsan_typeinfo_eq(self):
+    # https://github.com/emscripten-core/emscripten/issues/13330
+    src = r'''
+      #include <typeinfo>
+      #include <stdio.h>
+      int main() {
+        int mismatch = typeid(int) != typeid(int);
+        printf("ok\n");
+        return mismatch;
+      }
+      '''
+    self.emcc_args.append('-fsanitize=undefined')
+    self.do_run(src, 'ok\n')
+
   def test_template_class_deduction(self):
     self.emcc_args += ['-std=c++17']
     self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction.cpp')
