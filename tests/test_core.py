@@ -6289,12 +6289,12 @@ return malloc(size);
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', exported_runtime_methods)
       self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific.c')
 
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
-      self.emcc_args = emcc_args + ['-s', 'DYNCALLS=1', '--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
-      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
+    self.emcc_args = emcc_args + ['-s', 'DYNCALLS=1', '--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
-      self.emcc_args += ['-s', 'MINIMAL_RUNTIME=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']
-      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+    self.emcc_args += ['-s', 'MINIMAL_RUNTIME=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']
+    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
