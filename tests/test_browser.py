@@ -3560,6 +3560,51 @@ window.close = function() {
     self.btest_exit(self.in_dir('main.c'), '3',
                     args=['-s', 'MAIN_MODULE', '--pre-js', 'pre.js'])
 
+  def test_dynamic_link_pthread_many(self):
+    # Test asynchronously loading two side modules during startup
+    # They should always load in the same order
+    # Verify that function pointers in the browser's main thread
+    # reffer to the same function as in a pthread worker.
+
+    # The main thread function table is populated asynchronously
+    # in the browser's main thread. However, it should still be
+    # populated in the same order as in a pthread worker to
+    # guarantee function pointer interop.
+    create_test_file('main.cpp', r'''
+      #include <thread>
+      int side1();
+      int side2();
+      int main() {
+        auto side1_ptr = &side1;
+        auto side2_ptr = &side2;
+        // Don't join the thread since this is running in the
+        // browser's main thread.
+        std::thread([=]{
+          REPORT_RESULT(int(
+            side1_ptr == &side1 &&
+            side2_ptr == &side2
+          ));
+        }).detach();
+        return 0;
+      }
+    ''')
+
+    # The browser will try to load side1 first.
+    # Use a big payload in side1 so that it takes longer to load than side2
+    create_test_file('side1.cpp', r'''
+      char const * payload1 = "''' + str(list(range(1, int(1e5)))) + r'''";
+      int side1() { return 1; }
+    ''')
+    create_test_file('side2.cpp', r'''
+      char const * payload2 = "0";
+      int side2() { return 2; }
+    ''')
+    self.run_process([EMCC, 'side1.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
+    self.run_process([EMCC, 'side2.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
+    self.btest(self.in_dir('main.cpp'), '1',
+               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE',
+                     '-s', 'RUNTIME_LINKED_LIBS=["side1.wasm","side2.wasm"]'])
+
   def test_memory_growth_during_startup(self):
     create_test_file('data.dat', 'X' * (30 * 1024 * 1024))
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=16MB', '-s', 'TOTAL_STACK=16384', '--preload-file', 'data.dat'])
