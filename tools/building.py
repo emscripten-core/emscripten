@@ -382,7 +382,7 @@ def parallel_llvm_nm(files):
 
     for i, file in enumerate(files):
       if object_contents[i].returncode != 0:
-        logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
+        exit_with_error('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
       uninternal_nm_cache[file] = object_contents[i]
     return object_contents
 
@@ -782,7 +782,7 @@ def llvm_nm(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
   ret = llvm_nm_uncached(filename, stdout, stderr, include_internal)
 
   if ret.returncode != 0:
-    logger.debug('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
+    exit_with_error('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
 
   # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the failing file again later.
   if include_internal:

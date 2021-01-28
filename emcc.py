@@ -2199,7 +2199,7 @@ def post_link(options, in_wasm, wasm_target, target):
     save_intermediate('original')
 
   # exit block 'emscript'
-  log_time('emscript)')
+  log_time('emscript')
 
   with ToolchainProfiler.profile_block('source transforms'):
     # Embed and preload files
