@@ -3776,6 +3776,18 @@ ok
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
+  def test_missing_signatures(self):
+    src = r'''#include <list>
+              #include <emscripten.h>
+              int main() {
+                std::list<void*> sig_check_list{ (void*)&emscripten_run_script_string,
+                                                 (void*)&emscripten_run_script};
+                return std::count(sig_check_list.begin(),sig_check_list.end(),nullptr);
+              }
+    '''
+    self.set_setting('MAIN_MODULE',1)
+    self.do_run(src, '')
+
   @needs_dlfcn
   def test_dylink_global_init(self):
     self.dylink_test(r'''
