@@ -9595,12 +9595,13 @@ int main() {
 
   @parameterized({
     '': ([],),
-    'minimal': (['-s', 'MINIMAL_RUNTIME', '-s', 'SUPPORT_ERRNO=1'],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME', '-s', 'SUPPORT_ERRNO'],),
   })
   def test_support_errno(self, args):
     self.emcc_args += args
     src = test_file('core', 'test_support_errno.c')
     output = test_file('core', 'test_support_errno.out')
+
     self.do_run_from_file(src, output)
     size_default = os.path.getsize('test_support_errno.js')
 
