@@ -494,19 +494,9 @@ def lld_flags_for_executable(external_symbol_list):
                                    not Settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if Settings.RELOCATABLE:
-    if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
-      cmd.append('--no-export-dynamic')
-    else:
-      cmd.append('--no-gc-sections')
-      cmd.append('--export-dynamic')
-  else:
-    cmd.append('--export-table')
-    if Settings.ALLOW_TABLE_GROWTH:
-      cmd.append('--growable-table')
-
   if Settings.LINKABLE:
     cmd.append('--export-all')
+    cmd.append('--no-gc-sections')
   else:
     c_exports = [e for e in Settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
     # Strip the leading underscores
@@ -523,6 +513,12 @@ def lld_flags_for_executable(external_symbol_list):
       cmd.append('-shared')
     else:
       cmd.append('-pie')
+    if not Settings.LINKABLE:
+      cmd.append('--no-export-dynamic')
+  else:
+    cmd.append('--export-table')
+    if Settings.ALLOW_TABLE_GROWTH:
+      cmd.append('--growable-table')
 
   if not Settings.SIDE_MODULE:
     cmd += [
