@@ -274,11 +274,11 @@ var LibraryDylink = {
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
   $getDylinkMetadata: function(binary) {
     var next = 0;
-    function getLEB(byteArray) {
+    function getLEB() {
       var ret = 0;
       var mul = 1;
       while (1) {
-        var byte = byteArray[next++];
+        var byte = binary[next++];
         ret += ((byte & 0x7f) * mul);
         mul *= 0x80;
         if (!(byte & 0x80)) break;
@@ -286,38 +286,29 @@ var LibraryDylink = {
       return ret;
     }
 
-    function parseDylinkSection(byteArray) {
-      var customSection = {
-        memorySize : -1,
-        memoryAlign : -1,
-        tableSize : -1,
-        tableAlign : -1,
-        neededDynlibs: []
-      }
-
-      customSection.memorySize = getLEB(byteArray);
-      customSection.memoryAlign = getLEB(byteArray);
-      customSection.tableSize = getLEB(byteArray);
-      customSection.tableAlign = getLEB(byteArray);
+    function parseDylinkSection() {
+      var customSection = {};
+      customSection.memorySize = getLEB();
+      customSection.memoryAlign = getLEB();
+      customSection.tableSize = getLEB();
+      customSection.tableAlign = getLEB();
       // shared libraries this module needs. We need to load them first, so that
       // current module could resolve its imports. (see tools/shared.py
       // WebAssembly.make_shared_library() for "dylink" section extension format)
-      var neededDynlibsCount = getLEB(byteArray);
+      var neededDynlibsCount = getLEB();
       for (var i = 0; i < neededDynlibsCount; ++i) {
-        var nameLen = getLEB(byteArray);
-        var nameUTF8 = byteArray.subarray(next, next + nameLen);
+        var nameLen = getLEB();
+        var nameUTF8 = binary.subarray(next, next + nameLen);
         next += nameLen;
         var name = UTF8ArrayToString(nameUTF8, 0);
         customSection.neededDynlibs.push(name);
       }
       return customSection;
     }
-
     if (binary instanceof WebAssembly.Module) {
       var dylinkSection = WebAssembly.Module.customSections(binary, "dylink");
       assert(dylinkSection.length != 0, 'need dylink section');
-      var dylinkSectionInt8 = new Int8Array(dylinkSection[0]);
-      return parseDylinkSection(dylinkSectionInt8);
+      binary = new Int8Array(dylinkSection[0]);
     } else {
       var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
       assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
@@ -332,9 +323,9 @@ var LibraryDylink = {
       assert(binary[next] === 'i'.charCodeAt(0)); next++;
       assert(binary[next] === 'n'.charCodeAt(0)); next++;
       assert(binary[next] === 'k'.charCodeAt(0)); next++;
-
-      return parseDylinkSection(binary);
     }
+
+    return parseDylinkSection();
   },
 
   // Module.symbols <- libModule.symbols (flags.global handler)
