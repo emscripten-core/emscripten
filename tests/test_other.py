@@ -5314,7 +5314,10 @@ int main(int argc, char** argv) {
           return x;
       }
       ''')
-    self.run_process([EMCC, '-o', 'side.wasm', 'side.cpp',
+    self.run_process([
+      EMCC,
+      '-o', 'side.wasm',
+      'side.cpp',
       '-pthread', '-Wno-experimental',
       '-s', 'SIDE_MODULE=1',
       '-s', 'ASSERTIONS=2'])
@@ -5333,7 +5336,9 @@ int main(int argc, char** argv) {
       ''')
 
     self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
-    self.do_smart_test('main.cpp', ['success'],
+    self.do_smart_test(
+      'main.cpp',
+      ['success'],
       emcc_args=[
         '-pthread', '-Wno-experimental',
         '-s', 'PROXY_TO_PTHREAD',
