@@ -41,6 +41,7 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, safe_copy
 from tools.shared import run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -611,12 +612,6 @@ def do_split_module(wasm_file):
   os.rename(wasm_file, wasm_file + '.orig')
   args = ['--instrument']
   building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=args)
-
-
-def do_replace(input_, pattern, replacement):
-  if pattern not in input_:
-    exit_with_error('expected to find pattern in input JS: %s' % pattern)
-  return input_.replace(pattern, replacement)
 
 
 def is_dash_s_for_emcc(args, i):
