@@ -155,7 +155,8 @@ def get_wasm_libc_rt_files():
     path_components=['system', 'lib', 'libc'],
     filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                'emscripten_scan_stack.c',
-               'emscripten_memmove.c'])
+               'emscripten_memmove.c',
+               'emscripten_memory_size.c'])
   # Calls to iprintf can be generated during codegen. Ideally we wouldn't
   # compile these with -O2 like we do the rest of compiler-rt since its
   # probably not performance sensitive.  However we don't currently have
