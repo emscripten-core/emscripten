@@ -1424,7 +1424,7 @@ int f() {
     # Linking side modules using the STL and exceptions should not abort with
     # "function in Table but not functionsInTableMap" when using ASSERTIONS=2
 
-    # A side module that allocates memory in the stack
+    # A side module that uses the STL enables exceptions.
     create_test_file('side.cpp', r'''
       #include <vector>
       std::vector<int> v;
