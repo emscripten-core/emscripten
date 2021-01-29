@@ -531,6 +531,32 @@ class MTLibrary(Library):
     return super(MTLibrary, cls).get_default_variation(is_mt=shared.Settings.USE_PTHREADS, **kwargs)
 
 
+class OptimizedAggressivelyForSizeLibrary(Library):
+  def __init__(self, **kwargs):
+    self.is_optz = kwargs.pop('is_optz')
+    super(OptimizedAggressivelyForSizeLibrary, self).__init__(**kwargs)
+
+  def get_base_name(self):
+    name = super(OptimizedAggressivelyForSizeLibrary, self).get_base_name()
+    if self.is_optz:
+      name += '-optz'
+    return name
+
+  def get_cflags(self):
+    cflags = super(OptimizedAggressivelyForSizeLibrary, self).get_cflags()
+    if self.is_optz:
+      cflags += ['-DEMSCRIPTEN_OPTIMIZE_FOR_OZ']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(OptimizedAggressivelyForSizeLibrary, cls).vary_on() + ['is_optz']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(OptimizedAggressivelyForSizeLibrary, cls).get_default_variation(is_optz=shared.Settings.SHRINK_LEVEL >= 2, **kwargs)
+
+
 class exceptions(object):
   """
   This represents exception handling mode of Emscripten. Currently there are
@@ -1215,7 +1241,7 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary):
+class libc_rt_wasm(OptimizedAggressivelyForSizeLibrary, AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary):
   name = 'libc_rt_wasm'
 
   def get_files(self):
