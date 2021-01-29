@@ -159,8 +159,6 @@ def get_clang_version():
 
 
 def check_llvm_version():
-  # Let LLVM 13 roll in
-  return True
   actual = get_clang_version()
   if EXPECTED_LLVM_VERSION in actual:
     return True

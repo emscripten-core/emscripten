@@ -12,7 +12,7 @@ import tempfile
 import zipfile
 from subprocess import PIPE, STDOUT
 
-from runner import RunnerCore, path_from_root, env_modify, disabled
+from runner import RunnerCore, path_from_root, env_modify
 from runner import create_test_file, ensure_dir, make_executable
 from tools.config import config_file, EM_CONFIG
 from tools.shared import PYTHON, EMCC
@@ -232,7 +232,6 @@ class sanity(RunnerCore):
           self.assertContained('error:', output) # sanity check should fail
       try_delete(default_config)
 
-  @disabled('let LLVM 13 roll in')
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'
 
