@@ -916,6 +916,13 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest('keydown_preventdefault_proxy.cpp', '300', args=['--proxy-to-worker', '-s', '''EXPORTED_FUNCTIONS=['_main']'''], manual_reference=True, post_build=post)
 
+  def test_click_preventdefault(self):
+    for _args in [
+      [],
+      ['-s', 'DYNCALLS']
+    ]:
+      self.btest('click_preventdefault.c', '1', args=_args)
+
   def test_sdl_text(self):
     create_test_file('pre.js', '''
       Module.postRun = function() {
