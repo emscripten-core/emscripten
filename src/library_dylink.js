@@ -451,7 +451,7 @@ var LibraryDylink = {
 #if STACK_OVERFLOW_CHECK >= 2
         moduleExports['__set_stack_limits']({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
 #endif
-          // initialize the module
+        // initialize the module
         var init = moduleExports['__post_instantiate'];
         if (init) {
           if (runtimeInitialized) {
