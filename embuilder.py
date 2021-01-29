@@ -101,7 +101,7 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 
 def build_port(port_name, lib_name):
   if force:
-    shared.Cache.erase_file(lib_name)
+    shared.Cache.erase_file(shared.Cache.get_lib_name(lib_name))
 
   system_libs.build_port(port_name, shared.Settings)
 
@@ -250,6 +250,8 @@ def main():
       shared.Settings.USE_PTHREADS = 0
     elif what == 'boost_headers':
       build_port('boost_headers', 'libboost_headers.a')
+    elif what == 'mpg123':
+      build_port('mpg123', 'libmpg123.a')
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

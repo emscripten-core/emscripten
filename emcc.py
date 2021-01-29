@@ -1283,6 +1283,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('Invalid option -s CLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % shared.Settings.CLOSURE_WARNINGS)
 
+    # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
+    if shared.Settings.DYNCALLS and not shared.Settings.MINIMAL_RUNTIME:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
       if shared.Settings.MAIN_MODULE == 1:
@@ -1331,7 +1335,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ASYNCIFY:
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
-      shared.Settings.USE_LEGACY_DYNCALLS = 1
+      shared.Settings.DYNCALLS = 1
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']

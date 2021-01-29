@@ -6267,7 +6267,6 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS.c')
 
-  @no_minimal_runtime('MINIMAL_RUNTIME does not blindly export all symbols to Module to save code size')
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
     for which, exported_runtime_methods in [
@@ -6279,6 +6278,13 @@ return malloc(size);
       self.emcc_args = emcc_args + ['-D' + which]
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', exported_runtime_methods)
       self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific.c')
+
+      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
+      self.emcc_args = emcc_args + ['-s', 'DYNCALLS=1', '--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+
+      self.emcc_args += ['-s', 'MINIMAL_RUNTIME=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']
+      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -8306,6 +8312,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
     self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
+
+  @no_asan('asan does not yet work in MINIMAL_RUNTIME')
+  def test_dyncalls_minimal_runtime(self):
+    self.set_setting('DYNCALLS')
+    self.set_setting('MINIMAL_RUNTIME')
+    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
 
 # Generate tests for everything

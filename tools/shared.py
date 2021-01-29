@@ -34,7 +34,7 @@ from . import config
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 99
-EXPECTED_LLVM_VERSION = "12.0"
+EXPECTED_LLVM_VERSION = "13.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 PYTHON = sys.executable
@@ -158,6 +158,8 @@ def get_clang_version():
 
 
 def check_llvm_version():
+  # Let LLVM 13 roll in
+  return True
   actual = get_clang_version()
   if EXPECTED_LLVM_VERSION in actual:
     return True
@@ -278,8 +280,8 @@ def check_sanity(force=False):
       if os.path.exists(sanity_file):
         sanity_data = open(sanity_file).read()
         if sanity_data != expected:
-          logger.info('old sanity: %s' % sanity_data)
-          logger.info('new sanity: %s' % expected)
+          logger.debug('old sanity: %s' % sanity_data)
+          logger.debug('new sanity: %s' % expected)
           if config.FROZEN_CACHE:
             logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
           else:
@@ -804,7 +806,7 @@ class JS(object):
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
+    if Settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic

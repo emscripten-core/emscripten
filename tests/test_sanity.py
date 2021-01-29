@@ -12,7 +12,7 @@ import tempfile
 import zipfile
 from subprocess import PIPE, STDOUT
 
-from runner import RunnerCore, path_from_root, env_modify
+from runner import RunnerCore, path_from_root, env_modify, disabled
 from runner import create_test_file, ensure_dir, make_executable
 from tools.config import config_file, EM_CONFIG
 from tools.shared import PYTHON, EMCC
@@ -232,6 +232,7 @@ class sanity(RunnerCore):
           self.assertContained('error:', output) # sanity check should fail
       try_delete(default_config)
 
+  @disabled('let LLVM 13 roll in')
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'
 
@@ -676,6 +677,14 @@ fi
     self.assertNotContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc']))
     # Unless --force is specified
     self.assertContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc', '--force']))
+
+  def test_embuilder_force_port(self):
+    restore_and_set_up()
+    self.do([EMBUILDER, 'build', 'zlib'])
+    # Second time it should not generate anything
+    self.assertNotContained('generating port', self.do([EMBUILDER, 'build', 'zlib']))
+    # Unless --force is specified
+    self.assertContained('generating port', self.do([EMBUILDER, 'build', 'zlib', '--force']))
 
   def test_embuilder_wasm_backend(self):
     restore_and_set_up()

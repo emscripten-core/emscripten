@@ -26,7 +26,7 @@ def get(ports, settings, shared):
     libname += '_' + formats
   libname += '.a'
 
-  def create():
+  def create(final):
     src_dir = os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG)
     ports.install_headers(src_dir, target='SDL2')
     srcs = '''IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c
@@ -51,9 +51,7 @@ def get(ports, settings, shared):
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2_image', libname)
     ports.create_lib(final, o_s)
-    return final
 
   return [shared.Cache.get_lib(libname, create, what='port')]
 
