@@ -306,6 +306,7 @@ var LibraryDylink = {
       }
       return customSection;
     }
+
     if (binary instanceof WebAssembly.Module) {
       var dylinkSection = WebAssembly.Module.customSections(binary, "dylink");
       assert(dylinkSection.length != 0, 'need dylink section');
@@ -316,7 +317,7 @@ var LibraryDylink = {
       // we should see the dylink section right after the magic number and wasm version
       assert(binary[8] === 0, 'need the dylink section to be first')
       next = 9;
-      getLEB(binary); //section size
+      getLEB(); //section size
       assert(binary[next] === 6);                 next++; // size of "dylink" string
       assert(binary[next] === 'd'.charCodeAt(0)); next++;
       assert(binary[next] === 'y'.charCodeAt(0)); next++;
