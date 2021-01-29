@@ -9,6 +9,7 @@ int main()
 	printf("%f\n", emscripten_math_sign(-42.0));
 	printf("%f\n", emscripten_math_exp(2.0));
 	printf("%f\n", emscripten_math_expm1(2.0));
+	printf("%f\n", emscripten_math_fmod(2.0, 0.75));
 	printf("%f\n", emscripten_math_log(42.0));
 	printf("%f\n", emscripten_math_log1p(42.0));
 	printf("%f\n", emscripten_math_log10(42.0));

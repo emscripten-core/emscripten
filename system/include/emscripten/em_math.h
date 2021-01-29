@@ -45,6 +45,7 @@ double emscripten_math_sign(double x); // No equivalent in libc
 double emscripten_math_sqrt(double x); // sqrt() in math.h
 double emscripten_math_exp(double x); // exp() in math.h
 double emscripten_math_expm1(double x); // expm1() in math.h
+double emscripten_math_fmod(double x, double y); // fmod() in math.h
 double emscripten_math_log(double x); // log() in math.h
 double emscripten_math_log1p(double x); // log1p() in math.h
 double emscripten_math_log10(double x); // log10() in math.h
