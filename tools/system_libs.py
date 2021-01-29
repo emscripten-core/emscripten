@@ -16,7 +16,7 @@ import zipfile
 from glob import iglob
 
 from . import shared, building, ports, config, utils
-from . import deps_info
+from . import deps_info, tempfiles
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
@@ -171,11 +171,6 @@ def get_wasm_libc_rt_files():
     path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
     filenames=['strlen.c'])
   return math_files + other_files + iprintf_files
-
-
-def in_temp(*args):
-  """Gets the path of a file in our temporary directory."""
-  return os.path.join(shared.get_emscripten_temp_dir(), *args)
 
 
 class Library(object):
@@ -345,7 +340,7 @@ class Library(object):
 
     raise NotImplementedError()
 
-  def build_objects(self):
+  def build_objects(self, build_dir):
     """
     Returns a list of compiled object files for this library.
 
@@ -356,7 +351,7 @@ class Library(object):
     objects = []
     cflags = self.get_cflags()
     for src in self.get_files():
-      o = in_temp(shared.unsuffixed_basename(src) + '.o')
+      o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
       ext = shared.suffix(src)
       if ext in ('.s', '.c'):
         cmd = [shared.EMCC]
@@ -373,7 +368,11 @@ class Library(object):
 
   def build(self, out_filename):
     """Builds the library and returns the path to the file."""
-    create_lib(out_filename, self.build_objects())
+    build_dir = shared.Cache.get_path(os.path.join('build', self.get_base_name()))
+    utils.safe_ensure_dirs(build_dir)
+    create_lib(out_filename, self.build_objects(build_dir))
+    if not shared.DEBUG:
+      tempfiles.try_delete(build_dir)
 
   @classmethod
   def _inherit_list(cls, attr):
