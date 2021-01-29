@@ -1479,7 +1479,7 @@ int f() {
     test([self.in_dir('libdir', 'libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
   def test_dynamic_link_module_heap_in_pthread(self):
-    # Test that a side module uses shares the same heap for global objects across all threads
+    # Test that a side module uses the same heap for global objects across all threads
 
     # A side module with a global object
     create_test_file('side.cpp', r'''
