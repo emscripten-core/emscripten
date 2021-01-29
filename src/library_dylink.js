@@ -296,6 +296,7 @@ var LibraryDylink = {
       // current module could resolve its imports. (see tools/shared.py
       // WebAssembly.make_shared_library() for "dylink" section extension format)
       var neededDynlibsCount = getLEB();
+      customSection.neededDynlibs = [];
       for (var i = 0; i < neededDynlibsCount; ++i) {
         var nameLen = getLEB();
         var nameUTF8 = binary.subarray(next, next + nameLen);
