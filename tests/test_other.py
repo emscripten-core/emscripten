@@ -1478,6 +1478,54 @@ int f() {
     test(['-lfile'], '') # -l, auto detection from library path
     test([self.in_dir('libdir', 'libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
+  def test_dynamic_link_module_heap_in_pthread(self):
+    # Test that a side module uses shares the same heap for global objects across all threads
+
+    # A side module with a global object
+    create_test_file('side.cpp', r'''
+      int value = 42;
+      int & get_value() {
+          return value;
+      }
+      ''')
+    self.run_process([
+      EMCC,
+      '-o', 'side.wasm',
+      'side.cpp',
+      '-pthread', '-Wno-experimental',
+      '-s', 'SIDE_MODULE=1'])
+
+    create_test_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <thread>
+      int & get_value();
+      int main(void) {
+          auto t1 = std::thread([]{
+            get_value() = 1;
+            printf("%d ", get_value());
+          });
+          std::thread([&]{
+            // make sure this thread doesn't reuse
+            // the worker from the previous one.
+            t1.join();
+            printf("%d\n", get_value());
+          }).join();
+          return 0;
+      }
+      ''')
+
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.do_smart_test(
+      'main.cpp',
+      ['1 1'],
+      emcc_args=[
+        '-pthread', '-Wno-experimental',
+        '-s', 'PROXY_TO_PTHREAD',
+        '-s', 'EXIT_RUNTIME=1',
+        '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
+        '-s', 'MAIN_MODULE=1',
+      ])
+
   def test_js_link(self):
     create_test_file('main.cpp', '''
       #include <stdio.h>
