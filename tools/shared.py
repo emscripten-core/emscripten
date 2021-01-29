@@ -242,7 +242,20 @@ def generate_sanity():
 
 
 def perform_sanity_checks():
+  # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
+  check_llvm_version()
+
+  llvm_ok = check_llvm()
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
+    return
+
   logger.info('(Emscripten: Running sanity checks)')
+
+  if not llvm_ok:
+    exit_with_error('failing sanity checks due to previous llvm failure')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
     try:
@@ -267,11 +280,21 @@ def check_sanity(force=False):
   """
   if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
     return
+
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
+
+  if config.FROZEN_CACHE:
+    if force:
+      perform_sanity_checks()
+    return
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    perform_sanity_checks()
+    return
+
   with ToolchainProfiler.profile_block('sanity'):
-    check_llvm_version()
     if not config.config_file:
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
@@ -283,14 +306,11 @@ def check_sanity(force=False):
         if sanity_data != expected:
           logger.debug('old sanity: %s' % sanity_data)
           logger.debug('new sanity: %s' % expected)
-          if config.FROZEN_CACHE:
-            logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
-          else:
-            logger.info('(Emscripten: config changed, clearing cache)')
-            Cache.erase()
-            # the check actually failed, so definitely write out the sanity file, to
-            # avoid others later seeing failures too
-            force = False
+          logger.info('(Emscripten: config changed, clearing cache)')
+          Cache.erase()
+          # the check actually failed, so definitely write out the sanity file, to
+          # avoid others later seeing failures too
+          force = False
         else:
           if force:
             logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
@@ -299,18 +319,6 @@ def check_sanity(force=False):
             return # all is well
       else:
         logger.debug(f'sanity file not found: {sanity_file}')
-
-      # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-      check_node_version()
-
-      llvm_ok = check_llvm()
-
-      if os.environ.get('EM_IGNORE_SANITY'):
-        logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
-        return
-
-      if not llvm_ok:
-        exit_with_error('failing sanity checks due to previous llvm failure')
 
       perform_sanity_checks()
 

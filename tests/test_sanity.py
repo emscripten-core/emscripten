@@ -390,8 +390,8 @@ fi
 
     self.assertContained('hello from emcc with no config file', self.run_js('a.out.js'))
 
-  def erase_cache(self):
-    Cache.erase()
+  def clear_cache(self):
+    self.run_process([EMCC, '--clear-cache'])
     self.assertCacheEmpty()
 
   def assertCacheEmpty(self):
@@ -406,7 +406,7 @@ fi
     BUILDING_MESSAGE = 'generating system library: %s'
 
     restore_and_set_up()
-    self.erase_cache()
+    self.clear_cache()
 
     # Building a file that *does* need something *should* trigger cache
     # generation, but only the first time
@@ -425,7 +425,7 @@ fi
     # Manual cache clearing
     restore_and_set_up()
     self.ensure_cache()
-    self.assertTrue(os.path.exists(Cache.dirname))
+    self.assertExists(Cache.dirname)
     output = self.do([EMCC, '--clear-cache'])
     self.assertIn('clearing cache', output)
     self.assertIn(SANITY_MESSAGE, output)
@@ -438,7 +438,7 @@ fi
     make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
     make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'got wasm32 backend! WebAssembly 32-bit')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
-      self.assertTrue(os.path.exists(Cache.dirname))
+      self.assertExists(Cache.dirname)
       output = self.do([EMCC])
       self.assertIn('clearing cache', output)
       self.assertCacheEmpty()
@@ -446,16 +446,16 @@ fi
   # FROZEN_CACHE prevents cache clears, and prevents building
   def test_FROZEN_CACHE(self):
     restore_and_set_up()
-    self.erase_cache()
+    self.clear_cache()
     self.ensure_cache()
-    self.assertTrue(os.path.exists(Cache.dirname))
+    self.assertExists(Cache.dirname)
     # changing config file should not clear cache
     add_to_config('FROZEN_CACHE = True')
     self.do([EMCC])
-    self.assertTrue(os.path.exists(Cache.dirname))
+    self.assertExists(Cache.dirname)
     # building libraries is disallowed
     output = self.do([EMBUILDER, 'build', 'libemmalloc'])
-    self.assertIn('FROZEN_CACHE disallows building system libs', output)
+    self.assertContained('FROZEN_CACHE is set, but cache file is missing', output)
 
   # Test that if multiple processes attempt to access or build stuff to the
   # cache on demand, that exactly one of the processes will, and the other
@@ -484,9 +484,9 @@ fi
           num_times_libc_was_built += 1
 
     # The cache directory must exist after the build
-    self.assertTrue(os.path.exists(cache_dir_name))
+    self.assertExists(cache_dir_name)
     # The cache directory must contain a built libc
-    self.assertTrue(os.path.exists(os.path.join(cache_dir_name, libname)))
+    self.assertExists(os.path.join(cache_dir_name, libname))
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
 
@@ -625,19 +625,19 @@ fi
 
     print('normal build')
     with env_modify({'EMCC_FORCE_STDLIBS': None}):
-      Cache.erase()
+      self.clear_cache()
       build()
       test()
 
     print('wacky env vars, these should not mess our bootstrapping')
     with env_modify({'EMCC_FORCE_STDLIBS': '1'}):
-      Cache.erase()
+      self.clear_cache()
       build()
       test()
 
   def test_vanilla(self):
     restore_and_set_up()
-    Cache.erase()
+    self.clear_cache()
 
     def make_fake(report):
       with open(config_file, 'a') as f:
@@ -689,10 +689,10 @@ fi
   def test_embuilder_wasm_backend(self):
     restore_and_set_up()
     # the --lto flag makes us build wasm-bc
-    self.do([EMCC, '--clear-cache'])
+    self.clear_cache()
     self.run_process([EMBUILDER, 'build', 'libemmalloc'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten'))
-    self.do([EMCC, '--clear-cache'])
+    self.clear_cache()
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lto'))
 
