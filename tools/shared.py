@@ -29,6 +29,7 @@ from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
+from . import filelock
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
@@ -395,6 +396,20 @@ class Configuration(object):
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
         exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
+
+      # Since the cannonical temp directory is, by definition, the same
+      # between all processes that run in DEBUG mode we need to use a multi
+      # process lock to prevent more than one process from writing to it.
+      # This is because emcc assumes that it can use non-unique names inside
+      # the temp directory.
+      # In the case where we run emcc recurively to populate the cache we
+      # do (sadly) still need to ignore this lock, in the same way we do for
+      # the cache lock.
+      if 'EM_EXCLUSIVE_CACHE_ACCESS' not in os.environ:
+        filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
+        lock = filelock.FileLock(filelock_name)
+        lock.acquire()
+        atexit.register(lock.release)
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
