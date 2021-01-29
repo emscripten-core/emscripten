@@ -6546,8 +6546,8 @@ int main() {
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
-    syms = building.llvm_nm('test2.o', include_internal=True)
-    assert 'foo' in syms.defs, 'foo() should not be inlined'
+    output = self.run_process([shared.LLVM_NM, 'test2.o'], stdout=PIPE).stdout
+    self.assertContained('foo', output)
 
   def test_output_eol(self):
     for params in [[], ['--proxy-to-worker'], ['--proxy-to-worker', '-s', 'WASM=0']]:
@@ -9783,7 +9783,7 @@ exec "$@"
 
   def test_wasm2js_no_dynamic_linking(self):
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
-      err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-sMAIN_MODULE', '-sWASM=0'])
+      err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-sWASM=0', arg])
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
 
   def test_wasm2js_standalone(self):
@@ -9935,3 +9935,18 @@ exec "$@"
     # to the output json.
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
     self.assertFileContents(path_from_root('tests/reference_struct_info.json'), open('out.json').read())
+
+  def test_relocatable_limited_exports(self):
+    # Building with RELOCATABLE should *not* automatically export all sybmols.
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-sRELOCATABLE', '-o', 'out.wasm'])
+
+    # Building with RELOCATABLE + LINKABLE should include and export all of the standard library
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-sRELOCATABLE', '-sLINKABLE', '-o', 'out_linkable.wasm'])
+
+    exports = parse_wasm('out.wasm')[1]
+    exports_linkable = parse_wasm('out_linkable.wasm')[1]
+
+    self.assertLess(len(exports), 20)
+    self.assertGreater(len(exports_linkable), 1000)
+    self.assertIn('sendmsg', exports_linkable)
+    self.assertNotIn('sendmsg', exports)

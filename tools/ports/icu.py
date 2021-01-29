@@ -19,9 +19,8 @@ def needed(settings):
 def get(ports, settings, shared):
   url = 'https://github.com/unicode-org/icu/releases/download/%s/icu4c-%s-src.zip' % (TAG, VERSION)
   ports.fetch_project('icu', url, 'icu', sha512hash=HASH)
-  libname = 'libicuuc.a'
 
-  def create():
+  def create(final):
     logging.info('building port: icu')
 
     source_path = os.path.join(ports.get_dir(), 'icu', 'icu')
@@ -30,13 +29,11 @@ def get(ports, settings, shared):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
-    final = os.path.join(dest_path, libname)
     ports.build_port(os.path.join(dest_path, 'source', 'common'), final, [os.path.join(dest_path, 'source', 'common')], ['-DU_COMMON_IMPLEMENTATION=1'])
 
     ports.install_header_dir(os.path.join(dest_path, 'source', 'common', 'unicode'))
-    return final
 
-  return [shared.Cache.get_lib(libname, create)]
+  return [shared.Cache.get_lib('libicuuc.a', create)]
 
 
 def clear(ports, settings, shared):

@@ -120,7 +120,7 @@ function loadWasmModuleToWorkers() {
 #endif
 
 #if DECLARE_ASM_MODULE_EXPORTS
-/*** ASM_MODULE_EXPORTS_DECLARES ***/
+<<< ASM_MODULE_EXPORTS_DECLARES >>>
 #endif
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
@@ -196,7 +196,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if !DECLARE_ASM_MODULE_EXPORTS
   exportAsmFunctions(asm);
 #else
-  /*** ASM_MODULE_EXPORTS ***/
+  <<< ASM_MODULE_EXPORTS >>>
 #endif
   wasmTable = asm['__indirect_function_table'];
 #if ASSERTIONS

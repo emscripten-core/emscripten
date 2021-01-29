@@ -21,9 +21,8 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project(
     'cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG, sha512hash=HASH)
-  libname = 'libcocos2d.a'
 
-  def create():
+  def create(final):
     logging.info('building port: cocos2d v3')
     logging.warn('cocos2d: library is experimental, do not expect that it will work out of the box')
 
@@ -65,16 +64,13 @@ def get(ports, settings, shared):
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
-    final = os.path.join(cocos2d_build, libname)
     ports.create_lib(final, o_s)
 
     for dirname in cocos2dx_includes:
       target = os.path.join('cocos2d', os.path.relpath(dirname, cocos2d_root))
       ports.install_header_dir(dirname, target=target)
 
-    return final
-
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.Cache.get_lib('libcocos2d.a', create, what='port')]
 
 
 def clear(ports, settings, shared):

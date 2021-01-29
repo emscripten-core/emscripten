@@ -6,7 +6,6 @@
 import contextlib
 import logging
 import os
-import shutil
 from . import tempfiles, filelock, config, utils
 
 logger = logging.getLogger('cache')
@@ -37,6 +36,11 @@ class Cache:
     self.filelock = filelock.FileLock(self.filelock_name)
 
   def acquire_cache_lock(self):
+    if config.FROZEN_CACHE:
+      # Raise an exception here rather than exit_with_error since in practice this
+      # should never happen
+      raise Exception('Attempt to lock the cache but FROZEN_CACHE is set')
+
     if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
       logger.debug('PID %s acquiring multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
       try:
@@ -115,10 +119,11 @@ class Cache:
     self.erase_file(self.get_lib_name(name))
 
   def erase_file(self, shortname):
-    name = os.path.join(self.dirname, shortname)
-    if os.path.exists(name):
-      logging.info('Cache: deleting cached file: %s', name)
-      tempfiles.try_delete(name)
+    with self.lock():
+      name = os.path.join(self.dirname, shortname)
+      if os.path.exists(name):
+        logger.info('deleting cached file: %s', name)
+        tempfiles.try_delete(name)
 
   def get_lib(self, libname, *args, **kwargs):
     name = self.get_lib_name(libname)
@@ -134,14 +139,14 @@ class Cache:
     if os.path.exists(cachename) and not force:
       return cachename
 
+    if config.FROZEN_CACHE:
+      # Raise an exception here rather than exit_with_error since in practice this
+      # should never happen
+      raise Exception('FROZEN_CACHE is set, but cache file is missing: %s' % shortname)
+
     with self.lock():
       if os.path.exists(cachename) and not force:
         return cachename
-      # it doesn't exist yet, create it
-      if config.FROZEN_CACHE:
-        # it's ok to build small .txt marker files like "vanilla"
-        if not shortname.endswith('.txt'):
-          raise Exception('FROZEN_CACHE disallows building system libs: %s' % shortname)
       if what is None:
         if shortname.endswith(('.bc', '.so', '.a')):
           what = 'system library'
@@ -149,10 +154,9 @@ class Cache:
           what = 'system asset'
       message = 'generating ' + what + ': ' + shortname + '... (this will be cached in "' + cachename + '" for subsequent builds)'
       logger.info(message)
-      temp = creator()
-      if os.path.normcase(temp) != os.path.normcase(cachename):
-        utils.safe_ensure_dirs(os.path.dirname(cachename))
-        shutil.copyfile(temp, cachename)
+      utils.safe_ensure_dirs(os.path.dirname(cachename))
+      creator(cachename)
+      assert os.path.exists(cachename)
       logger.info(' - ok')
 
     return cachename

@@ -16,7 +16,7 @@ import zipfile
 from glob import iglob
 
 from . import shared, building, ports, config, utils
-from . import deps_info
+from . import deps_info, tempfiles
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
@@ -173,11 +173,6 @@ def get_wasm_libc_rt_files():
   return math_files + other_files + iprintf_files
 
 
-def in_temp(*args):
-  """Gets the path of a file in our temporary directory."""
-  return os.path.join(shared.get_emscripten_temp_dir(), *args)
-
-
 class Library(object):
   """
   `Library` is the base class of all system libraries.
@@ -299,20 +294,6 @@ class Library(object):
     if not self.name:
       raise NotImplementedError('Cannot instantiate an abstract library')
 
-    # Read .symbols file if it exists. This first tries to read a symbols file
-    # with the same basename with the library file name (e.g.
-    # libc++-mt.symbols), and if there isn't one, it tries to read the 'default'
-    # symbol file, which does not have any optional suffices (e.g.
-    # libc++.symbols).
-    basename = shared.unsuffixed(self.get_filename())
-    symbols_dir = shared.path_from_root('system', 'lib', 'symbols', 'wasm')
-    symbols_file = os.path.join(symbols_dir, basename + '.symbols')
-    default_symbols_file = os.path.join(symbols_dir, self.name + '.symbols')
-    if os.path.isfile(symbols_file):
-      self.symbols = read_symbols(symbols_file)
-    elif os.path.isfile(default_symbols_file):
-      self.symbols = read_symbols(default_symbols_file)
-
   def can_use(self):
     """
     Whether this library can be used in the current environment.
@@ -359,7 +340,7 @@ class Library(object):
 
     raise NotImplementedError()
 
-  def build_objects(self):
+  def build_objects(self, build_dir):
     """
     Returns a list of compiled object files for this library.
 
@@ -370,7 +351,7 @@ class Library(object):
     objects = []
     cflags = self.get_cflags()
     for src in self.get_files():
-      o = in_temp(shared.unsuffixed_basename(src) + '.o')
+      o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
       ext = shared.suffix(src)
       if ext in ('.s', '.c'):
         cmd = [shared.EMCC]
@@ -385,11 +366,13 @@ class Library(object):
     run_build_commands(commands)
     return objects
 
-  def build(self):
+  def build(self, out_filename):
     """Builds the library and returns the path to the file."""
-    out_filename = in_temp(self.get_filename())
-    create_lib(out_filename, self.build_objects())
-    return out_filename
+    build_dir = shared.Cache.get_path(os.path.join('build', self.get_base_name()))
+    utils.safe_ensure_dirs(build_dir)
+    create_lib(out_filename, self.build_objects(build_dir))
+    if not shared.DEBUG:
+      tempfiles.try_delete(build_dir)
 
   @classmethod
   def _inherit_list(cls, attr):
@@ -1474,35 +1457,10 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
       add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
-    # These libraries get included automatically based the symbols needed by the input file.
-    # Other system libraries are simply included by default.
-    for libname in ['libgl', 'libal', 'libhtml5']:
-      if libname in already_included:
-        continue
-      lib = system_libs_map[libname]
-      force_this = lib.name in force_include
-      if not force_this:
-        need_syms = set()
-        has_syms = set()
-        for symbols in symbolses:
-          if shared.Settings.VERBOSE:
-            logger.debug('undefs: ' + str(symbols.undefs))
-          for library_symbol in lib.symbols:
-            if library_symbol in symbols.undefs:
-              need_syms.add(library_symbol)
-            if library_symbol in symbols.defs:
-              has_syms.add(library_symbol)
-        for haz in has_syms:
-          if haz in need_syms:
-            # remove symbols that are supplied by another of the inputs
-            need_syms.remove(haz)
-        if shared.Settings.VERBOSE:
-          logger.debug('considering %s: we need %s and have %s' % (lib.name, str(need_syms), str(has_syms)))
-        if not len(need_syms):
-          continue
-
-      # We need to build and link the library in
-      add_library(lib)
+    if shared.Settings.AUTO_NATIVE_LIBRARIES:
+      add_library(system_libs_map['libgl'])
+      add_library(system_libs_map['libal'])
+      add_library(system_libs_map['libhtml5'])
 
     sanitize = shared.Settings.USE_LSAN or shared.Settings.USE_ASAN or shared.Settings.UBSAN_RUNTIME
 
@@ -1735,10 +1693,6 @@ class Ports(object):
       logger.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 
-    class State(object):
-      retrieved = False
-      unpacked = False
-
     def retrieve():
       # retrieve from remote server
       logger.info('retrieving port: ' + name + ' from ' + url)
@@ -1747,15 +1701,9 @@ class Ports(object):
         response = requests.get(url)
         data = response.content
       except ImportError:
-        try:
-          from urllib.request import urlopen
-          f = urlopen(url)
-          data = f.read()
-        except ImportError:
-          # Python 2 compatibility
-          from urllib2 import urlopen
-          f = urlopen(url)
-          data = f.read()
+        from urllib.request import urlopen
+        f = urlopen(url)
+        data = f.read()
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
@@ -1763,7 +1711,6 @@ class Ports(object):
           shared.exit_with_error('Unexpected hash: ' + actual_hash + '\n'
                                  'If you are updating the port, please update the hash in the port module.')
       open(fullpath, 'wb').write(data)
-      State.retrieved = True
 
     def check_tag():
       if is_tarbz2:
@@ -1780,42 +1727,30 @@ class Ports(object):
     def unpack():
       logger.info('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
+      shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
 
-      # TODO: Someday when we are using Python 3, we might want to change the
-      # code below to use shlib.unpack_archive
-      # e.g.: shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      # (https://docs.python.org/3/library/shutil.html#shutil.unpack_archive)
-      if is_tarbz2:
-        z = tarfile.open(fullpath, 'r:bz2')
-      elif url.endswith('.tar.gz'):
-        z = tarfile.open(fullpath, 'r:gz')
-      else:
-        z = zipfile.ZipFile(fullpath, 'r')
-      with utils.chdir(fullname):
-        z.extractall()
-
-      State.unpacked = True
+    # before acquiring the lock we have an early out if the port already exists
+    if os.path.exists(fullpath) and check_tag():
+      return
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-
     with shared.Cache.lock():
-      if not os.path.exists(fullpath):
-        retrieve()
-
-      if not os.path.exists(fullname):
-        unpack()
-
-      if not check_tag():
+      if os.path.exists(fullpath):
+        # Another early out in case another process build the library while we were
+        # waiting for the lock
+        if check_tag():
+          return
+        # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
         shared.try_delete(fullname)
         shared.try_delete(fullpath)
-        retrieve()
-        unpack()
 
-      if State.unpacked:
-        # we unpacked a new version, clear the build in the cache
-        Ports.clear_project_build(name)
+      retrieve()
+      unpack()
+
+      # we unpacked a new version, clear the build in the cache
+      Ports.clear_project_build(name)
 
   @staticmethod
   def clear_project_build(name):
@@ -1926,7 +1861,7 @@ def copytree_exist_ok(src, dest):
         shared.safe_copy(os.path.join(src, dirname, f), os.path.join(destdir, f))
 
 
-def install_system_headers():
+def install_system_headers(stamp):
   install_dirs = {
     ('include',): '',
     ('lib', 'compiler-rt', 'include'): '',
@@ -1951,7 +1886,6 @@ def install_system_headers():
   # Removing this file, or running `emcc --clear-cache` or running
   # `./embuilder build sysroot --force` will cause the re-installation of
   # the system headers.
-  stamp = shared.Cache.get_path('sysroot_install.stamp')
   with open(stamp, 'w') as f:
     f.write('x')
   return stamp

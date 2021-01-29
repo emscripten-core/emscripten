@@ -20,12 +20,28 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Remove unused `Browser.safeSetInterval` and `Browser.safeCallback`.  These
+  had no callers in emscripten itself or any testing.  If there are users of
+  these functions we could re-enable them with some testing.
 - Fix race condition when running many emcc processes after clearing the cache.
   The processes would race to run the sanity checks and could interfere with
   each other (#13299).
 - Emscripten now builds a complete sysroot inside the EM_CACHE directory.
   This includes the system headers which get copied into place there rather
   than adding a sequence of extra include directories.
+- Add back support for calling the legacy dynCall_sig() API to invoke function
+  pointers to wasm functions from JavaScript. Pass -s DYNCALLS=1
+  to include that functionality in the build. This fixes a regression that
+  started in Aug 31st 2020 (Emscripten 2.0.2) in #12059. Also implement
+  support for dynCall() in MINIMAL_RUNTIME builds. (#13296)
+- `SDL2_ttf` now uses upstream compiled with `TTF_USE_HARFBUZ` flag.
+- The system for linking native libraries on demand (based on the symbols
+  present in input object files) has been removed.  Libraries such as libgl,
+  libal, and libhtml5 are now included on the link line by default unless
+  `-s AUTO_NATIVE_LIBRARIES=0` is used.  This should not effect most builds
+  in any way since wasm-ld ignores unreferenced library files.  Only users
+  of the `--whole-archive` linker flag (which is used when `MAIN_MODULE=1` is
+  set) should be effected.
 
 2.0.12: 01/09/2021
 ------------------
@@ -210,6 +226,7 @@ Current Trunk
 
       {{{ makeDynCall('sig', 'ptr') }}} (arg1, arg2);
 
+  See PR #12059 for details.
 - The native optimizer and the corresponding config setting
   (`EMSCRIPTEN_NATIVE_OPTIMIZER`) have been removed (it was only relevant to
   asmjs/fastcomp backend).

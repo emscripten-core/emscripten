@@ -17,7 +17,7 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG, sha512hash=HASH)
 
-  def create():
+  def create(final):
     ports.clear_project_build('zlib')
 
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + TAG)
@@ -40,9 +40,7 @@ def get(ports, settings, shared):
       o_s.append(o)
     ports.run_commands(commands)
 
-    final = os.path.join(ports.get_build_dir(), 'zlib', 'libz.a')
     ports.create_lib(final, o_s)
-    return final
 
   return [shared.Cache.get_lib('libz.a', create, what='port')]
 
