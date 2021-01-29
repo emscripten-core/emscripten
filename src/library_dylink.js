@@ -270,15 +270,10 @@ var LibraryDylink = {
     });
   },
 
-  // Loads a side module from binary data. Returns the module's exports or a
-  // promise that resolves to its exports if the loadAsync flag is set.
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler'],
-  $loadWebAssemblyModule: function(binary, flags) {
-    var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
-    assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
-    // we should see the dylink section right after the magic number and wasm version
-    assert(binary[8] === 0, 'need the dylink section to be first')
-    var next = 9;
+  // returns the side module metadata as an object
+  // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
+  $getDylinkMetadata: function(binary) {
+    var next = 0;
     function getLEB() {
       var ret = 0;
       var mul = 1;
@@ -290,31 +285,92 @@ var LibraryDylink = {
       }
       return ret;
     }
-    var sectionSize = getLEB();
-    assert(binary[next] === 6);                 next++; // size of "dylink" string
-    assert(binary[next] === 'd'.charCodeAt(0)); next++;
-    assert(binary[next] === 'y'.charCodeAt(0)); next++;
-    assert(binary[next] === 'l'.charCodeAt(0)); next++;
-    assert(binary[next] === 'i'.charCodeAt(0)); next++;
-    assert(binary[next] === 'n'.charCodeAt(0)); next++;
-    assert(binary[next] === 'k'.charCodeAt(0)); next++;
-    var memorySize = getLEB();
-    var memoryAlign = getLEB();
-    var tableSize = getLEB();
-    var tableAlign = getLEB();
 
-    // shared libraries this module needs. We need to load them first, so that
-    // current module could resolve its imports. (see tools/shared.py
-    // WebAssembly.make_shared_library() for "dylink" section extension format)
-    var neededDynlibsCount = getLEB();
-    var neededDynlibs = [];
-    for (var i = 0; i < neededDynlibsCount; ++i) {
-      var nameLen = getLEB();
-      var nameUTF8 = binary.subarray(next, next + nameLen);
-      next += nameLen;
-      var name = UTF8ArrayToString(nameUTF8, 0);
-      neededDynlibs.push(name);
+    function parseDylinkSection() {
+      var customSection = {};
+      customSection.memorySize = getLEB();
+      customSection.memoryAlign = getLEB();
+      customSection.tableSize = getLEB();
+      customSection.tableAlign = getLEB();
+      // shared libraries this module needs. We need to load them first, so that
+      // current module could resolve its imports. (see tools/shared.py
+      // WebAssembly.make_shared_library() for "dylink" section extension format)
+      var neededDynlibsCount = getLEB();
+      customSection.neededDynlibs = [];
+      for (var i = 0; i < neededDynlibsCount; ++i) {
+        var nameLen = getLEB();
+        var nameUTF8 = binary.subarray(next, next + nameLen);
+        next += nameLen;
+        var name = UTF8ArrayToString(nameUTF8, 0);
+        customSection.neededDynlibs.push(name);
+      }
+      return customSection;
     }
+
+    if (binary instanceof WebAssembly.Module) {
+      var dylinkSection = WebAssembly.Module.customSections(binary, "dylink");
+      assert(dylinkSection.length != 0, 'need dylink section');
+      binary = new Int8Array(dylinkSection[0]);
+    } else {
+      var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
+      assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
+      // we should see the dylink section right after the magic number and wasm version
+      assert(binary[8] === 0, 'need the dylink section to be first')
+      next = 9;
+      getLEB(); //section size
+      assert(binary[next] === 6);                 next++; // size of "dylink" string
+      assert(binary[next] === 'd'.charCodeAt(0)); next++;
+      assert(binary[next] === 'y'.charCodeAt(0)); next++;
+      assert(binary[next] === 'l'.charCodeAt(0)); next++;
+      assert(binary[next] === 'i'.charCodeAt(0)); next++;
+      assert(binary[next] === 'n'.charCodeAt(0)); next++;
+      assert(binary[next] === 'k'.charCodeAt(0)); next++;
+    }
+
+    return parseDylinkSection();
+  },
+
+  // Module.symbols <- libModule.symbols (flags.global handler)
+  $mergeLibSymbols__deps: ['$asmjsMangle'],
+  $mergeLibSymbols: function(libModule, libName) {
+    // add symbols into global namespace TODO: weak linking etc.
+    for (var sym in libModule) {
+      if (!libModule.hasOwnProperty(sym)) {
+        continue;
+      }
+
+      // When RTLD_GLOBAL is enable, the symbols defined by this shared object will be made
+      // available for symbol resolution of subsequently loaded shared objects.
+      //
+      // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
+
+      var module_sym = asmjsMangle(sym);
+
+      if (!Module.hasOwnProperty(module_sym)) {
+        Module[module_sym] = libModule[sym];
+      }
+#if ASSERTIONS == 2
+      else {
+        var curr = Module[sym], next = libModule[sym];
+        // don't warn on functions - might be odr, linkonce_odr, etc.
+        if (!(typeof curr === 'function' && typeof next === 'function')) {
+          err("warning: symbol '" + sym + "' from '" + libName + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+        }
+      }
+#endif
+    }
+  },
+
+  // Loads a side module from binary data or compiled Module. Returns the module's exports or a
+  // promise that resolves to its exports if the loadAsync flag is set.
+  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata'],
+  $loadWebAssemblyModule: function(binary, flags) {
+    var metadata = getDylinkMetadata(binary);
+    var memorySize = metadata.memorySize;
+    var memoryAlign = metadata.memoryAlign;
+    var tableSize = metadata.tableSize;
+    var tableAlign = metadata.tableAlign;
+    var neededDynlibs = metadata.neededDynlibs;
 
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
@@ -449,12 +505,17 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
+        if (binary instanceof WebAssembly.Module) {
+          var instance = new WebAssembly.Instance(binary, info);
+          return Promise.resolve(postInstantiation(instance));
+        }
         return WebAssembly.instantiate(binary, info).then(function(result) {
           return postInstantiation(result.instance);
         });
       }
 
-      var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+      var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
+      var instance = new WebAssembly.Instance(module, info);
       return postInstantiation(instance);
     }
 
@@ -495,7 +556,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary', '$isInternalSym'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
@@ -522,7 +583,7 @@ var LibraryDylink = {
         dso.global = true;
         if (dso.module !== 'loading') {
           // ^^^ if module is 'loading' - symbols merging will be eventually done by the loader.
-          mergeLibSymbols(dso.module)
+          mergeLibSymbols(dso.module, lib)
         }
       }
       // same for "nodelete"
@@ -581,41 +642,10 @@ var LibraryDylink = {
       return loadWebAssemblyModule(loadLibData(lib), flags);
     }
 
-    // Module.symbols <- libModule.symbols (flags.global handler)
-    function mergeLibSymbols(libModule) {
-      // add symbols into global namespace TODO: weak linking etc.
-      for (var sym in libModule) {
-        if (!libModule.hasOwnProperty(sym)) {
-          continue;
-        }
-
-        // When RTLD_GLOBAL is enable, the symbols defined by this shared object will be made
-        // available for symbol resolution of subsequently loaded shared objects.
-        //
-        // We should copy the symbols (which include methods and variables) from
-        // SIDE_MODULE to MAIN_MODULE.
-
-        var module_sym = asmjsMangle(sym);
-
-        if (!Module.hasOwnProperty(module_sym)) {
-          Module[module_sym] = libModule[sym];
-        }
-#if ASSERTIONS == 2
-        else {
-          var curr = Module[sym], next = libModule[sym];
-          // don't warn on functions - might be odr, linkonce_odr, etc.
-          if (!(typeof curr === 'function' && typeof next === 'function') && !isInternalSym(sym)) {
-            err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)");
-          }
-        }
-#endif
-      }
-    }
-
     // module for lib is loaded - update the dso & global namespace
     function moduleLoaded(libModule) {
       if (dso.global) {
-        mergeLibSymbols(libModule);
+        mergeLibSymbols(libModule, lib);
       }
       dso.module = libModule;
     }
