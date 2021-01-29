@@ -28,7 +28,7 @@ def get(ports, settings, shared):
     libname += '_' + formats
   libname += '.a'
 
-  def create():
+  def create(final):
     logging.info('building port: sdl2_mixer')
 
     source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL2_mixer-' + TAG)
@@ -55,7 +55,6 @@ def get(ports, settings, shared):
         '-DMUSIC_MP3_MPG123',
       ]
 
-    final = os.path.join(dest_path, libname)
     ports.build_port(
       dest_path,
       final,
@@ -74,7 +73,6 @@ def get(ports, settings, shared):
 
     # copy header to a location so it can be used as 'SDL2/'
     ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
-    return final
 
   return [shared.Cache.get_lib(libname, create, what='port')]
 

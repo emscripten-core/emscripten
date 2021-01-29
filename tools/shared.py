@@ -29,12 +29,13 @@ from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
+from . import filelock
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 99
-EXPECTED_LLVM_VERSION = "12.0"
+EXPECTED_LLVM_VERSION = "13.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 PYTHON = sys.executable
@@ -239,7 +240,20 @@ def generate_sanity():
 
 
 def perform_sanity_checks():
+  # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
+  check_llvm_version()
+
+  llvm_ok = check_llvm()
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
+    return
+
   logger.info('(Emscripten: Running sanity checks)')
+
+  if not llvm_ok:
+    exit_with_error('failing sanity checks due to previous llvm failure')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
     try:
@@ -264,11 +278,21 @@ def check_sanity(force=False):
   """
   if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
     return
+
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
+
+  if config.FROZEN_CACHE:
+    if force:
+      perform_sanity_checks()
+    return
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    perform_sanity_checks()
+    return
+
   with ToolchainProfiler.profile_block('sanity'):
-    check_llvm_version()
     if not config.config_file:
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
@@ -278,16 +302,13 @@ def check_sanity(force=False):
       if os.path.exists(sanity_file):
         sanity_data = open(sanity_file).read()
         if sanity_data != expected:
-          logger.info('old sanity: %s' % sanity_data)
-          logger.info('new sanity: %s' % expected)
-          if config.FROZEN_CACHE:
-            logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
-          else:
-            logger.info('(Emscripten: config changed, clearing cache)')
-            Cache.erase()
-            # the check actually failed, so definitely write out the sanity file, to
-            # avoid others later seeing failures too
-            force = False
+          logger.debug('old sanity: %s' % sanity_data)
+          logger.debug('new sanity: %s' % expected)
+          logger.info('(Emscripten: config changed, clearing cache)')
+          Cache.erase()
+          # the check actually failed, so definitely write out the sanity file, to
+          # avoid others later seeing failures too
+          force = False
         else:
           if force:
             logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
@@ -296,18 +317,6 @@ def check_sanity(force=False):
             return # all is well
       else:
         logger.debug(f'sanity file not found: {sanity_file}')
-
-      # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-      check_node_version()
-
-      llvm_ok = check_llvm()
-
-      if os.environ.get('EM_IGNORE_SANITY'):
-        logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
-        return
-
-      if not llvm_ok:
-        exit_with_error('failing sanity checks due to previous llvm failure')
 
       perform_sanity_checks()
 
@@ -393,6 +402,20 @@ class Configuration(object):
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
         exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
+
+      # Since the cannonical temp directory is, by definition, the same
+      # between all processes that run in DEBUG mode we need to use a multi
+      # process lock to prevent more than one process from writing to it.
+      # This is because emcc assumes that it can use non-unique names inside
+      # the temp directory.
+      # In the case where we run emcc recurively to populate the cache we
+      # do (sadly) still need to ignore this lock, in the same way we do for
+      # the cache lock.
+      if 'EM_EXCLUSIVE_CACHE_ACCESS' not in os.environ:
+        filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
+        lock = filelock.FileLock(filelock_name)
+        lock.acquire()
+        atexit.register(lock.release)
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -804,7 +827,7 @@ class JS(object):
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
+    if Settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic

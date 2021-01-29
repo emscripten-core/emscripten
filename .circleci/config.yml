@@ -4,6 +4,9 @@ orbs:
   win: circleci/windows@1.0.0
 
 executors:
+  linux-node:
+    docker:
+      - image: circleci/node:stretch
   bionic:
     docker:
       - image: emscripten/emscripten-ci
@@ -62,7 +65,7 @@ commands:
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
-            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/12.0.0/
+            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/13.0.0/
             cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
@@ -339,6 +342,12 @@ jobs:
       - checkout
       - run: pip3 install -r requirements-dev.txt
       - run: python3 -m flake8 --show-source --statistics
+  eslint:
+    executor: linux-node
+    steps:
+      - checkout
+      - npm-install
+      - run: npm run lint
   test-sanity:
     executor: bionic
     steps:
@@ -479,6 +488,7 @@ workflows:
   build-test:
     jobs:
       - flake8
+      - eslint
       - build-docs
       - build-linux
       - test-sanity:

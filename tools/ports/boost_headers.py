@@ -18,9 +18,8 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project('boost_headers', 'https://github.com/emscripten-ports/boost/releases/download/boost-1.70.0/boost-headers-' + TAG + '.zip',
                       'boost', sha512hash=HASH)
-  libname = 'libboost_headers.a'
 
-  def create():
+  def create(final):
     logging.info('building port: boost_headers')
     ports.clear_project_build('boost_headers')
 
@@ -43,12 +42,10 @@ def get(ports, settings, shared):
     command = [shared.EMCC, '-c', dummy_file, '-o', obj]
     commands.append(command)
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)
     o_s.append(obj)
     ports.create_lib(final, o_s)
-    return final
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.Cache.get_lib('libboost_headers.a', create, what='port')]
 
 
 def clear(ports, settings, shared):

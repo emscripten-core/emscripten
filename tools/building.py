@@ -39,10 +39,8 @@ logger = logging.getLogger('building')
 multiprocessing_pool = None
 binaryen_checked = False
 
-# internal caches
-internal_nm_cache = {}
 # cache results of nm - it can be slow to run
-uninternal_nm_cache = {}
+nm_cache = {}
 # Stores the object files contained in different archive files passed as input
 ar_contents = {}
 _is_ar_cache = {}
@@ -150,17 +148,20 @@ def unique_ordered(values):
   return list(filter(check, values))
 
 
-# clear internal caches. this is not normally needed, except if the clang/LLVM
+# clear caches. this is not normally needed, except if the clang/LLVM
 # used changes inside this invocation of Building, which can happen in the benchmarker
 # when it compares different builds.
 def clear():
-  internal_nm_cache.clear()
-  uninternal_nm_cache.clear()
+  nm_cache.clear()
   ar_contents.clear()
   _is_ar_cache.clear()
 
 
 def get_num_cores():
+  if DEBUG:
+    # When in EMCC_DEBUG mode, only use a single core to avoid interleaving
+    # logging output and keeps things more deterministic.
+    return 1
   return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
 
 
@@ -172,10 +173,6 @@ def get_multiprocessing_pool():
   global multiprocessing_pool
   if not multiprocessing_pool:
     cores = get_num_cores()
-    if DEBUG:
-      # When in EMCC_DEBUG mode, only use a single core in the pool, so that
-      # logging is not all jumbled up.
-      cores = 1
 
     # If running with one core only, create a mock instance of a pool that does not
     # actually spawn any new subprocesses. Very useful for internal debugging.
@@ -372,7 +369,7 @@ def make_paths_absolute(f):
 
 
 # Runs llvm-nm in parallel for the given list of files.
-# The results are populated in uninternal_nm_cache
+# The results are populated in nm_cache
 # multiprocessing_pool: An existing multiprocessing pool to reuse for the operation, or None
 # to have the function allocate its own.
 def parallel_llvm_nm(files):
@@ -383,7 +380,7 @@ def parallel_llvm_nm(files):
     for i, file in enumerate(files):
       if object_contents[i].returncode != 0:
         logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
-      uninternal_nm_cache[file] = object_contents[i]
+      nm_cache[file] = object_contents[i]
     return object_contents
 
 
@@ -398,7 +395,7 @@ def read_link_inputs(files):
 
       if absolute_path_f not in ar_contents and is_ar(absolute_path_f):
         archive_names.append(absolute_path_f)
-      elif absolute_path_f not in uninternal_nm_cache and is_bitcode(absolute_path_f):
+      elif absolute_path_f not in nm_cache and is_bitcode(absolute_path_f):
         object_names.append(absolute_path_f)
 
     # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
@@ -419,7 +416,7 @@ def read_link_inputs(files):
 
     for o in object_names_in_archives:
       for f in o['files']:
-        if f not in uninternal_nm_cache:
+        if f not in nm_cache:
           object_names.append(f)
 
     # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
@@ -494,19 +491,9 @@ def lld_flags_for_executable(external_symbol_list):
                                    not Settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if Settings.RELOCATABLE:
-    if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
-      cmd.append('--no-export-dynamic')
-    else:
-      cmd.append('--no-gc-sections')
-      cmd.append('--export-dynamic')
-  else:
-    cmd.append('--export-table')
-    if Settings.ALLOW_TABLE_GROWTH:
-      cmd.append('--growable-table')
-
   if Settings.LINKABLE:
     cmd.append('--export-all')
+    cmd.append('--no-gc-sections')
   else:
     c_exports = [e for e in Settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
     # Strip the leading underscores
@@ -523,6 +510,12 @@ def lld_flags_for_executable(external_symbol_list):
       cmd.append('-shared')
     else:
       cmd.append('-pie')
+    if not Settings.LINKABLE:
+      cmd.append('--no-export-dynamic')
+  else:
+    cmd.append('--export-table')
+    if Settings.ALLOW_TABLE_GROWTH:
+      cmd.append('--growable-table')
 
   if not Settings.SIDE_MODULE:
     cmd += [
@@ -730,7 +723,7 @@ def get_command_with_possible_response_file(cmd):
   return new_cmd
 
 
-def parse_symbols(output, include_internal=False):
+def parse_symbols(output):
   defs = []
   undefs = []
   commons = []
@@ -753,42 +746,37 @@ def parse_symbols(output, include_internal=False):
         undefs.append(symbol)
       elif status == 'C':
         commons.append(symbol)
-      elif (not include_internal and status == status.upper()) or \
-           (include_internal and status in ['W', 't', 'T', 'd', 'D']):
+      elif status == status.upper():
         # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
         #        so for now we assume all uppercase are normally defined external symbols
         defs.append(symbol)
   return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
 
 
-def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
+def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE):
   # LLVM binary ==> list of symbols
   proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr, check=False)
   if proc.returncode == 0:
-    return parse_symbols(proc.stdout, include_internal)
+    return parse_symbols(proc.stdout)
   else:
     return ObjectFileInfo(proc.returncode, str(proc.stdout) + str(proc.stderr))
 
 
-def llvm_nm(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
+def llvm_nm(filename, stdout=PIPE, stderr=PIPE):
   # Always use absolute paths to maximize cache usage
   filename = os.path.abspath(filename)
 
-  if include_internal and filename in internal_nm_cache:
-    return internal_nm_cache[filename]
-  elif not include_internal and filename in uninternal_nm_cache:
-    return uninternal_nm_cache[filename]
+  if filename in nm_cache:
+    return nm_cache[filename]
 
-  ret = llvm_nm_uncached(filename, stdout, stderr, include_internal)
+  ret = llvm_nm_uncached(filename, stdout, stderr)
 
   if ret.returncode != 0:
     logger.debug('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
 
-  # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the failing file again later.
-  if include_internal:
-    internal_nm_cache[filename] = ret
-  else:
-    uninternal_nm_cache[filename] = ret
+  # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the
+  # failing file again later.
+  nm_cache[filename] = ret
 
   return ret
 

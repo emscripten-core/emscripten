@@ -31,7 +31,7 @@ function mangleCSymbolName(f) {
 // Splits out items that pass filter. Returns also the original sans the filtered
 function splitter(array, filter) {
   var splitOut = array.filter(filter);
-  var leftIn = array.filter(function(x) { return !filter(x) });
+  var leftIn = array.filter((x) => !filter(x));
   return { leftIn: leftIn, splitOut: splitOut };
 }
 
@@ -53,7 +53,7 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   } else {
-    return '{' + keys(obj).map(function(key) { return escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key]) }).join(',') + '}';
+    return '{' + keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
   }
 }
 
@@ -80,7 +80,7 @@ function JSify(data, functionsOnly) {
     } else {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
-    libFuncsToInclude.forEach(function(ident) {
+    libFuncsToInclude.forEach((ident) => {
       data.functionStubs.push({
         identOrig: ident,
         identMangled: mangleCSymbolName(ident)
@@ -99,7 +99,7 @@ function JSify(data, functionsOnly) {
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG) {
-      snippet = modifyFunction(snippet, function(name, args, body) {
+      snippet = modifyFunction(snippet, (name, args, body) => {
         return 'function ' + name + '(' + args + ') {\n' +
                'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
                 body +
@@ -200,7 +200,7 @@ function JSify(data, functionsOnly) {
         error('JS library directive ' + ident + '__deps=' + deps.toString() + ' is of type ' + typeof deps + ', but it should be an array!');
         return;
       }
-      deps.forEach(function(dep) {
+      deps.forEach((dep) => {
         if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #if in src/library*.js)');
       });
       var isFunction = false;
@@ -262,8 +262,8 @@ function JSify(data, functionsOnly) {
       // In asm, dependencies implemented in C might be needed by JS library functions.
       // We don't know yet if they are implemented in C or not. To be safe, export such
       // special cases.
-      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach(function(special) {
-        deps.forEach(function(dep) {
+      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach((special) => {
+        deps.forEach((dep) => {
           if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
             EXPORTED_FUNCTIONS[dep] = 1;
           }
@@ -279,7 +279,7 @@ function JSify(data, functionsOnly) {
         }
         return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
       }
-      var depsText = (deps ? deps.map(addDependency).filter(function(x) { return x != '' }).join('\n') + '\n' : '');
+      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -290,7 +290,7 @@ function JSify(data, functionsOnly) {
           }
           var sync = proxyingMode === 'sync';
           assert(typeof original === 'function');
-          contentText = modifyFunction(snippet, function(name, args, body) {
+          contentText = modifyFunction(snippet, (name, args, body) => {
             return 'function ' + name + '(' + args + ') {\n' +
                    'if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + (args ? ', ' : '') + args + ');\n' + body + '}\n';
           });
@@ -338,7 +338,7 @@ function JSify(data, functionsOnly) {
   // Final combiner
 
   function finalCombiner() {
-    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, function(x) { return x.ident && x.dependencies });
+    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, (x) => x.ident && x.dependencies);
     itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
     var orderedPostSets = splitPostSets.splitOut;
 
@@ -363,7 +363,7 @@ function JSify(data, functionsOnly) {
 
     if (!mainPass) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
-      print(generated.map(function(item) { return item.JS; }).join('\n'));
+      print(generated.map((item) => item.JS).join('\n'));
       return;
     }
 
@@ -389,7 +389,7 @@ function JSify(data, functionsOnly) {
     globalsData = null;
 
     var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
-    generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+    generated.forEach((item) => print(indentify(item.JS || '', 2)));
 
     legalizedI64s = legalizedI64sDefault;
 
