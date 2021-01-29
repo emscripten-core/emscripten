@@ -236,7 +236,7 @@ class EmscriptenBenchmarker(Benchmarker):
 
   def cleanup(self):
     os.environ = self.old_env
-    building.clear()
+    building.clear_caches()
 
 
 class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):

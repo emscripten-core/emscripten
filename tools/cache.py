@@ -81,7 +81,7 @@ class Cache:
 
   def get_sysroot_dir(self, absolute):
     if absolute:
-      return os.path.join(self.dirname, 'sysroot')
+      return self.get_path('sysroot')
     return 'sysroot'
 
   def get_include_dir(self):
@@ -111,7 +111,7 @@ class Cache:
 
   def erase_file(self, shortname):
     with self.lock():
-      name = os.path.join(self.dirname, shortname)
+      name = self.get_path(shortname)
       if os.path.exists(name):
         logger.info('deleting cached file: %s', name)
         tempfiles.try_delete(name)
@@ -123,7 +123,7 @@ class Cache:
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
   def get(self, shortname, creator, what=None, force=False):
-    cachename = os.path.join(self.dirname, shortname)
+    cachename = self.get_path(shortname)
     cachename = os.path.abspath(cachename)
     # Check for existence before taking the lock in case we can avoid the
     # lock completely.

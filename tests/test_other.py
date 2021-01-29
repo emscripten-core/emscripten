@@ -23,6 +23,7 @@ import time
 import tempfile
 import unittest
 import uuid
+from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 if __name__ == '__main__':
@@ -9905,3 +9906,24 @@ exec "$@"
     self.assertGreater(len(exports_linkable), 1000)
     self.assertIn('sendmsg', exports_linkable)
     self.assertNotIn('sendmsg', exports)
+
+  @uses_canonical_tmp
+  def test_nm_cache(self):
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-c'])
+    now = time.time()
+    past = now - 10
+    os.utime('hello_world.o', (past, past))
+    with env_modify({'EMCC_DEBUG': '1'}):
+      err = self.run_process([EMCC, 'hello_world.o'], stderr=PIPE).stderr
+
+      self.assertContained('llvm-nm', err)
+
+      # Second time linking the same object should used the cached nm result
+      err = self.run_process([EMCC, 'hello_world.o'], stderr=PIPE).stderr
+      self.assertNotContained('llvm-nm', err)
+
+      # Set the timestamp forward again to the current time.
+      # This should trigger nm once again.
+      os.utime('hello_world.o', (now, now))
+      err = self.run_process([EMCC, 'hello_world.o'], stderr=PIPE).stderr
+      self.assertContained('llvm-nm', err)

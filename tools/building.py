@@ -8,6 +8,7 @@ import json
 import logging
 import multiprocessing
 import os
+import pickle
 import re
 import shlex
 import shutil
@@ -17,6 +18,7 @@ import tempfile
 from subprocess import STDOUT, PIPE
 
 from . import diagnostics
+from . import filelock
 from . import response_file
 from . import shared
 from . import webassembly
@@ -40,6 +42,7 @@ multiprocessing_pool = None
 binaryen_checked = False
 
 # cache results of nm - it can be slow to run
+# Map from absolute filename to ObjectFileInfo
 nm_cache = {}
 # Stores the object files contained in different archive files passed as input
 ar_contents = {}
@@ -47,9 +50,16 @@ _is_ar_cache = {}
 # the exports the user requested
 user_requested_exports = []
 
+# Pickle file, stored in the cache directory, which allows the cache to
+# persist across runs.
+NM_CACHE_PICKLE = 'nm_cache.pickle'
+# Semi-arbirary limit on the number of files to store in the on-disk cache.
+NM_CACHE_LIMIT = 5000
+
 
 class ObjectFileInfo(object):
-  def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
+  def __init__(self, timestamp, returncode, output, defs=set(), undefs=set(), commons=set()):
+    self.timestamp = timestamp
     self.returncode = returncode
     self.output = output
     self.defs = defs
@@ -151,7 +161,7 @@ def unique_ordered(values):
 # clear caches. this is not normally needed, except if the clang/LLVM
 # used changes inside this invocation of Building, which can happen in the benchmarker
 # when it compares different builds.
-def clear():
+def clear_caches():
   nm_cache.clear()
   ar_contents.clear()
   _is_ar_cache.clear()
@@ -368,20 +378,55 @@ def make_paths_absolute(f):
     return os.path.abspath(f)
 
 
+def read_nm_cache():
+  """Write the pickled nm_cache to disc so it persists across invocations"""
+  if config.FROZEN_CACHE:
+    return
+
+  filename = shared.Cache.get_path(NM_CACHE_PICKLE)
+  with filelock.FileLock(filename + '.lock'):
+    if os.path.exists(filename):
+      with open(filename, 'rb') as f:
+        old_cache = pickle.load(f)
+      for filename, info in old_cache.items():
+        if len(nm_cache) > NM_CACHE_LIMIT:
+          logger.debug('NM_CACHE_LIMIT exceeded')
+          break
+        if os.path.exists(filename) and os.path.getmtime(filename) == info.timestamp:
+          nm_cache[filename] = info
+
+
+def write_nm_cache():
+  """Write the pickled nm_cache to disc so it persists across invocations"""
+  if config.FROZEN_CACHE:
+    return
+
+  filename = shared.Cache.get_path(NM_CACHE_PICKLE)
+  with filelock.FileLock(filename + '.lock'):
+    with open(filename, 'wb') as f:
+      pickle.dump(nm_cache, f)
+
+
 # Runs llvm-nm in parallel for the given list of files.
 # The results are populated in nm_cache
 # multiprocessing_pool: An existing multiprocessing pool to reuse for the operation, or None
 # to have the function allocate its own.
 def parallel_llvm_nm(files):
-  with ToolchainProfiler.profile_block('parallel_llvm_nm'):
-    pool = get_multiprocessing_pool()
-    object_contents = pool.map(g_llvm_nm_uncached, files)
+  if not nm_cache:
+    read_nm_cache()
 
-    for i, file in enumerate(files):
-      if object_contents[i].returncode != 0:
-        logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
-      nm_cache[file] = object_contents[i]
-    return object_contents
+  need_names = [f for f in files if f not in nm_cache]
+  if need_names:
+    with ToolchainProfiler.profile_block('parallel_llvm_nm'):
+      pool = get_multiprocessing_pool()
+      object_contents = pool.map(g_llvm_nm_uncached, need_names)
+      for file, contents in zip(need_names, object_contents):
+        if contents.returncode != 0:
+          logger.debug(f'llvm-nm failed on file ${file}: return code ${contents.returncode}, error: ${contents.output}')
+        nm_cache[file] = contents
+      write_nm_cache()
+
+  return [nm_cache[f] for f in files]
 
 
 def read_link_inputs(files):
@@ -416,8 +461,7 @@ def read_link_inputs(files):
 
     for o in object_names_in_archives:
       for f in o['files']:
-        if f not in nm_cache:
-          object_names.append(f)
+        object_names.append(f)
 
     # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
     # The results are not used here directly, but populated to llvm-nm cache structure.
@@ -750,19 +794,24 @@ def parse_symbols(output):
         # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
         #        so for now we assume all uppercase are normally defined external symbols
         defs.append(symbol)
-  return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
+  return (set(defs), set(undefs), set(commons))
 
 
 def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE):
   # LLVM binary ==> list of symbols
   proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr, check=False)
+  timestamp = os.path.getmtime(filename)
   if proc.returncode == 0:
-    return parse_symbols(proc.stdout)
+    defs, undefs, commons = parse_symbols(proc.stdout)
+    return ObjectFileInfo(timestamp, 0, None, defs, undefs, commons)
   else:
-    return ObjectFileInfo(proc.returncode, str(proc.stdout) + str(proc.stderr))
+    return ObjectFileInfo(timestamp, proc.returncode, str(proc.stdout) + str(proc.stderr))
 
 
 def llvm_nm(filename, stdout=PIPE, stderr=PIPE):
+  if not nm_cache:
+    read_nm_cache()
+
   # Always use absolute paths to maximize cache usage
   filename = os.path.abspath(filename)
 
@@ -774,10 +823,9 @@ def llvm_nm(filename, stdout=PIPE, stderr=PIPE):
   if ret.returncode != 0:
     logger.debug('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
 
-  # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the
-  # failing file again later.
+  # Even if we fail, write the results to the NM cache so that we
+  # don't keep trying to llvm-nm the failing file again later.
   nm_cache[filename] = ret
-
   return ret
 
 
