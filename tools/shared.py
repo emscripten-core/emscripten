@@ -283,6 +283,9 @@ def check_sanity(force=False):
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
 
+  if DEBUG:
+    force = True
+
   if config.FROZEN_CACHE:
     if force:
       perform_sanity_checks()
@@ -403,17 +406,18 @@ class Configuration(object):
       except Exception as e:
         exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
 
-      # Since the cannonical temp directory is, by definition, the same
+      # Since the canonical temp directory is, by definition, the same
       # between all processes that run in DEBUG mode we need to use a multi
       # process lock to prevent more than one process from writing to it.
       # This is because emcc assumes that it can use non-unique names inside
       # the temp directory.
-      # In the case where we run emcc recurively to populate the cache we
-      # do (sadly) still need to ignore this lock, in the same way we do for
-      # the cache lock.
-      if 'EM_EXCLUSIVE_CACHE_ACCESS' not in os.environ:
+      # Sadly we need to allow child processes to access this directory
+      # though, since emcc can recursively call itself when building
+      # libraries and ports.
+      if 'EM_HAVE_TEMP_DIR_LOCK' not in os.environ:
         filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
         lock = filelock.FileLock(filelock_name)
+        os.environ['EM_HAVE_TEMP_DIR_LOCK'] = '1'
         lock.acquire()
         atexit.register(lock.release)
 
