@@ -24,7 +24,6 @@ emcc can be influenced by a few environment variables:
 """
 
 
-import atexit
 import json
 import logging
 import os
@@ -1926,14 +1925,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # exit block 'parse arguments and setup'
   log_time('parse arguments and setup')
-
-  if DEBUG:
-    # we are about to start using temp dirs. serialize access to the temp dir
-    # when using EMCC_DEBUG, since we don't want multiple processes would to
-    # use it at once, they might collide if they happen to use the same
-    # tempfile names
-    shared.Cache.acquire_cache_lock()
-    atexit.register(shared.Cache.release_cache_lock)
 
   if options.post_link:
     process_libraries(libs, lib_dirs, temp_files)
