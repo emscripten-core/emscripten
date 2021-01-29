@@ -247,7 +247,12 @@ var LibraryDylink = {
     err("getMemory: " + size + " runtimeInitialized=" + runtimeInitialized);
 #endif
     if (runtimeInitialized)
-      return _malloc(size);
+#if USE_PTHREADS
+      // in a pthread the module heap was allocated in the main thread before
+      // the runtime was initialized
+      if (!ENVIRONMENT_IS_PTHREAD)
+#endif
+        return _malloc(size);
     var ret = Module['___heap_base'];
     var end = (ret + size + 15) & -16;
 #if ASSERTIONS
