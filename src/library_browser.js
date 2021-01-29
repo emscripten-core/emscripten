@@ -21,19 +21,25 @@ var LibraryBrowser = {
     mainLoop: {
       scheduler: null,
       method: '',
-      // Each main loop is numbered with a ID in sequence order. Only one main loop can run at a time. This variable stores the ordinal number of the main loop that is currently
-      // allowed to run. All previous main loops will quit themselves. This is incremented whenever a new main loop is created.
+      // Each main loop is numbered with a ID in sequence order. Only one main
+      // loop can run at a time. This variable stores the ordinal number of the
+      // main loop that is currently allowed to run. All previous main loops
+      // will quit themselves. This is incremented whenever a new main loop is
+      // created.
       /** @type{number} */
       currentlyRunningMainloop: 0,
-      func: null, // The main loop tick function that will be called at each iteration.
-      arg: 0, // The argument that will be passed to the main loop. (of type void*)
+      // The main loop tick function that will be called at each iteration.
+      func: null,
+      // The argument that will be passed to the main loop. (of type void*)
+      arg: 0,
       timingMode: 0,
       timingValue: 0,
       currentFrameNumber: 0,
       queue: [],
       pause: function() {
         Browser.mainLoop.scheduler = null;
-        Browser.mainLoop.currentlyRunningMainloop++; // Incrementing this signals the previous main loop that it's now become old, and it must return.
+        // Incrementing this signals the previous main loop that it's now become old, and it must return.
+        Browser.mainLoop.currentlyRunningMainloop++;
       },
       resume: function() {
         Browser.mainLoop.currentlyRunningMainloop++;
@@ -41,7 +47,8 @@ var LibraryBrowser = {
         var timingValue = Browser.mainLoop.timingValue;
         var func = Browser.mainLoop.func;
         Browser.mainLoop.func = null;
-        setMainLoop(func, 0, false, Browser.mainLoop.arg, true /* do not set timing and call scheduler, we will do it on the next lines */);
+        // do not set timing and call scheduler, we will do it on the next lines
+        setMainLoop(func, 0, false, Browser.mainLoop.arg, true);
         _emscripten_set_main_loop_timing(timingMode, timingValue);
         Browser.mainLoop.scheduler();
       },
@@ -479,13 +486,6 @@ var LibraryBrowser = {
       RAF(func);
     },
 
-    // generic abort-aware wrapper for an async callback
-    safeCallback: function(func) {
-      return function() {
-        if (!ABORT) return func.apply(null, arguments);
-      };
-    },
-
     // abort and pause-aware versions TODO: build main loop on top of this?
 
     safeRequestAnimationFrame: function(func) {
@@ -497,13 +497,6 @@ var LibraryBrowser = {
     safeSetTimeout: function(func, timeout) {
       noExitRuntime = true;
       return setTimeout(function() {
-        if (ABORT) return;
-        func();
-      }, timeout);
-    },
-    safeSetInterval: function(func, timeout) {
-      noExitRuntime = true;
-      return setInterval(function() {
         if (ABORT) return;
         func();
       }, timeout);
@@ -1167,10 +1160,9 @@ var LibraryBrowser = {
   },
 
   emscripten_set_main_loop__deps: ['$setMainLoop'],
-  emscripten_set_main_loop__docs: '/** @param {number|boolean=} noSetTiming */',
-  emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
+  emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     var browserIterationFunc = {{{ makeDynCall('v', 'func') }}};
-    setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg, noSetTiming);
+    setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop);
   },
 
   // Runs natively in pthread, no __proxy needed.

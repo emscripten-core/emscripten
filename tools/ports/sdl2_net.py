@@ -18,9 +18,8 @@ def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_net'
   ports.fetch_project('sdl2_net', 'https://github.com/emscripten-ports/SDL2_net/archive/' + TAG + '.zip', 'SDL2_net-' + TAG, sha512hash=HASH)
-  libname = 'libSDL2_net.a'
 
-  def create():
+  def create(final):
     logging.info('building port: sdl2_net')
     src_dir = os.path.join(ports.get_dir(), 'sdl2_net', 'SDL2_net-' + TAG)
     ports.install_headers(src_dir, target='SDL2')
@@ -34,11 +33,9 @@ def get(ports, settings, shared):
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2_net', libname)
     ports.create_lib(final, o_s)
-    return final
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.Cache.get_lib('libSDL2_net.a', create, what='port')]
 
 
 def clear(ports, settings, shared):

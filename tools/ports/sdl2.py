@@ -21,9 +21,8 @@ def get_lib_name(settings):
 def get(ports, settings, shared):
   # get the port
   ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
-  libname = get_lib_name(settings)
 
-  def create():
+  def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
     source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'include')
     ports.install_headers(source_include_path, target='SDL2')
@@ -82,11 +81,9 @@ def get(ports, settings, shared):
       commands.append(command)
       o_s.append(o)
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2', libname)
     ports.create_lib(final, o_s)
-    return final
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):

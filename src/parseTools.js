@@ -1006,13 +1006,13 @@ Please update to new syntax.`);
     }
     args = args.join(', ');
 
-    if (USE_LEGACY_DYNCALLS) {
+    if (DYNCALLS) {
       return `(function(cb, ${args}) { return getDynCaller("${sig}", cb)(${args}) })`;
     } else {
       return `(function(cb, ${args}) { return wasmTable.get(cb)(${args}) })`;
     }
   }
-  if (USE_LEGACY_DYNCALLS) {
+  if (DYNCALLS) {
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
       let args = [];

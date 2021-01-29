@@ -4355,6 +4355,40 @@ res64 - external 64\n''', header='''
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dlfcn
+  def test_dylink_load_compiled_side_module(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args.append('-lnodefs.js')
+    self.set_setting('INITIAL_MEMORY', '64mb')
+
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      extern int sidef();
+      int main() {
+        EM_ASM({
+          FS.mkdir('/working');
+          FS.mount(NODEFS,{ root: '.' }, '/working');
+          var libData = FS.readFile('/working/liblib.so', {encoding: 'binary'});
+          if (!(libData instanceof Uint8Array)) {
+            libData = new Uint8Array(libData);
+          }
+          var compiledModule = new WebAssembly.Module(libData);
+          var sideExports = loadWebAssemblyModule(compiledModule, {loadAsync: false, nodelete: true});
+          mergeLibSymbols(sideExports, 'liblib.so');
+        });
+        printf("sidef: %d.\n", sidef());
+      }
+    ''',
+                     side=r'''
+      #include <stdio.h>
+      int sidef() { return 10; }
+    ''',
+                     expected=['sidef: 10'],
+                     # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
+                     need_reverse=not self.is_wasm(),
+                     auto_load=False)
+
+  @needs_dlfcn
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
       self.do_run(src + 'int main() { return test_main(); }', expected_output)
@@ -6233,7 +6267,6 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS.c')
 
-  @no_minimal_runtime('MINIMAL_RUNTIME does not blindly export all symbols to Module to save code size')
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
     for which, exported_runtime_methods in [
@@ -6245,6 +6278,13 @@ return malloc(size);
       self.emcc_args = emcc_args + ['-D' + which]
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', exported_runtime_methods)
       self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific.c')
+
+      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
+      self.emcc_args = emcc_args + ['-s', 'DYNCALLS=1', '--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+
+      self.emcc_args += ['-s', 'MINIMAL_RUNTIME=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']
+      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -7894,6 +7934,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp'),
                  post_build=modify_env, assert_all=True, expected_output=expected_output)
 
+  @no_wasm2js('TODO: sanitizers in wasm2js')
+  def test_ubsan_typeinfo_eq(self):
+    # https://github.com/emscripten-core/emscripten/issues/13330
+    src = r'''
+      #include <typeinfo>
+      #include <stdio.h>
+      int main() {
+        int mismatch = typeid(int) != typeid(int);
+        printf("ok\n");
+        return mismatch;
+      }
+      '''
+    self.emcc_args.append('-fsanitize=undefined')
+    self.do_run(src, 'ok\n')
+
   def test_template_class_deduction(self):
     self.emcc_args += ['-std=c++17']
     self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction.cpp')
@@ -8272,6 +8327,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
     self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
+
+  @no_asan('asan does not yet work in MINIMAL_RUNTIME')
+  def test_dyncalls_minimal_runtime(self):
+    self.set_setting('DYNCALLS')
+    self.set_setting('MINIMAL_RUNTIME')
+    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
 
 # Generate tests for everything

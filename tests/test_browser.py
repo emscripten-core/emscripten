@@ -796,9 +796,6 @@ window.close = function() {
     self.btest('sdl_canvas_alpha.c', args=['-lSDL', '-lGL'], reference='sdl_canvas_alpha.png', reference_slack=12)
     self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js', '-lSDL', '-lGL'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
-  def get_async_args(self):
-    return ['-s', 'ASYNCIFY']
-
   def test_sdl_key(self):
     for delay in [0, 1]:
       for defines in [
@@ -807,7 +804,7 @@ window.close = function() {
       ]:
         for async_ in [
           [],
-          ['-DTEST_SLEEP', '-s', 'ASSERTIONS', '-s', 'SAFE_HEAP'] + self.get_async_args()
+          ['-DTEST_SLEEP', '-s', 'ASSERTIONS', '-s', 'SAFE_HEAP', '-s', 'ASYNCIFY']
         ]:
           print(delay, defines, async_)
 
@@ -1291,13 +1288,13 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    args = ['--pre-js', 'pre.js', '-lidbfs.js', '-s', 'EXIT_RUNTIME'] + self.get_async_args()
+    args = ['--pre-js', 'pre.js', '-lidbfs.js', '-s', 'EXIT_RUNTIME', '-s', 'ASYNCIFY']
     secret = str(time.time())
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']''', '-lidbfs.js'])
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']''', '-lidbfs.js'])
 
   def test_fs_memfs_fsync(self):
-    args = self.get_async_args() + ['-s', 'EXIT_RUNTIME']
+    args = ['-s', 'ASYNCIFY', '-s', 'EXIT_RUNTIME']
     secret = str(time.time())
     self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', args=args + ['-DSECRET=\"' + secret + '\"'])
 
@@ -1397,12 +1394,12 @@ keydown(100);keyup(100); // trigger the end
   def test_idbstore_sync(self):
     secret = str(time.time())
     self.clear()
-    self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2'] + self.get_async_args())
+    self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2', '-s', 'ASYNCIFY'])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
     self.clear()
-    self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'INITIAL_MEMORY=80MB'] + self.get_async_args())
+    self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'INITIAL_MEMORY=80MB', '-s', 'ASYNCIFY'])
 
   def test_force_exit(self):
     self.btest('force_exit.c', expected='17', args=['-s', 'EXIT_RUNTIME'])
@@ -2408,11 +2405,11 @@ void *getBindBuffer() {
     self.btest('worker_api_3_main.cpp', expected='5')
 
   def test_worker_api_sleep(self):
-    self.compile_btest([path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-s', 'EXPORTED_FUNCTIONS=["_one"]'] + self.get_async_args())
+    self.compile_btest([path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-s', 'EXPORTED_FUNCTIONS=["_one"]', '-s', 'ASYNCIFY'])
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_emscripten_async_wget2(self):
-    self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
+    self.btest('test_emscripten_async_wget2.cpp', expected='0')
 
   def test_module(self):
     self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
@@ -2665,11 +2662,11 @@ Module["preRun"].push(function () {
 
   def test_wget(self):
     create_test_file('test.txt', 'emscripten')
-    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=self.get_async_args())
+    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY'])
 
   def test_wget_data(self):
     create_test_file('test.txt', 'emscripten')
-    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2'] + self.get_async_args())
+    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASYNCIFY'])
 
   def test_locate_file(self):
     for wasm in [0, 1]:
@@ -3196,27 +3193,27 @@ window.close = function() {
   def test_async(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
-      self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2'] + self.get_async_args())
+      self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2', '-s', 'ASYNCIFY'])
 
   @requires_threads
   def test_async_in_pthread(self):
-    self.btest('browser/async.cpp', '1', args=self.get_async_args() + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-g'])
+    self.btest('browser/async.cpp', '1', args=['-s', 'ASYNCIFY', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-g'])
 
   def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
     create_test_file('pre.js', 'Error.stackTraceLimit = 80;\n')
-    self.btest('browser/async_2.cpp', '40', args=['-O3', '--pre-js', 'pre.js'] + self.get_async_args())
+    self.btest('browser/async_2.cpp', '40', args=['-O3', '--pre-js', 'pre.js', '-s', 'ASYNCIFY'])
 
   def test_async_virtual(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest('browser/async_virtual.cpp', '5', args=['-O' + str(opts), '-profiling'] + self.get_async_args())
+      self.btest('browser/async_virtual.cpp', '5', args=['-O' + str(opts), '-profiling', '-s', 'ASYNCIFY'])
 
   def test_async_virtual_2(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS', '-s', 'SAFE_HEAP', '-profiling'] + self.get_async_args())
+      self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS', '-s', 'SAFE_HEAP', '-profiling', '-s', 'ASYNCIFY'])
 
   # Test async sleeps in the presence of invoke_* calls, which can happen with
   # longjmp or exceptions.
@@ -3225,25 +3222,25 @@ window.close = function() {
     'O3': (['-O3'],), # noqa
   })
   def test_async_longjmp(self, args):
-    self.btest('browser/async_longjmp.cpp', '2', args=args + self.get_async_args())
+    self.btest('browser/async_longjmp.cpp', '2', args=args + ['-s', 'ASYNCIFY'])
 
   def test_async_mainloop(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest('browser/async_mainloop.cpp', '121', args=['-O' + str(opts)] + self.get_async_args())
+      self.btest('browser/async_mainloop.cpp', '121', args=['-O' + str(opts), '-s', 'ASYNCIFY'])
 
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
-    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-Os', '-s', 'ASSERTIONS', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP', '-lSDL'] + self.get_async_args(), timeout=90)
+    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-Os', '-s', 'ASSERTIONS', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP', '-lSDL', '-s', 'ASYNCIFY'], timeout=90)
 
   def test_mainloop_reschedule(self):
-    self.btest('mainloop_reschedule.cpp', '1', args=['-Os'] + self.get_async_args())
+    self.btest('mainloop_reschedule.cpp', '1', args=['-Os', '-s', 'ASYNCIFY'])
 
   def test_mainloop_infloop(self):
-    self.btest('mainloop_infloop.cpp', '1', args=self.get_async_args())
+    self.btest('mainloop_infloop.cpp', '1', args=['-s', 'ASYNCIFY'])
 
   def test_async_iostream(self):
-    self.btest('browser/async_iostream.cpp', '1', args=self.get_async_args())
+    self.btest('browser/async_iostream.cpp', '1', args=['-s', 'ASYNCIFY'])
 
   # Test an async return value. The value goes through a custom JS library
   # method that uses asyncify, and therefore it needs to be declared in
@@ -3562,6 +3559,51 @@ window.close = function() {
     self.run_process([EMCC, 'side2.c', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), '3',
                     args=['-s', 'MAIN_MODULE', '--pre-js', 'pre.js'])
+
+  def test_dynamic_link_pthread_many(self):
+    # Test asynchronously loading two side modules during startup
+    # They should always load in the same order
+    # Verify that function pointers in the browser's main thread
+    # reffer to the same function as in a pthread worker.
+
+    # The main thread function table is populated asynchronously
+    # in the browser's main thread. However, it should still be
+    # populated in the same order as in a pthread worker to
+    # guarantee function pointer interop.
+    create_test_file('main.cpp', r'''
+      #include <thread>
+      int side1();
+      int side2();
+      int main() {
+        auto side1_ptr = &side1;
+        auto side2_ptr = &side2;
+        // Don't join the thread since this is running in the
+        // browser's main thread.
+        std::thread([=]{
+          REPORT_RESULT(int(
+            side1_ptr == &side1 &&
+            side2_ptr == &side2
+          ));
+        }).detach();
+        return 0;
+      }
+    ''')
+
+    # The browser will try to load side1 first.
+    # Use a big payload in side1 so that it takes longer to load than side2
+    create_test_file('side1.cpp', r'''
+      char const * payload1 = "''' + str(list(range(1, int(1e5)))) + r'''";
+      int side1() { return 1; }
+    ''')
+    create_test_file('side2.cpp', r'''
+      char const * payload2 = "0";
+      int side2() { return 2; }
+    ''')
+    self.run_process([EMCC, 'side1.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
+    self.run_process([EMCC, 'side2.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
+    self.btest(self.in_dir('main.cpp'), '1',
+               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE',
+                     '-s', 'RUNTIME_LINKED_LIBS=["side1.wasm","side2.wasm"]'])
 
   def test_memory_growth_during_startup(self):
     create_test_file('data.dat', 'X' * (30 * 1024 * 1024))
@@ -4781,7 +4823,7 @@ window.close = function() {
     self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   def test_embind_with_asyncify(self):
-    self.btest('embind_with_asyncify.cpp', '1', args=['--bind'] + self.get_async_args())
+    self.btest('embind_with_asyncify.cpp', '1', args=['--bind', '-s', 'ASYNCIFY'])
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
