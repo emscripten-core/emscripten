@@ -49,10 +49,10 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   if shared.Settings.DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
     exports_that_are_not_initializers += ['dynCalls = {}']
 
-  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
+  post = post.replace('<<< ASM_MODULE_EXPORTS_DECLARES >>>', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
 
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-  post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
+  post = post.replace('<<< ASM_MODULE_EXPORTS >>>', receiving)
   return post
 
 
