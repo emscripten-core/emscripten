@@ -50,6 +50,9 @@ Current Trunk
 - Added support to use a custom set of substitution characters . # and ? to
   ease passing arrays of C symbols on the command line to ASYNCIFY_* settings.
   (#13477)
+- In MINIMAL_RUNTIME build mode, errno support will now be disabled by default
+  due to the code size that it adds. (MINIMAL_RUNTIME=1 implies SUPPORT_ERRNO=0
+  by default) Pass -s SUPPORT_ERRNO=1 to enable errno support if necessary.
 - Using EM_ASM and EM_JS in a side module will now result in an error (since
   this is not implemented yet).  This could effect users were previously
   inadvertently including (but not actually using) EM_ASM or EM_JS functions in
