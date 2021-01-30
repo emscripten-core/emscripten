@@ -2104,7 +2104,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   with ToolchainProfiler.profile_block('calculate system libraries'):
     # link in ports and system libraries, if necessary
-    if not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
+    if shared.Settings.SIDE_MODULE:
+      # shared libraries/side modules link no C libraries, need them in parent
+      # however, when using pthreads we still need to link support code.
+      if shared.Settings.USE_PTHREADS:
+        linker_inputs += system_libs.calculate([], False, forced=[])
+    else:
       extra_files_to_link = system_libs.get_ports(shared.Settings)
       if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
         link_as_cxx = run_via_emxx

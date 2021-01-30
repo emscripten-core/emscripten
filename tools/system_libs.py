@@ -811,6 +811,23 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     return libc_files
 
+class side_module(MTLibrary):
+  name = 'side_module'
+
+  # Without -fno-builtin, LLVM can optimize away or convert calls to library
+  # functions to something else based on assumptions that they behave exactly
+  # like the standard library. This can cause unexpected bugs when we use our
+  # custom standard library. The same for other libc/libm builds.
+  cflags = ['-Os', '-fno-builtin']
+
+  def get_files(self):
+    side_module_files = []
+    if self.is_mt:
+      side_module_files += files_in_path(
+        path_components=['system', 'lib', 'pthread'],
+        filenames=['emscripten_tls_init.c'])
+
+    return side_module_files
 
 class libprintf_long_double(libc):
   name = 'libprintf_long_double'
@@ -1361,6 +1378,13 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
   global stdout, stderr
   stdout = stdout_
   stderr = stderr_
+
+  # side modules only link per-module support code.
+  # libraries are linked in the main module only.
+  if shared.Settings.SIDE_MODULE:
+    system_libs_map = Library.get_usable_variations()
+    lib = system_libs_map['side_module']
+    return [lib.get_path()]
 
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
