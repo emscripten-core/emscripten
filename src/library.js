@@ -3555,8 +3555,8 @@ LibraryManager.library = {
       var __func = '(function(' + __argNames.join(', ') + ') { ' + __body + ' })';
       ASM_CONSTS[__code] = eval(__func);
     }
-    return ASM_CONSTS[__code];
 #endif // OPT_LEVEL < 2
+    return ASM_CONSTS[__code];
   },
 
   emscripten_asm_const_int__deps: ['$getAsmConst'],
