@@ -3505,19 +3505,13 @@ LibraryManager.library = {
     return readAsmConstArgsArray;
   },
 
-  emscripten_asm_const_int__sig: 'iiii',
-  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
-    var args = readAsmConstArgs(sigPtr, argbuf);
+  $getAsmConst: function(code, numArgs) {
 #if OPT_LEVEL < 2
     // When fully optimizing we emit the EM_ASM code in the JS, so that it can
     // be seen by the JS optimizer. When not optimizing, we can optionally
     // create the functions at runtime, if eval() or new Function() are
     // available, which can save work by wasm-emscripten-finalize.
     if (!ASM_CONSTS[code]) {
-      var numArgs = UTF8ToString(sigPtr).length;
       var argNames = [];
       for (var i = 0; i < numArgs; i++) {
         argNames.push('$' + i);
@@ -3557,8 +3551,18 @@ LibraryManager.library = {
       var func = '(function(' + argNames.join(', ') + ') { ' + body + ' })';
       ASM_CONSTS[code] = eval(func);
     }
+    return ASM_CONSTS[code];
 #endif // OPT_LEVEL < 2
-    return ASM_CONSTS[code].apply(null, args);
+  },
+
+  emscripten_asm_const_int__deps: ['$getAsmConst'],
+  emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
+#if RELOCATABLE
+    code -= {{{ GLOBAL_BASE }}};
+#endif
+    var args = readAsmConstArgs(sigPtr, argbuf);
+    return getAsmConst(code, args.length).apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
   $mainThreadEM_ASM__deps: ['emscripten_asm_const_double'],

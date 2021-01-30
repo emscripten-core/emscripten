@@ -1288,7 +1288,8 @@ var LibraryPThread = {
   emscripten_receive_on_main_thread_js__deps: [
     'emscripten_proxy_to_main_thread_js',
     'emscripten_receive_on_main_thread_js_callArgs',
-    '$readAsmConstArgs'],
+    '$readAsmConstArgs',
+    '$getAsmConst'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
 #if WASM_BIGINT
     numCallArgs /= 2;
@@ -1311,7 +1312,8 @@ var LibraryPThread = {
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)
     var isEmAsmConst = index < 0;
-    var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
+    var func = !isEmAsmConst ? proxiedFunctionTable[index]
+                             : getAsmConst(-index - 1, numCallArgs);
 #if ASSERTIONS
     assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif
