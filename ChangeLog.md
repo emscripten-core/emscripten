@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.13: 01/19/2021
+------------------
 - Remove unused `Browser.safeSetInterval` and `Browser.safeCallback`.  These
   had no callers in emscripten itself or any testing.  If there are users of
   these functions we could re-enable them with some testing.
