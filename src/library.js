@@ -3561,13 +3561,14 @@ LibraryManager.library = {
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
+  $mainThreadEM_ASM__deps: ['emscripten_asm_const_double'],
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
-    var args = readAsmConstArgs(sigPtr, argbuf);
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
+#if RELOCATABLE
+      code -= {{{ GLOBAL_BASE }}};
+#endif
+      var args = readAsmConstArgs(sigPtr, argbuf);
       // EM_ASM functions are variadic, receiving the actual arguments as a buffer
       // in memory. the last parameter (argBuf) points to that data. We need to
       // always un-variadify that, *before proxying*, as in the async case this
@@ -3582,7 +3583,7 @@ LibraryManager.library = {
       return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
     }
 #endif
-    return ASM_CONSTS[code].apply(null, args);
+    return _emscripten_asm_const_double(code, sigPtr, argbuf);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
   emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
