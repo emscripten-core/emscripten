@@ -3505,21 +3505,25 @@ LibraryManager.library = {
     return readAsmConstArgsArray;
   },
 
-  $getAsmConst: function(code, numArgs) {
+  // Note: parameters and locals are prefixed with __ to avoid collisions. We
+  // are evalling in the context of this function (so that we can see the outer
+  // scope with other JS library code - which we need, and we would lose with a
+  // global eval). So locals in this function may confuse us.
+  $getAsmConst: function(__code, __numArgs) {
 #if OPT_LEVEL < 2
     // When fully optimizing we emit the EM_ASM code in the JS, so that it can
     // be seen by the JS optimizer. When not optimizing, we can optionally
     // create the functions at runtime, if eval() or new Function() are
     // available, which can save work by wasm-emscripten-finalize.
-    if (!ASM_CONSTS[code]) {
-      var argNames = [];
-      for (var i = 0; i < numArgs; i++) {
-        argNames.push('$' + i);
+    if (!ASM_CONSTS[__code]) {
+      var __argNames = [];
+      for (var __i = 0; __i < __numArgs; __i++) {
+        __argNames.push('$' + __i);
       }
-      var body = UTF8ToString(code).trim();
+      var __body = UTF8ToString(__code).trim();
       // Test if the parentheses at body[openIdx] and body[closeIdx] are a match to
       // each other.
-      function parenthesesMatch(body, openIdx, closeIdx) {
+      function __parenthesesMatch(body, openIdx, closeIdx) {
         var count = 1;
         for (var i = openIdx + 1; i < closeIdx + 1; i++) {
           if (body[i] == body[openIdx]) {
@@ -3533,25 +3537,25 @@ LibraryManager.library = {
         }
         return false;
       }
-      var orig = null;
-      while (orig != body) {
-        orig = body;
-        if (body.length > 1 && body[0] == '"' && body[body.length - 1] == '"') {
-          body = body.substring(1, body.length - 1).replace(/\\"/g, '"').trim();
+      var __orig = null;
+      while (__orig != __body) {
+        __orig = __body;
+        if (__body.length > 1 && __body[0] == '"' && __body[__body.length - 1] == '"') {
+          __body = __body.substring(1, __body.length - 1).replace(/\\"/g, '"').trim();
         }
-        if (body.length > 1 && body[0] == '{' && body[body.length - 1] == '}' &&
-            parenthesesMatch(body, 0, body.length - 1)) {
-          body = body.substring(1, body.length - 1).trim();
+        if (__body.length > 1 && __body[0] == '{' && __body[__body.length - 1] == '}' &&
+            __parenthesesMatch(__body, 0, __body.length - 1)) {
+          __body = __body.substring(1, __body.length - 1).trim();
         }
-        if (body.length > 1 && body[0] == '(' && body[body.length - 1] == ')' &&
-            parenthesesMatch(body, 0, body.length - 1)) {
-          body = body.substring(1, body.length - 1).trim();
+        if (__body.length > 1 && __body[0] == '(' && __body[__body.length - 1] == ')' &&
+            __parenthesesMatch(__body, 0, __body.length - 1)) {
+          __body = __body.substring(1, __body.length - 1).trim();
         }
       }
-      var func = '(function(' + argNames.join(', ') + ') { ' + body + ' })';
-      ASM_CONSTS[code] = eval(func);
+      var __func = '(function(' + __argNames.join(', ') + ') { ' + __body + ' })';
+      ASM_CONSTS[__code] = eval(__func);
     }
-    return ASM_CONSTS[code];
+    return ASM_CONSTS[__code];
 #endif // OPT_LEVEL < 2
   },
 
