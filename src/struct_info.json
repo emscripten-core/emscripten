@@ -1543,7 +1543,7 @@
     // ===========================================
     // WebGPU
     //   NOTE: This can be (mostly) auto-generated:
-    //   https://dawn.googlesource.com/dawn/+/refs/heads/master/generator/templates/webgpu_struct_info.json
+    //   https://dawn.googlesource.com/dawn/+/refs/heads/main/generator/templates/webgpu_struct_info.json
     // ===========================================
     {
         "file": "webgpu/webgpu.h",
@@ -1568,6 +1568,28 @@
                 "sampler",
                 "textureView"
             ],
+            "WGPUBufferBindingLayout": [
+                "nextInChain",
+                "type",
+                "hasDynamicOffset",
+                "minBindingSize"
+            ],
+            "WGPUSamplerBindingLayout": [
+                "nextInChain",
+                "type"
+            ],
+            "WGPUTextureBindingLayout": [
+                "nextInChain",
+                "sampleType",
+                "viewDimension",
+                "multisampled"
+            ],
+            "WGPUStorageTextureBindingLayout": [
+                "nextInChain",
+                "access",
+                "format",
+                "viewDimension"
+            ],
             "WGPUBindGroupLayoutEntry": [
                 "binding",
                 "visibility",
@@ -1576,7 +1598,11 @@
                 "minBufferBindingSize",
                 "viewDimension",
                 "textureComponentType",
-                "storageTextureFormat"
+                "storageTextureFormat",
+                "buffer",
+                "sampler",
+                "texture",
+                "storageTexture"
             ],
             "WGPUBlendDescriptor": [
                 "operation",
@@ -1799,7 +1825,8 @@
                 "nextInChain",
                 "texture",
                 "mipLevel",
-                "origin"
+                "origin",
+                "aspect"
             ],
             "WGPUTextureDescriptor": [
                 "nextInChain",
