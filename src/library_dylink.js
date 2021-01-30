@@ -500,16 +500,23 @@ var LibraryDylink = {
 #if STACK_OVERFLOW_CHECK >= 2
         moduleExports['__set_stack_limits']({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
 #endif
-        // initialize the module
-        var init = moduleExports['__post_instantiate'];
-        if (init) {
-          if (runtimeInitialized) {
-            init();
-          } else {
-            // we aren't ready to run compiled code yet
-            __ATINIT__.push(init);
+#if USE_PTHREADS
+        // in a pthread the module heap was initialized in the main thread
+        if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+          // initialize the module
+          var init = moduleExports['__post_instantiate'];
+          if (init) {
+            if (runtimeInitialized) {
+              init();
+            } else {
+              // we aren't ready to run compiled code yet
+              __ATINIT__.push(init);
+            }
           }
+#if USE_PTHREADS
         }
+#endif
         return moduleExports;
       }
 

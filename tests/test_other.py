@@ -1481,11 +1481,16 @@ int f() {
   def test_dynamic_link_module_heap_in_pthread(self):
     # Test that a side module uses the same heap for global objects across all threads
 
-    # A side module with a global object
+    # A side module with a global object with a constructor.
+    # The global object must have a constructor to make sure
+    # verify we construct it only once.
     create_test_file('side.cpp', r'''
-      int value = 42;
+      struct Data {
+          Data() : value(42) {}
+          int value;
+      } data;
       int & get_value() {
-          return value;
+          return data.value;
       }
       ''')
     self.run_process([
