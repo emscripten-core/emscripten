@@ -408,7 +408,7 @@ var LibraryDylink = {
       // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
       // from uninitialized memory.
 #if USE_PTHREADS
-      // in a pthread the module heap was allocated and initialized in the main thread before
+      // in a pthread the module heap was already allocated and initialized in the main thread.
       if (!ENVIRONMENT_IS_PTHREAD)
 #endif
         for (var i = memoryBase; i < memoryBase + memorySize; i++) {
