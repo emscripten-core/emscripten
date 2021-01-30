@@ -2304,6 +2304,9 @@ LibraryManager.library = {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'family', 'i16') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
+        /* Use makeSetValue instead of memset to avoid adding memset dependency for all users of _write_sockaddr. */
+        {{{ assert(C_STRUCTS.sockaddr_in.__size__ - C_STRUCTS.sockaddr_in.sin_zero == 8), '' }}}
+        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_zero, '0', 'i64') }}};
         break;
       case {{{ cDefine('AF_INET6') }}}:
         addr = __inet_pton6_raw(addr);
@@ -3696,10 +3699,15 @@ LibraryManager.library = {
     });
   },
 
-#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
+#if MINIMAL_RUNTIME
+    assert(typeof dynCalls !== 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"] linker flag to include it!');
+    assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#else
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
     if (args && args.length) {
       // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
       assert(args.length === sig.substring(1).replace(/j/g, '--').length);
@@ -3707,10 +3715,12 @@ LibraryManager.library = {
       assert(sig.length == 1);
     }
 #endif
-    if (args && args.length) {
-      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
-    }
-    return Module['dynCall_' + sig].call(null, ptr);
+#if MINIMAL_RUNTIME
+    var f = dynCalls[sig];
+#else
+    var f = Module["dynCall_" + sig];
+#endif
+    return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
   $dynCall__deps: ['$dynCallLegacy'],
 
@@ -3719,7 +3729,7 @@ LibraryManager.library = {
   // back to this function if needed.
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
-#if !USE_LEGACY_DYNCALLS
+#if ASSERTIONS && !DYNCALLS
     assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
 #endif
     var argCache = [];
@@ -3734,7 +3744,7 @@ LibraryManager.library = {
 #endif
 
   $dynCall: function(sig, ptr, args) {
-#if USE_LEGACY_DYNCALLS
+#if DYNCALLS
     return dynCallLegacy(sig, ptr, args);
 #else
 #if !WASM_BIGINT

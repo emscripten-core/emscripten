@@ -31,9 +31,8 @@ void *ThreadMain(void *arg) {
     } catch (int x) {
       total += x;
     } catch (float f) {
-      sum++;
       // wait for a change, so we see interleaved processing.
-      int last = sum.load();
+      int last = ++sum;
       while (sum.load() == last) {}
     }
   }
@@ -50,9 +49,7 @@ void CreateThread(int i)
 
 void loop() {
   static int main_adds = 0;
-  int worker_adds = sum.load() - main_adds;
-  sum++;
-  main_adds++;
+  int worker_adds = sum++ - main_adds++;
   printf("main iter %d : %d\n", main_adds, worker_adds);
   if (worker_adds == NUM_THREADS * THREAD_ADDS &&
       main_adds >= MAIN_ADDS) {
@@ -65,9 +62,10 @@ void loop() {
 int main() {
   // Create initial threads.
   for(int i = 0; i < NUM_THREADS; ++i) {
-    printf("maek\n");
+    printf("make\n");
     CreateThread(i);
   }
 
   emscripten_set_main_loop(loop, 0, 0);
+  return 0;
 }

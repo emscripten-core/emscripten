@@ -29,12 +29,13 @@ from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
+from . import filelock
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 98
-EXPECTED_LLVM_VERSION = "12.0"
+EXPECTED_BINARYEN_VERSION = 99
+EXPECTED_LLVM_VERSION = "13.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 PYTHON = sys.executable
@@ -239,7 +240,20 @@ def generate_sanity():
 
 
 def perform_sanity_checks():
+  # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
+  check_llvm_version()
+
+  llvm_ok = check_llvm()
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
+    return
+
   logger.info('(Emscripten: Running sanity checks)')
+
+  if not llvm_ok:
+    exit_with_error('failing sanity checks due to previous llvm failure')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
     try:
@@ -264,57 +278,52 @@ def check_sanity(force=False):
   """
   if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
     return
+
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
+
+  if config.FROZEN_CACHE:
+    if force:
+      perform_sanity_checks()
+    return
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    perform_sanity_checks()
+    return
+
   with ToolchainProfiler.profile_block('sanity'):
-    check_llvm_version()
     if not config.config_file:
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt', root=True)
-    if os.path.exists(sanity_file):
-      sanity_data = open(sanity_file).read()
-      if sanity_data != expected:
-        logger.debug('old sanity: %s' % sanity_data)
-        logger.debug('new sanity: %s' % expected)
-        if config.FROZEN_CACHE:
-          logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
-        else:
+    sanity_file = Cache.get_path('sanity.txt')
+    with Cache.lock():
+      if os.path.exists(sanity_file):
+        sanity_data = open(sanity_file).read()
+        if sanity_data != expected:
+          logger.debug('old sanity: %s' % sanity_data)
+          logger.debug('new sanity: %s' % expected)
           logger.info('(Emscripten: config changed, clearing cache)')
           Cache.erase()
           # the check actually failed, so definitely write out the sanity file, to
           # avoid others later seeing failures too
           force = False
-      else:
-        if force:
-          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
         else:
-          logger.debug(f'sanity file up-to-date: {sanity_file}')
-          return # all is well
-    else:
-      logger.debug(f'sanity file not found: {sanity_file}')
+          if force:
+            logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
+          else:
+            logger.debug(f'sanity file up-to-date: {sanity_file}')
+            return # all is well
+      else:
+        logger.debug(f'sanity file not found: {sanity_file}')
 
-    # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-    check_node_version()
+      perform_sanity_checks()
 
-    llvm_ok = check_llvm()
-
-    if os.environ.get('EM_IGNORE_SANITY'):
-      logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
-      return
-
-    if not llvm_ok:
-      exit_with_error('failing sanity checks due to previous llvm failure')
-
-    perform_sanity_checks()
-
-    if not force:
-      # Only create/update this file if the sanity check succeeded, i.e., we got here
-      Cache.ensure()
-      with open(sanity_file, 'w') as f:
-        f.write(expected)
+      if not force:
+        # Only create/update this file if the sanity check succeeded, i.e., we got here
+        with open(sanity_file, 'w') as f:
+          f.write(expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -394,6 +403,20 @@ class Configuration(object):
       except Exception as e:
         exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
 
+      # Since the cannonical temp directory is, by definition, the same
+      # between all processes that run in DEBUG mode we need to use a multi
+      # process lock to prevent more than one process from writing to it.
+      # This is because emcc assumes that it can use non-unique names inside
+      # the temp directory.
+      # In the case where we run emcc recurively to populate the cache we
+      # do (sadly) still need to ignore this lock, in the same way we do for
+      # the cache lock.
+      if 'EM_EXCLUSIVE_CACHE_ACCESS' not in os.environ:
+        filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
+        lock = filelock.FileLock(filelock_name)
+        lock.acquire()
+        atexit.register(lock.release)
+
   def get_temp_files(self):
     return tempfiles.TempFiles(
       tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
@@ -420,9 +443,7 @@ def emsdk_ldflags(user_args):
     return []
 
   library_paths = [
-      path_from_root('system', 'local', 'lib'),
-      path_from_root('system', 'lib'),
-      Cache.dirname
+      Cache.get_lib_dir(absolute=True)
   ]
   ldflags = ['-L' + l for l in library_paths]
 
@@ -437,12 +458,12 @@ def emsdk_ldflags(user_args):
   return ldflags
 
 
-def emsdk_cflags(user_args, cxx):
+def emsdk_cflags(user_args):
   # Disable system C and C++ include directories, and add our own (using
   # -isystem so they are last, like system dirs, which allows projects to
   # override them)
 
-  c_opts = ['--sysroot=' + path_from_root('system')]
+  c_opts = ['--sysroot=' + Cache.get_sysroot_dir(absolute=True)]
 
   def array_contains_any_of(hay, needles):
     for n in needles:
@@ -475,43 +496,14 @@ def emsdk_cflags(user_args, cxx):
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     c_opts += ['-D__ARM_NEON__=1']
 
-  sysroot_include_paths = []
-
-  if cxx:
-    sysroot_include_paths += [
-      os.path.join('/include', 'libcxx'),
-      os.path.join('/lib', 'libcxxabi', 'include'),
-    ]
-
-  # TODO: Merge the cache into the sysroot.
-  c_opts += ['-Xclang', '-isystem' + Cache.get_path('include')]
-
-  sysroot_include_paths += [
-    os.path.join('/include', 'compat'),
-    os.path.join('/include', 'libc'),
-    os.path.join('/lib', 'libc', 'musl', 'arch', 'emscripten'),
-    os.path.join('/local', 'include'),
-    os.path.join('/include', 'SSE'),
-    os.path.join('/include', 'neon'),
-    os.path.join('/lib', 'compiler-rt', 'include'),
-    os.path.join('/lib', 'libunwind', 'include'),
-  ]
-
-  def include_directive(paths):
-    result = []
-    for path in paths:
-      result += ['-Xclang', '-iwithsysroot' + path]
-    return result
-
-  # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  return c_opts + include_directive(sysroot_include_paths)
+  return c_opts + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
 
 
 def get_clang_flags():
   return ['-target', get_llvm_target()]
 
 
-def get_cflags(user_args, cxx):
+def get_cflags(user_args):
   c_opts = get_clang_flags()
 
   # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
@@ -539,7 +531,7 @@ def get_cflags(user_args, cxx):
   if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
     return c_opts
 
-  return c_opts + emsdk_cflags(user_args, cxx)
+  return c_opts + emsdk_cflags(user_args)
 
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
@@ -748,11 +740,6 @@ def asmjs_mangle(name):
     return name
 
 
-def reconfigure_cache():
-  global Cache
-  Cache = cache.Cache(config.CACHE)
-
-
 class JS(object):
   emscripten_license = '''\
 /**
@@ -840,7 +827,7 @@ class JS(object):
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
+    if Settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic

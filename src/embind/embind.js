@@ -1063,7 +1063,7 @@ var LibraryEmbind = {
   },
 
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
-#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT
     , '$getDynCaller'
 #endif
   ],
@@ -1071,7 +1071,7 @@ var LibraryEmbind = {
     signature = readLatin1String(signature);
 
     function makeDynCaller() {
-#if USE_LEGACY_DYNCALLS
+#if DYNCALLS
       return getDynCaller(signature, rawFunction);
 #else
 #if !WASM_BIGINT

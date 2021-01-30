@@ -24,7 +24,7 @@ int main() {
 #endif
   EM_ASM({
     // use eval, so that the compiler can't see FS usage statically
-    eval('out("Data: " + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.root.contents["file.txt"])))');
+    eval('out("Data: " + JSON.stringify(Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents["file.txt"]))))');
   });
 }
 

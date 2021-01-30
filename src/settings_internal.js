@@ -175,8 +175,6 @@ var EXPECT_MAIN = 1;
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = 1;
 
-var USE_LEGACY_DYNCALLS = 0;
-
 // struct_info that is either generated or cached
 var STRUCT_INFO = '';
 
@@ -184,3 +182,9 @@ var STRUCT_INFO = '';
 var MEMORYPROFILER = 0;
 
 var GENERATE_SOURCE_MAP = 0;
+
+// Memory layout.  These are only used/set in RELOCATABLE builds.  Otherwise
+// memory layout is fixed in the wasm binary at link time.
+var STACK_BASE = 0;
+var STACK_MAX = 0;
+var HEAP_BASE = 0;

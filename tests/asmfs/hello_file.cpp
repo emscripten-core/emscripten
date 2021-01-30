@@ -29,8 +29,5 @@ int main()
   assert(!strcmp(buffer, "Hello!"));
 
   fclose(file);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

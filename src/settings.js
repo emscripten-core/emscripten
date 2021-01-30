@@ -902,6 +902,7 @@ var LINKABLE = 0;
 //   * STRICT_JS is enabled.
 //   * IGNORE_MISSING_MAIN is disabled.
 //   * AUTO_JS_LIBRARIES is disabled.
+//   * AUTO_NATIVE_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
 // [compile+link]
@@ -913,7 +914,7 @@ var STRICT = 0;
 // include `_main`.
 var IGNORE_MISSING_MAIN = 1;
 
-// Automatically attempt to add archive indexes at link time to archives that 
+// Automatically attempt to add archive indexes at link time to archives that
 // don't already have them.  This can happen when GNU ar or GNU ranlib is used
 // rather than `llvm-ar` or `emar` since the former don't understand the wasm
 // object format.
@@ -971,7 +972,7 @@ var DETERMINISTIC = 0;
 // (If WASM_ASYNC_COMPILATION is off, that is, if compilation is
 // *synchronous*, then it would not make sense to return a Promise, and instead
 // the Module object itself is returned, which is ready to be used.)
-// 
+//
 // The default name of the function is `Module`, but can be changed using the
 // `EXPORT_NAME` option. We recommend renaming it to a more typical name for a
 // factory function, e.g. `createModule`.
@@ -980,14 +981,14 @@ var DETERMINISTIC = 0;
 // You use the factory function like so:
 //
 //   const module = await EXPORT_NAME();
-//   
+//
 // or:
 //
 //   let module;
 //   EXPORT_NAME().then(instance => {
 //     module = instance;
 //   });
-//   
+//
 //
 // The factory function accepts 1 parameter, an object with default values for
 // the module instance:
@@ -1145,6 +1146,10 @@ var BINARYEN_EXTRA_PASSES = "";
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 var WASM_ASYNC_COMPILATION = 1;
 
+// If set to 1, the dynCall() and dynCall_sig() API is made available
+// to caller.
+var DYNCALLS = 0;
+
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need
 // to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
 // an i64 is used.
@@ -1200,6 +1205,9 @@ var USE_ZLIB = 0;
 
 // 1 = use bzip2 from emscripten-ports
 var USE_BZIP2 = 0;
+
+// 1 = use giflib from emscripten-ports
+var USE_GIFLIB = 0;
 
 // 1 = use libjpeg from emscripten-ports
 var USE_LIBJPEG = 0;
@@ -1423,6 +1431,11 @@ var SINGLE_FILE = 0;
 // need to explicitly specify -lfoo.js in at link time in order to access
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
+
+// Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
+// and libhtml5.   If this is disabled it is necessary to explcitly add
+// e.g. -lhtml5 and also to first build the library using `embuilder`.
+var AUTO_NATIVE_LIBRARIES = 1;
 
 // Specifies the oldest major version of Firefox to target. I.e. all Firefox
 // versions >= MIN_FIREFOX_VERSION

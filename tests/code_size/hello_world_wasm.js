@@ -18,10 +18,10 @@ WebAssembly.instantiate(d.wasm, {
     }
 }).then((function(a) {
     a = a.instance.exports;
-    k = a.e;
+    k = a.d;
     h = a.b;
     var b = h.buffer;
     g = new Uint8Array(b);
-    a.d();
+    a.c();
     k();
 }));

@@ -383,7 +383,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dlfcn with memory growth (without wasm)')
-    if not self.get_setting('WASM'):
+    if not self.is_wasm():
       self.skipTest('no dynamic library support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
@@ -569,10 +569,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + \
-        ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
-        ['-I' + include for include in includes] + \
-        libraries
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + libraries
+    if shared.suffix(filename) not in ('.i', '.ii'):
+      # Add the location of the test file to include path.
+      cmd += ['-I.']
+      cmd += ['-I' + include for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
@@ -811,11 +812,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                          cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
 
   def clear(self):
-    for name in os.listdir(self.get_dir()):
-      try_delete(os.path.join(self.get_dir(), name))
+    delete_contents(self.get_dir())
     if EMSCRIPTEN_TEMP_DIR:
-      for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
-        try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
+      delete_contents(EMSCRIPTEN_TEMP_DIR)
 
   def run_process(self, cmd, check=True, **args):
     # Wrapper around shared.run_process.  This is desirable so that the tests
@@ -1520,7 +1519,7 @@ class BrowserCore(RunnerCore):
       kwargs['expected'] = 'exit:%s' % expected
       return self.btest(filename, *args, **kwargs)
 
-  def btest(self, filename, expected=None, reference=None, force_c=False,
+  def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
@@ -1553,7 +1552,7 @@ class BrowserCore(RunnerCore):
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):
       print('WASM=0')
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
+      self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
@@ -1564,7 +1563,7 @@ class BrowserCore(RunnerCore):
         assert not post_build
         post_build = self.post_manual_reftest
       # run proxied
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
+      self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout)
 
 

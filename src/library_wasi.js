@@ -169,9 +169,9 @@ var WasiLibrary = {
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1
-  fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
-#endif
+  fd_write__postset: function() {
+    addAtExit('flush_NO_FILESYSTEM()');
+  },
 #endif
   fd_write__sig: 'iiiii',
   fd_write: function(fd, iov, iovcnt, pnum) {

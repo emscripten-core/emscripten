@@ -36,7 +36,5 @@ int main()
     return Module.totalStuffSent == 675;
   })) {}
 #endif
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

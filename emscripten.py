@@ -34,18 +34,25 @@ if STDERR_FILE:
   logger.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
   STDERR_FILE = open(STDERR_FILE, 'w')
 
+WASM_INIT_FUNC = '__wasm_call_ctors'
+
 
 def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
-  exports_that_are_not_initializers = [x for x in exports if x not in '__wasm_call_ctors']
+  exports_that_are_not_initializers = [x for x in exports if x not in WASM_INIT_FUNC]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
-  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
+
+  # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
+  if shared.Settings.DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
+    exports_that_are_not_initializers += ['dynCalls = {}']
+
+  post = post.replace('<<< ASM_MODULE_EXPORTS_DECLARES >>>', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
 
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-  post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
+  post = post.replace('<<< ASM_MODULE_EXPORTS >>>', receiving)
   return post
 
 
@@ -112,11 +119,11 @@ def update_settings_glue(metadata, DEBUG):
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
-  implemented_funcs = [x[1:] for x in metadata['implementedFunctions']]
-  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(implemented_funcs))
+  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
 
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
-  shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
+  # With the wasm backend the set of implemented functions is identical to the set of exports
+  shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
 
   if metadata['asmConsts']:
     # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
@@ -160,27 +167,11 @@ def update_settings_glue(metadata, DEBUG):
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
 
 
-# static code hooks
-class StaticCodeHooks:
-  atinits = []
-  atmains = []
-  atexits = []
-
-
-def apply_static_code_hooks(code):
-  code = code.replace('{{{ ATINITS }}}', StaticCodeHooks.atinits)
-  code = code.replace('{{{ ATMAINS }}}', StaticCodeHooks.atmains)
-  code = code.replace('{{{ ATEXITS }}}', StaticCodeHooks.atexits)
+def apply_static_code_hooks(forwarded_json, code):
+  code = code.replace('<<< ATINITS >>>', str(forwarded_json['ATINITS']))
+  code = code.replace('<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+  code = code.replace('<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
   return code
-
-
-def apply_forwarded_data(forwarded_data):
-  forwarded_json = json.loads(forwarded_data)
-  # Be aware of JS static allocations
-  # Be aware of JS static code hooks
-  StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
-  StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
-  StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
 
 
 def compile_settings(temp_files):
@@ -197,28 +188,15 @@ def compile_settings(temp_files):
                              cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
-
-  apply_forwarded_data(forwarded_data)
-
   return glue, forwarded_data
 
 
-class Memory():
-  def __init__(self, static_bump):
-    stack_low = align_memory(shared.Settings.GLOBAL_BASE + static_bump)
-    stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
-    self.stack_base = stack_high
-    self.stack_max = stack_low
-    self.dynamic_base = align_memory(stack_high)
-
-
-def apply_memory(js, memory):
-  # Apply the statically-at-compile-time computed memory locations.
-  # Write it all out
-  js = js.replace('{{{ HEAP_BASE }}}', str(memory.dynamic_base))
-  js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
-  js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
-  return js
+def set_memory(static_bump):
+  stack_low = align_memory(shared.Settings.GLOBAL_BASE + static_bump)
+  stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
+  shared.Settings.STACK_BASE = stack_high
+  shared.Settings.STACK_MAX = stack_low
+  shared.Settings.HEAP_BASE = align_memory(stack_high)
 
 
 def report_missing_symbols(all_implemented, pre):
@@ -328,6 +306,13 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
     logger.debug('emscript: js compiler glue')
     t = time.time()
 
+  # memory and global initializers
+
+  if shared.Settings.RELOCATABLE:
+    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
+    set_memory(static_bump)
+    logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', shared.Settings.STACK_BASE, shared.Settings.STACK_MAX, shared.Settings.HEAP_BASE)
+
   glue, forwarded_data = compile_settings(temp_files)
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -354,18 +339,10 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
-  # memory and global initializers
-
-  if shared.Settings.RELOCATABLE:
-    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
-    memory = Memory(static_bump)
-    logger.debug('stack_base: %d, stack_max: %d, dynamic_base: %d', memory.stack_base, memory.stack_max, memory.dynamic_base)
-
-    pre = apply_memory(pre, memory)
-    post = apply_memory(post, memory)
-
-  pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
-  post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
+  # In regular runtime, atinits etc. exist in the preamble part
+  pre = apply_static_code_hooks(forwarded_json, pre)
+  # In MINIMAL_RUNTIME, atinit exists in the postamble part
+  post = apply_static_code_hooks(forwarded_json, post)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
@@ -429,7 +406,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
     args.append('--bigint')
-  if shared.Settings.USE_LEGACY_DYNCALLS:
+  if shared.Settings.DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
   else:
@@ -724,7 +701,7 @@ def create_receiving(exports):
   if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
-  exports_that_are_not_initializers = [x for x in exports if x != '__wasm_call_ctors']
+  exports_that_are_not_initializers = [x for x in exports if x != WASM_INIT_FUNC]
 
   receiving = []
 
@@ -738,7 +715,11 @@ def create_receiving(exports):
       # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
       # var asm = output.instance.exports;
       # _main = asm["_main"];
-      receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
+      generate_dyncall_assignment = shared.Settings.DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+      for s in exports_that_are_not_initializers:
+        mangled = asmjs_mangle(s)
+        dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
+        receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:
       if shared.Settings.MINIMAL_RUNTIME:
         # In wasm2js exports can be directly processed at top level, i.e.
@@ -830,10 +811,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [e for e in unexpected_exports if e not in shared.Settings.EXPORTED_FUNCTIONS]
   building.user_requested_exports += unexpected_exports
 
-  # With the wasm backend the set of implemented functions is identical to the set of exports
-  # Set this key here simply so that the shared code that handle it.
-  metadata['implementedFunctions'] = [asmjs_mangle(x) for x in metadata['exports']]
-
   return metadata
 
 
@@ -859,11 +836,9 @@ def normalize_line_endings(text):
 def generate_struct_info():
   generated_struct_info_name = 'generated_struct_info.json'
 
-  def generate_struct_info():
+  def generate_struct_info(out):
     with ToolchainProfiler.profile_block('gen_struct_info'):
-      out = shared.Cache.get_path(generated_struct_info_name)
       gen_struct_info.main(['-q', '-o', out])
-      return out
 
   shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
 

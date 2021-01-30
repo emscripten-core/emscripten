@@ -13,21 +13,21 @@ var LibraryFetch = {
   $Fetch__postset: 'Fetch.staticInit();',
 #endif
   $Fetch: Fetch,
-  _emscripten_fetch_get_response_headers_length: _fetch_get_response_headers_length,
-  _emscripten_fetch_get_response_headers: _fetch_get_response_headers,
-  _emscripten_fetch_free: _fetch_free,
+  _emscripten_fetch_get_response_headers_length: fetchGetResponseHeadersLength,
+  _emscripten_fetch_get_response_headers: fetchGetResponseHeaders,
+  _emscripten_fetch_free: fetchFree,
 
 #if FETCH_SUPPORT_INDEXEDDB
-  $__emscripten_fetch_delete_cached_data: __emscripten_fetch_delete_cached_data,
-  $__emscripten_fetch_load_cached_data: __emscripten_fetch_load_cached_data,
-  $__emscripten_fetch_cache_data: __emscripten_fetch_cache_data,
+  $fetchDeleteCachedData: fetchDeleteCachedData,
+  $fetchLoadCachedData: fetchLoadCachedData,
+  $fetchCacheData: fetchCacheData,
 #endif
-  $__emscripten_fetch_xhr: __emscripten_fetch_xhr,
+  $fetchXHR: fetchXHR,
 
-  emscripten_start_fetch: emscripten_start_fetch,
-  emscripten_start_fetch__deps: ['$Fetch', '$__emscripten_fetch_xhr',
+  emscripten_start_fetch: startFetch,
+  emscripten_start_fetch__deps: ['$Fetch', '$fetchXHR',
 #if FETCH_SUPPORT_INDEXEDDB
-  '$__emscripten_fetch_cache_data', '$__emscripten_fetch_load_cached_data', '$__emscripten_fetch_delete_cached_data',
+  '$fetchCacheData', '$fetchLoadCachedData', '$fetchDeleteCachedData',
 #endif
   'emscripten_is_main_browser_thread']
 };

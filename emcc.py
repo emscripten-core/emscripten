@@ -24,7 +24,6 @@ emcc can be influenced by a few environment variables:
 """
 
 
-import atexit
 import json
 import logging
 import os
@@ -1148,6 +1147,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also do not support standalone mode in fastcomp.
       shared.Settings.STANDALONE_WASM = 1
 
+    if shared.Settings.LZ4:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['LZ4']
+
     if shared.Settings.WASM2C:
       # wasm2c only makes sense with standalone wasm - there will be no JS,
       # just wasm and then C
@@ -1223,11 +1225,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Note the exports the user requested
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
+    def default_setting(name, new_default):
+      if name not in settings_key_changes:
+        setattr(shared.Settings, name, new_default)
+
     # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
     # implies full stack overflow checks (unless the user specifically set
     # something else)
-    if shared.Settings.ASSERTIONS and 'STACK_OVERFLOW_CHECK' not in settings_key_changes:
-      shared.Settings.STACK_OVERFLOW_CHECK = max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK)
+    if shared.Settings.ASSERTIONS:
+      default_setting('STACK_OVERFLOW_CHECK',  max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK))
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
       # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
@@ -1236,11 +1242,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.IGNORE_MISSING_MAIN = 0
 
     if shared.Settings.STRICT:
-      shared.Settings.STRICT_JS = 1
-      shared.Settings.AUTO_JS_LIBRARIES = 0
-      shared.Settings.AUTO_ARCHIVE_INDEXES = 0
-      shared.Settings.IGNORE_MISSING_MAIN = 0
-      shared.Settings.DEFAULT_TO_CXX = 0
+      default_setting('STRICT_JS', 1)
+      default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('AUTO_NATIVE_LIBRARIES', 0)
+      default_setting('AUTO_ARCHIVE_INDEXES', 0)
+      default_setting('IGNORE_MISSING_MAIN', 0)
+      default_setting('DEFAULT_TO_CXX', 0)
 
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
     # tools/autodebugger).  Note that this will disable inclusion of libraries. This
@@ -1274,6 +1281,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('Invalid option -s CLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % shared.Settings.CLOSURE_WARNINGS)
+
+    # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
+    if shared.Settings.DYNCALLS and not shared.Settings.MINIMAL_RUNTIME:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
@@ -1323,20 +1334,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ASYNCIFY:
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
-      shared.Settings.USE_LEGACY_DYNCALLS = 1
+      shared.Settings.DYNCALLS = 1
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']
-
-    # Reconfigure the cache now that settings have been applied. Some settings
-    # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
-    shared.reconfigure_cache()
-
-    if not compile_only and not options.post_link:
-      ldflags = shared.emsdk_ldflags(newargs)
-      for f in ldflags:
-        newargs.append(f)
-        add_link_flag(len(newargs), f)
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
@@ -1456,8 +1457,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
     if shared.Settings.RELOCATABLE:
-      shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
-      shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
+      default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
+      default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
@@ -1499,12 +1500,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
 
-    if shared.Settings.ALLOW_MEMORY_GROWTH and 'ABORTING_MALLOC=1' not in settings_changes:
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
       # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
       # the behavior of trying to grow and returning 0 from malloc on failure, like
       # a standard system would. However, if the user sets the flag it
       # overrides that.
-      shared.Settings.ABORTING_MALLOC = 0
+      default_setting('ABORTING_MALLOC', 0)
 
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:
@@ -1526,6 +1527,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         '__emscripten_main_thread_futex',
         '__emscripten_thread_init',
         '_emscripten_current_thread_process_queued_calls',
+        '__emscripten_allow_main_runtime_queued_calls',
         '_emscripten_futex_wake',
         '_emscripten_get_global_libc',
         '_emscripten_main_browser_thread_id',
@@ -1613,28 +1615,32 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.MINIMAL_RUNTIME:
           shared.Settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
-      if shared.Settings.LINKABLE:
-        exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
       if shared.Settings.SIDE_MODULE:
-        exit_with_error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS>0!')
-      if shared.Settings.MAIN_MODULE:
-        exit_with_error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS>0!')
+        diagnostics.warning('experimental', '-s SIDE_MODULE + pthreads is experimental')
+      elif shared.Settings.MAIN_MODULE:
+        diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
+      elif shared.Settings.LINKABLE:
+        diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
+
       if shared.Settings.PROXY_TO_WORKER:
         exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
     else:
       if shared.Settings.PROXY_TO_PTHREAD:
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
-    if shared.Settings.INITIAL_MEMORY % 65536 != 0:
-      exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
+    def check_memory_setting(setting):
+      if shared.Settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
+        exit_with_error(f'{setting} must be a multiple of WebAssembly page size (64KiB), was {shared.Settings[setting]}')
+
+    check_memory_setting('INITIAL_MEMORY')
     if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
       exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
     if shared.Settings.INITIAL_MEMORY < shared.Settings.TOTAL_STACK:
-      exit_with_error('INITIAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.INITIAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
-    if shared.Settings.MAXIMUM_MEMORY != -1 and shared.Settings.MAXIMUM_MEMORY % 65536 != 0:
-      exit_with_error('MAXIMUM_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.MAXIMUM_MEMORY))
-    if shared.Settings.MEMORY_GROWTH_LINEAR_STEP != -1 and shared.Settings.MEMORY_GROWTH_LINEAR_STEP % 65536 != 0:
-      exit_with_error('MEMORY_GROWTH_LINEAR_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_LINEAR_STEP))
+      exit_with_error(f'INITIAL_MEMORY must be larger than TOTAL_STACK, was {shared.Settings.INITIAL_MEMORY} (TOTAL_STACK={shared.Settings.TOTAL_STACK})')
+    if shared.Settings.MAXIMUM_MEMORY != -1:
+      check_memory_setting('MAXIMUM_MEMORY')
+    if shared.Settings.MEMORY_GROWTH_LINEAR_STEP != -1:
+      check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
     if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.MAXIMUM_MEMORY == -1:
       exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
@@ -1755,6 +1761,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           '___global_base'
       ]
 
+    if shared.Settings.USE_OFFSET_CONVERTER and shared.Settings.USE_PTHREADS:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['WasmOffsetConverter']
+
     if sanitize & UBSAN_SANITIZERS:
       if '-fsanitize-minimal-runtime' in newargs:
         shared.Settings.UBSAN_RUNTIME = 1
@@ -1811,6 +1820,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if sanitize and '-g4' in args:
       shared.Settings.LOAD_SOURCE_MAP = 1
+
+    if shared.Settings.LOAD_SOURCE_MAP and shared.Settings.USE_PTHREADS:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['WasmSourceMap']
 
     if shared.Settings.GLOBAL_BASE == -1:
       # default if nothing else sets it
@@ -1914,14 +1926,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # exit block 'parse arguments and setup'
   log_time('parse arguments and setup')
 
-  if DEBUG:
-    # we are about to start using temp dirs. serialize access to the temp dir
-    # when using EMCC_DEBUG, since we don't want multiple processes would to
-    # use it at once, they might collide if they happen to use the same
-    # tempfile names
-    shared.Cache.acquire_cache_lock()
-    atexit.register(shared.Cache.release_cache_lock)
-
   if options.post_link:
     process_libraries(libs, lib_dirs, temp_files)
     if len(input_files) != 1:
@@ -1951,6 +1955,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
     cflags = calc_cflags(options)
+    system_libs.ensure_sysroot()
     system_libs.add_ports_cflags(cflags, shared.Settings)
 
     def use_cxx(src):
@@ -1977,9 +1982,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return CC
 
     def get_clang_command(src_file):
-      cxx = use_cxx(src_file)
-      per_file_cflags = shared.get_cflags(args, cxx)
-      return get_compiler(cxx) + cflags + per_file_cflags + compile_args + [src_file]
+      per_file_cflags = shared.get_cflags(args)
+      return get_compiler(use_cxx(src_file)) + cflags + per_file_cflags + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
       asflags = shared.get_clang_flags()
@@ -2071,6 +2075,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if specified_target and specified_target.startswith('-'):
     exit_with_error('invalid output filename: `%s`' % specified_target)
 
+  ldflags = shared.emsdk_ldflags(newargs)
+  for f in ldflags:
+    add_link_flag(sys.maxsize, f)
+
   using_lld = not (link_to_object and shared.Settings.LTO)
   link_flags = filter_link_flags(link_flags, using_lld)
 
@@ -2085,12 +2093,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if link_to_object:
     with ToolchainProfiler.profile_block('linking to object file'):
       logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
-      if len(temp_files) == 1:
-        temp_file = temp_files[0][1]
-        # skip running the linker and just copy the object file
-        safe_copy(temp_file, target)
-      else:
-        building.link_to_object(linker_inputs, target)
+      building.link_to_object(linker_inputs, target)
       logger.debug('stopping after linking to object file')
       return 0
 
@@ -2820,7 +2823,7 @@ def do_binaryen(target, options, wasm_target):
     js = open(final_js).read()
 
     if shared.Settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_target, 'rb').read()))
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(open(wasm_target, 'rb').read()))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)

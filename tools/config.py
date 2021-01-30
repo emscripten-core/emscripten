@@ -75,7 +75,7 @@ def normalize_config_settings():
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
   if not CACHE:
-    if root_is_writable():
+    if FROZEN_CACHE or root_is_writable():
       CACHE = path_from_root('cache')
     else:
       # Use the legacy method of putting the cache in the user's home directory

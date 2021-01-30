@@ -232,6 +232,25 @@ function callMain(args) {
 }
 #endif // HAS_MAIN
 
+#if STACK_OVERFLOW_CHECK
+function stackCheckInit() {
+  // This is normally called automatically during __wasm_call_ctors but need to
+  // get these values before even running any of the ctors so we call it redundantly
+  // here.
+  // TODO(sbc): Move writeStackCookie to native to to avoid this.
+#if RELOCATABLE
+  _emscripten_stack_set_limits({{{ STACK_BASE }}}, {{{ STACK_MAX }}});
+#else
+  _emscripten_stack_init();
+#endif
+  writeStackCookie();
+}
+#endif
+
+#if RELOCATABLE
+var dylibsLoaded = false;
+#endif
+
 /** @type {function(Array=)} */
 function run(args) {
   args = args || arguments_;
@@ -244,21 +263,53 @@ function run(args) {
   }
 
 #if STACK_OVERFLOW_CHECK
-  // This is normally called automatically during __wasm_call_ctors but need to
-  // get these values before even running any of the ctors so we call it redundantly
-  // here.
-  // TODO(sbc): Move writeStackCookie to native to to avoid this.
-#if RELOCATABLE
-  _emscripten_stack_set_limits({{{ getQuoted('STACK_BASE') }}}, {{{ getQuoted('STACK_MAX') }}});
-#else
-  _emscripten_stack_init();
+  stackCheckInit();
 #endif
-  writeStackCookie();
+
+#if RELOCATABLE
+  if (!dylibsLoaded) {
+  // Loading of dynamic libraries needs to happen on each thread, so we can't
+  // use the normal __ATPRERUN__ mechanism.
+#if MAIN_MODULE
+    preloadDylibs();
+#else
+    reportUndefinedSymbols();
+#endif
+    dylibsLoaded = true;
+
+    // Loading dylibs can add run dependencies.
+    if (runDependencies > 0) {
+#if RUNTIME_LOGGING
+      err('preloadDylibs added run() dependencies, not running yet');
+#endif
+      return;
+    }
+  }
+#endif
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) {
+#if MODULARIZE
+    // The promise resolve function typically gets called as part of the execution
+    // of `doRun` below. The workers/pthreads don't execute `doRun` so the
+    // creation promise can be resolved, marking the pthread-Module as initialized.
+    readyPromiseResolve(Module);
+#endif // MODULARIZE
+
+    postMessage({ 'cmd': 'loaded' });
+    return;
+  }
 #endif
 
   preRun();
 
-  if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
+  // a preRun added a dependency, run will be called later
+  if (runDependencies > 0) {
+#if RUNTIME_LOGGING
+    err('run() called, but dependencies remain, so not running');
+#endif
+    return;
+  }
 
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
@@ -476,14 +527,10 @@ noExitRuntime = true;
 #endif
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-  run();
-} else {
-  PThread.initWorker();
-}
-#else
+if (ENVIRONMENT_IS_PTHREAD) PThread.initWorker();
+#endif
+
 run();
-#endif // USE_PTHREADS
 
 #if BUILD_AS_WORKER
 
