@@ -3522,8 +3522,7 @@ LibraryManager.library = {
       for (var i = 0; i < numArgs; i++) {
         argNames.push('$' + i);
       }
-      var body = UTF8ToString(code);
-      console.log(body);
+      var body = UTF8ToString(code).trim();
       // Test if the parentheses at body[openIdx] and body[closeIdx] are a match to
       // each other.
       function parenthesesMatch(body, openIdx, closeIdx) {
@@ -3540,19 +3539,22 @@ LibraryManager.library = {
         }
         return false;
       }
-      if (body.length > 1 && body[0] == '"' && body[body.length - 1] == '"') {
-        body = body.substring(1, body.length - 1).replace(/\\"/g, '"').trim();
-      }
-      if (body.length > 1 && body[0] == '{' && body[body.length - 1] == '}' &&
-          parenthesesMatch(body, 0, body.length - 1)) {
-        body = body.substring(1, body.length - 1).trim();
-      }
-      if (body.length > 1 && body[0] == '(' && body[body.length - 1] == ')' &&
-          parenthesesMatch(body, 0, body.length - 1)) {
-        body = body.substring(1, body.length - 1).trim();
+      var orig = null;
+      while (orig != body) {
+        orig = body;
+        if (body.length > 1 && body[0] == '"' && body[body.length - 1] == '"') {
+          body = body.substring(1, body.length - 1).replace(/\\"/g, '"').trim();
+        }
+        if (body.length > 1 && body[0] == '{' && body[body.length - 1] == '}' &&
+            parenthesesMatch(body, 0, body.length - 1)) {
+          body = body.substring(1, body.length - 1).trim();
+        }
+        if (body.length > 1 && body[0] == '(' && body[body.length - 1] == ')' &&
+            parenthesesMatch(body, 0, body.length - 1)) {
+          body = body.substring(1, body.length - 1).trim();
+        }
       }
       var func = '(function(' + argNames.join(', ') + ') { ' + body + ' })';
-      console.log(' =>    ' + func);
       ASM_CONSTS[code] = eval(func);
     }
 #endif // OPT_LEVEL < 2
