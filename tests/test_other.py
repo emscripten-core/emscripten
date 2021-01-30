@@ -1500,14 +1500,8 @@ int f() {
       #include <thread>
       int & get_value();
       int main(void) {
-          auto t1 = std::thread([]{
-            get_value() = 1;
-            printf("%d ", get_value());
-          });
-          std::thread([&]{
-            // make sure this thread doesn't reuse
-            // the worker from the previous one.
-            t1.join();
+          get_value() = 123;
+          std::thread([]{
             printf("%d\n", get_value());
           }).join();
           return 0;
@@ -1517,7 +1511,7 @@ int f() {
     self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
     self.do_smart_test(
       'main.cpp',
-      ['1 1'],
+      ['123'],
       emcc_args=[
         '-pthread', '-Wno-experimental',
         '-s', 'PROXY_TO_PTHREAD',
