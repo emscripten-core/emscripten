@@ -3511,6 +3511,20 @@ LibraryManager.library = {
     code -= {{{ GLOBAL_BASE }}};
 #endif
     var args = readAsmConstArgs(sigPtr, argbuf);
+#if OPT_LEVEL < 2
+    // When fully optimizing we emit the EM_ASM code in the JS, so that it can
+    // be seen by the JS optimizer. When not optimizing, we can optionally
+    // create the functions at runtime, if eval() or new Function() are
+    // available, which can save work by wasm-emscripten-finalize.
+    if (!ASM_CONSTS[code]) {
+      var numArgs = UTF8ToString(sigPtr).length;
+      var argNames = [];
+      for (var i = 0; i < numArgs; i++) {
+        argNames.push('$' + i);
+      }
+      ASM_CONSTS[code] = eval('(function(' + argNames.join(', ') + ') { ' + UTF8ToString(code) + ' })');
+    }
+#endif // OPT_LEVEL < 2
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
