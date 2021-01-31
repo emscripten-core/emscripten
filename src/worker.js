@@ -184,6 +184,13 @@ this.onmessage = function(e) {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace'](top, max);
       Module['_emscripten_tls_init']();
+#if MAIN_MODULE >= 1
+      Object.values(Module['LDSO'].loadedLibs).forEach(function (lib) {
+        if ("emscripten_tls_init" in lib.module) {
+          lib.module.emscripten_tls_init();
+        }
+      });
+#endif
 
       Module['PThread'].receiveObjectTransfer(e.data);
       Module['PThread'].setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);

@@ -1502,7 +1502,7 @@ int f() {
       int main(void) {
           get_value() = 123;
           std::thread([]{
-            printf("%d\n", get_value());
+              printf("%d\n", get_value());
           }).join();
           return 0;
       }
