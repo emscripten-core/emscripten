@@ -3516,48 +3516,49 @@ LibraryManager.library = {
     // create the functions at runtime, if eval() or new Function() are
     // available, which can save work by wasm-emscripten-finalize.
     if (!ASM_CONSTS[__code]) {
-      var __argNames = [];
-      for (var __i = 0; __i < __numArgs; __i++) {
-        __argNames.push('$' + __i);
-      }
-      var __body = UTF8ToString(__code).trim();
-      function __escape(code) {
-        code = code.replace(/\\\\/g, '\\');
-        return code;
-      }
-      __body = __escape(__body);
-      // Test if the parentheses at body[openIdx] and body[closeIdx] are a match to
-      // each other.
-      function __parenthesesMatch(body, openIdx, closeIdx) {
-        var count = 1;
-        for (var i = openIdx + 1; i < closeIdx + 1; i++) {
-          if (body[i] == body[openIdx]) {
-            count += 1;
-          } else if (body[i] == body[closeIdx]) {
-            count -= 1;
-            if (count <= 0) {
-              return i == closeIdx;
+      // Do all the work in a function scope to avoid locals being seen by the
+      // later eval().
+      var __func = (function(code, numArgs) {
+        var argNames = [];
+        for (var i = 0; i < numArgs; i++) {
+          argNames.push('$' + i);
+        }
+        var body = UTF8ToString(code).trim();
+        // Fix escaping.
+        body = body.replace(/\\\\/g, '\\');
+        // Test if the parentheses at body[openIdx] and body[closeIdx] are a match to
+        // each other.
+        function parenthesesMatch(body, openIdx, closeIdx) {
+          var count = 1;
+          for (var i = openIdx + 1; i < closeIdx + 1; i++) {
+            if (body[i] == body[openIdx]) {
+              count += 1;
+            } else if (body[i] == body[closeIdx]) {
+              count -= 1;
+              if (count <= 0) {
+                return i == closeIdx;
+              }
             }
           }
+          return false;
         }
-        return false;
-      }
-      var __orig = null;
-      while (__orig != __body) {
-        __orig = __body;
-        if (__body.length > 1 && __body[0] == '"' && __body[__body.length - 1] == '"') {
-          __body = __body.substring(1, __body.length - 1).replace(/\\"/g, '"').trim();
+        var orig = null;
+        while (orig != body) {
+          orig = body;
+          if (body.length > 1 && body[0] == '"' && body[body.length - 1] == '"') {
+            body = body.substring(1, body.length - 1).replace(/\\"/g, '"').trim();
+          }
+          if (body.length > 1 && body[0] == '{' && body[body.length - 1] == '}' &&
+              parenthesesMatch(body, 0, body.length - 1)) {
+            body = body.substring(1, body.length - 1).trim();
+          }
+          if (body.length > 1 && body[0] == '(' && body[body.length - 1] == ')' &&
+              parenthesesMatch(body, 0, body.length - 1)) {
+            body = body.substring(1, body.length - 1).trim();
+          }
         }
-        if (__body.length > 1 && __body[0] == '{' && __body[__body.length - 1] == '}' &&
-            __parenthesesMatch(__body, 0, __body.length - 1)) {
-          __body = __body.substring(1, __body.length - 1).trim();
-        }
-        if (__body.length > 1 && __body[0] == '(' && __body[__body.length - 1] == ')' &&
-            __parenthesesMatch(__body, 0, __body.length - 1)) {
-          __body = __body.substring(1, __body.length - 1).trim();
-        }
-      }
-      var __func = '(function(' + __argNames.join(', ') + ') { ' + __body + ' })';
+        return '(function(' + argNames.join(', ') + ') { ' + body + ' })';
+      })(__code, __numArgs);
       ASM_CONSTS[__code] = eval(__func);
     }
 #else // !POST_PROCESS_JS
