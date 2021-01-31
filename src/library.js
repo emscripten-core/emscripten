@@ -3510,7 +3510,7 @@ LibraryManager.library = {
   // scope with other JS library code - which we need, and we would lose with a
   // global eval). So locals in this function may confuse us.
   $getAsmConst: function(__code, __numArgs) {
-#if OPT_LEVEL < 2 && !USE_CLOSURE_COMPILER
+#if !POST_PROCESS_JS
     // When fully optimizing we emit the EM_ASM code in the JS, so that it can
     // be seen by the JS optimizer. When not optimizing, we can optionally
     // create the functions at runtime, if eval() or new Function() are
@@ -3555,7 +3555,7 @@ LibraryManager.library = {
       var __func = '(function(' + __argNames.join(', ') + ') { ' + __body + ' })';
       ASM_CONSTS[__code] = eval(__func);
     }
-#endif // OPT_LEVEL < 2 && !USE_CLOSURE_COMPILER
+#endif // !POST_PROCESS_JS
     return ASM_CONSTS[__code];
   },
 

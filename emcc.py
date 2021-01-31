@@ -1913,6 +1913,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           suggestion = 'decrease MAXIMUM_MEMORY'
         exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or ' + suggestion)
 
+    # various settings require JS post-processing
+    if shared.Settings.OPT_LEVEL >= 2 or \
+       shared.Settings.USE_CLOSURE_COMPILER or \
+       shared.Settings.CAN_ADDRESS_2GB or \
+       shared.Settings.USE_ASAN or \
+       shared.Settings.SAFE_HEAP or \
+       (shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH):
+      shared.Settings.POST_PROCESS_JS = 1
+
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.PROFILING_FUNCS = options.profiling_funcs
     shared.Settings.SOURCE_MAP_BASE = options.source_map_base or ''

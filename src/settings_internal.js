@@ -183,6 +183,10 @@ var MEMORYPROFILER = 0;
 
 var GENERATE_SOURCE_MAP = 0;
 
+// True when we run some kind of post-processing on the JS, such as optimizatons
+// or SAFE_HEAP.
+var POST_PROCESS_JS = 0;
+
 // Memory layout.  These are only used/set in RELOCATABLE builds.  Otherwise
 // memory layout is fixed in the wasm binary at link time.
 var STACK_BASE = 0;

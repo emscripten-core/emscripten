@@ -800,8 +800,8 @@ def load_metadata_wasm(metadata_raw, DEBUG):
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
-  # If JS is not being optimized, calculate ASM_CONSTS at runtime.
-  if shared.Settings.OPT_LEVEL < 2 and not shared.Settings.USE_CLOSURE_COMPILER:
+  # If JS is not being processed, calculate ASM_CONSTS at runtime.
+  if not shared.Settings.POST_PROCESS_JS:
     metadata['asmConsts'] = {}
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$readAsmConstArgs']
     # TODO for EM_JS, set metadata['emJsFuncs'] = {} and then scan exports for
