@@ -3521,6 +3521,11 @@ LibraryManager.library = {
         __argNames.push('$' + __i);
       }
       var __body = UTF8ToString(__code).trim();
+      function __escape(code) {
+        code = code.replace(/\\\\/g, '\\');
+        return code;
+      }
+      __body = __escape(__body);
       // Test if the parentheses at body[openIdx] and body[closeIdx] are a match to
       // each other.
       function __parenthesesMatch(body, openIdx, closeIdx) {
