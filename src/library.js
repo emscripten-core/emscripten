@@ -3560,6 +3560,12 @@ LibraryManager.library = {
       var __func = '(function(' + __argNames.join(', ') + ') { ' + __body + ' })';
       ASM_CONSTS[__code] = eval(__func);
     }
+#else // !POST_PROCESS_JS
+#if RELOCATABLE
+    // ASM_CONSTS are relative to the global base, when emitted in the JS (as we
+    // do not know the absolute address at compile time).
+    __code -= {{{ GLOBAL_BASE }}};
+#endif
 #endif // !POST_PROCESS_JS
     return ASM_CONSTS[__code];
   },
@@ -3567,9 +3573,6 @@ LibraryManager.library = {
   emscripten_asm_const_int__deps: ['$getAsmConst'],
   emscripten_asm_const_int__sig: 'iiii',
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
     var args = readAsmConstArgs(sigPtr, argbuf);
     return getAsmConst(code, args.length).apply(null, args);
   },
@@ -3578,9 +3581,6 @@ LibraryManager.library = {
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
-#if RELOCATABLE
-      code -= {{{ GLOBAL_BASE }}};
-#endif
       var args = readAsmConstArgs(sigPtr, argbuf);
       // EM_ASM functions are variadic, receiving the actual arguments as a buffer
       // in memory. the last parameter (argBuf) points to that data. We need to
