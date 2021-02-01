@@ -823,9 +823,10 @@ class side_module(MTLibrary):
   def get_files(self):
     side_module_files = []
     if self.is_mt:
-      side_module_files += files_in_path(
-        path_components=['system', 'lib', 'pthread'],
-        filenames=['emscripten_tls_init.c'])
+      side_module_files += [
+        shared.path_from_root('system', 'lib', 'pthread', 'emscripten_tls_init.c'),
+        shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'),
+      ]
 
     return side_module_files
 
