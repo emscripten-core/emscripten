@@ -994,9 +994,9 @@
             "patch": 2
         },
         "WGPUAdapterProperties": {
-            "__size__": 24,
-            "adapterType": 16,
-            "backendType": 20,
+            "__size__": 28,
+            "adapterType": 20,
+            "backendType": 24,
             "deviceID": 4,
             "name": 12,
             "nextInChain": 0,
@@ -1027,11 +1027,15 @@
             "nextInChain": 0
         },
         "WGPUBindGroupLayoutEntry": {
-            "__size__": 40,
+            "__size__": 104,
             "binding": 0,
+            "buffer": 40,
             "hasDynamicOffset": 12,
             "minBufferBindingSize": 16,
+            "sampler": 64,
+            "storageTexture": 88,
             "storageTextureFormat": 32,
+            "texture": 72,
             "textureComponentType": 28,
             "type": 8,
             "viewDimension": 24,
@@ -1042,6 +1046,13 @@
             "dstFactor": 8,
             "operation": 0,
             "srcFactor": 4
+        },
+        "WGPUBufferBindingLayout": {
+            "__size__": 24,
+            "hasDynamicOffset": 8,
+            "minBindingSize": 16,
+            "nextInChain": 0,
+            "type": 4
         },
         "WGPUBufferCopyView": {
             "__size__": 40,
@@ -1063,10 +1074,10 @@
             "sType": 4
         },
         "WGPUColor": {
-            "__size__": 16,
-            "a": 12,
-            "b": 8,
-            "g": 4,
+            "__size__": 32,
+            "a": 24,
+            "b": 16,
+            "g": 8,
             "r": 0
         },
         "WGPUColorStateDescriptor": {
@@ -1178,7 +1189,7 @@
             "sampleCount": 20
         },
         "WGPURenderPassColorAttachmentDescriptor": {
-            "__size__": 32,
+            "__size__": 48,
             "attachment": 0,
             "clearColor": 16,
             "loadOp": 8,
@@ -1223,8 +1234,13 @@
             "vertexStage": 12,
             "vertexState": 28
         },
+        "WGPUSamplerBindingLayout": {
+            "__size__": 8,
+            "nextInChain": 0,
+            "type": 4
+        },
         "WGPUSamplerDescriptor": {
-            "__size__": 44,
+            "__size__": 48,
             "addressModeU": 8,
             "addressModeV": 12,
             "addressModeW": 16,
@@ -1260,6 +1276,13 @@
             "failOp": 4,
             "passOp": 12
         },
+        "WGPUStorageTextureBindingLayout": {
+            "__size__": 16,
+            "access": 4,
+            "format": 8,
+            "nextInChain": 0,
+            "viewDimension": 12
+        },
         "WGPUSurfaceDescriptor": {
             "__size__": 8,
             "label": 4,
@@ -1280,8 +1303,16 @@
             "usage": 8,
             "width": 16
         },
+        "WGPUTextureBindingLayout": {
+            "__size__": 16,
+            "multisampled": 12,
+            "nextInChain": 0,
+            "sampleType": 4,
+            "viewDimension": 8
+        },
         "WGPUTextureCopyView": {
-            "__size__": 24,
+            "__size__": 28,
+            "aspect": 24,
             "mipLevel": 8,
             "nextInChain": 0,
             "origin": 12,
