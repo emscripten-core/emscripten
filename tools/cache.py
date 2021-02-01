@@ -13,16 +13,6 @@ logger = logging.getLogger('cache')
 
 # Permanent cache for system librarys and ports
 class Cache:
-  # If EM_EXCLUSIVE_CACHE_ACCESS is true, this process is allowed to have direct
-  # access to the Emscripten cache without having to obtain an interprocess lock
-  # for it. Generally this is false, and this is used in the case that
-  # Emscripten process recursively calls to itself when building the cache, in
-  # which case the parent Emscripten process has already locked the cache.
-  # Essentially the env. var EM_EXCLUSIVE_CACHE_ACCESS signals from parent to
-  # child process that the child can reuse the lock that the parent already has
-  # acquired.
-  EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS', '0'))
-
   def __init__(self, dirname):
     # figure out the root directory for all caching
     dirname = os.path.normpath(dirname)
@@ -41,30 +31,31 @@ class Cache:
       # should never happen
       raise Exception('Attempt to lock the cache but FROZEN_CACHE is set')
 
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
+    if self.acquired_count == 0:
       logger.debug('PID %s acquiring multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
+      # This should never happen because any calls to emcc make when populating the
+      # cache should not themselves attempt to acquire the cache lock.  For example,
+      # it should never be the case that while holding the cache lock to build libraryA
+      # a build of libraryB is needed.  This would be a bug in the dependency graph
+      # since if libraryA depended on libraryB it should already have been built and
+      # cached before the libraryA build started.
+      assert 'EM_PARENT_HOLDS_CACHE_LOCK' not in os.environ
       try:
         self.filelock.acquire(60)
       except filelock.Timeout:
-        # The multiprocess cache locking can be disabled altogether by setting EM_EXCLUSIVE_CACHE_ACCESS=1 environment
-        # variable before building. (in that case, use "embuilder.py build ALL" to prepopulate the cache)
         logger.warning('Accessing the Emscripten cache at "' + self.dirname + '" is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "' + self.filelock_name + '" and try again. If this occurs deterministically, consider filing a bug.')
         self.filelock.acquire()
 
-      self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
-      os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
+      os.environ['EM_PARENT_HOLDS_CACHE_LOCK'] = '1'
       logger.debug('done')
     self.acquired_count += 1
 
   def release_cache_lock(self):
     self.acquired_count -= 1
     assert self.acquired_count >= 0, "Called release more times than acquire"
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
-      if self.prev_EM_EXCLUSIVE_CACHE_ACCESS:
-        os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
-      else:
-        del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
+    if self.acquired_count == 0:
       self.filelock.release()
+      del os.environ['EM_PARENT_HOLDS_CACHE_LOCK']
       logger.debug('PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
 
   @contextlib.contextmanager
