@@ -67,15 +67,7 @@ var LibraryDylink = {
       '__cpp_exception',
       '__wasm_apply_data_relocs',
       '__dso_handle',
-      '__set_stack_limits',
-      '__clang_call_terminate',
-#if USE_PTHREADS
-      '__wasm_init_memory_flag',
-      '__wasm_init_memory',
-      '__wasm_init_tls',
-      '__tls_size',
-      '__tls_align',
-#endif
+      '__set_stack_limits'
     ].indexOf(symName) != -1
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
