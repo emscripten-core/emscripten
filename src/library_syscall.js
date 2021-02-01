@@ -602,6 +602,11 @@ var SyscallsLibrary = {
     sock.sock_ops.connect(sock, info.addr, info.port);
     return 0;
   },
+  __sys_shutdown__deps: ['$getSocketFromFD'],
+  __sys_shutdown: function(fd, how) {
+    getSocketFromFD(fd);
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
+  },
   __sys_accept4__deps: ['$getSocketFromFD', '_write_sockaddr', '$DNS'],
   __sys_accept4: function(fd, addr, addrlen, flags) {
     var sock = getSocketFromFD(fd);
