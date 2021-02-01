@@ -767,11 +767,13 @@ LibraryManager.library = {
   // time.h
   // ==========================================================================
 
+  clock__sig: 'i',
   clock: function() {
     if (_clock.start === undefined) _clock.start = Date.now();
     return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
   },
 
+  time__sig: 'ii',
   time: function(ptr) {
     var ret = (Date.now()/1000)|0;
     if (ptr) {
@@ -780,6 +782,7 @@ LibraryManager.library = {
     return ret;
   },
 
+  difftime__sig: 'dii',
   difftime: function(time1, time0) {
     return time1 - time0;
   },
@@ -855,6 +858,7 @@ LibraryManager.library = {
   __gmtime_r: 'gmtime_r',
 
   timegm__deps: ['tzset'],
+  timegm__sig: 'ii',
   timegm: function(tmPtr) {
     _tzset();
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -1063,6 +1067,7 @@ LibraryManager.library = {
     , '$intArrayFromString', '$writeArrayToMemory'
 #endif
   ],
+  strftime__sig: 'iiiii',
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
