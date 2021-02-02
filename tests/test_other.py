@@ -9085,7 +9085,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.assertContained('warning: ignoring unsupported linker flag: `-rpath-link`', out)
 
     out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'),
-                            '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
+                            '-Wl,--no-check-features,-mllvm,--data-sections'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)
 
     out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-allow-shlib-undefined'], stderr=PIPE).stderr
