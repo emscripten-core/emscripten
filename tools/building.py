@@ -158,10 +158,6 @@ def clear():
 
 
 def get_num_cores():
-  if DEBUG:
-    # When in EMCC_DEBUG mode, only use a single core to avoid interleaving
-    # logging output and keeps things more deterministic.
-    return 1
   return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
 
 
