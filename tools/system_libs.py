@@ -19,9 +19,6 @@ from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
-stdout = None
-stderr = None
-
 logger = logging.getLogger('system_libs')
 
 LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
@@ -79,7 +76,7 @@ def run_one_command(cmd):
       del safe_env[opt]
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
-  shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
+  shared.run_process(cmd, env=safe_env)
 
 
 def run_build_commands(commands):
@@ -1362,22 +1359,19 @@ def warn_on_unexported_main(symbolses):
         return
 
 
-def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
-  global stdout, stderr
-  stdout = stdout_
-  stderr = stderr_
-
-  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
-  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
-  # the proper list of actually needed libraries, errors can occur. See below for how we must
-  # export all the symbols in deps_info when using this option.
-  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
+def handle_reverse_deps(input_files, only_forced):
+  # If we are only doing forced stdlibs, then we don't know the actual
+  # symbols we need, and must assume all of deps_info must be exported.
+  # Note that this might cause warnings on exports that do not exist.
   if only_forced:
-    temp_files = []
+    for key, value in deps_info.deps_info.items():
+      for dep in value:
+        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
+    return
 
   added = set()
 
-  def add_back_deps(need):
+  def add_reverse_deps(need):
     more = False
     for ident, deps in deps_info.deps_info.items():
       if ident in need.undefs and ident not in added:
@@ -1388,10 +1382,10 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
           logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
-      add_back_deps(need) # recurse to get deps of deps
+      add_reverse_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+  symbolses = building.parallel_llvm_nm([os.path.abspath(t) for t in input_files])
 
   warn_on_unexported_main(symbolses)
 
@@ -1408,15 +1402,16 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
     symbolses[0].undefs.add(demangle_c_symbol_name(export))
 
   for symbols in symbolses:
-    add_back_deps(symbols)
+    add_reverse_deps(symbols)
 
-  # If we are only doing forced stdlibs, then we don't know the actual symbols we need,
-  # and must assume all of deps_info must be exported. Note that this might cause
-  # warnings on exports that do not exist.
-  if only_forced:
-    for key, value in deps_info.deps_info.items():
-      for dep in value:
-        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
+
+def calculate(input_files, cxx, forced):
+  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
+  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
+  # the proper list of actually needed libraries, errors can occur. See below for how we must
+  # export all the symbols in deps_info when using this option.
+  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
+  handle_reverse_deps(input_files, only_forced)
 
   libs_to_link = []
   already_included = set()
