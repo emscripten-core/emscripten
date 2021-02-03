@@ -141,6 +141,7 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def record_subprocess_spawn(process_pid, process_cmdline):
+      process_cmdline = list(process_cmdline)
       response_cmdline = []
       for item in process_cmdline:
         if item.startswith('@'):
