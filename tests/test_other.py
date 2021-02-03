@@ -46,7 +46,6 @@ emcmake = shared.bat_suffix(path_from_root('emcmake'))
 emconfigure = shared.bat_suffix(path_from_root('emconfigure'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
-emprofile = shared.bat_suffix(path_from_root('tools', 'emprofile'))
 wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 wasm_opt = os.path.join(building.get_binaryen_bin(), 'wasm-opt')
 
@@ -7375,20 +7374,10 @@ end
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--closure', '1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-args', '--externs "' + path_from_root('tests', 'test_closure_externs.js') + '"'])
 
   def test_toolchain_profiler(self):
-    # Verify some basic functionality of EM_PROFILE_TOOLCHAIN
     environ = os.environ.copy()
     environ['EM_PROFILE_TOOLCHAIN'] = '1'
-
-    self.run_process([emprofile, '--reset'])
-    err = self.expect_fail([emprofile, '--graph'])
-    self.assertContained('No profiler logs were found', err)
-
+    # replaced subprocess functions should not cause errors
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')], env=environ)
-    self.assertEqual('hello, world!', self.run_js('a.out.js').strip())
-
-    self.run_process([emprofile, '--graph'])
-    self.assertTrue(glob.glob('toolchain_profiler.results*.html'))
-    self.assertTrue(glob.glob('toolchain_profiler.results*.json'))
 
   def test_noderawfs(self):
     fopen_write = open(path_from_root('tests', 'asmfs', 'fopen_write.cpp')).read()

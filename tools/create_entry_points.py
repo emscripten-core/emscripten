@@ -31,7 +31,6 @@ emrun
 emscons
 emsize
 tools/emdump
-tools/emprofile
 tools/file_packager
 '''.split()
 
