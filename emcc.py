@@ -425,7 +425,7 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
-def get_all_js_syms(temp_files):
+def get_all_js_syms():
   # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invokation since the
   # list of symbols depends on what settings are used.
@@ -439,7 +439,7 @@ def get_all_js_syms(temp_files):
     shared.Settings.INCLUDE_FULL_LIBRARY = True
     shared.Settings.ONLY_CALC_JS_SYMBOLS = True
     emscripten.generate_struct_info()
-    glue, forwarded_data = emscripten.compile_settings(temp_files)
+    glue, forwarded_data = emscripten.compile_settings()
     forwarded_json = json.loads(forwarded_data)
     library_fns = forwarded_json['Functions']['libraryFunctions']
     library_fns_list = []
@@ -2139,7 +2139,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # TODO: we could check if this is a fastcomp build, and still speed things up here
     js_funcs = None
     if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      js_funcs = get_all_js_syms(misc_temp_files)
+      js_funcs = get_all_js_syms()
       log_time('JS symbol generation')
     building.link_lld(linker_inputs, wasm_target, external_symbol_list=js_funcs)
     # Special handling for when the user passed '-Wl,--version'.  In this case the linker

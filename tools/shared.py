@@ -423,7 +423,7 @@ class Configuration(object):
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
+      tmpdir=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 

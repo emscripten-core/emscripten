@@ -174,9 +174,9 @@ def apply_static_code_hooks(forwarded_json, code):
   return code
 
 
-def compile_settings(temp_files):
+def compile_settings():
   # Save settings to a file to work around v8 issue 1579
-  with temp_files.get_file('.txt') as settings_file:
+  with shared.configuration.get_temp_files().get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
       json.dump(shared.Settings.to_dict(), s, sort_keys=True)
 
@@ -281,7 +281,7 @@ def create_named_globals(metadata):
   return '\n'.join(named_globals)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
+def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -313,7 +313,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
     set_memory(static_bump)
     logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', shared.Settings.STACK_BASE, shared.Settings.STACK_MAX, shared.Settings.HEAP_BASE)
 
-  glue, forwarded_data = compile_settings(temp_files)
+  glue, forwarded_data = compile_settings()
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
@@ -844,10 +844,7 @@ def generate_struct_info():
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):
-  temp_files = shared.configuration.get_temp_files()
   if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
     generate_struct_info()
 
-  return temp_files.run_and_clean(lambda: emscript(
-      in_wasm, out_wasm, outfile_js, memfile, temp_files, shared.DEBUG)
-  )
+  emscript(in_wasm, out_wasm, outfile_js, memfile, shared.DEBUG)
