@@ -994,7 +994,7 @@ function asmFFICoercion(value, type) {
 function makeDynCall(sig, funcPtr) {
   assert(sig.indexOf('j') == -1, 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
 
-  let returnExpr = sig[0] == 'v' ? '' : 'return';
+  const returnExpr = (sig[0] == 'v') ? '' : 'return';
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
