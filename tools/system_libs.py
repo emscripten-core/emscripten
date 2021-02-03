@@ -88,7 +88,7 @@ def run_build_commands(commands):
   # to setup the sysroot itself.
   ensure_sysroot()
   cores = min(len(commands), building.get_num_cores())
-  if cores <= 1:
+  if cores <= 1 or shared.DEBUG:
     for command in commands:
       run_one_command(command)
   else:
