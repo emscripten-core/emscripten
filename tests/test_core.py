@@ -8336,6 +8336,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
     self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
+  def test_REVERSE_DEPS(self):
+    create_test_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')
+    self.run_process([EMCC, 'connect.c'])
+    base_size = os.path.getsize('a.out.wasm')
+
+    # 'auto' should work (its the default)
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=auto'])
+
+    # 'all' should work too although it should produce a larger binary
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=all'])
+    self.assertGreater(os.path.getsize('a.out.wasm'), base_size)
+
+    # 'none' should fail to link because the dependency on ntohs was not added.
+    err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
+    self.assertContained('undefined symbol: ntohs', err)
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):

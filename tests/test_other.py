@@ -4243,7 +4243,9 @@ int main() {
   })
   def test_only_force_stdlibs(self, env, fail):
     with env_modify(env):
-      self.run_process([EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
+      err = self.run_process([EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'], stderr=PIPE).stderr
+      if 'EMCC_ONLY_FORCED_STDLIBS' in env:
+        self.assertContained('EMCC_ONLY_FORCED_STDLIBS is deprecated', err)
       if fail:
         output = self.expect_fail(config.NODE_JS + ['a.out.js'], stdout=PIPE)
         self.assertContained('missing function', output)
