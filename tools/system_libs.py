@@ -811,6 +811,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     return libc_files
 
+
 class side_module(MTLibrary):
   name = 'side_module'
 
@@ -829,6 +830,7 @@ class side_module(MTLibrary):
       ]
 
     return side_module_files
+
 
 class libprintf_long_double(libc):
   name = 'libprintf_long_double'
