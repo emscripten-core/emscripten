@@ -5,6 +5,7 @@
  */
 
 #include "runtime_safe_heap.js"
+#include "runtime_little_endian_heap.js"
 
 #if ASSERTIONS
 /** @type {function(*, string=)} */
@@ -61,7 +62,7 @@ Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #include "runtime_functions.js"
 #include "runtime_strings.js"
 
-var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
+var _HEAP_DATA_VIEW, HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
 var wasmMemory, buffer, wasmTable;
 
 function updateGlobalBufferAndViews(b) {
@@ -69,6 +70,7 @@ function updateGlobalBufferAndViews(b) {
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
   buffer = b;
+  _HEAP_DATA_VIEW = new DataView(b);
   HEAP8 = new Int8Array(b);
   HEAP16 = new Int16Array(b);
   HEAP32 = new Int32Array(b);

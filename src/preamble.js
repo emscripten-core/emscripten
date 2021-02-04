@@ -39,6 +39,7 @@ if (typeof WebAssembly !== 'object') {
 #endif
 
 #include "runtime_safe_heap.js"
+#include "runtime_little_endian_heap.js"
 
 // Wasm globals
 
@@ -242,6 +243,8 @@ function alignUp(x, multiple) {
 }
 
 var HEAP,
+/** @type {DataView} */
+  _HEAP_DATA_VIEW,
 /** @type {ArrayBuffer} */
   buffer,
 /** @type {Int8Array} */
@@ -267,6 +270,7 @@ var HEAP64;
 
 function updateGlobalBufferAndViews(buf) {
   buffer = buf;
+  Module['_HEAP_DATA_VIEW'] = _HEAP_DATA_VIEW = new DataView(buf);
   Module['HEAP8'] = HEAP8 = new Int8Array(buf);
   Module['HEAP16'] = HEAP16 = new Int16Array(buf);
   Module['HEAP32'] = HEAP32 = new Int32Array(buf);
