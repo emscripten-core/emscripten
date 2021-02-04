@@ -19,5 +19,9 @@ mergeInto(LibraryManager.library, {
     //    (this form should never be used, it is suboptimal for performance, but provided for legacy compatibility)
     var ret = dynCall('iii', funcPtr, [2, 3]); // Available only in WASM_BIGINT != 2 builds
     console.log('iii returned ' + ret);
+
+    // 3. Access a dynCall using the makeDynCall macro:
+    var ret = {{{ makeDynCall('iii', 'funcPtr') }}}(2, 3);
+    console.log('iii returned ' + ret);
   }
 });
