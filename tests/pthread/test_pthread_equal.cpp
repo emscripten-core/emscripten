@@ -4,10 +4,10 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
-#include <thread>
+#include <pthread.h>
 
 int main() {
-  int x = std::this_thread::get_id() == std::this_thread::get_id();
+  int x = pthread_equal(pthread_self(), pthread_self());
   printf("is this thread the same as this thread? %d\n", x);
 }
 

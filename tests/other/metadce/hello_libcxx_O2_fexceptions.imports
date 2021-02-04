@@ -8,7 +8,6 @@ env.__cxa_rethrow
 env.__cxa_throw
 env.__cxa_uncaught_exceptions
 env.__resumeException
-env.abort
 env.emscripten_memcpy_big
 env.emscripten_resize_heap
 env.getTempRet0

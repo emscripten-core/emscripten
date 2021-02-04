@@ -5454,11 +5454,11 @@ PORT: 3979
   def test_atomic(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic.c')
 
+  @node_pthreads
   def test_atomic_cxx(self):
     # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
-    self.emcc_args += ['-DIS_64BIT_LOCK_FREE=1']
+    self.set_setting('USE_PTHREADS')
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx.cpp')
-    # TODO: test with USE_PTHREADS in wasm backend as well
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef.c')

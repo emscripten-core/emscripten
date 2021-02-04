@@ -10,6 +10,18 @@
 #ifndef _LIBCPP_CONFIG
 #define _LIBCPP_CONFIG
 
+// XXX Emscripten: begin site config
+#ifdef __EMSCRIPTEN__
+#define _LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS
+// Normally macros like _LIBCPP_HAS_NO_THREADS are fixed at build time,
+// but we to have this header work for both the multi-threaded and
+// single-threaded version of libc++.
+#ifndef __EMSCRIPTEN_PTHREADS__
+#define _LIBCPP_HAS_NO_THREADS
+#endif
+#endif
+// XXX Emscripten: end site config
+
 #if defined(_MSC_VER) && !defined(__clang__)
 #  if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #    define _LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER
@@ -1158,10 +1170,6 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
 #if defined(_LIBCPP_HAS_NO_MONOTONIC_CLOCK) && !defined(_LIBCPP_HAS_NO_THREADS)
 #error _LIBCPP_HAS_NO_MONOTONIC_CLOCK may only be defined when \
        _LIBCPP_HAS_NO_THREADS is defined.
-#endif
-
-#if defined(__STDCPP_THREADS__) && defined(_LIBCPP_HAS_NO_THREADS)
-#error _LIBCPP_HAS_NO_THREADS cannot be set when __STDCPP_THREADS__ is set.
 #endif
 
 #if !defined(_LIBCPP_HAS_NO_THREADS) && !defined(__STDCPP_THREADS__)

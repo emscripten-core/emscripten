@@ -9,7 +9,6 @@ __cxa_rethrow
 __cxa_throw
 __cxa_uncaught_exceptions
 __resumeException
-abort
 emscripten_memcpy_big
 emscripten_resize_heap
 environ_get

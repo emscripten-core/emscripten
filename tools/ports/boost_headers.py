@@ -52,8 +52,11 @@ def clear(ports, settings, shared):
   shared.Cache.erase_file('libboost_headers.a')
 
 
-def process_args(ports):
-  return ['-DBOOST_ALL_NO_LIB']
+def process_args(ports, settings):
+  flags = ['-DBOOST_ALL_NO_LIB']
+  if not settings.USE_PTHREADS:
+    flags.append('-DBOOST_NO_CXX11_HDR_ATOMIC')
+  return flags
 
 
 def show():

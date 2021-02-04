@@ -864,12 +864,12 @@ class crt1_reactor(MuslInternalLibrary):
 class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   cflags = [
-      '-Oz',
-      '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
-      # Remove this once we update to include this llvm
-      # revision: https://reviews.llvm.org/D64961
-      '-D_LIBCXXABI_GUARD_ABI_ARM',
-    ]
+    '-Oz',
+    '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+    # Remove this once we update to include this llvm
+    # revision: https://reviews.llvm.org/D64961
+    '-D_LIBCXXABI_GUARD_ABI_ARM',
+  ]
 
   def get_cflags(self):
     cflags = super(libcxxabi, self).get_cflags()
@@ -917,8 +917,11 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
 class libcxx(NoExceptLibrary, MTLibrary):
   name = 'libc++'
 
-  cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
-            '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = [
+    '-Oz',
+    '-DLIBCXX_BUILDING_LIBCXXABI=1',
+    '-D_LIBCPP_BUILDING_LIBRARY',
+  ]
 
   src_dir = ['system', 'lib', 'libcxx', 'src']
   src_glob = '**/*.cpp'
@@ -1840,7 +1843,7 @@ def add_ports_cflags(args, settings):
   # headers from one ports might be needed before we can build the next.
   for port in dependency_order(needed):
     port.get(Ports, settings, shared)
-    args += port.process_args(Ports)
+    args += port.process_args(Ports, shared.Settings)
 
   return args
 
