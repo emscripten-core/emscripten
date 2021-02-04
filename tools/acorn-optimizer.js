@@ -1019,32 +1019,32 @@ function littleEndianHeap(ast) {
           }
           case 'HEAP16': {
             // change "name[idx] = value" to "LE_HEAP_STORE(idx*2, value, 2, 1)"
-            makeHeapStoreCallExpression(node, idx, value, 2, 1)
+            makeHeapStoreCallExpression(node, idx, value, 2, 1);
             break;
           }
           case 'HEAPU16': {
             // change "name[idx] = value" to "LE_HEAP_STORE(idx*2, value, 2, 0)"
-            makeHeapStoreCallExpression(node, idx, value, 2, 0)
+            makeHeapStoreCallExpression(node, idx, value, 2, 0);
             break;
           }
           case 'HEAP32': {
             // change "name[idx] = value" to "LE_HEAP_STORE(idx*4, value, 4, 1)"
-            makeHeapStoreCallExpression(node, idx, value, 4, 1)
+            makeHeapStoreCallExpression(node, idx, value, 4, 1);
             break;
           }
           case 'HEAPU32': {
             // change "name[idx] = value" to "LE_HEAP_STORE(idx*4, value, 4, 0)"
-            makeHeapStoreCallExpression(node, idx, value, 4, 0)
+            makeHeapStoreCallExpression(node, idx, value, 4, 0);
             break;
           }
           case 'HEAPF32': {
             // change "name[idx] = value" to "LE_HEAP_STORE(idx*4, value, 4, 2)"
-            makeHeapStoreCallExpression(node, idx, value, 4, 2)
+            makeHeapStoreCallExpression(node, idx, value, 4, 2);
             break;
           }
           case 'HEAPF64': {
             // change "name[idx] = value" to "LE_HEAP_STORE(idx*8, value, 8, 2)"
-            makeHeapStoreCallExpression(node, idx, value, 8, 2)
+            makeHeapStoreCallExpression(node, idx, value, 8, 2);
             break;
           }
         };

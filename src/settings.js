@@ -275,6 +275,12 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 // [compile+link]
 var INLINING_LIMIT = 0;
 
+// If set to 1, perform acorn pass that converts each HEAP access into a
+// function call that uses DataView to enforce LE byte order for HEAP buffer;
+// This makes generated JavaScript run on BE as well as LE machines. (If 0, only
+// LE systems are supported). Does not affect generated wasm.
+var LE_HEAP = 0;
+
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
 // 0). See runtime_safe_heap.js for the actual checks performed.
