@@ -1218,6 +1218,7 @@ var LibraryEmbind = {
 
   $structRegistrations: {},
 
+  _embind_register_value_object__sig: 'viiiiii',
   _embind_register_value_object__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object: function(
@@ -1236,6 +1237,7 @@ var LibraryEmbind = {
     };
   },
 
+  _embind_register_value_object_field__sig: 'viiiiiiiiii',
   _embind_register_value_object_field__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object_field: function(
@@ -1261,6 +1263,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_finalize_value_object__sig: 'ii',
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],

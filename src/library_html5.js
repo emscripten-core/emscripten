@@ -2645,6 +2645,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_html5_remove_all_event_listeners__sig: 'v',
   emscripten_html5_remove_all_event_listeners__deps: ['$JSEvents'],
   emscripten_html5_remove_all_event_listeners: function() {
     JSEvents.removeAllEventListeners();
