@@ -235,7 +235,7 @@ def inspect_headers(headers, cpp_opts):
   os.close(src_file[0])
   os.close(js_file[0])
 
-  # Remove dangerous env modifications
+  # TODO(sbc): Switch to '-nostdlib -lcompiler_rt'
   env = os.environ.copy()
   env['EMCC_FORCE_STDLIBS'] = 'libcompiler_rt'
   env['EMCC_ONLY_FORCED_STDLIBS'] = '1'
@@ -250,11 +250,10 @@ def inspect_headers(headers, cpp_opts):
                                     '-Wno-format',
                                     '-I', shared.path_from_root(),
                                     '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                    '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
-                                    '-s', 'STRICT=1',
+                                    '-s', 'STRICT',
                                     # Use SINGLE_FILE=1 so there is only a single
                                     # file to cleanup.
-                                    '-s', 'SINGLE_FILE=1']
+                                    '-s', 'SINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
