@@ -12,6 +12,8 @@ Usage: emrun <options> filename.html <args to program>
 See emrun --help for more information
 """
 
+# N.B. Do not introduce external dependencies to this file. It is often used
+# standalone outside Emscripten directory tree.
 import argparse
 import atexit
 import cgi
