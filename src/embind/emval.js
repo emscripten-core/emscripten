@@ -100,6 +100,7 @@ var LibraryEmVal = {
     }
   },
 
+  _emval_decref__sig: 'vi',
   _emval_decref__deps: ['$emval_free_list', '$emval_handle_array'],
   _emval_decref: function(handle) {
     if (handle > 4 && 0 === --emval_handle_array[handle].refcount) {
@@ -314,6 +315,7 @@ var LibraryEmVal = {
     return !object;
   },
 
+  _emval_call__sig: 'iiiii',
   _emval_call__deps: ['_emval_lookupTypes', '_emval_register', '$requireHandle'],
   _emval_call: function(handle, argCount, argTypes, argv) {
     handle = requireHandle(handle);
