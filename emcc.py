@@ -1376,13 +1376,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Support all old browser versions
       shared.Settings.MIN_FIREFOX_VERSION = 0
-      shared.Settings.MIN_SAFARI_VERSION = 0
+      shared.Settings.MIN_SAFARI_VERSION = 100000
       shared.Settings.MIN_IE_VERSION = 0
       shared.Settings.MIN_EDGE_VERSION = 0
       shared.Settings.MIN_CHROME_VERSION = 0
 
     if shared.Settings.MIN_SAFARI_VERSION <= 90305:
-      exit_with_error('MIN_SAFARI_VERSION <= 90305: Emscripten does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older. (browser has no Wasm support, and Wasm2JS support would not run). Please pass -s MIN_SAFARI_VERSION=100000 or higher.')
+      diagnostics.warning('MIN_SAFARI_VERSION <= 90305: Emscripten does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older due to a bug in Safari JS execution. (browser has no Wasm support, and Wasm2JS support would not run, see https://github.com/emscripten-core/emscripten-fastcomp/pull/231). Please pass -s MIN_SAFARI_VERSION=100000 or higher.')
 
     if shared.Settings.MIN_CHROME_VERSION <= 37:
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
