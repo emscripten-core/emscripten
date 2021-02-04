@@ -973,36 +973,39 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'none'):
-      raise Exception('malloc must be one of "emmalloc", "dlmalloc" or "none", see settings.js')
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'none'):
+      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
-    self.is_debug = kwargs.pop('is_debug')
     self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
-    self.use_64bit_ops = kwargs.pop('use_64bit_ops')
+    self.memvalidate = kwargs.pop('memvalidate')
+    self.verbose = kwargs.pop('verbose')
+    self.is_debug = kwargs.pop('is_debug') or self.memvalidate or self.verbose
 
     super(libmalloc, self).__init__(**kwargs)
 
   def get_files(self):
+    malloc_base = self.malloc.replace('-memvalidate', '').replace('-verbose', '').replace('-debug', '')
     malloc = shared.path_from_root('system', 'lib', {
-      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
-    }[self.malloc])
+      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp',
+    }[malloc_base])
     sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
     return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super(libmalloc, self).get_cflags()
+    if self.memvalidate:
+      cflags += ['-DEMMALLOC_MEMVALIDATE']
+    if self.verbose:
+      cflags += ['-DEMMALLOC_VERBOSE']
     if self.is_debug:
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
-      # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
     if not self.use_errno:
       cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
-    if self.use_64bit_ops:
-      cflags += ['-DEMMALLOC_USE_64BIT_OPS=1']
     return cflags
 
   def get_base_name_prefix(self):
@@ -1010,15 +1013,13 @@ class libmalloc(MTLibrary):
 
   def get_base_name(self):
     name = super(libmalloc, self).get_base_name()
-    if self.is_debug:
+    if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
     if not self.use_errno:
       # emmalloc doesn't actually use errno, but it's easier to build it again
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
-    if self.use_64bit_ops:
-      name += '-64bit'
     return name
 
   def can_use(self):
@@ -1026,7 +1027,7 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'use_64bit_ops']
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1035,15 +1036,19 @@ class libmalloc(MTLibrary):
       is_debug=shared.Settings.ASSERTIONS >= 2,
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
-      use_64bit_ops=shared.Settings.MALLOC == 'emmalloc' and (shared.Settings.WASM == 1 or shared.Settings.WASM2JS == 0),
+      memvalidate='memvalidate' in shared.Settings.MALLOC,
+      verbose='verbose' in shared.Settings.MALLOC,
       **kwargs
     )
 
   @classmethod
   def variations(cls):
     combos = super(libmalloc, cls).variations()
-    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['use_64bit_ops']] +
-            [dict(malloc='emmalloc', **combo) for combo in combos])
+    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc-memvalidate-verbose', **combo) for combo in combos if combo['memvalidate'] and combo['verbose']] +
+            [dict(malloc='emmalloc-memvalidate', **combo) for combo in combos if combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
 
 
 class libal(Library):

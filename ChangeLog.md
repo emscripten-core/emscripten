@@ -32,6 +32,8 @@ Current Trunk
 - Emscripten now builds a complete sysroot inside the EM_CACHE directory.
   This includes the system headers which get copied into place there rather
   than adding a sequence of extra include directories.
+- Added support for -s MALLOC=emmalloc when -s MAXIMUM_MEMORY is more than 2GB.
+  (#13258)
 - Add back support for calling the legacy dynCall_sig() API to invoke function
   pointers to wasm functions from JavaScript. Pass -s DYNCALLS=1
   to include that functionality in the build. This fixes a regression that
