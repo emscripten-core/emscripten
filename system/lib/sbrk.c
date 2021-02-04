@@ -71,11 +71,7 @@ void *sbrk(intptr_t increment) {
     if (increment > 0 && (uint32_t)new_brk <= (uint32_t)old_brk) {
       goto Error;
     }
-#ifdef __wasm__
-    old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
-#else
     old_size = emscripten_get_heap_size();
-#endif
     if (new_brk > old_size) {
       // Try to grow memory.
       if (!emscripten_resize_heap(new_brk)) {
