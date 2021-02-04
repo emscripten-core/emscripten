@@ -1619,7 +1619,9 @@ var MIN_FIREFOX_VERSION = 65;
 // Mojave.
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
-// see https://github.com/emscripten-core/emscripten/pull/7191.
+// see https://github.com/emscripten-core/emscripten/pull/7191. Setting this to
+// a value smaller than 90305 (9.3.5) will be interpreted as targeting 100000
+// (10.0.0).
 // [link]
 var MIN_SAFARI_VERSION = 120000;
 
