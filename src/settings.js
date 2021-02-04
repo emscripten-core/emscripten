@@ -1682,6 +1682,13 @@ var IMPORTED_MEMORY = 0;
 // to loading split modules.
 var SPLIT_MODULE = 0;
 
+// When calculating reverse dependencies (dependecies on native functions
+// from JS functions) use the undefined symbols of the input objects files
+// to determine more precisely which ones to include.  Disabling this
+// will speed up link times, but will conservatively include possibly
+// unnecessary native functions.
+var OPTIMIZE_REVERSE_DEPS = 1;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================

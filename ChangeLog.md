@@ -20,6 +20,15 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Add new setting: OPTIMIZE_REVERSE_DEPS. This is enabled by default.  Can be
+  disabled in order to improve link times (by avoiding scanning input files for
+  symbols prior to linking).  Disabling this will cause all possible reverse
+  dependencies to be included, which for most large programs should not be an
+  issue.  For small programs (for example programs that don't use malloc,
+  disabling OPTIMIZE_REVERSE_DEPS is not recommended.
+  This option partially replaces the EMCC_ONLY_FORCED_STDLIBS environment
+  variable would also had the effect of skipping this scaning process.  For this
+  reason we now issue a deprecation warning if EMCC_ONLY_FORCED_STDLIBS is set.
 
 2.0.13: 01/19/2021
 ------------------

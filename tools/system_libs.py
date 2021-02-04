@@ -17,6 +17,7 @@ from glob import iglob
 
 from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
+from . import diagnostics
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 logger = logging.getLogger('system_libs')
@@ -1359,14 +1360,13 @@ def warn_on_unexported_main(symbolses):
         return
 
 
-def handle_reverse_deps(input_files, only_forced):
-  # If we are only doing forced stdlibs, then we don't know the actual
-  # symbols we need, and must assume all of deps_info must be exported.
-  # Note that this might cause warnings on exports that do not exist.
-  if only_forced:
-    for key, value in deps_info.deps_info.items():
-      for dep in value:
-        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
+def handle_reverse_deps(input_files):
+  if not shared.Settings.OPTIMIZE_REVERSE_DEPS:
+    # When not optimzing we add all possible reverse dependencies rather
+    # than scanning the input files
+    for symbols in deps_info.deps_info.values():
+      for symbol in symbols:
+        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(symbol))
     return
 
   added = set()
@@ -1411,7 +1411,13 @@ def calculate(input_files, cxx, forced):
   # the proper list of actually needed libraries, errors can occur. See below for how we must
   # export all the symbols in deps_info when using this option.
   only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
-  handle_reverse_deps(input_files, only_forced)
+  if only_forced:
+    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
+    # of the input files for reverse dependencies.
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-s OPTIMIZE_REVERSE_DEPS` depending on the desired result')
+    shared.Settings.OPTIMIZE_REVERSE_DEPS = 0
+
+  handle_reverse_deps(input_files)
 
   libs_to_link = []
   already_included = set()
