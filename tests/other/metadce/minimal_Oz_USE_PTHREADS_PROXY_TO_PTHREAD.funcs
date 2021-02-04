@@ -46,3 +46,4 @@ $sbrk
 $stackAlloc
 $stackRestore
 $stackSave
+$tmalloc_small
