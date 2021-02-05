@@ -1373,6 +1373,7 @@ def little_endian_heap(js_file):
   logger.debug('enforcing little endian heap byte order')
   return acorn_optimizer(js_file, ['littleEndianHeap'])
 
+
 def apply_wasm_memory_growth(js_file):
   logger.debug('supporting wasm memory growth with pthreads')
   fixed = acorn_optimizer(js_file, ['growableHeap'])
