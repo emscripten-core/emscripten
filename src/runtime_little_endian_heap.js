@@ -15,7 +15,7 @@ function LE_HEAP_STORE(byteOffset, value, size, type) {
   }
   var sizeVals = [2, 4, 8];
   if (!sizeVals.includes(size)) {
-    throw 'error: size must be one of ' + bytesVals;
+    throw 'error: size must be one of ' + sizeVals;
   }
   if (size === 2 && type === 0) {
     _HEAP_DATA_VIEW.setUint16(byteOffset, value, true);
@@ -52,7 +52,7 @@ function LE_HEAP_LOAD(byteOffset, size, type) {
   }
   var sizeVals = [2, 4, 8];
   if (!sizeVals.includes(size)) {
-    throw 'error: size must be one of ' + bytesVals;
+    throw 'error: size must be one of ' + sizeVals;
   }
   if (size === 2 && type === 0) {
     return _HEAP_DATA_VIEW.getUint16(byteOffset, true);
