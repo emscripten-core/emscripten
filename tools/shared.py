@@ -525,6 +525,7 @@ def get_cflags(user_args):
 
   # LLVM has turned on the new pass manager by default, but it causes some code
   # size regressions. For now, use the legacy one.
+  # https://github.com/emscripten-core/emscripten/issues/13427
   c_opts += ['-flegacy-pass-manager']
 
   # Changes to default clang behavior
