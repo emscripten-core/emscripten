@@ -964,6 +964,12 @@ def read_and_preprocess(filename, expand_macros=False):
   return out
 
 
+def do_replace(input_, pattern, replacement):
+  if pattern not in input_:
+    exit_with_error('expected to find pattern in input JS: %s' % pattern)
+  return input_.replace(pattern, replacement)
+
+
 # ============================================================================
 # End declarations.
 # ============================================================================
