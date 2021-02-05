@@ -562,7 +562,7 @@ def link_lld(args, target, external_symbol_list=None):
 
   # LLVM has turned on the new pass manager by default, but it causes some code
   # size regressions. For now, use the legacy one.
-  args += ['-flegacy-pass-manager']
+  cmd += ['--lto-legacy-pass-manager']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
