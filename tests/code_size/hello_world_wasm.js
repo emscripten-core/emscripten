@@ -21,6 +21,7 @@ WebAssembly.instantiate(d.wasm, {
     k = a.d;
     h = a.b;
     var b = h.buffer;
+    new DataView(b);
     g = new Uint8Array(b);
     a.c();
     k();
