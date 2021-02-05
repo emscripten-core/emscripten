@@ -1453,8 +1453,7 @@ def calculate(input_files, cxx, forced):
     add_library(system_libs_map[forced])
 
   if only_forced:
-    if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
-      add_library(system_libs_map['libc_rt_wasm'])
+    add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
     if shared.Settings.AUTO_NATIVE_LIBRARIES:

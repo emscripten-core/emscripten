@@ -88,6 +88,7 @@ import subprocess
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
+from tools import system_libs
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -231,14 +232,12 @@ def inspect_headers(headers, cpp_opts):
 
   js_file = tempfile.mkstemp('.js')
 
+  shared.check_sanity()
+  system_libs.Library.get_usable_variations()['libcompiler_rt'].get_path()
+
   # Close all unneeded FDs.
   os.close(src_file[0])
   os.close(js_file[0])
-
-  # Remove dangerous env modifications
-  env = os.environ.copy()
-  env['EMCC_FORCE_STDLIBS'] = 'libcompiler_rt'
-  env['EMCC_ONLY_FORCED_STDLIBS'] = '1'
 
   info = []
   # Compile the program.
@@ -248,6 +247,8 @@ def inspect_headers(headers, cpp_opts):
                                     '-O0',
                                     '-Werror',
                                     '-Wno-format',
+                                    '-nostdlib',
+                                    '-lcompiler_rt',
                                     '-I', shared.path_from_root(),
                                     '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                     '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
@@ -268,7 +269,7 @@ def inspect_headers(headers, cpp_opts):
 
   show(shared.shlex_join(cmd))
   try:
-    subprocess.check_call(cmd, env=env)
+    subprocess.check_call(cmd)
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
