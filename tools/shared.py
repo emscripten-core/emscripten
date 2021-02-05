@@ -33,6 +33,7 @@ from . import filelock
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 99
 EXPECTED_LLVM_VERSION = "13.0"
@@ -376,12 +377,14 @@ def get_emscripten_temp_dir():
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
 
-    def prepare_to_clean_temp(d):
-      def clean_temp():
-        try_delete(d)
+    if not DEBUG_SAVE:
+      def prepare_to_clean_temp(d):
+        def clean_temp():
+          try_delete(d)
 
-      atexit.register(clean_temp)
-    prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
+        atexit.register(clean_temp)
+      # this global var might change later
+      prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR)
   return EMSCRIPTEN_TEMP_DIR
 
 
@@ -422,9 +425,13 @@ class Configuration(object):
         atexit.register(lock.release)
 
   def get_temp_files(self):
-    return tempfiles.TempFiles(
-      tmpdir=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
-      save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
+    if DEBUG_SAVE:
+      # In debug mode store all temp files in the emscripten-specific temp dir
+      # and don't worry about cleaning them up.
+      return tempfiles.TempFiles(get_emscripten_temp_dir(), save_debug_files=True)
+    else:
+      # Otherwise use the system tempdir and try to clean up after ourselves.
+      return tempfiles.TempFiles(self.TEMP_DIR, save_debug_files=False)
 
 
 def apply_configuration():
