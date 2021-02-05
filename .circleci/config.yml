@@ -136,6 +136,7 @@ commands:
           command: |
             $PYTHON_BIN tests/runner.py << parameters.test_targets >>
             $PYTHON_BIN tools/check_clean.py
+          no_output_timeout: 30m
   run-tests-mac:
     description: "Runs emscripten tests"
     parameters:
