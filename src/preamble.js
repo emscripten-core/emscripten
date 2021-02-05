@@ -1121,6 +1121,18 @@ function createWasm() {
 #if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
 #endif
+#if USE_OFFSET_CONVERTER
+      // We have no way to create an OffsetConverter in this code path since we
+      // have no access to the wasm binary (only the user does). Instead, create
+      //a fake one that reports we cannot identify functions from their binary
+      // offsets.
+      wasmOffsetConverter = {
+        getName: function() {
+          return 'unknown-due-to-instantiateWasm';
+        }
+      };
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+#endif
       return exports;
     } catch(e) {
       err('Module.instantiateWasm callback failed with error: ' + e);
