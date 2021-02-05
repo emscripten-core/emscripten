@@ -1363,7 +1363,7 @@ def handle_reverse_deps(input_files, only_forced):
   # If we are only doing forced stdlibs, then we don't know the actual
   # symbols we need, and must assume all of deps_info must be exported.
   # Note that this might cause warnings on exports that do not exist.
-  if only_forced and not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
+  if only_forced:
     for key, value in deps_info.deps_info.items():
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
@@ -1453,8 +1453,7 @@ def calculate(input_files, cxx, forced):
     add_library(system_libs_map[forced])
 
   if only_forced:
-    if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
-      add_library(system_libs_map['libc_rt_wasm'])
+    add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
     if shared.Settings.AUTO_NATIVE_LIBRARIES:
