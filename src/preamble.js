@@ -1124,7 +1124,7 @@ function createWasm() {
 #if USE_OFFSET_CONVERTER
       // We have no way to create an OffsetConverter in this code path since we
       // have no access to the wasm binary (only the user does). Instead, create
-      //a fake one that reports we cannot identify functions from their binary
+      // a fake one that reports we cannot identify functions from their binary
       // offsets.
       wasmOffsetConverter = {
         getName: function() {
