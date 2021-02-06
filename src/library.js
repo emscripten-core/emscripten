@@ -2103,7 +2103,7 @@ LibraryManager.library = {
   _inet_ntop4_raw: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons', 'ntohs', '$jstoi_q'],
+  _inet_pton6_raw__deps: ['htons', '$jstoi_q'],
   _inet_pton6_raw: function(str) {
     var words;
     var w, offset, z, i;
@@ -2170,7 +2170,7 @@ LibraryManager.library = {
     }
     return 1;
   },
-  _inet_ntop6_raw__deps: ['_inet_ntop4_raw'],
+  _inet_ntop6_raw__deps: ['_inet_ntop4_raw', 'ntohs'],
   _inet_ntop6_raw: function(ints) {
     //  ref:  http://www.ietf.org/rfc/rfc2373.txt - section 2.5.4
     //  Format for IPv4 compatible and mapped  128-bit IPv6 Addresses
