@@ -1363,7 +1363,7 @@ def handle_reverse_deps(input_files, only_forced):
   # If we are only doing forced stdlibs, then we don't know the actual
   # symbols we need, and must assume all of deps_info must be exported.
   # Note that this might cause warnings on exports that do not exist.
-  if only_forced:
+  if only_forced and not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
     for key, value in deps_info.deps_info.items():
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
