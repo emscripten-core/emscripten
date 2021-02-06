@@ -34,7 +34,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from runner import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from runner import create_test_file, parameterized, NON_ZERO, node_pthreads
-from tools import shared, building, utils
+from tools import shared, building, utils, deps_info
 import jsrun
 import clang_native
 from tools import line_endings
@@ -9970,3 +9970,73 @@ exec "$@"
     self.assertGreater(len(exports_linkable), 1000)
     self.assertIn('sendmsg', exports_linkable)
     self.assertNotIn('sendmsg', exports)
+
+  @is_slow_test
+  def test_deps_info(self):
+    # Verify that for each symbol listed in deps_info all the reverse
+    # dependencies are indeed valid.
+    # To do this we compile a tiny test program that depends on the address
+    # of each function.  Once compiled the resulting JavaScript code should
+    # contain a reference to each of the dependencies.
+
+    # When debugging set this valud to the function that you want to start
+    # with.  All symbols prior will be skipped over.
+    start_at = None
+    assert not start_at or start_at in deps_info.deps_info
+    for function, deps in deps_info.deps_info.items():
+      if start_at:
+        if function == start_at:
+          start_at = None
+        else:
+          print(f'skipping {function}')
+          continue
+      create_test_file(function + '.c', '''
+      void %s();
+      int main() {
+        return (int)&%s;
+      }
+      ''' % (function, function))
+      # Compile with -O2 so we get JSDCE run to remove any false positives.  This
+      # also makes the string quotes consistent which makes the test below simpler.
+      # Including -sREVERSE_DEPS=auto explictly (even though its the default) to
+      # be clear this is what we are testing (and in case the default ever changes).
+      cmd = [EMCC, function + '.c', '-O2', '--minify=0', '--profiling-funcs', '-Wno-incompatible-library-redeclaration', '-sREVERSE_DEPS=auto']
+      print(f'compiling test program for: {function}')
+      if 'embind' in function:
+        cmd.append('--bind')
+      if 'fetch' in function:
+        cmd.append('-sFETCH')
+      if 'websocket' in function:
+        cmd += ['-sPROXY_POSIX_SOCKETS', '-lwebsocket.js']
+      if function == 'Mix_LoadWAV_RW':
+        cmd += ['-sUSE_SDL=2']
+      if 'thread' in function:
+        cmd.append('-sUSE_PTHREADS')
+      if 'glGetStringi' in function:
+        cmd.append('-sUSE_WEBGL2')
+      if 'glMapBufferRange' in function:
+        cmd.append('-sFULL_ES3')
+      if function == 'wgpuDeviceCreateBuffer':
+        cmd.append('-sUSE_WEBGPU')
+      # dladdr dlsym etc..
+      if function.startswith('dl'):
+        cmd.append('-sMAIN_MODULE=2')
+      if function.startswith('emscripten_idb') or function.startswith('emscripten_wget_'):
+        cmd.append('-sASYNCIFY')
+      if function.startswith('emscripten_webgl_'):
+        cmd.append('-sOFFSCREENCANVAS_SUPPORT')
+      if function.startswith('wgpu'):
+        cmd.append('-sUSE_WEBGPU')
+      # Causes WebAssemblyLowerEmscriptenEHSjLj pass in llvm to crash
+      if function == 'setjmp':
+        continue
+      print(shared.shlex_join(cmd))
+      self.run_process(cmd)
+      js = open('a.out.js').read()
+      for dep in deps:
+        direct = '_' + dep + '('
+        via_module = '"_%s"](' % dep
+        assignment = ' = _' + dep
+        print(f'  checking for: {dep}')
+        if direct not in js and via_module not in js and assignment not in js:
+          self.fail(f'use of declared dependency {dep} not found in JS output for {function}')
