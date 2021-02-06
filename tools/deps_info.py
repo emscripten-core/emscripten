@@ -49,7 +49,6 @@
 #       both here and in the JS compiler.
 
 deps_info = {
-  '$getTypeName': ['free'],
   'Mix_LoadWAV_RW': ['fileno'],
   'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['emscripten_GetProcAddress'],
@@ -174,7 +173,6 @@ deps_info = {
   'emscripten_websocket_set_onmessage_callback_on_thread': ['malloc', 'free'],
   'emscripten_websocket_set_onopen_callback_on_thread': ['malloc', 'free'],
   'emscripten_wget_data': ['malloc', 'free'],
-  'formatString': ['strlen'],
   'freeaddrinfo': ['free'],
   'freelocale': ['free'],
   'freopen': ['free'],
@@ -219,7 +217,6 @@ deps_info = {
   'socket': ['htonl', 'htons', 'ntohs'],
   'socketpair': ['htons', 'ntohs'],
   'strerror': ['malloc', 'free'],
-  'stringToNewUTF8': ['malloc', 'free'],
   'syslog': ['malloc', 'htons', 'ntohs'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc', 'free'],
   'times': ['memset'],
