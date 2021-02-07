@@ -170,7 +170,8 @@ var LibraryManager = {
         'library_bootstrap.js',
         'library_stack.js',
         'library_formatString.js',
-        'library_stack_trace.js'
+        'library_stack_trace.js',
+        'library_int53.js',
       ];
     }
 

@@ -20,6 +20,9 @@ mergeInto(LibraryManager.library, {
   emscripten_math_expm1: function(x) {
     return Math.expm1(x);
   },
+  emscripten_math_fmod: function(x, y) {
+    return x % y;
+  },
   emscripten_math_log: function(x) {
     return Math.log(x);
   },

@@ -77,7 +77,7 @@ WebAssembly = {
 #endif
           'instance': new WebAssembly.Instance(module)
         });
-#if ASSERTIONS
+#if ASSERTIONS || WASM == 2 // see postamble_minimal.js which uses .catch
         // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.
         return { catch: function() {} };
 #endif

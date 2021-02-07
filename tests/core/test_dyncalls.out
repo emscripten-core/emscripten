@@ -4,3 +4,5 @@ iii: i=1,j=2
 iii returned 42
 iii: i=2,j=3
 iii returned 42
+iii: i=2,j=3
+iii returned 42

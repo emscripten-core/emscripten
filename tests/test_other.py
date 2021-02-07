@@ -1420,6 +1420,51 @@ int f() {
     self.run_process([EMCC, 'main.cpp', '--embed-file', 'tst', '--exclude-file', '*.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
+  def test_dynamic_link_with_exceptions_and_assetions(self):
+    # Linking side modules using the STL and exceptions should not abort with
+    # "function in Table but not functionsInTableMap" when using ASSERTIONS=2
+
+    # A side module that uses the STL enables exceptions.
+    create_test_file('side.cpp', r'''
+      #include <vector>
+      std::vector<int> v;
+      std::vector<int> side(int n) {
+          for (int i=0; i<n; i++) v.push_back(i);
+          return v;
+      }
+      ''')
+    self.run_process([
+      EMCC,
+      '-o', 'side.wasm',
+      'side.cpp',
+      '-s', 'SIDE_MODULE=1',
+      '-s', 'DISABLE_EXCEPTION_CATCHING=0',
+      '-s', 'ASSERTIONS=2'])
+
+    create_test_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <vector>
+      std::vector<int> side(int n);
+      int main(void) {
+          auto v = side(10);
+          for (auto i : v) printf("%d", i);
+          printf("\n");
+          return 0;
+      }
+      ''')
+
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.do_smart_test(
+      'main.cpp',
+      ['0123456789'],
+      emcc_args=[
+        '-s', 'EXIT_RUNTIME=1',
+        '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
+        '-s', 'MAIN_MODULE=1',
+        '-s', 'DISABLE_EXCEPTION_CATCHING=0',
+        '-s', 'ASSERTIONS=2'
+      ])
+
   def test_multidynamic_link(self):
     # Linking the same dynamic library in statically will error, normally, since we statically link
     # it, causing dupe symbols
@@ -6044,11 +6089,9 @@ Resolved: "/" => "/"
         self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MALLOC=emmalloc'] + args)
 
     test(['-s', 'INITIAL_MEMORY=2GB'], 'INITIAL_MEMORY must be less than 2GB due to current spec limitations')
-    # emmalloc allows growth by default (as the max size is fine), but not if
-    # a too-high max is set
     test(['-s', 'ALLOW_MEMORY_GROWTH'])
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=1GB'])
-    test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=3GB'], 'emmalloc only works on <2GB of memory. Use the default allocator, or decrease MAXIMUM_MEMORY')
+    test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB'])
 
   def test_2GB_plus(self):
     # when the heap size can be over 2GB, we rewrite pointers to be unsigned
@@ -9127,7 +9170,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.assertContained('warning: ignoring unsupported linker flag: `-rpath-link`', out)
 
     out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'),
-                            '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
+                            '-Wl,--no-check-features,-mllvm,--data-sections'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)
 
     out = self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,-allow-shlib-undefined'], stderr=PIPE).stderr
