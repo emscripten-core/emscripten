@@ -893,6 +893,18 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('emmalloc_memalign_corruption.cpp')
 
+  @no_lsan('This test does not free allocated memory by design')
+  @no_asan('ASan does not support custom memory allocators')
+  @parameterized({
+    '2gb': [],
+# TODO when Node.js supports 4GB Wasm memories:
+#    '4gb': ['-s', 'MAXIMUM_MEMORY=4GB']
+  })
+  def test_emmalloc_memgrowth(self, *args):
+    self.emcc_args += ['-s', 'MALLOC=emmalloc', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ABORTING_MALLOC=0', '-s', 'ASSERTIONS=2', '-s', 'MINIMAL_RUNTIME=1'] + list(args)
+    self.do_run(open(path_from_root('tests', 'core', 'mem_growth.cpp')).read(),
+                open(path_from_root('tests', 'core', 'mem_growth_4gb.out' if 'MAXIMUM_MEMORY=4GB' in args else 'mem_growth_2gb.out')).read())
+
   def test_newstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 

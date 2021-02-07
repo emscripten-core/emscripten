@@ -251,9 +251,7 @@ LibraryManager.library = {
   ],
   emscripten_resize_heap: function(requestedSize) {
     var oldSize = HEAPU8.length;
-#if CAN_ADDRESS_2GB
     requestedSize = requestedSize >>> 0;
-#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
