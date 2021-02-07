@@ -1548,6 +1548,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # for roots.
       building.user_requested_exports.append('_emscripten_tls_init')
       building.user_requested_exports.append('_emscripten_current_thread_process_queued_calls')
+      building.user_requested_exports.append('_emscripten_builtin_memalign')
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1849,6 +1850,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        options.memory_profiler or \
        sanitize:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
+    
+    if shared.Settings.MAIN_MODULE and shared.Settings.USE_PTHREADS:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_builtin_memalign','_pthread_cleanup_push']
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['LDSO']
 
     if shared.Settings.ASYNCIFY:
       if not shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
@@ -2105,10 +2110,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   with ToolchainProfiler.profile_block('calculate system libraries'):
     # link in ports and system libraries, if necessary
     if shared.Settings.SIDE_MODULE:
-      # shared libraries/side modules link no C libraries, need them in parent
-      # however, when using pthreads we still need to link support code.
-      if shared.Settings.USE_PTHREADS:
-        linker_inputs += system_libs.calculate([], False, forced=[])
+      # shared libraries/side modules link no C libraries, they are linked in the parent
+      # main module. We still need to link support code however.
+      linker_inputs += system_libs.calculate([], False, forced=[])
     else:
       extra_files_to_link = system_libs.get_ports(shared.Settings)
       if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
