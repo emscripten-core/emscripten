@@ -1850,7 +1850,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        options.memory_profiler or \
        sanitize:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
-    
+
     if shared.Settings.MAIN_MODULE and shared.Settings.USE_PTHREADS:
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_builtin_memalign', '_pthread_cleanup_push']
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['LDSO']
