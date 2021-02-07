@@ -572,9 +572,9 @@ class NoExceptLibrary(Library):
   @classmethod
   def variations(cls, **kwargs):
     combos = super(NoExceptLibrary, cls).variations()
+    # TODO Reenable 'wasm' option after the new EH implementation is stabilized
     return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.wasm, **combo) for combo in combos])
+            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
