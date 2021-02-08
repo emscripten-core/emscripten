@@ -1912,17 +1912,20 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_arguments_side_effects.cpp', force_c=True)
 
   @parameterized({
-    'normal': ([],),
-    'linked': (['-s', 'MAIN_MODULE'],),
+    '': ([], False),
+    'c': ([], True),
+    'linked': (['-s', 'MAIN_MODULE'], False),
+    'linked_c': (['-s', 'MAIN_MODULE'], True),
   })
-  def test_em_js(self, args):
+  def test_em_js(self, args, force_c):
     if 'MAIN_MODULE' in args and not self.is_wasm():
       self.skipTest('main module support for non-wasm')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
     self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=["_main","_malloc"]']
-    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp')
-    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp', force_c=True)
+
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp', force_c=force_c)
+    self.assertContained("no args returning int", open('test_em_js.js').read())
 
   def test_runtime_stacksave(self):
     self.do_runf(path_from_root('tests', 'core', 'test_runtime_stacksave.c'), 'success')

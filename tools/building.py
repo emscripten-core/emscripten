@@ -570,7 +570,11 @@ def lld_flags_for_executable(external_symbol_list):
       cmd.append('--growable-table')
 
   if not Settings.SIDE_MODULE:
+    # Export these two section start symbols so that we can extact the string
+    # data that they contain.
     cmd += [
+      '--export', '__start_em_asm',
+      '--export', '__stop_em_asm',
       '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
       '--initial-memory=%d' % Settings.INITIAL_MEMORY,
     ]

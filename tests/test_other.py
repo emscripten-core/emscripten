@@ -7018,7 +7018,7 @@ int main() {
     self.run_process(cmd)
 
     # build main module
-    args = ['-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME', '-lnodefs.js']
+    args = ['-g', '-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME', '-lnodefs.js']
     cmd = [EMCC, path_from_root('tests', 'other', 'alias', 'main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
@@ -7536,7 +7536,7 @@ int main() {
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', '''
-  1024: function() {var x = !<->5.;}
+  1025: function() {var x = !<->5.;}
                              ^
 '''), stderr)
 
