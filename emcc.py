@@ -1543,6 +1543,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # for roots.
       building.user_requested_exports.append('_emscripten_tls_init')
       building.user_requested_exports.append('_emscripten_current_thread_process_queued_calls')
+
+      # TLS allocation in side modules uses emscripten_builtin_memalign. The main
+      # module might not mention this function if it doesn't require TLS (which
+      # can happen in optimized builds). Add it here to ensure it will be kept
+      # alive through DCE
       building.user_requested_exports.append('_emscripten_builtin_memalign')
 
       # set location of worker.js
