@@ -897,8 +897,8 @@ base align: 0, 0, 0, 0'''])
   @no_asan('ASan does not support custom memory allocators')
   @parameterized({
     '2gb': [],
-# TODO when Node.js supports 4GB Wasm memories:
-#    '4gb': ['-s', 'MAXIMUM_MEMORY=4GB']
+    # TODO when Node.js supports 4GB Wasm memories:
+    #    '4gb': ['-s', 'MAXIMUM_MEMORY=4GB']
   })
   def test_emmalloc_memgrowth(self, *args):
     self.emcc_args += ['-s', 'MALLOC=emmalloc', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ABORTING_MALLOC=0', '-s', 'ASSERTIONS=2', '-s', 'MINIMAL_RUNTIME=1'] + list(args)
