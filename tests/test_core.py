@@ -3785,7 +3785,7 @@ ok
                 return std::count(sig_check_list.begin(),sig_check_list.end(),nullptr);
               }
     '''
-    self.set_setting('MAIN_MODULE',1)
+    self.set_setting('MAIN_MODULE', 1)
     self.do_run(src, '')
 
   @needs_dlfcn
