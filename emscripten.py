@@ -49,20 +49,18 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   if shared.Settings.DYNCALLS and '$dynCall' in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
     exports_that_are_not_initializers += ['dynCalls = {}']
 
-  post = post.replace('<<< ASM_MODULE_EXPORTS_DECLARES >>>', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
+  declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
+  post = shared.do_replace(post, '<<< ASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
   # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-  post = post.replace('<<< ASM_MODULE_EXPORTS >>>', receiving)
+  post = shared.do_replace(post, '<<< ASM_MODULE_EXPORTS >>>', receiving)
   return post
 
 
-def write_output_file(outfile, post, module):
+def write_output_file(outfile, module):
   for i in range(len(module)): # do this loop carefully to save memory
     module[i] = normalize_line_endings(module[i])
     outfile.write(module[i])
-
-  post = normalize_line_endings(post)
-  outfile.write(post)
 
 
 def optimize_syscalls(declares, DEBUG):
@@ -168,9 +166,10 @@ def update_settings_glue(metadata, DEBUG):
 
 
 def apply_static_code_hooks(forwarded_json, code):
-  code = code.replace('<<< ATINITS >>>', str(forwarded_json['ATINITS']))
-  code = code.replace('<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
-  code = code.replace('<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
+  code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
+  code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+  if shared.Settings.EXIT_RUNTIME:
+    code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
   return code
 
 
@@ -339,10 +338,12 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
-  # In regular runtime, atinits etc. exist in the preamble part
-  pre = apply_static_code_hooks(forwarded_json, pre)
-  # In MINIMAL_RUNTIME, atinit exists in the postamble part
-  post = apply_static_code_hooks(forwarded_json, post)
+  if shared.Settings.MINIMAL_RUNTIME:
+    # In MINIMAL_RUNTIME, atinit exists in the postamble part
+    post = apply_static_code_hooks(forwarded_json, post)
+  else:
+    # In regular runtime, atinits etc. exist in the preamble part
+    pre = apply_static_code_hooks(forwarded_json, pre)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
@@ -357,7 +358,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
      '\n'.join(em_js_funcs) + '\n'))
 
   with open(outfile_js, 'w') as out:
-    out.write(pre)
+    out.write(normalize_line_endings(pre))
     pre = None
 
     invoke_funcs = metadata['invokeFuncs']
@@ -365,12 +366,15 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     receiving = create_receiving(exports)
 
     if shared.Settings.MINIMAL_RUNTIME:
-      post = compute_minimal_runtime_initializer_and_exports(post, exports, receiving)
+      if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+        post = compute_minimal_runtime_initializer_and_exports(post, exports, receiving)
       receiving = ''
 
     module = create_module(sending, receiving, invoke_funcs, metadata)
 
-    write_output_file(out, post, module)
+    write_output_file(out, module)
+
+    out.write(normalize_line_endings(post))
     module = None
 
 
