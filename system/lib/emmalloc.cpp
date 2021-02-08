@@ -637,13 +637,10 @@ static size_t validate_alloc_alignment(size_t alignment)
 
 static size_t validate_alloc_size(size_t size)
 {
-  const size_t minimumSize = 2*sizeof(Region*);
-  assert(IS_POWER_OF_2(minimumSize));
-
   assert(size + REGION_HEADER_SIZE > size);
 
   // Allocation sizes must be a multiple of pointer sizes, and at least 2*sizeof(pointer).
-  size_t validatedSize = (size_t)ALIGN_UP(size | (minimumSize - 1), sizeof(Region*));
+  size_t validatedSize = size > 2*sizeof(Region*) ? (size_t)ALIGN_UP(size, sizeof(Region*)) : 2*sizeof(Region*);
   assert(validatedSize >= size); // 32-bit wraparound should not occur, too large sizes should be stopped before
 
   return validatedSize;
