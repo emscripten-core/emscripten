@@ -3777,16 +3777,13 @@ ok
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
   def test_missing_signatures(self):
-    src = r'''#include <list>
-              #include <emscripten.h>
-              int main() {
-                std::list<void*> sig_check_list{ (void*)&emscripten_run_script_string,
-                                                 (void*)&emscripten_run_script};
-                return std::count(sig_check_list.begin(),sig_check_list.end(),nullptr);
-              }
-    '''
+    create_test_file('test_sig.c', r'''#include <emscripten.h>
+                                       int main() {
+                                         return 0 == ( (int)&emscripten_run_script_string +
+                                                       (int)&emscripten_run_script );
+                                       }''')
     self.set_setting('MAIN_MODULE', 1)
-    self.do_run(src, '')
+    self.do_runf('test_sig.c', '')
 
   @needs_dlfcn
   def test_dylink_global_init(self):
