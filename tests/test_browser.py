@@ -4155,8 +4155,12 @@ window.close = function() {
     self.btest_exit('binaryen_async.c', expected=1, args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
-  def test_manual_wasm_instantiate(self):
-    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js', '-s', 'BINARYEN'])
+  @parameterized({
+    '': ([],),
+    'asan': (['-fsanitize=address', '-s', 'INITIAL_MEMORY=128MB'],)
+  })
+  def test_manual_wasm_instantiate(self, args=[]):
+    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js'] + args)
     shutil.copyfile(path_from_root('tests', 'manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
 
