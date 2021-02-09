@@ -36,6 +36,7 @@ To see the full list of *Clang* options supported on the version of
 Options that are modified or new in *emcc* are listed below:
 
 "-O0"
+   [compile+link]
    No optimizations (default). This is the recommended setting for
    starting to port a project, as it includes various assertions.
 
@@ -47,11 +48,13 @@ Options that are modified or new in *emcc* are listed below:
    with something higher.)
 
 "-O1"
+   [compile+link]
    Simple optimizations. During the compile step these include LLVM
    "-O1" optimizations. During the link step this does not include
    various runtime assertions in JS that *-O0* would do.
 
 "-O2"
+   [compile+link]
    Like "-O1", but enables more optimizations. During link this will
    also enable various JavaScript optimizations.
 
@@ -66,6 +69,7 @@ Options that are modified or new in *emcc* are listed below:
      src/settings.js.
 
 "-O3"
+   [compile+link]
    Like "-O2", but with additional optimizations that may take longer
    to run.
 
@@ -74,10 +78,12 @@ Options that are modified or new in *emcc* are listed below:
      This is a good setting for a release build.
 
 "-Os"
+   [compile+link]
    Like "-O3", but focuses more on code size (and may make tradeoffs
    with speed). This can affect both wasm and JavaScript.
 
 "-Oz"
+   [compile+link]
    Like "-Os", but reduces code size even further, and may take longer
    to run. This can affect both wasm and JavaScript.
 
@@ -86,6 +92,7 @@ Options that are modified or new in *emcc* are listed below:
      For more tips on optimizing your code, see Optimizing Code.
 
 "-s OPTION[=VALUE]"
+   [different OPTIONs affect at different stages, most at link time]
    Emscripten build options. For the available options, see
    src/settings.js.
 
@@ -128,6 +135,7 @@ Options that are modified or new in *emcc* are listed below:
      between the "-s" and option name.  e.g. "-sFOO=1".
 
 "-g"
+   [compile+link]
    Preserve debug information.
 
    * When compiling to object files, this is the same as in *Clang*
@@ -136,6 +144,7 @@ Options that are modified or new in *emcc* are listed below:
    * When linking, this is equivalent to -g3.
 
 "-gseparate-dwarf[=FILENAME]"
+   [same as -g3 if passed at compile time, otherwise applies at link]
    Preserve debug information, but in a separate file on the side.
    This is the same as "-g", but the main file will contain no debug
    info. Instead, debug info will be present in a file on the side, in
@@ -147,6 +156,7 @@ Options that are modified or new in *emcc* are listed below:
    different server, for example).
 
 "-g<level>"
+   [compile+link]
    Controls the level of debuggability. Each level builds on the
    previous one:
 
@@ -173,6 +183,7 @@ Options that are modified or new in *emcc* are listed below:
             slower (this is why we only do it on "-g4").
 
 "--profiling"
+   [same as -g2 if passed at compile time, otherwise applies at link]
    Use reasonable defaults when emitting JavaScript to make the build
    readable but still useful for profiling. This sets "-g2" (preserve
    whitespace and function names) and may also enable optimizations
@@ -180,15 +191,18 @@ Options that are modified or new in *emcc* are listed below:
    "-g2".
 
 "--profiling-funcs"
+   [link]
    Preserve function names in profiling, but otherwise minify
    whitespace and names as we normally do in optimized builds. This is
    useful if you want to look at profiler results based on function
    names, but do *not* intend to read the emitted code.
 
 "--tracing"
+   [link]
    Enable the Emscripten Tracing API.
 
 "--emit-symbol-map"
+   [link]
    Save a map file between the minified global names and the original
    function names. This allows you, for example, to reconstruct
    meaningful stack traces.
@@ -200,6 +214,7 @@ Options that are modified or new in *emcc* are listed below:
      to prevent minification.
 
 "--llvm-opts <level>"
+   [compile+link]
    Enables LLVM optimizations, relevant when we call the LLVM
    optimizer (which is done when building source files to object
    code). Possible "level" values are:
@@ -220,9 +235,11 @@ Options that are modified or new in *emcc* are listed below:
    optimization level will set a good value.
 
 "-flto"
+   [compile+link]
    Enables link-time optimizations (LTO).
 
 "--closure <on>"
+   [link]
    Runs the *Closure Compiler*. Possible "on" values are:
 
       * "0": No closure compiler (default in "-O2" and below).
@@ -258,6 +275,7 @@ Options that are modified or new in *emcc* are listed below:
        above).
 
 "--pre-js <file>"
+   [link]
    Specify a file whose contents are added before the emitted code and
    optimized together with it. Note that this might not literally be
    the very first thing in the JS output, for example if "MODULARIZE"
@@ -276,9 +294,11 @@ Options that are modified or new in *emcc* are listed below:
    "Module" (for example, you can define "Module['print']" there).
 
 "--post-js <file>"
+   [link]
    Like "--pre-js", but emits a file *after* the emitted code.
 
 "--extern-pre-js <file>"
+   [link]
    Specify a file whose contents are prepended to the JavaScript
    output. This file is prepended to the final JavaScript output,
    *after* all other work has been done, including optimization,
@@ -290,9 +310,11 @@ Options that are modified or new in *emcc* are listed below:
    etc.).
 
 "--extern-post-js <file>"
+   [link]
    Like "--extern-pre-js", but appends to the end.
 
 "--embed-file <file>"
+   [link]
    Specify a file (with path) to embed inside the generated
    JavaScript. The path is relative to the current directory at
    compile time. If a directory is passed here, its entire contents
@@ -312,6 +334,7 @@ Options that are modified or new in *emcc* are listed below:
    Packaging Files.
 
 "--preload-file <name>"
+   [link]
    Specify a file to preload before running the compiled code
    asynchronously. The path is relative to the current directory at
    compile time. If a directory is passed here, its entire contents
@@ -337,15 +360,18 @@ Options that are modified or new in *emcc* are listed below:
    Packaging Files.
 
 "--exclude-file <name>"
+   [link]
    Files and directories to be excluded from --embed-file and
    --preload-file. Wildcards (*) are supported.
 
 "--use-preload-plugins"
+   [link]
    Tells the file packager to run preload plugins on the files as they
    are loaded. This performs tasks like decoding images and audio
    using the browser's codecs.
 
 "--shell-file <path>"
+   [link]
    The path name to a skeleton HTML file used when generating HTML
    output. The shell file used needs to have this token inside it:
    "{{{ SCRIPT }}}".
@@ -358,15 +384,18 @@ Options that are modified or new in *emcc* are listed below:
        specified using the "-o" option.
 
 "--source-map-base <base-url>"
+   [link]
    The URL for the location where WebAssembly source maps will be
    published. When this option is provided, the **.wasm** file is
    updated to have a "sourceMappingURL" section. The resulting URL
    will have format: "<base-url>" + "<wasm-file-name>" + ".map".
 
 "--minify 0"
+   [same as -g1 if passed at compile time, otherwise applies at link]
    Identical to "-g1".
 
 "--js-transform <cmd>"
+   [link]
    Specifies a "<cmd>" to be called on the generated code before it is
    optimized. This lets you modify the JavaScript, for example adding
    or removing some code, in a way that those modifications will be
@@ -381,10 +410,12 @@ Options that are modified or new in *emcc* are listed below:
    script to be run.
 
 "--bind"
+   [link]
    Compiles the source code using the Embind bindings to connect C/C++
    and JavaScript.
 
 "--ignore-dynamic-linking"
+   [link]
    Tells the compiler to ignore dynamic linking (the user will need to
    manually link to the shared libraries later on).
 
@@ -395,10 +426,12 @@ Options that are modified or new in *emcc* are listed below:
    without errors.
 
 "--js-library <lib>"
+   [link]
    A JavaScript library to use in addition to those in Emscripten's
    core libraries (src/library_*).
 
 "-v"
+   [general]
    Turns on verbose output.
 
    This will print the internal sub-commands run by emscripten as well
@@ -410,10 +443,12 @@ Options that are modified or new in *emcc* are listed below:
      or without other arguments.
 
 "--check"
+   [general]
    Runs Emscripten's internal sanity checks and reports any issues
    with the current configuration.
 
 "--cache"
+   [general]
    Sets the directory to use as the Emscripten cache. The Emscripten
    cache is used to store pre-built versions of "libc", "libcxx" and
    other libraries.
@@ -426,6 +461,7 @@ Options that are modified or new in *emcc* are listed below:
    config setting.
 
 "--clear-cache"
+   [general]
    Manually clears the cache of compiled Emscripten system libraries
    (libc++, libc++abi, libc).
 
@@ -440,6 +476,7 @@ Options that are modified or new in *emcc* are listed below:
    directory is usually within the cache directory.
 
 "--clear-ports"
+   [general]
    Manually clears the local copies of ports from the Emscripten Ports
    repos (sdl2, etc.). This also clears the cache, to remove their
    builds.
@@ -449,10 +486,12 @@ Options that are modified or new in *emcc* are listed below:
    After this operation is complete, this process will exit.
 
 "--show-ports"
+   [general]
    Shows the list of available projects in the Emscripten Ports repos.
    After this operation is complete, this process will exit.
 
 "--memory-init-file <on>"
+   [link]
    Specifies whether to emit a separate memory initialization file.
 
       Note:
@@ -495,12 +534,14 @@ Options that are modified or new in *emcc* are listed below:
           property containing an ArrayBuffer.)
 
 "-Wwarn-absolute-paths"
+   [compile+link]
    Enables warnings about the use of absolute paths in "-I" and "-L"
    command line directives. This is used to warn against unintentional
    use of absolute paths, which is sometimes dangerous when referring
    to nonportable local system headers.
 
 "--proxy-to-worker"
+   [link]
    Runs the main application code in a worker, proxying events to it
    and output from it. If emitting HTML, this emits a **.html** file,
    and a separate **.js** file containing the JavaScript to be run in
@@ -509,6 +550,7 @@ Options that are modified or new in *emcc* are listed below:
    suffix ".worker.js" will contain the worker portion.
 
 "--emrun"
+   [link]
    Enables the generated output to be aware of the emrun command line
    tool. This allows "stdout", "stderr" and "exit(returncode)" capture
    when running the generated application through *emrun*. (This
@@ -516,19 +558,23 @@ Options that are modified or new in *emcc* are listed below:
    return code passing.)
 
 "--cpuprofiler"
+   [link]
    Embeds a simple CPU profiler onto the generated page. Use this to
    perform cursory interactive performance profiling.
 
 "--memoryprofiler"
+   [link]
    Embeds a memory allocation tracker onto the generated page. Use
    this to profile the application usage of the Emscripten HEAP.
 
 "--threadprofiler"
+   [link]
    Embeds a thread activity profiler onto the generated page. Use this
    to profile the application usage of pthreads when targeting
    multithreaded builds (-s USE_PTHREADS=1/2).
 
 "--em-config"
+   [general]
    Specifies the location of the **.emscripten** configuration file.
    If not specified emscripten will search for ".emscripten" first in
    the emscripten directory itself, and then in the user's home
@@ -536,6 +582,7 @@ Options that are modified or new in *emcc* are listed below:
    "EM_CONFIG" environment variable.
 
 "--default-obj-ext .ext"
+   [compile+link]
    Specifies the file suffix to generate if the location of a
    directory name is passed to the "-o" directive.
 
@@ -546,12 +593,14 @@ Options that are modified or new in *emcc* are listed below:
       emcc -c a.c -o dir/
 
 "--valid-abspath path"
+   [compile+link]
    Note an allowed absolute path, which we should not warn about
    (absolute include paths normally are warned about, since they may
    refer to the local system headers etc. which we need to avoid when
    cross-compiling).
 
 "-o <target>"
+   [link]
    When linking an executable, the "target" file name extension
    defines the output type to be generated:
 
@@ -577,10 +626,12 @@ Options that are modified or new in *emcc* are listed below:
      in addition to the generated **.js** and/or **.html** file.
 
 "-c"
+   [compile]
    Tells *emcc* to emit an object file which can then be linked with
    other object files to produce an executable.
 
 "--output_eol windows|linux"
+   [link]
    Specifies the line ending to generate for the text files that are
    outputted. If "--output_eol windows" is passed, the final output
    files will have Windows rn line endings in them. With "--output_eol
@@ -588,6 +639,7 @@ Options that are modified or new in *emcc* are listed below:
    endings.
 
 "--cflags"
+   [other]
    Prints out the flags "emcc" would pass to "clang" to compile source
    code to object form. You can use this to invoke clang yourself, and
    then run "emcc" on those outputs just for the final
@@ -599,14 +651,42 @@ Environment variables
 
 *emcc* is affected by several environment variables, as listed below:
 
+   * "EMMAKEN_CFLAGS"
+
+   * "EMMAKEN_COMPILER"
+
    * "EMMAKEN_JUST_CONFIGURE"
 
-   * "EMMAKEN_CFLAGS"
+   * "EMMAKEN_NO_SDK"
+
+   * "EMCC_AUTODEBUG"
+
+   * "EMCC_CFLAGS"
+
+   * "EMCC_CORES"
 
    * "EMCC_DEBUG"
 
+   * "EMCC_DEBUG_SAVE"
+
+   * "EMCC_FORCE_STDLIBS"
+
+   * "EMCC_ONLY_FORCED_STDLIBS"
+
+   * "EMCC_LOCAL_PORTS"
+
+   * "EMCC_STDERR_FILE"
+
    * "EMCC_CLOSURE_ARGS" : arguments to be passed to *Closure
      Compiler*
+
+   * "EMCC_STRICT"
+
+   * "EMCC_SKIP_SANITY_CHECK"
+
+   * "EM_IGNORE_SANITY"
+
+   * "EM_CONFIG"
 
 Search for 'os.environ' in emcc.py to see how these are used. The most
 interesting is possibly "EMCC_DEBUG", which forces the compiler to
