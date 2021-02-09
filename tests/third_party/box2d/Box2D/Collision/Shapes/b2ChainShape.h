@@ -95,8 +95,8 @@ inline b2ChainShape::b2ChainShape()
 	m_radius = b2_polygonRadius;
 	m_vertices = NULL;
 	m_count = 0;
-	m_hasPrevVertex = NULL;
-	m_hasNextVertex = NULL;
+	m_hasPrevVertex = false;
+	m_hasNextVertex = false;
 }
 
 #endif
