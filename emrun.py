@@ -39,10 +39,14 @@ if sys.version_info.major == 2:
   from SimpleHTTPServer import SimpleHTTPRequestHandler
   from urllib import unquote
   from urlparse import urlsplit
+  def print_to_handle(handle, line):
+    print >> handle, line
 else:
   import socketserver
   from http.server import HTTPServer, SimpleHTTPRequestHandler
   from urllib.parse import unquote, urlsplit
+  def print_to_handle(handle, line):
+    handle.write(line + '\n')
 
 # Populated from cmdline params
 emrun_options = None
@@ -153,7 +157,7 @@ def logi(msg):
     if emrun_options.log_html:
       sys.stdout.write(format_html(msg))
     else:
-      print(msg, file=sys.stdout)
+      print_to_handle(sys.stdout, msg)
     sys.stdout.flush()
     last_message_time = tick()
 
@@ -168,7 +172,7 @@ def logv(msg):
       if emrun_options.log_html:
         sys.stdout.write(format_html(msg))
       else:
-        print(msg, file=sys.stdout)
+        print_to_handle(sys.stdout, msg)
       sys.stdout.flush()
       last_message_time = tick()
 
@@ -181,7 +185,7 @@ def loge(msg):
     if emrun_options.log_html:
       sys.stderr.write(format_html(msg))
     else:
-      print(msg, file=sys.stderr)
+      print_to_handle(sys.stderr, msg)
     sys.stderr.flush()
     last_message_time = tick()
 
@@ -197,7 +201,7 @@ def browser_logi(msg):
   """
   global last_message_time
   msg = format_eol(msg)
-  print(msg, file=browser_stdout_handle)
+  print_to_handle(browser_stdout_handle, msg)
   browser_stdout_handle.flush()
   last_message_time = tick()
 
@@ -207,7 +211,7 @@ def browser_loge(msg):
   """
   global last_message_time
   msg = format_eol(msg)
-  print(msg, file=browser_stderr_handle)
+  print_to_handle(browser_stderr_handle, msg)
   browser_stderr_handle.flush()
   last_message_time = tick()
 
@@ -686,7 +690,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         pass
       filename = os.path.join(dump_out_directory, os.path.normpath(filename))
       open(filename, 'wb').write(data)
-      print('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
+      logi('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
       have_received_messages = True
     elif path == '/system_info':
       system_info = json.loads(get_system_info(format_json=True))
@@ -790,7 +794,7 @@ def get_cpu_info():
       logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
   except Exception as e:
     import traceback
-    print(traceback.format_exc())
+    loge(traceback.format_exc())
     return {'model': 'Unknown ("' + str(e) + '")',
             'physicalCores': 1,
             'logicalCores': 1,
@@ -1675,7 +1679,6 @@ to emrun itself and arguments to your page.
 
       url = url.replace('&', '\\&')
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
-      print(str(browser))
       processname_killed_atexit = browser_app[:browser_app.find('/')]
   else: # Launching a web page on local system.
     if options.browser:
@@ -1731,7 +1734,7 @@ to emrun itself and arguments to your page.
     profile_dir = create_emrun_safe_firefox_profile()
 
     def run(cmd):
-      print(str(cmd))
+      logi(str(cmd))
       subprocess.call(cmd)
 
     run(['adb', 'shell', 'rm', '-rf', '/mnt/sdcard/safe_firefox_profile'])
@@ -1749,16 +1752,16 @@ to emrun itself and arguments to your page.
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
-    print(get_system_info(format_json=options.json))
+    logi(get_system_info(format_json=options.json))
 
   if options.browser_info:
     if options.android:
       if options.json:
-        print(json.dumps({'browser': 'Android ' + browser_app}, indent=2))
+        logi(json.dumps({'browser': 'Android ' + browser_app}, indent=2))
       else:
         logi('Browser: Android ' + browser_app)
     else:
-      print(get_browser_info(browser_exe, format_json=options.json))
+      logi(get_browser_info(browser_exe, format_json=options.json))
 
   # Suppress run warning if requested.
   if options.no_emrun_detect:
