@@ -3776,6 +3776,7 @@ ok
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
+  @needs_dlfcn
   def test_missing_signatures(self):
     create_test_file('test_sig.c', r'''#include <emscripten.h>
                                        int main() {
