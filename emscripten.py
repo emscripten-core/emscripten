@@ -128,21 +128,6 @@ def update_settings_glue(metadata, DEBUG):
     # functions in the module.
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$readAsmConstArgs']
 
-    # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
-    # the compiled code have, each signature will need a proxy function invoker
-    # generated for it.
-    def read_proxied_function_signatures(asmConsts):
-      proxied_function_signatures = set()
-      for _, sigs, proxying_types in asmConsts.values():
-        for sig, proxying_type in zip(sigs, proxying_types):
-          if proxying_type == 'sync_on_main_thread_':
-            proxied_function_signatures.add(sig + '_sync')
-          elif proxying_type == 'async_on_main_thread_':
-            proxied_function_signatures.add(sig + '_async')
-      return list(proxied_function_signatures)
-
-    shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
-
   shared.Settings.BINARYEN_FEATURES = metadata['features']
   if shared.Settings.RELOCATABLE:
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
