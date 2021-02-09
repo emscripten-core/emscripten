@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
+  decides which reverse dependecies to include.  See `settings.js` for more
+  information.  The default setting ('auto') is the transitional way emscripten
+  has worked in the past so there should be no change unless this options is
+  actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
+  environment variable which (among other things) essentially had the effect of
+  setting `REVERSE_DEPS` to be 'all'.
 
 2.0.13: 01/19/2021
 ------------------
