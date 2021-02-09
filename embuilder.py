@@ -29,26 +29,30 @@ SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 SYSTEM_TASKS += ['struct_info']
 
 # Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+# TODO Re-add 'except' versions of libc++abi, libc++, and libunwind after the
+# new EH implementation is stablized
 MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
     'libc++abi',
-    'libc++abi-except',
     'libc++abi-noexcept',
     'libc++',
-    'libc++-except',
     'libc++-noexcept',
     'libal',
     'libdlmalloc',
     'libdlmalloc-debug',
     'libemmalloc',
-    'libemmalloc-64bit',
+    'libemmalloc-debug',
+    'libemmalloc-memvalidate',
+    'libemmalloc-verbose',
+    'libemmalloc-memvalidate-verbose',
+    'libgl',
+    'libhtml5',
     'libsockets',
     'libc_rt_wasm',
     'struct_info',
     'libstandalonewasm',
-    'crt1',
-    'libunwind-except'
+    'crt1'
 ]
 
 USER_TASKS = [
@@ -99,7 +103,7 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 
 def build_port(port_name, lib_name):
   if force:
-    shared.Cache.erase_file(lib_name)
+    shared.Cache.erase_file(shared.Cache.get_lib_name(lib_name))
 
   system_libs.build_port(port_name, shared.Settings)
 
@@ -248,6 +252,8 @@ def main():
       shared.Settings.USE_PTHREADS = 0
     elif what == 'boost_headers':
       build_port('boost_headers', 'libboost_headers.a')
+    elif what == 'mpg123':
+      build_port('mpg123', 'libmpg123.a')
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

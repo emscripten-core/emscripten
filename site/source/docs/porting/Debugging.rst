@@ -129,7 +129,7 @@ the sub-command that it runs as well as passes ``-v`` to Clang.
 Manual print debugging
 ======================
 
-You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues.
+You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues. Note that ``printf()`` is line-buffered, make sure to add ``\n`` to see output in the console.
 
 If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. Also available is :js:func:`stackTrace`, which emits a stack trace and also tries to demangle C++ function names if ``DEMANGLE_SUPPORT`` is enabled (if you don't want or need C++ demangling in a specific stack trace, you can call :js:func:`jsStackTrace`).
 
@@ -250,7 +250,50 @@ If your code hits an infinite loop, one easy way to find the problem code is to 
 
 .. note:: The :ref:`emscripten-runtime-environment-main-loop` may need to be re-coded if your application uses an infinite main loop.
 
+.. _debugging-profiling:
 
+Profiling
+=========
+
+Speed
+-----
+
+To profile your code for speed, build with :ref:`profiling info <emcc-profiling>`,
+then run the code in the browser's devtools profiler. You should then be able to
+see in which functions is most of the time spent.
+
+.. _debugging-profiling-memory:
+
+Memory
+------
+
+The browser's memory profiling tools generally only understand
+allocations at the JavaScript level. From that perspective, the entire linear
+memory that the emscripten-compiled application uses is a single big allocation
+(of a ``WebAssembly.Memory``). The devtools will not show information about
+usage inside that object, so you need other tools for that, which we will now
+describe.
+
+Emscripten supports
+`mallinfo() <https://man7.org/linux/man-pages/man3/mallinfo.3.html>`_, which lets
+you get information from ``dlmalloc`` about current allocations. For example
+usage, see
+`the test <https://github.com/emscripten-core/emscripten/blob/9bb322f8a7ee89d6ac67e828b9c7a7022ddf8de2/tests/mallinfo.cpp>`_.
+
+Emscripten also has a ``--memoryprofiler`` option that displays memory usage
+in a visual manner, letting you see how fragmented it is and so forth. To use
+it, you can do something like
+
+.. code-block:: bash
+
+  emcc tests/hello_world.c --memoryprofiler -o page.html
+
+Note that you need to emit HTML as in that example, as the memory profiler
+output is rendered onto the page. To view it, load ``page.html`` in your
+browser (remember to use a :ref:`local webserver <faq-local-webserver>`). The display
+auto-updates, so you can open the devtools console and run a command like
+``_malloc(1024 * 1024)``. That will allocate 1MB of memory, which will then show
+up on the memory profiler display.
 
 .. _debugging-autodebugger:
 

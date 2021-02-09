@@ -498,7 +498,9 @@ LibraryManager.library = {
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
+#if CAN_ADDRESS_2GB
     requestedSize = requestedSize >>> 0;
+#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -523,22 +525,24 @@ LibraryManager.library = {
 #endif
 
     // Memory resize rules:
-    // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
-    // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 3a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
+    // 1. Always increase heap size to at least the requested size, rounded up to next page multiple.
+    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
-    // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
-    // 4. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
-    // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
+    // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
+    // 3. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+    // 4. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
     //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
 #if MAXIMUM_MEMORY != -1
     // A limit was set for how much we can grow. We should not exceed that
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
-    var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
+    // In CAN_ADDRESS_2GB mode, stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate full 4GB Wasm memories, the size will wrap
+    // back to 0 bytes in Wasm side for any code that deals with heap sizes, which would require special casing all heap size related code to treat
+    // 0 specially.
+    var maxHeapSize = {{{ Math.min(MAXIMUM_MEMORY, 4294967296 - WASM_PAGE_SIZE) }}};
 #else
-    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - {{{ WASM_PAGE_SIZE }}};
+    var maxHeapSize = {{{ (CAN_ADDRESS_2GB ? 4294967296 : 2147483648) - WASM_PAGE_SIZE }}};
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
@@ -550,8 +554,6 @@ LibraryManager.library = {
       return false;
 #endif
     }
-
-    var minHeapSize = 16777216;
 
     // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
     // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
@@ -567,7 +569,7 @@ LibraryManager.library = {
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
 
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
@@ -767,11 +769,13 @@ LibraryManager.library = {
   // time.h
   // ==========================================================================
 
+  clock__sig: 'i',
   clock: function() {
     if (_clock.start === undefined) _clock.start = Date.now();
     return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
   },
 
+  time__sig: 'ii',
   time: function(ptr) {
     var ret = (Date.now()/1000)|0;
     if (ptr) {
@@ -780,6 +784,7 @@ LibraryManager.library = {
     return ret;
   },
 
+  difftime__sig: 'dii',
   difftime: function(time1, time0) {
     return time1 - time0;
   },
@@ -855,6 +860,7 @@ LibraryManager.library = {
   __gmtime_r: 'gmtime_r',
 
   timegm__deps: ['tzset'],
+  timegm__sig: 'ii',
   timegm: function(tmPtr) {
     _tzset();
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -1063,6 +1069,7 @@ LibraryManager.library = {
     , '$intArrayFromString', '$writeArrayToMemory'
 #endif
   ],
+  strftime__sig: 'iiiii',
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
@@ -2260,8 +2267,8 @@ LibraryManager.library = {
     return str;
   },
 
-  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
-  _read_sockaddr: function (sa, salen) {
+  $readSockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
+  $readSockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
     var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'i16', undefined, true) }}});
@@ -2293,8 +2300,8 @@ LibraryManager.library = {
 
     return { family: family, addr: addr, port: port };
   },
-  _write_sockaddr__deps: ['$Sockets', '_inet_pton4_raw', '_inet_pton6_raw'],
-  _write_sockaddr: function (sa, family, addr, port, addrlen) {
+  $writeSockaddr__deps: ['$Sockets', '_inet_pton4_raw', '_inet_pton6_raw'],
+  $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
         addr = __inet_pton4_raw(addr);
@@ -2304,7 +2311,7 @@ LibraryManager.library = {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'family', 'i16') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
-        /* Use makeSetValue instead of memset to avoid adding memset dependency for all users of _write_sockaddr. */
+        /* Use makeSetValue instead of memset to avoid adding memset dependency for all users of writeSockaddr. */
         {{{ assert(C_STRUCTS.sockaddr_in.__size__ - C_STRUCTS.sockaddr_in.sin_zero == 8), '' }}}
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_zero, '0', 'i64') }}};
         break;
@@ -2436,7 +2443,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '$writeSockaddr'],
   getaddrinfo__proxy: 'sync',
   getaddrinfo__sig: 'iiiii',
   getaddrinfo: function(node, service, hint, out) {
@@ -2464,7 +2471,7 @@ LibraryManager.library = {
         __inet_ntop6_raw(addr) :
         __inet_ntop4_raw(addr);
       sa = _malloc(salen);
-      errno = __write_sockaddr(sa, family, addr, port);
+      errno = writeSockaddr(sa, family, addr, port);
       assert(!errno);
 
       ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
@@ -2608,9 +2615,9 @@ LibraryManager.library = {
     return 0;
   },
 
-  getnameinfo__deps: ['$Sockets', '$DNS', '_read_sockaddr'],
+  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
-    var info = __read_sockaddr(sa, salen);
+    var info = readSockaddr(sa, salen);
     if (info.errno) {
       return {{{ cDefine('EAI_FAMILY') }}};
     }
@@ -3699,10 +3706,15 @@ LibraryManager.library = {
     });
   },
 
-#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
+#if MINIMAL_RUNTIME
+    assert(typeof dynCalls !== 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"] linker flag to include it!');
+    assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#else
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
     if (args && args.length) {
       // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
       assert(args.length === sig.substring(1).replace(/j/g, '--').length);
@@ -3710,10 +3722,12 @@ LibraryManager.library = {
       assert(sig.length == 1);
     }
 #endif
-    if (args && args.length) {
-      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
-    }
-    return Module['dynCall_' + sig].call(null, ptr);
+#if MINIMAL_RUNTIME
+    var f = dynCalls[sig];
+#else
+    var f = Module["dynCall_" + sig];
+#endif
+    return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
   $dynCall__deps: ['$dynCallLegacy'],
 
@@ -3722,7 +3736,7 @@ LibraryManager.library = {
   // back to this function if needed.
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
-#if !USE_LEGACY_DYNCALLS
+#if ASSERTIONS && !DYNCALLS
     assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
 #endif
     var argCache = [];
@@ -3737,7 +3751,7 @@ LibraryManager.library = {
 #endif
 
   $dynCall: function(sig, ptr, args) {
-#if USE_LEGACY_DYNCALLS
+#if DYNCALLS
     return dynCallLegacy(sig, ptr, args);
 #else
 #if !WASM_BIGINT

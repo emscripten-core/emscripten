@@ -18,9 +18,7 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project('libjpeg', 'https://dl.bintray.com/homebrew/mirror/jpeg-9c.tar.gz', 'jpeg-9c', sha512hash=HASH)
 
-  libname = 'libjpeg.a'
-
-  def create():
+  def create(final):
     logging.info('building port: libjpeg')
 
     source_path = os.path.join(ports.get_dir(), 'libjpeg', 'jpeg-9c')
@@ -32,7 +30,6 @@ def get(ports, settings, shared):
     open(os.path.join(dest_path, 'jconfig.h'), 'w').write(jconfig_h)
     ports.install_headers(dest_path)
 
-    final = os.path.join(ports.get_build_dir(), 'libjpeg', libname)
     ports.build_port(
       dest_path, final,
       exclude_files=[
@@ -41,9 +38,8 @@ def get(ports, settings, shared):
         'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
       ]
     )
-    return final
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.Cache.get_lib('libjpeg.a', create, what='port')]
 
 
 def clear(ports, settings, shared):

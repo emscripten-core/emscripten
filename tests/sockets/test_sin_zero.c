@@ -34,6 +34,7 @@ int main() {
   for (int i = 0; i < 8; i++) {
     assert(adr_inet4->sin_zero[i] == 0);
   }
+  shutdown(s, SHUT_RDWR);
 
   puts("success");
 
