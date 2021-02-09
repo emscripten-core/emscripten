@@ -88,6 +88,7 @@ import subprocess
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
+from tools import system_libs
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -231,14 +232,19 @@ def inspect_headers(headers, cpp_opts):
 
   js_file = tempfile.mkstemp('.js')
 
+  # Check sanity early on before populating the cache with libcompiler_rt
+  # If we don't do this the parallel build of compiler_rt will run while holding the cache
+  # lock and with EM_EXCLUSIVE_CACHE_ACCESS set causing N processes to race to run sanity checks.
+  # While this is not in itself serious problem it is wasteful and noise on stdout.
+  # For the same reason we run this early in embuilder.py and emcc.py.
+  # TODO(sbc): If we can remove EM_EXCLUSIVE_CACHE_ACCESS then this would not longer be needed.
+  shared.check_sanity()
+
+  compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt'].get_path()
+
   # Close all unneeded FDs.
   os.close(src_file[0])
   os.close(js_file[0])
-
-  # TODO(sbc): Switch to '-nostdlib -lcompiler_rt'
-  env = os.environ.copy()
-  env['EMCC_FORCE_STDLIBS'] = 'libcompiler_rt'
-  env['EMCC_ONLY_FORCED_STDLIBS'] = '1'
 
   info = []
   # Compile the program.
@@ -248,6 +254,8 @@ def inspect_headers(headers, cpp_opts):
                                     '-O0',
                                     '-Werror',
                                     '-Wno-format',
+                                    '-nostdlib',
+                                    compiler_rt,
                                     '-I', shared.path_from_root(),
                                     '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                     '-s', 'STRICT',
@@ -267,7 +275,7 @@ def inspect_headers(headers, cpp_opts):
 
   show(shared.shlex_join(cmd))
   try:
-    subprocess.check_call(cmd, env=env)
+    subprocess.check_call(cmd)
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
