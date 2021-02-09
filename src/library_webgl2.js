@@ -730,8 +730,10 @@ var LibraryWebGL2 = {
       return;
     }
     var ret = GLctx.getSyncParameter(GL.syncs[sync], pname);
-    {{{ makeSetValue('length', '0', 'ret', 'i32') }}};
-    if (ret !== null && length) {{{ makeSetValue('length', '0', '1', 'i32') }}}; // Report a single value outputted.
+    if (ret !== null) {
+      {{{ makeSetValue('values', '0', 'ret', 'i32') }}};
+      if (length) {{{ makeSetValue('length', '0', '1', 'i32') }}}; // Report a single value outputted.
+    }
   },
 
   glIsSync__sig: 'ii',
