@@ -452,8 +452,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
 
 def create_asm_consts(metadata):
   asm_consts = {}
-  for k, v in metadata['asmConsts'].items():
-    const, sigs, call_types = v
+  for addr, const in metadata['asmConsts'].items():
     const = asstr(const)
     const = trim_asm_const_body(const)
     args = []
@@ -465,7 +464,7 @@ def create_asm_consts(metadata):
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') {' + const + '}'
-    asm_consts[int(k)] = const
+    asm_consts[int(addr)] = const
   asm_consts = [(key, value) for key, value in asm_consts.items()]
   asm_consts.sort()
   return asm_consts
@@ -788,6 +787,11 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
+
+  # Support older metadata when asmConsts values were lists.  We only use the first element
+  # nowadays
+  # TODO(sbc): remove this once binaryen has been changed to only emit the single element
+  metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
 
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
